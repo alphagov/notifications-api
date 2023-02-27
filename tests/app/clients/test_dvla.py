@@ -126,18 +126,18 @@ def test_jwt_token_returns_jwt_if_set_and_not_expired_yet(dvla_client, rmock):
     assert dvla_client.jwt_token == sample_token
 
 
-@freezegun.freeze_time("2023-01-01T12:00:00.000000Z")
 def test_jwt_token_calls_authenticate_if_not_set(dvla_client, rmock):
     assert dvla_client._jwt_token is None
 
     curr_time = int(time.time())
-    sample_token = jwt.encode(payload={"exp": curr_time}, key="foo")
+    one_hour_ahead = curr_time + 3600
+    sample_token = jwt.encode(payload={"exp": one_hour_ahead}, key="foo")
 
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
     mock_authenticate = rmock.request("POST", endpoint, json={"id-token": sample_token}, status_code=200)
 
     assert dvla_client.jwt_token == sample_token
-    assert dvla_client._jwt_expires_at == int(time.time())
+    assert dvla_client._jwt_expires_at == one_hour_ahead
 
     # despite accessing value twice, we only called authenticate once
     assert mock_authenticate.called_once
