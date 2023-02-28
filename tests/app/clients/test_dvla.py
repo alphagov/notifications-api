@@ -139,6 +139,7 @@ def test_jwt_token_returns_jwt_if_set_and_not_expired_yet(dvla_client, rmock):
     assert dvla_client.jwt_token == sample_token
 
 
+@freezegun.freeze_time("2023-01-01T12:00:00.000000Z")
 def test_jwt_token_calls_authenticate_if_not_set(dvla_client, rmock):
     assert dvla_client._jwt_token is None
 
@@ -376,7 +377,7 @@ def test_format_create_print_job_json_formats_address_lines(
     assert formatted_json["standardParams"]["address"]["unstructuredAddress"] == unstructured_address
 
 
-def test_send_letter(dvla_client, dvla_authenticate, rmock):
+def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
     print_mock = rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         json={"id": "noti_id"},
@@ -419,18 +420,44 @@ def test_send_letter(dvla_client, dvla_authenticate, rmock):
     assert request_headers["Authorization"]
 
 
-@pytest.mark.parametrize("postage", ["europe", "rest-of-world"])
-def test_send_letter_raises_an_error_if_postage_is_international(dvla_client, postage):
-    with pytest.raises(NotImplementedError):
-        dvla_client.send_letter(
-            notification_id="noti_id",
-            reference="ABCDEFGHIJKL",
-            address=["line1", "line2", "postcode"],
-            postage=postage,
-            service_id="service_id",
-            organisation_id="org_id",
-            pdf_file=b"pdf",
-        )
+@pytest.mark.parametrize(
+    "postage, despatch_method", (("europe", "INTERNATIONAL_EU"), ("rest-of-world", "INTERNATIONAL_ROW"))
+)
+def test_send_international_letter(dvla_client, dvla_authenticate, postage, despatch_method, rmock):
+    print_mock = rmock.post(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+        json={"id": "noti_id"},
+        status_code=202,
+    )
+
+    response = dvla_client.send_letter(
+        notification_id="noti_id",
+        reference="ABCDEFGHIJKL",
+        address=["recipient", "line1", "line2", "country"],
+        postage=postage,
+        service_id="service_id",
+        organisation_id="org_id",
+        pdf_file=b"pdf",
+    )
+
+    assert response == {"id": "noti_id"}
+
+    assert print_mock.last_request.json() == {
+        "id": "noti_id",
+        "standardParams": {
+            "jobType": "NOTIFY",
+            "templateReference": "NOTIFY",
+            "businessIdentifier": "ABCDEFGHIJKL",
+            "recipientName": "recipient",
+            "address": {"internationalAddress": {"line1": "line1", "line2": "line2", "country": "country"}},
+            "despatchMethod": despatch_method,
+        },
+        "customParams": [
+            {"key": "pdfContent", "value": "cGRm"},
+            {"key": "organisationIdentifier", "value": "org_id"},
+            {"key": "serviceIdentifier", "value": "service_id"},
+        ],
+    }
 
 
 def test_send_letter_when_bad_request_error_is_raised(dvla_authenticate, dvla_client, rmock):
