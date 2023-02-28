@@ -431,7 +431,7 @@ class Config(object):
     # as defined in api db migration 0331_add_broadcast_org.py
     BROADCAST_ORGANISATION_ID = "38e4bf69-93b0-445d-acee-53ea53fe02df"
 
-    DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL")
+    DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://uat.driver-vehicle-licensing.api.gov.uk")
 
     # We don't expect to have any zendesk reporting beyond this. If someone is looking here and thinking of adding
     # something new, let's consider a more holistic approach first please. We should be revisiting this approach in
@@ -572,8 +572,6 @@ class Staging(Config):
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
 
-    DVLA_API_BASE_URL = "https://uat.driver-vehicle-licensing.api.gov.uk"
-
 
 class Production(Config):
     NOTIFY_EMAIL_DOMAIN = "notifications.service.gov.uk"
@@ -594,7 +592,7 @@ class Production(Config):
 
     CRONITOR_ENABLED = True
 
-    DVLA_API_BASE_URL = "https://driver-vehicle-licensing.api.gov.uk"
+    DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://driver-vehicle-licensing.api.gov.uk")
 
 
 class CloudFoundryConfig(Config):
