@@ -321,7 +321,32 @@ class DVLAClient:
 
         return unstructured_address
 
+    @staticmethod
+    def _parse_bfpo_recipient_and_address(address: PostalAddress):
+        address_line_keys = ["line1", "line2", "line3", "line4"]
+
+        address_lines = address.bfpo_address_lines
+
+        # We don't remove recipient here - DVLA API docs say that line1 should be:
+        #    "Free text, expected to be SERVICE NUMBER, RANK and NAME."
+        # Which is basically the recipient. Also if we don't include this, potentially we could not have a line 1
+        # at all, which would break. As the address could simply be: recipient, BFPO 1234, BF1 1AA.
+        recipient = address_lines[0]
+
+        bfpo_address = dict(zip(address_line_keys, address_lines))
+
+        if address.postcode:
+            bfpo_address["postcode"] = address.postcode
+
+        bfpo_address["bfpoNumber"] = address.bfpo_number
+
+        return recipient, bfpo_address
+
     def _parse_recipient_and_address(self, *, postage: str, address: PostalAddress):
+        if address.is_bfpo_address:
+            recipient, bfpo_address = self._parse_bfpo_recipient_and_address(address)
+            return recipient, {"bfpoAddress": bfpo_address}
+
         address_lines = address.normalised_lines
         recipient = address_lines.pop(0)
 

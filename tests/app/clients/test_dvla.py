@@ -556,6 +556,42 @@ def test_send_international_letter(dvla_client, dvla_authenticate, postage, desp
     }
 
 
+def test_send_bfpo_letter(dvla_client, dvla_authenticate, rmock):
+    print_mock = rmock.post(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+        json={"id": "noti_id"},
+        status_code=202,
+    )
+
+    response = dvla_client.send_letter(
+        notification_id="noti_id",
+        reference="ABCDEFGHIJKL",
+        address=PostalAddress("recipient\nbfpo\nbfpo1234\nbf11aa"),
+        postage="second",
+        service_id="service_id",
+        organisation_id="org_id",
+        pdf_file=b"pdf",
+    )
+
+    assert response == {"id": "noti_id"}
+
+    assert print_mock.last_request.json() == {
+        "id": "noti_id",
+        "standardParams": {
+            "jobType": "NOTIFY",
+            "templateReference": "NOTIFY",
+            "businessIdentifier": "ABCDEFGHIJKL",
+            "recipientName": "recipient",
+            "address": {"bfpoAddress": {"line1": "recipient", "postcode": "BF1 1AA", "bfpoNumber": 1234}},
+        },
+        "customParams": [
+            {"key": "pdfContent", "value": "cGRm"},
+            {"key": "organisationIdentifier", "value": "org_id"},
+            {"key": "serviceIdentifier", "value": "service_id"},
+        ],
+    }
+
+
 def test_send_letter_when_bad_request_error_is_raised(dvla_authenticate, dvla_client, rmock):
     rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
