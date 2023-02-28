@@ -6,6 +6,7 @@ from unittest.mock import ANY, call
 
 import dateutil
 import pytest
+from celery.exceptions import Retry
 from freezegun import freeze_time
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
@@ -13,10 +14,13 @@ from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicketComment,
     NotifySupportTicketStatus,
 )
+from redis.exceptions import LockError
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     auto_expire_broadcast_messages,
+    change_dvla_api_key,
+    change_dvla_password,
     check_for_low_available_inbound_sms_numbers,
     check_for_missing_rows_in_completed_jobs,
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
@@ -34,6 +38,10 @@ from app.celery.scheduled_tasks import (
     trigger_link_tests,
     weekly_dwp_report,
     zendesk_new_email_branding_report,
+)
+from app.clients.letter.dvla import (
+    DvlaNonRetryableException,
+    DvlaThrottlingException,
 )
 from app.config import Config, QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -1054,6 +1062,60 @@ def test_check_for_low_available_inbound_sms_numbers_does_not_proceed_if_enough_
         check_for_low_available_inbound_sms_numbers()
 
     assert mock_send_ticket.call_args_list == []
+
+
+class TestChangeDvlaPasswordTask:
+    def test_calls_dvla_succesfully(self, mocker):
+        mock_change_password = mocker.patch("app.dvla_client.change_password")
+
+        change_dvla_password()
+
+        mock_change_password.assert_called_once_with()
+
+    def test_silently_quits_if_lock_is_held(self, mocker):
+        mocker.patch("app.dvla_client.change_password", side_effect=LockError)
+
+        # does not raise any exceptions
+        change_dvla_password()
+
+    def test_retries_if_dvla_throws_retryable_exception(self, mocker):
+        mocker.patch("app.dvla_client.change_password", side_effect=DvlaThrottlingException)
+
+        with pytest.raises(Retry):
+            change_dvla_password()
+
+    def test_reraises_if_dvla_raises_non_retryable_exception(self, mocker):
+        mocker.patch("app.dvla_client.change_password", side_effect=DvlaNonRetryableException)
+
+        with pytest.raises(DvlaNonRetryableException):
+            change_dvla_password()
+
+
+class TestChangeDvlaApiKeyTask:
+    def test_calls_dvla_succesfully(self, mocker):
+        mock_change_api_key = mocker.patch("app.dvla_client.change_api_key")
+
+        change_dvla_api_key()
+
+        mock_change_api_key.assert_called_once_with()
+
+    def test_silently_quits_if_lock_is_held(self, mocker):
+        mocker.patch("app.dvla_client.change_api_key", side_effect=LockError)
+
+        # does not raise any exceptions
+        change_dvla_api_key()
+
+    def test_retries_if_dvla_throws_retryable_exception(self, mocker):
+        mocker.patch("app.dvla_client.change_api_key", side_effect=DvlaThrottlingException)
+
+        with pytest.raises(Retry):
+            change_dvla_api_key()
+
+    def test_reraises_if_dvla_raises_non_retryable_exception(self, mocker):
+        mocker.patch("app.dvla_client.change_api_key", side_effect=DvlaNonRetryableException)
+
+        with pytest.raises(DvlaNonRetryableException):
+            change_dvla_api_key()
 
 
 class TestWeeklyDWPReport:

@@ -11,7 +11,6 @@ import pytest
 from flask import current_app
 from moto import mock_ssm
 from redis.exceptions import LockError
-from requests import HTTPError
 
 from app.clients.letter.dvla import (
     DVLAClient,
@@ -63,55 +62,43 @@ def dvla_authenticate(rmock):
 def test_set_ssm_creds_saves_in_cache(ssm):
     param = SSMParameter(key="/foo", ssm_client=ssm)
 
-    today = datetime(2023, 1, 3, 12, 0, 1)
-
-    assert param.last_read_at is None
     assert param._value is None
 
-    with freezegun.freeze_time(today):
-        param.set("new value")
+    param.set("new value")
 
     assert param._value == "new value"
-    assert param.last_read_at == today
 
 
-@pytest.mark.parametrize(
-    "current_time, expected_value, expected_last_read_at",
-    [
-        (datetime(2023, 1, 3, 11, 59, 59), "old value", datetime(2023, 1, 2, 12, 0, 0)),
-        (datetime(2023, 1, 3, 12, 0, 0), "new value", datetime(2023, 1, 3, 12, 0, 0)),
-    ],
-)
-def test_get_ssm_creds_respects_ttl_when_fetching_value(ssm, current_time, expected_value, expected_last_read_at):
+def test_get_ssm_creds_returns_value_if_already_set(ssm):
     param = SSMParameter(key="/foo", ssm_client=ssm)
 
-    yesterday = datetime(2023, 1, 2, 12, 0, 0)
-
-    param.last_read_at = yesterday
     param._value = "old value"
 
     ssm.put_parameter(Name="/foo", Value="new value", Type="SecureString")
 
-    with freezegun.freeze_time(current_time):
-        assert param.get() == expected_value
-
-    assert param.last_read_at == expected_last_read_at
+    assert param.get() == "old value"
 
 
 def test_get_ssm_creds_fetches_value_and_saves_in_cache_if_not_set(ssm):
     param = SSMParameter(key="/foo", ssm_client=ssm)
     ssm.put_parameter(Name="/foo", Value="bar", Type="SecureString")
 
-    curr_time = datetime(2023, 1, 2, 12, 0, 0)
-
-    assert param.last_read_at is None
     assert param._value is None
 
-    with freezegun.freeze_time(curr_time):
-        assert param.get() == "bar"
+    assert param.get() == "bar"
 
-    assert param.last_read_at == curr_time
     assert param._value == "bar"
+
+
+def test_clear_ssm_creds_removes_locally_cached_value(ssm):
+    param = SSMParameter(key="/foo", ssm_client=ssm)
+    ssm.put_parameter(Name="/foo", Value="bar", Type="SecureString")
+
+    param._value = "old value"
+
+    param.clear()
+
+    assert param._value is None
 
 
 def test_get_ssm_creds(dvla_client, ssm):
@@ -160,8 +147,9 @@ def test_jwt_token_calls_authenticate_if_not_set(dvla_client, rmock):
 
 def test_jwt_token_calls_authenticate_if_expiry_time_passed(dvla_client, rmock):
     prev_token_expiry_time = time.time()
-    one_second_later = prev_token_expiry_time + 1
-    one_hour_later = one_second_later + 3600
+    sixty_one_seconds_before_expiry = prev_token_expiry_time - 61
+    fifty_nine_seconds_before_expiry = prev_token_expiry_time - 59
+    one_hour_later = fifty_nine_seconds_before_expiry + 3600
 
     old_token = jwt.encode(payload={"exp": prev_token_expiry_time}, key="foo")
     next_token = jwt.encode(payload={"exp": one_hour_later}, key="foo")
@@ -169,14 +157,57 @@ def test_jwt_token_calls_authenticate_if_expiry_time_passed(dvla_client, rmock):
     dvla_client._jwt_token = jwt.encode(payload={"exp": prev_token_expiry_time}, key="foo")
     dvla_client._jwt_expires_at = prev_token_expiry_time
 
+    with freezegun.freeze_time(datetime.fromtimestamp(sixty_one_seconds_before_expiry)):
+        assert dvla_client.jwt_token == old_token
+
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
     mock_authenticate = rmock.request("POST", endpoint, json={"id-token": next_token}, status_code=200)
 
-    with freezegun.freeze_time(datetime.fromtimestamp(one_second_later)):
+    with freezegun.freeze_time(datetime.fromtimestamp(fifty_nine_seconds_before_expiry)):
         assert dvla_client.jwt_token != old_token
         assert dvla_client._jwt_expires_at == one_hour_later
 
     assert mock_authenticate.called_once
+
+
+def test_authenticate_raises_retryable_exception_if_credentials_are_invalid(dvla_client, rmock):
+    assert dvla_client.dvla_password.get() == "some password"
+
+    error_response = [{"status": 401, "title": "Authentication Failure", "detail": "Some detail"}]
+    endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
+    rmock.request("POST", endpoint, json=error_response, status_code=401)
+
+    with pytest.raises(DvlaRetryableException) as exc:
+        dvla_client.authenticate()
+
+    assert dvla_client._jwt_token is None
+    # clears down old credentials that are out of date
+    assert dvla_client.dvla_password._value is None
+
+    assert "Some detail" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "status_code, exc_class",
+    {
+        400: DvlaException,
+        429: DvlaThrottlingException,
+        500: DvlaRetryableException,
+    }.items(),
+)
+def test_authenticate_handles_generic_errors(dvla_client, rmock, status_code, exc_class):
+
+    error_response = [{"status": status_code, "title": "Authentication Failure", "detail": "Some detail"}]
+    endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
+    rmock.request("POST", endpoint, json=error_response, status_code=status_code)
+
+    with pytest.raises(exc_class):
+        dvla_client.authenticate()
+
+    assert dvla_client._jwt_token is None
+
+    # old credentials are still stored as there's nothing to indicate they are invalid
+    assert dvla_client.dvla_password.get() == "some password"
 
 
 @pytest.mark.parametrize("_execution_number", range(100))
@@ -193,6 +224,7 @@ def test_generate_password_creates_passwords_that_meet_dvla_criteria(_execution_
 
 def test_change_password_calls_dvla(dvla_client, rmock, mocker):
     mocker.patch.object(dvla_client, "_generate_password", return_value="some new password")
+    dvla_client.dvla_password._value = "some old password"
 
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/password"
     mock_change_password = rmock.request(
@@ -202,6 +234,7 @@ def test_change_password_calls_dvla(dvla_client, rmock, mocker):
     dvla_client.change_password()
 
     assert mock_change_password.called_once is True
+    # assert we ignored the old password from cache and re-fetched from SSM
     assert rmock.last_request.json() == {
         "userName": "some username",
         "password": "some password",
@@ -225,14 +258,47 @@ def test_change_password_updates_ssm(dvla_client, rmock, mocker):
 def test_change_password_does_not_update_ssm_if_dvla_throws_error(dvla_client, rmock, mocker):
     mocker.patch.object(dvla_client, "_generate_password", return_value="some new password")
     mock_set_password = mocker.patch.object(dvla_client.dvla_password, "set")
+    assert dvla_client.dvla_password.get() == "some password"
 
+    error_response = [{"status": 401, "title": "Authentication Failure", "detail": "Some detail"}]
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/password"
-    rmock.request("POST", endpoint, json={"message": "Unauthorized."}, status_code=401)
+    rmock.request("POST", endpoint, json=error_response, status_code=401)
 
-    with pytest.raises(HTTPError):
+    with pytest.raises(DvlaNonRetryableException) as exc:
         dvla_client.change_password()
 
+    # does not update ssm
     assert mock_set_password.called is False
+    # clears down old credentials that are out of date
+    assert dvla_client.dvla_password._value is None
+
+    assert "Some detail" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "status_code, exc_class",
+    {
+        400: DvlaException,
+        429: DvlaThrottlingException,
+        500: DvlaRetryableException,
+    }.items(),
+)
+def test_change_password_handles_generic_errors(dvla_client, rmock, mocker, status_code, exc_class):
+    mocker.patch.object(dvla_client, "_generate_password", return_value="some new password")
+    mock_set_password = mocker.patch.object(dvla_client.dvla_password, "set")
+    assert dvla_client.dvla_password.get() == "some password"
+
+    error_response = [{"status": status_code, "title": "Authentication Failure", "detail": "Some detail"}]
+    endpoint = "https://test-dvla-api.com/thirdparty-access/v1/password"
+    rmock.request("POST", endpoint, json=error_response, status_code=status_code)
+
+    with pytest.raises(exc_class):
+        dvla_client.change_password()
+
+    # does not update ssm
+    assert mock_set_password.called is False
+    # old credentials are still stored as there's nothing to indicate they are invalid
+    assert dvla_client.dvla_password.get() == "some password"
 
 
 def test_change_password_raises_if_other_process_holds_lock(dvla_client, rmock, mocker):
@@ -251,17 +317,14 @@ def test_change_api_key_calls_dvla(dvla_client, rmock):
     mock_change_api_key = rmock.request("POST", endpoint, json={"newApiKey": "some new api_key"}, status_code=200)
     dvla_client._jwt_token = "some jwt token"
     dvla_client._jwt_expires_at = sys.maxsize
+    dvla_client.dvla_api_key._value = "some old api key"
 
     dvla_client.change_api_key()
 
     assert mock_change_api_key.called_once is True
-    assert rmock.last_request.json() == {
-        "userName": "some username",
-        "password": "some password",
-    }
+    # we ignored the old value in cache, and tried with the latest version from SSM
     assert rmock.last_request.headers["x-api-key"] == "some api key"
     assert rmock.last_request.headers["Authorization"] == "some jwt token"
-    assert rmock.last_request.headers["Content-Type"] == "application/json"
 
 
 def test_change_api_key_updates_ssm(dvla_client, rmock, mocker):
@@ -277,18 +340,52 @@ def test_change_api_key_updates_ssm(dvla_client, rmock, mocker):
     mock_set_api_key.assert_called_once_with("some new api_key")
 
 
-def test_change_api_key_does_not_update_ssm_if_dvla_throws_error(dvla_client, rmock, mocker):
+def test_change_api_key_handles_401_authentication_error(dvla_client, rmock, mocker):
     mock_set_api_key = mocker.patch.object(dvla_client.dvla_api_key, "set")
     dvla_client._jwt_token = "some jwt token"
     dvla_client._jwt_expires_at = sys.maxsize
+    assert dvla_client.dvla_api_key.get() == "some api key"
 
+    error_response = [{"status": 401, "title": "Authentication Failure", "detail": "Some detail"}]
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/new-api-key"
-    rmock.request("POST", endpoint, json={"message": "Unauthorized"}, status_code=401)
+    rmock.request("POST", endpoint, json=error_response, status_code=401)
 
-    with pytest.raises(HTTPError):
+    with pytest.raises(DvlaNonRetryableException) as exc:
         dvla_client.change_api_key()
 
+    # does not update ssm
     assert mock_set_api_key.called is False
+    # clears down old credentials that are out of date
+    assert dvla_client.dvla_api_key._value is None
+
+    assert "Some detail" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "status_code, exc_class",
+    {
+        400: DvlaException,
+        429: DvlaThrottlingException,
+        500: DvlaRetryableException,
+    }.items(),
+)
+def test_change_api_key_handles_generic_errors(dvla_client, rmock, mocker, status_code, exc_class):
+    mock_set_api_key = mocker.patch.object(dvla_client.dvla_api_key, "set")
+    dvla_client._jwt_token = "some jwt token"
+    dvla_client._jwt_expires_at = sys.maxsize
+    assert dvla_client.dvla_api_key.get() == "some api key"
+
+    error_response = [{"status": status_code, "title": "Authentication Failure", "detail": "Some detail"}]
+    endpoint = "https://test-dvla-api.com/thirdparty-access/v1/new-api-key"
+    rmock.request("POST", endpoint, json=error_response, status_code=status_code)
+
+    with pytest.raises(exc_class):
+        dvla_client.change_api_key()
+
+    # does not update ssm
+    assert mock_set_api_key.called is False
+    # old credentials are still stored as there's nothing to indicate they are invalid
+    assert dvla_client.dvla_api_key.get() == "some api key"
 
 
 def test_change_api_key_raises_if_other_process_holds_lock(dvla_client, rmock, mocker):
@@ -511,6 +608,7 @@ def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, r
         },
         status_code=status_code,
     )
+    assert dvla_client.dvla_api_key.get() == "some api key"
 
     with pytest.raises(DvlaUnauthorisedRequestException) as exc:
         dvla_client.send_letter(
@@ -522,6 +620,9 @@ def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, r
             organisation_id="org_id",
             pdf_file=b"pdf",
         )
+
+    # make sure we clear down the api key
+    assert dvla_client.dvla_api_key._value is None
 
     assert "API Key or JWT is either not provided, expired or invalid" in str(exc.value)
 
@@ -610,7 +711,7 @@ def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_cl
         status_code=418,
     )
 
-    with pytest.raises(DvlaException):
+    with pytest.raises(DvlaNonRetryableException):
         dvla_client.send_letter(
             notification_id="1",
             reference="ABCDEFGHIJKL",

@@ -2,7 +2,6 @@ import base64
 import secrets
 import string
 import time
-from datetime import datetime, timedelta
 
 import boto3
 import jwt
@@ -37,20 +36,16 @@ class DvlaThrottlingException(DvlaRetryableException):
 
 
 class SSMParameter:
-    # cache properties for up to a day. note that if another process/app changes the value,
-    # this cache won't be automatically invalidated
-    TTL = timedelta(days=1)
+    # note that if another process/app changes the value, this cache won't be automatically invalidated
 
     def __init__(self, key, ssm_client):
         self.key = key
         self.ssm_client = ssm_client
-        self.last_read_at = None
         self._value = None
 
     def get(self):
-        if self._value is not None and self.last_read_at + self.TTL > datetime.utcnow():
+        if self._value is not None:
             return self._value
-        self.last_read_at = datetime.utcnow()
         self._value = self.ssm_client.get_parameter(Name=self.key, WithDecryption=True)["Parameter"]["Value"]
         return self._value
 
@@ -59,7 +54,9 @@ class SSMParameter:
         # this is fine for our purposes, as we'll always want to pre-seed this data.
         self.ssm_client.put_parameter(Name=self.key, Value=value, Overwrite=True)
         self._value = value
-        self.last_read_at = datetime.utcnow()
+
+    def clear(self):
+        self._value = None
 
 
 class DVLAClient:
@@ -87,25 +84,45 @@ class DVLAClient:
 
     @property
     def jwt_token(self):
-        if not self._jwt_token or time.time() >= self._jwt_expires_at:
+        # if the jwt is about to expire, just reset it ourselves to avoid unnecessary 401s
+        buffer = 60
+        if not self._jwt_token or time.time() + buffer >= self._jwt_expires_at:
             self._jwt_token = self.authenticate()
             jwt_dict = jwt.decode(self._jwt_token, options={"verify_signature": False})
             self._jwt_expires_at = jwt_dict["exp"]
 
         return self._jwt_token
 
+    def _handle_common_dvla_errors(self, e: requests.HTTPError):
+        if e.response.status_code == 429:
+            raise DvlaThrottlingException() from e
+        elif e.response.status_code >= 500:
+            raise DvlaRetryableException() from e
+        else:
+            raise DvlaNonRetryableException() from e
+
     def authenticate(self):
         """
         Fetch a JWT from the DVLA API that can be used in other DVLA API requests
         """
-        response = self.request.post(
-            f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/authenticate",
-            json={
-                "userName": self.dvla_username.get(),
-                "password": self.dvla_password.get(),
-            },
-        )
-        response.raise_for_status()
+        try:
+            response = self.request.post(
+                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/authenticate",
+                json={
+                    "userName": self.dvla_username.get(),
+                    "password": self.dvla_password.get(),
+                },
+            )
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            if e.response.status_code == 401:
+                # likely the old password has already expired
+                current_app.logger.exception("Failed to generate a DVLA jwt token")
+
+                self.dvla_password.clear()
+                raise DvlaRetryableException(e.response.json()[0]["detail"]) from e
+
+            self._handle_common_dvla_errors(e)
 
         return response.json()["id-token"]
 
@@ -113,18 +130,27 @@ class DVLAClient:
         from app import redis_store
 
         with redis_store.get_lock(f"dvla-change-api-key-{self.dvla_username.get()}", timeout=60, blocking=False):
-            response = self.request.post(
-                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
-                headers={
-                    "x-api-key": self.dvla_api_key.get(),
-                    "Authorization": self.jwt_token,
-                },
-                json={
-                    "userName": self.dvla_username.get(),
-                    "password": self.dvla_password.get(),
-                },
-            )
-            response.raise_for_status()
+            # clear and re-fetch dvla api key, just to ensure we have the latest version
+            self.dvla_api_key.clear()
+
+            try:
+                response = self.request.post(
+                    f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
+                    headers=self._get_auth_headers(),
+                )
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                if e.response.status_code == 401:
+                    # the api key is invalid, but we know it's current as per SSM as we fetched it at the beginning of
+                    # this block. It feels most likely that the api key has just been changed by another process and
+                    # DVLA's eventual consistency hasn't caught up yet. The other alternative is that the key expired
+                    # due to being a year old - at which point we need to manually reset it
+                    current_app.logger.exception("Failed to change DVLA api key")
+
+                    self.dvla_api_key.clear()
+                    raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
+
+                self._handle_common_dvla_errors(e)
 
             self.dvla_api_key.set(response.json()["newApiKey"])
 
@@ -134,15 +160,31 @@ class DVLAClient:
         new_password = self._generate_password()
 
         with redis_store.get_lock(f"dvla-change-password-{self.dvla_username.get()}", timeout=60, blocking=False):
-            response = self.request.post(
-                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
-                json={
-                    "userName": self.dvla_username.get(),
-                    "password": self.dvla_password.get(),
-                    "newPassword": new_password,
-                },
-            )
-            response.raise_for_status()
+            # clear and re-fetch dvla password, just to ensure we have the latest version
+            self.dvla_password.clear()
+
+            try:
+                response = self.request.post(
+                    f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
+                    json={
+                        "userName": self.dvla_username.get(),
+                        "password": self.dvla_password.get(),
+                        "newPassword": new_password,
+                    },
+                )
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                if e.response.status_code == 401:
+                    # the password is invalid, but we know it's current as per SSM as we fetched it at the beginning of
+                    # this block. It feels most likely that the password has just been changed by another process and
+                    # DVLA's eventual consistency hasn't caught up yet. The other alternative is that the key expired
+                    # due to being 90 days old - at which point we need to manually reset it
+                    current_app.logger.exception("Failed to change DVLA password")
+
+                    self.dvla_password.clear()
+                    raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
+
+                self._handle_common_dvla_errors(e)
 
             self.dvla_password.set(new_password)
 
@@ -195,7 +237,7 @@ class DVLAClient:
         current_app.logger.info(f"Sending letter with id {notification_id}")
 
         try:
-            response = requests.post(
+            response = self.request.post(
                 f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
                 headers=self._get_auth_headers(),
                 json=self._format_create_print_job_json(
@@ -213,17 +255,16 @@ class DVLAClient:
             # Catch errors and raise our own to indicate what action to take.
             # If the error has details, we add them to the error message.
             if e.response.status_code == 400:
-                raise DvlaNonRetryableException(response.json()["errors"][0]["detail"]) from e
+                raise DvlaNonRetryableException(e.response.json()["errors"][0]["detail"]) from e
             elif e.response.status_code in {401, 403}:
-                raise DvlaUnauthorisedRequestException({response.json()["errors"][0]["detail"]}) from e
+                # probably the api key is not valid
+                self.dvla_api_key.clear()
+
+                raise DvlaUnauthorisedRequestException(e.response.json()["errors"][0]["detail"]) from e
             elif e.response.status_code == 409:
-                raise DvlaDuplicatePrintRequestException(response.json()["errors"][0]["detail"]) from e
-            elif e.response.status_code == 429:
-                raise DvlaThrottlingException() from e
-            elif e.response.status_code >= 500:
-                raise DvlaRetryableException() from e
-            else:
-                raise DvlaException() from e
+                raise DvlaDuplicatePrintRequestException(e.response.json()["errors"][0]["detail"]) from e
+
+            self._handle_common_dvla_errors(e)
         else:
             return response.json()
 
