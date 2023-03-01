@@ -11,6 +11,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 
 from app import encryption, notify_celery
 from app.aws import s3
+from app.celery.provider_tasks import deliver_letter
 from app.config import QueueNames, TaskNames
 from app.constants import (
     INTERNATIONAL_LETTERS,
@@ -150,6 +151,9 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline_utc=None):
         print_run_deadline = print_run_date.replace(hour=17, minute=30, second=0, microsecond=0)
     _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline)
 
+    if current_app.config["DVLA_API_ENABLED"]:
+        return send_dvla_letters_via_api(print_run_deadline)
+
     for postage in POSTAGE_TYPES:
         current_app.logger.info(f"starting collate-letter-pdfs-to-be-sent processing for postage class {postage}")
         letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
@@ -288,6 +292,15 @@ def group_letters(letter_pdfs):
 
     if list_of_files:
         yield list_of_files
+
+
+def send_dvla_letters_via_api(print_run_deadline):
+    for postage in POSTAGE_TYPES:
+        current_app.logger.info(f"send-dvla-letters-for-day-via-api - starting queuing for postage class {postage}")
+        for letter in dao_get_letters_to_be_printed(print_run_deadline, postage):
+            deliver_letter.apply_async(kwargs={"notification_id": letter.id}, queue=QueueNames.SEND_LETTER)
+
+        current_app.logger.info(f"send-dvla-letters-for-day-via-api - finished queuing for postage class {postage}")
 
 
 @notify_celery.task(bind=True, name="sanitise-letter", max_retries=15, default_retry_delay=300)
