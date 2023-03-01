@@ -56,7 +56,6 @@ from app.constants import (
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
     NOTIFICATION_STATUS_LETTER_RECEIVED,
-    NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_TYPE,
@@ -98,7 +97,6 @@ class HistoryModel:
                 current_app.logger.debug("{} has no column {} to copy from".format(original, c.name))
 
 
-NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name="notify_status_type")
 guest_list_recipient_types = db.Enum(*GUEST_LIST_RECIPIENT_TYPE, name="recipient_type")
 notification_types = db.Enum(*NOTIFICATION_TYPE, name="notification_type")
 template_types = db.Enum(*TEMPLATE_TYPES, name="template_type")
