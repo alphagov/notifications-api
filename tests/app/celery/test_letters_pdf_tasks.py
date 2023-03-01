@@ -1,7 +1,7 @@
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
-from unittest.mock import call
+from unittest.mock import ANY, call
 
 import boto3
 import pytest
@@ -319,6 +319,32 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
             "OrganisationId": str(sample_organisation.id),
         }
     ]
+
+
+@mock_s3
+@pytest.mark.parametrize(
+    "print_run_deadline_utc, expected_time_called_with",
+    [
+        ("2021-06-01 12:00:00", datetime(2021, 6, 1, 13, 0, 0)),
+        ("2021-01-01 12:00:00", datetime(2021, 1, 1, 12, 0, 0)),
+        (None, datetime(2021, 6, 1, 17, 30)),
+    ],
+)
+def test_collate_letter_pdfs_to_be_sent_respects_print_run_deadline(
+    notify_db_session,
+    mocker,
+    print_run_deadline_utc,
+    expected_time_called_with,
+):
+    mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
+    mock_get_letters = mocker.patch(
+        "app.celery.letters_pdf_tasks.get_key_and_size_of_letters_to_be_sent_to_print", return_value=[]
+    )
+
+    with freeze_time("2021-06-01 17:00"):
+        collate_letter_pdfs_to_be_sent(print_run_deadline_utc=print_run_deadline_utc)
+
+    mock_get_letters.assert_called_with(expected_time_called_with, ANY)
 
 
 @mock_s3

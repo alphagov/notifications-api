@@ -2,6 +2,7 @@ from base64 import urlsafe_b64encode
 from datetime import datetime, timedelta
 from hashlib import sha512
 
+import dateutil
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
@@ -128,19 +129,25 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
 
 @notify_celery.task(name="collate-letter-pdfs-to-be-sent")
 @cronitor("collate-letter-pdfs-to-be-sent")
-def collate_letter_pdfs_to_be_sent():
+def collate_letter_pdfs_to_be_sent(print_run_deadline_utc=None):
     """
     Finds all letters which are still waiting to be sent to DVLA for printing
 
     This would usually be run at 5.50pm and collect up letters created between before 5:30pm today
     that have not yet been sent.
     If run after midnight, it will collect up letters created before 5:30pm the day before.
-    """
-    print_run_date = convert_utc_to_bst(datetime.utcnow())
-    if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
-        print_run_date = print_run_date - timedelta(days=1)
 
-    print_run_deadline = print_run_date.replace(hour=17, minute=30, second=0, microsecond=0)
+    You can specify a specific print_run_deadline_utc as an ISO format datetime if you want to. This is primarily
+    useful for load testing or running locally. Make sure to consider UTC to BST.
+    """
+    if print_run_deadline_utc:
+        print_run_deadline = convert_utc_to_bst(dateutil.parser.parse(print_run_deadline_utc))
+    else:
+        print_run_date = convert_utc_to_bst(datetime.utcnow())
+        if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
+            print_run_date = print_run_date - timedelta(days=1)
+
+        print_run_deadline = print_run_date.replace(hour=17, minute=30, second=0, microsecond=0)
     _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline)
 
     for postage in POSTAGE_TYPES:
