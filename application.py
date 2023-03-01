@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import os
 
-if (environment := os.getenv("NOTIFY_ENVIRONMENT")) in {"development", "preview"} and os.getenv(
+if (environment := os.getenv("NOTIFY_ENVIRONMENT")) in {"development", "preview", "staging"} and os.getenv(
     "NEW_RELIC_ENABLED"
 ) == "1":
     import newrelic.agent
