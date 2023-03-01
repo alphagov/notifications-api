@@ -4,16 +4,13 @@ from flask import current_app
 from sqlalchemy import String, and_, desc, func, literal, text
 
 from app import db
-from app.models import (
+from app.constants import (
     JOB_STATUS_CANCELLED,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
     NOTIFICATION_CANCELLED,
-    Job,
-    Notification,
-    ServiceDataRetention,
-    Template,
 )
+from app.models import Job, Notification, ServiceDataRetention, Template
 from app.utils import midnight_n_days_ago
 
 

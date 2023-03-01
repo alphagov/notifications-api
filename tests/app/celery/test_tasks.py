@@ -34,8 +34,7 @@ from app.celery.tasks import (
     send_inbound_sms_to_service,
 )
 from app.config import QueueNames
-from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     JOB_STATUS_ERROR,
     JOB_STATUS_FINISHED,
@@ -44,11 +43,9 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     SMS_TYPE,
-    Job,
-    Notification,
-    NotificationHistory,
-    ReturnedLetter,
 )
+from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
+from app.models import Job, Notification, NotificationHistory, ReturnedLetter
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.utils import DATETIME_FORMAT
 from app.v2.errors import TooManyRequestsError

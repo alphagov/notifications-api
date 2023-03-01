@@ -6,15 +6,15 @@ import botocore
 import pytest
 from flask import current_app, json
 
-from app.dao import templates_dao
-from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     NOTIFICATION_CREATED,
     SMS_TYPE,
-    Notification,
 )
+from app.dao import templates_dao
+from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
+from app.models import Notification
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import (

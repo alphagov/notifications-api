@@ -7,6 +7,20 @@ from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.constants import (
+    JOB_STATUS_IN_PROGRESS,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_PENDING,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_SENT,
+    NOTIFICATION_STATUS_TYPES,
+    NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    SMS_TYPE,
+)
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_delete_notifications_by_id,
@@ -29,23 +43,7 @@ from app.dao.notifications_dao import (
     notifications_not_yet_sent,
     update_notification_status_by_id,
 )
-from app.models import (
-    JOB_STATUS_IN_PROGRESS,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEAM,
-    KEY_TYPE_TEST,
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_PENDING,
-    NOTIFICATION_SENDING,
-    NOTIFICATION_SENT,
-    NOTIFICATION_STATUS_TYPES,
-    NOTIFICATION_STATUS_TYPES_FAILED,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    SMS_TYPE,
-    Job,
-    Notification,
-    NotificationHistory,
-)
+from app.models import Job, Notification, NotificationHistory
 from tests.app.db import (
     create_ft_notification_status,
     create_job,

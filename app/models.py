@@ -38,6 +38,35 @@ from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.schema import Sequence
 
 from app import db, encryption
+from app.constants import (
+    ALL_BROADCAST_PROVIDERS,
+    BRANDING_ORG,
+    BROADCAST_TYPE,
+    EMAIL_TYPE,
+    GUEST_LIST_RECIPIENT_TYPE,
+    INVITE_PENDING,
+    INVITED_USER_STATUS_TYPES,
+    LETTER_TYPE,
+    MOBILE_TYPE,
+    NORMAL,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_FAILED,
+    NOTIFICATION_RETURNED_LETTER,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_STATUS_LETTER_ACCEPTED,
+    NOTIFICATION_STATUS_LETTER_RECEIVED,
+    NOTIFICATION_STATUS_TYPES,
+    NOTIFICATION_STATUS_TYPES_COMPLETED,
+    NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_TYPE,
+    PERMISSION_LIST,
+    PRECOMPILED_TEMPLATE_NAME,
+    SMS_AUTH_TYPE,
+    SMS_TYPE,
+    TEMPLATE_TYPES,
+    VERIFY_CODE_TYPES,
+)
 from app.hashing import check_hash, hashpw
 from app.history_meta import Versioned
 from app.utils import (
@@ -46,30 +75,6 @@ from app.utils import (
     get_dt_string_or_none,
     get_uuid_string_or_none,
 )
-
-SMS_TYPE = "sms"
-EMAIL_TYPE = "email"
-LETTER_TYPE = "letter"
-BROADCAST_TYPE = "broadcast"
-
-TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, BROADCAST_TYPE]
-NOTIFICATION_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]  # not broadcast
-
-template_types = db.Enum(*TEMPLATE_TYPES, name="template_type")
-
-NORMAL = "normal"
-PRIORITY = "priority"
-TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
-
-
-SMS_AUTH_TYPE = "sms_auth"
-EMAIL_AUTH_TYPE = "email_auth"
-WEBAUTHN_AUTH_TYPE = "webauthn_auth"
-USER_AUTH_TYPES = [SMS_AUTH_TYPE, EMAIL_AUTH_TYPE, WEBAUTHN_AUTH_TYPE]
-
-DELIVERY_STATUS_CALLBACK_TYPE = "delivery_status"
-COMPLAINT_CALLBACK_TYPE = "complaint"
-SERVICE_CALLBACK_TYPES = [DELIVERY_STATUS_CALLBACK_TYPE, COMPLAINT_CALLBACK_TYPE]
 
 
 def filter_null_value_fields(obj):
@@ -91,6 +96,12 @@ class HistoryModel:
                 setattr(self, c.name, getattr(original, c.name))
             else:
                 current_app.logger.debug("{} has no column {} to copy from".format(original, c.name))
+
+
+NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name="notify_status_type")
+guest_list_recipient_types = db.Enum(*GUEST_LIST_RECIPIENT_TYPE, name="recipient_type")
+notification_types = db.Enum(*NOTIFICATION_TYPE, name="notification_type")
+template_types = db.Enum(*TEMPLATE_TYPES, name="template_type")
 
 
 class User(db.Model):
@@ -218,13 +229,6 @@ user_folder_permissions = db.Table(
 )
 
 
-BRANDING_GOVUK = "govuk"  # Deprecated outside migrations
-BRANDING_ORG = "org"
-BRANDING_BOTH = "both"
-BRANDING_ORG_BANNER = "org_banner"
-BRANDING_TYPES = [BRANDING_ORG, BRANDING_BOTH, BRANDING_ORG_BANNER]
-
-
 class BrandingTypes(db.Model):
     __tablename__ = "branding_type"
     name = db.Column(db.String(255), primary_key=True)
@@ -312,38 +316,6 @@ service_letter_branding = db.Table(
     db.Column("service_id", UUID(as_uuid=True), db.ForeignKey("services.id"), primary_key=True, nullable=False),
     db.Column("letter_branding_id", UUID(as_uuid=True), db.ForeignKey("letter_branding.id"), nullable=False),
 )
-
-
-INTERNATIONAL_SMS_TYPE = "international_sms"
-INBOUND_SMS_TYPE = "inbound_sms"
-SCHEDULE_NOTIFICATIONS = "schedule_notifications"
-EMAIL_AUTH = "email_auth"
-LETTERS_AS_PDF = "letters_as_pdf"
-PRECOMPILED_LETTER = "precompiled_letter"
-UPLOAD_DOCUMENT = "upload_document"
-EDIT_FOLDER_PERMISSIONS = "edit_folder_permissions"
-UPLOAD_LETTERS = "upload_letters"
-INTERNATIONAL_LETTERS = "international_letters"
-EXTRA_EMAIL_FORMATTING = "extra_email_formatting"
-EXTRA_LETTER_FORMATTING = "extra_letter_formatting"
-
-SERVICE_PERMISSION_TYPES = [
-    EMAIL_TYPE,
-    SMS_TYPE,
-    LETTER_TYPE,
-    BROADCAST_TYPE,
-    INTERNATIONAL_SMS_TYPE,
-    INBOUND_SMS_TYPE,
-    SCHEDULE_NOTIFICATIONS,
-    EMAIL_AUTH,
-    LETTERS_AS_PDF,
-    UPLOAD_DOCUMENT,
-    EDIT_FOLDER_PERMISSIONS,
-    UPLOAD_LETTERS,
-    INTERNATIONAL_LETTERS,
-    EXTRA_EMAIL_FORMATTING,
-    EXTRA_LETTER_FORMATTING,
-]
 
 
 class ServicePermissionTypes(db.Model):
@@ -732,13 +704,6 @@ class ServicePermission(db.Model):
         return "<{} has service permission: {}>".format(self.service_id, self.permission)
 
 
-MOBILE_TYPE = "mobile"
-EMAIL_TYPE = "email"
-
-GUEST_LIST_RECIPIENT_TYPE = [MOBILE_TYPE, EMAIL_TYPE]
-guest_list_recipient_types = db.Enum(*GUEST_LIST_RECIPIENT_TYPE, name="recipient_type")
-
-
 class ServiceGuestList(db.Model):
     __tablename__ = "service_whitelist"
 
@@ -881,11 +846,6 @@ class ApiKey(db.Model, Versioned):
             self._secret = encryption.encrypt(str(secret))
 
 
-KEY_TYPE_NORMAL = "normal"
-KEY_TYPE_TEAM = "team"
-KEY_TYPE_TEST = "test"
-
-
 class KeyTypes(db.Model):
     __tablename__ = "key_types"
 
@@ -947,9 +907,6 @@ template_folder_map = db.Table(
     db.Column("template_id", UUID(as_uuid=True), db.ForeignKey("templates.id"), primary_key=True, nullable=False),
     db.Column("template_folder_id", UUID(as_uuid=True), db.ForeignKey("template_folder.id"), nullable=False),
 )
-
-
-PRECOMPILED_TEMPLATE_NAME = "Pre-compiled PDF"
 
 
 class TemplateBase(db.Model):
@@ -1144,18 +1101,6 @@ class TemplateHistory(TemplateBase):
         return url_for("v2_template.get_template_by_id", template_id=self.id, version=self.version, _external=True)
 
 
-MMG_PROVIDER = "mmg"
-FIRETEXT_PROVIDER = "firetext"
-SES_PROVIDER = "ses"
-
-SMS_PROVIDERS = [MMG_PROVIDER, FIRETEXT_PROVIDER]
-EMAIL_PROVIDERS = [SES_PROVIDER]
-PROVIDERS = SMS_PROVIDERS + EMAIL_PROVIDERS
-
-NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]
-notification_types = db.Enum(*NOTIFICATION_TYPE, name="notification_type")
-
-
 class ProviderDetails(db.Model):
     __tablename__ = "provider_details"
 
@@ -1186,28 +1131,6 @@ class ProviderDetailsHistory(db.Model, HistoryModel):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_by = db.relationship("User")
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
-
-
-JOB_STATUS_PENDING = "pending"
-JOB_STATUS_IN_PROGRESS = "in progress"
-JOB_STATUS_FINISHED = "finished"
-JOB_STATUS_SENDING_LIMITS_EXCEEDED = "sending limits exceeded"
-JOB_STATUS_SCHEDULED = "scheduled"
-JOB_STATUS_CANCELLED = "cancelled"
-JOB_STATUS_READY_TO_SEND = "ready to send"
-JOB_STATUS_SENT_TO_DVLA = "sent to dvla"
-JOB_STATUS_ERROR = "error"
-JOB_STATUS_TYPES = [
-    JOB_STATUS_PENDING,
-    JOB_STATUS_IN_PROGRESS,
-    JOB_STATUS_FINISHED,
-    JOB_STATUS_SENDING_LIMITS_EXCEEDED,
-    JOB_STATUS_SCHEDULED,
-    JOB_STATUS_CANCELLED,
-    JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_SENT_TO_DVLA,
-    JOB_STATUS_ERROR,
-]
 
 
 class JobStatus(db.Model):
@@ -1245,9 +1168,6 @@ class Job(db.Model):
     contact_list_id = db.Column(UUID(as_uuid=True), db.ForeignKey("service_contact_list.id"), nullable=True)
 
 
-VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
-
-
 class VerifyCode(db.Model):
     __tablename__ = "verify_codes"
 
@@ -1272,118 +1192,6 @@ class VerifyCode(db.Model):
 
     def check_code(self, cde):
         return check_hash(cde, self._code)
-
-
-NOTIFICATION_CANCELLED = "cancelled"
-NOTIFICATION_CREATED = "created"
-NOTIFICATION_SENDING = "sending"
-NOTIFICATION_SENT = "sent"
-NOTIFICATION_DELIVERED = "delivered"
-NOTIFICATION_PENDING = "pending"
-NOTIFICATION_FAILED = "failed"
-NOTIFICATION_TECHNICAL_FAILURE = "technical-failure"
-NOTIFICATION_TEMPORARY_FAILURE = "temporary-failure"
-NOTIFICATION_PERMANENT_FAILURE = "permanent-failure"
-NOTIFICATION_PENDING_VIRUS_CHECK = "pending-virus-check"
-NOTIFICATION_VALIDATION_FAILED = "validation-failed"
-NOTIFICATION_VIRUS_SCAN_FAILED = "virus-scan-failed"
-NOTIFICATION_RETURNED_LETTER = "returned-letter"
-
-NOTIFICATION_STATUS_TYPES_FAILED = [
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_VALIDATION_FAILED,
-    NOTIFICATION_VIRUS_SCAN_FAILED,
-    NOTIFICATION_RETURNED_LETTER,
-]
-
-NOTIFICATION_STATUS_TYPES_COMPLETED = [
-    NOTIFICATION_SENT,
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_FAILED,
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_RETURNED_LETTER,
-    NOTIFICATION_CANCELLED,
-]
-
-NOTIFICATION_STATUS_SUCCESS = [NOTIFICATION_SENT, NOTIFICATION_DELIVERED]
-
-NOTIFICATION_STATUS_TYPES_BILLABLE = [
-    NOTIFICATION_SENDING,
-    NOTIFICATION_SENT,
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_PENDING,
-    NOTIFICATION_FAILED,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_RETURNED_LETTER,
-]
-
-NOTIFICATION_STATUS_TYPES_BILLABLE_SMS = [
-    NOTIFICATION_SENDING,
-    NOTIFICATION_SENT,  # internationally
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_PENDING,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE,
-]
-
-NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS = [
-    NOTIFICATION_SENDING,
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_RETURNED_LETTER,
-]
-# we don't really have a concept of billable emails - however the ft billing table only includes emails that we have
-# actually sent.
-NOTIFICATION_STATUS_TYPES_SENT_EMAILS = [
-    NOTIFICATION_SENDING,
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE,
-]
-
-NOTIFICATION_STATUS_TYPES = [
-    NOTIFICATION_CANCELLED,
-    NOTIFICATION_CREATED,
-    NOTIFICATION_SENDING,
-    NOTIFICATION_SENT,
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_PENDING,
-    NOTIFICATION_FAILED,
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_PENDING_VIRUS_CHECK,
-    NOTIFICATION_VALIDATION_FAILED,
-    NOTIFICATION_VIRUS_SCAN_FAILED,
-    NOTIFICATION_RETURNED_LETTER,
-]
-
-NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_BILLABLE))
-
-NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name="notify_status_type")
-
-NOTIFICATION_STATUS_LETTER_ACCEPTED = "accepted"
-NOTIFICATION_STATUS_LETTER_RECEIVED = "received"
-
-DVLA_RESPONSE_STATUS_SENT = "Sent"
-
-FIRST_CLASS = "first"
-SECOND_CLASS = "second"
-EUROPE = "europe"
-REST_OF_WORLD = "rest-of-world"
-POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS, EUROPE, REST_OF_WORLD]
-UK_POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS]
-INTERNATIONAL_POSTAGE_TYPES = [EUROPE, REST_OF_WORLD]
-RESOLVE_POSTAGE_FOR_FILE_NAME = {
-    FIRST_CLASS: 1,
-    SECOND_CLASS: 2,
-    EUROPE: "E",
-    REST_OF_WORLD: "N",
-}
 
 
 class NotificationStatusTypes(db.Model):
@@ -1758,12 +1566,6 @@ class NotificationHistory(db.Model, HistoryModel):
         self.status = original.status
 
 
-INVITE_PENDING = "pending"
-INVITE_ACCEPTED = "accepted"
-INVITE_CANCELLED = "cancelled"
-INVITED_USER_STATUS_TYPES = [INVITE_PENDING, INVITE_ACCEPTED, INVITE_CANCELLED]
-
-
 class InviteStatusType(db.Model):
     __tablename__ = "invite_status_type"
 
@@ -1815,39 +1617,6 @@ class InvitedOrganisationUser(db.Model):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "status": self.status,
         }
-
-
-# Service Permissions
-MANAGE_USERS = "manage_users"
-MANAGE_TEMPLATES = "manage_templates"
-MANAGE_SETTINGS = "manage_settings"
-SEND_TEXTS = "send_texts"
-SEND_EMAILS = "send_emails"
-SEND_LETTERS = "send_letters"
-MANAGE_API_KEYS = "manage_api_keys"
-PLATFORM_ADMIN = "platform_admin"
-VIEW_ACTIVITY = "view_activity"
-CREATE_BROADCASTS = "create_broadcasts"
-APPROVE_BROADCASTS = "approve_broadcasts"
-CANCEL_BROADCASTS = "cancel_broadcasts"
-REJECT_BROADCASTS = "reject_broadcasts"
-
-# List of permissions
-PERMISSION_LIST = [
-    MANAGE_USERS,
-    MANAGE_TEMPLATES,
-    MANAGE_SETTINGS,
-    SEND_TEXTS,
-    SEND_EMAILS,
-    SEND_LETTERS,
-    MANAGE_API_KEYS,
-    PLATFORM_ADMIN,
-    VIEW_ACTIVITY,
-    CREATE_BROADCASTS,
-    APPROVE_BROADCASTS,
-    CANCEL_BROADCASTS,
-    REJECT_BROADCASTS,
-]
 
 
 class Permission(db.Model):
@@ -2449,9 +2218,6 @@ class BroadcastProvider:
     O2 = "o2"
 
     PROVIDERS = [EE, VODAFONE, THREE, O2]
-
-
-ALL_BROADCAST_PROVIDERS = "all"
 
 
 class BroadcastProviderMessageStatus:

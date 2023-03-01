@@ -8,9 +8,9 @@ from app import notify_celery, statsd_client
 from app.clients import ClientException
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
+from app.constants import NOTIFICATION_PENDING
 from app.dao import notifications_dao
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import NOTIFICATION_PENDING
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )

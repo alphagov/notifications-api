@@ -4,9 +4,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import aliased
 
 from app import db
+from app.constants import SMS_TYPE
 from app.dao.dao_utils import autocommit
 from app.models import (
-    SMS_TYPE,
     InboundSms,
     InboundSmsHistory,
     Service,

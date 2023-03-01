@@ -5,7 +5,7 @@ Create Date: 2018-08-24 13:36:49.346156
  """
 from alembic import op
 
-from app.models import BRANDING_GOVUK, BRANDING_ORG
+from app.constants import BRANDING_GOVUK, BRANDING_ORG
 
 revision = "0221_nullable_service_branding"
 down_revision = "0220_email_brand_type_non_null"

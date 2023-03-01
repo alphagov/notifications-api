@@ -3,11 +3,12 @@ from datetime import datetime
 import pytest
 from freezegun import freeze_time
 
+from app.constants import BRANDING_ORG
 from app.dao.organisation_dao import (
     dao_add_email_branding_list_to_organisation_pool,
     dao_get_email_branding_pool_for_organisation,
 )
-from app.models import BRANDING_ORG, EmailBranding
+from app.models import EmailBranding
 from tests.app.db import (
     create_email_branding,
     create_organisation,

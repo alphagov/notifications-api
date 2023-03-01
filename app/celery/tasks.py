@@ -16,6 +16,23 @@ from app import create_random_identifier, create_uuid, encryption, notify_celery
 from app.aws import s3
 from app.celery import letters_pdf_tasks, provider_tasks
 from app.config import QueueNames
+from app.constants import (
+    DVLA_RESPONSE_STATUS_SENT,
+    EMAIL_TYPE,
+    JOB_STATUS_CANCELLED,
+    JOB_STATUS_FINISHED,
+    JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_PENDING,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_RETURNED_LETTER,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    SMS_TYPE,
+)
 from app.dao.daily_sorted_letter_dao import (
     dao_create_or_update_daily_sorted_letter,
 )
@@ -36,24 +53,7 @@ from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
-from app.models import (
-    DVLA_RESPONSE_STATUS_SENT,
-    EMAIL_TYPE,
-    JOB_STATUS_CANCELLED,
-    JOB_STATUS_FINISHED,
-    JOB_STATUS_IN_PROGRESS,
-    JOB_STATUS_PENDING,
-    KEY_TYPE_NORMAL,
-    LETTER_TYPE,
-    NOTIFICATION_CREATED,
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_RETURNED_LETTER,
-    NOTIFICATION_SENDING,
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    SMS_TYPE,
-    DailySortedLetter,
-)
+from app.models import DailySortedLetter
 from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate

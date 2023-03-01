@@ -24,9 +24,7 @@ from app import create_uuid, db, statsd_client
 from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
-from app.dao.dao_utils import autocommit
-from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
@@ -41,6 +39,10 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_COMPLETED,
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
+)
+from app.dao.dao_utils import autocommit
+from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
+from app.models import (
     FactNotificationStatus,
     Notification,
     NotificationHistory,

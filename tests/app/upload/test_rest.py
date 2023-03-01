@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from freezegun import freeze_time
 
-from app.models import JOB_STATUS_FINISHED, JOB_STATUS_PENDING, LETTER_TYPE
+from app.constants import JOB_STATUS_FINISHED, JOB_STATUS_PENDING, LETTER_TYPE
 from tests.app.db import (
     create_ft_notification_status,
     create_job,

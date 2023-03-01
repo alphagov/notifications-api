@@ -1,7 +1,7 @@
 from notifications_utils.postal_address import PostalAddress
 
 from app import create_random_identifier
-from app.models import LETTER_TYPE
+from app.constants import LETTER_TYPE
 from app.notifications.process_notifications import persist_notification
 
 

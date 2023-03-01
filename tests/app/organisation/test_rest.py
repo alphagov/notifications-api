@@ -8,6 +8,7 @@ from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.constants import INVITE_ACCEPTED, INVITE_CANCELLED
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_id
 from app.dao.organisation_dao import (
@@ -17,12 +18,7 @@ from app.dao.organisation_dao import (
     dao_add_user_to_organisation,
 )
 from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
-from app.models import (
-    INVITE_ACCEPTED,
-    INVITE_CANCELLED,
-    AnnualBilling,
-    Organisation,
-)
+from app.models import AnnualBilling, Organisation
 from tests.app.db import (
     create_annual_billing,
     create_domain,

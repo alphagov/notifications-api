@@ -3,14 +3,14 @@ from io import BytesIO
 from flask import current_app, jsonify, request, send_file, url_for
 
 from app import api_user, authenticated_service
-from app.dao import notifications_dao
-from app.letters.utils import get_letter_pdf_and_metadata
-from app.models import (
+from app.constants import (
     LETTER_TYPE,
     NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
+from app.dao import notifications_dao
+from app.letters.utils import get_letter_pdf_and_metadata
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError, PDFNotReadyError
 from app.v2.notifications import v2_notification_blueprint

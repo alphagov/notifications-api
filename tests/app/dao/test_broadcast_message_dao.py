@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from app.constants import BROADCAST_TYPE
 from app.dao.broadcast_message_dao import (
     create_broadcast_provider_message,
     dao_get_all_broadcast_messages,
@@ -8,7 +9,7 @@ from app.dao.broadcast_message_dao import (
 from app.dao.broadcast_service_dao import (
     insert_or_update_service_broadcast_settings,
 )
-from app.models import BROADCAST_TYPE, BroadcastEventMessageType
+from app.models import BroadcastEventMessageType
 from tests.app.db import (
     create_broadcast_event,
     create_broadcast_message,

@@ -23,6 +23,7 @@ from notifications_utils.recipients import (
     validate_phone_number,
 )
 
+import app.constants
 from app import ma, models
 from app.dao.permissions_dao import permission_dao
 from app.models import ServicePermission
@@ -296,7 +297,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     def validate_permissions(self, value):
         permissions = [v.permission for v in value]
         for p in permissions:
-            if p not in models.SERVICE_PERMISSION_TYPES:
+            if p not in app.constants.SERVICE_PERMISSION_TYPES:
                 raise ValidationError("Invalid Service Permission: '{}'".format(p))
 
         if len(set(permissions)) != len(permissions):
@@ -407,7 +408,7 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 
     @validates_schema
     def validate_type(self, data, **kwargs):
-        if data.get("template_type") in {models.EMAIL_TYPE, models.LETTER_TYPE}:
+        if data.get("template_type") in {app.constants.EMAIL_TYPE, app.constants.LETTER_TYPE}:
             subject = data.get("subject")
             if not subject or subject.strip() == "":
                 raise ValidationError("Invalid template subject", "subject")
@@ -448,7 +449,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
 
     @pre_dump
     def remove_content_for_non_broadcast_templates(self, template, **kwargs):
-        if template.template_type != models.BROADCAST_TYPE:
+        if template.template_type != app.constants.BROADCAST_TYPE:
             template.content = None
 
         return template
@@ -657,7 +658,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
         in_data["template"] = in_data.pop("template_history")
         template = get_template_instance(in_data["template"], in_data["personalisation"])
         in_data["body"] = template.content_with_placeholders_filled_in
-        if in_data["template"]["template_type"] != models.SMS_TYPE:
+        if in_data["template"]["template_type"] != app.constants.SMS_TYPE:
             in_data["subject"] = template.subject
             in_data["content_char_count"] = None
         else:

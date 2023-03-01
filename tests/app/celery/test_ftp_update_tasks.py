@@ -15,19 +15,18 @@ from app.celery.tasks import (
     update_letter_notifications_to_error,
     update_letter_notifications_to_sent_to_dvla,
 )
-from app.dao.daily_sorted_letter_dao import (
-    dao_get_daily_sorted_letter_by_billing_day,
-)
-from app.exceptions import DVLAException, NotificationTechnicalFailureException
-from app.models import (
+from app.constants import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    DailySortedLetter,
-    NotificationHistory,
 )
+from app.dao.daily_sorted_letter_dao import (
+    dao_get_daily_sorted_letter_by_billing_day,
+)
+from app.exceptions import DVLAException, NotificationTechnicalFailureException
+from app.models import DailySortedLetter, NotificationHistory
 from tests.app.db import (
     create_notification,
     create_notification_history,

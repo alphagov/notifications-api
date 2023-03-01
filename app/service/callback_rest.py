@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.constants import DELIVERY_STATUS_CALLBACK_TYPE
 from app.dao.service_callback_api_dao import (
     delete_service_callback_api,
     get_service_callback_api,
@@ -14,11 +15,7 @@ from app.dao.service_inbound_api_dao import (
     save_service_inbound_api,
 )
 from app.errors import InvalidRequest, register_errors
-from app.models import (
-    DELIVERY_STATUS_CALLBACK_TYPE,
-    ServiceCallbackApi,
-    ServiceInboundApi,
-)
+from app.models import ServiceCallbackApi, ServiceInboundApi
 from app.schema_validation import validate
 from app.service.service_callback_api_schema import (
     create_service_callback_api_schema,

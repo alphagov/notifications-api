@@ -11,6 +11,20 @@ from notifications_utils.timezones import convert_utc_to_bst
 from app import encryption, notify_celery
 from app.aws import s3
 from app.config import QueueNames, TaskNames
+from app.constants import (
+    INTERNATIONAL_LETTERS,
+    INTERNATIONAL_POSTAGE_TYPES,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_VALIDATION_FAILED,
+    NOTIFICATION_VIRUS_SCAN_FAILED,
+    POSTAGE_TYPES,
+    RESOLVE_POSTAGE_FOR_FILE_NAME,
+)
 from app.cronitor import cronitor
 from app.dao.notifications_dao import (
     dao_get_letters_and_sheets_volume_by_postage,
@@ -38,21 +52,7 @@ from app.letters.utils import (
     move_sanitised_letter_to_test_or_live_pdf_bucket,
     move_scan_to_invalid_pdf_bucket,
 )
-from app.models import (
-    INTERNATIONAL_LETTERS,
-    INTERNATIONAL_POSTAGE_TYPES,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEST,
-    NOTIFICATION_CREATED,
-    NOTIFICATION_DELIVERED,
-    NOTIFICATION_PENDING_VIRUS_CHECK,
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_VALIDATION_FAILED,
-    NOTIFICATION_VIRUS_SCAN_FAILED,
-    POSTAGE_TYPES,
-    RESOLVE_POSTAGE_FOR_FILE_NAME,
-    Service,
-)
+from app.models import Service
 
 
 @notify_celery.task(bind=True, name="get-pdf-for-templated-letter", max_retries=15, default_retry_delay=300)

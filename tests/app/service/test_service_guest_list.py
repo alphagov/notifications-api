@@ -1,10 +1,11 @@
 import json
 import uuid
 
+from app.constants import EMAIL_TYPE, MOBILE_TYPE
 from app.dao.service_guest_list_dao import (
     dao_add_and_commit_guest_list_contacts,
 )
-from app.models import EMAIL_TYPE, MOBILE_TYPE, ServiceGuestList
+from app.models import ServiceGuestList
 from tests import create_admin_authorization_header
 
 

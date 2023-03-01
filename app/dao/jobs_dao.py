@@ -9,9 +9,7 @@ from notifications_utils.letter_timings import (
 from sqlalchemy import and_, asc, desc, func
 
 from app import db
-from app.dao.dao_utils import autocommit
-from app.dao.templates_dao import dao_get_template_by_id
-from app.models import (
+from app.constants import (
     JOB_STATUS_CANCELLED,
     JOB_STATUS_FINISHED,
     JOB_STATUS_PENDING,
@@ -19,6 +17,10 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_CREATED,
+)
+from app.dao.dao_utils import autocommit
+from app.dao.templates_dao import dao_get_template_by_id
+from app.models import (
     FactNotificationStatus,
     Job,
     Notification,

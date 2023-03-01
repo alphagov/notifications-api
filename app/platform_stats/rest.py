@@ -2,6 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from app.constants import UK_POSTAGE_TYPES
 from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
     fetch_daily_sms_provider_volumes_for_platform,
@@ -16,7 +17,6 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.dao.services_dao import fetch_billing_details_for_all_services
 from app.errors import InvalidRequest, register_errors
-from app.models import UK_POSTAGE_TYPES
 from app.platform_stats.platform_stats_schema import platform_stats_request
 from app.schema_validation import validate
 from app.service.statistics import format_admin_stats

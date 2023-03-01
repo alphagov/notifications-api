@@ -16,6 +16,11 @@ from app.clients.letter.dvla import (
 )
 from app.clients.sms import SmsClientResponseException
 from app.config import QueueNames
+from app.constants import (
+    LETTER_TYPE,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_TECHNICAL_FAILURE,
+)
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.dao.provider_details_dao import (
@@ -24,11 +29,6 @@ from app.dao.provider_details_dao import (
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
-from app.models import (
-    LETTER_TYPE,
-    NOTIFICATION_SENDING,
-    NOTIFICATION_TECHNICAL_FAILURE,
-)
 
 
 @notify_celery.task(bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300)

@@ -49,7 +49,7 @@ def url_with_token(data, url, config, base_url=None):
 
 
 def get_template_instance(template, values):
-    from app.models import BROADCAST_TYPE, EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
+    from app.constants import BROADCAST_TYPE, EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 
     return {
         SMS_TYPE: SMSMessageTemplate,
@@ -88,7 +88,7 @@ def get_london_month_from_utc_column(column):
 
 
 def get_public_notify_type_text(notify_type, plural=False):
-    from app.models import (
+    from app.constants import (
         BROADCAST_TYPE,
         PRECOMPILED_LETTER,
         SMS_TYPE,

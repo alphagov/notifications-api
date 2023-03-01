@@ -44,19 +44,17 @@ from app.clients.letter.dvla import (
     DvlaThrottlingException,
 )
 from app.config import Config, QueueNames, TaskNames
-from app.dao.jobs_dao import dao_get_job_by_id
-from app.dao.provider_details_dao import get_provider_details_by_identifier
-from app.models import (
+from app.constants import (
     JOB_STATUS_ERROR,
     JOB_STATUS_FINISHED,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-    BroadcastStatusType,
-    Event,
-    InboundNumber,
 )
+from app.dao.jobs_dao import dao_get_job_by_id
+from app.dao.provider_details_dao import get_provider_details_by_identifier
+from app.models import BroadcastStatusType, Event, InboundNumber
 from tests.app import load_example_csv
 from tests.app.db import (
     create_broadcast_message,

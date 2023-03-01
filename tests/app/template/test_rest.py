@@ -12,20 +12,14 @@ from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from PyPDF2.errors import PdfReadError
 
+from app.constants import BROADCAST_TYPE, EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from app.dao.templates_dao import (
     dao_get_template_by_id,
     dao_get_template_versions,
     dao_redact_template,
     dao_update_template,
 )
-from app.models import (
-    BROADCAST_TYPE,
-    EMAIL_TYPE,
-    LETTER_TYPE,
-    SMS_TYPE,
-    Template,
-    TemplateHistory,
-)
+from app.models import Template, TemplateHistory
 from tests import create_admin_authorization_header
 from tests.app.db import (
     create_letter_contact,

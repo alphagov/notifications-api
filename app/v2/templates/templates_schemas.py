@@ -1,4 +1,4 @@
-from app.models import TEMPLATE_TYPES
+from app.constants import TEMPLATE_TYPES
 from app.v2.template.template_schemas import (
     get_template_by_id_response as template,
 )

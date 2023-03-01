@@ -6,6 +6,7 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
 
+from app.constants import EMAIL_TYPE, JOB_STATUS_FINISHED, LETTER_TYPE, SMS_TYPE
 from app.dao.jobs_dao import (
     can_letter_job_be_cancelled,
     dao_cancel_letter_job,
@@ -20,13 +21,7 @@ from app.dao.jobs_dao import (
     find_jobs_with_missing_rows,
     find_missing_row_for_job,
 )
-from app.models import (
-    EMAIL_TYPE,
-    JOB_STATUS_FINISHED,
-    LETTER_TYPE,
-    SMS_TYPE,
-    Job,
-)
+from app.models import Job
 from tests.app.db import (
     create_job,
     create_notification,

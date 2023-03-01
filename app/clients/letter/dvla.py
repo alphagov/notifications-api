@@ -271,7 +271,7 @@ class DVLAClient:
     def _format_create_print_job_json(
         self, *, notification_id, reference, address_lines, postage, service_id, organisation_id, pdf_file
     ):
-        from app.models import EUROPE, FIRST_CLASS, REST_OF_WORLD
+        from app.constants import EUROPE, FIRST_CLASS, REST_OF_WORLD
 
         recipient_name = address_lines[0]
         address_without_recipient = address_lines[1:]
@@ -329,7 +329,7 @@ class DVLAClient:
         return international_address
 
     def _build_address_object(self, *, postage, address_without_recipient):
-        from app.models import INTERNATIONAL_POSTAGE_TYPES
+        from app.constants import INTERNATIONAL_POSTAGE_TYPES
 
         if postage in INTERNATIONAL_POSTAGE_TYPES:
             return {"internationalAddress": self._build_international_address(address_without_recipient)}

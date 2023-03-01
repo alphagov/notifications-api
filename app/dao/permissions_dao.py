@@ -1,6 +1,5 @@
 from app import db
-from app.dao import DAOClass
-from app.models import (
+from app.constants import (
     MANAGE_API_KEYS,
     MANAGE_SETTINGS,
     MANAGE_TEMPLATES,
@@ -9,8 +8,9 @@ from app.models import (
     SEND_LETTERS,
     SEND_TEXTS,
     VIEW_ACTIVITY,
-    Permission,
 )
+from app.dao import DAOClass
+from app.models import Permission
 
 # Default permissions for a service
 default_service_permissions = [

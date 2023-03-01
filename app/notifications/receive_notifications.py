@@ -8,10 +8,11 @@ from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app.celery import tasks
 from app.config import QueueNames
+from app.constants import INBOUND_SMS_TYPE, SMS_TYPE
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.services_dao import dao_fetch_service_by_inbound_number
 from app.errors import register_errors
-from app.models import INBOUND_SMS_TYPE, SMS_TYPE, InboundSms
+from app.models import InboundSms
 
 receive_notifications_blueprint = Blueprint("receive_notifications", __name__)
 register_errors(receive_notifications_blueprint)

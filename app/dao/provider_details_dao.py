@@ -5,9 +5,9 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
 
 from app import db
+from app.constants import SMS_TYPE
 from app.dao.dao_utils import autocommit
 from app.models import (
-    SMS_TYPE,
     FactBilling,
     ProviderDetails,
     ProviderDetailsHistory,

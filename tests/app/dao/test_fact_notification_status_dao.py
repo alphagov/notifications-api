@@ -5,19 +5,7 @@ from uuid import UUID
 import pytest
 from freezegun import freeze_time
 
-from app.dao.fact_notification_status_dao import (
-    fetch_monthly_notification_statuses_per_service,
-    fetch_monthly_template_usage_for_service,
-    fetch_notification_status_for_service_by_month,
-    fetch_notification_status_for_service_for_day,
-    fetch_notification_status_for_service_for_today_and_7_previous_days,
-    fetch_notification_status_totals_for_all_services,
-    fetch_notification_statuses_for_job,
-    fetch_stats_for_all_services_by_date_range,
-    get_total_notifications_for_date_range,
-    update_fact_notification_status,
-)
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
@@ -32,8 +20,20 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
-    FactNotificationStatus,
 )
+from app.dao.fact_notification_status_dao import (
+    fetch_monthly_notification_statuses_per_service,
+    fetch_monthly_template_usage_for_service,
+    fetch_notification_status_for_service_by_month,
+    fetch_notification_status_for_service_for_day,
+    fetch_notification_status_for_service_for_today_and_7_previous_days,
+    fetch_notification_status_totals_for_all_services,
+    fetch_notification_statuses_for_job,
+    fetch_stats_for_all_services_by_date_range,
+    get_total_notifications_for_date_range,
+    update_fact_notification_status,
+)
+from app.models import FactNotificationStatus
 from tests.app.db import (
     create_ft_notification_status,
     create_job,

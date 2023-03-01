@@ -8,16 +8,10 @@ from freezegun import freeze_time
 
 import app.celery.tasks
 from app import db
+from app.constants import EMAIL_TYPE, SMS_TYPE, USER_AUTH_TYPES
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.users_dao import create_user_code
-from app.models import (
-    EMAIL_TYPE,
-    SMS_TYPE,
-    USER_AUTH_TYPES,
-    Notification,
-    User,
-    VerifyCode,
-)
+from app.models import Notification, User, VerifyCode
 from tests import create_admin_authorization_header
 
 

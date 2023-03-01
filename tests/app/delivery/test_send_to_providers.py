@@ -11,21 +11,20 @@ from requests import HTTPError
 
 import app
 from app import firetext_client, mmg_client, notification_provider_clients
-from app.dao import notifications_dao
-from app.dao.provider_details_dao import get_provider_details_by_identifier
-from app.delivery import send_to_providers
-from app.delivery.send_to_providers import get_html_email_options, get_logo_url
-from app.exceptions import NotificationTechnicalFailureException
-from app.models import (
+from app.constants import (
     BRANDING_BOTH,
     BRANDING_ORG,
     BRANDING_ORG_BANNER,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
-    EmailBranding,
-    Notification,
 )
+from app.dao import notifications_dao
+from app.dao.provider_details_dao import get_provider_details_by_identifier
+from app.delivery import send_to_providers
+from app.delivery.send_to_providers import get_html_email_options, get_logo_url
+from app.exceptions import NotificationTechnicalFailureException
+from app.models import EmailBranding, Notification
 from app.serialised_models import SerialisedService
 from tests.app.db import (
     create_email_branding,

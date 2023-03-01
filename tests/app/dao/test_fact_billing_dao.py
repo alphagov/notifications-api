@@ -6,6 +6,7 @@ from freezegun import freeze_time
 from notifications_utils.timezones import convert_utc_to_bst
 
 from app import db
+from app.constants import NOTIFICATION_STATUS_TYPES
 from app.dao.fact_billing_dao import (
     delete_billing_data_for_day,
     fetch_billing_data_for_day,
@@ -22,7 +23,7 @@ from app.dao.fact_billing_dao import (
     get_rates_for_billing,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
-from app.models import NOTIFICATION_STATUS_TYPES, FactBilling
+from app.models import FactBilling
 from tests.app.db import (
     create_annual_billing,
     create_ft_billing,

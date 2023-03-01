@@ -7,17 +7,12 @@ from flask import current_app
 from freezegun import freeze_time
 from moto import mock_s3
 
+from app.constants import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from app.dao.notifications_dao import (
     insert_notification_history_delete_notifications,
     move_notifications_to_notification_history,
 )
-from app.models import (
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEAM,
-    KEY_TYPE_TEST,
-    Notification,
-    NotificationHistory,
-)
+from app.models import Notification, NotificationHistory
 from tests.app.db import (
     create_notification,
     create_notification_history,

@@ -23,10 +23,7 @@ from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.celery.tasks import save_api_email, save_api_sms
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
-from app.dao.dao_utils import transaction
-from app.dao.templates_dao import get_precompiled_letter_template
-from app.letters.utils import upload_letter_pdf
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -37,8 +34,11 @@ from app.models import (
     NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_SENDING,
     SMS_TYPE,
-    Notification,
 )
+from app.dao.dao_utils import transaction
+from app.dao.templates_dao import get_precompiled_letter_template
+from app.letters.utils import upload_letter_pdf
+from app.models import Notification
 from app.notifications.process_letter_notifications import (
     create_letter_notification,
 )

@@ -2,7 +2,7 @@ from itertools import product
 
 import pytest
 
-from app.models import EMAIL_TYPE, TEMPLATE_TYPES
+from app.constants import EMAIL_TYPE, TEMPLATE_TYPES
 from tests.app.db import create_template
 
 

@@ -8,8 +8,8 @@ import pytz
 from freezegun import freeze_time
 
 import app.celery.tasks
+from app.constants import JOB_STATUS_PENDING, JOB_STATUS_TYPES
 from app.dao.templates_dao import dao_update_template
-from app.models import JOB_STATUS_PENDING, JOB_STATUS_TYPES
 from tests import create_admin_authorization_header
 from tests.app.db import (
     create_ft_notification_status,

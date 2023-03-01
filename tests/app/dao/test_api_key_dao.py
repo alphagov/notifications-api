@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.constants import KEY_TYPE_NORMAL
 from app.dao.api_key_dao import (
     expire_api_key,
     get_model_api_keys,
@@ -11,7 +12,7 @@ from app.dao.api_key_dao import (
     get_unsigned_secrets,
     save_model_api_key,
 )
-from app.models import KEY_TYPE_NORMAL, ApiKey
+from app.models import ApiKey
 
 
 def test_save_api_key_should_create_new_api_key_and_history(sample_service):

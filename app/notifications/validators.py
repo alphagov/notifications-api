@@ -14,10 +14,7 @@ from notifications_utils.recipients import (
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import redis_store
-from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
-from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
-from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
@@ -25,8 +22,11 @@ from app.models import (
     KEY_TYPE_TEST,
     LETTER_TYPE,
     SMS_TYPE,
-    ServicePermission,
 )
+from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
+from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
+from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
+from app.models import ServicePermission
 from app.notifications.process_notifications import (
     create_content_for_notification,
 )

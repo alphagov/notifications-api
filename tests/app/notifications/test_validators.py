@@ -5,14 +5,14 @@ from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.clients.redis import daily_limit_cache_key
 
 import app
-from app.dao import templates_dao
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
     LETTER_TYPE,
     NOTIFICATION_TYPES,
     SMS_TYPE,
 )
+from app.dao import templates_dao
 from app.notifications.process_notifications import (
     create_content_for_notification,
 )

@@ -11,6 +11,7 @@ from notifications_utils.recipients import (
 from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
+from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, SMS_TYPE
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import (
     dao_get_service_user,
@@ -43,13 +44,7 @@ from app.dao.webauthn_credential_dao import (
     dao_update_webauthn_credential_logged_in_at,
 )
 from app.errors import InvalidRequest, register_errors
-from app.models import (
-    EMAIL_TYPE,
-    KEY_TYPE_NORMAL,
-    SMS_TYPE,
-    Permission,
-    Service,
-)
+from app.models import Permission, Service
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,

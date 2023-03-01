@@ -5,7 +5,7 @@ import pytest
 from flask import json
 
 from app.config import QueueNames
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
     KEY_TYPE_TEAM,
@@ -16,9 +16,8 @@ from app.models import (
     NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_SENDING,
     SMS_TYPE,
-    Job,
-    Notification,
 )
+from app.models import Job, Notification
 from app.notifications.process_letter_notifications import (
     create_letter_notification,
 )
