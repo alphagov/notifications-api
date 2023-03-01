@@ -19,6 +19,7 @@ class QueueNames(object):
     DATABASE = "database-tasks"
     SEND_SMS = "send-sms-tasks"
     SEND_EMAIL = "send-email-tasks"
+    SEND_LETTER = "send-letter-tasks"
     RESEARCH_MODE = "research-mode-tasks"
     REPORTING = "reporting-tasks"
     JOBS = "job-tasks"
@@ -45,6 +46,7 @@ class QueueNames(object):
             QueueNames.DATABASE,
             QueueNames.SEND_SMS,
             QueueNames.SEND_EMAIL,
+            QueueNames.SEND_LETTER,
             QueueNames.RESEARCH_MODE,
             QueueNames.REPORTING,
             QueueNames.JOBS,
