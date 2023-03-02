@@ -9,6 +9,12 @@ import requests
 from flask import current_app
 
 from app.clients import ClientException
+from app.constants import (
+    EUROPE,
+    FIRST_CLASS,
+    INTERNATIONAL_POSTAGE_TYPES,
+    REST_OF_WORLD,
+)
 
 
 class DvlaException(ClientException):
@@ -271,8 +277,6 @@ class DVLAClient:
     def _format_create_print_job_json(
         self, *, notification_id, reference, address_lines, postage, service_id, organisation_id, pdf_file
     ):
-        from app.constants import EUROPE, FIRST_CLASS, REST_OF_WORLD
-
         recipient_name = address_lines[0]
         address_without_recipient = address_lines[1:]
 
@@ -329,8 +333,6 @@ class DVLAClient:
         return international_address
 
     def _build_address_object(self, *, postage, address_without_recipient):
-        from app.constants import INTERNATIONAL_POSTAGE_TYPES
-
         if postage in INTERNATIONAL_POSTAGE_TYPES:
             return {"internationalAddress": self._build_international_address(address_without_recipient)}
 
