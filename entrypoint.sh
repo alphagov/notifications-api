@@ -18,6 +18,10 @@ elif [ "$1" == "api" ]
 then
   shift 1
   gunicorn -c /home/vcap/app/gunicorn_config.py application
+elif [ "$1" == "api-local" ]
+then
+  shift 1
+  flask run --host 0.0.0.0 --port $PORT
 elif [ -n "$*" ]
 then
   $*
