@@ -19,7 +19,6 @@ function check_params {
 
 function configure_aws_logs {
   # create files so that aws logs agent doesn't complain
-  touch ${LOGS_DIR}/gunicorn_error.log
   touch ${LOGS_DIR}/app.log.json
 
   aws configure set plugins.cwlogs cwlogs
@@ -33,10 +32,6 @@ file = ${LOGS_DIR}/app.log.json
 log_group_name = paas-${CW_APP_NAME}-application
 log_stream_name = {hostname}
 
-[${LOGS_DIR}/gunicorn_error.log]
-file = ${LOGS_DIR}/gunicorn_error.log
-log_group_name = paas-${CW_APP_NAME}-gunicorn
-log_stream_name = {hostname}
 EOF
 }
 
