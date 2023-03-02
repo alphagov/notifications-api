@@ -3,14 +3,11 @@ import uuid
 import pytest
 from freezegun import freeze_time
 
+from app.constants import BROADCAST_TYPE
 from app.dao.broadcast_message_dao import (
     dao_get_broadcast_message_by_id_and_service_id,
 )
-from app.models import (
-    BROADCAST_TYPE,
-    BroadcastEventMessageType,
-    BroadcastStatusType,
-)
+from app.models import BroadcastEventMessageType, BroadcastStatusType
 from tests.app.db import (
     create_broadcast_message,
     create_service,

@@ -5,6 +5,13 @@ from datetime import date, datetime, timedelta
 import pytest
 
 from app import db
+from app.constants import (
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    MOBILE_TYPE,
+    SMS_TYPE,
+)
 from app.dao import fact_processing_time_dao
 from app.dao.email_branding_dao import dao_create_email_branding
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
@@ -29,11 +36,6 @@ from app.dao.services_dao import dao_add_user_to_service, dao_create_service
 from app.dao.templates_dao import dao_create_template, dao_update_template
 from app.dao.users_dao import save_model_user
 from app.models import (
-    EMAIL_TYPE,
-    KEY_TYPE_NORMAL,
-    LETTER_TYPE,
-    MOBILE_TYPE,
-    SMS_TYPE,
     AnnualBilling,
     ApiKey,
     BroadcastEvent,

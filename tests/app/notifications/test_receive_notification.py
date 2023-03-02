@@ -5,7 +5,8 @@ import pytest
 from flask import json
 from freezegun import freeze_time
 
-from app.models import EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE, InboundSms
+from app.constants import EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE
+from app.models import InboundSms
 from app.notifications.receive_notifications import (
     create_inbound_sms_object,
     format_mmg_datetime,

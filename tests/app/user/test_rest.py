@@ -6,20 +6,18 @@ import pytest
 from flask import current_app
 from freezegun import freeze_time
 
+from app.constants import (
+    EMAIL_AUTH_TYPE,
+    MANAGE_SETTINGS,
+    MANAGE_TEMPLATES,
+    SMS_AUTH_TYPE,
+)
 from app.dao.permissions_dao import default_service_permissions
 from app.dao.service_user_dao import (
     dao_get_service_user,
     dao_update_service_user,
 )
-from app.models import (
-    EMAIL_AUTH_TYPE,
-    MANAGE_SETTINGS,
-    MANAGE_TEMPLATES,
-    SMS_AUTH_TYPE,
-    Notification,
-    Permission,
-    User,
-)
+from app.models import Notification, Permission, User
 from tests.app.db import (
     create_organisation,
     create_service,

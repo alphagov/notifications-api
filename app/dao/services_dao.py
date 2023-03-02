@@ -7,6 +7,16 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
+from app.constants import (
+    EMAIL_TYPE,
+    INTERNATIONAL_LETTERS,
+    INTERNATIONAL_SMS_TYPE,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    NOTIFICATION_PERMANENT_FAILURE,
+    SMS_TYPE,
+    UPLOAD_LETTERS,
+)
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.date_util import get_current_financial_year
 from app.dao.email_branding_dao import dao_get_email_branding_by_name
@@ -17,16 +27,8 @@ from app.dao.service_user_dao import dao_get_service_user
 from app.dao.template_folder_dao import dao_get_valid_template_folders_by_id
 from app.models import (
     CROWN_ORGANISATION_TYPES,
-    EMAIL_TYPE,
-    INTERNATIONAL_LETTERS,
-    INTERNATIONAL_SMS_TYPE,
-    KEY_TYPE_TEST,
-    LETTER_TYPE,
     NHS_ORGANISATION_TYPES,
     NON_CROWN_ORGANISATION_TYPES,
-    NOTIFICATION_PERMANENT_FAILURE,
-    SMS_TYPE,
-    UPLOAD_LETTERS,
     AnnualBilling,
     ApiKey,
     FactBilling,

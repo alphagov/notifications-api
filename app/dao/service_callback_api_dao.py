@@ -1,12 +1,9 @@
 from datetime import datetime
 
 from app import create_uuid, db
+from app.constants import COMPLAINT_CALLBACK_TYPE, DELIVERY_STATUS_CALLBACK_TYPE
 from app.dao.dao_utils import autocommit, version_class
-from app.models import (
-    COMPLAINT_CALLBACK_TYPE,
-    DELIVERY_STATUS_CALLBACK_TYPE,
-    ServiceCallbackApi,
-)
+from app.models import ServiceCallbackApi
 
 
 @autocommit

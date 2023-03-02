@@ -3,12 +3,14 @@ from datetime import datetime
 from flask import current_app
 
 from app import db
-from app.dao.dao_utils import autocommit, version_class
-from app.models import (
+from app.constants import (
     BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
     INVITE_PENDING,
     VIEW_ACTIVITY,
+)
+from app.dao.dao_utils import autocommit, version_class
+from app.models import (
     ApiKey,
     InvitedUser,
     Organisation,

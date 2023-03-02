@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import current_app, json
 
-from app.models import BROADCAST_TYPE
+from app.constants import BROADCAST_TYPE
 from tests import create_internal_authorization_header
 from tests.app.db import create_broadcast_message, create_template
 

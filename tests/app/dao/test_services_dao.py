@@ -8,6 +8,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
+from app.constants import (
+    EMAIL_TYPE,
+    INTERNATIONAL_LETTERS,
+    INTERNATIONAL_SMS_TYPE,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    SMS_TYPE,
+    UPLOAD_LETTERS,
+)
 from app.dao.inbound_numbers_dao import (
     dao_get_available_inbound_numbers,
     dao_set_inbound_number_active_flag,
@@ -43,15 +54,6 @@ from app.dao.services_dao import (
 )
 from app.dao.users_dao import create_user_code, save_model_user
 from app.models import (
-    EMAIL_TYPE,
-    INTERNATIONAL_LETTERS,
-    INTERNATIONAL_SMS_TYPE,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEAM,
-    KEY_TYPE_TEST,
-    LETTER_TYPE,
-    SMS_TYPE,
-    UPLOAD_LETTERS,
     ApiKey,
     InvitedUser,
     Job,

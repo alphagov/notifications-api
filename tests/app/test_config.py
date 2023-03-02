@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from app import config
+from app import config, db
 from app.config import QueueNames
 
 
@@ -90,8 +90,6 @@ def test_sqlalchemy_config(notify_api, notify_db_session):
     timeout = notify_db_session.execute("show statement_timeout").scalar()
     assert timeout == "20min"
     assert notify_api.config["SQLALCHEMY_ENGINE_OPTIONS"]["connect_args"]["options"] == "-c statement_timeout=1200000"
-
-    from app import db
 
     assert db.engine.pool.size() == notify_api.config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_size"]
     assert db.engine.pool.timeout() == notify_api.config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_timeout"]

@@ -2,9 +2,9 @@ from flask import Blueprint, current_app, jsonify, request
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 from app import api_user, authenticated_service
+from app.constants import EMAIL_TYPE, KEY_TYPE_TEAM, LETTER_TYPE, SMS_TYPE
 from app.dao import notifications_dao
 from app.errors import InvalidRequest, register_errors
-from app.models import EMAIL_TYPE, KEY_TYPE_TEAM, LETTER_TYPE, SMS_TYPE
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,

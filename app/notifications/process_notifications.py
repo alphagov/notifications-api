@@ -19,19 +19,19 @@ from app import redis_store
 from app.celery import provider_tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.config import QueueNames
-from app.dao.notifications_dao import (
-    dao_create_notification,
-    dao_delete_notifications_by_id,
-)
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_POSTAGE_TYPES,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     SMS_TYPE,
-    Notification,
 )
+from app.dao.notifications_dao import (
+    dao_create_notification,
+    dao_delete_notifications_by_id,
+)
+from app.models import Notification
 from app.v2.errors import BadRequestError
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(

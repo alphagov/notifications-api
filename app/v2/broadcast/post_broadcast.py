@@ -8,11 +8,12 @@ from sqlalchemy.orm.exc import MultipleResultsFound
 from app import api_user, authenticated_service, redis_store
 from app.broadcast_message import utils as broadcast_utils
 from app.broadcast_message.translators import cap_xml_to_dict
+from app.constants import BROADCAST_TYPE
 from app.dao.broadcast_message_dao import (
     dao_get_broadcast_message_by_references_and_service_id,
 )
 from app.dao.dao_utils import dao_save_object
-from app.models import BROADCAST_TYPE, BroadcastMessage, BroadcastStatusType
+from app.models import BroadcastMessage, BroadcastStatusType
 from app.notifications.validators import check_service_has_permission
 from app.schema_validation import validate
 from app.v2.broadcast import v2_broadcast_blueprint

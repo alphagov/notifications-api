@@ -3,6 +3,7 @@ from itsdangerous import BadData, SignatureExpired
 from notifications_utils.url_safe_token import check_token, generate_token
 
 from app.config import QueueNames
+from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL
 from app.dao.invited_org_user_dao import (
     get_invited_org_user as dao_get_invited_org_user,
 )
@@ -13,7 +14,7 @@ from app.dao.invited_org_user_dao import (
 )
 from app.dao.templates_dao import dao_get_template_by_id
 from app.errors import InvalidRequest, register_errors
-from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL, InvitedOrganisationUser
+from app.models import InvitedOrganisationUser
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,

@@ -28,6 +28,13 @@ from app.celery.tasks import (
 )
 from app.clients.letter.dvla import DvlaRetryableException
 from app.config import QueueNames, TaskNames
+from app.constants import (
+    EMAIL_TYPE,
+    JOB_STATUS_ERROR,
+    JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_PENDING,
+    SMS_TYPE,
+)
 from app.cronitor import cronitor
 from app.dao.inbound_numbers_dao import dao_get_available_inbound_numbers
 from app.dao.invited_org_user_dao import (
@@ -61,11 +68,6 @@ from app.dao.services_dao import (
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.letters.utils import generate_letter_pdf_filename
 from app.models import (
-    EMAIL_TYPE,
-    JOB_STATUS_ERROR,
-    JOB_STATUS_IN_PROGRESS,
-    JOB_STATUS_PENDING,
-    SMS_TYPE,
     BroadcastMessage,
     BroadcastStatusType,
     EmailBranding,

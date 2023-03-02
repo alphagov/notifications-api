@@ -8,15 +8,7 @@ from flask import current_app, url_for
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.dao.organisation_dao import dao_add_service_to_organisation
-from app.dao.service_user_dao import dao_get_service_user
-from app.dao.services_dao import (
-    dao_add_user_to_service,
-    dao_remove_user_from_service,
-)
-from app.dao.templates_dao import dao_redact_template
-from app.dao.users_dao import save_model_user
-from app.models import (
+from app.constants import (
     BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
     EMAIL_TYPE,
@@ -31,6 +23,16 @@ from app.models import (
     SERVICE_PERMISSION_TYPES,
     SMS_TYPE,
     UPLOAD_LETTERS,
+)
+from app.dao.organisation_dao import dao_add_service_to_organisation
+from app.dao.service_user_dao import dao_get_service_user
+from app.dao.services_dao import (
+    dao_add_user_to_service,
+    dao_remove_user_from_service,
+)
+from app.dao.templates_dao import dao_redact_template
+from app.dao.users_dao import save_model_user
+from app.models import (
     AnnualBilling,
     EmailBranding,
     Notification,

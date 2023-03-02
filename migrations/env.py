@@ -7,6 +7,8 @@ from sqlalchemy import engine_from_config, pool
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
+import app.models
+
 config = context.config
 
 # Interpret the config file for Python logging.
@@ -19,7 +21,7 @@ fileConfig(config.config_file_name)
 # target_metadata = mymodel.Base.metadata
 
 config.set_main_option("sqlalchemy.url", current_app.config.get("SQLALCHEMY_DATABASE_URI"))
-target_metadata = current_app.extensions["migrate"].db.metadata
+target_metadata = app.models.db.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

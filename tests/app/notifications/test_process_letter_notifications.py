@@ -1,4 +1,5 @@
-from app.models import LETTER_TYPE, NOTIFICATION_CREATED, Notification
+from app.constants import LETTER_TYPE, NOTIFICATION_CREATED
+from app.models import Notification
 from app.notifications.process_letter_notifications import (
     create_letter_notification,
 )

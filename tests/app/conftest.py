@@ -11,6 +11,16 @@ from sqlalchemy.orm.session import make_transient
 
 from app import db
 from app.clients.sms.firetext import FiretextClient
+from app.constants import (
+    BROADCAST_TYPE,
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    SERVICE_PERMISSION_TYPES,
+    SMS_TYPE,
+)
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.broadcast_service_dao import (
     insert_or_update_service_broadcast_settings,
@@ -27,14 +37,6 @@ from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import create_secret_code, create_user_code
 from app.history_meta import create_history
 from app.models import (
-    BROADCAST_TYPE,
-    EMAIL_TYPE,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEAM,
-    KEY_TYPE_TEST,
-    LETTER_TYPE,
-    SERVICE_PERMISSION_TYPES,
-    SMS_TYPE,
     ApiKey,
     InvitedUser,
     Job,

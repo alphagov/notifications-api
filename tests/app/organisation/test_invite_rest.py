@@ -5,7 +5,8 @@ from flask import current_app, json
 from freezegun import freeze_time
 from notifications_utils.url_safe_token import generate_token
 
-from app.models import INVITE_PENDING, Notification
+from app.constants import INVITE_PENDING
+from app.models import Notification
 from tests import create_admin_authorization_header
 from tests.app.db import create_invited_org_user
 

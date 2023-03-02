@@ -10,7 +10,7 @@ from app import notify_celery
 from app.aws.s3 import file_exists
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.config import QueueNames
-from app.models import SMS_TYPE
+from app.constants import SMS_TYPE
 
 temp_fail = "7700900003"
 perm_fail = "7700900002"

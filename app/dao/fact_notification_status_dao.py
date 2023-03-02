@@ -6,8 +6,7 @@ from sqlalchemy.sql.expression import extract, literal
 from sqlalchemy.types import DateTime, Integer
 
 from app import db
-from app.dao.dao_utils import autocommit
-from app.models import (
+from app.constants import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
@@ -21,6 +20,9 @@ from app.models import (
     NOTIFICATION_SENT,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
+)
+from app.dao.dao_utils import autocommit
+from app.models import (
     FactNotificationStatus,
     Notification,
     NotificationAllTimeView,

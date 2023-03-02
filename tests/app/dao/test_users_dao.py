@@ -7,6 +7,7 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
+from app.constants import EMAIL_AUTH_TYPE
 from app.dao.service_user_dao import (
     dao_get_service_user,
     dao_update_service_user,
@@ -27,7 +28,7 @@ from app.dao.users_dao import (
     user_can_be_archived,
 )
 from app.errors import InvalidRequest
-from app.models import EMAIL_AUTH_TYPE, User, VerifyCode
+from app.models import User, VerifyCode
 from tests.app.db import (
     create_permissions,
     create_service,

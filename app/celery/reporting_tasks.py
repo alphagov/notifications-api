@@ -5,6 +5,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 
 from app import notify_celery
 from app.config import QueueNames
+from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from app.cronitor import cronitor
 from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
@@ -12,7 +13,6 @@ from app.dao.fact_billing_dao import (
 )
 from app.dao.fact_notification_status_dao import update_fact_notification_status
 from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
-from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 
 
 @notify_celery.task(name="create-nightly-billing")

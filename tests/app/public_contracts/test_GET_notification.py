@@ -1,5 +1,6 @@
+from app.constants import KEY_TYPE_NORMAL
 from app.dao.api_key_dao import save_model_api_key
-from app.models import KEY_TYPE_NORMAL, ApiKey
+from app.models import ApiKey
 from app.v2.notifications.notification_schemas import (
     get_notification_response,
     get_notifications_response,

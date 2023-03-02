@@ -1,7 +1,7 @@
 import pytest
 from flask import json
 
-from app.models import EMAIL_TYPE, LETTER_TYPE, TEMPLATE_TYPES
+from app.constants import EMAIL_TYPE, LETTER_TYPE, TEMPLATE_TYPES
 from tests import create_service_authorization_header
 from tests.app.db import create_template
 

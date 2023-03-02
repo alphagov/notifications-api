@@ -15,8 +15,8 @@ from app.celery.broadcast_message_tasks import (
 )
 from app.clients.cbc_proxy import CBCProxyRetryableException
 from app.config import QueueNames, TaskNames
+from app.constants import BROADCAST_TYPE
 from app.models import (
-    BROADCAST_TYPE,
     BroadcastEventMessageType,
     BroadcastProviderMessageStatus,
     BroadcastStatusType,

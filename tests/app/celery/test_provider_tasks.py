@@ -28,13 +28,13 @@ from app.clients.letter.dvla import (
     DvlaThrottlingException,
 )
 from app.clients.sms import SmsClientResponseException
-from app.exceptions import NotificationTechnicalFailureException
-from app.models import (
+from app.constants import (
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     PRECOMPILED_TEMPLATE_NAME,
 )
+from app.exceptions import NotificationTechnicalFailureException
 from tests.app.db import create_notification
 
 

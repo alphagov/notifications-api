@@ -29,6 +29,7 @@ from app.celery.letters_pdf_tasks import (
 )
 from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
+from app.constants import KEY_TYPE_TEST, NOTIFICATION_CREATED, SMS_TYPE
 from app.dao.annual_billing_dao import (
     dao_create_or_update_annual_billing_for_year,
     set_default_free_allowance_for_service,
@@ -61,9 +62,6 @@ from app.dao.users_dao import (
     get_user_by_email,
 )
 from app.models import (
-    KEY_TYPE_TEST,
-    NOTIFICATION_CREATED,
-    SMS_TYPE,
     AnnualBilling,
     Domain,
     EmailBranding,

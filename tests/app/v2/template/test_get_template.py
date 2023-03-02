@@ -1,6 +1,6 @@
 import pytest
 
-from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, TEMPLATE_TYPES
+from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, TEMPLATE_TYPES
 from app.utils import DATETIME_FORMAT
 from tests.app.db import create_letter_contact, create_template
 

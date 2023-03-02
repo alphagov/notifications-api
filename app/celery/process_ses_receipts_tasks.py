@@ -8,8 +8,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import notify_celery, statsd_client
 from app.clients.email.aws_ses import get_aws_responses
 from app.config import QueueNames
+from app.constants import NOTIFICATION_PENDING, NOTIFICATION_SENDING
 from app.dao import notifications_dao
-from app.models import NOTIFICATION_PENDING, NOTIFICATION_SENDING
 from app.notifications.notifications_ses_callback import (
     _check_and_queue_complaint_callback_task,
     check_and_queue_callback_task,

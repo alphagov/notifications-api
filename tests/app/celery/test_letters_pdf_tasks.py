@@ -30,10 +30,7 @@ from app.celery.letters_pdf_tasks import (
     update_validation_failed_for_templated_letter,
 )
 from app.config import QueueNames, TaskNames
-from app.errors import VirusScanError
-from app.exceptions import NotificationTechnicalFailureException
-from app.letters.utils import ScanErrorType
-from app.models import (
+from app.constants import (
     INTERNATIONAL_LETTERS,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
@@ -44,8 +41,11 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
-    Notification,
 )
+from app.errors import VirusScanError
+from app.exceptions import NotificationTechnicalFailureException
+from app.letters.utils import ScanErrorType
+from app.models import Notification
 from tests.app.db import (
     create_letter_branding,
     create_notification,

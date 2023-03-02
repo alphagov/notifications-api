@@ -7,14 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import case, literal
 
 from app import db
-from app.dao.date_util import (
-    get_financial_year_dates,
-    get_financial_year_for_datetime,
-)
-from app.dao.organisation_dao import (
-    dao_get_organisation_live_services_and_their_free_allowance,
-)
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_POSTAGE_TYPES,
     KEY_TYPE_NORMAL,
@@ -24,6 +17,15 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE_SMS,
     NOTIFICATION_STATUS_TYPES_SENT_EMAILS,
     SMS_TYPE,
+)
+from app.dao.date_util import (
+    get_financial_year_dates,
+    get_financial_year_for_datetime,
+)
+from app.dao.organisation_dao import (
+    dao_get_organisation_live_services_and_their_free_allowance,
+)
+from app.models import (
     AnnualBilling,
     FactBilling,
     LetterRate,

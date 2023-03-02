@@ -5,18 +5,17 @@ import pytest
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.recipients import InvalidPhoneError
 
-from app.dao.service_guest_list_dao import (
-    dao_add_and_commit_guest_list_contacts,
-)
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     MOBILE_TYPE,
     SMS_TYPE,
-    Notification,
-    ServiceGuestList,
 )
+from app.dao.service_guest_list_dao import (
+    dao_add_and_commit_guest_list_contacts,
+)
+from app.models import Notification, ServiceGuestList
 from app.service.send_notification import send_one_off_notification
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from tests.app.db import (

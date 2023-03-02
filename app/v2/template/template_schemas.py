@@ -1,4 +1,4 @@
-from app.models import TEMPLATE_TYPES
+from app.constants import TEMPLATE_TYPES
 from app.schema_validation.definitions import personalisation, uuid
 
 get_template_by_id_request = {

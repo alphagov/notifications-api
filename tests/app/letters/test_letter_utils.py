@@ -7,6 +7,12 @@ from flask import current_app
 from freezegun import freeze_time
 from moto import mock_s3
 
+from app.constants import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    NOTIFICATION_VALIDATION_FAILED,
+    PRECOMPILED_TEMPLATE_NAME,
+)
 from app.letters.utils import (
     LetterPDFNotFound,
     ScanErrorType,
@@ -20,12 +26,6 @@ from app.letters.utils import (
     move_failed_pdf,
     move_sanitised_letter_to_test_or_live_pdf_bucket,
     upload_letter_pdf,
-)
-from app.models import (
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEST,
-    NOTIFICATION_VALIDATION_FAILED,
-    PRECOMPILED_TEMPLATE_NAME,
 )
 from tests.app.db import create_notification
 

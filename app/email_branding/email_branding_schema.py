@@ -1,4 +1,4 @@
-from app.models import BRANDING_TYPES
+from app.constants import BRANDING_TYPES
 
 post_create_email_branding_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",

@@ -13,6 +13,13 @@ from werkzeug.datastructures import MultiDict
 
 from app.aws import s3
 from app.config import QueueNames
+from app.constants import (
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    MOBILE_TYPE,
+    NOTIFICATION_CANCELLED,
+)
 from app.dao import fact_notification_status_dao, notifications_dao
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.api_key_dao import (
@@ -96,9 +103,6 @@ from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import letter_print_day
 from app.models import (
-    KEY_TYPE_NORMAL,
-    LETTER_TYPE,
-    NOTIFICATION_CANCELLED,
     EmailBranding,
     LetterBranding,
     Permission,
@@ -655,8 +659,6 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
 
 @service_blueprint.route("/<uuid:service_id>/guest-list", methods=["GET"])
 def get_guest_list(service_id):
-    from app.models import EMAIL_TYPE, MOBILE_TYPE
-
     service = dao_fetch_service_by_id(service_id)
 
     if not service:

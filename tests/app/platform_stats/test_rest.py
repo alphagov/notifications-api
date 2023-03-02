@@ -3,8 +3,8 @@ from datetime import date, datetime
 import pytest
 from freezegun import freeze_time
 
+from app.constants import EMAIL_TYPE, SMS_TYPE
 from app.errors import InvalidRequest
-from app.models import EMAIL_TYPE, SMS_TYPE
 from app.platform_stats.rest import (
     validate_date_range_is_within_a_financial_year,
 )

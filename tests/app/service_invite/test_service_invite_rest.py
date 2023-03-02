@@ -6,7 +6,8 @@ from flask import current_app
 from freezegun import freeze_time
 from notifications_utils.url_safe_token import generate_token
 
-from app.models import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE, Notification
+from app.constants import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE
+from app.models import Notification
 from tests import create_admin_authorization_header
 from tests.app.db import create_invited_user
 

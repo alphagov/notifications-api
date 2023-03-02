@@ -3,7 +3,7 @@ from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
 
 from app import encryption
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     MOBILE_TYPE,
     NOTIFICATION_CREATED,
@@ -17,9 +17,8 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     PRECOMPILED_TEMPLATE_NAME,
     SMS_TYPE,
-    Notification,
-    ServiceGuestList,
 )
+from app.models import Notification, ServiceGuestList
 from tests.app.db import (
     create_inbound_number,
     create_letter_contact,

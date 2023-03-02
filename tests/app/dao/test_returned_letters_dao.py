@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 
 from freezegun import freeze_time
 
+from app.constants import NOTIFICATION_RETURNED_LETTER
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -10,7 +11,7 @@ from app.dao.returned_letters_dao import (
     fetch_returned_letters,
     insert_returned_letters,
 )
-from app.models import NOTIFICATION_RETURNED_LETTER, ReturnedLetter
+from app.models import ReturnedLetter
 from tests.app.db import (
     create_notification,
     create_notification_history,

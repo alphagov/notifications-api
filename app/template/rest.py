@@ -13,6 +13,7 @@ from PyPDF2.errors import PdfReadError
 from requests import post as requests_post
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.constants import BROADCAST_TYPE, LETTER_TYPE, SECOND_CLASS, SMS_TYPE
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_folder_dao import (
@@ -31,13 +32,7 @@ from app.dao.templates_dao import (
 )
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import get_letter_pdf_and_metadata
-from app.models import (
-    BROADCAST_TYPE,
-    LETTER_TYPE,
-    SECOND_CLASS,
-    SMS_TYPE,
-    Template,
-)
+from app.models import Template
 from app.notifications.validators import check_reply_to, service_has_permission
 from app.schema_validation import validate
 from app.schemas import (

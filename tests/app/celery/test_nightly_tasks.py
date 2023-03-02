@@ -25,7 +25,8 @@ from app.celery.nightly_tasks import (
     save_daily_notification_processing_time,
     timeout_notifications,
 )
-from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, FactProcessingTime
+from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
+from app.models import FactProcessingTime
 from tests.app.db import (
     create_job,
     create_notification,

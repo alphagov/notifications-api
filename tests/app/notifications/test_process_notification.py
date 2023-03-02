@@ -11,7 +11,8 @@ from notifications_utils.recipients import (
 )
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models import LETTER_TYPE, Notification, NotificationHistory
+from app.constants import LETTER_TYPE
+from app.models import Notification, NotificationHistory
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,

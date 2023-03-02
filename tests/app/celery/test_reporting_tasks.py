@@ -12,8 +12,7 @@ from app.celery.reporting_tasks import (
     create_nightly_notification_status_for_service_and_day,
 )
 from app.config import QueueNames
-from app.dao.fact_billing_dao import get_rate
-from app.models import (
+from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -21,10 +20,9 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_TYPES,
     SMS_TYPE,
-    FactBilling,
-    FactNotificationStatus,
-    Notification,
 )
+from app.dao.fact_billing_dao import get_rate
+from app.models import FactBilling, FactNotificationStatus, Notification
 from tests.app.db import (
     create_letter_rate,
     create_notification,

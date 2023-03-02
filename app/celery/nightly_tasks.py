@@ -16,6 +16,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import notify_celery, statsd_client, zendesk_client
 from app.aws import s3
 from app.config import QueueNames
+from app.constants import (
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    NOTIFICATION_SENDING,
+    SMS_TYPE,
+)
 from app.cronitor import cronitor
 from app.dao.fact_processing_time_dao import insert_update_processing_time
 from app.dao.inbound_sms_dao import delete_inbound_sms_older_than_retention
@@ -32,15 +39,7 @@ from app.dao.notifications_dao import (
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention_for_all_services_by_notification_type,
 )
-from app.models import (
-    EMAIL_TYPE,
-    KEY_TYPE_NORMAL,
-    LETTER_TYPE,
-    NOTIFICATION_SENDING,
-    SMS_TYPE,
-    FactProcessingTime,
-    Notification,
-)
+from app.models import FactProcessingTime, Notification
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )

@@ -4,12 +4,9 @@ from app.broadcast_message.utils import (
     _create_p1_zendesk_alert,
     update_broadcast_message_status,
 )
+from app.constants import BROADCAST_TYPE
 from app.errors import InvalidRequest
-from app.models import (
-    BROADCAST_TYPE,
-    BroadcastEventMessageType,
-    BroadcastStatusType,
-)
+from app.models import BroadcastEventMessageType, BroadcastStatusType
 from tests.app.db import (
     create_api_key,
     create_broadcast_message,

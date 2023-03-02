@@ -1,9 +1,9 @@
 from flask import current_app
 
 from app.config import QueueNames
+from app.constants import KEY_TYPE_NORMAL
 from app.dao.organisation_dao import dao_get_users_for_organisation
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.models import KEY_TYPE_NORMAL
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
