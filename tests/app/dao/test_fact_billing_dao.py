@@ -1251,3 +1251,14 @@ def test_fetch_volumes_by_service(notify_db_session):
     assert results[6].letter_totals == 0
     assert results[6].letter_sheet_totals == 0
     assert float(results[6].letter_cost) == 0
+
+
+def test_fetch_volumes_by_service_returns_free_allowance_for_end_date(sample_service):
+    create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=1000, financial_year_start=2023)
+    create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=50, financial_year_start=2022)
+    create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=7, financial_year_start=2021)
+
+    results = fetch_volumes_by_service(start_date=datetime(2021, 4, 1), end_date=datetime(2022, 2, 28))
+
+    assert len(results) == 1
+    assert results[0].free_allowance == 50
