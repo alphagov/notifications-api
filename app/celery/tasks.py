@@ -3,6 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 
+import sqlalchemy
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.postal_address import PostalAddress
@@ -11,7 +12,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from requests import HTTPError, RequestException, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from app import create_random_identifier, create_uuid, encryption, notify_celery
+from app import create_random_identifier, create_uuid, db, encryption, notify_celery
 from app.aws import s3
 from app.celery import letters_pdf_tasks, provider_tasks
 from app.config import QueueNames
@@ -53,7 +54,7 @@ from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
-from app.models import DailySortedLetter, LetterCostThreshold
+from app.models import DailySortedLetter, LetterCostThreshold, NotificationEventLog
 from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate
@@ -681,3 +682,33 @@ def process_returned_letters_list(notification_references):
         updated_history,
         len(notification_references),
     )
+
+
+def _record_notification_event(*, notification_id: str, happened_at: datetime, status: str, notes: str):
+    # This 'internal' function is mostly so that, under test, we can hook into this directly to bypass celery
+    # and its task wrapper.
+
+    nel = NotificationEventLog(notification_id=notification_id, happened_at=happened_at, status=status, notes=notes)
+    db.session.add(nel)
+
+    return nel
+
+
+@notify_celery.task(
+    name="record-notification-event",
+    queue=QueueNames.NOTIFY,
+    bind=True,
+    max_retries=5,
+    default_retry_delay=5,
+    retry_backoff=True,
+    retry_jitter=True,
+)
+def record_notification_event(self, *, notification_id: str, happened_at: datetime, status: str, notes: str):
+    try:
+        nel = _record_notification_event(
+            notification_id=notification_id, happened_at=happened_at, status=status, notes=notes
+        )
+        db.session.commit()
+    except sqlalchemy.exc.IntegrityError as exc:
+        current_app.logger.warning("Couldn't record nel=%s: exc=%s. Retrying.", nel.id, exc)
+        self.retry()
