@@ -131,7 +131,9 @@ def test_notification_for_csv_returns_correct_job_row_number(sample_job):
         ("letter", "delivered", "Received"),
     ],
 )
-def test_notification_for_csv_returns_formatted_status(sample_service, template_type, status, expected_status):
+def test_notification_for_csv_returns_formatted_status(
+    sample_service, template_type, status, expected_status, notification_events_bypass_celery
+):
     template = create_template(sample_service, template_type=template_type)
     notification = create_notification(template, status=status)
 

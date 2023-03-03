@@ -78,6 +78,7 @@ class TaskNames(object):
     CREATE_PDF_FOR_TEMPLATED_LETTER = "create-pdf-for-templated-letter"
     PUBLISH_GOVUK_ALERTS = "publish-govuk-alerts"
     RECREATE_PDF_FOR_PRECOMPILED_LETTER = "recreate-pdf-for-precompiled-letter"
+    RECORD_NOTIFICATION_EVENT = "record-notification-event"
 
 
 class Config(object):

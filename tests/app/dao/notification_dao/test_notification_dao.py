@@ -60,7 +60,9 @@ from tests.app.db import (
 )
 
 
-def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_provider):
+def test_should_by_able_to_update_status_by_id(
+    sample_template, sample_job, mmg_provider, notification_events_bypass_celery
+):
     with freeze_time("2000-01-01 12:00:00"):
         data = _notification_json(sample_template, job_id=sample_job.id, status="sending")
         notification = Notification(**data)
@@ -149,7 +151,9 @@ def test_should_not_update_status_by_id_if_sent_to_country_with_carrier_delivery
     assert notification.status == NOTIFICATION_SENT
 
 
-def test_should_not_update_status_by_id_if_sent_to_country_with_delivery_receipts(sample_template):
+def test_should_not_update_status_by_id_if_sent_to_country_with_delivery_receipts(
+    sample_template, notification_events_bypass_celery
+):
     notification = create_notification(
         sample_template,
         status=NOTIFICATION_SENT,
@@ -163,7 +167,9 @@ def test_should_not_update_status_by_id_if_sent_to_country_with_delivery_receipt
     assert notification.status == NOTIFICATION_DELIVERED
 
 
-def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_template, sample_job):
+def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(
+    sample_template, sample_job, notification_events_bypass_celery
+):
     notification = create_notification(template=sample_template, job=sample_job, status="sending")
 
     assert update_notification_status_by_id(notification_id=notification.id, status="pending")
@@ -173,7 +179,9 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_
     assert Notification.query.get(notification.id).status == "delivered"
 
 
-def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure(sample_template, sample_job):
+def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure(
+    sample_template, sample_job, notification_events_bypass_celery
+):
     notification = create_notification(template=sample_template, job=sample_job, status="sending", sent_by="firetext")
 
     assert update_notification_status_by_id(notification_id=notification.id, status="pending")
@@ -184,7 +192,9 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure
     assert Notification.query.get(notification.id).status == "temporary-failure"
 
 
-def test_should_by_able_to_update_status_by_id_from_sending_to_permanent_failure(sample_template, sample_job):
+def test_should_by_able_to_update_status_by_id_from_sending_to_permanent_failure(
+    sample_template, sample_job, notification_events_bypass_celery
+):
     data = _notification_json(sample_template, job_id=sample_job.id, status="sending")
     notification = Notification(**data)
     dao_create_notification(notification)

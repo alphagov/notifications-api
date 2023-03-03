@@ -1131,3 +1131,15 @@ def api_client_request(client, notify_user):
 
 def datetime_in_past(days=0, seconds=0):
     return datetime.now(tz=pytz.utc) - timedelta(days=days, seconds=seconds)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def notification_events_bypass_celery(mocker):
+    def _handle_event(notification, notes=None):
+        from app.celery.tasks import _record_notification_event
+
+        _record_notification_event(
+            notification_id=notification.id, status=notification.status, notes=notes, happened_at=datetime.utcnow()
+        )
+
+    yield mocker.patch("app.dao.notifications_dao._send_record_notification_event", side_effect=_handle_event)

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from itertools import groupby
 from operator import attrgetter
+from typing import Optional
 
 from botocore.exceptions import ClientError
 from flask import current_app
@@ -21,10 +22,11 @@ from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
 from werkzeug.datastructures import MultiDict
 
-from app import create_uuid, db, statsd_client
+from app import create_uuid, db, notify_celery, statsd_client
 from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
+from app.config import TaskNames
 from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -118,13 +120,23 @@ def dao_create_notification(notification):
         notification.status = NOTIFICATION_CREATED
 
     db.session.add(notification)
-    dao_record_notification_event(notification)
+    dao_record_notification_event_via_celery(notification)
 
 
-@autocommit
-def dao_record_notification_event(notification, notes=None):
-    event = NotificationEventLog(notification_id=notification.id, status=notification.status, notes=notes)
-    db.session.add(event)
+def _send_record_notification_event(notification: Notification, notes: Optional[str] = None):
+    # This 'internal' function is mostly so that we have a consistent place to patch when testing (ie always
+    # app.dao.notifications_dao._send_record_notification_event. The other public dao_ function can be imported in
+    # many places.
+    notify_celery.send_task(
+        TaskNames.RECORD_NOTIFICATION_EVENT,
+        kwargs=dict(
+            notification_id=notification.id, status=notification.status, notes=notes, happened_at=datetime.utcnow()
+        ),
+    )
+
+
+def dao_record_notification_event_via_celery(notification, notes=None):
+    _send_record_notification_event(notification, notes=notes)
 
 
 def _decide_permanent_temporary_failure(status, notification, detailed_status_code=None):
@@ -158,7 +170,7 @@ def _update_notification_status(notification, status, detailed_status_code=None)
     )
     notification.status = status
     dao_update_notification(notification)
-    dao_record_notification_event(
+    dao_record_notification_event_via_celery(
         notification, notes=f"detailed status code: {detailed_status_code}" if detailed_status_code else None
     )
     return notification
@@ -844,7 +856,7 @@ def _duplicate_update_warning(notification, status):
             time_diff=time_diff,
         ),
     )
-    dao_record_notification_event(
+    dao_record_notification_event_via_celery(
         notification,
         notes=(
             f"Duplicate callback\n"
