@@ -928,6 +928,13 @@ def set_up_usage_data(start_date):
     letter_template_1 = create_template(service=service_1_sms_and_letter, template_type="letter")
     sms_template_1 = create_template(service=service_1_sms_and_letter, template_type="sms")
     create_annual_billing(service_id=service_1_sms_and_letter.id, free_sms_fragment_limit=10, financial_year_start=year)
+    create_annual_billing(
+        service_id=service_1_sms_and_letter.id, free_sms_fragment_limit=100, financial_year_start=year - 1
+    )
+    create_annual_billing(
+        service_id=service_1_sms_and_letter.id, free_sms_fragment_limit=50, financial_year_start=year - 2
+    )
+
     org_1 = create_organisation(
         name="Org for {}".format(service_1_sms_and_letter.name),
         purchase_order_number="org1 purchase order number",

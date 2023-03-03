@@ -972,12 +972,14 @@ def fetch_volumes_by_service(start_date, end_date):
 
     annual_billing = (
         db.session.query(
-            func.max(AnnualBilling.financial_year_start).label("financial_year_start"),
+            func.max(AnnualBilling.financial_year_start)
+            .over(partition_by=AnnualBilling.service_id)
+            .label("latest_billing_year_for_service"),
+            AnnualBilling.financial_year_start.label("financial_year_start"),
             AnnualBilling.service_id,
             AnnualBilling.free_sms_fragment_limit,
         )
         .filter(AnnualBilling.financial_year_start <= year_end_date)
-        .group_by(AnnualBilling.service_id, AnnualBilling.free_sms_fragment_limit)
         .subquery()
     )
 
@@ -999,7 +1001,12 @@ def fetch_volumes_by_service(start_date, end_date):
         .outerjoin(Organisation, Service.organisation_id == Organisation.id)
         .join(annual_billing, Service.id == annual_billing.c.service_id)
         .outerjoin(volume_stats, Service.id == volume_stats.c.service_id)  # include services without volume
-        .filter(Service.restricted.is_(False), Service.count_as_live.is_(True), Service.active.is_(True))
+        .filter(
+            Service.restricted.is_(False),
+            Service.count_as_live.is_(True),
+            Service.active.is_(True),
+            annual_billing.c.latest_billing_year_for_service == annual_billing.c.financial_year_start,
+        )
         .group_by(
             Service.id,
             Service.name,
