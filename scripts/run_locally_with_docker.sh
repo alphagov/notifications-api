@@ -14,8 +14,8 @@ API_HOST_NAME=${API_HOST_NAME:-"http://host.docker.internal:6011"}
 
 # Only expose port 6011 if we're running the API - anything else is celery which shouldn't bind the port.
 # This lets us run celery via docker and the API locally.
-if [ "${@}" == "api" ]; then
-  EXPOSED_PORTS="-p 6011:6011"
+if [[ "${@}" == "api" || "${@}" == "api-local" ]]; then
+  EXPOSED_PORTS="-e PORT=6011 -p 6011:6011"
 else
   EXPOSED_PORTS=""
 fi
