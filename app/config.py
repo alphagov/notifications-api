@@ -193,6 +193,11 @@ class Config(object):
     CELERY = {
         "broker_url": "https://sqs.eu-west-1.amazonaws.com",
         "broker_transport": "sqs",
+        # Increase the number of connections we can hold open to our message broker (SQS) from the default of 10.
+        # When creating notifications, we send status logs to a queue for near-real-time processing so that we minimise
+        # response time. Under very heavy load, we can still end up blocking on trying to pick up a connection from
+        # the SQS pool. To help alleviate this, let's allow more simultaneous connections.
+        "broker_pool_limit": 20,
         "broker_transport_options": {
             "region": AWS_REGION,
             "visibility_timeout": 310,
