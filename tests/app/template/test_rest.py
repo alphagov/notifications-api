@@ -541,6 +541,7 @@ def test_should_get_return_all_fields_by_default(
         "folder",
         "hidden",
         "id",
+        "letter_attachment",
         "name",
         "postage",
         "process_type",

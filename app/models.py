@@ -956,6 +956,26 @@ class TemplateBase(db.Model):
     def service_letter_contact(cls):
         return db.relationship("ServiceLetterContact", viewonly=True)
 
+    @declared_attr
+    def letter_attachment_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey("letter_attachment.id"), nullable=True)
+
+    @declared_attr
+    def letter_attachment(cls):
+        return db.relationship("LetterAttachment")
+
+    @declared_attr
+    def __table_args__(cls):
+        if cls.__name__ not in {"Template", "TemplateHistory"}:
+            raise RuntimeError("Make sure to manually add this CheckConstraint to the new migration")
+
+        return (
+            CheckConstraint(
+                "template_type = 'letter' OR letter_attachment_id IS NULL",
+                name=f"ck_{cls.__tablename__}_letter_attachments",
+            ),
+        )
+
     @property
     def reply_to(self):
         if self.template_type == LETTER_TYPE:
@@ -2364,3 +2384,17 @@ class WebauthnCredential(db.Model):
             "updated_at": get_dt_string_or_none(self.updated_at),
             "logged_in_at": get_dt_string_or_none(self.logged_in_at),
         }
+
+
+class LetterAttachment(db.Model):
+    __tablename__ = "letter_attachment"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
+    archived_at = db.Column(db.DateTime, nullable=True)
+    archived_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
+
+    original_filename = db.Column(db.String, nullable=False)
+    page_count = db.Column(db.SmallInteger, nullable=False)
