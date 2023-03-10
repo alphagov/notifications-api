@@ -1,7 +1,7 @@
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
-from unittest.mock import call
+from unittest.mock import ANY, call
 
 import boto3
 import pytest
@@ -25,6 +25,7 @@ from app.celery.letters_pdf_tasks import (
     replay_letters_in_error,
     resanitise_pdf,
     sanitise_letter,
+    send_dvla_letters_via_api,
     send_letters_volume_email_to_dvla,
     update_billable_units_for_letter,
     update_validation_failed_for_templated_letter,
@@ -323,6 +324,32 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
 
 @mock_s3
 @pytest.mark.parametrize(
+    "print_run_deadline_utc, expected_time_called_with",
+    [
+        ("2021-06-01 12:00:00", datetime(2021, 6, 1, 13, 0, 0)),
+        ("2021-01-01 12:00:00", datetime(2021, 1, 1, 12, 0, 0)),
+        (None, datetime(2021, 6, 1, 17, 30)),
+    ],
+)
+def test_collate_letter_pdfs_to_be_sent_respects_print_run_deadline(
+    notify_db_session,
+    mocker,
+    print_run_deadline_utc,
+    expected_time_called_with,
+):
+    mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
+    mock_get_letters = mocker.patch(
+        "app.celery.letters_pdf_tasks.get_key_and_size_of_letters_to_be_sent_to_print", return_value=[]
+    )
+
+    with freeze_time("2021-06-01 17:00"):
+        collate_letter_pdfs_to_be_sent(print_run_deadline_utc=print_run_deadline_utc)
+
+    mock_get_letters.assert_called_with(expected_time_called_with, ANY)
+
+
+@mock_s3
+@pytest.mark.parametrize(
     "time_to_run_task",
     [
         "2020-02-17 18:00:00",  # after 5:30pm
@@ -481,6 +508,47 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, time_to_run_task, sa
         queue="process-ftp-tasks",
         compression="zlib",
     )
+
+
+@pytest.mark.parametrize(
+    "api_enabled_env_flag", [True, pytest.param(False, marks=pytest.mark.xfail(raises=AssertionError))]
+)
+def test_collate_letter_pdfs_uses_api_on_selected_environments(
+    notify_api,
+    notify_db_session,
+    mocker,
+    api_enabled_env_flag,
+):
+    mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
+    mocker.patch("app.celery.letters_pdf_tasks.get_key_and_size_of_letters_to_be_sent_to_print", return_value=[])
+    mock_send_via_api = mocker.patch("app.celery.letters_pdf_tasks.send_dvla_letters_via_api")
+    with set_config_values(notify_api, {"DVLA_API_ENABLED": api_enabled_env_flag}):
+
+        with freeze_time("2021-06-01 17:00"):
+            collate_letter_pdfs_to_be_sent()
+
+    mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 17, 30))
+
+
+def test_send_dvla_letters_via_api(sample_letter_template, mocker):
+    mock_celery = mocker.patch("app.celery.provider_tasks.deliver_letter.apply_async")
+
+    with freeze_time("2021-06-01 16:29"):
+        rest_of_world = create_notification(sample_letter_template, postage="rest-of-world")
+        first_class = create_notification(sample_letter_template, postage="first")
+        second_class = create_notification(sample_letter_template, postage="second")
+
+    with freeze_time("2021-06-01 16:31"):
+        create_notification(sample_letter_template)  # too recent
+
+    # note print_run_deadline is in local time
+    send_dvla_letters_via_api(datetime(2021, 6, 1, 17, 30))
+
+    assert mock_celery.call_args_list == [
+        call(kwargs={"notification_id": first_class.id}, queue="send-letter-tasks"),
+        call(kwargs={"notification_id": second_class.id}, queue="send-letter-tasks"),
+        call(kwargs={"notification_id": rest_of_world.id}, queue="send-letter-tasks"),
+    ]
 
 
 def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker, letter_volumes_email_template):

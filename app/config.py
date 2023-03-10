@@ -431,6 +431,7 @@ class Config(object):
     # as defined in api db migration 0331_add_broadcast_org.py
     BROADCAST_ORGANISATION_ID = "38e4bf69-93b0-445d-acee-53ea53fe02df"
 
+    DVLA_API_ENABLED = os.environ.get("DVLA_API_ENABLED") == "1"
     DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://uat.driver-vehicle-licensing.api.gov.uk")
 
     # We don't expect to have any zendesk reporting beyond this. If someone is looking here and thinking of adding
