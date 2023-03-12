@@ -9,6 +9,8 @@ import jwt
 import requests
 from flask import current_app
 from notifications_utils.postal_address import PostalAddress
+from requests.adapters import HTTPAdapter
+from urllib3.util.ssl_ import create_urllib3_context
 
 from app.clients import ClientException
 from app.constants import (
@@ -67,6 +69,25 @@ class SSMParameter:
         self._value = None
 
 
+class _SpecifiedCiphersAdapter(HTTPAdapter):
+    """An HTTPAdapter for requests that will enforce specific SSL ciphers.
+
+    If ciphers=None, no restrictions will be enforced (eg for local development).
+    """
+
+    def __init__(self, ciphers, *args, **kwargs):
+        self.ciphers = ciphers
+        super().__init__(*args, **kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs["ssl_context"] = create_urllib3_context(ciphers=self.ciphers)
+        return super().init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, *args, **kwargs):
+        kwargs["ssl_context"] = create_urllib3_context(ciphers=self.ciphers)
+        return super().proxy_manager_for(*args, **kwargs)
+
+
 class DVLAClient:
     """
     DVLA HTTP API letter client.
@@ -79,12 +100,15 @@ class DVLAClient:
 
     def init_app(self, application, *, statsd_client):
         self.base_url = application.config["DVLA_API_BASE_URL"]
+        self.ciphers = application.config["DVLA_API_TLS_CIPHERS"]
         ssm_client = boto3.client("ssm", region_name=application.config["AWS_REGION"])
         self.dvla_username = SSMParameter(key="/notify/api/dvla_username", ssm_client=ssm_client)
         self.dvla_password = SSMParameter(key="/notify/api/dvla_password", ssm_client=ssm_client)
         self.dvla_api_key = SSMParameter(key="/notify/api/dvla_api_key", ssm_client=ssm_client)
         self.statsd_client = statsd_client
+
         self.session = requests.Session()
+        self.session.mount(self.base_url, _SpecifiedCiphersAdapter(ciphers=self.ciphers))
 
     @property
     def name(self):

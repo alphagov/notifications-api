@@ -1,6 +1,9 @@
+import socket
+import ssl
 import string
 import sys
 import time
+from collections import namedtuple
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -8,6 +11,8 @@ import boto3
 import freezegun
 import jwt
 import pytest
+import requests
+import trustme
 from flask import current_app
 from moto import mock_ssm
 from notifications_utils.postal_address import PostalAddress
@@ -756,3 +761,178 @@ def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_cl
             organisation_id="org_id",
             pdf_file=b"pdf",
         )
+
+
+class TestDVLAApiClientRestrictedCiphers:
+    """A test suite that actually spins up an HTTP server with TLS support.
+
+    This will let us prove that we are restricting the available TLS ciphers and won't connect if
+    we're unable to negotiate one of the ciphers we want."""
+
+    @pytest.fixture(scope="session")
+    def ca(self):
+        return trustme.CA()
+
+    @pytest.fixture(scope="session")
+    def httpserver_listen_address(self):
+        hostname = "localhost"
+
+        sock = socket.socket()
+        sock.bind(("localhost", 0))
+        port = sock.getsockname()[1]
+        sock.close()
+
+        return hostname, port
+
+    @pytest.fixture(scope="session")
+    def server_base_url(self, httpserver_listen_address):
+        hostname, port = httpserver_listen_address
+        return f"https://{hostname}:{port}/"
+
+    @pytest.fixture(scope="session")
+    def cipherlist(self):
+        ctx = ssl.SSLContext()
+        all_ciphers = [c["name"] for c in ctx.get_ciphers()]
+        allowlist = all_ciphers[:-1]  # All but the last cipher
+        blocklist = all_ciphers[-1:]  # The last cipher
+
+        ctx.set_ciphers(":".join(allowlist))
+        assert blocklist[0] not in ctx.get_ciphers(), "Excluded cipher is still allowed"
+
+        CipherList = namedtuple("CipherList", ("allowlist", "blocklist"))
+        return CipherList(
+            allowlist,
+            blocklist,
+        )
+
+    @pytest.fixture(scope="session")
+    def allow_ctx(self, cipherlist):
+        ctx = ssl.SSLContext()
+        ctx.set_ciphers(":".join(cipherlist.allowlist))
+
+        # Manually disable TLS v 1.3. Those ciphers are automatically allowed even if we don't include
+        # any in `ctx.set_ciphers`. If we don't disable this for the server, then regardless of whether we define
+        # disjunct cipher suites on each side, both will accept and negotiate TLSv1_3 and still connect.
+        ctx.options |= ssl.OP_NO_TLSv1_3
+
+        return ctx
+
+    @pytest.fixture(scope="session")
+    def httpserver_ssl_context(self, ca, allow_ctx):
+        localhost_cert = ca.issue_cert("localhost")
+        ca.configure_trust(allow_ctx)
+        localhost_cert.configure_cert(allow_ctx)
+
+        def default_context():
+            return allow_ctx
+
+        before = ssl._create_default_https_context
+        ssl._create_default_https_context = default_context
+        try:
+            yield allow_ctx
+        finally:
+            ssl._create_default_https_context = before
+
+    @pytest.fixture
+    def fake_app(self, mocker, server_base_url):
+        application = mocker.Mock()
+        application.config = {
+            "DVLA_API_BASE_URL": server_base_url,
+            "DVLA_API_TLS_CIPHERS": None,
+            "AWS_REGION": "somewhere",
+        }
+        return application
+
+    def test_valid_default_connection(
+        self, mocker, httpserver, httpserver_listen_address, httpserver_ssl_context, ca, server_base_url, fake_app
+    ):
+        httpserver.expect_request(
+            "/test",
+            method="GET",
+        ).respond_with_data("OK")
+
+        dvla_client = DVLAClient()
+        dvla_client.init_app(
+            fake_app,
+            statsd_client=mocker.Mock(),
+        )
+
+        with ca.cert_pem.tempfile() as ca_temp_path:
+            response = dvla_client.session.get(
+                f"{server_base_url}/test",
+                verify=ca_temp_path,
+            )
+
+        assert response.text == "OK"
+
+    def test_invalid_ciphers(self, mocker, server_base_url, fake_app):
+        dvla_client = DVLAClient()
+
+        with pytest.raises(ssl.SSLError) as e:
+            fake_app.config["DVLA_API_TLS_CIPHERS"] = "not-a-valid-cipher"
+            dvla_client.init_app(fake_app, statsd_client=mocker.Mock())
+
+        assert "No cipher can be selected." in e.value.args
+
+    def test_accept_matching_cipher(
+        self,
+        mocker,
+        httpserver,
+        httpserver_listen_address,
+        httpserver_ssl_context,
+        ca,
+        cipherlist,
+        server_base_url,
+        fake_app,
+    ):
+        fake_app.config["DVLA_API_TLS_CIPHERS"] = ":".join(cipherlist.allowlist)
+        dvla_client = DVLAClient()
+        dvla_client.init_app(
+            fake_app,
+            statsd_client=mocker.Mock(),
+        )
+
+        httpserver.expect_request(
+            "/test",
+            method="GET",
+        ).respond_with_data("OK")
+
+        with ca.cert_pem.tempfile() as ca_temp_path:
+            response = dvla_client.session.get(
+                f"{server_base_url}/test",
+                verify=ca_temp_path,
+            )
+
+        assert response.text == "OK"
+
+    def test_reject_cipher_not_accepted_by_server(
+        self,
+        mocker,
+        httpserver,
+        httpserver_listen_address,
+        httpserver_ssl_context,
+        ca,
+        cipherlist,
+        server_base_url,
+        fake_app,
+    ):
+        fake_app.config["DVLA_API_TLS_CIPHERS"] = ":".join(cipherlist.blocklist)
+        dvla_client = DVLAClient()
+        dvla_client.init_app(
+            fake_app,
+            statsd_client=mocker.Mock(),
+        )
+
+        httpserver.expect_request(
+            "/test",
+            method="GET",
+        ).respond_with_data("OK")
+
+        with pytest.raises(requests.exceptions.SSLError) as e:
+            with ca.cert_pem.tempfile() as ca_temp_path:
+                dvla_client.session.get(
+                    f"{server_base_url}/test",
+                    verify=ca_temp_path,
+                )
+
+        assert "sslv3 alert handshake failure" in str(e.value)

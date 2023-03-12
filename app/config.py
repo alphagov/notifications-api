@@ -433,6 +433,7 @@ class Config(object):
 
     DVLA_API_ENABLED = os.environ.get("DVLA_API_ENABLED") == "1"
     DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://uat.driver-vehicle-licensing.api.gov.uk")
+    DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS")
 
     # We don't expect to have any zendesk reporting beyond this. If someone is looking here and thinking of adding
     # something new, let's consider a more holistic approach first please. We should be revisiting this approach in
@@ -555,6 +556,7 @@ class Preview(Config):
     FROM_NUMBER = "preview"
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = False
+    DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
 
 
 class Staging(Config):
@@ -572,6 +574,7 @@ class Staging(Config):
     FROM_NUMBER = "stage"
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+    DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
 
 
 class Production(Config):
@@ -594,6 +597,7 @@ class Production(Config):
     CRONITOR_ENABLED = True
 
     DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://driver-vehicle-licensing.api.gov.uk")
+    DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
 
 
 class CloudFoundryConfig(Config):
