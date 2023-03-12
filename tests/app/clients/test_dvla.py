@@ -48,9 +48,9 @@ def ssm():
 
 
 @pytest.fixture
-def dvla_client(client, ssm):
+def dvla_client(notify_api, client, ssm):
     dvla_client = DVLAClient()
-    dvla_client.init_app(region="eu-west-1", statsd_client=Mock())
+    dvla_client.init_app(notify_api, statsd_client=Mock())
     yield dvla_client
 
 
