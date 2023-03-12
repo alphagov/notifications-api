@@ -7,8 +7,10 @@ import pytest
 import sqlalchemy
 
 from app import create_app, db
+from app.authentication.auth import requires_admin_auth, requires_no_auth
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.notify_api_flask_app import NotifyApiFlaskApp
+from tests.routes import admin_test_blueprint, test_blueprint
 
 # Freezegun has a negative interaction with prompt_toolkit that ends up suppressing text written on the prompt of ipdb
 # so let's ignore that module
@@ -21,6 +23,12 @@ freezegun.configure(extend_ignore_list=["prompt_toolkit"])
 def notify_api():
     app = NotifyApiFlaskApp("test")
     create_app(app)
+
+    # Attach some routes that can be used as helpers for specific tests.
+    test_blueprint.before_request(requires_no_auth)
+    app.register_blueprint(test_blueprint, url_prefix="/test")
+    admin_test_blueprint.before_request(requires_admin_auth)
+    app.register_blueprint(admin_test_blueprint, url_prefix="/admin-test")
 
     # deattach server-error error handlers - error_handler_spec looks like:
     #   {'blueprint_name': {

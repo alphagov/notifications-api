@@ -78,6 +78,7 @@ def requires_internal_auth(expected_client_id):
 
     _decode_jwt_token(auth_token, api_keys, client_id)
     g.service_id = client_id
+    g.user_id = request.headers.get("X-Notify-User-Id")
 
 
 def requires_auth():
