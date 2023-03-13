@@ -256,9 +256,9 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
                 "ServiceId": str(letter.service_id),
                 "OrganisationId": str(letter.service.organisation_id),
             }
-        except (BotoClientError, LetterPDFNotFound) as e:
+        except (BotoClientError, LetterPDFNotFound):
             current_app.logger.exception(
-                f"Error getting letter from bucket for notification: {letter.id} with reference: {letter.reference}", e
+                f"Error getting letter from bucket for notification: {letter.id} with reference: {letter.reference}"
             )
 
 
