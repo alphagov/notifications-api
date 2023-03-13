@@ -90,7 +90,11 @@ def _notify_db(notify_api, worker_id):
     # app logging config and breaks pytest.caplog.
     subprocess.run(
         ["flask", "db", "upgrade"],
-        env={**os.environ, "SQLALCHEMY_DATABASE_URI": current_app.config["SQLALCHEMY_DATABASE_URI"]},
+        env={
+            **os.environ,
+            "SQLALCHEMY_DATABASE_URI": current_app.config["SQLALCHEMY_DATABASE_URI"],
+            "FLASK_APP": "application:application",
+        },
     )
 
     with notify_api.app_context():
