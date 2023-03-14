@@ -32,8 +32,8 @@ def handle_complaint(ses_message):
     current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
     try:
         reference = ses_message["mail"]["messageId"]
-    except KeyError as e:
-        current_app.logger.exception("Complaint from SES failed to get reference from message", e)
+    except KeyError:
+        current_app.logger.exception("Complaint from SES failed to get reference from message")
         return
     notification = dao_get_notification_or_history_by_reference(reference)
     ses_complaint = ses_message.get("complaint", None)

@@ -1,11 +1,10 @@
 import os
+import subprocess
 from contextlib import contextmanager
 
 import freezegun
 import pytest
 import sqlalchemy
-from alembic.command import upgrade
-from alembic.config import Config
 
 from app import create_app, db
 from app.dao.provider_details_dao import get_provider_details_by_identifier
@@ -87,14 +86,18 @@ def _notify_db(notify_api, worker_id):
     db.init_app(notify_api)
     create_test_db(current_app.config["SQLALCHEMY_DATABASE_URI"])
 
-    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-    ALEMBIC_CONFIG = os.path.join(BASE_DIR, "migrations")
-    config = Config(ALEMBIC_CONFIG + "/alembic.ini")
-    config.set_main_option("script_location", ALEMBIC_CONFIG)
+    # Run this in a subprocess - alembic loads a lot of logging config that will otherwise splatter over our desired
+    # app logging config and breaks pytest.caplog.
+    subprocess.run(
+        ["flask", "db", "upgrade"],
+        env={
+            **os.environ,
+            "SQLALCHEMY_DATABASE_URI": current_app.config["SQLALCHEMY_DATABASE_URI"],
+            "FLASK_APP": "application:application",
+        },
+    )
 
     with notify_api.app_context():
-        upgrade(config, "head")
-
         yield db
 
         db.session.remove()
