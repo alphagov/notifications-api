@@ -21,3 +21,12 @@ def test_extract_cloudfoundry_config_populates_other_vars(os_environ, vcap_servi
 
     assert os.environ["SQLALCHEMY_DATABASE_URI"] == "postgresql uri"
     assert os.environ["REDIS_URL"] == "redis uri"
+
+
+def test_extract_cloudfoundry_config_populates_other_vars_with_overrides(os_environ, vcap_services):
+    os.environ["VCAP_SERVICES"] = json.dumps(vcap_services)
+    os.environ["SQLALCHEMY_DATABASE_URI"] = "postgresql uri override"
+    extract_cloudfoundry_config()
+
+    assert os.environ["SQLALCHEMY_DATABASE_URI"] == "postgresql uri override"
+    assert os.environ["REDIS_URL"] == "redis uri"
