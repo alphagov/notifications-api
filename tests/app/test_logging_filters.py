@@ -1,8 +1,10 @@
+import pytest
 from flask import url_for
 
 from tests import create_admin_authorization_header
 
 
+@pytest.mark.usefixtures("_notify_db")
 class TestUserIdFilter:
     def test_no_user_id_attribute_outside_request(self, caplog, notify_api):
         caplog.set_level("INFO")
