@@ -261,6 +261,8 @@ def validate_address(service, letter_data):
         raise ValidationError(message=f"Address must be at least {PostalAddress.MIN_LINES} lines")
     if address.has_too_many_lines:
         raise ValidationError(message=f"Address must be no more than {PostalAddress.MAX_LINES} lines")
+    if address.has_invalid_country_for_bfpo_address:
+        raise ValidationError(message="The last line of a BFPO address must not be a country.")
     if not address.has_valid_last_line:
         if address.allow_international_letters:
             raise ValidationError(message="Last line of address must be a real UK postcode or another country")

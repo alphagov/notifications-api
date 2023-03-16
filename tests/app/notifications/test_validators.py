@@ -40,7 +40,12 @@ from app.serialised_models import (
     SerialisedTemplate,
 )
 from app.utils import get_template_instance
-from app.v2.errors import BadRequestError, RateLimitError, TooManyRequestsError
+from app.v2.errors import (
+    BadRequestError,
+    RateLimitError,
+    TooManyRequestsError,
+    ValidationError,
+)
 from tests.app.db import (
     create_api_key,
     create_letter_contact,
@@ -683,3 +688,17 @@ def test_validate_address(notify_db_session, key, address_line_3, expected_posta
     }
     postage = validate_address(service, data)
     assert postage == expected_postage
+
+
+def test_validate_address_international_bfpo_error(notify_db_session):
+    service = create_service(service_permissions=[LETTER_TYPE, INTERNATIONAL_LETTERS])
+    data = {
+        "address_line_1": "Test User",
+        "address_line_2": "Abroad",
+        "address_line_3": "BFPO 1234",
+        "address_line_4": "USA",
+    }
+    with pytest.raises(ValidationError) as e:
+        validate_address(service, data)
+
+    assert e.value.message == "The last line of a BFPO address must not be a country."
