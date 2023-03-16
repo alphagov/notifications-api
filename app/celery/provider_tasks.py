@@ -107,8 +107,10 @@ def deliver_letter(self, notification_id):
     try:
         file_bytes = find_letter_pdf_in_s3(notification).get()["Body"].read()
     except (BotoClientError, LetterPDFNotFound) as e:
-        current_app.logger.exception(f"Error getting letter from bucket for notification: {notification_id}", str(e))
-        return
+        update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+        raise NotificationTechnicalFailureException(
+            f"Error getting letter from bucket for notification {notification_id}"
+        ) from e
 
     try:
         dvla_client.send_letter(
