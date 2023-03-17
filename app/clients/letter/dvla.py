@@ -240,7 +240,6 @@ class DVLAClient:
 
         address should be normalised address lines, e.g. ['A. User', 'London', 'SW1 1AA']
         """
-        current_app.logger.info(f"Sending letter with id {notification_id}")
 
         try:
             response = self.request.post(

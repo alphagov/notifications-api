@@ -287,7 +287,7 @@ def test_deliver_letter(mocker, sample_letter_template, sample_organisation, is_
 @freeze_time("2020-02-17 16:00:00")
 def test_deliver_letter_when_file_is_not_in_S3_logs_an_error(mocker, sample_letter_template, sample_organisation):
     mock_send_letter = mocker.patch("app.celery.provider_tasks.dvla_client.send_letter")
-    mock_logger_exception = mocker.patch("app.celery.tasks.current_app.logger.exception")
+    mock_retry = mocker.patch("app.celery.provider_tasks.deliver_letter.retry", side_effect=MaxRetriesExceededError())
 
     letter = create_notification(
         template=sample_letter_template,
@@ -311,14 +311,13 @@ def test_deliver_letter_when_file_is_not_in_S3_logs_an_error(mocker, sample_lett
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
 
-    deliver_letter(letter.id)
+    with pytest.raises(NotificationTechnicalFailureException) as e:
+        deliver_letter(letter.id)
 
-    mock_logger_exception.assert_called_once_with(
-        f"Error getting letter from bucket for notification: {letter.id}",
-        "File not found in bucket test-letters-pdf with prefix 2020-02-17/NOTIFY.REF1",
-    )
+    assert str(letter.id) in str(e.value)
+    assert not mock_retry.called
     assert not mock_send_letter.called
-    assert letter.status == NOTIFICATION_CREATED
+    assert letter.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
 @mock_s3
