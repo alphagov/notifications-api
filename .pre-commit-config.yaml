@@ -21,3 +21,8 @@ repos:
   hooks:
     - id: black
       name: black (python)
+- repo: https://github.com/charliermarsh/ruff-pre-commit
+  # Ruff version.
+  rev: 'v0.0.261'
+  hooks:
+    - id: ruff

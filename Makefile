@@ -82,6 +82,7 @@ generate-version-file: ## Generates the app version file
 
 .PHONY: test
 test: ## Run tests
+	ruff check .
 	flake8 .
 	isort --check-only ./app ./tests
 	black --check .
