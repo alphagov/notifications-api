@@ -383,12 +383,16 @@ class NotificationModelSchema(BaseSchema):
 class BaseTemplateSchema(BaseSchema):
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
+    letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
 
     def get_reply_to(self, template):
         return template.reply_to
 
     def get_reply_to_text(self, template):
         return template.get_reply_to_text()
+
+    def get_letter_attachment(self, template):
+        return template.letter_attachment_id
 
     class Meta(BaseSchema.Meta):
         model = models.Template
@@ -434,6 +438,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
             "created_by",
             "created_by_id",
             "hidden",
+            "letter_attachment",
             "postage",
             "process_type",
             "redact_personalisation",
