@@ -51,7 +51,7 @@ def _sample_precompiled_letter_notification_using_test_key(sample_precompiled_le
 
 @mock_s3
 def test_find_letter_pdf_in_s3_returns_object(sample_notification):
-    bucket_name = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
 
@@ -63,7 +63,7 @@ def test_find_letter_pdf_in_s3_returns_object(sample_notification):
 
 @mock_s3
 def test_find_letter_pdf_in_s3_raises_if_not_found(sample_notification):
-    bucket_name = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
 
@@ -84,7 +84,7 @@ def test_get_bucket_name_and_prefix_for_notification_valid_notification(sample_n
 
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
 
-    assert bucket == current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    assert bucket == current_app.config["S3_BUCKET_LETTERS_PDF"]
     assert (
         bucket_prefix
         == "{folder}/NOTIFY.{reference}".format(folder=folder, reference=sample_notification.reference).upper()
@@ -97,7 +97,7 @@ def test_get_bucket_name_and_prefix_for_notification_is_tomorrow_after_17_30(sam
 
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
 
-    assert bucket == current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    assert bucket == current_app.config["S3_BUCKET_LETTERS_PDF"]
     assert (
         bucket_prefix
         == "{folder}/NOTIFY.{reference}".format(folder="2019-08-02", reference=sample_notification.reference).upper()
@@ -111,7 +111,7 @@ def test_get_bucket_name_and_prefix_for_notification_is_today_before_17_30(sampl
 
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
 
-    assert bucket == current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    assert bucket == current_app.config["S3_BUCKET_LETTERS_PDF"]
     assert (
         bucket_prefix
         == "{folder}/NOTIFY.{reference}".format(folder="2019-08-01", reference=sample_notification.reference).upper()
@@ -126,7 +126,7 @@ def test_get_bucket_name_and_prefix_for_notification_precompiled_letter_using_te
         sample_precompiled_letter_notification_using_test_key
     )
 
-    assert bucket == current_app.config["TEST_LETTERS_BUCKET_NAME"]
+    assert bucket == current_app.config["S3_BUCKET_TEST_LETTERS"]
     assert bucket_prefix == "NOTIFY.{}".format(sample_precompiled_letter_notification_using_test_key.reference).upper()
 
 
@@ -136,7 +136,7 @@ def test_get_bucket_name_and_prefix_for_notification_templated_letter_using_test
 
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_letter_notification)
 
-    assert bucket == current_app.config["TEST_LETTERS_BUCKET_NAME"]
+    assert bucket == current_app.config["S3_BUCKET_TEST_LETTERS"]
     assert bucket_prefix == "NOTIFY.{}".format(sample_letter_notification.reference).upper()
 
 
@@ -145,7 +145,7 @@ def test_get_bucket_name_and_prefix_for_failed_validation(sample_precompiled_let
     sample_precompiled_letter_notification.status = NOTIFICATION_VALIDATION_FAILED
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_precompiled_letter_notification)
 
-    assert bucket == current_app.config["INVALID_PDF_BUCKET_NAME"]
+    assert bucket == current_app.config["S3_BUCKET_INVALID_PDF"]
     assert bucket_prefix == "NOTIFY.{}".format(sample_precompiled_letter_notification.reference).upper()
 
 
@@ -158,7 +158,7 @@ def test_get_bucket_name_and_prefix_for_test_noti_with_failed_validation(
         sample_precompiled_letter_notification_using_test_key
     )
 
-    assert bucket == current_app.config["INVALID_PDF_BUCKET_NAME"]
+    assert bucket == current_app.config["S3_BUCKET_INVALID_PDF"]
     assert bucket_prefix == "NOTIFY.{}".format(sample_precompiled_letter_notification_using_test_key.reference).upper()
 
 
@@ -199,15 +199,15 @@ def test_generate_letter_pdf_filename_returns_tomorrows_filename(notify_api, moc
 @pytest.mark.parametrize(
     "bucket_config_name,filename_format",
     [
-        ("TEST_LETTERS_BUCKET_NAME", "NOTIFY.FOO.D.2.C.%Y%m%d%H%M%S.PDF"),
-        ("LETTERS_PDF_BUCKET_NAME", "%Y-%m-%d/NOTIFY.FOO.D.2.C.%Y%m%d%H%M%S.PDF"),
+        ("S3_BUCKET_TEST_LETTERS", "NOTIFY.FOO.D.2.C.%Y%m%d%H%M%S.PDF"),
+        ("S3_BUCKET_LETTERS_PDF", "%Y-%m-%d/NOTIFY.FOO.D.2.C.%Y%m%d%H%M%S.PDF"),
     ],
 )
 @freeze_time(FROZEN_DATE_TIME)
 def test_get_letter_pdf_gets_pdf_from_correct_bucket(
     sample_precompiled_letter_notification_using_test_key, bucket_config_name, filename_format
 ):
-    if bucket_config_name == "LETTERS_PDF_BUCKET_NAME":
+    if bucket_config_name == "S3_BUCKET_LETTERS_PDF":
         sample_precompiled_letter_notification_using_test_key.key_type = KEY_TYPE_NORMAL
 
     bucket_name = current_app.config[bucket_config_name]
@@ -223,7 +223,7 @@ def test_get_letter_pdf_gets_pdf_from_correct_bucket(
 
 
 @pytest.mark.parametrize(
-    "is_precompiled_letter,bucket_config_name", [(False, "LETTERS_PDF_BUCKET_NAME"), (True, "LETTERS_SCAN_BUCKET_NAME")]
+    "is_precompiled_letter,bucket_config_name", [(False, "S3_BUCKET_LETTERS_PDF"), (True, "S3_BUCKET_LETTERS_SCAN")]
 )
 def test_upload_letter_pdf_to_correct_bucket(
     sample_letter_notification, mocker, is_precompiled_letter, bucket_config_name
@@ -265,7 +265,7 @@ def test_upload_letter_pdf_uses_postage_from_notification(sample_letter_template
     upload_letter_pdf(letter_notification, b"\x00\x01", precompiled=False)
 
     mock_s3.assert_called_once_with(
-        bucket_name=current_app.config["LETTERS_PDF_BUCKET_NAME"],
+        bucket_name=current_app.config["S3_BUCKET_LETTERS_PDF"],
         file_location=filename,
         filedata=b"\x00\x01",
         region=current_app.config["AWS_REGION"],
@@ -276,7 +276,7 @@ def test_upload_letter_pdf_uses_postage_from_notification(sample_letter_template
 @freeze_time(FROZEN_DATE_TIME)
 def test_move_failed_pdf_error(notify_api):
     filename = "test.pdf"
-    bucket_name = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
+    bucket_name = current_app.config["S3_BUCKET_LETTERS_SCAN"]
 
     conn = boto3.resource("s3", region_name="eu-west-1")
     bucket = conn.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
@@ -294,7 +294,7 @@ def test_move_failed_pdf_error(notify_api):
 @freeze_time(FROZEN_DATE_TIME)
 def test_move_failed_pdf_scan_failed(notify_api):
     filename = "test.pdf"
-    bucket_name = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
+    bucket_name = current_app.config["S3_BUCKET_LETTERS_SCAN"]
 
     conn = boto3.resource("s3", region_name="eu-west-1")
     bucket = conn.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
@@ -334,8 +334,8 @@ def test_get_folder_name_in_british_summer_time(notify_api, timestamp, expected_
 @mock_s3
 def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
     filename = "my_letter.pdf"
-    source_bucket_name = current_app.config["LETTER_SANITISE_BUCKET_NAME"]
-    target_bucket_name = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    source_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
+    target_bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
 
     conn = boto3.resource("s3", region_name="eu-west-1")
     source_bucket = conn.create_bucket(
@@ -359,8 +359,8 @@ def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
 @mock_s3
 def test_move_sanitised_letter_to_test_pdf_bucket(notify_api, mocker):
     filename = "my_letter.pdf"
-    source_bucket_name = current_app.config["LETTER_SANITISE_BUCKET_NAME"]
-    target_bucket_name = current_app.config["TEST_LETTERS_BUCKET_NAME"]
+    source_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
+    target_bucket_name = current_app.config["S3_BUCKET_TEST_LETTERS"]
 
     conn = boto3.resource("s3", region_name="eu-west-1")
     source_bucket = conn.create_bucket(

@@ -244,7 +244,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # AWS datetime format
 
     for key in s3.get_list_of_files_by_suffix(
-        bucket_name=current_app.config["LETTERS_PDF_BUCKET_NAME"], subfolder=today_str + "/zips_sent", suffix=".TXT"
+        bucket_name=current_app.config["S3_BUCKET_LETTERS_PDF"], subfolder=today_str + "/zips_sent", suffix=".TXT"
     ):
         subname = key.split("/")[-1]  # strip subfolder in name
         zip_file_set.add(subname.upper().replace(".ZIP.TXT", ""))
@@ -253,7 +253,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     ack_file_set = set()
 
     for key in s3.get_list_of_files_by_suffix(
-        bucket_name=current_app.config["DVLA_RESPONSE_BUCKET_NAME"],
+        bucket_name=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
         subfolder="root/dispatch",
         suffix=".ACK.txt",
         last_modified=yesterday,
@@ -264,8 +264,8 @@ def letter_raise_alert_if_no_ack_file_for_zip():
         [
             "Letter ack file does not contain all zip files sent." "",
             f"See runbook at https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#letter-ack-file-does-not-contain-all-zip-files-sent\n",  # noqa
-            f"pdf bucket: {current_app.config['LETTERS_PDF_BUCKET_NAME']}, subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent",  # noqa
-            f"ack bucket: {current_app.config['DVLA_RESPONSE_BUCKET_NAME']}",
+            f"pdf bucket: {current_app.config['S3_BUCKET_LETTERS_PDF']}, subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent",  # noqa
+            f"ack bucket: {current_app.config['S3_BUCKET_DVLA_RESPONSE']}",
             "",
             f"Missing ack for zip files: {str(sorted(zip_file_set - ack_file_set))}",
         ]

@@ -198,7 +198,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(
     sample_letter_template,
     sample_organisation,
 ):
-    pdf_bucket = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF", Body=b"1"),
@@ -286,7 +286,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(
 def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
     notify_api, mocker, sample_letter_template, sample_organisation
 ):
-    pdf_bucket = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF", Body=b"12"),
@@ -420,7 +420,7 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, time_to_run_task, sa
             created_at=(datetime.now() - timedelta(hours=2)),
         )
 
-    bucket_name = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
 
@@ -818,42 +818,42 @@ def test_sanitise_letter_puts_letter_into_technical_failure_if_max_retries_excee
     [
         (
             KEY_TYPE_NORMAL,
-            "LETTERS_PDF_BUCKET_NAME",
+            "S3_BUCKET_LETTERS_PDF",
             NOTIFICATION_CREATED,
             "first",
             "2018-07-01/NOTIFY.FOO.D.1.C.20180701120000.PDF",
         ),
         (
             KEY_TYPE_NORMAL,
-            "LETTERS_PDF_BUCKET_NAME",
+            "S3_BUCKET_LETTERS_PDF",
             NOTIFICATION_CREATED,
             "second",
             "2018-07-01/NOTIFY.FOO.D.2.C.20180701120000.PDF",
         ),
         (
             KEY_TYPE_NORMAL,
-            "LETTERS_PDF_BUCKET_NAME",
+            "S3_BUCKET_LETTERS_PDF",
             NOTIFICATION_CREATED,
             "europe",
             "2018-07-01/NOTIFY.FOO.D.E.C.20180701120000.PDF",
         ),
         (
             KEY_TYPE_NORMAL,
-            "LETTERS_PDF_BUCKET_NAME",
+            "S3_BUCKET_LETTERS_PDF",
             NOTIFICATION_CREATED,
             "rest-of-world",
             "2018-07-01/NOTIFY.FOO.D.N.C.20180701120000.PDF",
         ),
         (
             KEY_TYPE_TEST,
-            "TEST_LETTERS_BUCKET_NAME",
+            "S3_BUCKET_TEST_LETTERS",
             NOTIFICATION_DELIVERED,
             "second",
             "NOTIFY.FOO.D.2.C.20180701120000.PDF",
         ),
         (
             KEY_TYPE_TEST,
-            "TEST_LETTERS_BUCKET_NAME",
+            "S3_BUCKET_TEST_LETTERS",
             NOTIFICATION_DELIVERED,
             "first",
             "NOTIFY.FOO.D.1.C.20180701120000.PDF",
@@ -871,8 +871,8 @@ def test_process_sanitised_letter_with_valid_letter(
     # We save the letter as if it's 2nd class initially, and the task changes the filename to have the correct postage
     filename = "NOTIFY.FOO.D.2.C.20180701120000.PDF"
 
-    scan_bucket_name = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
-    template_preview_bucket_name = current_app.config["LETTER_SANITISE_BUCKET_NAME"]
+    scan_bucket_name = current_app.config["S3_BUCKET_LETTERS_SCAN"]
+    template_preview_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
     destination_bucket_name = current_app.config[destination_bucket]
     conn = boto3.resource("s3", region_name="eu-west-1")
 
@@ -936,9 +936,9 @@ def test_process_sanitised_letter_sets_postage_international(
 ):
     filename = "NOTIFY.{}".format(sample_letter_notification.reference)
 
-    scan_bucket_name = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
-    template_preview_bucket_name = current_app.config["LETTER_SANITISE_BUCKET_NAME"]
-    destination_bucket_name = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    scan_bucket_name = current_app.config["S3_BUCKET_LETTERS_SCAN"]
+    template_preview_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
+    destination_bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     conn = boto3.resource("s3", region_name="eu-west-1")
     conn.create_bucket(Bucket=scan_bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     conn.create_bucket(
@@ -979,9 +979,9 @@ def test_process_sanitised_letter_sets_postage_international(
 def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification, key_type):
     filename = "NOTIFY.{}".format(sample_letter_notification.reference)
 
-    scan_bucket_name = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
-    template_preview_bucket_name = current_app.config["LETTER_SANITISE_BUCKET_NAME"]
-    invalid_letter_bucket_name = current_app.config["INVALID_PDF_BUCKET_NAME"]
+    scan_bucket_name = current_app.config["S3_BUCKET_LETTERS_SCAN"]
+    template_preview_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
+    invalid_letter_bucket_name = current_app.config["S3_BUCKET_INVALID_PDF"]
     conn = boto3.resource("s3", region_name="eu-west-1")
 
     scan_bucket = conn.create_bucket(

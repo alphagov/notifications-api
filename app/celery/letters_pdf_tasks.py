@@ -363,7 +363,7 @@ def process_sanitised_letter(self, sanitise_data):
         return
 
     try:
-        original_pdf_object = s3.get_s3_object(current_app.config["LETTERS_SCAN_BUCKET_NAME"], filename)
+        original_pdf_object = s3.get_s3_object(current_app.config["S3_BUCKET_LETTERS_SCAN"], filename)
 
         if letter_details["validation_status"] == "failed":
             current_app.logger.info(

@@ -263,7 +263,7 @@ def test_deliver_letter(mocker, sample_letter_template, sample_organisation, is_
         letter.template.hidden = True
         letter.template.name = PRECOMPILED_TEMPLATE_NAME
 
-    pdf_bucket = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF", Body=b"file"),
@@ -307,7 +307,7 @@ def test_deliver_letter_when_file_is_not_in_S3_logs_an_error(mocker, sample_lett
     )
     sample_letter_template.service.organisation = sample_organisation
 
-    pdf_bucket = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
 
@@ -356,7 +356,7 @@ def test_deliver_letter_retries_when_there_is_a_retryable_exception(
     )
     sample_letter_template.service.organisation = sample_organisation
 
-    pdf_bucket = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF", Body=b"file"),
@@ -399,7 +399,7 @@ def test_deliver_letter_logs_a_warning_when_the_print_request_is_duplicate(
     )
     sample_letter_template.service.organisation = sample_organisation
 
-    pdf_bucket = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF", Body=b"file"),
@@ -438,7 +438,7 @@ def test_deliver_letter_when_there_is_a_non_retryable_error(
     )
     sample_letter_template.service.organisation = sample_organisation
 
-    pdf_bucket = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF", Body=b"file"),
@@ -475,7 +475,7 @@ def test_deliver_letter_when_max_retries_are_reached(mocker, sample_letter_templ
     )
     sample_letter_template.service.organisation = sample_organisation
 
-    pdf_bucket = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF", Body=b"file"),

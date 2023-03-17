@@ -347,9 +347,9 @@ def test_letter_raise_alert_if_no_ack_file_for_zip_does_not_raise_when_files_mat
     subfoldername = datetime.utcnow().strftime("%Y-%m-%d") + "/zips_sent"
     assert mock_file_list.call_count == 2
     assert mock_file_list.call_args_list == [
-        call(bucket_name=current_app.config["LETTERS_PDF_BUCKET_NAME"], subfolder=subfoldername, suffix=".TXT"),
+        call(bucket_name=current_app.config["S3_BUCKET_LETTERS_PDF"], subfolder=subfoldername, suffix=".TXT"),
         call(
-            bucket_name=current_app.config["DVLA_RESPONSE_BUCKET_NAME"],
+            bucket_name=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
             subfolder="root/dispatch",
             suffix=".ACK.txt",
             last_modified=yesterday,
