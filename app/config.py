@@ -609,7 +609,6 @@ class Sandbox(CloudFoundryConfig):
     S3_BUCKET_LETTERS_PDF = "cf-sandbox-letters-pdf"
     S3_BUCKET_TEST_LETTERS = "cf-sandbox-test-letters"
     S3_BUCKET_DVLA_RESPONSE = "notify.works-ftp"
-    S3_BUCKET_LETTERS_PDF = "cf-sandbox-letters-pdf"
     S3_BUCKET_LETTERS_SCAN = "cf-sandbox-letters-scan"
     S3_BUCKET_INVALID_PDF = "cf-sandbox-letters-invalid-pdf"
     FROM_NUMBER = "sandbox"
