@@ -52,7 +52,7 @@ def mock_s3_get_list_diff(bucket_name, subfolder="", suffix="", last_modified=No
             "NOTIFY.2018-01-11175010.ZIP.TXT",
         ]
     if subfolder == "root/dispatch":
-        return ["root/disoatch/NOTIFY.2018-01-11175007p.ACK.TXT", "root/disoatch/NOTIFY.2018-01-11175008.ACK.TXT"]
+        return ["root/dispatch/NOTIFY.2018-01-11175007p.ACK.TXT", "root/dispatch/NOTIFY.2018-01-11175008.ACK.TXT"]
 
 
 @freeze_time("2016-10-18T10:00:00")
