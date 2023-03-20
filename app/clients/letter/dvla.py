@@ -2,11 +2,13 @@ import base64
 import secrets
 import string
 import time
+from typing import Literal
 
 import boto3
 import jwt
 import requests
 from flask import current_app
+from notifications_utils.postal_address import PostalAddress
 
 from app.clients import ClientException
 from app.constants import (
@@ -229,8 +231,8 @@ class DVLAClient:
         *,
         notification_id: str,
         reference: str,
-        address: list[str],
-        postage: str,
+        address: PostalAddress,
+        postage: Literal["first", "second", "europe", "rest-of-world"],
         service_id: str,
         organisation_id: str,
         pdf_file: bytes,
@@ -248,7 +250,7 @@ class DVLAClient:
                 json=self._format_create_print_job_json(
                     notification_id=notification_id,
                     reference=reference,
-                    address_lines=address,
+                    address=address,
                     postage=postage,
                     service_id=service_id,
                     organisation_id=organisation_id,
@@ -274,10 +276,12 @@ class DVLAClient:
             return response.json()
 
     def _format_create_print_job_json(
-        self, *, notification_id, reference, address_lines, postage, service_id, organisation_id, pdf_file
+        self, *, notification_id, reference, address, postage, service_id, organisation_id, pdf_file
     ):
-        recipient_name = address_lines[0]
-        address_without_recipient = address_lines[1:]
+        # We shouldn't need to pass the postage in, as the address has a postage field. However, at this point we've
+        # recorded the postage on the notification so we should respect that rather than introduce any possible
+        # uncertainty from the PostalAddress resolving to something else dynamically.
+        recipient, address_data = self._parse_recipient_and_address(postage=postage, address=address)
 
         json_payload = {
             "id": notification_id,
@@ -285,10 +289,8 @@ class DVLAClient:
                 "jobType": "NOTIFY",
                 "templateReference": "NOTIFY",
                 "businessIdentifier": reference,
-                "recipientName": recipient_name,
-                "address": self._build_address_object(
-                    postage=postage, address_without_recipient=address_without_recipient
-                ),
+                "recipientName": recipient,
+                "address": address_data,
             },
             "customParams": [
                 {"key": "pdfContent", "value": base64.b64encode(pdf_file).decode("utf-8")},
@@ -308,31 +310,22 @@ class DVLAClient:
         return json_payload
 
     @staticmethod
-    def _build_unstructured_address(address_without_recipient):
+    def _build_address(address_lines: list[str], last_line_key: Literal["postcode", "country"]):
         address_line_keys = ["line1", "line2", "line3", "line4", "line5"]
 
-        postcode = address_without_recipient[-1]
-        address_without_postcode = address_without_recipient[:-1]
+        last_line = address_lines[-1]
 
-        unstructured_address = dict(zip(address_line_keys, address_without_postcode))
-        unstructured_address["postcode"] = postcode
+        # The first line has already been used as the recipient, so we include everything other than that.
+        unstructured_address = dict(zip(address_line_keys, address_lines[:-1]))
+        unstructured_address[last_line_key] = last_line
 
         return unstructured_address
 
-    @staticmethod
-    def _build_international_address(address_without_recipient):
-        address_line_keys = ["line1", "line2", "line3", "line4", "line5"]
+    def _parse_recipient_and_address(self, *, postage: str, address: PostalAddress):
+        address_lines = address.normalised_lines
+        recipient = address_lines.pop(0)
 
-        country = address_without_recipient[-1]
-        address_without_country = address_without_recipient[:-1]
-
-        international_address = dict(zip(address_line_keys, address_without_country))
-        international_address["country"] = country
-
-        return international_address
-
-    def _build_address_object(self, *, postage, address_without_recipient):
         if postage in INTERNATIONAL_POSTAGE_TYPES:
-            return {"internationalAddress": self._build_international_address(address_without_recipient)}
+            return recipient, {"internationalAddress": self._build_address(address_lines, "country")}
 
-        return {"unstructuredAddress": self._build_unstructured_address(address_without_recipient)}
+        return recipient, {"unstructuredAddress": self._build_address(address_lines, "postcode")}

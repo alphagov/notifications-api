@@ -7,6 +7,7 @@ from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
 from freezegun import freeze_time
 from moto import mock_s3
+from notifications_utils.postal_address import PostalAddress
 
 import app
 from app.celery import provider_tasks
@@ -225,12 +226,13 @@ def test_update_letter_to_sending(sample_letter_template):
 @mock_s3
 @freeze_time("2020-02-17 16:00:00")
 @pytest.mark.parametrize(
-    "is_precompiled, to_field, personalisation",
+    "is_precompiled, to_field, personalisation, expected_postal_address",
     [
         (
             True,
             "A. User\nMy Street,\nLondon,\nSW1 1AA",
             {"address_line_1": "Provided as PDF"},
+            PostalAddress("A. User\nMy Street,\nLondon,\nSW1 1AA", True),
         ),
         (
             False,
@@ -244,10 +246,19 @@ def test_update_letter_to_sending(sample_letter_template):
                 "addressline6": None,
                 "addressline7": None,
             },
+            PostalAddress("A. User\nMy Street\nLondon\nSW1 1AA\n\n\n", True),
         ),
     ],
 )
-def test_deliver_letter(mocker, sample_letter_template, sample_organisation, is_precompiled, to_field, personalisation):
+def test_deliver_letter(
+    mocker,
+    sample_letter_template,
+    sample_organisation,
+    is_precompiled,
+    to_field,
+    personalisation,
+    expected_postal_address,
+):
     mock_send_letter = mocker.patch("app.celery.provider_tasks.dvla_client.send_letter")
 
     letter = create_notification(
@@ -273,7 +284,7 @@ def test_deliver_letter(mocker, sample_letter_template, sample_organisation, is_
     mock_send_letter.assert_called_once_with(
         notification_id=str(letter.id),
         reference="ref1",
-        address=["A. User", "My Street", "London", "SW1 1AA"],
+        address=expected_postal_address,
         postage="second",
         service_id=str(letter.service_id),
         organisation_id=str(sample_organisation.id),

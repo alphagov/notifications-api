@@ -10,6 +10,7 @@ import jwt
 import pytest
 from flask import current_app
 from moto import mock_ssm
+from notifications_utils.postal_address import PostalAddress
 from redis.exceptions import LockError
 
 from app.clients.letter.dvla import (
@@ -403,7 +404,7 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
     formatted_json = dvla_client._format_create_print_job_json(
         notification_id="my_notification_id",
         reference="ABCDEFGHIJKL",
-        address_lines=["A. User", "The road", "City", "SW1 1AA"],
+        address=PostalAddress("A. User\nThe road\nCity\nSW1 1AA"),
         postage="second",
         service_id="my_service_id",
         organisation_id="my_organisation_id",
@@ -431,7 +432,7 @@ def test_format_create_print_job_json_adds_despatchMethod_key_for_first_class_po
     formatted_json = dvla_client._format_create_print_job_json(
         notification_id="my_notification_id",
         reference="ABCDEFGHIJKL",
-        address_lines=["A. User", "The road", "City", "SW1 1AA"],
+        address=PostalAddress("A. User\nThe road\nCity\nSW1 1AA"),
         postage="first",
         service_id="my_service_id",
         organisation_id="my_organisation_id",
@@ -442,28 +443,26 @@ def test_format_create_print_job_json_adds_despatchMethod_key_for_first_class_po
 
 
 @pytest.mark.parametrize(
-    "address_lines, recipient, unstructured_address",
+    "address, recipient, unstructured_address",
     [
-        (["The user", "The road", "SW1 1AA"], "The user", {"line1": "The road", "postcode": "SW1 1AA"}),
+        (PostalAddress("The user\nThe road\nSW1 1AA"), "The user", {"line1": "The road", "postcode": "SW1 1AA"}),
         (
-            ["The user", "House no.", "My Street", "SW1 1AA"],
+            PostalAddress("The user\nHouse no.\nMy Street\nSW1 1AA"),
             "The user",
             {"line1": "House no.", "line2": "My Street", "postcode": "SW1 1AA"},
         ),
         (
-            ["The user", "1", "2", "3", "4", "5", "SW1 1AA"],
+            PostalAddress("The user\n1\n2\n3\n4\n5\nSW1 1AA"),
             "The user",
             {"line1": "1", "line2": "2", "line3": "3", "line4": "4", "line5": "5", "postcode": "SW1 1AA"},
         ),
     ],
 )
-def test_format_create_print_job_json_formats_address_lines(
-    dvla_client, address_lines, recipient, unstructured_address
-):
+def test_format_create_print_job_json_formats_address_lines(dvla_client, address, recipient, unstructured_address):
     formatted_json = dvla_client._format_create_print_job_json(
         notification_id="my_notification_id",
         reference="ABCDEFGHIJKL",
-        address_lines=address_lines,
+        address=address,
         postage="first",
         service_id="my_service_id",
         organisation_id="my_organisation_id",
@@ -484,7 +483,7 @@ def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
     response = dvla_client.send_letter(
         notification_id="noti_id",
         reference="ABCDEFGHIJKL",
-        address=["recipient", "city", "postcode"],
+        address=PostalAddress("recipient\ncity\npostcode"),
         postage="second",
         service_id="service_id",
         organisation_id="org_id",
@@ -530,7 +529,7 @@ def test_send_international_letter(dvla_client, dvla_authenticate, postage, desp
     response = dvla_client.send_letter(
         notification_id="noti_id",
         reference="ABCDEFGHIJKL",
-        address=["recipient", "line1", "line2", "country"],
+        address=PostalAddress("recipient\nline1\nline2\ncountry"),
         postage=postage,
         service_id="service_id",
         organisation_id="org_id",
@@ -583,7 +582,7 @@ def test_send_letter_when_bad_request_error_is_raised(dvla_authenticate, dvla_cl
         dvla_client.send_letter(
             notification_id="1",
             reference="ABCDEFGHIJKL",
-            address=["line1", "line2", "postcode"],
+            address=PostalAddress("line\nline2\npostcode"),
             postage="second",
             service_id="s_id",
             organisation_id="org_id",
@@ -614,7 +613,7 @@ def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, r
         dvla_client.send_letter(
             notification_id="noti_id",
             reference="ABCDEFGHIJKL",
-            address=["line1", "line2", "postcode"],
+            address=PostalAddress("line\nline2\npostcode"),
             postage="second",
             service_id="s_id",
             organisation_id="org_id",
@@ -650,7 +649,7 @@ def test_send_letter_when_conflict_error_is_raised(dvla_authenticate, dvla_clien
         dvla_client.send_letter(
             notification_id="1",
             reference="ABCDEFGHIJKL",
-            address=["line1", "line2", "postcode"],
+            address=PostalAddress("line\nline2\npostcode"),
             postage="second",
             service_id="s_id",
             organisation_id="org_id",
@@ -679,7 +678,7 @@ def test_send_letter_when_throttling_error_is_raised(dvla_authenticate, dvla_cli
         dvla_client.send_letter(
             notification_id="1",
             reference="ABCDEFGHIJKL",
-            address=["line1", "line2", "postcode"],
+            address=PostalAddress("line\nline2\npostcode"),
             postage="second",
             service_id="s_id",
             organisation_id="org_id",
@@ -697,7 +696,7 @@ def test_send_letter_when_5xx_status_code_is_returned(dvla_authenticate, dvla_cl
         dvla_client.send_letter(
             notification_id="1",
             reference="ABCDEFGHIJKL",
-            address=["line1", "line2", "postcode"],
+            address=PostalAddress("line\nline2\npostcode"),
             postage="second",
             service_id="s_id",
             organisation_id="org_id",
@@ -715,7 +714,7 @@ def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_cl
         dvla_client.send_letter(
             notification_id="1",
             reference="ABCDEFGHIJKL",
-            address=["line1", "line2", "postcode"],
+            address=PostalAddress("line\nline2\npostcode"),
             postage="second",
             service_id="s_id",
             organisation_id="org_id",
