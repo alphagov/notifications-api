@@ -97,12 +97,12 @@ def deliver_letter(self, notification_id):
     notification = notifications_dao.get_notification_by_id(notification_id, _raise=True)
 
     if notification.template.is_precompiled_letter:
-        address_lines = PostalAddress(notification.to, allow_international_letters=True).normalised_lines
+        postal_address = PostalAddress(notification.to, allow_international_letters=True)
     else:
-        address_lines = PostalAddress.from_personalisation(
+        postal_address = PostalAddress.from_personalisation(
             InsensitiveDict(notification.personalisation),
             allow_international_letters=True,
-        ).normalised_lines
+        )
 
     try:
         file_bytes = find_letter_pdf_in_s3(notification).get()["Body"].read()
@@ -116,7 +116,7 @@ def deliver_letter(self, notification_id):
         dvla_client.send_letter(
             notification_id=str(notification.id),
             reference=str(notification.reference),
-            address=address_lines,
+            address=postal_address,
             postage=notification.postage,
             service_id=str(notification.service_id),
             organisation_id=str(notification.service.organisation_id),
