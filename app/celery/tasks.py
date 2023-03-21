@@ -2,6 +2,7 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -491,13 +492,14 @@ def persist_daily_sorted_letter_counts(day, file_name, sorted_letter_counts):
 class NotificationUpdate:
     """
     A NotificationUpdate is used to wrap a row of a DVLA response file.
+    `despatch_date` is optional to support files which contain it and those that don't
     """
 
     reference: str
     status: str
     page_count: str
     cost_threshold: str
-    despatch_date: str
+    despatch_date: Optional[str] = None
 
 
 def process_updates_from_file(response_file):
