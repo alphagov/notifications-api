@@ -247,7 +247,7 @@ def check_if_letters_still_pending_virus_check():
             letter.reference, letter.created_at, ignore_folder=True, postage=letter.postage
         )
 
-        if s3.file_exists(current_app.config["LETTERS_SCAN_BUCKET_NAME"], filename):
+        if s3.file_exists(current_app.config["S3_BUCKET_LETTERS_SCAN"], filename):
             current_app.logger.warning(
                 f"Letter id {letter.id} got stuck in pending-virus-check. Sending off for scan again."
             )

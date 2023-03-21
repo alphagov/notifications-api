@@ -69,11 +69,11 @@ def generate_letter_pdf_filename(reference, created_at, ignore_folder=False, pos
 def get_bucket_name_and_prefix_for_notification(notification):
     folder = ""
     if notification.status == NOTIFICATION_VALIDATION_FAILED:
-        bucket_name = current_app.config["INVALID_PDF_BUCKET_NAME"]
+        bucket_name = current_app.config["S3_BUCKET_INVALID_PDF"]
     elif notification.key_type == KEY_TYPE_TEST:
-        bucket_name = current_app.config["TEST_LETTERS_BUCKET_NAME"]
+        bucket_name = current_app.config["S3_BUCKET_TEST_LETTERS"]
     else:
-        bucket_name = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+        bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
         folder = get_folder_name(notification.created_at)
 
     upload_file_name = PRECOMPILED_BUCKET_PREFIX.format(folder=folder, reference=notification.reference).upper()
@@ -102,11 +102,11 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     )
 
     if precompiled:
-        bucket_name = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
+        bucket_name = current_app.config["S3_BUCKET_LETTERS_SCAN"]
     elif notification.key_type == KEY_TYPE_TEST:
-        bucket_name = current_app.config["TEST_LETTERS_BUCKET_NAME"]
+        bucket_name = current_app.config["S3_BUCKET_TEST_LETTERS"]
     else:
-        bucket_name = current_app.config["LETTERS_PDF_BUCKET_NAME"]
+        bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
 
     s3upload(
         filedata=pdf_data,
@@ -122,7 +122,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
 
 
 def move_failed_pdf(source_filename, scan_error_type):
-    scan_bucket = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
+    scan_bucket = current_app.config["S3_BUCKET_LETTERS_SCAN"]
 
     target_filename = ("ERROR/" if scan_error_type == ScanErrorType.ERROR else "FAILURE/") + source_filename
 
@@ -130,7 +130,7 @@ def move_failed_pdf(source_filename, scan_error_type):
 
 
 def move_error_pdf_to_scan_bucket(source_filename):
-    scan_bucket = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
+    scan_bucket = current_app.config["S3_BUCKET_LETTERS_SCAN"]
     error_file = "ERROR/" + source_filename
 
     _move_s3_object(scan_bucket, error_file, scan_bucket, source_filename)
@@ -146,9 +146,9 @@ def move_scan_to_invalid_pdf_bucket(source_filename, message=None, invalid_pages
         metadata["page_count"] = str(page_count)
 
     _move_s3_object(
-        source_bucket=current_app.config["LETTERS_SCAN_BUCKET_NAME"],
+        source_bucket=current_app.config["S3_BUCKET_LETTERS_SCAN"],
         source_filename=source_filename,
-        target_bucket=current_app.config["INVALID_PDF_BUCKET_NAME"],
+        target_bucket=current_app.config["S3_BUCKET_INVALID_PDF"],
         target_filename=source_filename,
         metadata=metadata,
     )
@@ -156,21 +156,21 @@ def move_scan_to_invalid_pdf_bucket(source_filename, message=None, invalid_pages
 
 def move_uploaded_pdf_to_letters_bucket(source_filename, upload_filename):
     _move_s3_object(
-        source_bucket=current_app.config["TRANSIENT_UPLOADED_LETTERS"],
+        source_bucket=current_app.config["S3_BUCKET_TRANSIENT_UPLOADED_LETTERS"],
         source_filename=source_filename,
-        target_bucket=current_app.config["LETTERS_PDF_BUCKET_NAME"],
+        target_bucket=current_app.config["S3_BUCKET_LETTERS_PDF"],
         target_filename=upload_filename,
     )
 
 
 def move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_letter, created_at, new_filename):
-    target_bucket_config = "TEST_LETTERS_BUCKET_NAME" if is_test_letter else "LETTERS_PDF_BUCKET_NAME"
+    target_bucket_config = "S3_BUCKET_TEST_LETTERS" if is_test_letter else "S3_BUCKET_LETTERS_PDF"
     target_bucket_name = current_app.config[target_bucket_config]
     target_folder = "" if is_test_letter else get_folder_name(created_at)
     target_filename = target_folder + new_filename
 
     _move_s3_object(
-        source_bucket=current_app.config["LETTER_SANITISE_BUCKET_NAME"],
+        source_bucket=current_app.config["S3_BUCKET_LETTER_SANITISE"],
         source_filename=filename,
         target_bucket=target_bucket_name,
         target_filename=target_filename,
@@ -179,7 +179,7 @@ def move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_letter, c
 
 def get_file_names_from_error_bucket():
     s3 = boto3.resource("s3")
-    scan_bucket = current_app.config["LETTERS_SCAN_BUCKET_NAME"]
+    scan_bucket = current_app.config["S3_BUCKET_LETTERS_SCAN"]
     bucket = s3.Bucket(scan_bucket)
 
     return bucket.objects.filter(Prefix="ERROR")

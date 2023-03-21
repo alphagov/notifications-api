@@ -28,14 +28,14 @@ def file_exists(bucket_name, file_location):
 
 def get_job_location(service_id, job_id):
     return (
-        current_app.config["CSV_UPLOAD_BUCKET_NAME"],
+        current_app.config["S3_BUCKET_CSV_UPLOAD"],
         FILE_LOCATION_STRUCTURE.format(service_id, job_id),
     )
 
 
 def get_contact_list_location(service_id, contact_list_id):
     return (
-        current_app.config["CONTACT_LIST_BUCKET_NAME"],
+        current_app.config["S3_BUCKET_CONTACT_LIST"],
         FILE_LOCATION_STRUCTURE.format(service_id, contact_list_id),
     )
 

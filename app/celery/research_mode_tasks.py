@@ -112,7 +112,7 @@ def create_fake_letter_response_file(self, reference):
     # try and find a filename that hasn't been taken yet - from a random time within the last 30 seconds
     for i in sorted(range(30), key=lambda _: random.random()):
         upload_file_name = "NOTIFY-{}-RSP.TXT".format((now - timedelta(seconds=i)).strftime("%Y%m%d%H%M%S"))
-        if not file_exists(current_app.config["DVLA_RESPONSE_BUCKET_NAME"], upload_file_name):
+        if not file_exists(current_app.config["S3_BUCKET_DVLA_RESPONSE"], upload_file_name):
             break
     else:
         raise ValueError(
@@ -124,12 +124,12 @@ def create_fake_letter_response_file(self, reference):
     s3upload(
         filedata=dvla_response_data,
         region=current_app.config["AWS_REGION"],
-        bucket_name=current_app.config["DVLA_RESPONSE_BUCKET_NAME"],
+        bucket_name=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
         file_location=upload_file_name,
     )
     current_app.logger.info(
         "Fake DVLA response file {}, content [{}], uploaded to {}, created at {}".format(
-            upload_file_name, dvla_response_data, current_app.config["DVLA_RESPONSE_BUCKET_NAME"], now
+            upload_file_name, dvla_response_data, current_app.config["S3_BUCKET_DVLA_RESPONSE"], now
         )
     )
 

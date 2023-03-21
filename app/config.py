@@ -456,15 +456,15 @@ class Development(Config):
 
     REDIS_ENABLED = os.getenv("REDIS_ENABLED") == "1"
 
-    CSV_UPLOAD_BUCKET_NAME = "development-notifications-csv-upload"
-    CONTACT_LIST_BUCKET_NAME = "development-contact-list"
-    TEST_LETTERS_BUCKET_NAME = "development-test-letters"
-    DVLA_RESPONSE_BUCKET_NAME = "notify.tools-ftp"
-    LETTERS_PDF_BUCKET_NAME = "development-letters-pdf"
-    LETTERS_SCAN_BUCKET_NAME = "development-letters-scan"
-    INVALID_PDF_BUCKET_NAME = "development-letters-invalid-pdf"
-    TRANSIENT_UPLOADED_LETTERS = "development-transient-uploaded-letters"
-    LETTER_SANITISE_BUCKET_NAME = "development-letters-sanitise"
+    S3_BUCKET_CSV_UPLOAD = "development-notifications-csv-upload"
+    S3_BUCKET_CONTACT_LIST = "development-contact-list"
+    S3_BUCKET_TEST_LETTERS = "development-test-letters"
+    S3_BUCKET_DVLA_RESPONSE = "notify.tools-ftp"
+    S3_BUCKET_LETTERS_PDF = "development-letters-pdf"
+    S3_BUCKET_LETTERS_SCAN = "development-letters-scan"
+    S3_BUCKET_INVALID_PDF = "development-letters-invalid-pdf"
+    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "development-transient-uploaded-letters"
+    S3_BUCKET_LETTER_SANITISE = "development-letters-sanitise"
 
     INTERNAL_CLIENT_API_KEYS = {
         Config.ADMIN_CLIENT_ID: ["dev-notify-secret-key"],
@@ -506,15 +506,15 @@ class Test(Development):
         "10d1b9c9-0072-4fa9-ae1c-595e333841da",
     ]
 
-    CSV_UPLOAD_BUCKET_NAME = "test-notifications-csv-upload"
-    CONTACT_LIST_BUCKET_NAME = "test-contact-list"
-    TEST_LETTERS_BUCKET_NAME = "test-test-letters"
-    DVLA_RESPONSE_BUCKET_NAME = "test.notify.com-ftp"
-    LETTERS_PDF_BUCKET_NAME = "test-letters-pdf"
-    LETTERS_SCAN_BUCKET_NAME = "test-letters-scan"
-    INVALID_PDF_BUCKET_NAME = "test-letters-invalid-pdf"
-    TRANSIENT_UPLOADED_LETTERS = "test-transient-uploaded-letters"
-    LETTER_SANITISE_BUCKET_NAME = "test-letters-sanitise"
+    S3_BUCKET_CSV_UPLOAD = "test-notifications-csv-upload"
+    S3_BUCKET_CONTACT_LIST = "test-contact-list"
+    S3_BUCKET_TEST_LETTERS = "test-test-letters"
+    S3_BUCKET_DVLA_RESPONSE = "test.notify.com-ftp"
+    S3_BUCKET_LETTERS_PDF = "test-letters-pdf"
+    S3_BUCKET_LETTERS_SCAN = "test-letters-scan"
+    S3_BUCKET_INVALID_PDF = "test-letters-invalid-pdf"
+    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "test-transient-uploaded-letters"
+    S3_BUCKET_LETTER_SANITISE = "test-letters-sanitise"
 
     # this is overriden in jenkins and on cloudfoundry
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", "postgresql://localhost/test_notification_api")
@@ -543,15 +543,15 @@ class Test(Development):
 class Preview(Config):
     NOTIFY_EMAIL_DOMAIN = "notify.works"
     NOTIFY_ENVIRONMENT = "preview"
-    CSV_UPLOAD_BUCKET_NAME = "preview-notifications-csv-upload"
-    CONTACT_LIST_BUCKET_NAME = "preview-contact-list"
-    TEST_LETTERS_BUCKET_NAME = "preview-test-letters"
-    DVLA_RESPONSE_BUCKET_NAME = "notify.works-ftp"
-    LETTERS_PDF_BUCKET_NAME = "preview-letters-pdf"
-    LETTERS_SCAN_BUCKET_NAME = "preview-letters-scan"
-    INVALID_PDF_BUCKET_NAME = "preview-letters-invalid-pdf"
-    TRANSIENT_UPLOADED_LETTERS = "preview-transient-uploaded-letters"
-    LETTER_SANITISE_BUCKET_NAME = "preview-letters-sanitise"
+    S3_BUCKET_CSV_UPLOAD = "preview-notifications-csv-upload"
+    S3_BUCKET_CONTACT_LIST = "preview-contact-list"
+    S3_BUCKET_TEST_LETTERS = "preview-test-letters"
+    S3_BUCKET_DVLA_RESPONSE = "notify.works-ftp"
+    S3_BUCKET_LETTERS_PDF = "preview-letters-pdf"
+    S3_BUCKET_LETTERS_SCAN = "preview-letters-scan"
+    S3_BUCKET_INVALID_PDF = "preview-letters-invalid-pdf"
+    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "preview-transient-uploaded-letters"
+    S3_BUCKET_LETTER_SANITISE = "preview-letters-sanitise"
     FROM_NUMBER = "preview"
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = False
@@ -560,15 +560,15 @@ class Preview(Config):
 class Staging(Config):
     NOTIFY_EMAIL_DOMAIN = "staging-notify.works"
     NOTIFY_ENVIRONMENT = "staging"
-    CSV_UPLOAD_BUCKET_NAME = "staging-notifications-csv-upload"
-    CONTACT_LIST_BUCKET_NAME = "staging-contact-list"
-    TEST_LETTERS_BUCKET_NAME = "staging-test-letters"
-    DVLA_RESPONSE_BUCKET_NAME = "staging-notify.works-ftp"
-    LETTERS_PDF_BUCKET_NAME = "staging-letters-pdf"
-    LETTERS_SCAN_BUCKET_NAME = "staging-letters-scan"
-    INVALID_PDF_BUCKET_NAME = "staging-letters-invalid-pdf"
-    TRANSIENT_UPLOADED_LETTERS = "staging-transient-uploaded-letters"
-    LETTER_SANITISE_BUCKET_NAME = "staging-letters-sanitise"
+    S3_BUCKET_CSV_UPLOAD = "staging-notifications-csv-upload"
+    S3_BUCKET_CONTACT_LIST = "staging-contact-list"
+    S3_BUCKET_TEST_LETTERS = "staging-test-letters"
+    S3_BUCKET_DVLA_RESPONSE = "staging-notify.works-ftp"
+    S3_BUCKET_LETTERS_PDF = "staging-letters-pdf"
+    S3_BUCKET_LETTERS_SCAN = "staging-letters-scan"
+    S3_BUCKET_INVALID_PDF = "staging-letters-invalid-pdf"
+    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "staging-transient-uploaded-letters"
+    S3_BUCKET_LETTER_SANITISE = "staging-letters-sanitise"
     FROM_NUMBER = "stage"
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
@@ -577,15 +577,15 @@ class Staging(Config):
 class Production(Config):
     NOTIFY_EMAIL_DOMAIN = "notifications.service.gov.uk"
     NOTIFY_ENVIRONMENT = "production"
-    CSV_UPLOAD_BUCKET_NAME = "live-notifications-csv-upload"
-    CONTACT_LIST_BUCKET_NAME = "production-contact-list"
-    TEST_LETTERS_BUCKET_NAME = "production-test-letters"
-    DVLA_RESPONSE_BUCKET_NAME = "notifications.service.gov.uk-ftp"
-    LETTERS_PDF_BUCKET_NAME = "production-letters-pdf"
-    LETTERS_SCAN_BUCKET_NAME = "production-letters-scan"
-    INVALID_PDF_BUCKET_NAME = "production-letters-invalid-pdf"
-    TRANSIENT_UPLOADED_LETTERS = "production-transient-uploaded-letters"
-    LETTER_SANITISE_BUCKET_NAME = "production-letters-sanitise"
+    S3_BUCKET_CSV_UPLOAD = "live-notifications-csv-upload"
+    S3_BUCKET_CONTACT_LIST = "production-contact-list"
+    S3_BUCKET_TEST_LETTERS = "production-test-letters"
+    S3_BUCKET_DVLA_RESPONSE = "notifications.service.gov.uk-ftp"
+    S3_BUCKET_LETTERS_PDF = "production-letters-pdf"
+    S3_BUCKET_LETTERS_SCAN = "production-letters-scan"
+    S3_BUCKET_INVALID_PDF = "production-letters-invalid-pdf"
+    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "production-transient-uploaded-letters"
+    S3_BUCKET_LETTER_SANITISE = "production-letters-sanitise"
     FROM_NUMBER = "GOVUK"
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
@@ -604,14 +604,13 @@ class CloudFoundryConfig(Config):
 class Sandbox(CloudFoundryConfig):
     NOTIFY_EMAIL_DOMAIN = "notify.works"
     NOTIFY_ENVIRONMENT = "sandbox"
-    CSV_UPLOAD_BUCKET_NAME = "cf-sandbox-notifications-csv-upload"
-    CONTACT_LIST_BUCKET_NAME = "cf-sandbox-contact-list"
-    LETTERS_PDF_BUCKET_NAME = "cf-sandbox-letters-pdf"
-    TEST_LETTERS_BUCKET_NAME = "cf-sandbox-test-letters"
-    DVLA_RESPONSE_BUCKET_NAME = "notify.works-ftp"
-    LETTERS_PDF_BUCKET_NAME = "cf-sandbox-letters-pdf"
-    LETTERS_SCAN_BUCKET_NAME = "cf-sandbox-letters-scan"
-    INVALID_PDF_BUCKET_NAME = "cf-sandbox-letters-invalid-pdf"
+    S3_BUCKET_CSV_UPLOAD = "cf-sandbox-notifications-csv-upload"
+    S3_BUCKET_CONTACT_LIST = "cf-sandbox-contact-list"
+    S3_BUCKET_LETTERS_PDF = "cf-sandbox-letters-pdf"
+    S3_BUCKET_TEST_LETTERS = "cf-sandbox-test-letters"
+    S3_BUCKET_DVLA_RESPONSE = "notify.works-ftp"
+    S3_BUCKET_LETTERS_SCAN = "cf-sandbox-letters-scan"
+    S3_BUCKET_INVALID_PDF = "cf-sandbox-letters-invalid-pdf"
     FROM_NUMBER = "sandbox"
 
 

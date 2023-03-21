@@ -596,7 +596,7 @@ def get_letter_details_from_zips_sent_file(file_paths):
     rows_from_file = []
 
     for path in file_paths:
-        file_contents = s3.get_s3_file(bucket_name=current_app.config["LETTERS_PDF_BUCKET_NAME"], file_location=path)
+        file_contents = s3.get_s3_file(bucket_name=current_app.config["S3_BUCKET_LETTERS_PDF"], file_location=path)
         rows_from_file.extend(json.loads(file_contents))
 
     notification_references = tuple(row[18:34] for row in rows_from_file)
