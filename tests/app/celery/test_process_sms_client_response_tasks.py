@@ -47,15 +47,15 @@ def test_process_sms_response_raises_client_exception_for_unknown_status(
     ],
 )
 def test_process_sms_client_response_updates_notification_status(
-    sample_notification, mocker, status, detailed_status_code, sms_provider, expected_notification_status, reason
+    sample_notification, caplog, status, detailed_status_code, sms_provider, expected_notification_status, reason
 ):
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.info")
     sample_notification.status = "sending"
 
-    process_sms_client_response(status, str(sample_notification.id), sms_provider, detailed_status_code)
+    with caplog.at_level("INFO"):
+        process_sms_client_response(status, str(sample_notification.id), sms_provider, detailed_status_code)
 
     message = f"{sms_provider} callback returned status of {expected_notification_status}({status}): {reason}({detailed_status_code}) for reference: {sample_notification.id}"  # noqa
-    mock_logger.assert_any_call(message)
+    assert message in caplog.messages
     assert sample_notification.status == expected_notification_status
 
 
@@ -69,17 +69,17 @@ def test_process_sms_client_response_updates_notification_status(
     ],
 )
 def test_process_sms_client_response_updates_notification_status_when_called_second_time(
-    sample_notification, mocker, detailed_status_code, expected_notification_status, reason
+    sample_notification, caplog, detailed_status_code, expected_notification_status, reason
 ):
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.info")
     sample_notification.status = "sending"
     process_sms_client_response("2", str(sample_notification.id), "Firetext")
 
-    process_sms_client_response("1", str(sample_notification.id), "Firetext", detailed_status_code)
+    with caplog.at_level("INFO"):
+        process_sms_client_response("1", str(sample_notification.id), "Firetext", detailed_status_code)
 
     if detailed_status_code:
         message = f"Updating notification id {sample_notification.id} to status {expected_notification_status}, reason: {reason}"  # noqa
-        mock_logger.assert_called_with(message)
+        assert message in caplog.messages
 
     assert sample_notification.status == expected_notification_status
 
@@ -96,16 +96,15 @@ def test_process_sms_client_response_updates_notification_status_to_pending_with
 
 
 def test_process_sms_client_response_updates_notification_status_when_detailed_status_code_not_recognised(
-    sample_notification,
-    mocker,
+    sample_notification, caplog
 ):
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.warning")
     sample_notification.status = "sending"
     process_sms_client_response("2", str(sample_notification.id), "Firetext")
 
-    process_sms_client_response("1", str(sample_notification.id), "Firetext", "789")
+    with caplog.at_level("WARNING"):
+        process_sms_client_response("1", str(sample_notification.id), "Firetext", "789")
 
-    mock_logger.assert_called_once_with("Failure code 789 from Firetext not recognised")
+    assert "Failure code 789 from Firetext not recognised" in caplog.messages
     assert sample_notification.status == "temporary-failure"
 
 

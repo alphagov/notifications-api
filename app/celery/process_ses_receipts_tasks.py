@@ -53,7 +53,10 @@ def process_ses_results(self, response):
             return
 
         if bounce_message:
-            current_app.logger.info(f"SES bounce for notification ID {notification.id}: {bounce_message}")
+            current_app.logger.info(
+                f"SES bounce for notification ID {notification.id}",
+                extra=dict(bounce_message=json.dumps(bounce_message)),
+            )
 
         if notification.status not in [NOTIFICATION_SENDING, NOTIFICATION_PENDING]:
             notifications_dao._duplicate_update_warning(notification=notification, status=notification_status)
