@@ -159,6 +159,8 @@ applications:
       NEW_RELIC_APP_NAME: '{{ environment }}.{{ CF_APP }}'
       NEW_RELIC_LICENSE_KEY: '{{ NEW_RELIC_LICENSE_KEY }}'
 
+      DVLA_API_TLS_CIPHERS: '{{ DVLA_API_TLS_CIPHERS }}'
+
       {% for key, value in app.get('additional_env_vars', {}).items() %}
       {{key}}: '{{value}}'
       {% endfor %}

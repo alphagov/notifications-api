@@ -87,7 +87,7 @@ def create_app(application):
     logging.init_app(application, statsd_client)
     firetext_client.init_app(application, statsd_client=statsd_client)
     mmg_client.init_app(application, statsd_client=statsd_client)
-    dvla_client.init_app(application.config["AWS_REGION"], statsd_client=statsd_client)
+    dvla_client.init_app(application, statsd_client=statsd_client)
     aws_ses_client.init_app(application.config["AWS_REGION"], statsd_client=statsd_client)
     aws_ses_stub_client.init_app(
         application.config["AWS_REGION"], statsd_client=statsd_client, stub_url=application.config["SES_STUB_URL"]

@@ -9,6 +9,8 @@ import jwt
 import requests
 from flask import current_app
 from notifications_utils.postal_address import PostalAddress
+from requests.adapters import HTTPAdapter
+from urllib3.util.ssl_ import create_urllib3_context
 
 from app.clients import ClientException
 from app.constants import (
@@ -67,6 +69,25 @@ class SSMParameter:
         self._value = None
 
 
+class _SpecifiedCiphersAdapter(HTTPAdapter):
+    """An HTTPAdapter for requests that will enforce specific SSL ciphers.
+
+    If ciphers=None, no restrictions will be enforced (eg for local development).
+    """
+
+    def __init__(self, ciphers, *args, **kwargs):
+        self.ciphers = ciphers
+        super().__init__(*args, **kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs["ssl_context"] = create_urllib3_context(ciphers=self.ciphers)
+        return super().init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, *args, **kwargs):
+        kwargs["ssl_context"] = create_urllib3_context(ciphers=self.ciphers)
+        return super().proxy_manager_for(*args, **kwargs)
+
+
 class DVLAClient:
     """
     DVLA HTTP API letter client.
@@ -77,14 +98,17 @@ class DVLAClient:
     _jwt_token = None
     _jwt_expires_at = None
 
-    def init_app(self, region, statsd_client):
-        ssm_client = boto3.client("ssm", region_name=region)
+    def init_app(self, application, *, statsd_client):
+        self.base_url = application.config["DVLA_API_BASE_URL"]
+        self.ciphers = application.config["DVLA_API_TLS_CIPHERS"]
+        ssm_client = boto3.client("ssm", region_name=application.config["AWS_REGION"])
         self.dvla_username = SSMParameter(key="/notify/api/dvla_username", ssm_client=ssm_client)
         self.dvla_password = SSMParameter(key="/notify/api/dvla_password", ssm_client=ssm_client)
         self.dvla_api_key = SSMParameter(key="/notify/api/dvla_api_key", ssm_client=ssm_client)
-
         self.statsd_client = statsd_client
-        self.request = requests.Session()
+
+        self.session = requests.Session()
+        self.session.mount(self.base_url, _SpecifiedCiphersAdapter(ciphers=self.ciphers))
 
     @property
     def name(self):
@@ -114,8 +138,8 @@ class DVLAClient:
         Fetch a JWT from the DVLA API that can be used in other DVLA API requests
         """
         try:
-            response = self.request.post(
-                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/authenticate",
+            response = self.session.post(
+                f"{self.base_url}/thirdparty-access/v1/authenticate",
                 json={
                     "userName": self.dvla_username.get(),
                     "password": self.dvla_password.get(),
@@ -142,8 +166,8 @@ class DVLAClient:
             self.dvla_api_key.clear()
 
             try:
-                response = self.request.post(
-                    f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
+                response = self.session.post(
+                    f"{self.base_url}/thirdparty-access/v1/new-api-key",
                     headers=self._get_auth_headers(),
                 )
                 response.raise_for_status()
@@ -172,8 +196,8 @@ class DVLAClient:
             self.dvla_password.clear()
 
             try:
-                response = self.request.post(
-                    f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
+                response = self.session.post(
+                    f"{self.base_url}/thirdparty-access/v1/password",
                     json={
                         "userName": self.dvla_username.get(),
                         "password": self.dvla_password.get(),
@@ -244,8 +268,8 @@ class DVLAClient:
         """
 
         try:
-            response = self.request.post(
-                f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+            response = self.session.post(
+                f"{self.base_url}/print-request/v1/print/jobs",
                 headers=self._get_auth_headers(),
                 json=self._format_create_print_job_json(
                     notification_id=notification_id,
