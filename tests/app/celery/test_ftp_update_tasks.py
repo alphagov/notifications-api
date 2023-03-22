@@ -229,28 +229,27 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
 
 
 def test_check_billable_units_when_billable_units_matches_page_count(
-    client, sample_letter_template, mocker, notification_update
+    client, sample_letter_template, caplog, notification_update
 ):
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.error")
+    with caplog.at_level("ERROR"):
+        create_notification(sample_letter_template, reference="REFERENCE_ABC", billable_units=1)
 
-    create_notification(sample_letter_template, reference="REFERENCE_ABC", billable_units=1)
+        check_billable_units(notification_update)
 
-    check_billable_units(notification_update)
-
-    mock_logger.assert_not_called()
+    assert caplog.messages == []
 
 
 def test_check_billable_units_when_billable_units_does_not_match_page_count(
-    client, sample_letter_template, mocker, notification_update
+    client, sample_letter_template, caplog, notification_update
 ):
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.exception")
+    with caplog.at_level("ERROR"):
+        notification = create_notification(sample_letter_template, reference="REFERENCE_ABC", billable_units=3)
 
-    notification = create_notification(sample_letter_template, reference="REFERENCE_ABC", billable_units=3)
+        check_billable_units(notification_update)
 
-    check_billable_units(notification_update)
-
-    mock_logger.assert_called_once_with(
+    assert (
         "Notification with id {} has 3 billable_units but DVLA says page count is 1".format(notification.id)
+        in caplog.messages
     )
 
 

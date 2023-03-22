@@ -493,22 +493,24 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
 
 
 @freeze_time("2019-05-30 14:00:00")
-def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_template):
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.error")
+def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_template, caplog):
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
     mock_send_ticket_to_zendesk = mocker.patch(
         "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
         autospec=True,
     )
 
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 29))
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 30))
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 17, 29))
-    create_notification(template=sample_letter_template, status="delivered", created_at=datetime(2019, 5, 28, 10, 0))
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 30, 10, 0))
+    with caplog.at_level("ERROR"):
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 29))
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 30))
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 17, 29))
+        create_notification(
+            template=sample_letter_template, status="delivered", created_at=datetime(2019, 5, 28, 10, 0)
+        )
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 30, 10, 0))
 
-    check_if_letters_still_in_created()
+        check_if_letters_still_in_created()
 
     message = (
         "2 letters were created before 17.30 yesterday and still have 'created' status. "
@@ -516,7 +518,7 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
         "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
     )
 
-    mock_logger.assert_called_once_with(message)
+    assert message in caplog.messages
     mock_create_ticket.assert_called_with(
         ANY,
         message=message,
@@ -529,22 +531,24 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
 
 
 @freeze_time("2019-01-30 14:00:00")
-def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_template):
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.error")
+def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_template, caplog):
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
     mock_send_ticket_to_zendesk = mocker.patch(
         "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
         autospec=True,
     )
 
-    create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 29))
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 30))
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 18, 29))
-    create_notification(template=sample_letter_template, status="delivered", created_at=datetime(2019, 1, 29, 10, 0))
-    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 30, 10, 0))
+    with caplog.at_level("ERROR"):
+        create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 29))
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 30))
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 18, 29))
+        create_notification(
+            template=sample_letter_template, status="delivered", created_at=datetime(2019, 1, 29, 10, 0)
+        )
+        create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 30, 10, 0))
 
-    check_if_letters_still_in_created()
+        check_if_letters_still_in_created()
 
     message = (
         "2 letters were created before 17.30 yesterday and still have 'created' status. "
@@ -552,7 +556,7 @@ def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_temp
         "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
     )
 
-    mock_logger.assert_called_once_with(message)
+    assert message in caplog.messages
     mock_create_ticket.assert_called_once_with(
         ANY,
         message=message,
@@ -705,9 +709,8 @@ MockServicesWithHighFailureRate = namedtuple(
     ],
 )
 def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
-    mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_message
+    mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_message, caplog
 ):
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.warning")
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
     mock_send_ticket_to_zendesk = mocker.patch(
         "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
@@ -722,11 +725,12 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
 
     zendesk_actions = "\nYou can find instructions for this ticket in our manual:\nhttps://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
 
-    check_for_services_with_high_failure_rates_or_sending_to_tv_numbers()
+    with caplog.at_level("WARNING"):
+        check_for_services_with_high_failure_rates_or_sending_to_tv_numbers()
 
     assert mock_failure_rates.called
     assert mock_sms_to_tv_numbers.called
-    mock_logger.assert_called_once_with(expected_message)
+    assert expected_message in caplog.messages
     mock_create_ticket.assert_called_with(
         ANY,
         message=expected_message + zendesk_actions,
@@ -1137,17 +1141,18 @@ class TestWeeklyDWPReport:
         ),
     )
     def test_skips_non_prod_environments(
-        self, notify_api, notify_db_session, mock_zendesk_update_ticket, mocker, environment, should_run
+        self,
+        notify_api,
+        notify_db_session,
+        mock_zendesk_update_ticket,
+        caplog,
+        environment,
+        should_run,
     ):
-        mock_logger = mocker.patch("app.celery.scheduled_tasks.current_app.logger")
-
-        with set_config(notify_api, "NOTIFY_ENVIRONMENT", environment):
+        with set_config(notify_api, "NOTIFY_ENVIRONMENT", environment), caplog.at_level("INFO"):
             weekly_dwp_report()
 
-        if should_run:
-            assert mock_logger.info.call_args_list != [mocker.call(f"Skipping DWP report run in {environment}")]
-        else:
-            assert mock_logger.info.call_args_list == [mocker.call(f"Skipping DWP report run in {environment}")]
+        assert (f"Skipping DWP report run in {environment}" in caplog.messages) != should_run
 
         # 'Successful' runs for this test still don't get to the zendesk_update_ticket call because of other checks.
         assert mock_zendesk_update_ticket.call_args_list == []
@@ -1162,14 +1167,12 @@ class TestWeeklyDWPReport:
         ],
     )
     def test_requires_zendesk_reporting_config(
-        self, mock_prod_notify_api, notify_db_session, mock_zendesk_update_ticket, mocker, report_config
+        self, mock_prod_notify_api, notify_db_session, mock_zendesk_update_ticket, caplog, report_config
     ):
-        mock_logger = mocker.patch("app.celery.scheduled_tasks.current_app.logger")
-
         with set_config(mock_prod_notify_api, "ZENDESK_REPORTING", report_config):
             weekly_dwp_report()
 
-        assert mock_logger.info.call_args_list == [mocker.call("Skipping DWP report run - invalid configuration.")]
+        assert "Skipping DWP report run - invalid configuration." in caplog.messages
         assert mock_zendesk_update_ticket.call_args_list == []
 
     @freeze_time("2022-01-01T09:00:00")

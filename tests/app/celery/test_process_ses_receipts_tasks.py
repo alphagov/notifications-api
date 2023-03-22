@@ -97,34 +97,34 @@ def test_ses_callback_should_not_update_notification_status_if_already_delivered
     assert mock_upd.call_count == 0
 
 
-def test_ses_callback_should_retry_if_notification_is_new(client, notify_db_session, mocker):
+def test_ses_callback_should_retry_if_notification_is_new(client, notify_db_session, mocker, caplog):
     mock_retry = mocker.patch("app.celery.process_ses_receipts_tasks.process_ses_results.retry")
-    mock_logger = mocker.patch("app.celery.process_ses_receipts_tasks.current_app.logger.error")
 
-    with freeze_time("2017-11-17T12:14:03.646Z"):
+    with freeze_time("2017-11-17T12:14:03.646Z"), caplog.at_level("ERROR"):
         assert process_ses_results(ses_notification_callback(reference="ref")) is None
-        assert mock_logger.call_count == 0
-        assert mock_retry.call_count == 1
+
+    assert caplog.messages == []
+    assert mock_retry.call_count == 1
 
 
-def test_ses_callback_should_log_if_notification_is_missing(client, notify_db_session, mocker):
+def test_ses_callback_should_log_if_notification_is_missing(client, notify_db_session, mocker, caplog):
     mock_retry = mocker.patch("app.celery.process_ses_receipts_tasks.process_ses_results.retry")
-    mock_logger = mocker.patch("app.celery.process_ses_receipts_tasks.current_app.logger.warning")
 
-    with freeze_time("2017-11-17T12:34:03.646Z"):
+    with freeze_time("2017-11-17T12:34:03.646Z"), caplog.at_level("WARNING"):
         assert process_ses_results(ses_notification_callback(reference="ref")) is None
-        assert mock_retry.call_count == 0
-        mock_logger.assert_called_once_with("notification not found for reference: ref (update to delivered)")
+
+    assert "notification not found for reference: ref (update to delivered)" in caplog.messages
+    assert mock_retry.call_count == 0
 
 
-def test_ses_callback_should_not_retry_if_notification_is_old(client, notify_db_session, mocker):
+def test_ses_callback_should_not_retry_if_notification_is_old(client, notify_db_session, mocker, caplog):
     mock_retry = mocker.patch("app.celery.process_ses_receipts_tasks.process_ses_results.retry")
-    mock_logger = mocker.patch("app.celery.process_ses_receipts_tasks.current_app.logger.error")
 
-    with freeze_time("2017-11-21T12:14:03.646Z"):
+    with freeze_time("2017-11-21T12:14:03.646Z"), caplog.at_level("ERROR"):
         assert process_ses_results(ses_notification_callback(reference="ref")) is None
-        assert mock_logger.call_count == 0
-        assert mock_retry.call_count == 0
+
+    assert caplog.messages == []
+    assert mock_retry.call_count == 0
 
 
 def test_ses_callback_should_update_multiple_notification_status_sent(
@@ -153,35 +153,47 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
     assert send_mock.called
 
 
-def test_ses_callback_should_set_status_to_temporary_failure(client, notify_db_session, sample_email_template, mocker):
+def test_ses_callback_should_set_status_to_temporary_failure(
+    client, notify_db_session, sample_email_template, mocker, caplog
+):
     send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
-    mock_logger = mocker.patch("app.celery.process_ses_receipts_tasks.current_app.logger.info")
-    notification = create_notification(
-        template=sample_email_template,
-        status="sending",
-        reference="ref",
-    )
-    assert get_notification_by_id(notification.id).status == "sending"
-    assert process_ses_results(ses_soft_bounce_callback(reference="ref"))
-    assert get_notification_by_id(notification.id).status == "temporary-failure"
+
+    with caplog.at_level("INFO"):
+        notification = create_notification(
+            template=sample_email_template,
+            status="sending",
+            reference="ref",
+        )
+        assert get_notification_by_id(notification.id).status == "sending"
+        assert process_ses_results(ses_soft_bounce_callback(reference="ref"))
+        assert get_notification_by_id(notification.id).status == "temporary-failure"
+
     assert send_mock.called
-    assert f"SES bounce for notification ID {notification.id}: " in mock_logger.call_args[0][0]
+    assert f"SES bounce for notification ID {notification.id}" in caplog.messages
 
 
-def test_ses_callback_should_set_status_to_permanent_failure(client, notify_db_session, sample_email_template, mocker):
+def test_ses_callback_should_set_status_to_permanent_failure(
+    client, notify_db_session, sample_email_template, mocker, caplog
+):
     send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
-    mock_logger = mocker.patch("app.celery.process_ses_receipts_tasks.current_app.logger.info")
-    notification = create_notification(
-        template=sample_email_template,
-        status="sending",
-        reference="ref",
-    )
 
-    assert get_notification_by_id(notification.id).status == "sending"
-    assert process_ses_results(ses_hard_bounce_callback(reference="ref"))
-    assert get_notification_by_id(notification.id).status == "permanent-failure"
+    with caplog.at_level("INFO"):
+        notification = create_notification(
+            template=sample_email_template,
+            status="sending",
+            reference="ref",
+        )
+        assert get_notification_by_id(notification.id).status == "sending"
+        assert process_ses_results(ses_hard_bounce_callback(reference="ref"))
+        assert get_notification_by_id(notification.id).status == "permanent-failure"
+
     assert send_mock.called
-    assert f"SES bounce for notification ID {notification.id}: " in mock_logger.call_args[0][0]
+
+    bounce_record = next(
+        filter(lambda r: r.message == f"SES bounce for notification ID {notification.id}", caplog.records), None
+    )
+    assert bounce_record is not None
+    assert hasattr(bounce_record, "bounce_message")
 
 
 def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email_template, mocker):

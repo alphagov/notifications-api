@@ -33,19 +33,16 @@ def test_make_mmg_callback(notify_api, rmock):
     assert json.loads(rmock.request_history[0].text)["MSISDN"] == "07700900001"
 
 
-def test_callback_logs_on_api_call_failure(notify_api, rmock, mocker):
+def test_callback_logs_on_api_call_failure(notify_api, rmock, caplog):
     endpoint = "http://localhost:6011/notifications/sms/mmg"
     rmock.request("POST", endpoint, json={"error": "something went wrong"}, status_code=500)
-    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.error")
 
-    with pytest.raises(HTTPError):
+    with pytest.raises(HTTPError), caplog.at_level("ERROR"):
         send_sms_response("mmg", "1234", "07700900001")
 
     assert rmock.called
     assert rmock.request_history[0].url == endpoint
-    mock_logger.assert_called_once_with(
-        "API POST request on http://localhost:6011/notifications/sms/mmg failed with status 500"
-    )
+    assert "API POST request on http://localhost:6011/notifications/sms/mmg failed with status 500" in caplog.messages
 
 
 @pytest.mark.parametrize("phone_number", ["07700900001", "07700900002", "07700900003", "07700900236"])

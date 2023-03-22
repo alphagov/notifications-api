@@ -75,48 +75,49 @@ def test_send_sms_should_not_switch_providers_on_non_provider_failure(sample_not
     assert mock_dao_reduce_sms_provider_priority.called is False
 
 
-def test_should_retry_and_log_warning_if_SmsClientResponseException_for_deliver_sms_task(sample_notification, mocker):
+def test_should_retry_and_log_warning_if_SmsClientResponseException_for_deliver_sms_task(
+    sample_notification, mocker, caplog
+):
     mocker.patch(
         "app.delivery.send_to_providers.send_sms_to_provider",
         side_effect=SmsClientResponseException("something went wrong"),
     )
     mocker.patch("app.celery.provider_tasks.deliver_sms.retry")
-    mock_logger_warning = mocker.patch("app.celery.tasks.current_app.logger.warning")
 
-    deliver_sms(sample_notification.id)
+    with caplog.at_level("WARNING"):
+        deliver_sms(sample_notification.id)
 
     assert provider_tasks.deliver_sms.retry.called is True
     assert sample_notification.status == "created"
-    assert mock_logger_warning.called
+    assert f"SMS notification delivery for id: {sample_notification.id} failed" in caplog.messages
 
 
 def test_should_retry_and_log_exception_for_non_SmsClientResponseException_exceptions_for_deliver_sms_task(
-    sample_notification, mocker
+    sample_notification, mocker, caplog
 ):
     mocker.patch("app.delivery.send_to_providers.send_sms_to_provider", side_effect=Exception("something went wrong"))
     mocker.patch("app.celery.provider_tasks.deliver_sms.retry")
-    mock_logger_exception = mocker.patch("app.celery.tasks.current_app.logger.exception")
 
-    deliver_sms(sample_notification.id)
+    with caplog.at_level("ERROR"):
+        deliver_sms(sample_notification.id)
 
     assert provider_tasks.deliver_sms.retry.called is True
     assert sample_notification.status == "created"
-    assert mock_logger_exception.called
+    assert f"SMS notification delivery for id: {sample_notification.id} failed" in caplog.messages
 
 
-def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(sample_notification, mocker):
+def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(sample_notification, mocker, caplog):
     mocker.patch("app.delivery.send_to_providers.send_sms_to_provider", side_effect=Exception("EXPECTED"))
     mocker.patch("app.celery.provider_tasks.deliver_sms.retry", side_effect=MaxRetriesExceededError())
-    mock_logger_exception = mocker.patch("app.celery.tasks.current_app.logger.exception")
 
-    with pytest.raises(NotificationTechnicalFailureException) as e:
+    with pytest.raises(NotificationTechnicalFailureException) as e, caplog.at_level("ERROR"):
         deliver_sms(sample_notification.id)
     assert str(sample_notification.id) in str(e.value)
 
     provider_tasks.deliver_sms.retry.assert_called_with(queue="retry-tasks", countdown=0)
 
     assert sample_notification.status == "technical-failure"
-    assert mock_logger_exception.called
+    assert f"SMS notification delivery for id: {sample_notification.id} failed" in caplog.messages
 
 
 # end of deliver_sms task tests, now deliver_email task tests
@@ -175,21 +176,21 @@ def test_should_technical_error_and_not_retry_if_EmailClientNonRetryableExceptio
     assert sample_notification.status == "technical-failure"
 
 
-def test_should_retry_and_log_exception_for_deliver_email_task(sample_notification, mocker):
+def test_should_retry_and_log_exception_for_deliver_email_task(sample_notification, mocker, caplog):
     error_response = {"Error": {"Code": "SomeError", "Message": "some error message from amazon", "Type": "Sender"}}
     ex = ClientError(error_response=error_response, operation_name="opname")
     mocker.patch("app.delivery.send_to_providers.send_email_to_provider", side_effect=AwsSesClientException(str(ex)))
     mocker.patch("app.celery.provider_tasks.deliver_email.retry")
-    mock_logger_exception = mocker.patch("app.celery.tasks.current_app.logger.exception")
 
-    deliver_email(sample_notification.id)
+    with caplog.at_level("ERROR"):
+        deliver_email(sample_notification.id)
 
     assert provider_tasks.deliver_email.retry.called is True
     assert sample_notification.status == "created"
-    assert mock_logger_exception.called
+    assert f"RETRY: Email notification {sample_notification.id} failed" in caplog.messages
 
 
-def test_if_ses_send_rate_throttle_then_should_retry_and_log_warning(sample_notification, mocker):
+def test_if_ses_send_rate_throttle_then_should_retry_and_log_warning(sample_notification, mocker, caplog):
     error_response = {"Error": {"Code": "Throttling", "Message": "Maximum sending rate exceeded.", "Type": "Sender"}}
     ex = ClientError(error_response=error_response, operation_name="opname")
     mocker.patch(
@@ -197,15 +198,14 @@ def test_if_ses_send_rate_throttle_then_should_retry_and_log_warning(sample_noti
         side_effect=AwsSesClientThrottlingSendRateException(str(ex)),
     )
     mocker.patch("app.celery.provider_tasks.deliver_email.retry")
-    mock_logger_warning = mocker.patch("app.celery.tasks.current_app.logger.warning")
-    mock_logger_exception = mocker.patch("app.celery.tasks.current_app.logger.exception")
 
-    deliver_email(sample_notification.id)
+    with caplog.at_level("WARNING"):
+        deliver_email(sample_notification.id)
 
     assert provider_tasks.deliver_email.retry.called is True
     assert sample_notification.status == "created"
-    assert not mock_logger_exception.called
-    assert mock_logger_warning.called
+    assert not any(r.levelname == "ERROR" for r in caplog.records)
+    assert f"RETRY: Email notification {sample_notification.id} was rate limited by SES" in caplog.messages
 
 
 @freeze_time("2020-02-17 16:00:00")
@@ -341,12 +341,10 @@ def test_deliver_letter_when_file_is_not_in_S3_logs_an_error(mocker, sample_lett
     ],
 )
 def test_deliver_letter_retries_when_there_is_a_retryable_exception(
-    mocker, sample_letter_template, sample_organisation, exception_type, error_class
+    mocker, sample_letter_template, sample_organisation, exception_type, error_class, caplog
 ):
     mocker.patch("app.celery.provider_tasks.dvla_client.send_letter", side_effect=error_class)
     mock_retry = mocker.patch("app.celery.provider_tasks.deliver_letter.retry")
-    mock_logger_exception = mocker.patch("app.celery.tasks.current_app.logger.exception")
-    mock_logger_warning = mocker.patch("app.celery.tasks.current_app.logger.warning")
 
     letter = create_notification(
         template=sample_letter_template,
@@ -371,25 +369,27 @@ def test_deliver_letter_retries_when_there_is_a_retryable_exception(
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF", Body=b"file"),
 
-    deliver_letter(letter.id)
+    with caplog.at_level("WARNING"):
+        deliver_letter(letter.id)
 
     assert mock_retry.called is True
     assert letter.status == NOTIFICATION_CREATED
 
     if exception_type == "retryable_error":
-        assert mock_logger_exception.called
+        assert any(r.levelname == "ERROR" for r in caplog.records)
+        assert f"RETRY: Letter notification {letter.id} failed" in caplog.messages
     else:
-        assert mock_logger_warning.called
+        assert any(r.levelname == "WARNING" for r in caplog.records)
+        assert f"RETRY: Letter notification {letter.id} was rate limited by DVLA" in caplog.messages
 
 
 @mock_s3
 @freeze_time("2020-02-17 16:00:00")
 def test_deliver_letter_logs_a_warning_when_the_print_request_is_duplicate(
-    mocker, sample_letter_template, sample_organisation
+    mocker, sample_letter_template, sample_organisation, caplog
 ):
     mocker.patch("app.celery.provider_tasks.dvla_client.send_letter", side_effect=DvlaDuplicatePrintRequestException())
     mock_retry = mocker.patch("app.celery.provider_tasks.deliver_letter.retry")
-    mock_logger_warning = mocker.patch("app.celery.tasks.current_app.logger.warning")
 
     letter = create_notification(
         template=sample_letter_template,
@@ -414,11 +414,12 @@ def test_deliver_letter_logs_a_warning_when_the_print_request_is_duplicate(
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3.put_object(Bucket=pdf_bucket, Key="2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF", Body=b"file"),
 
-    deliver_letter(letter.id)
+    with caplog.at_level("WARNING"):
+        deliver_letter(letter.id)
 
     assert not mock_retry.called
     assert letter.status == NOTIFICATION_CREATED
-    assert mock_logger_warning.called
+    assert f"Duplicate deliver_letter task called for notification {letter.id}" in caplog.messages
 
 
 @mock_s3
