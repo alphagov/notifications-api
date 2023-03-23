@@ -3,6 +3,7 @@ import os
 from unittest import mock
 
 import pytest
+from celery.schedules import crontab
 
 from app import config, db
 from app.config import QueueNames
@@ -84,6 +85,27 @@ def test_queue_names_all_queues_correct():
             QueueNames.BROADCASTS,
         ]
     ) == set(queues)
+
+
+def test_no_celery_beat_tasks_scheduled_over_midnight_between_timezones(notify_api):
+    badly_scheduled_tasks = []
+
+    for task_name, task_info in notify_api.config["CELERY"]["beat_schedule"].items():
+        schedule = task_info["schedule"]
+        if not isinstance(schedule, crontab):
+            continue
+
+        # If a task is scheduled with hour='*' or hour='1-12', then `schedule.hour` is a set containing all of the
+        # relevant integer values. So if we remove `23` and are left with an empty set, we know that this task could
+        # only possibly run between 11pm and midnight UTC.
+        if not (schedule.hour - {23}):
+            badly_scheduled_tasks.append(task_name)
+
+    assert not badly_scheduled_tasks, (
+        "These tasks are only scheduled to run between 11:00pm and midnight UTC. "
+        "Anything that runs between 11pm and midnight UTC will run on the same day when Europe/London is GMT, "
+        "and the next day when Europe/London is BST. This could cause processing errors."
+    )
 
 
 def test_sqlalchemy_config(notify_api, notify_db_session):

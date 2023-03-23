@@ -197,7 +197,7 @@ class Config(object):
             "visibility_timeout": 310,
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
         },
-        "timezone": "Europe/London",
+        "timezone": "UTC",
         "imports": [
             "app.celery.tasks",
             "app.celery.scheduled_tasks",
@@ -324,7 +324,7 @@ class Config(object):
             },
             "raise-alert-if-no-letter-ack-file": {
                 "task": "raise-alert-if-no-letter-ack-file",
-                "schedule": crontab(hour=23, minute=00),
+                "schedule": crontab(hour=22, minute=45),
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "trigger-link-tests": {
