@@ -170,6 +170,11 @@ def register_blueprint(application):
     from app.user.rest import user_blueprint
     from app.webauthn.rest import webauthn_blueprint
 
+    def ensure_user_id_attribute_before_request():
+        g.user_id = None
+
+    application.before_request(ensure_user_id_attribute_before_request)
+
     service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix="/service")
 
