@@ -256,6 +256,9 @@ MOBILE_TYPE = "mobile"
 # Guest lists
 GUEST_LIST_RECIPIENT_TYPE = [MOBILE_TYPE, EMAIL_TYPE]
 
+# Document download constants
+DEFAULT_DOCUMENT_DOWNLOAD_RETENTION_PERIOD = "26 weeks"
+
 
 # S3 tags
 class Retention:
