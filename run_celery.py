@@ -1,14 +1,8 @@
 #!/usr/bin/env python
 
-import os
+from app.performance import init_performance_monitoring
 
-if (environment := os.getenv("NOTIFY_ENVIRONMENT")) in {"development", "preview", "staging"} and os.getenv(
-    "NEW_RELIC_ENABLED"
-) == "1":
-    import newrelic.agent
-
-    # Expects NEW_RELIC_LICENSE_KEY set in environment as well.
-    newrelic.agent.initialize("newrelic.ini", environment=environment, ignore_errors=False)
+init_performance_monitoring()
 
 # import prometheus before any other code. If gds_metrics is imported first it will write a prometheus file to disk
 # that will never be read from (since we don't have prometheus celery stats). If prometheus is imported first,
@@ -23,11 +17,11 @@ import prometheus_client  # noqa
 # I've seen a lot lately:
 #   ImportError: pycurl: libcurl link-time version (7.76.1) is older than compile-time version (7.85.0)
 # See https://github.com/alphagov/notifications-api/pull/3687 for a little more of the investigation/notes
-import pycurl  # noqa: F401
+import pycurl  # noqa
 
 # notify_celery is referenced from manifest_delivery_base.yml, and cannot be removed
 from app import create_app, notify_celery  # noqa
-from app.notify_api_flask_app import NotifyApiFlaskApp
+from app.notify_api_flask_app import NotifyApiFlaskApp  # noqa
 
 application = NotifyApiFlaskApp("delivery")
 create_app(application)

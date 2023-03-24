@@ -4,7 +4,8 @@
     'disk_quota': '2G',
     'sqlalchemy_pool_size': 15,
     'additional_env_vars': {
-      'STATSD_HOST': None
+      'STATSD_HOST': None,
+      'SENTRY_DSN': SENTRY_DSN_API
     },
     'routes': {
       'preview': ['api.notify.works', 'notify-api-preview.apps.internal'],
