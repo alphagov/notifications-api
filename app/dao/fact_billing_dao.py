@@ -38,10 +38,10 @@ from app.models import (
 from app.utils import get_london_midnight_in_utc
 
 
-def fetch_usage_for_all_services_sms(start_date, end_date):
+def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None):
     # ASSUMPTION: start_date and end_date are in the same financial year
     year = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
-    ft_billing_subquery = _fetch_usage_for_all_services_sms_query(year).subquery()
+    ft_billing_subquery = _fetch_usage_for_all_services_sms_query(year, organisation_id=organisation_id).subquery()
 
     free_allowance = func.max(ft_billing_subquery.c.free_allowance)
     free_allowance_left = func.min(ft_billing_subquery.c.free_allowance_left)
@@ -68,6 +68,7 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
         .filter(
             ft_billing_subquery.c.bst_date >= start_date,
             ft_billing_subquery.c.bst_date <= end_date,
+            *[Service.organisation_id == organisation_id] if organisation_id else [],
         )
         .group_by(
             Organisation.name,
@@ -79,7 +80,7 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
     )
 
 
-def _fetch_usage_for_all_services_sms_query(year):
+def _fetch_usage_for_all_services_sms_query(year, organisation_id=None):
     """
     See docstring for _fetch_usage_for_service_sms()
     """
@@ -148,7 +149,7 @@ def _fetch_usage_for_all_services_sms_query(year):
                 FactBilling.notification_type == SMS_TYPE,
             ),
         )
-    )
+    ).filter(*([Service.organisation_id == organisation_id] if organisation_id else []))
 
 
 def fetch_usage_for_all_services_letter(start_date, end_date):
@@ -791,8 +792,8 @@ def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
 
 def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     year_start, year_end = get_financial_year_dates(financial_year)
-    return fetch_usage_for_all_services_sms(year_start, year_end).filter(
-        Service.organisation_id == organisation_id, Service.restricted.is_(False)
+    return fetch_usage_for_all_services_sms(year_start, year_end, organisation_id=organisation_id).filter(
+        Service.restricted.is_(False)
     )
 
 
