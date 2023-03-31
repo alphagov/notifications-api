@@ -147,6 +147,15 @@ def _fetch_usage_for_all_services_sms_query(year, organisation_id=None):
                 FactBilling.bst_date >= year_start,
                 FactBilling.bst_date <= year_end,
                 FactBilling.notification_type == SMS_TYPE,
+                *(
+                    [
+                        FactBilling.service_id.in_(
+                            db.session.query(Service.id).filter(Service.organisation_id == organisation_id)
+                        )
+                    ]
+                    if organisation_id
+                    else []
+                ),
             ),
         )
     ).filter(*([Service.organisation_id == organisation_id] if organisation_id else []))
