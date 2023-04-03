@@ -1,15 +1,16 @@
 import os
+from functools import partial
 
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 
-def sentry_sampler(sampling_context):
+def sentry_sampler(sampling_context, sample_rate=0):
     if sampling_context["parent_sampled"]:
         return 1
 
-    return 0
+    return sample_rate
 
 
 def init_performance_monitoring():
@@ -29,16 +30,17 @@ def init_performance_monitoring():
             sentry_sdk.init(
                 dsn=sentry_dsn,
                 environment=environment,
+                debug=False,
                 integrations=[
                     FlaskIntegration(),
                     CeleryIntegration(),
                     SqlalchemyIntegration(),
                 ],
-                # Disable options while we're only testing the performance monitoring
-                # traces_sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 0.01)),
-                sample_rate=0.0,  # Disable error reporting
-                attach_stacktrace=False,
-                traces_sampler=sentry_sampler,
-                send_default_pii=False,
-                request_bodies="never",
+                sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 1.0)),  # Error sampling rate
+                attach_stacktrace=False,  # Attach stacktraces to _all_ events (ie even log messages)
+                send_default_pii=False,  # Don't include any default PII (false by default, here for explicitness)
+                request_bodies="never",  # Include request body (eg POST payload) in sentry errors
+                traces_sampler=partial(
+                    sentry_sampler, sample_rate=float(os.getenv("SENTRY_TRACING_SAMPLE_RATE", 0))
+                ),  # Custom decision-maker for sampling traces
             )
