@@ -1,10 +1,6 @@
 import os
 from functools import partial
 
-from sentry_sdk.integrations.celery import CeleryIntegration
-from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-
 
 def sentry_sampler(sampling_context, sample_rate=0):
     if sampling_context["parent_sampled"]:
@@ -25,11 +21,6 @@ def init_performance_monitoring():
                 dsn=sentry_dsn,
                 environment=environment,
                 debug=False,
-                integrations=[
-                    FlaskIntegration(),
-                    CeleryIntegration(),
-                    SqlalchemyIntegration(),
-                ],
                 sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 1.0)),  # Error sampling rate
                 attach_stacktrace=False,  # Attach stacktraces to _all_ events (ie even log messages)
                 send_default_pii=False,  # Don't include any default PII (false by default, here for explicitness)
