@@ -689,6 +689,45 @@ def test_fetch_usage_for_all_services_sms(
     assert row_1["cost"] == Decimal("0.486")
 
 
+def test_fetch_usage_for_all_services_sms_with_organisation_id_filter(
+    sample_service,
+    sample_organisation,
+    sample_service_billing_fy_2016,
+    notify_db_session,
+):
+    dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
+    results = fetch_usage_for_all_services_sms(
+        datetime(2016, 4, 1), datetime(2017, 3, 31), organisation_id=sample_organisation.id
+    ).all()
+
+    assert len(results) == 1
+    row_1 = results[0]
+
+    assert row_1["organisation_name"] == sample_organisation.name
+    assert row_1["organisation_id"] == sample_organisation.id
+    assert row_1["service_name"] == sample_service.name
+    assert row_1["service_id"] == sample_service.id
+    assert row_1["free_allowance"] == 1
+    assert row_1["free_allowance_left"] == 0
+    assert row_1["chargeable_units"] == 4
+    assert row_1["charged_units"] == 3
+    assert row_1["cost"] == Decimal("0.486")
+
+
+def test_fetch_usage_for_all_services_sms_with_organisation_id_filter_for_a_different_organisation(
+    sample_service,
+    sample_organisation,
+    sample_service_billing_fy_2016,
+    notify_db_session,
+):
+    dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
+    results = fetch_usage_for_all_services_sms(
+        datetime(2016, 4, 1), datetime(2017, 3, 31), organisation_id="aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb"
+    ).all()
+
+    assert len(results) == 0
+
+
 def test_fetch_usage_for_all_services_variable_rates(
     sample_service, sample_organisation, sample_service_billing_fy_2018_variable_rates, notify_db_session
 ):
