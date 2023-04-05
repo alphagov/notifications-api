@@ -2,7 +2,6 @@ from datetime import datetime
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
-from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.postal_address import PostalAddress
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -95,14 +94,7 @@ def deliver_letter(self, notification_id):
     # 55 retries with exponential backoff gives a retry time of approximately 4 hours
     current_app.logger.info(f"Start sending letter for notification id: {notification_id}")
     notification = notifications_dao.get_notification_by_id(notification_id, _raise=True)
-
-    if notification.template.is_precompiled_letter:
-        postal_address = PostalAddress(notification.to, allow_international_letters=True)
-    else:
-        postal_address = PostalAddress.from_personalisation(
-            InsensitiveDict(notification.personalisation),
-            allow_international_letters=True,
-        )
+    postal_address = PostalAddress(notification.to, allow_international_letters=True)
 
     try:
         file_bytes = find_letter_pdf_in_s3(notification).get()["Body"].read()

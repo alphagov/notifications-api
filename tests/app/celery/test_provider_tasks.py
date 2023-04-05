@@ -33,7 +33,6 @@ from app.constants import (
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
-    PRECOMPILED_TEMPLATE_NAME,
 )
 from app.exceptions import NotificationTechnicalFailureException
 from tests.app.db import create_notification
@@ -225,54 +224,22 @@ def test_update_letter_to_sending(sample_letter_template):
 
 @mock_s3
 @freeze_time("2020-02-17 16:00:00")
-@pytest.mark.parametrize(
-    "is_precompiled, to_field, personalisation, expected_postal_address",
-    [
-        (
-            True,
-            "A. User\nMy Street,\nLondon,\nSW1 1AA",
-            {"address_line_1": "Provided as PDF"},
-            PostalAddress("A. User\nMy Street,\nLondon,\nSW1 1AA", True),
-        ),
-        (
-            False,
-            "A. User",
-            {
-                "addressline1": "A. User",
-                "addressline2": "My Street",
-                "addressline3": "London",
-                "addressline4": "SW1 1AA",
-                "addressline5": None,
-                "addressline6": None,
-                "addressline7": None,
-            },
-            PostalAddress("A. User\nMy Street\nLondon\nSW1 1AA\n\n\n", True),
-        ),
-    ],
-)
 def test_deliver_letter(
     mocker,
     sample_letter_template,
     sample_organisation,
-    is_precompiled,
-    to_field,
-    personalisation,
-    expected_postal_address,
 ):
     mock_send_letter = mocker.patch("app.celery.provider_tasks.dvla_client.send_letter")
 
     letter = create_notification(
         template=sample_letter_template,
-        to_field=to_field,
-        personalisation=personalisation,
+        to_field="A. User\nMy Street,\nLondon,\nSW1 1AA",
+        personalisation={"address_line_1": "Provided as PDF"},
         status=NOTIFICATION_CREATED,
         reference="ref1",
         created_at=datetime.now(),
     )
     sample_letter_template.service.organisation = sample_organisation
-    if is_precompiled:
-        letter.template.hidden = True
-        letter.template.name = PRECOMPILED_TEMPLATE_NAME
 
     pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
@@ -284,7 +251,7 @@ def test_deliver_letter(
     mock_send_letter.assert_called_once_with(
         notification_id=str(letter.id),
         reference="ref1",
-        address=expected_postal_address,
+        address=PostalAddress("A. User\nMy Street\nLondon\nSW1 1AA\n\n\n", True),
         postage="second",
         service_id=str(letter.service_id),
         organisation_id=str(sample_organisation.id),
