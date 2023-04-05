@@ -40,7 +40,7 @@ class InvalidRequest(Exception):
         return str(self.to_dict())
 
 
-def register_errors(blueprint):
+def register_errors(blueprint):  # noqa: C901
     @blueprint.errorhandler(InvalidEmailError)
     def invalid_format(error):
         # Please not that InvalidEmailError is re-raised for InvalidEmail or InvalidPhone,

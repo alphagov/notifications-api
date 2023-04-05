@@ -45,7 +45,7 @@ from tests.app.db import (
 
 
 class TestFindByUUID:
-    def load_sample_data(self, request, model):
+    def load_sample_data(self, request, model):  # noqa: C901
         if model == Organisation:
             request.getfixturevalue("sample_organisation")
         elif model == Service:

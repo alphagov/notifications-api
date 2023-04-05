@@ -12,6 +12,7 @@ select = [
     "F",  # pyflakes
     "I",  # isort
     "B",  # flake8-bugbear
+    "C90",  # mccabe cyclomatic complexity
 ]
 ignore = []
 exclude = [
