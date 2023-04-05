@@ -190,9 +190,9 @@ def check_notification_content_is_not_empty(template_with_content):
 def validate_template(template_id, personalisation, service, notification_type, check_char_count=True):
     try:
         template = SerialisedTemplate.from_id_and_service_id(template_id, service.id)
-    except NoResultFound:
+    except NoResultFound as e:
         message = "Template not found"
-        raise BadRequestError(message=message, fields=[{"template": message}])
+        raise BadRequestError(message=message, fields=[{"template": message}]) from e
 
     check_template_is_for_notification_type(notification_type, template.template_type)
     check_template_is_active(template)
@@ -225,31 +225,31 @@ def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
     if reply_to_id:
         try:
             return dao_get_reply_to_by_id(reply_to_id=reply_to_id, service_id=service_id).email_address
-        except NoResultFound:
+        except NoResultFound as e:
             message = "email_reply_to_id {} does not exist in database for service id {}".format(
                 reply_to_id, service_id
             )
-            raise BadRequestError(message=message)
+            raise BadRequestError(message=message) from e
 
 
 def check_service_sms_sender_id(service_id, sms_sender_id, notification_type):
     if sms_sender_id:
         try:
             return dao_get_service_sms_senders_by_id(service_id, sms_sender_id).sms_sender
-        except NoResultFound:
+        except NoResultFound as e:
             message = "sms_sender_id {} does not exist in database for service id {}".format(sms_sender_id, service_id)
-            raise BadRequestError(message=message)
+            raise BadRequestError(message=message) from e
 
 
 def check_service_letter_contact_id(service_id, letter_contact_id, notification_type):
     if letter_contact_id:
         try:
             return dao_get_letter_contact_by_id(service_id, letter_contact_id).contact_block
-        except NoResultFound:
+        except NoResultFound as e:
             message = "letter_contact_id {} does not exist in database for service id {}".format(
                 letter_contact_id, service_id
             )
-            raise BadRequestError(message=message)
+            raise BadRequestError(message=message) from e
 
 
 def validate_address(service, letter_data):

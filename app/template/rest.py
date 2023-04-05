@@ -67,8 +67,8 @@ def validate_parent_folder(template_json):
             return dao_get_template_folder_by_id_and_service_id(
                 template_folder_id=template_json.pop("parent_folder_id"), service_id=template_json["service"]
             )
-        except NoResultFound:
-            raise InvalidRequest("parent_folder_id not found", status_code=400)
+        except NoResultFound as e:
+            raise InvalidRequest("parent_folder_id not found", status_code=400) from e
     else:
         return None
 
@@ -253,7 +253,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                     notification_id, type(e), e
                 ),
                 status_code=500,
-            )
+            ) from e
 
         page_number = page if page else "1"
         content = base64.b64encode(pdf_file).decode("utf-8")
@@ -283,7 +283,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                         notification_id, type(e), e
                     ),
                     status_code=500,
-                )
+                ) from e
 
         if path:
             url = current_app.config["TEMPLATE_PREVIEW_API_HOST"] + path + query_string

@@ -11,6 +11,7 @@ select = [
     "W",  # pycodestyle
     "F",  # pyflakes
     "I",  # isort
+    "B",  # flake8-bugbear
 ]
 ignore = []
 exclude = [

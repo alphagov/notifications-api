@@ -340,7 +340,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
                     retention_period=retention_period,
                 )
             except DocumentDownloadError as e:
-                raise BadRequestError(message=e.message, status_code=e.status_code)
+                raise BadRequestError(message=e.message, status_code=e.status_code) from e
 
     return personalisation_data, len(file_keys)
 
@@ -409,8 +409,8 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
     try:
         status = NOTIFICATION_PENDING_VIRUS_CHECK
         letter_content = base64.b64decode(letter_data["content"])
-    except ValueError:
-        raise BadRequestError(message="Cannot decode letter content (invalid base64 encoding)", status_code=400)
+    except ValueError as e:
+        raise BadRequestError(message="Cannot decode letter content (invalid base64 encoding)", status_code=400) from e
 
     with transaction():
         notification = create_letter_notification(

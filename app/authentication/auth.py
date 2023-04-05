@@ -89,14 +89,14 @@ def requires_auth():
 
     try:
         service_id = uuid.UUID(issuer)
-    except Exception:
-        raise AuthError("Invalid token: service id is not the right data type", 403)
+    except Exception as e:
+        raise AuthError("Invalid token: service id is not the right data type", 403) from e
 
     try:
         with AUTH_DB_CONNECTION_DURATION_SECONDS.time():
             service = SerialisedService.from_id(service_id)
-    except NoResultFound:
-        raise AuthError("Invalid token: service not found", 403)
+    except NoResultFound as e:
+        raise AuthError("Invalid token: service not found", 403) from e
 
     if not service.api_keys:
         raise AuthError("Invalid token: service has no API keys", 403, service_id=service.id)
@@ -129,10 +129,10 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
                 + f"` (token.iat: {e.token.get('iat')}, us: {int(time.time())}) "
                 + f"[X-Amz-Cf-Id: {request.headers.get('x-amz-cf-id')}]"
             )
-            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
-        except TokenAlgorithmError:
+            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id) from e
+        except TokenAlgorithmError as e:
             err_msg = "Invalid token: algorithm used is not HS256"
-            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
+            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id) from e
         except TokenDecodeError:
             # we attempted to validate the token but it failed meaning it was not signed using this api key.
             # Let's try the next one
@@ -140,9 +140,9 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
             # are children of `TokenDecodeError`) as these should cause an auth error immediately rather than
             # continue on to check the next API key
             continue
-        except TokenError:
+        except TokenError as e:
             # General error when trying to decode and validate the token
-            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service_id, api_key_id=api_key.id)
+            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service_id, api_key_id=api_key.id) from e
 
         if api_key.expiry_date:
             raise AuthError("Invalid token: API key revoked", 403, service_id=service_id, api_key_id=api_key.id)
@@ -169,8 +169,8 @@ def _get_auth_token(req):
 def _get_token_issuer(auth_token):
     try:
         issuer = get_token_issuer(auth_token)
-    except TokenIssuerError:
-        raise AuthError("Invalid token: iss field not provided", 403)
-    except TokenDecodeError:
-        raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403)
+    except TokenIssuerError as e:
+        raise AuthError("Invalid token: iss field not provided", 403) from e
+    except TokenDecodeError as e:
+        raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403) from e
     return issuer

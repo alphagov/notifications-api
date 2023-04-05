@@ -33,8 +33,8 @@ from app.utils import DATETIME_FORMAT_NO_TIMEZONE, get_template_instance
 def _validate_positive_number(value, msg="Not a positive integer"):
     try:
         page_int = int(value)
-    except ValueError:
-        raise ValidationError(msg)
+    except ValueError as e:
+        raise ValidationError(msg) from e
     if page_int < 1:
         raise ValidationError(msg)
 
@@ -138,7 +138,7 @@ class UserSchema(BaseSchema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(str(e))
+            raise ValidationError(str(e)) from e
 
     @validates("mobile_number")
     def validate_mobile_number(self, value):
@@ -146,7 +146,7 @@ class UserSchema(BaseSchema):
             if value is not None:
                 validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
-            raise ValidationError("Invalid phone number: {}".format(error))
+            raise ValidationError("Invalid phone number: {}".format(error)) from error
 
 
 class UserUpdateAttributeSchema(BaseSchema):
@@ -178,7 +178,7 @@ class UserUpdateAttributeSchema(BaseSchema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(str(e))
+            raise ValidationError(str(e)) from e
 
     @validates("mobile_number")
     def validate_mobile_number(self, value):
@@ -186,7 +186,7 @@ class UserUpdateAttributeSchema(BaseSchema):
             if value is not None:
                 validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
-            raise ValidationError("Invalid phone number: {}".format(error))
+            raise ValidationError("Invalid phone number: {}".format(error)) from error
 
     @validates_schema(pass_original=True)
     def check_unknown_fields(self, data, original_data, **kwargs):
@@ -552,7 +552,7 @@ class SmsNotificationSchema(NotificationSchema):
         try:
             validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
-            raise ValidationError("Invalid phone number: {}".format(error))
+            raise ValidationError("Invalid phone number: {}".format(error)) from error
 
     @post_load
     def format_phone_number(self, item, **kwargs):
@@ -569,7 +569,7 @@ class EmailNotificationSchema(NotificationSchema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(str(e))
+            raise ValidationError(str(e)) from e
 
 
 class SmsTemplateNotificationSchema(SmsNotificationSchema):
@@ -687,7 +687,7 @@ class InvitedUserSchema(BaseSchema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(str(e))
+            raise ValidationError(str(e)) from e
 
 
 class EmailDataSchema(ma.Schema):
@@ -709,7 +709,7 @@ class EmailDataSchema(ma.Schema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(str(e))
+            raise ValidationError(str(e)) from e
 
 
 class NotificationsFilterSchema(ma.Schema):

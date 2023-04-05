@@ -52,13 +52,13 @@ def deliver_sms(self, notification_id):
                 self.retry(queue=QueueNames.RETRY, countdown=0)
             else:
                 self.retry(queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
+        except self.MaxRetriesExceededError as e:
             message = (
                 "RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for notification {}. "
                 "Notification has been updated to technical-failure".format(notification_id)
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
-            raise NotificationTechnicalFailureException(message)
+            raise NotificationTechnicalFailureException(message) from e
 
 
 @notify_celery.task(bind=True, name="deliver_email", max_retries=48, default_retry_delay=300)
@@ -80,14 +80,14 @@ def deliver_email(self, notification_id):
                 current_app.logger.exception(f"RETRY: Email notification {notification_id} failed")
 
             self.retry(queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
+        except self.MaxRetriesExceededError as e:
             message = (
                 "RETRY FAILED: Max retries reached. "
                 "The task send_email_to_provider failed for notification {}. "
                 "Notification has been updated to technical-failure".format(notification_id)
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
-            raise NotificationTechnicalFailureException(message)
+            raise NotificationTechnicalFailureException(message) from e
 
 
 @notify_celery.task(bind=True, name="deliver_letter", max_retries=55, retry_backoff=True, retry_backoff_max=300)

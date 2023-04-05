@@ -53,11 +53,11 @@ def validate_schema_date_with_hour(instance):
                 raise ValidationError("datetime can not be in the past")
             if dt > datetime.utcnow() + timedelta(hours=24):
                 raise ValidationError("datetime can only be 24 hours in the future")
-        except ParseError:
+        except ParseError as e:
             raise ValidationError(
                 "datetime format is invalid. It must be a valid ISO8601 date time format, "
                 "https://en.wikipedia.org/wiki/ISO_8601"
-            )
+            ) from e
     return True
 
 
@@ -100,11 +100,11 @@ def validate_schema_datetime(instance):
     if isinstance(instance, str):
         try:
             iso8601.parse_date(instance)
-        except ParseError:
+        except ParseError as e:
             raise ValidationError(
                 "datetime format is invalid. It must be a valid ISO8601 date time format, "
                 "https://en.wikipedia.org/wiki/ISO_8601"
-            )
+            ) from e
     return True
 
 

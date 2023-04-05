@@ -335,9 +335,9 @@ def get_api_keys(service_id, key_id=None):
             api_keys = [get_model_api_keys(service_id=service_id, id=key_id)]
         else:
             api_keys = get_model_api_keys(service_id=service_id)
-    except NoResultFound:
+    except NoResultFound as e:
         error = "API key not found for id: {}".format(service_id)
-        raise InvalidRequest(error, status_code=404)
+        raise InvalidRequest(error, status_code=404) from e
 
     return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True)), 200
 
@@ -592,8 +592,8 @@ def get_monthly_notification_stats(service_id):
 
     try:
         year = int(request.args.get("year", "NaN"))
-    except ValueError:
-        raise InvalidRequest("Year must be a number", status_code=400)
+    except ValueError as e:
+        raise InvalidRequest("Year must be a number", status_code=400) from e
 
     start_date, end_date = get_financial_year(year)
 
@@ -681,7 +681,7 @@ def update_guest_list(service_id):
         current_app.logger.exception(e)
         dao_rollback()
         msg = "{} is not a valid email address or phone number".format(str(e))
-        raise InvalidRequest(msg, 400)
+        raise InvalidRequest(msg, 400) from e
     else:
         dao_add_and_commit_guest_list_contacts(guest_list_objects)
         return "", 204
@@ -723,8 +723,8 @@ def get_monthly_template_usage(service_id):
             )
 
         return jsonify(stats=stats), 200
-    except ValueError:
-        raise InvalidRequest("Year must be a number", status_code=400)
+    except ValueError as e:
+        raise InvalidRequest("Year must be a number", status_code=400) from e
 
 
 @service_blueprint.route("/<uuid:service_id>/send-notification", methods=["POST"])
@@ -934,11 +934,11 @@ def create_service_data_retention(service_id):
             notification_type=form.get("notification_type"),
             days_of_retention=form.get("days_of_retention"),
         )
-    except IntegrityError:
+    except IntegrityError as e:
         raise InvalidRequest(
             message="Service already has data retention for {} notification type".format(form.get("notification_type")),
             status_code=400,
-        )
+        ) from e
 
     return jsonify(result=new_data_retention.serialize()), 201
 

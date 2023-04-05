@@ -18,10 +18,10 @@ def get_template_statistics_for_service_by_day(service_id):
     whole_days = request.args.get("whole_days", request.args.get("limit_days", ""))
     try:
         whole_days = int(whole_days)
-    except ValueError:
+    except ValueError as e:
         error = "{} is not an integer".format(whole_days)
         message = {"whole_days": [error]}
-        raise InvalidRequest(message, status_code=400)
+        raise InvalidRequest(message, status_code=400) from e
 
     if whole_days < 0 or whole_days > 7:
         raise InvalidRequest({"whole_days": ["whole_days must be between 0 and 7"]}, status_code=400)

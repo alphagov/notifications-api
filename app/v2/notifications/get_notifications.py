@@ -50,8 +50,8 @@ def get_pdf_for_notification(notification_id):
 
     try:
         pdf_data, metadata = get_letter_pdf_and_metadata(notification)
-    except Exception:
-        raise PDFNotReadyError()
+    except Exception as e:
+        raise PDFNotReadyError() from e
 
     return send_file(path_or_file=BytesIO(pdf_data), mimetype="application/pdf")
 

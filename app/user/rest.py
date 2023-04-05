@@ -178,10 +178,10 @@ def verify_user_password(user_id):
 
     try:
         txt_pwd = request.get_json()["password"]
-    except KeyError:
+    except KeyError as e:
         message = "Required field missing data"
         errors = {"password": [message]}
-        raise InvalidRequest(errors, status_code=400)
+        raise InvalidRequest(errors, status_code=400) from e
 
     if user_to_verify.check_password(txt_pwd):
         reset_failed_login_count(user_to_verify)

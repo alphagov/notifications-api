@@ -82,19 +82,21 @@ class CBCProxyClientBase(ABC):
         self._send_link_test(self.lambda_name)
         self._send_link_test(self.failover_lambda_name)
 
+    @abstractmethod
     def _send_link_test(
         self,
         lambda_name,
     ):
         pass
 
+    @abstractmethod
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
     ):
         pass
 
-    # We have not implementated updating a broadcast
-    def update_and_send_broadcast(
+    # We have not implemented updating a broadcast
+    def update_and_send_broadcast(  # noqa: B027
         self,
         identifier,
         previous_provider_messages,
@@ -108,6 +110,7 @@ class CBCProxyClientBase(ABC):
     ):
         pass
 
+    @abstractmethod
     def cancel_broadcast(
         self, identifier, previous_provider_messages, headline, description, areas, sent, expires, message_number=None
     ):

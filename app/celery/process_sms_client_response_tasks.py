@@ -39,11 +39,11 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
             f"{client_name} callback returned status of {notification_status}"
             f"({status}): {detailed_status}({detailed_status_code}) for reference: {provider_reference}"
         )
-    except KeyError:
+    except KeyError as e:
         _process_for_status(
             notification_status="technical-failure", client_name=client_name, provider_reference=provider_reference
         )
-        raise ClientException(f"{client_name} callback failed: status {status} not found.")
+        raise ClientException(f"{client_name} callback failed: status {status} not found.") from e
 
     _process_for_status(
         notification_status=notification_status,

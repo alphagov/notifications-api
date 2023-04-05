@@ -71,9 +71,9 @@ class FiretextClient(SmsClient):
                 json.loads(response.text)
                 if response.json()["code"] != 0:
                     raise ValueError("Expected 'code' to be '0'")
-            except (ValueError, AttributeError):
-                raise SmsClientResponseException("Invalid response JSON")
-        except RequestException:
-            raise SmsClientResponseException("Request failed")
+            except (ValueError, AttributeError) as e:
+                raise SmsClientResponseException("Invalid response JSON") from e
+        except RequestException as e:
+            raise SmsClientResponseException("Request failed") from e
 
         return response
