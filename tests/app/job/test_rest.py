@@ -120,7 +120,7 @@ def test_cancel_letter_job_does_not_call_cancel_if_can_letter_job_be_cancelled_r
 
     mock_get_job.assert_called_once_with(job.service_id, str(job.id))
     mock_can_letter_job_be_cancelled.assert_called_once_with(job)
-    mock_dao_cancel_letter_job.assert_not_called
+    assert mock_dao_cancel_letter_job.call_count == 0
 
     assert response["message"] == "Sorry, it's too late, letters have already been sent."
 

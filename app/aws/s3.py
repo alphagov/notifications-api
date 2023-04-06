@@ -18,7 +18,7 @@ def get_s3_object(bucket_name, file_location):
 def file_exists(bucket_name, file_location):
     try:
         # try and access metadata of object
-        get_s3_object(bucket_name, file_location).metadata
+        get_s3_object(bucket_name, file_location).metadata  # noqa: B018
         return True
     except botocore.exceptions.ClientError as e:
         if e.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
