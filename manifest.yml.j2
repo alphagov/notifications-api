@@ -4,8 +4,7 @@
     'disk_quota': '2G',
     'sqlalchemy_pool_size': 15,
     'additional_env_vars': {
-      'STATSD_HOST': None,
-      'SENTRY_DSN': SENTRY_DSN_API
+      'STATSD_HOST': None
     },
     'routes': {
       'preview': ['api.notify.works', 'notify-api-preview.apps.internal'],
@@ -157,10 +156,9 @@ applications:
 
       DVLA_EMAIL_ADDRESSES: '{{ DVLA_EMAIL_ADDRESSES | tojson  }}'
 
-      NEW_RELIC_APP_NAME: '{{ environment }}.{{ CF_APP }}'
-      NEW_RELIC_LICENSE_KEY: '{{ NEW_RELIC_LICENSE_KEY }}'
-
       DVLA_API_TLS_CIPHERS: '{{ DVLA_API_TLS_CIPHERS }}'
+
+      SENTRY_DSN: '{{ NOTIFICATIONS_API_SENTRY_DSN }}'
 
       {% for key, value in app.get('additional_env_vars', {}).items() %}
       {{key}}: '{{value}}'

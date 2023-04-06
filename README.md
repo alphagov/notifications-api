@@ -34,10 +34,6 @@ export NOTIFICATION_QUEUE_PREFIX='YOUR_OWN_PREFIX'
 export FLASK_APP=application.py
 export FLASK_DEBUG=1
 export WERKZEUG_DEBUG_PIN=off
-
-export NEW_RELIC_ENABLED=[0|1]
-export NEW_RELIC_LICENSE_KEY=<ask for it>>
-export NEW_RELIC_APP_NAME=development.notify-api
 "> environment.sh
 ```
 
