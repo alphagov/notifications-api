@@ -1,12 +1,4 @@
 import os
-from functools import partial
-
-
-def sentry_sampler(sampling_context, sample_rate=0):
-    if sampling_context["parent_sampled"]:
-        return 1
-
-    return sample_rate
 
 
 def init_performance_monitoring():
@@ -24,11 +16,14 @@ def init_performance_monitoring():
             dsn=sentry_dsn,
             environment=environment,
             debug=False,
-            sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 1.0)),  # Error sampling rate
-            attach_stacktrace=False,  # Attach stacktraces to _all_ events (ie even log messages)
-            send_default_pii=False,  # Don't include any default PII (false by default, here for explicitness)
-            request_bodies="never",  # Include request body (eg POST payload) in sentry errors
-            traces_sampler=partial(
-                sentry_sampler, sample_rate=float(os.getenv("SENTRY_TRACING_SAMPLE_RATE", 0))
-            ),  # Custom decision-maker for sampling traces
+            # Error sampling rate
+            sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 1.0)),
+            # Attach stacktraces to _all_ events (ie even log messages)
+            attach_stacktrace=False,
+            # Don't include any default PII (false by default, here for explicitness)
+            send_default_pii=False,
+            # Include request body (eg POST payload) in sentry errors
+            request_bodies="never",
+            # Float in range 0-1 representing % of requests to trace
+            traces_sample_rate=float(os.getenv("SENTRY_TRACING_SAMPLE_RATE", 0)),
         )
