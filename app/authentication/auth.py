@@ -36,7 +36,10 @@ class AuthError(Exception):
         self.api_key_id = api_key_id
 
     def __str__(self):
-        return "AuthError({message}, {code}, service_id={service_id}, api_key_id={api_key_id})".format(**self.__dict__)
+        return (
+            f"AuthError({self.short_message}, {self.code}, "
+            f"service_id={self.service_id}, api_key_id={self.api_key_id})"
+        )
 
     def to_dict_v2(self):
         return {"status_code": self.code, "errors": [{"error": "AuthError", "message": self.short_message}]}

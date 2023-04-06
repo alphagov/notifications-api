@@ -37,7 +37,7 @@ class InvalidRequest(Exception):
         }
 
     def __str__(self):
-        return str(self.to_dict())
+        return f"InvalidRequest: status_code={self.status_code}; message={self.message}"
 
 
 def register_errors(blueprint):  # noqa: C901
