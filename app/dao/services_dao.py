@@ -283,7 +283,7 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 @autocommit
 @version_class(Service)
-def dao_create_service(
+def dao_create_service(  # noqa: C901
     service,
     user,
     service_id=None,

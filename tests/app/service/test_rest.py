@@ -781,7 +781,6 @@ def test_update_service_letter_branding(client, notify_db_session, sample_servic
 
 def test_update_service_remove_letter_branding(client, notify_db_session, sample_service):
     letter_branding = create_letter_branding(name="test brand", filename="test-brand")
-    sample_service
     data = {"letter_branding": str(letter_branding.id)}
 
     auth_header = create_admin_authorization_header()

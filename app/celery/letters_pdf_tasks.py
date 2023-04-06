@@ -92,14 +92,14 @@ def get_pdf_for_templated_letter(self, notification_id):
                 f"RETRY: calling create-letter-pdf task for notification {notification_id} failed"
             )
             self.retry(exc=e, queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
+        except self.MaxRetriesExceededError as e:
             message = (
                 f"RETRY FAILED: Max retries reached. "
                 f"The task create-letter-pdf failed for notification id {notification_id}. "
                 f"Notification has been updated to technical-failure"
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
-            raise NotificationTechnicalFailureException(message)
+            raise NotificationTechnicalFailureException(message) from e
 
 
 @notify_celery.task(bind=True, name="update-billable-units-for-letter", max_retries=15, default_retry_delay=300)
@@ -334,14 +334,14 @@ def sanitise_letter(self, filename):
                 "RETRY: calling sanitise_letter task for notification {} failed".format(notification.id)
             )
             self.retry(queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
+        except self.MaxRetriesExceededError as e:
             message = (
                 "RETRY FAILED: Max retries reached. "
                 "The task sanitise_letter failed for notification {}. "
                 "Notification has been updated to technical-failure".format(notification.id)
             )
             update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
-            raise NotificationTechnicalFailureException(message)
+            raise NotificationTechnicalFailureException(message) from e
 
 
 @notify_celery.task(bind=True, name="process-sanitised-letter", max_retries=15, default_retry_delay=300)
@@ -414,28 +414,28 @@ def process_sanitised_letter(self, sanitise_data):
         # We've moved the sanitised PDF from the sanitise bucket, but still need to delete the original file:
         original_pdf_object.delete()
 
-    except BotoClientError:
+    except BotoClientError as e:
         # Boto exceptions are likely to be caused by the file(s) being in the wrong place, so retrying won't help -
         # we'll need to manually investigate
         current_app.logger.exception(
             f"Boto error when processing sanitised letter for notification {notification.id} (file {filename})"
         )
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
-        raise NotificationTechnicalFailureException
+        raise NotificationTechnicalFailureException from e
     except Exception:
         try:
             current_app.logger.exception(
                 "RETRY: calling process_sanitised_letter task for notification {} failed".format(notification.id)
             )
             self.retry(queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
+        except self.MaxRetriesExceededError as e:
             message = (
                 "RETRY FAILED: Max retries reached. "
                 "The task process_sanitised_letter failed for notification {}. "
                 "Notification has been updated to technical-failure".format(notification.id)
             )
             update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
-            raise NotificationTechnicalFailureException(message)
+            raise NotificationTechnicalFailureException(message) from e
 
 
 def _move_invalid_letter_and_update_status(
@@ -450,12 +450,12 @@ def _move_invalid_letter_and_update_status(
         update_letter_pdf_status(
             reference=notification.reference, status=NOTIFICATION_VALIDATION_FAILED, billable_units=0
         )
-    except BotoClientError:
+    except BotoClientError as e:
         current_app.logger.exception(
             "Error when moving letter with id {} to invalid PDF bucket".format(notification.id)
         )
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
-        raise NotificationTechnicalFailureException
+        raise NotificationTechnicalFailureException from e
 
 
 @notify_celery.task(name="process-virus-scan-failed")

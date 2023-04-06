@@ -46,8 +46,8 @@ def get_platform_stats():
 def validate_date_format(date_to_validate):
     try:
         validated_date = datetime.strptime(date_to_validate, "%Y-%m-%d").date()
-    except ValueError:
-        raise InvalidRequest(message="Input must be a date in the format: YYYY-MM-DD", status_code=400)
+    except ValueError as e:
+        raise InvalidRequest(message="Input must be a date in the format: YYYY-MM-DD", status_code=400) from e
     return validated_date
 
 

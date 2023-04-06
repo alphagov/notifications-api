@@ -58,12 +58,12 @@ class DocumentDownloadClient:
             # we don't want to tell users about that, so anything that isn't a 400 (virus scan failed or file type
             # unrecognised) should be raised as a 500 internal server error here.
             if e.response is None:
-                raise Exception(f"Unhandled document download error: {repr(e)}")
+                raise Exception(f"Unhandled document download error: {repr(e)}") from e
             elif e.response.status_code == 400:
                 error = DocumentDownloadError.from_exception(e)
                 current_app.logger.info("Document download request failed with error: {}".format(error.message))
-                raise error
+                raise error from e
             else:
-                raise Exception(f"Unhandled document download error: {e.response.text}")
+                raise Exception(f"Unhandled document download error: {e.response.text}") from e
 
         return response.json()["document"]["url"]

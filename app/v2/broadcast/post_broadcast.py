@@ -107,11 +107,11 @@ def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
         broadcast_message = dao_get_broadcast_message_by_references_and_service_id(
             references_to_original_broadcast, service_id
         )
-    except MultipleResultsFound:
+    except MultipleResultsFound as e:
         raise BadRequestError(
             message="Multiple alerts found - unclear which one to cancel",
             status_code=400,
-        )
+        ) from e
 
     if broadcast_message.status == BroadcastStatusType.PENDING_APPROVAL:
         new_status = BroadcastStatusType.REJECTED

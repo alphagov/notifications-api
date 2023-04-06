@@ -119,9 +119,9 @@ def get_jobs_by_service(service_id):
     if request.args.get("limit_days"):
         try:
             limit_days = int(request.args["limit_days"])
-        except ValueError:
+        except ValueError as e:
             errors = {"limit_days": ["{} is not an integer".format(request.args["limit_days"])]}
-            raise InvalidRequest(errors, status_code=400)
+            raise InvalidRequest(errors, status_code=400) from e
     else:
         limit_days = None
 
@@ -146,8 +146,8 @@ def create_job(service_id):
     data.update({"service": service_id})
     try:
         data.update(**get_job_metadata_from_s3(service_id, data["id"]))
-    except KeyError:
-        raise InvalidRequest({"id": ["Missing data for required field."]}, status_code=400)
+    except KeyError as e:
+        raise InvalidRequest({"id": ["Missing data for required field."]}, status_code=400) from e
 
     data["template"] = data.pop("template_id")
     template = dao_get_template_by_id(data["template"])

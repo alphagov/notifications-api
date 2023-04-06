@@ -357,7 +357,6 @@ def test_check_is_message_too_long_passes_for_long_email(sample_service):
     t = create_template(service=sample_service, content="a" * email_character_count, template_type="email")
     template = templates_dao.dao_get_template_by_id_and_service_id(template_id=t.id, service_id=t.service_id)
     template_with_content = get_template_instance(template=template.__dict__, values={})
-    template_with_content.values
     with pytest.raises(BadRequestError) as e:
         check_is_message_too_long(template_with_content)
     assert e.value.status_code == 400

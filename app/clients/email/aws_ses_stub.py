@@ -29,7 +29,7 @@ class AwsSesStubClient(EmailClient):
 
         except Exception as e:
             self.statsd_client.incr("clients.ses_stub.error")
-            raise AwsSesStubClientException(str(e))
+            raise AwsSesStubClientException(str(e)) from e
         else:
             elapsed_time = monotonic() - start_time
             current_app.logger.info("AWS SES stub request finished in {}".format(elapsed_time))

@@ -63,8 +63,8 @@ def add_inbound_number_to_service(service_id):
         try:
             available_number = dao_get_available_inbound_numbers()[0]
             inbound_number_id = available_number.id
-        except IndexError:
-            raise Exception("There are no available inbound numbers")
+        except IndexError as e:
+            raise Exception("There are no available inbound numbers") from e
 
     new_inbound_number = dao_allocate_number_for_service(service_id=service_id, inbound_number_id=inbound_number_id)
 

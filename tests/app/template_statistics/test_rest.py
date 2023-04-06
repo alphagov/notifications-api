@@ -8,6 +8,7 @@ from freezegun import freeze_time
 from app.utils import DATETIME_FORMAT
 from tests.app.db import create_ft_notification_status, create_notification
 
+
 # get_template_statistics_for_service_by_day
 
 

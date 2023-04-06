@@ -55,8 +55,8 @@ def create_template_folder(service_id):
         try:
             parent_folder = dao_get_template_folder_by_id_and_service_id(data["parent_id"], service_id)
             users_with_permission = parent_folder.users
-        except NoResultFound:
-            raise InvalidRequest("parent_id not found", status_code=400)
+        except NoResultFound as e:
+            raise InvalidRequest("parent_id not found", status_code=400) from e
     else:
         users_with_permission = dao_get_active_service_users(service_id)
     template_folder = TemplateFolder(
@@ -116,9 +116,9 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
     for template_folder_id in data["folders"]:
         try:
             template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
-        except NoResultFound:
+        except NoResultFound as e:
             msg = "No folder found with id {} for service {}".format(template_folder_id, service_id)
-            raise InvalidRequest(msg, status_code=400)
+            raise InvalidRequest(msg, status_code=400) from e
         _validate_folder_move(target_template_folder, target_template_folder_id, template_folder, template_folder_id)
 
         template_folder.parent = target_template_folder
@@ -126,11 +126,11 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
     for template_id in data["templates"]:
         try:
             template = dao_get_template_by_id_and_service_id(template_id, service_id)
-        except NoResultFound:
+        except NoResultFound as e:
             msg = "Could not move to folder: No template found with id {} for service {}".format(
                 template_id, service_id
             )
-            raise InvalidRequest(msg, status_code=400)
+            raise InvalidRequest(msg, status_code=400) from e
 
         if template.archived:
             current_app.logger.info("Could not move to folder: Template {} is archived. (Skipping)".format(template_id))

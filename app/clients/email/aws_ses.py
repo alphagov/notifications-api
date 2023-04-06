@@ -98,18 +98,18 @@ class AwsSesClient(EmailClient):
 
             # http://docs.aws.amazon.com/ses/latest/DeveloperGuide/api-error-codes.html
             if e.response["Error"]["Code"] == "InvalidParameterValue":
-                raise EmailClientNonRetryableException(e.response["Error"]["Message"])
+                raise EmailClientNonRetryableException(e.response["Error"]["Message"]) from e
             elif (
                 e.response["Error"]["Code"] == "Throttling"
                 and e.response["Error"]["Message"] == "Maximum sending rate exceeded."
             ):
-                raise AwsSesClientThrottlingSendRateException(str(e))
+                raise AwsSesClientThrottlingSendRateException(str(e)) from e
             else:
                 self.statsd_client.incr("clients.ses.error")
-                raise AwsSesClientException(str(e))
+                raise AwsSesClientException(str(e)) from e
         except Exception as e:
             self.statsd_client.incr("clients.ses.error")
-            raise AwsSesClientException(str(e))
+            raise AwsSesClientException(str(e)) from e
         else:
             elapsed_time = monotonic() - start_time
             current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))

@@ -110,15 +110,15 @@ def validate_service_invitation_token(token):
         invited_user_id = check_token(
             token, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"], max_age_seconds
         )
-    except SignatureExpired:
+    except SignatureExpired as e:
         errors = {
             "invitation": "Your invitation to GOV.UK Notify has expired. "
             "Please ask the person that invited you to send you another one"
         }
-        raise InvalidRequest(errors, status_code=400)
-    except BadData:
+        raise InvalidRequest(errors, status_code=400) from e
+    except BadData as e:
         errors = {"invitation": "Something’s wrong with this link. Make sure you’ve copied the whole thing."}
-        raise InvalidRequest(errors, status_code=400)
+        raise InvalidRequest(errors, status_code=400) from e
 
     invited_user = get_invited_user_by_id(invited_user_id)
     return jsonify(data=invited_user_schema.dump(invited_user)), 200

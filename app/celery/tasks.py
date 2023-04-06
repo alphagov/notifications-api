@@ -467,8 +467,8 @@ def parse_dvla_file(filename):
 
     try:
         return process_updates_from_file(response_file_content)
-    except TypeError:
-        raise DVLAException("DVLA response file: {} has an invalid format".format(filename))
+    except TypeError as e:
+        raise DVLAException("DVLA response file: {} has an invalid format".format(filename)) from e
 
 
 def get_billing_date_in_bst_from_filename(filename):

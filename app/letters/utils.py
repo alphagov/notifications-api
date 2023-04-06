@@ -47,10 +47,10 @@ def find_letter_pdf_in_s3(notification):
     bucket = s3.Bucket(bucket_name)
     try:
         item = next(x for x in bucket.objects.filter(Prefix=prefix))
-    except StopIteration:
+    except StopIteration as e:
         raise LetterPDFNotFound(
             f"File not found in bucket {bucket_name} with prefix {prefix}",
-        )
+        ) from e
     return item
 
 
