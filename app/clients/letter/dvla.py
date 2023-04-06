@@ -263,8 +263,6 @@ class DVLAClient:
     ):
         """
         Sends a letter to the DVLA for printing
-
-        address should be normalised address lines, e.g. ['A. User', 'London', 'SW1 1AA']
         """
 
         try:
