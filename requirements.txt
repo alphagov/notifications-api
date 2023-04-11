@@ -224,7 +224,7 @@ s3transfer==0.6.0
     # via
     #   awscli
     #   boto3
-sentry-sdk==1.17.0
+sentry-sdk==1.19.1
     # via -r requirements.in
 shapely==1.8.4
     # via notifications-utils
