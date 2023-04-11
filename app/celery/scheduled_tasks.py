@@ -535,7 +535,7 @@ def weekly_dwp_report():
             body="Please find attached your weekly report.",
             attachments=attachments,
         ),
-        due_at=convert_utc_to_bst(datetime.utcnow() + timedelta(days=7)),
+        due_at=convert_utc_to_bst(datetime.utcnow() + timedelta(days=7, hours=3, minutes=10)),
     )
 
 
