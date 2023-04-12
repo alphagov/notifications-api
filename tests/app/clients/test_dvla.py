@@ -11,6 +11,7 @@ import boto3
 import freezegun
 import jwt
 import pytest
+import pytz
 import requests
 import trustme
 from flask import current_app
@@ -163,13 +164,13 @@ def test_jwt_token_calls_authenticate_if_expiry_time_passed(dvla_client, rmock):
     dvla_client._jwt_token = jwt.encode(payload={"exp": prev_token_expiry_time}, key="foo")
     dvla_client._jwt_expires_at = prev_token_expiry_time
 
-    with freezegun.freeze_time(datetime.fromtimestamp(sixty_one_seconds_before_expiry)):
+    with freezegun.freeze_time(datetime.fromtimestamp(sixty_one_seconds_before_expiry, tz=pytz.utc)):
         assert dvla_client.jwt_token == old_token
 
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
     mock_authenticate = rmock.request("POST", endpoint, json={"id-token": next_token}, status_code=200)
 
-    with freezegun.freeze_time(datetime.fromtimestamp(fifty_nine_seconds_before_expiry)):
+    with freezegun.freeze_time(datetime.fromtimestamp(fifty_nine_seconds_before_expiry, tz=pytz.utc)):
         assert dvla_client.jwt_token != old_token
         assert dvla_client._jwt_expires_at == one_hour_later
 
