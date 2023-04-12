@@ -1204,7 +1204,7 @@ class TestWeeklyDWPReport:
                     ],
                     public=True,
                 ),
-                due_at=datetime(2022, 1, 8, 9, 0, 0),
+                due_at=datetime(2022, 1, 8, 12, 10, 0),
             )
         ]
         csv_file = mock_zendesk_update_ticket.call_args_list[0][1]["comment"].attachments[0].filedata
