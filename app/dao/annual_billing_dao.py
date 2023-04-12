@@ -43,57 +43,72 @@ def set_default_free_allowance_for_service(service, year_start=None):
             2020: 250_000,
             2021: 150_000,
             2022: 40_000,
+            2023: 40_000,
         },
         "local": {
             2020: 25_000,
             2021: 25_000,
             2022: 20_000,
+            2023: 20_000,
         },
         "nhs_central": {
             2020: 250_000,
             2021: 150_000,
             2022: 40_000,
+            2023: 40_000,
         },
         "nhs_local": {
             2020: 25_000,
             2021: 25_000,
             2022: 20_000,
+            2023: 20_000,
         },
         "nhs_gp": {
             2020: 25_000,
             2021: 10_000,
             2022: 10_000,
+            2023: 10_000,
         },
         "emergency_service": {
             2020: 25_000,
             2021: 25_000,
             2022: 20_000,
+            2023: 20_000,
         },
         "school_or_college": {
             2020: 25_000,
             2021: 10_000,
             2022: 10_000,
+            2023: 10_000,
         },
         "other": {
             2020: 25_000,
             2021: 10_000,
             2022: 10_000,
+            2023: 10_000,
         },
     }
     if not year_start:
         year_start = get_current_financial_year_start_year()
-    # handle cases where the year is less than 2020 or greater than 2021
+
+    use_allowance_from = year_start
+
     if year_start < 2020:
-        year_start = 2020
-    if year_start > 2022:
-        year_start = 2022
-    if service.organisation_type:
-        free_allowance = default_free_sms_fragment_limits[service.organisation_type][year_start]
-    else:
-        current_app.logger.info(
-            f"no organisation type for service {service.id}. Using other default of "
-            f"{default_free_sms_fragment_limits['other'][year_start]}"
+        use_allowance_from = 2020
+    elif year_start > 2023:
+        current_app.logger.error(
+            f"Annual allowances have not been updated for the current year ({year_start}). Using 2023 allowances."
         )
-        free_allowance = default_free_sms_fragment_limits["other"][year_start]
+        use_allowance_from = 2023
+
+    if service.organisation_type:
+        free_allowance = default_free_sms_fragment_limits[service.organisation_type][use_allowance_from]
+
+    else:
+        current_app.logger.error(
+            f"no organisation type for service {service.id}. Using other default of "
+            f"{default_free_sms_fragment_limits['other'][use_allowance_from]}"
+        )
+        free_allowance = default_free_sms_fragment_limits["other"][use_allowance_from]
 
     return dao_create_or_update_annual_billing_for_year(service.id, free_allowance, year_start)

@@ -74,6 +74,7 @@ def test_dao_update_annual_billing_for_future_years(notify_db_session, sample_se
         ("nhs_local", 2022, 20000),
         ("emergency_service", 2022, 20000),
         ("central", 2023, 40000),
+        ("central", 2030, 40000),
     ],
 )
 def test_set_default_free_allowance_for_service(notify_db_session, org_type, year, expected_default):
@@ -86,6 +87,7 @@ def test_set_default_free_allowance_for_service(notify_db_session, org_type, yea
 
     assert len(annual_billing) == 1
     assert annual_billing[0].service_id == service.id
+    assert annual_billing[0].financial_year_start == year
     assert annual_billing[0].free_sms_fragment_limit == expected_default
 
 
