@@ -24,6 +24,7 @@ from app.celery.tasks import save_api_email, save_api_sms
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.constants import (
+    DEFAULT_DOCUMENT_DOWNLOAD_RETENTION_PERIOD,
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -328,8 +329,10 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
         if simulated:
             personalisation_data[key] = document_download_client.get_upload_url(service.id) + "/test-document"
         else:
-            confirm_email = personalisation_data[key].get("confirm_email_before_download") or False
-            retention_period = personalisation_data[key].get("retention_period", None)
+            confirm_email = personalisation_data[key].get("confirm_email_before_download", True)
+            retention_period = (
+                personalisation_data[key].get("retention_period") or DEFAULT_DOCUMENT_DOWNLOAD_RETENTION_PERIOD
+            )
 
             try:
                 personalisation_data[key] = document_download_client.upload_document(

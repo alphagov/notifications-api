@@ -889,20 +889,22 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(
 
 
 @pytest.mark.parametrize(
-    "extra",
+    "extra, expect_email_confirmation, expect_retention_period",
     (
-        {},
-        {"is_csv": None},
-        {"is_csv": False},
-        {"is_csv": True},
-        {"confirm_email_before_download": False},
-        {"confirm_email_before_download": True},
-        {"retention_period": None},
-        {"retention_period": "1 week"},
-        {"retention_period": "4 weeks"},
+        ({}, True, "26 weeks"),
+        ({"is_csv": None}, True, "26 weeks"),
+        ({"is_csv": False}, True, "26 weeks"),
+        ({"is_csv": True}, True, "26 weeks"),
+        ({"confirm_email_before_download": False}, False, "26 weeks"),
+        ({"confirm_email_before_download": True}, True, "26 weeks"),
+        ({"retention_period": None}, True, "26 weeks"),
+        ({"retention_period": "1 week"}, True, "1 week"),
+        ({"retention_period": "4 weeks"}, True, "4 weeks"),
     ),
 )
-def test_post_notification_with_document_upload(api_client_request, notify_db_session, mocker, extra):
+def test_post_notification_with_document_upload(
+    api_client_request, notify_db_session, mocker, extra, expect_email_confirmation, expect_retention_period
+):
     service = create_service(service_permissions=[EMAIL_TYPE])
     service.contact_link = "contact.me@gov.uk"
     template = create_template(
@@ -928,7 +930,7 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
 
     assert validate(resp_json, post_email_response) == resp_json
 
-    confirmation_email = data["email_address"] if extra.get("confirm_email_before_download") else None
+    confirmation_email = data["email_address"] if expect_email_confirmation else None
 
     assert document_download_mock.upload_document.call_args_list == [
         call(
@@ -936,14 +938,14 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
             "abababab",
             extra.get("is_csv"),
             confirmation_email=confirmation_email,
-            retention_period=extra.get("retention_period"),
+            retention_period=expect_retention_period,
         ),
         call(
             str(service.id),
             "cdcdcdcd",
             extra.get("is_csv"),
             confirmation_email=confirmation_email,
-            retention_period=extra.get("retention_period"),
+            retention_period=expect_retention_period,
         ),
     ]
 
