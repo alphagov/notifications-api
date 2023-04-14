@@ -56,6 +56,7 @@ from app.models import (
     InvitedOrganisationUser,
     InvitedUser,
     Job,
+    LetterAttachment,
     LetterBranding,
     LetterRate,
     Notification,
@@ -1262,3 +1263,14 @@ def create_webauthn_credential(
     db.session.add(webauthn_credential)
     db.session.commit()
     return webauthn_credential
+
+
+def create_letter_attachment(created_by_id):
+    letter_attachment = LetterAttachment(
+        created_by_id=created_by_id,
+        original_filename="abc.pdf",
+        page_count=1,
+    )
+    db.session.add(letter_attachment)
+    db.session.commit()
+    return letter_attachment

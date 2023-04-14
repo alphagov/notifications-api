@@ -1,17 +1,27 @@
 import uuid
 
 from app.dao.templates_dao import dao_get_template_by_id
+from tests.app.db import create_letter_attachment, create_user
 
 
-def test_get_letter_attachment_by_id_returns_object():
-    pass
+def test_get_letter_attachment_by_id_returns_correct_object(admin_request, notify_db_session):
+    user = create_user()
+    attachment = create_letter_attachment(created_by_id=user.id)
+
+    response = admin_request.get(
+        "letter_attachment.get_letter_attachment", _expected_status=200, letter_attachment_id=attachment.id
+    )
+
+    assert response["created_by_id"] == str(user.id)
 
 
-def test_get_letter_attachment_by_id_returns_404_if_uuid_doesnt_exist():
-    pass
+def test_get_letter_attachment_by_id_returns_404_if_uuid_doesnt_exist(admin_request, notify_db_session):
+    admin_request.get(
+        "letter_attachment.get_letter_attachment", _expected_status=404, letter_attachment_id=uuid.uuid4()
+    )
 
 
-def test_create_letter_attachment_creates_object():
+def test_create_letter_attachment_creates_a_db_entry_for_the_attachment():
     pass
 
 

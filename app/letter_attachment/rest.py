@@ -13,6 +13,7 @@ register_errors(letter_attachment_blueprint)
 @letter_attachment_blueprint.route("/letter_attachment/<uuid:letter_attachment_id>", methods=["GET"])
 def get_letter_attachment(letter_attachment_id):
     letter_attachment = LetterAttachment.query.get_or_404(letter_attachment_id)
+
     return jsonify(letter_attachment.serialize())
 
 
