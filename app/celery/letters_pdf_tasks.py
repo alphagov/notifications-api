@@ -1,5 +1,6 @@
 from base64 import urlsafe_b64encode
 from datetime import datetime, timedelta
+from datetime import time as dt_time
 from hashlib import sha512
 
 import dateutil
@@ -130,7 +131,7 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
 
 @notify_celery.task(name="collate-letter-pdfs-to-be-sent")
 @cronitor("collate-letter-pdfs-to-be-sent")
-def collate_letter_pdfs_to_be_sent(print_run_deadline_utc=None):
+def collate_letter_pdfs_to_be_sent(print_run_deadline_utc=None, check_expected_execution_window=True):
     """
     Finds all letters which are still waiting to be sent to DVLA for printing
 
@@ -140,11 +141,24 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline_utc=None):
 
     You can specify a specific print_run_deadline_utc as an ISO format datetime if you want to. This is primarily
     useful for load testing or running locally. Make sure to consider UTC to BST.
+
+    Set `check_expected_execution_window` to False if you are running manually - otherwise the internals of this task
+    will assert that it is being run between 5:50 and 6:49pm local time. This is because we schedule the task twice in
+    celery-beat; once at 4:50pm UTC and once at 5:50pm UTC. We only want to actually process this job automatically
+    once - at 5:50pm Europe/London local time.
+    NOTE: this argument has no effect if you have specified a custom `print_run_deadline_utc`.
     """
     if print_run_deadline_utc:
         print_run_deadline = convert_utc_to_bst(dateutil.parser.parse(print_run_deadline_utc))
     else:
         print_run_date = convert_utc_to_bst(datetime.utcnow())
+
+        if check_expected_execution_window and not (dt_time(17, 50) <= print_run_date.time() < dt_time(18, 50)):
+            current_app.logger.info(
+                "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window"
+            )
+            return
+
         if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
             print_run_date = print_run_date - timedelta(days=1)
 

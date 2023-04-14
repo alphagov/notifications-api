@@ -5,6 +5,7 @@ from unittest.mock import ANY, call
 
 import boto3
 import pytest
+import pytz
 from botocore.exceptions import ClientError
 from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
@@ -443,7 +444,7 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, time_to_run_task, sa
 
     with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
         with freeze_time(time_to_run_task):
-            collate_letter_pdfs_to_be_sent()
+            collate_letter_pdfs_to_be_sent(check_expected_execution_window=False)
 
     mock_send_email_to_dvla.assert_called_once_with(
         [(1, 1, "europe"), (1, 1, "first"), (1, 1, "rest-of-world"), (4, 4, "second")], datetime(2020, 2, 17).date()
@@ -509,6 +510,110 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, time_to_run_task, sa
         queue="process-ftp-tasks",
         compression="zlib",
     )
+
+
+@mock_s3
+@pytest.mark.parametrize(
+    "time_to_run_task, call_kwargs, should_run",
+    [
+        # GMT - too early, check on by default - run cancelled
+        ("2020-02-17 16:50:00Z", dict(), False),
+        # GMT - too early, check forced on - run cancelled
+        ("2020-02-17 16:50:00Z", dict(check_expected_execution_window=True), False),
+        # GMT - too early, check forced off - runs
+        ("2020-02-17 16:50:00Z", dict(check_expected_execution_window=False), True),
+        # GMT - just in between the two allowed execution windows, check on by default - run cancelled
+        ("2020-02-17 17:49:30Z", dict(), False),
+        # GMT - just in between the two allowed execution windows, check forced on - run cancelled
+        ("2020-02-17 17:49:30Z", dict(check_expected_execution_window=True), False),
+        # GMT - just in between the two allowed execution windows, check forced off - runs
+        ("2020-02-17 17:49:30Z", dict(check_expected_execution_window=False), True),
+        # GMT - on schedule, check on by default - runs
+        ("2020-02-17 17:50:00Z", dict(), True),
+        # GMT - on schedule, check forced on
+        ("2020-02-17 17:50:00Z", dict(check_expected_execution_window=True), True),
+        # GMT - on schedule, check forced off
+        ("2020-02-17 17:50:00Z", dict(check_expected_execution_window=False), True),
+        # GMT - on schedule at the end of the window, check on by default - runs
+        ("2020-02-17 18:49:00Z", dict(), True),
+        # GMT - on schedule at the end of the window, check forced on
+        ("2020-02-17 18:49:00Z", dict(check_expected_execution_window=True), True),
+        # GMT - on schedule at the end of the window, check forced off
+        ("2020-02-17 18:49:00Z", dict(check_expected_execution_window=False), True),
+        # BST - on schedule, check on by default
+        ("2020-06-01 16:50:00Z", dict(), True),
+        # BST - on schedule, check forced on
+        ("2020-06-01 16:50:00Z", dict(check_expected_execution_window=True), True),
+        # BST - on schedule, check forced off
+        ("2020-06-01 16:50:00Z", dict(check_expected_execution_window=False), True),
+        # BST - too late, check on by default - run cancelled
+        ("2020-06-01 17:50:00Z", dict(), False),
+        # BST - too late, check forced on - run cancelled
+        ("2020-06-01 17:50:00Z", dict(check_expected_execution_window=True), False),
+        # BST - too late, check forced off - runs
+        ("2020-06-01 17:50:00Z", dict(check_expected_execution_window=False), True),
+    ],
+)
+def test_collate_letter_pdfs_to_be_sent_exits_early_outside_of_expected_window(
+    time_to_run_task, call_kwargs, should_run, sample_organisation, mocker, notify_api, caplog
+):
+    with freeze_time("2020-02-17 18:00:00"):
+        service_1 = create_service(service_name="service 1", service_id="f2fe37b0-1301-11eb-aba9-4c3275916899")
+        service_1.organisation = sample_organisation
+        letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
+        # first class
+        create_notification(
+            template=letter_template_1,
+            status="created",
+            reference="first_class",
+            created_at=(datetime.now() - timedelta(hours=4)),
+            postage="first",
+        )
+
+    bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
+    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3.put_object(Bucket=bucket_name, Key="2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF", Body=b"f")
+
+    mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
+    mock_notify_dvla = mocker.patch("app.celery.letters_pdf_tasks._get_letters_and_sheets_volumes_and_send_to_dvla")
+
+    with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
+        with freeze_time(time_to_run_task):
+            collate_letter_pdfs_to_be_sent(**call_kwargs)
+
+    if should_run:
+        assert mock_notify_dvla.call_count == 1
+        assert (
+            "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window" not in caplog.messages
+        )
+
+    else:
+        assert "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window" in caplog.messages
+        assert mock_notify_dvla.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "last_run_at, time_now, due_in_seconds",
+    (
+        (
+            # The 16:50 UTC run ran a second ago - the next run should be in 3,599 seconds at 17:50 UTC
+            datetime(2023, 6, 1, 16, 50, 0, tzinfo=pytz.UTC),
+            datetime(2023, 6, 1, 16, 50, 1, tzinfo=pytz.UTC),
+            3599,
+        ),
+        (
+            # The 17:50 UTC run ran a second ago - the next run should be in 82,799 seconds at 16:50 UTC the next day
+            datetime(2023, 6, 1, 17, 50, 0, tzinfo=pytz.UTC),
+            datetime(2023, 6, 1, 17, 50, 1, tzinfo=pytz.UTC),
+            82799,
+        ),
+    ),
+)
+def test_collate_letter_pdfs_to_be_sent_celery_beat_schedule(notify_api, last_run_at, time_now, due_in_seconds):
+    schedule = notify_api.config["CELERY"]["beat_schedule"]["collate-letter-pdfs-to-be-sent"]["schedule"]
+    with freeze_time(time_now):
+        assert schedule.is_due(last_run_at).next == due_in_seconds
 
 
 @pytest.mark.parametrize(
