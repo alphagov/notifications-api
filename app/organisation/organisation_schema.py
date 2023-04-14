@@ -1,4 +1,4 @@
-from app.constants import INVITED_USER_STATUS_TYPES
+from app.constants import INVITED_USER_STATUS_TYPES, ORGANISATION_PERMISSION_TYPES
 from app.models import ORGANISATION_TYPES
 from app.schema_validation.definitions import uuid
 
@@ -24,6 +24,7 @@ post_update_organisation_schema = {
         "active": {"type": ["boolean", "null"]},
         "crown": {"type": ["boolean", "null"]},
         "organisation_type": {"enum": ORGANISATION_TYPES},
+        "permissions": {"type": "array", "items": {"enum": ORGANISATION_PERMISSION_TYPES}},
     },
     "required": [],
 }

@@ -59,6 +59,7 @@ from app.constants import (
     NOTIFICATION_STATUS_TYPES_COMPLETED,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_TYPE,
+    ORGANISATION_PERMISSION_TYPES,
     PERMISSION_LIST,
     PRECOMPILED_TEMPLATE_NAME,
     SMS_AUTH_TYPE,
@@ -215,7 +216,6 @@ user_to_organisation = db.Table(
     UniqueConstraint("user_id", "organisation_id", name="uix_user_to_organisation"),
 )
 
-
 user_folder_permissions = db.Table(
     "user_folder_permissions",
     db.Model.metadata,
@@ -352,6 +352,21 @@ class OrganisationTypes(db.Model):
     annual_free_sms_fragment_limit = db.Column(db.BigInteger, nullable=False)
 
 
+class OrganisationPermission(db.Model):
+    __tablename__ = "organisation_permissions"
+    id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    organisation = db.relationship("Organisation", backref="permissions")
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
+    permission = db.Column(
+        db.Enum(*ORGANISATION_PERMISSION_TYPES, name="organisation_permission_types"),
+        index=False,
+        unique=False,
+        nullable=False,
+    )
+
+
 class Organisation(db.Model):
     __tablename__ = "organisation"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
@@ -424,6 +439,11 @@ class Organisation(db.Model):
     def domain_list(self):
         return [domain.domain for domain in self.domains]
 
+    def set_permissions_list(self, permissions: list[str]):
+        from app.dao.organisation_permissions_dao import set_organisation_permission
+
+        set_organisation_permission(self, permissions)
+
     def serialize(self):
         return {
             "id": str(self.id),
@@ -448,6 +468,7 @@ class Organisation(db.Model):
             "billing_contact_email_addresses": self.billing_contact_email_addresses,
             "billing_reference": self.billing_reference,
             "can_approve_own_go_live_requests": self.can_approve_own_go_live_requests,
+            "permissions": [x.permission for x in self.permissions],
         }
 
     def serialize_for_list(self):

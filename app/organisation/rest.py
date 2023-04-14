@@ -78,7 +78,6 @@ def get_organisation_by_id(organisation_id):
 
 @organisation_blueprint.route("/by-domain", methods=["GET"])
 def get_organisation_by_domain():
-
     domain = request.args.get("domain")
 
     if not domain or "@" in domain:
@@ -117,7 +116,11 @@ def update_organisation(organisation_id):
         if not organisation.letter_branding_id:
             data["letter_branding_id"] = current_app.config["NHS_LETTER_BRANDING_ID"]
 
-    result = dao_update_organisation(organisation_id, **data)
+    if data.get("permissions") or data.get("permissions") == []:
+        organisation.set_permissions_list(data.get("permissions"))
+        result = True
+    else:
+        result = dao_update_organisation(organisation_id, **data)
 
     if data.get("agreement_signed") is True:
         # if a platform admin has manually adjusted the organisation, don't tell people

@@ -92,6 +92,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         "billing_reference",
         "purchase_order_number",
         "can_approve_own_go_live_requests",
+        "permissions",
     }
     assert response["id"] == str(org.id)
     assert response["name"] == "test_org_1"
@@ -117,7 +118,6 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
 
 
 def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session):
-
     org = create_organisation(
         domains=[
             "foo.gov.uk",
@@ -275,7 +275,8 @@ def test_post_create_organisation_existing_name_raises_400(admin_request, sample
             },
             (
                 "organisation_type foo is not one of "
-                "[central, local, nhs_central, nhs_local, nhs_gp, emergency_service, school_or_college, other]"
+                "[central, local, nhs_central, nhs_local, nhs_gp, emergency_service, school_or_college, "
+                "other]"
             ),
         ),
     ),
@@ -418,7 +419,6 @@ def test_update_organisation_default_branding(
     admin_request,
     notify_db_session,
 ):
-
     org = create_organisation(name="Test Organisation")
 
     email_branding = create_email_branding()
