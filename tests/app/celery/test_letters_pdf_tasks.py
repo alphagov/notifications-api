@@ -522,12 +522,24 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, time_to_run_task, sa
         ("2020-02-17 16:50:00Z", dict(check_expected_execution_window=True), False),
         # GMT - too early, check forced off - runs
         ("2020-02-17 16:50:00Z", dict(check_expected_execution_window=False), True),
+        # GMT - just in between the two allowed execution windows, check on by default - run cancelled
+        ("2020-02-17 17:49:30Z", dict(), False),
+        # GMT - just in between the two allowed execution windows, check forced on - run cancelled
+        ("2020-02-17 17:49:30Z", dict(check_expected_execution_window=True), False),
+        # GMT - just in between the two allowed execution windows, check forced off - runs
+        ("2020-02-17 17:49:30Z", dict(check_expected_execution_window=False), True),
         # GMT - on schedule, check on by default - runs
         ("2020-02-17 17:50:00Z", dict(), True),
         # GMT - on schedule, check forced on
         ("2020-02-17 17:50:00Z", dict(check_expected_execution_window=True), True),
         # GMT - on schedule, check forced off
         ("2020-02-17 17:50:00Z", dict(check_expected_execution_window=False), True),
+        # GMT - on schedule at the end of the window, check on by default - runs
+        ("2020-02-17 18:49:00Z", dict(), True),
+        # GMT - on schedule at the end of the window, check forced on
+        ("2020-02-17 18:49:00Z", dict(check_expected_execution_window=True), True),
+        # GMT - on schedule at the end of the window, check forced off
+        ("2020-02-17 18:49:00Z", dict(check_expected_execution_window=False), True),
         # BST - on schedule, check on by default
         ("2020-06-01 16:50:00Z", dict(), True),
         # BST - on schedule, check forced on
