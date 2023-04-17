@@ -1,7 +1,7 @@
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
-from unittest.mock import ANY, call
+from unittest.mock import call
 
 import boto3
 import pytest
@@ -16,6 +16,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import encryption
 from app.celery.letters_pdf_tasks import (
     _move_invalid_letter_and_update_status,
+    check_time_to_collate_letters,
     collate_letter_pdfs_to_be_sent,
     get_key_and_size_of_letters_to_be_sent_to_print,
     get_pdf_for_templated_letter,
@@ -333,32 +334,25 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
         (None, datetime(2021, 6, 1, 17, 30)),
     ],
 )
-def test_collate_letter_pdfs_to_be_sent_respects_print_run_deadline(
+def test_check_time_to_collate_letters_respects_print_run_deadline(
     notify_db_session,
     mocker,
     print_run_deadline_utc,
     expected_time_called_with,
 ):
     mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
-    mock_get_letters = mocker.patch(
-        "app.celery.letters_pdf_tasks.get_key_and_size_of_letters_to_be_sent_to_print", return_value=[]
-    )
+    mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent", return_value=[])
 
     with freeze_time("2021-06-01 17:00"):
-        collate_letter_pdfs_to_be_sent(print_run_deadline_utc=print_run_deadline_utc)
+        check_time_to_collate_letters(print_run_deadline_utc=print_run_deadline_utc)
 
-    mock_get_letters.assert_called_with(expected_time_called_with, ANY)
+    assert mock_collate.apply_async.call_args_list == [
+        mocker.call([expected_time_called_with], queue=QueueNames.PERIODIC)
+    ]
 
 
 @mock_s3
-@pytest.mark.parametrize(
-    "time_to_run_task",
-    [
-        "2020-02-17 18:00:00",  # after 5:30pm
-        "2020-02-18 02:00:00",  # the next day after midnight, before 5:30pm we expect the same results
-    ],
-)
-def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, time_to_run_task, sample_organisation):
+def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, sample_organisation):
     with freeze_time("2020-02-17 18:00:00"):
         service_1 = create_service(service_name="service 1", service_id="f2fe37b0-1301-11eb-aba9-4c3275916899")
         service_1.organisation = sample_organisation
@@ -443,8 +437,7 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, time_to_run_task, sa
     mock_send_email_to_dvla = mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
 
     with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
-        with freeze_time(time_to_run_task):
-            collate_letter_pdfs_to_be_sent(check_expected_execution_window=False)
+        collate_letter_pdfs_to_be_sent(datetime(2020, 2, 17, 17, 30, 0))
 
     mock_send_email_to_dvla.assert_called_once_with(
         [(1, 1, "europe"), (1, 1, "first"), (1, 1, "rest-of-world"), (4, 4, "second")], datetime(2020, 2, 17).date()
@@ -514,48 +507,24 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, time_to_run_task, sa
 
 @mock_s3
 @pytest.mark.parametrize(
-    "time_to_run_task, call_kwargs, should_run",
+    "time_to_run_task, should_run",
     [
-        # GMT - too early, check on by default - run cancelled
-        ("2020-02-17 16:50:00Z", dict(), False),
-        # GMT - too early, check forced on - run cancelled
-        ("2020-02-17 16:50:00Z", dict(check_expected_execution_window=True), False),
-        # GMT - too early, check forced off - runs
-        ("2020-02-17 16:50:00Z", dict(check_expected_execution_window=False), True),
-        # GMT - just in between the two allowed execution windows, check on by default - run cancelled
-        ("2020-02-17 17:49:30Z", dict(), False),
-        # GMT - just in between the two allowed execution windows, check forced on - run cancelled
-        ("2020-02-17 17:49:30Z", dict(check_expected_execution_window=True), False),
-        # GMT - just in between the two allowed execution windows, check forced off - runs
-        ("2020-02-17 17:49:30Z", dict(check_expected_execution_window=False), True),
-        # GMT - on schedule, check on by default - runs
-        ("2020-02-17 17:50:00Z", dict(), True),
-        # GMT - on schedule, check forced on
-        ("2020-02-17 17:50:00Z", dict(check_expected_execution_window=True), True),
-        # GMT - on schedule, check forced off
-        ("2020-02-17 17:50:00Z", dict(check_expected_execution_window=False), True),
-        # GMT - on schedule at the end of the window, check on by default - runs
-        ("2020-02-17 18:49:00Z", dict(), True),
-        # GMT - on schedule at the end of the window, check forced on
-        ("2020-02-17 18:49:00Z", dict(check_expected_execution_window=True), True),
-        # GMT - on schedule at the end of the window, check forced off
-        ("2020-02-17 18:49:00Z", dict(check_expected_execution_window=False), True),
-        # BST - on schedule, check on by default
-        ("2020-06-01 16:50:00Z", dict(), True),
-        # BST - on schedule, check forced on
-        ("2020-06-01 16:50:00Z", dict(check_expected_execution_window=True), True),
-        # BST - on schedule, check forced off
-        ("2020-06-01 16:50:00Z", dict(check_expected_execution_window=False), True),
-        # BST - too late, check on by default - run cancelled
-        ("2020-06-01 17:50:00Z", dict(), False),
-        # BST - too late, check forced on - run cancelled
-        ("2020-06-01 17:50:00Z", dict(check_expected_execution_window=True), False),
-        # BST - too late, check forced off - runs
-        ("2020-06-01 17:50:00Z", dict(check_expected_execution_window=False), True),
+        # GMT - too early, check on - run cancelled
+        ("2020-02-17 16:50:00Z", False),
+        # GMT - just in between the two allowed execution windows, check on - run cancelled
+        ("2020-02-17 17:49:30Z", False),
+        # GMT - on schedule, check on - runs
+        ("2020-02-17 17:50:00Z", True),
+        # GMT - on schedule at the end of the window, check on - runs
+        ("2020-02-17 18:49:00Z", True),
+        # BST - on schedule, check on
+        ("2020-06-01 16:50:00Z", True),
+        # BST - too late, check on - run cancelled
+        ("2020-06-01 17:50:00Z", False),
     ],
 )
 def test_collate_letter_pdfs_to_be_sent_exits_early_outside_of_expected_window(
-    time_to_run_task, call_kwargs, should_run, sample_organisation, mocker, notify_api, caplog
+    time_to_run_task, should_run, sample_organisation, mocker, notify_api, caplog
 ):
     with freeze_time("2020-02-17 18:00:00"):
         service_1 = create_service(service_name="service 1", service_id="f2fe37b0-1301-11eb-aba9-4c3275916899")
@@ -576,21 +545,21 @@ def test_collate_letter_pdfs_to_be_sent_exits_early_outside_of_expected_window(
     s3.put_object(Bucket=bucket_name, Key="2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF", Body=b"f")
 
     mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
-    mock_notify_dvla = mocker.patch("app.celery.letters_pdf_tasks._get_letters_and_sheets_volumes_and_send_to_dvla")
+    mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent")
 
     with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
         with freeze_time(time_to_run_task):
-            collate_letter_pdfs_to_be_sent(**call_kwargs)
+            check_time_to_collate_letters()
 
     if should_run:
-        assert mock_notify_dvla.call_count == 1
+        assert mock_collate.apply_async.call_count == 1
         assert (
             "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window" not in caplog.messages
         )
 
     else:
         assert "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window" in caplog.messages
-        assert mock_notify_dvla.call_count == 0
+        assert mock_collate.apply_async.call_count == 0
 
 
 @pytest.mark.parametrize(
@@ -610,8 +579,8 @@ def test_collate_letter_pdfs_to_be_sent_exits_early_outside_of_expected_window(
         ),
     ),
 )
-def test_collate_letter_pdfs_to_be_sent_celery_beat_schedule(notify_api, last_run_at, time_now, due_in_seconds):
-    schedule = notify_api.config["CELERY"]["beat_schedule"]["collate-letter-pdfs-to-be-sent"]["schedule"]
+def test_check_time_to_collate_letters_celery_beat_schedule(notify_api, last_run_at, time_now, due_in_seconds):
+    schedule = notify_api.config["CELERY"]["beat_schedule"]["check-time-to-collate-letters"]["schedule"]
     with freeze_time(time_now):
         assert schedule.is_due(last_run_at).next == due_in_seconds
 
@@ -631,7 +600,7 @@ def test_collate_letter_pdfs_uses_api_on_selected_environments(
     with set_config_values(notify_api, {"DVLA_API_ENABLED": api_enabled_env_flag}):
 
         with freeze_time("2021-06-01 17:00"):
-            collate_letter_pdfs_to_be_sent()
+            collate_letter_pdfs_to_be_sent(datetime(2021, 6, 1, 17, 30))
 
     mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 17, 30))
 

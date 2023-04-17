@@ -131,38 +131,14 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
 
 @notify_celery.task(name="collate-letter-pdfs-to-be-sent")
 @cronitor("collate-letter-pdfs-to-be-sent")
-def collate_letter_pdfs_to_be_sent(print_run_deadline_utc=None, check_expected_execution_window=True):
+def collate_letter_pdfs_to_be_sent(print_run_deadline):
     """
     Finds all letters which are still waiting to be sent to DVLA for printing
 
     This would usually be run at 5.50pm and collect up letters created between before 5:30pm today
     that have not yet been sent.
     If run after midnight, it will collect up letters created before 5:30pm the day before.
-
-    You can specify a specific print_run_deadline_utc as an ISO format datetime if you want to. This is primarily
-    useful for load testing or running locally. Make sure to consider UTC to BST.
-
-    Set `check_expected_execution_window` to False if you are running manually - otherwise the internals of this task
-    will assert that it is being run between 5:50 and 6:49pm local time. This is because we schedule the task twice in
-    celery-beat; once at 4:50pm UTC and once at 5:50pm UTC. We only want to actually process this job automatically
-    once - at 5:50pm Europe/London local time.
-    NOTE: this argument has no effect if you have specified a custom `print_run_deadline_utc`.
     """
-    if print_run_deadline_utc:
-        print_run_deadline = convert_utc_to_bst(dateutil.parser.parse(print_run_deadline_utc))
-    else:
-        print_run_date = convert_utc_to_bst(datetime.utcnow())
-
-        if check_expected_execution_window and not (dt_time(17, 50) <= print_run_date.time() < dt_time(18, 50)):
-            current_app.logger.info(
-                "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window"
-            )
-            return
-
-        if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
-            print_run_date = print_run_date - timedelta(days=1)
-
-        print_run_deadline = print_run_date.replace(hour=17, minute=30, second=0, microsecond=0)
     _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline)
 
     if current_app.config["DVLA_API_ENABLED"]:
@@ -203,6 +179,36 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline_utc=None, check_expected_e
         current_app.logger.info(f"finished collate-letter-pdfs-to-be-sent processing for postage class {postage}")
 
     current_app.logger.info("finished collate-letter-pdfs-to-be-sent")
+
+
+@notify_celery.task(name="check-time-to-collate-letters")
+def check_time_to_collate_letters(print_run_deadline_utc=None):
+    """Check whether we need to start collating letters and sending them to DVLA for processing.
+
+    This task is scheduled via celery-beat to run at 16:50 and 17:50 UTC every day. This task is responsible for working
+    out whether it's running at 17:50 local time: if it is, then letter collation itself will be triggered and all
+    letters submitted to Notify before 17:30 local time will be collated and sent over.
+
+    You can specify a specific print_run_deadline_utc as an ISO format datetime if you want to. This is primarily
+    useful for load testing or running locally. Make sure to consider UTC to BST.
+    """
+    if print_run_deadline_utc:
+        print_run_deadline = convert_utc_to_bst(dateutil.parser.parse(print_run_deadline_utc))
+    else:
+        print_run_date = convert_utc_to_bst(datetime.utcnow())
+
+        if not (dt_time(17, 50) <= print_run_date.time() < dt_time(18, 50)):
+            current_app.logger.info(
+                "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window"
+            )
+            return
+
+        if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
+            print_run_date = print_run_date - timedelta(days=1)
+
+        print_run_deadline = print_run_date.replace(hour=17, minute=30, second=0, microsecond=0)
+
+    collate_letter_pdfs_to_be_sent.apply_async([print_run_deadline], queue=QueueNames.PERIODIC)
 
 
 def _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline):
