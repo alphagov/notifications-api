@@ -50,7 +50,7 @@ def create_nightly_billing_for_day(process_day):
     update_ft_billing(billing_data, process_day)
 
     current_app.logger.info(
-        f"create-nightly-billing-for-day task for {process_day}: " f"task complete. {len(billing_data)} rows updated"
+        f"create-nightly-billing-for-day task for {process_day}: task complete. {len(billing_data)} rows updated"
     )
 
 

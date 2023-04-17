@@ -127,7 +127,7 @@ def _validate_template(broadcast_json):
 
     if template.content_too_long:
         raise ValidationError(
-            message=(f"description must be {template.max_content_count:,.0f} " f"characters or fewer")
+            message=(f"description must be {template.max_content_count:,.0f} characters or fewer")
             + (" (because it could not be GSM7 encoded)" if template.non_gsm_characters else ""),
             status_code=400,
         )
