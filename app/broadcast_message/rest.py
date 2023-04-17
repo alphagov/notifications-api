@@ -64,7 +64,7 @@ def create_broadcast_message(service_id):
         temporary_template = BroadcastMessageTemplate.from_content(data["content"])
         if temporary_template.content_too_long:
             raise InvalidRequest(
-                (f"Content must be " f"{temporary_template.max_content_count:,.0f} " f"characters or fewer")
+                (f"Content must be {temporary_template.max_content_count:,.0f} characters or fewer")
                 + (" (because it could not be GSM7 encoded)" if temporary_template.non_gsm_characters else ""),
                 status_code=400,
             )

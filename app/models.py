@@ -2157,7 +2157,7 @@ class BroadcastEvent(db.Model):
     @property
     def reference(self):
         notify_email_domain = current_app.config["NOTIFY_EMAIL_DOMAIN"]
-        return f"https://www.{notify_email_domain}/," f"{self.id}," f"{self.sent_at_as_cap_datetime_string}"
+        return f"https://www.{notify_email_domain}/,{self.id},{self.sent_at_as_cap_datetime_string}"
 
     @property
     def sent_at_as_cap_datetime_string(self):
