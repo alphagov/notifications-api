@@ -7,9 +7,9 @@ from freezegun import freeze_time
 
 from app.celery.reporting_tasks import (
     create_nightly_billing,
-    create_nightly_billing_for_day,
     create_nightly_notification_status,
     create_nightly_notification_status_for_service_and_day,
+    create_or_update_ft_billing_for_day,
 )
 from app.config import QueueNames
 from app.constants import (
@@ -53,7 +53,7 @@ def mocker_get_rate(
     ],
 )
 def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mocker, day_start, expected_kwargs):
-    mock_celery = mocker.patch("app.celery.reporting_tasks.create_nightly_billing_for_day")
+    mock_celery = mocker.patch("app.celery.reporting_tasks.create_or_update_ft_billing_for_day")
     create_nightly_billing(day_start)
 
     assert mock_celery.apply_async.call_count == 10
@@ -114,7 +114,7 @@ def test_create_nightly_notification_status_triggers_relevant_tasks(
     assert types == expected_types_aggregated
 
 
-def test_create_nightly_billing_for_day_checks_history(sample_service, sample_letter_template, mocker):
+def test_create_or_update_ft_billing_for_day_checks_history(sample_service, sample_letter_template, mocker):
     yesterday = datetime.now() - timedelta(days=1)
     mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
@@ -133,7 +133,7 @@ def test_create_nightly_billing_for_day_checks_history(sample_service, sample_le
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    create_nightly_billing_for_day(str(yesterday.date()))
+    create_or_update_ft_billing_for_day(str(yesterday.date()))
     records = FactBilling.query.all()
     assert len(records) == 1
 
@@ -145,7 +145,7 @@ def test_create_nightly_billing_for_day_checks_history(sample_service, sample_le
 @pytest.mark.parametrize(
     "second_rate, records_num, billable_units, multiplier", [(1.0, 1, 2, [1]), (2.0, 2, 1, [1, 2])]
 )
-def test_create_nightly_billing_for_day_sms_rate_multiplier(
+def test_create_or_update_ft_billing_for_day_sms_rate_multiplier(
     sample_service, sample_template, mocker, second_rate, records_num, billable_units, multiplier
 ):
 
@@ -176,7 +176,7 @@ def test_create_nightly_billing_for_day_sms_rate_multiplier(
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    create_nightly_billing_for_day(str(yesterday.date()))
+    create_or_update_ft_billing_for_day(str(yesterday.date()))
     records = FactBilling.query.order_by("rate_multiplier").all()
     assert len(records) == records_num
 
@@ -187,7 +187,7 @@ def test_create_nightly_billing_for_day_sms_rate_multiplier(
         assert record.rate_multiplier == multiplier[i]
 
 
-def test_create_nightly_billing_for_day_different_templates(
+def test_create_or_update_ft_billing_for_day_different_templates(
     sample_service, sample_template, sample_email_template, mocker
 ):
     yesterday = datetime.now() - timedelta(days=1)
@@ -215,7 +215,7 @@ def test_create_nightly_billing_for_day_different_templates(
 
     records = FactBilling.query.all()
     assert len(records) == 0
-    create_nightly_billing_for_day(str(yesterday.date()))
+    create_or_update_ft_billing_for_day(str(yesterday.date()))
 
     records = FactBilling.query.order_by("rate_multiplier").all()
     assert len(records) == 2
@@ -230,7 +230,7 @@ def test_create_nightly_billing_for_day_different_templates(
         assert record.rate_multiplier == multiplier[i]
 
 
-def test_create_nightly_billing_for_day_different_sent_by(
+def test_create_or_update_ft_billing_for_day_different_sent_by(
     sample_service, sample_template, sample_email_template, mocker
 ):
     yesterday = datetime.now() - timedelta(days=1)
@@ -259,7 +259,7 @@ def test_create_nightly_billing_for_day_different_sent_by(
 
     records = FactBilling.query.all()
     assert len(records) == 0
-    create_nightly_billing_for_day(str(yesterday.date()))
+    create_or_update_ft_billing_for_day(str(yesterday.date()))
 
     records = FactBilling.query.order_by("rate_multiplier").all()
     assert len(records) == 2
@@ -271,7 +271,9 @@ def test_create_nightly_billing_for_day_different_sent_by(
         assert record.rate_multiplier == 1.0
 
 
-def test_create_nightly_billing_for_day_different_letter_postage(notify_db_session, sample_letter_template, mocker):
+def test_create_or_update_ft_billing_for_day_different_letter_postage(
+    notify_db_session, sample_letter_template, mocker
+):
     yesterday = datetime.now() - timedelta(days=1)
     mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
@@ -311,7 +313,7 @@ def test_create_nightly_billing_for_day_different_letter_postage(notify_db_sessi
 
     records = FactBilling.query.all()
     assert len(records) == 0
-    create_nightly_billing_for_day(str(yesterday.date()))
+    create_or_update_ft_billing_for_day(str(yesterday.date()))
 
     records = FactBilling.query.order_by("postage").all()
     assert len(records) == 4
@@ -341,7 +343,7 @@ def test_create_nightly_billing_for_day_different_letter_postage(notify_db_sessi
     assert records[3].billable_units == 2
 
 
-def test_create_nightly_billing_for_day_letter(sample_service, sample_letter_template, mocker):
+def test_create_or_update_ft_billing_for_day_letter(sample_service, sample_letter_template, mocker):
     yesterday = datetime.now() - timedelta(days=1)
 
     mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
@@ -358,7 +360,7 @@ def test_create_nightly_billing_for_day_letter(sample_service, sample_letter_tem
 
     records = FactBilling.query.all()
     assert len(records) == 0
-    create_nightly_billing_for_day(str(yesterday.date()))
+    create_or_update_ft_billing_for_day(str(yesterday.date()))
 
     records = FactBilling.query.order_by("rate_multiplier").all()
     assert len(records) == 1
@@ -371,7 +373,7 @@ def test_create_nightly_billing_for_day_letter(sample_service, sample_letter_tem
     assert record.rate_multiplier == 2.0
 
 
-def test_create_nightly_billing_for_day_null_sent_by_sms(sample_service, sample_template, mocker):
+def test_create_or_update_ft_billing_for_day_null_sent_by_sms(sample_service, sample_template, mocker):
     yesterday = datetime.now() - timedelta(days=1)
 
     mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
@@ -389,7 +391,7 @@ def test_create_nightly_billing_for_day_null_sent_by_sms(sample_service, sample_
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    create_nightly_billing_for_day(str(yesterday.date()))
+    create_or_update_ft_billing_for_day(str(yesterday.date()))
     records = FactBilling.query.all()
     assert len(records) == 1
 
@@ -438,7 +440,7 @@ def test_get_rate_for_sms_and_email(notify_db_session):
 
 @freeze_time("2018-03-30T01:00:00")
 # summer time starts on 2018-03-25
-def test_create_nightly_billing_for_day_use_BST(sample_service, sample_template, mocker):
+def test_create_or_update_ft_billing_for_day_use_BST(sample_service, sample_template, mocker):
 
     mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
@@ -471,7 +473,7 @@ def test_create_nightly_billing_for_day_use_BST(sample_service, sample_template,
     assert Notification.query.count() == 3
     assert FactBilling.query.count() == 0
 
-    create_nightly_billing_for_day("2018-03-25")
+    create_or_update_ft_billing_for_day("2018-03-25")
     records = FactBilling.query.order_by(FactBilling.bst_date).all()
 
     assert len(records) == 1
@@ -480,7 +482,7 @@ def test_create_nightly_billing_for_day_use_BST(sample_service, sample_template,
 
 
 @freeze_time("2018-01-15T03:30:00")
-def test_create_nightly_billing_for_day_update_when_record_exists(sample_service, sample_template, mocker):
+def test_create_or_update_ft_billing_for_day_update_when_record_exists(sample_service, sample_template, mocker):
 
     mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
@@ -497,7 +499,7 @@ def test_create_nightly_billing_for_day_update_when_record_exists(sample_service
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    create_nightly_billing_for_day("2018-01-14")
+    create_or_update_ft_billing_for_day("2018-01-14")
     records = FactBilling.query.order_by(FactBilling.bst_date).all()
 
     assert len(records) == 1
@@ -516,7 +518,7 @@ def test_create_nightly_billing_for_day_update_when_record_exists(sample_service
     )
 
     # run again, make sure create_nightly_billing() updates with no error
-    create_nightly_billing_for_day("2018-01-14")
+    create_or_update_ft_billing_for_day("2018-01-14")
     assert len(records) == 1
     assert records[0].billable_units == 2
     assert records[0].updated_at
