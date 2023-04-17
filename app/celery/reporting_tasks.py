@@ -34,6 +34,13 @@ def create_nightly_billing(day_start=None):
         )
 
 
+@notify_celery.task(name="update-ft-billing-for-today")
+@cronitor("update-ft-billing-for-today")
+def update_ft_billing_for_today():
+    process_day = convert_utc_to_bst(datetime.utcnow()).date().isoformat()
+    create_or_update_ft_billing_for_day(process_day=process_day)
+
+
 @notify_celery.task(name="create-or-update-ft-billing-for-day")
 def create_or_update_ft_billing_for_day(process_day):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()

@@ -264,6 +264,11 @@ class Config(object):
                 "schedule": crontab(hour=0, minute=15),
                 "options": {"queue": QueueNames.REPORTING},
             },
+            "update-ft-billing-for-today": {
+                "task": "update-ft-billing-for-today",
+                "schedule": crontab(hour="*", minute=0),
+                "options": {"queue": QueueNames.REPORTING},
+            },
             "create-nightly-notification-status": {
                 "task": "create-nightly-notification-status",
                 "schedule": crontab(hour=0, minute=30),  # after 'timeout-sending-notifications'
