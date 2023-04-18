@@ -960,10 +960,15 @@ def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session):
 
 
 def test_fetch_usage_for_organisation(
-    sample_service, sample_organisation, sample_service_billing_fy_2016, notify_db_session
+    sample_service,
+    sample_organisation,
+    sample_service_billing_fy_2016,
+    notify_db_session,
+    notify_api,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
-    results = fetch_usage_for_organisation(sample_organisation.id, 2016)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(sample_organisation.id, 2016)
     assert len(results) == 1
 
     first_row = results[str(sample_service.id)]
@@ -977,7 +982,7 @@ def test_fetch_usage_for_organisation(
     assert first_row["emails_sent"] == 4
 
 
-def test_fetch_usage_for_organisation_populates_ft_billing_for_today(notify_db_session):
+def test_fetch_usage_for_organisation_populates_ft_billing_for_today(notify_db_session, notify_api):
     create_letter_rate(start_date=datetime.utcnow() - timedelta(days=1))
     create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.65, notification_type="sms")
     new_org = create_organisation(name="New organisation")
@@ -991,7 +996,8 @@ def test_fetch_usage_for_organisation_populates_ft_billing_for_today(notify_db_s
 
     create_notification(template=template, status="delivered")
 
-    results = fetch_usage_for_organisation(organisation_id=new_org.id, year=current_year)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(organisation_id=new_org.id, year=current_year)
     assert len(results) == 1
     assert FactBilling.query.count() == 1
 
@@ -1001,9 +1007,12 @@ def test_fetch_usage_for_organisation_variable_rates(
     sample_organisation,
     sample_service_billing_fy_2018_variable_rates,
     notify_db_session,
+    notify_api,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
-    results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2018)
+
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2018)
 
     assert len(results) == 1
     row = results[str(sample_service.id)]
@@ -1016,13 +1025,14 @@ def test_fetch_usage_for_organisation_variable_rates(
 
 
 def test_fetch_usage_for_organisation_sms_remainder(
-    sample_service, sample_organisation, sample_sms_template, notify_db_session
+    sample_service, sample_organisation, sample_sms_template, notify_db_session, notify_api
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=1)
 
-    results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
     assert len(results) == 1
 
     row = results[str(sample_service.id)]
@@ -1033,11 +1043,13 @@ def test_fetch_usage_for_organisation_no_usage(
     sample_service,
     sample_organisation,
     notify_db_session,
+    notify_api,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
 
-    results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
     assert len(results) == 1
 
     row = results[str(sample_service.id)]
@@ -1053,15 +1065,18 @@ def test_fetch_usage_for_organisation_excludes_trial_services(
     sample_organisation,
     sample_sms_template,
     notify_db_session,
+    notify_api,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
 
-    results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
     assert len(results) == 1
 
     sample_service.restricted = True
-    results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
     assert len(results) == 0
 
 
@@ -1070,12 +1085,14 @@ def test_fetch_usage_for_organisation_partially_billable(
     sample_organisation,
     sample_sms_template,
     notify_db_session,
+    notify_api,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2019)
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
 
-    results = fetch_usage_for_organisation(sample_organisation.id, 2019)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(sample_organisation.id, 2019)
     assert len(results) == 1
 
     row = results[str(sample_service.id)]
@@ -1088,6 +1105,7 @@ def test_fetch_usage_for_organisation_partially_billable(
 def test_fetch_usage_for_organisation_multiple_services(
     sample_organisation,
     notify_db_session,
+    notify_api,
 ):
     service_1 = create_service(service_name="Service 1")
     dao_add_service_to_organisation(service=service_1, organisation_id=sample_organisation.id)
@@ -1101,7 +1119,8 @@ def test_fetch_usage_for_organisation_multiple_services(
     create_ft_billing(template=service_2_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162)
     create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=6, financial_year_start=2016)
 
-    results = fetch_usage_for_organisation(sample_organisation.id, 2016)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(sample_organisation.id, 2016)
     assert len(results) == 2
 
     service_1_row = results[str(service_1.id)]
@@ -1116,13 +1135,18 @@ def test_fetch_usage_for_organisation_multiple_services(
 
 
 def test_fetch_usage_for_organisation_without_annual_billing(
-    sample_service, sample_organisation, sample_sms_template, notify_db_session
+    sample_service,
+    sample_organisation,
+    sample_sms_template,
+    notify_db_session,
+    notify_api,
 ):
     # Example: we don't continue populating annual_billing for inactive services
     sample_service.active = False
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
 
-    results = fetch_usage_for_organisation(sample_organisation.id, 2016)
+    with notify_api.test_request_context():
+        results = fetch_usage_for_organisation(sample_organisation.id, 2016)
     assert len(results) == 1
 
     row = results[str(sample_service.id)]

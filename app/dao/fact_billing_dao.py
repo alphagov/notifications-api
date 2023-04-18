@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta
+from functools import partial
 
-from flask import current_app
+from flask import copy_current_request_context, current_app
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import Date, Integer, and_, desc, func, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import case, literal
 
 from app import db
+from app.concurrency import run_concurrently
 from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_POSTAGE_TYPES,
@@ -801,8 +803,10 @@ def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
 
 def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     year_start, year_end = get_financial_year_dates(financial_year)
-    return fetch_usage_for_all_services_sms(year_start, year_end, organisation_id=organisation_id).filter(
-        Service.restricted.is_(False)
+    return (
+        fetch_usage_for_all_services_sms(year_start, year_end, organisation_id=organisation_id)
+        .filter(Service.restricted.is_(False))
+        .all()
     )
 
 
@@ -831,9 +835,17 @@ def fetch_usage_for_organisation(organisation_id, year):
             "emails_sent": 0,
             "active": service.active,
         }
-    sms_usages = _fetch_usage_for_organisation_sms(organisation_id, year)
-    letter_usages = _fetch_usage_for_organisation_letter(organisation_id, year_start, year_end)
-    email_usages = _fetch_usage_for_organisation_email(organisation_id, year_start, year_end)
+
+    sms_usages, letter_usages, email_usages = run_concurrently(
+        copy_current_request_context(partial(_fetch_usage_for_organisation_sms, organisation_id, year)),
+        copy_current_request_context(
+            partial(_fetch_usage_for_organisation_letter, organisation_id, year_start, year_end)
+        ),
+        copy_current_request_context(
+            partial(_fetch_usage_for_organisation_email, organisation_id, year_start, year_end)
+        ),
+    )
+
     for usage in sms_usages:
         # update sms fields
         service_with_usage[str(usage.service_id)] |= {
