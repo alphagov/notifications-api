@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from typing import Any, Optional
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
@@ -35,7 +36,7 @@ from app.models import (
     Service,
     ServicePermission,
 )
-from app.utils import get_london_midnight_in_utc
+from app.utils import get_ft_billing_data_for_today_updated_at, get_london_midnight_in_utc
 
 
 def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None):
@@ -806,15 +807,15 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     )
 
 
-def fetch_usage_for_organisation(organisation_id, year):
+def fetch_usage_for_organisation(organisation_id, year) -> tuple[Any, Optional[str]]:
+    """Calculate an organisation's usage of Notify (ie the usage of all services in that org)
+
+    This queries cached data in ft_billing. We have an hourly task that runs to calculate usage and updates ft_billing
+    for the current day.
+    """
     year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
     services = dao_get_organisation_live_services_and_their_free_allowance(organisation_id, year)
-
-    # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
-    if year_end >= today:
-        data = fetch_billing_data_for_day(process_day=today, service_ids=[service.id for service in services])
-        update_ft_billing(billing_data=data, process_day=today)
     service_with_usage = {}
     # initialise results
     for service in services:
@@ -846,7 +847,14 @@ def fetch_usage_for_organisation(organisation_id, year):
         service_with_usage[str(letter_usage.service_id)]["letter_cost"] = float(letter_usage.letter_cost)
     for email_usage in email_usages:
         service_with_usage[str(email_usage.service_id)]["emails_sent"] = email_usage.emails_sent
-    return service_with_usage
+
+    # if the data is for this year, then today's data will be incomplete. Provide an indication of when the data
+    # was last updated.
+    updated_at = None
+    if year_start <= today < year_end:
+        updated_at = get_ft_billing_data_for_today_updated_at()
+
+    return service_with_usage, updated_at
 
 
 def fetch_daily_volumes_for_platform(start_date, end_date):

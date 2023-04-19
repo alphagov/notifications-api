@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Optional
 
 import pytz
 from flask import url_for
@@ -18,6 +19,7 @@ from app.constants import (
     PRECOMPILED_LETTER,
     SMS_TYPE,
     UPLOAD_DOCUMENT,
+    CacheKeys,
 )
 
 DATETIME_FORMAT_NO_TIMEZONE = "%Y-%m-%d %H:%M:%S.%f"
@@ -147,3 +149,12 @@ def get_uuid_string_or_none(val):
 
 def format_sequential_number(sequential_number):
     return format(sequential_number, "x").zfill(8)
+
+
+def get_ft_billing_data_for_today_updated_at() -> Optional[str]:
+    from app import redis_store
+
+    if updated_at_utc_isoformat := redis_store.get(CacheKeys.FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT):
+        return updated_at_utc_isoformat.decode()
+
+    return None

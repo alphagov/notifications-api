@@ -1,4 +1,5 @@
 # Notification status values
+
 NOTIFICATION_CANCELLED = "cancelled"
 NOTIFICATION_CREATED = "created"
 NOTIFICATION_SENDING = "sending"
@@ -265,3 +266,8 @@ class Retention:
     KEY = "retention"
 
     ONE_WEEK = "ONE_WEEK"
+
+
+# Redis cache keys
+class CacheKeys:
+    FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT = "update_ft_billing_for_today:updated-at-utc-isoformat"
