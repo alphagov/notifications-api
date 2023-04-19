@@ -611,6 +611,35 @@ class Service(db.Model, Versioned):
             return current_app.config["ENABLED_CBCS"]
 
 
+class DefaultAnnualAllowance(db.Model):
+    """This table represents default allowances that organisations will get for free notifications.
+
+    Eg central government services get 40,000 free text messages for FY 2023.
+
+    The default rates will be applied to services automatically used when a new financial year begins. They can be
+    overridden on a per-service basis (eg some services may have their allowance reduced or removed).
+    """
+
+    __tablename__ = "default_annual_allowance"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    valid_from_financial_year_start = db.Column(db.Integer, index=True, nullable=False)
+    organisation_type = db.Column(
+        db.String(255),
+        db.ForeignKey("organisation_types.name"),
+        unique=False,
+        nullable=True,
+    )
+    allowance = db.Column(db.Integer, nullable=False)
+    notification_type = db.Column(notification_types, index=True, nullable=False)
+
+    def __str__(self):
+        return (
+            f"AnnualAllowance({self.allowance:_d}, {self.notification_type}, "
+            f"financial_year_start={self.valid_from_financial_year_start}, organisation_type{self.organisation_type})>"
+        )
+
+
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
