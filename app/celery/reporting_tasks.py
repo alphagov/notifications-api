@@ -42,22 +42,22 @@ def update_ft_billing_for_today():
 
 
 @notify_celery.task(name="create-or-update-ft-billing-for-day")
-def create_or_update_ft_billing_for_day(process_day):
-    process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
-    current_app.logger.info(f"create-or-update-ft-billing-for-day task for {process_day}: started")
+def create_or_update_ft_billing_for_day(process_day: str):
+    process_date = datetime.strptime(process_day, "%Y-%m-%d").date()
+    current_app.logger.info(f"create-or-update-ft-billing-for-day task for {process_date}: started")
 
     start = datetime.utcnow()
-    billing_data = fetch_billing_data_for_day(process_day=process_day)
+    billing_data = fetch_billing_data_for_day(process_day=process_date)
     end = datetime.utcnow()
 
     current_app.logger.info(
-        f"create-or-update-ft-billing-for-day task for {process_day}: data fetched in {(end - start).seconds} seconds"
+        f"create-or-update-ft-billing-for-day task for {process_date}: data fetched in {(end - start).seconds} seconds"
     )
 
-    update_ft_billing(billing_data, process_day)
+    update_ft_billing(billing_data, process_date)
 
     current_app.logger.info(
-        f"create-nightly-billing-for-day task for {process_day}: task complete. {len(billing_data)} rows updated"
+        f"create-nightly-billing-for-day task for {process_date}: task complete. {len(billing_data)} rows updated"
     )
 
 

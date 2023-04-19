@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
@@ -476,7 +476,7 @@ def _fetch_usage_for_service_sms(service_id, year):
     )
 
 
-def delete_billing_data_for_day(process_day, service_ids=None):
+def delete_billing_data_for_day(process_day: date, service_ids=None):
     """
     Delete all ft_billing data for the given bst_date if no service_ids are provided.
     If service_ids are provided, only the data for specific services will be deleted.
@@ -491,7 +491,7 @@ def delete_billing_data_for_day(process_day, service_ids=None):
     return FactBilling.query.filter(*filters).delete()
 
 
-def fetch_billing_data_for_day(process_day, service_ids=None, check_permissions=False):
+def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
@@ -666,7 +666,7 @@ def get_rate(
         return 0
 
 
-def update_ft_billing(billing_data: list, process_day):
+def update_ft_billing(billing_data: list, process_day: date):
     if not billing_data:
         return
 
