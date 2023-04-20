@@ -803,7 +803,7 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
 def populate_annual_billing_with_defaults(year, missing_services_only):
     """
     Add or update annual billing with free allowance defaults for all active services.
-    The default free allowance limits are in: app/dao/annual_billing_dao.py:57.
+    The default free allowances are stored in the DB in a table called `default_annual_allowance`.
 
     If missing_services_only is true then only add rows for services that do not have annual billing for that year yet.
     This is useful to prevent overriding any services that have a free allowance that is not the default.
@@ -822,26 +822,10 @@ def populate_annual_billing_with_defaults(year, missing_services_only):
         )
     else:
         active_services = Service.query.filter(Service.active).all()
-    previous_year = year - 1
-    services_with_zero_free_allowance = (
-        db.session.query(AnnualBilling.service_id)
-        .filter(AnnualBilling.financial_year_start == previous_year, AnnualBilling.free_sms_fragment_limit == 0)
-        .all()
-    )
 
     for service in active_services:
-
-        # If a service has free_sms_fragment_limit for the previous year
-        # set the free allowance for this year to 0 as well.
-        # Else use the default free allowance for the service.
-        if service.id in [x.service_id for x in services_with_zero_free_allowance]:
-            print(f"update service {service.id} to 0")
-            dao_create_or_update_annual_billing_for_year(
-                service_id=service.id, free_sms_fragment_limit=0, financial_year_start=year
-            )
-        else:
-            print(f"update service {service.id} with default")
-            set_default_free_allowance_for_service(service, year)
+        print(f"update service {service.id} with default")
+        set_default_free_allowance_for_service(service, year)
 
 
 @click.option("-u", "--user-id", required=True)
