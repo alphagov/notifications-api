@@ -133,6 +133,7 @@ def register_blueprint(application):
     from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
     from app.job.rest import job_blueprint
+    from app.letter_attachment.rest import letter_attachment_blueprint
     from app.letter_branding.letter_branding_rest import (
         letter_branding_blueprint,
     )
@@ -269,6 +270,9 @@ def register_blueprint(application):
 
     platform_admin_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(platform_admin_blueprint, url_prefix="/platform-admin")
+
+    letter_attachment_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(letter_attachment_blueprint)
 
 
 def register_v2_blueprints(application):

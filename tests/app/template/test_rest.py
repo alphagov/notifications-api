@@ -22,6 +22,7 @@ from app.dao.templates_dao import (
 from app.models import Template, TemplateHistory
 from tests import create_admin_authorization_header
 from tests.app.db import (
+    create_letter_attachment,
     create_letter_contact,
     create_notification,
     create_service,
@@ -621,6 +622,27 @@ def test_should_get_a_single_template(client, sample_user, sample_service, subje
     assert data["subject"] == subject
     assert data["process_type"] == "normal"
     assert not data["redact_personalisation"]
+    assert data["letter_attachment"] is None
+
+
+@pytest.mark.parametrize(
+    "endpoint,extra_args",
+    [("template.get_template_by_id_and_service_id", {}), ("template.get_template_version", {"version": 2})],
+)
+def test_get_template_returns_letter_attachment(admin_request, sample_letter_template, endpoint, extra_args):
+
+    attachment = create_letter_attachment(created_by_id=sample_letter_template.created_by_id)
+    sample_letter_template.letter_attachment_id = attachment.id
+    dao_update_template(sample_letter_template)
+
+    data = admin_request.get(
+        endpoint,
+        service_id=sample_letter_template.service_id,
+        template_id=sample_letter_template.id,
+        **extra_args,
+    )
+
+    assert data["data"]["letter_attachment"] == str(attachment.id)
 
 
 @pytest.mark.parametrize(

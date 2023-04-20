@@ -961,10 +961,6 @@ class TemplateBase(db.Model):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("letter_attachment.id"), nullable=True)
 
     @declared_attr
-    def letter_attachment(cls):
-        return db.relationship("LetterAttachment")
-
-    @declared_attr
     def __table_args__(cls):
         if cls.__name__ not in {"Template", "TemplateHistory"}:
             raise RuntimeError("Make sure to manually add this CheckConstraint to the new migration")
@@ -1067,6 +1063,10 @@ class Template(TemplateBase):
         backref=db.backref("templates"),
     )
 
+    letter_attachment = db.relationship(
+        "LetterAttachment", uselist=False, backref=db.backref("template", uselist=False)
+    )
+
     def get_link(self):
         # TODO: use "/v2/" route once available
         return url_for(
@@ -1108,6 +1108,9 @@ class TemplateHistory(TemplateBase):
 
     service = db.relationship("Service")
     version = db.Column(db.Integer, primary_key=True, nullable=False)
+
+    # multiple template history versions can have the same attachment
+    letter_attachment = db.relationship("LetterAttachment", uselist=False, backref=db.backref("template_versions"))
 
     @declared_attr
     def template_redacted(cls):
@@ -2398,3 +2401,14 @@ class LetterAttachment(db.Model):
 
     original_filename = db.Column(db.String, nullable=False)
     page_count = db.Column(db.SmallInteger, nullable=False)
+
+    def serialize(self):
+        return {
+            "id": str(self.id),
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "created_by_id": str(self.created_by_id),
+            "archived_at": get_dt_string_or_none(self.archived_at),
+            "archived_by_id": get_uuid_string_or_none(self.archived_by_id),
+            "original_filename": self.original_filename,
+            "page_count": self.page_count,
+        }
