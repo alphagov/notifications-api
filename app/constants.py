@@ -125,6 +125,30 @@ TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, BROADCAST_TYPE]
 NOTIFICATION_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]  # not broadcast
 NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]  # duplicate that can probably be cleaned up
 
+# Organisations
+ORG_TYPE_CENTRAL = "central"
+ORG_TYPE_LOCAL = "local"
+ORG_TYPE_NHS_CENTRAL = "nhs_central"
+ORG_TYPE_NHS_LOCAL = "nhs_local"
+ORG_TYPE_NHS_GP = "nhs_gp"
+ORG_TYPE_EMERGENCY_SERVICE = "emergency_service"
+ORG_TYPE_SCHOOL_OR_COLLEGE = "school_or_college"
+ORG_TYPE_OTHER = "other"
+ORGANISATION_TYPES = [
+    ORG_TYPE_CENTRAL,
+    ORG_TYPE_LOCAL,
+    ORG_TYPE_NHS_CENTRAL,
+    ORG_TYPE_NHS_LOCAL,
+    ORG_TYPE_NHS_GP,
+    ORG_TYPE_EMERGENCY_SERVICE,
+    ORG_TYPE_SCHOOL_OR_COLLEGE,
+    ORG_TYPE_OTHER,
+]
+CROWN_ORGANISATION_TYPES = ["nhs_central"]
+NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "nhs_gp", "emergency_service", "school_or_college"]
+NHS_ORGANISATION_TYPES = ["nhs_central", "nhs_local", "nhs_gp"]
+
+
 # Service permissions
 MANAGE_USERS = "manage_users"
 MANAGE_TEMPLATES = "manage_templates"

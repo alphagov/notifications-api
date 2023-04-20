@@ -328,22 +328,6 @@ class Domain(db.Model):
     organisation_id = db.Column("organisation_id", UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
 
 
-ORGANISATION_TYPES = [
-    "central",
-    "local",
-    "nhs_central",
-    "nhs_local",
-    "nhs_gp",
-    "emergency_service",
-    "school_or_college",
-    "other",
-]
-
-CROWN_ORGANISATION_TYPES = ["nhs_central"]
-NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "nhs_gp", "emergency_service", "school_or_college"]
-NHS_ORGANISATION_TYPES = ["nhs_central", "nhs_local", "nhs_gp"]
-
-
 class OrganisationTypes(db.Model):
     __tablename__ = "organisation_types"
 

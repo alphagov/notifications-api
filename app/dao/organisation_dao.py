@@ -3,11 +3,11 @@ from sqlalchemy import and_
 from sqlalchemy.sql.expression import func
 
 from app import db
+from app.constants import NHS_ORGANISATION_TYPES
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_id
 from app.models import (
-    NHS_ORGANISATION_TYPES,
     AnnualBilling,
     Domain,
     EmailBranding,

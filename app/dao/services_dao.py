@@ -8,11 +8,14 @@ from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
 from app.constants import (
+    CROWN_ORGANISATION_TYPES,
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    NHS_ORGANISATION_TYPES,
+    NON_CROWN_ORGANISATION_TYPES,
     NOTIFICATION_PERMANENT_FAILURE,
     SMS_TYPE,
     UPLOAD_LETTERS,
@@ -26,9 +29,6 @@ from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.dao.service_user_dao import dao_get_service_user
 from app.dao.template_folder_dao import dao_get_valid_template_folders_by_id
 from app.models import (
-    CROWN_ORGANISATION_TYPES,
-    NHS_ORGANISATION_TYPES,
-    NON_CROWN_ORGANISATION_TYPES,
     AnnualBilling,
     ApiKey,
     FactBilling,
