@@ -28,29 +28,36 @@ def create_nightly_billing(day_start=None):
     for i in range(0, 10):
         process_day = (day_start - timedelta(days=i)).isoformat()
 
-        create_nightly_billing_for_day.apply_async(kwargs={"process_day": process_day}, queue=QueueNames.REPORTING)
+        create_or_update_ft_billing_for_day.apply_async(kwargs={"process_day": process_day}, queue=QueueNames.REPORTING)
         current_app.logger.info(
-            f"create-nightly-billing task: create-nightly-billing-for-day task created for {process_day}"
+            f"create-nightly-billing task: create-or-update-ft-billing-for-day task created for {process_day}"
         )
 
 
-@notify_celery.task(name="create-nightly-billing-for-day")
-def create_nightly_billing_for_day(process_day):
-    process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
-    current_app.logger.info(f"create-nightly-billing-for-day task for {process_day}: started")
+@notify_celery.task(name="update-ft-billing-for-today")
+@cronitor("update-ft-billing-for-today")
+def update_ft_billing_for_today():
+    process_day = convert_utc_to_bst(datetime.utcnow()).date().isoformat()
+    create_or_update_ft_billing_for_day(process_day=process_day)
+
+
+@notify_celery.task(name="create-or-update-ft-billing-for-day")
+def create_or_update_ft_billing_for_day(process_day: str):
+    process_date = datetime.strptime(process_day, "%Y-%m-%d").date()
+    current_app.logger.info(f"create-or-update-ft-billing-for-day task for {process_date}: started")
 
     start = datetime.utcnow()
-    billing_data = fetch_billing_data_for_day(process_day=process_day)
+    billing_data = fetch_billing_data_for_day(process_day=process_date)
     end = datetime.utcnow()
 
     current_app.logger.info(
-        f"create-nightly-billing-for-day task for {process_day}: data fetched in {(end - start).seconds} seconds"
+        f"create-or-update-ft-billing-for-day task for {process_date}: data fetched in {(end - start).seconds} seconds"
     )
 
-    update_ft_billing(billing_data, process_day)
+    update_ft_billing(billing_data, process_date)
 
     current_app.logger.info(
-        f"create-nightly-billing-for-day task for {process_day}: task complete. {len(billing_data)} rows updated"
+        f"create-nightly-billing-for-day task for {process_date}: task complete. {len(billing_data)} rows updated"
     )
 
 

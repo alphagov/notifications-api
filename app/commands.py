@@ -5,7 +5,7 @@ import logging
 import os
 import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from time import monotonic
 from unittest import mock
 
@@ -289,12 +289,12 @@ def setup_commands(application):
 @click.option(
     "-d", "--day", help="The date to recalculate, as YYYY-MM-DD", required=True, type=click_dt(format="%Y-%m-%d")
 )
-def rebuild_ft_billing_for_day(service_id, day):
+def rebuild_ft_billing_for_day(service_id, day: date):
     """
     Rebuild the data in ft_billing for a given day, optionally filtering by service_id
     """
 
-    def rebuild_ft_data(process_day, service_ids=None):
+    def rebuild_ft_data(process_day: date, service_ids=None):
         deleted_rows = delete_billing_data_for_day(process_day=day, service_ids=service_ids)
         current_app.logger.info(f"deleted {deleted_rows} existing billing rows for {process_day}")
 
