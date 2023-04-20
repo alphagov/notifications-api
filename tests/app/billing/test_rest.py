@@ -90,6 +90,24 @@ def test_get_free_sms_fragment_limit(admin_request, sample_service):
     assert json_response["free_sms_fragment_limit"] == 11000
 
 
+def test_get_free_sms_fragment_limit_for_pre_notify_year_400s(admin_request, sample_service):
+    admin_request.get(
+        "billing.get_free_sms_fragment_limit",
+        service_id=sample_service.id,
+        financial_year_start=2015,
+        _expected_status=400,
+    )
+
+
+def test_get_free_sms_fragment_limit_for_future_year_400s(admin_request, sample_service):
+    admin_request.get(
+        "billing.get_free_sms_fragment_limit",
+        service_id=sample_service.id,
+        financial_year_start=date.today().year + 1,
+        _expected_status=400,
+    )
+
+
 @freeze_time("2021-04-02 13:00")
 def test_get_free_sms_fragment_limit_current_year_creates_new_row_if_annual_billing_is_missing(
     admin_request, sample_service

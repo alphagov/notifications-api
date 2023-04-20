@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 from freezegun import freeze_time
 
@@ -74,7 +76,6 @@ def test_dao_update_annual_billing_for_future_years(notify_db_session, sample_se
         ("nhs_local", 2022, 20000),
         ("emergency_service", 2022, 20000),
         ("central", 2023, 40000),
-        ("central", 2030, 40000),
     ],
 )
 def test_set_default_free_allowance_for_service(notify_db_session, org_type, year, expected_default):
@@ -89,6 +90,24 @@ def test_set_default_free_allowance_for_service(notify_db_session, org_type, yea
     assert annual_billing[0].service_id == service.id
     assert annual_billing[0].financial_year_start == year
     assert annual_billing[0].free_sms_fragment_limit == expected_default
+
+
+def test_set_default_free_allowance_for_service_fails_before_2016(notify_db_session):
+    service = create_service(organisation_type="central")
+
+    with pytest.raises(ValueError) as e:
+        set_default_free_allowance_for_service(service=service, year_start=2015)
+
+    assert str(e.value) == "year_start before 2016 is invalid"
+
+
+def test_set_default_free_allowance_for_service_fails_for_future_year(notify_db_session):
+    service = create_service(organisation_type="central")
+
+    with pytest.raises(ValueError) as e:
+        set_default_free_allowance_for_service(service=service, year_start=datetime.date.today().year + 1)
+
+    assert str(e.value) == "year_start cannot be in a future financial year"
 
 
 @freeze_time("2021-03-29 14:02:00")
