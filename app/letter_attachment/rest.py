@@ -10,14 +10,14 @@ letter_attachment_blueprint = Blueprint("letter_attachment", __name__)
 register_errors(letter_attachment_blueprint)
 
 
-@letter_attachment_blueprint.route("/letter_attachment/<uuid:letter_attachment_id>", methods=["GET"])
+@letter_attachment_blueprint.route("/letter-attachment/<uuid:letter_attachment_id>", methods=["GET"])
 def get_letter_attachment(letter_attachment_id):
     letter_attachment = LetterAttachment.query.get_or_404(letter_attachment_id)
 
     return jsonify(letter_attachment.serialize())
 
 
-@letter_attachment_blueprint.route("/letter_attachment", methods=["POST"])
+@letter_attachment_blueprint.route("/letter-attachment", methods=["POST"])
 def create_letter_attachment():
     data = request.get_json()
 
