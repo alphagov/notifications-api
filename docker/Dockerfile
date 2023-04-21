@@ -8,6 +8,7 @@ RUN apt-get update \
     build-essential \
     git \
     libcurl4-openssl-dev \
+    curl \
     libssl-dev \
     && apt-get -y clean \
     && rm -rf /var/lib/apt/lists/* /tmp/*
