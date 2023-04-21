@@ -80,6 +80,15 @@ help:
 generate-version-file: ## Generates the app version file
 	@echo -e "__git_commit__ = \"${GIT_COMMIT}\"\n__time__ = \"${DATE}\"" > ${APP_VERSION_FILE}
 
+.PHONY: drop-test-dbs
+drop-test-dbs:
+	@echo "Dropping test DBs."
+	@for number in $$(seq 0 $$(python -c 'import os; print(os.cpu_count() - 1)')); do \
+	    dropdb test_notification_api_gw$${number} --if-exists; \
+	done
+	@dropdb test_notification_api_master --if-exists
+	@echo "Done."
+
 .PHONY: test
 test: ## Run tests
 	ruff check .
