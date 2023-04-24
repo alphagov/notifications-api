@@ -185,6 +185,10 @@ PERMISSION_LIST = [
     CANCEL_BROADCASTS,
     REJECT_BROADCASTS,
 ]
+CAN_ASK_TO_JOIN_SERVICE = "can_ask_to_join_a_service"
+ORGANISATION_PERMISSION_TYPES = [
+    CAN_ASK_TO_JOIN_SERVICE,
+]
 
 # Prioritisation for template processing
 # PRIORITY queue is now archived and should be ripe for cleanup.
