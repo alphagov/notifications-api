@@ -327,24 +327,25 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
 
 @mock_s3
 @pytest.mark.parametrize(
-    "print_run_deadline_utc, expected_time_called_with",
+    "frozen_time, expected_time_called_with",
     [
-        ("2021-06-01 12:00:00", datetime(2021, 6, 1, 13, 0, 0)),
-        ("2021-01-01 12:00:00", datetime(2021, 1, 1, 12, 0, 0)),
-        (None, datetime(2021, 6, 1, 17, 30)),
+        # 5:50pm and 5:30pm in GMT, represented in UTC
+        ("2021-01-01 17:50:00+00:00", "2021-01-01T17:30:00"),
+        # 5:50pm and 5:30pm in BST, represented in UTC
+        ("2021-06-01 16:50:00+00:00", "2021-06-01T16:30:00"),
     ],
 )
 def test_check_time_to_collate_letters_respects_print_run_deadline(
     notify_db_session,
     mocker,
-    print_run_deadline_utc,
+    frozen_time,
     expected_time_called_with,
 ):
     mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
     mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent", return_value=[])
 
-    with freeze_time("2021-06-01 17:00"):
-        check_time_to_collate_letters(print_run_deadline_utc=print_run_deadline_utc)
+    with freeze_time(frozen_time):
+        check_time_to_collate_letters()
 
     assert mock_collate.apply_async.call_args_list == [
         mocker.call([expected_time_called_with], queue=QueueNames.PERIODIC)
@@ -353,7 +354,7 @@ def test_check_time_to_collate_letters_respects_print_run_deadline(
 
 @mock_s3
 def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, sample_organisation):
-    with freeze_time("2020-02-17 18:00:00"):
+    with freeze_time("2020-02-17T18:00:00+00:00"):
         service_1 = create_service(service_name="service 1", service_id="f2fe37b0-1301-11eb-aba9-4c3275916899")
         service_1.organisation = sample_organisation
         letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
@@ -437,7 +438,7 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, sample_organisation)
     mock_send_email_to_dvla = mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
 
     with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
-        collate_letter_pdfs_to_be_sent(datetime(2020, 2, 17, 17, 30, 0))
+        collate_letter_pdfs_to_be_sent("2020-02-17T17:30:00")
 
     mock_send_email_to_dvla.assert_called_once_with(
         [(1, 1, "europe"), (1, 1, "first"), (1, 1, "rest-of-world"), (4, 4, "second")], datetime(2020, 2, 17).date()
@@ -599,10 +600,10 @@ def test_collate_letter_pdfs_uses_api_on_selected_environments(
     mock_send_via_api = mocker.patch("app.celery.letters_pdf_tasks.send_dvla_letters_via_api")
     with set_config_values(notify_api, {"DVLA_API_ENABLED": api_enabled_env_flag}):
 
-        with freeze_time("2021-06-01 17:00"):
-            collate_letter_pdfs_to_be_sent(datetime(2021, 6, 1, 17, 30))
+        with freeze_time("2021-06-01T17:00+00:00"):
+            collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
 
-    mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 17, 30))
+    mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 16, 30))
 
 
 def test_send_dvla_letters_via_api(sample_letter_template, mocker):
