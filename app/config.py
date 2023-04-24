@@ -320,14 +320,14 @@ class Config(object):
                 "schedule": crontab(hour=17, minute=00),
                 "options": {"queue": QueueNames.PERIODIC},
             },
-            # The check-time-to-collate-letters does assume it is called in an hour that BST does not make a
+            # The collate-letter-pdf does assume it is called in an hour that BST does not make a
             # difference to the truncate date which translates to the filename to process
-            # We schedule it for 16:50 and 17:50 UTC. This task is then responsible for determining if the local time
-            # is 17:50, and if so, actually kicking off letter collation.
+            # We schedule it for 16:50 and 17:50 UTC. The task itself *MUST* appropriately detect that it is running
+            # at 17:50 in local time so that we respect our agreement with DVLA.
             # If updating the cron schedule, you should update the task as well - at least while we're still processing
             # letters by FTP. With the API changes we should have more flexibility.
-            "check-time-to-collate-letters": {
-                "task": "check-time-to-collate-letters",
+            "collate-letter-pdfs-to-be-sent": {
+                "task": "collate-letter-pdfs-to-be-sent",
                 "schedule": crontab(hour="16,17", minute=50),
                 "options": {"queue": QueueNames.PERIODIC},
             },
