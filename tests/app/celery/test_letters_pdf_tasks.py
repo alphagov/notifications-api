@@ -598,12 +598,13 @@ def test_collate_letter_pdfs_uses_api_on_selected_environments(
     mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
     mocker.patch("app.celery.letters_pdf_tasks.get_key_and_size_of_letters_to_be_sent_to_print", return_value=[])
     mock_send_via_api = mocker.patch("app.celery.letters_pdf_tasks.send_dvla_letters_via_api")
-    with set_config_values(notify_api, {"DVLA_API_ENABLED": api_enabled_env_flag}):
 
+    with set_config_values(notify_api, {"DVLA_API_ENABLED": api_enabled_env_flag}):
         with freeze_time("2021-06-01T17:00+00:00"):
             collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
 
-    mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 16, 30))
+    # Expected to be called with a local (BST) value
+    mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 17, 30))
 
 
 def test_send_dvla_letters_via_api(sample_letter_template, mocker):

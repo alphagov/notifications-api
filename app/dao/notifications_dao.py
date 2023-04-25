@@ -660,7 +660,7 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
     return notifications
 
 
-def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000):
+def dao_get_letters_to_be_printed(print_run_deadline_local, postage, query_limit=10000):
     """
     Return all letters created before the print run deadline that have not yet been sent. This yields in batches of 10k
     to prevent the query taking too long and eating up too much memory. As each 10k batch is yielded, the
@@ -677,7 +677,7 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000
     """
     notifications = (
         Notification.query.filter(
-            Notification.created_at < convert_bst_to_utc(print_run_deadline),
+            Notification.created_at < convert_bst_to_utc(print_run_deadline_local),
             Notification.notification_type == LETTER_TYPE,
             Notification.status == NOTIFICATION_CREATED,
             Notification.key_type == KEY_TYPE_NORMAL,
@@ -690,7 +690,7 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000
     return notifications
 
 
-def dao_get_letters_and_sheets_volume_by_postage(print_run_deadline):
+def dao_get_letters_and_sheets_volume_by_postage(print_run_deadline_local):
     notifications = (
         db.session.query(
             func.count(Notification.id).label("letters_count"),
@@ -698,7 +698,7 @@ def dao_get_letters_and_sheets_volume_by_postage(print_run_deadline):
             Notification.postage,
         )
         .filter(
-            Notification.created_at < convert_bst_to_utc(print_run_deadline),
+            Notification.created_at < convert_bst_to_utc(print_run_deadline_local),
             Notification.notification_type == LETTER_TYPE,
             Notification.status == NOTIFICATION_CREATED,
             Notification.key_type == KEY_TYPE_NORMAL,
