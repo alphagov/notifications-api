@@ -325,284 +325,295 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
     ]
 
 
-@mock_s3
-@pytest.mark.parametrize(
-    "print_run_deadline_utc, expected_time_called_with",
-    [
-        ("2021-06-01 12:00:00", datetime(2021, 6, 1, 13, 0, 0)),
-        ("2021-01-01 12:00:00", datetime(2021, 1, 1, 12, 0, 0)),
-        (None, datetime(2021, 6, 1, 17, 30)),
-    ],
-)
-def test_check_time_to_collate_letters_respects_print_run_deadline(
-    notify_db_session,
-    mocker,
-    print_run_deadline_utc,
-    expected_time_called_with,
-):
-    mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
-    mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent", return_value=[])
-
-    with freeze_time("2021-06-01 17:00"):
-        check_time_to_collate_letters(print_run_deadline_utc=print_run_deadline_utc)
-
-    assert mock_collate.apply_async.call_args_list == [
-        mocker.call([expected_time_called_with], queue=QueueNames.PERIODIC)
-    ]
-
-
-@mock_s3
-def test_collate_letter_pdfs_to_be_sent(notify_api, mocker, sample_organisation):
-    with freeze_time("2020-02-17 18:00:00"):
-        service_1 = create_service(service_name="service 1", service_id="f2fe37b0-1301-11eb-aba9-4c3275916899")
-        service_1.organisation = sample_organisation
-        letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
-        # second class
-        create_notification(
-            template=letter_template_1,
-            status="created",
-            reference="ref0",
-            created_at=(datetime.now() - timedelta(hours=2)),
-        )
-        create_notification(
-            template=letter_template_1,
-            status="created",
-            reference="ref1",
-            created_at=(datetime.now() - timedelta(hours=3)),
-        )
-        create_notification(
-            template=letter_template_1,
-            status="created",
-            reference="ref2",
-            created_at=(datetime.now() - timedelta(days=2)),
-        )
-
-        # first class
-        create_notification(
-            template=letter_template_1,
-            status="created",
-            reference="first_class",
-            created_at=(datetime.now() - timedelta(hours=4)),
-            postage="first",
-        )
-
-        # international
-        create_notification(
-            template=letter_template_1,
-            status="created",
-            reference="international",
-            created_at=(datetime.now() - timedelta(days=3)),
-            postage="europe",
-        )
-        create_notification(
-            template=letter_template_1,
-            status="created",
-            reference="international",
-            created_at=(datetime.now() - timedelta(days=4)),
-            postage="rest-of-world",
-        )
-
-        # different service second class, belonging to a different organisation
-        org_2_id = uuid.uuid4()
-        organisation_two = create_organisation("Org 2", organisation_id=org_2_id)
-        service_2 = create_service(
-            service_name="service 2", service_id="3a5cea08-29fd-4bb9-b582-8dedd928b149", organisation=organisation_two
-        )
-        letter_template_2 = create_template(service_2, template_type=LETTER_TYPE)
-        create_notification(
-            template=letter_template_2,
-            status="created",
-            reference="another_service",
-            created_at=(datetime.now() - timedelta(hours=2)),
-        )
-
-    bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
-    s3 = boto3.client("s3", region_name="eu-west-1")
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
-
-    filenames = [
-        "2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF",
-        "2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF",
-        "2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF",
-        "2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF",
-        "2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF",
-        "2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF",
-        "2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF",
-    ]
-
-    for filename in filenames:
-        s3.put_object(Bucket=bucket_name, Key=filename, Body=b"f")
-
-    mock_celery = mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
-    mock_send_email_to_dvla = mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
-
-    with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
-        collate_letter_pdfs_to_be_sent(datetime(2020, 2, 17, 17, 30, 0))
-
-    mock_send_email_to_dvla.assert_called_once_with(
-        [(1, 1, "europe"), (1, 1, "first"), (1, 1, "rest-of-world"), (4, 4, "second")], datetime(2020, 2, 17).date()
+class TestCheckTimeToCollateLetters:
+    @mock_s3
+    @pytest.mark.parametrize(
+        "frozen_time, expected_time_called_with",
+        [
+            # 5:50pm and 5:30pm in GMT, represented in UTC
+            ("2021-01-01 17:50:00+00:00", "2021-01-01T17:30:00"),
+            # 5:50pm and 5:30pm in BST, represented in UTC
+            ("2021-06-01 16:50:00+00:00", "2021-06-01T16:30:00"),
+        ],
     )
+    def test_check_time_to_collate_letters_respects_print_run_deadline(
+        self,
+        notify_db_session,
+        mocker,
+        frozen_time,
+        expected_time_called_with,
+    ):
+        mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent", return_value=[])
 
-    assert len(mock_celery.call_args_list) == 6
-    assert mock_celery.call_args_list[0] == call(
-        name="zip-and-send-letter-pdfs",
-        kwargs={
-            "filenames_to_zip": ["2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF"],
-            "upload_filename": f"NOTIFY.2020-02-17.1.001.sO6RKzPyNrkxrR8OLonl.{letter_template_1.service_id}.{sample_organisation.id}.ZIP",  # noqa
-        },
-        queue="process-ftp-tasks",
-        compression="zlib",
-    )
-    assert mock_celery.call_args_list[1] == call(
-        name="zip-and-send-letter-pdfs",
-        kwargs={
-            "filenames_to_zip": ["2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF"],
-            "upload_filename": f"NOTIFY.2020-02-17.2.001.bGS-FKKV0QHcOUZgacEu.{service_2.id}.{org_2_id}.ZIP",
-        },
-        queue="process-ftp-tasks",
-        compression="zlib",
-    )
-    assert mock_celery.call_args_list[2] == call(
-        name="zip-and-send-letter-pdfs",
-        kwargs={
-            "filenames_to_zip": [
-                "2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF",
-                "2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF",
-            ],
-            "upload_filename": f"NOTIFY.2020-02-17.2.002.AmmswUYqPToXwlSZiFyK.{letter_template_1.service_id}.{sample_organisation.id}.ZIP",  # noqa
-        },
-        queue="process-ftp-tasks",
-        compression="zlib",
-    )
-    assert mock_celery.call_args_list[3] == call(
-        name="zip-and-send-letter-pdfs",
-        kwargs={
-            "filenames_to_zip": ["2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF"],
-            "upload_filename": f"NOTIFY.2020-02-17.2.003.36PwhyI9lFKjzbPiWxwv.{letter_template_1.service_id}.{sample_organisation.id}.ZIP",  # noqa
-        },
-        queue="process-ftp-tasks",
-        compression="zlib",
-    )
-    assert mock_celery.call_args_list[4] == call(
-        name="zip-and-send-letter-pdfs",
-        kwargs={
-            "filenames_to_zip": ["2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF"],
-            "upload_filename": f"NOTIFY.2020-02-17.E.001.lDBwqhnG__URJeGz3tH1.{letter_template_1.service_id}.{sample_organisation.id}.ZIP",  # noqa
-        },
-        queue="process-ftp-tasks",
-        compression="zlib",
-    )
-    assert mock_celery.call_args_list[5] == call(
-        name="zip-and-send-letter-pdfs",
-        kwargs={
-            "filenames_to_zip": [
-                "2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF",
-            ],
-            "upload_filename": f"NOTIFY.2020-02-17.N.001.ZE7k_jm7Bg5sYwLswkr4.{letter_template_1.service_id}.{sample_organisation.id}.ZIP",  # noqa
-        },
-        queue="process-ftp-tasks",
-        compression="zlib",
-    )
+        with freeze_time(frozen_time):
+            check_time_to_collate_letters()
 
+        assert mock_collate.apply_async.call_args_list == [
+            mocker.call([expected_time_called_with], queue=QueueNames.PERIODIC)
+        ]
 
-@mock_s3
-@pytest.mark.parametrize(
-    "time_to_run_task, should_run",
-    [
-        # GMT - too early, check on - run cancelled
-        ("2020-02-17 16:50:00Z", False),
-        # GMT - just in between the two allowed execution windows, check on - run cancelled
-        ("2020-02-17 17:49:30Z", False),
-        # GMT - on schedule, check on - runs
-        ("2020-02-17 17:50:00Z", True),
-        # GMT - on schedule at the end of the window, check on - runs
-        ("2020-02-17 18:49:00Z", True),
-        # BST - on schedule, check on
-        ("2020-06-01 16:50:00Z", True),
-        # BST - too late, check on - run cancelled
-        ("2020-06-01 17:50:00Z", False),
-    ],
-)
-def test_collate_letter_pdfs_to_be_sent_exits_early_outside_of_expected_window(
-    time_to_run_task, should_run, sample_organisation, mocker, notify_api, caplog
-):
-    with freeze_time("2020-02-17 18:00:00"):
-        service_1 = create_service(service_name="service 1", service_id="f2fe37b0-1301-11eb-aba9-4c3275916899")
-        service_1.organisation = sample_organisation
-        letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
-        # first class
-        create_notification(
-            template=letter_template_1,
-            status="created",
-            reference="first_class",
-            created_at=(datetime.now() - timedelta(hours=4)),
-            postage="first",
-        )
+    @mock_s3
+    @pytest.mark.parametrize(
+        "time_to_run_task, should_run",
+        [
+            # GMT - too early, check on - run cancelled
+            ("2020-02-17 16:50:00Z", False),
+            # GMT - just in between the two allowed execution windows, check on - run cancelled
+            ("2020-02-17 17:49:30Z", False),
+            # GMT - on schedule, check on - runs
+            ("2020-02-17 17:50:00Z", True),
+            # GMT - on schedule at the end of the window, check on - runs
+            ("2020-02-17 18:49:00Z", True),
+            # BST - on schedule, check on
+            ("2020-06-01 16:50:00Z", True),
+            # BST - too late, check on - run cancelled
+            ("2020-06-01 17:50:00Z", False),
+        ],
+    )
+    def test_collate_letter_pdfs_to_be_sent_exits_early_outside_of_expected_window(
+        self, time_to_run_task, should_run, sample_organisation, mocker, notify_api, caplog
+    ):
+        mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent")
 
-    bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
-    s3 = boto3.client("s3", region_name="eu-west-1")
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
-    s3.put_object(Bucket=bucket_name, Key="2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF", Body=b"f")
-
-    mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
-    mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent")
-
-    with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
         with freeze_time(time_to_run_task):
             check_time_to_collate_letters()
 
-    if should_run:
-        assert mock_collate.apply_async.call_count == 1
-        assert (
-            "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window" not in caplog.messages
+        if should_run:
+            assert mock_collate.apply_async.call_count == 1
+            assert (
+                "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window"
+                not in caplog.messages
+            )
+
+        else:
+            assert (
+                "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window" in caplog.messages
+            )
+            assert mock_collate.apply_async.call_count == 0
+
+
+class TestCollateLetterPdfsToBeSent:
+    @pytest.mark.parametrize(
+        "last_run_at, time_now, due_in_seconds",
+        (
+            (
+                # The 16:50 UTC run ran a second ago:
+                # the next run should be in 3,599 seconds at 17:50 UTC
+                datetime(2023, 6, 1, 16, 50, 0, tzinfo=pytz.UTC),
+                datetime(2023, 6, 1, 16, 50, 1, tzinfo=pytz.UTC),
+                3599,
+            ),
+            (
+                # The 17:50 UTC run ran a second ago:
+                # the next run should be in 82,799 seconds at 16:50 UTC the next day
+                datetime(2023, 6, 1, 17, 50, 0, tzinfo=pytz.UTC),
+                datetime(2023, 6, 1, 17, 50, 1, tzinfo=pytz.UTC),
+                82799,
+            ),
+        ),
+    )
+    def test_check_time_to_collate_letters_celery_beat_schedule(
+        self, notify_api, last_run_at, time_now, due_in_seconds
+    ):
+        schedule = notify_api.config["CELERY"]["beat_schedule"]["check-time-to-collate-letters"]["schedule"]
+        with freeze_time(time_now):
+            assert schedule.is_due(last_run_at).next == due_in_seconds
+
+    @pytest.mark.parametrize(
+        "api_enabled_env_flag", [True, pytest.param(False, marks=pytest.mark.xfail(raises=AssertionError))]
+    )
+    def test_collate_letter_pdfs_uses_api_on_selected_environments(
+        self,
+        notify_api,
+        notify_db_session,
+        mocker,
+        api_enabled_env_flag,
+    ):
+        mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
+        mocker.patch("app.celery.letters_pdf_tasks.get_key_and_size_of_letters_to_be_sent_to_print", return_value=[])
+        mock_send_via_api = mocker.patch("app.celery.letters_pdf_tasks.send_dvla_letters_via_api")
+
+        with set_config_values(notify_api, {"DVLA_API_ENABLED": api_enabled_env_flag}):
+            with freeze_time("2021-06-01T17:00+00:00"):
+                collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
+
+        # Expected to be called with a local (BST) value
+        mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 17, 30))
+
+    @mock_s3
+    def test_collate_letter_pdfs_to_be_sent(self, notify_api, mocker, sample_organisation):
+        with freeze_time("2020-02-17T18:00:00+00:00"):
+            service_1 = create_service(service_name="service 1", service_id="f2fe37b0-1301-11eb-aba9-4c3275916899")
+            service_1.organisation = sample_organisation
+            letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
+            # second class
+            create_notification(
+                template=letter_template_1,
+                status="created",
+                reference="ref0",
+                created_at=(datetime.now() - timedelta(hours=2)),
+            )
+            create_notification(
+                template=letter_template_1,
+                status="created",
+                reference="ref1",
+                created_at=(datetime.now() - timedelta(hours=3)),
+            )
+            create_notification(
+                template=letter_template_1,
+                status="created",
+                reference="ref2",
+                created_at=(datetime.now() - timedelta(days=2)),
+            )
+
+            # first class
+            create_notification(
+                template=letter_template_1,
+                status="created",
+                reference="first_class",
+                created_at=(datetime.now() - timedelta(hours=4)),
+                postage="first",
+            )
+
+            # international
+            create_notification(
+                template=letter_template_1,
+                status="created",
+                reference="international",
+                created_at=(datetime.now() - timedelta(days=3)),
+                postage="europe",
+            )
+            create_notification(
+                template=letter_template_1,
+                status="created",
+                reference="international",
+                created_at=(datetime.now() - timedelta(days=4)),
+                postage="rest-of-world",
+            )
+
+            # different service second class, belonging to a different organisation
+            org_2_id = uuid.uuid4()
+            organisation_two = create_organisation("Org 2", organisation_id=org_2_id)
+            service_2 = create_service(
+                service_name="service 2",
+                service_id="3a5cea08-29fd-4bb9-b582-8dedd928b149",
+                organisation=organisation_two,
+            )
+            letter_template_2 = create_template(service_2, template_type=LETTER_TYPE)
+            create_notification(
+                template=letter_template_2,
+                status="created",
+                reference="another_service",
+                created_at=(datetime.now() - timedelta(hours=2)),
+            )
+
+        bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
+        s3 = boto3.client("s3", region_name="eu-west-1")
+        s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+
+        filenames = [
+            "2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF",
+            "2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF",
+            "2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF",
+            "2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF",
+            "2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF",
+            "2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF",
+            "2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF",
+        ]
+
+        for filename in filenames:
+            s3.put_object(Bucket=bucket_name, Key=filename, Body=b"f")
+
+        mock_celery = mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
+        mock_send_email_to_dvla = mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
+
+        with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
+            collate_letter_pdfs_to_be_sent("2020-02-17T17:30:00")
+
+        mock_send_email_to_dvla.assert_called_once_with(
+            [(1, 1, "europe"), (1, 1, "first"), (1, 1, "rest-of-world"), (4, 4, "second")], datetime(2020, 2, 17).date()
         )
 
-    else:
-        assert "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window" in caplog.messages
-        assert mock_collate.apply_async.call_count == 0
-
-
-@pytest.mark.parametrize(
-    "last_run_at, time_now, due_in_seconds",
-    (
-        (
-            # The 16:50 UTC run ran a second ago - the next run should be in 3,599 seconds at 17:50 UTC
-            datetime(2023, 6, 1, 16, 50, 0, tzinfo=pytz.UTC),
-            datetime(2023, 6, 1, 16, 50, 1, tzinfo=pytz.UTC),
-            3599,
-        ),
-        (
-            # The 17:50 UTC run ran a second ago - the next run should be in 82,799 seconds at 16:50 UTC the next day
-            datetime(2023, 6, 1, 17, 50, 0, tzinfo=pytz.UTC),
-            datetime(2023, 6, 1, 17, 50, 1, tzinfo=pytz.UTC),
-            82799,
-        ),
-    ),
-)
-def test_check_time_to_collate_letters_celery_beat_schedule(notify_api, last_run_at, time_now, due_in_seconds):
-    schedule = notify_api.config["CELERY"]["beat_schedule"]["check-time-to-collate-letters"]["schedule"]
-    with freeze_time(time_now):
-        assert schedule.is_due(last_run_at).next == due_in_seconds
-
-
-@pytest.mark.parametrize(
-    "api_enabled_env_flag", [True, pytest.param(False, marks=pytest.mark.xfail(raises=AssertionError))]
-)
-def test_collate_letter_pdfs_uses_api_on_selected_environments(
-    notify_api,
-    notify_db_session,
-    mocker,
-    api_enabled_env_flag,
-):
-    mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
-    mocker.patch("app.celery.letters_pdf_tasks.get_key_and_size_of_letters_to_be_sent_to_print", return_value=[])
-    mock_send_via_api = mocker.patch("app.celery.letters_pdf_tasks.send_dvla_letters_via_api")
-    with set_config_values(notify_api, {"DVLA_API_ENABLED": api_enabled_env_flag}):
-
-        with freeze_time("2021-06-01 17:00"):
-            collate_letter_pdfs_to_be_sent(datetime(2021, 6, 1, 17, 30))
-
-    mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 17, 30))
+        assert len(mock_celery.call_args_list) == 6
+        assert mock_celery.call_args_list[0] == call(
+            name="zip-and-send-letter-pdfs",
+            kwargs={
+                "filenames_to_zip": ["2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF"],
+                "upload_filename": (
+                    "NOTIFY.2020-02-17.1.001.sO6RKzPyNrkxrR8OLonl."
+                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
+                ),
+                # noqa
+            },
+            queue="process-ftp-tasks",
+            compression="zlib",
+        )
+        assert mock_celery.call_args_list[1] == call(
+            name="zip-and-send-letter-pdfs",
+            kwargs={
+                "filenames_to_zip": ["2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF"],
+                "upload_filename": f"NOTIFY.2020-02-17.2.001.bGS-FKKV0QHcOUZgacEu.{service_2.id}.{org_2_id}.ZIP",
+            },
+            queue="process-ftp-tasks",
+            compression="zlib",
+        )
+        assert mock_celery.call_args_list[2] == call(
+            name="zip-and-send-letter-pdfs",
+            kwargs={
+                "filenames_to_zip": [
+                    "2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF",
+                    "2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF",
+                ],
+                "upload_filename": (
+                    "NOTIFY.2020-02-17.2.002.AmmswUYqPToXwlSZiFyK."
+                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
+                ),
+                # noqa
+            },
+            queue="process-ftp-tasks",
+            compression="zlib",
+        )
+        assert mock_celery.call_args_list[3] == call(
+            name="zip-and-send-letter-pdfs",
+            kwargs={
+                "filenames_to_zip": ["2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF"],
+                "upload_filename": (
+                    "NOTIFY.2020-02-17.2.003.36PwhyI9lFKjzbPiWxwv."
+                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
+                ),
+                # noqa
+            },
+            queue="process-ftp-tasks",
+            compression="zlib",
+        )
+        assert mock_celery.call_args_list[4] == call(
+            name="zip-and-send-letter-pdfs",
+            kwargs={
+                "filenames_to_zip": ["2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF"],
+                "upload_filename": (
+                    "NOTIFY.2020-02-17.E.001.lDBwqhnG__URJeGz3tH1."
+                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
+                ),
+                # noqa
+            },
+            queue="process-ftp-tasks",
+            compression="zlib",
+        )
+        assert mock_celery.call_args_list[5] == call(
+            name="zip-and-send-letter-pdfs",
+            kwargs={
+                "filenames_to_zip": [
+                    "2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF",
+                ],
+                "upload_filename": (
+                    "NOTIFY.2020-02-17.N.001.ZE7k_jm7Bg5sYwLswkr4."
+                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
+                ),
+                # noqa
+            },
+            queue="process-ftp-tasks",
+            compression="zlib",
+        )
 
 
 def test_send_dvla_letters_via_api(sample_letter_template, mocker):

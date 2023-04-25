@@ -3,12 +3,11 @@ from datetime import datetime, timedelta
 from datetime import time as dt_time
 from hashlib import sha512
 
-import dateutil
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.postal_address import PostalAddress
-from notifications_utils.timezones import convert_utc_to_bst
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 
 from app import encryption, notify_celery
 from app.aws import s3
@@ -131,22 +130,22 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
 
 @notify_celery.task(name="collate-letter-pdfs-to-be-sent")
 @cronitor("collate-letter-pdfs-to-be-sent")
-def collate_letter_pdfs_to_be_sent(print_run_deadline):
+def collate_letter_pdfs_to_be_sent(print_run_deadline_utc_str: str):
     """
     Finds all letters which are still waiting to be sent to DVLA for printing
 
     This would usually be run at 5.50pm and collect up letters created between before 5:30pm today
     that have not yet been sent.
-    If run after midnight, it will collect up letters created before 5:30pm the day before.
     """
-    _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline)
+    print_run_deadline_local = convert_utc_to_bst(datetime.fromisoformat(print_run_deadline_utc_str))
+    _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline_local)
 
     if current_app.config["DVLA_API_ENABLED"]:
-        return send_dvla_letters_via_api(print_run_deadline)
+        return send_dvla_letters_via_api(print_run_deadline_local)
 
     for postage in POSTAGE_TYPES:
         current_app.logger.info(f"starting collate-letter-pdfs-to-be-sent processing for postage class {postage}")
-        letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
+        letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline_local, postage)
 
         for i, letters in enumerate(group_letters(letters_to_print)):
             filenames = [letter["Key"] for letter in letters]
@@ -157,7 +156,7 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline):
             hash = urlsafe_b64encode(sha512("".join(filenames).encode()).digest())[:20].decode()
             # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
             dvla_filename = "NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.{organisation_id}.ZIP".format(
-                date=print_run_deadline.strftime("%Y-%m-%d"),
+                date=print_run_deadline_local.strftime("%Y-%m-%d"),
                 postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
                 num=i + 1,
                 hash=hash,
@@ -182,38 +181,30 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline):
 
 
 @notify_celery.task(name="check-time-to-collate-letters")
-def check_time_to_collate_letters(print_run_deadline_utc=None):
+def check_time_to_collate_letters():
     """Check whether we need to start collating letters and sending them to DVLA for processing.
 
     This task is scheduled via celery-beat to run at 16:50 and 17:50 UTC every day. This task is responsible for working
     out whether it's running at 17:50 local time: if it is, then letter collation itself will be triggered and all
     letters submitted to Notify before 17:30 local time will be collated and sent over.
-
-    You can specify a specific print_run_deadline_utc as an ISO format datetime if you want to. This is primarily
-    useful for load testing or running locally. Make sure to consider UTC to BST.
     """
-    if print_run_deadline_utc:
-        print_run_deadline = convert_utc_to_bst(dateutil.parser.parse(print_run_deadline_utc))
-    else:
-        print_run_date = convert_utc_to_bst(datetime.utcnow())
+    datetime_local = convert_utc_to_bst(datetime.utcnow())
 
-        if not (dt_time(17, 50) <= print_run_date.time() < dt_time(18, 50)):
-            current_app.logger.info(
-                "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window"
-            )
-            return
+    if not (dt_time(17, 50) <= datetime_local.time() < dt_time(18, 50)):
+        current_app.logger.info("Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window")
+        return
 
-        if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
-            print_run_date = print_run_date - timedelta(days=1)
+    if datetime_local.time() < LETTER_PROCESSING_DEADLINE:
+        datetime_local = datetime_local - timedelta(days=1)
 
-        print_run_deadline = print_run_date.replace(hour=17, minute=30, second=0, microsecond=0)
+    print_run_deadline_utc = convert_bst_to_utc(datetime_local.replace(hour=17, minute=30, second=0, microsecond=0))
 
-    collate_letter_pdfs_to_be_sent.apply_async([print_run_deadline], queue=QueueNames.PERIODIC)
+    collate_letter_pdfs_to_be_sent.apply_async([print_run_deadline_utc.isoformat()], queue=QueueNames.PERIODIC)
 
 
-def _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline):
-    letters_volumes = dao_get_letters_and_sheets_volume_by_postage(print_run_deadline)
-    send_letters_volume_email_to_dvla(letters_volumes, print_run_deadline.date())
+def _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline_local):
+    letters_volumes = dao_get_letters_and_sheets_volume_by_postage(print_run_deadline_local)
+    send_letters_volume_email_to_dvla(letters_volumes, print_run_deadline_local.date())
 
 
 def send_letters_volume_email_to_dvla(letters_volumes, date):
@@ -265,8 +256,8 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
         send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
 
-def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage):
-    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline, postage)
+def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline_local, postage):
+    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline_local, postage)
     for letter in letters_awaiting_sending:
         try:
             letter_pdf = find_letter_pdf_in_s3(letter)
@@ -314,10 +305,10 @@ def group_letters(letter_pdfs):
         yield list_of_files
 
 
-def send_dvla_letters_via_api(print_run_deadline):
+def send_dvla_letters_via_api(print_run_deadline_local):
     for postage in POSTAGE_TYPES:
         current_app.logger.info(f"send-dvla-letters-for-day-via-api - starting queuing for postage class {postage}")
-        for letter in dao_get_letters_to_be_printed(print_run_deadline, postage):
+        for letter in dao_get_letters_to_be_printed(print_run_deadline_local, postage):
             deliver_letter.apply_async(kwargs={"notification_id": letter.id}, queue=QueueNames.SEND_LETTER)
 
         current_app.logger.info(f"send-dvla-letters-for-day-via-api - finished queuing for postage class {postage}")

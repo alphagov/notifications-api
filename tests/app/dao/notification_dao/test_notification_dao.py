@@ -1521,7 +1521,9 @@ def test_letters_to_be_printed_sort_by_service(notify_db_session):
     ]
 
     results = list(
-        dao_get_letters_to_be_printed(print_run_deadline=datetime(2020, 12, 1, 17, 30), postage="second", query_limit=4)
+        dao_get_letters_to_be_printed(
+            print_run_deadline_local=datetime(2020, 12, 1, 17, 30), postage="second", query_limit=4
+        )
     )
     assert [x.id for x in results] == [x.id for x in letters_ordered_by_service_then_time]
 
@@ -1535,7 +1537,9 @@ def test_letters_to_be_printed_does_not_include_letters_without_billable_units_s
     create_notification(template=sample_letter_template, created_at=datetime(2020, 12, 1, 9, 31), billable_units=0)
 
     results = list(
-        dao_get_letters_to_be_printed(print_run_deadline=datetime(2020, 12, 1, 17, 30), postage="second", query_limit=4)
+        dao_get_letters_to_be_printed(
+            print_run_deadline_local=datetime(2020, 12, 1, 17, 30), postage="second", query_limit=4
+        )
     )
     assert len(results) == 1
     assert results[0].id == included_letter.id
@@ -1558,7 +1562,7 @@ def test_dao_get_letters_and_sheets_volume_by_postage(notify_db_session):
     create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 33))
     create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 34))
 
-    results = dao_get_letters_and_sheets_volume_by_postage(print_run_deadline=datetime(2020, 12, 1, 17, 30))
+    results = dao_get_letters_and_sheets_volume_by_postage(print_run_deadline_local=datetime(2020, 12, 1, 17, 30))
 
     assert len(results) == 4
 
