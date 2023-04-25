@@ -136,7 +136,6 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline_utc_str: str):
 
     This would usually be run at 5.50pm and collect up letters created between before 5:30pm today
     that have not yet been sent.
-    If run after midnight, it will collect up letters created before 5:30pm the day before.
     """
     print_run_deadline_local = convert_utc_to_bst(datetime.fromisoformat(print_run_deadline_utc_str))
     _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline_local)
