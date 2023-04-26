@@ -333,7 +333,6 @@ class OrganisationTypes(db.Model):
 
     name = db.Column(db.String(255), primary_key=True)
     is_crown = db.Column(db.Boolean, nullable=True)
-    annual_free_sms_fragment_limit = db.Column(db.BigInteger, nullable=False)
 
 
 class OrganisationPermission(db.Model):
