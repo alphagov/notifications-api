@@ -191,11 +191,13 @@ class Config(object):
     DVLA_EMAIL_ADDRESSES = json.loads(os.environ.get("DVLA_EMAIL_ADDRESSES", "[]"))
 
     CELERY = {
-        "broker_url": "sqs://",
+        "broker_url": "https://sqs.eu-west-1.amazonaws.com",
+        "broker_transport": "sqs",
         "broker_transport_options": {
             "region": AWS_REGION,
             "visibility_timeout": 310,
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
+            "is_secure": True,
         },
         "timezone": "UTC",
         "imports": [
