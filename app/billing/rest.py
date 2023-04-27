@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, abort, jsonify, request
 
 from app.billing.billing_schemas import (
     create_or_update_free_sms_fragment_limit_schema,
@@ -61,9 +61,12 @@ def get_free_sms_fragment_limit(service_id):
         # An entry does not exist in annual_billing table for that service and year.
         # Set the annual billing to the default free allowance based on the organisation type of the service.
 
-        annual_billing = set_default_free_allowance_for_service(
-            service=service, year_start=int(financial_year_start) if financial_year_start else None
-        )
+        try:
+            annual_billing = set_default_free_allowance_for_service(
+                service=service, year_start=int(financial_year_start) if financial_year_start else None
+            )
+        except ValueError:
+            abort(400)
 
     return jsonify(annual_billing.serialize_free_sms_items()), 200
 
