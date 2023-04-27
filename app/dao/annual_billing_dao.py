@@ -52,10 +52,11 @@ def set_default_free_allowance_for_service(service, year_start=None):
     elif year_start > current_financial_year_start:
         raise ValueError("year_start cannot be in a future financial year")
 
-    if not service.organisation_type:
+    if not (org_type := service.organisation_type):
         current_app.logger.warning(
             "No organisation type for service %s. Using default for `other` org type.", service.id
         )
+        org_type = ORG_TYPE_OTHER
 
     # If the service had 0 allowance for the previous year, let's pull that forward.
     if (
@@ -69,7 +70,6 @@ def set_default_free_allowance_for_service(service, year_start=None):
     else:
         # Find the default annual allowance for the service's org type with the most recent
         # valid_from_financial_year_start.
-        org_type = service.organisation_type or ORG_TYPE_OTHER
         default_free_sms_fragment_allowance = (
             DefaultAnnualAllowance.query.filter(
                 DefaultAnnualAllowance.valid_from_financial_year_start <= year_start,
