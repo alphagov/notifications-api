@@ -17,7 +17,6 @@ from flask import current_app, json
 from notifications_utils.recipients import RecipientCSV
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import SMSMessageTemplate
-from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -27,6 +26,7 @@ from app.celery.letters_pdf_tasks import (
     get_pdf_for_templated_letter,
     resanitise_pdf,
 )
+from app.celery.scheduled_tasks import populate_annual_billing
 from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
 from app.constants import KEY_TYPE_TEST, NOTIFICATION_CREATED, SMS_TYPE
@@ -62,7 +62,6 @@ from app.dao.users_dao import (
     get_user_by_email,
 )
 from app.models import (
-    AnnualBilling,
     Domain,
     EmailBranding,
     LetterBranding,
@@ -801,31 +800,7 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
                       If false populate the default values for all active services.""",
 )
 def populate_annual_billing_with_defaults(year, missing_services_only):
-    """
-    Add or update annual billing with free allowance defaults for all active services.
-    The default free allowances are stored in the DB in a table called `default_annual_allowance`.
-
-    If missing_services_only is true then only add rows for services that do not have annual billing for that year yet.
-    This is useful to prevent overriding any services that have a free allowance that is not the default.
-
-    If missing_services_only is false then add or update annual billing for all active services.
-    This is useful to ensure all services start the new year with the correct annual billing.
-    """
-    if missing_services_only:
-        active_services = (
-            Service.query.filter(Service.active)
-            .outerjoin(
-                AnnualBilling, and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == year)
-            )
-            .filter(AnnualBilling.id == None)  # noqa
-            .all()
-        )
-    else:
-        active_services = Service.query.filter(Service.active).all()
-
-    for service in active_services:
-        print(f"update service {service.id} with default")
-        set_default_free_allowance_for_service(service, year)
+    populate_annual_billing(year, missing_services_only=missing_services_only)
 
 
 @click.option("-u", "--user-id", required=True)
