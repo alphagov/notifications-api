@@ -76,6 +76,16 @@ def test_dao_update_annual_billing_for_future_years(notify_db_session, sample_se
         ("nhs_local", 2022, 20000),
         ("emergency_service", 2022, 20000),
         ("central", 2023, 40000),
+        # Some test cases that will make valid assertions as time inevitably marches on
+        ("central", datetime.date.today().year, 40_000),
+        ("local", datetime.date.today().year, 20_000),
+        ("nhs_central", datetime.date.today().year, 40_000),
+        ("nhs_local", datetime.date.today().year, 20_000),
+        ("nhs_gp", datetime.date.today().year, 10_000),
+        ("emergency_service", datetime.date.today().year, 20_000),
+        ("school_or_college", datetime.date.today().year, 10_000),
+        ("other", datetime.date.today().year, 10_000),
+        (None, datetime.date.today().year, 10_000),
     ],
 )
 def test_set_default_free_allowance_for_service(notify_db_session, org_type, year, expected_default):
