@@ -1,7 +1,15 @@
 #!/bin/bash
 
+#Cater for specific concurrency level
+if [ "$1" == "delivery-worker-periodic" ] || [ "$1" == "delivery-worker-broadcasts" ]
+then
+  CONCURRENCY=2
+else
+  CONCURRENCY=4
+fi
+
 # Define a common command prefix
-WORKER_CMD="celery -A run_celery.notify_celery worker --pidfile=\"/tmp/celery.pid\" --loglevel=INFO --concurrency=4"
+WORKER_CMD="celery -A run_celery.notify_celery worker --pidfile=\"/tmp/celery.pid\" --loglevel=INFO --concurrency=$CONCURRENCY"
 COMMON_CMD="$WORKER_CMD -Q"
 
 if [ "$1" == "worker" ]
@@ -38,8 +46,7 @@ then
 
 elif [ "$1" == "delivery-worker-sender" ]
 then
-  celery multi start 3 -c 4 -A run_celery.notify_celery --loglevel=INFO \
-    --logfile=/dev/null --pidfile=/tmp/celery%N.pid -Q send-sms-tasks,send-email-tasks
+  $COMMON_CMD send-sms-tasks,send-email-tasks 2> /dev/null
 
 elif [ "$1" == "delivery-worker-sender-letters" ]
 then
