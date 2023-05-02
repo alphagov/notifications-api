@@ -24,8 +24,10 @@ beautifulsoup4==4.11.1
     # via -r requirements.in
 billiard==3.6.4.0
     # via celery
-blinker==1.5
-    # via gds-metrics
+blinker==1.6.2
+    # via
+    #   flask
+    #   gds-metrics
 boto3==1.24.84
     # via notifications-utils
 botocore==1.27.84
@@ -74,7 +76,7 @@ docutils==0.16
     # via awscli
 eventlet==0.33.1
     # via gunicorn
-flask==2.2.2
+flask==2.3.2
     # via
     #   -r requirements.in
     #   flask-bcrypt
@@ -112,7 +114,7 @@ idna==3.4
     # via
     #   jsonschema
     #   requests
-importlib-metadata==6.3.0
+importlib-metadata==6.6.0
     # via flask
 iso8601==1.1.0
     # via -r requirements.in
@@ -266,7 +268,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webcolors==1.12
     # via jsonschema
-werkzeug==2.2.3
+werkzeug==2.3.3
     # via flask
 zipp==3.15.0
     # via importlib-metadata
