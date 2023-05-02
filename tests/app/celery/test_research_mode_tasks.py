@@ -128,7 +128,7 @@ def test_create_fake_letter_response_file_uploads_response_file_s3(notify_api, m
         create_fake_letter_response_file("random-ref")
 
         mock_s3upload.assert_called_once_with(
-            filedata="random-ref|Sent|0|Sorted",
+            filedata="random-ref|Sent|0|Sorted|2018-01-25",
             region=current_app.config["AWS_REGION"],
             bucket_name=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
             file_location=dvla_response_file_matcher,
