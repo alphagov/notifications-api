@@ -24,7 +24,8 @@ def init_performance_monitoring():
         send_pii = True if not_production else False
         send_request_bodies = "medium" if not_production else "never"
 
-        traces_sampler = partial(sentry_sampler, sample_rate=trace_sample_rate)
+        # Disable transaction tracing in production for now - we've seen issues with memory/performance.
+        traces_sampler = partial(sentry_sampler, sample_rate=trace_sample_rate) if not_production else None
 
         sentry_sdk.init(
             dsn=sentry_dsn,
