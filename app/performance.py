@@ -15,6 +15,10 @@ def init_performance_monitoring():
     sentry_enabled = bool(int(os.getenv("SENTRY_ENABLED", "0")))
     sentry_dsn = os.getenv("SENTRY_DSN")
 
+    # Force Sentry off for all production instances except instance 1
+    if environment == "production" and os.getenv("CF_INSTANCE_INDEX", "-1") != "1":
+        sentry_enabled = False
+
     if environment and sentry_enabled and sentry_dsn:
         import sentry_sdk
 
