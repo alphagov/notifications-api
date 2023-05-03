@@ -13,3 +13,13 @@ post_create_letter_attachment_schema = {
     },
     "required": ["upload_id", "created_by_id", "original_filename", "page_count", "template_id"],
 }
+
+post_archive_letter_attachment_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST schema for archiving letter_attachment",
+    "type": "object",
+    "properties": {
+        "archived_by": uuid,
+    },
+    "required": ["archived_by"],
+}
