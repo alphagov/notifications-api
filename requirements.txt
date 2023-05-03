@@ -28,6 +28,7 @@ blinker==1.6.2
     # via
     #   flask
     #   gds-metrics
+    #   sentry-sdk
 boto3==1.24.84
     # via notifications-utils
 botocore==1.27.84
@@ -40,7 +41,9 @@ cachetools==5.2.0
     #   -r requirements.in
     #   notifications-utils
 celery[sqs]==5.2.7
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   sentry-sdk
 certifi==2022.12.7
     # via
     #   pyproj
@@ -86,6 +89,7 @@ flask==2.3.2
     #   flask-sqlalchemy
     #   gds-metrics
     #   notifications-utils
+    #   sentry-sdk
 flask-bcrypt==1.0.1
     # via -r requirements.in
 flask-marshmallow==0.14.0
@@ -226,7 +230,7 @@ s3transfer==0.6.0
     # via
     #   awscli
     #   boto3
-sentry-sdk==1.21.1
+sentry-sdk[celery,flask,sqlalchemy]==1.21.1
     # via -r requirements.in
 shapely==1.8.4
     # via notifications-utils
@@ -248,6 +252,7 @@ sqlalchemy==1.4.41
     #   alembic
     #   flask-sqlalchemy
     #   marshmallow-sqlalchemy
+    #   sentry-sdk
 statsd==3.3.0
     # via notifications-utils
 typing-extensions==4.5.0
