@@ -2,7 +2,7 @@ import os
 from functools import partial
 
 
-def sentry_sampler(sampling_context, sample_rate=0):
+def sentry_sampler(sampling_context, sample_rate: float = 0.0):
     if sampling_context["parent_sampled"]:
         return 1
 
@@ -11,24 +11,31 @@ def sentry_sampler(sampling_context, sample_rate=0):
 
 def init_performance_monitoring():
     environment = os.getenv("NOTIFY_ENVIRONMENT").lower()
-    enable_apm = environment in {"development", "preview", "staging"}
+    not_production = environment in {"development", "preview", "staging"}
+    sentry_enabled = bool(int(os.getenv("SENTRY_ENABLED", "0")))
+    sentry_dsn = os.getenv("SENTRY_DSN")
 
-    if environment == "production" and os.getenv("CF_INSTANCE_INDEX", "-1") == "9":
-        # In production, turn it on for instance 9 (randomly chosen) only.
-        enable_apm = True
+    # Force Sentry off for all production instances except instance 1
+    if environment == "production" and os.getenv("CF_INSTANCE_INDEX", "-1") != "1":
+        sentry_enabled = False
 
-    if enable_apm and (sentry_dsn := os.getenv("SENTRY_DSN")):
+    if environment and sentry_enabled and sentry_dsn:
         import sentry_sdk
+
+        error_sample_rate = float(os.getenv("SENTRY_ERRORS_SAMPLE_RATE", 0.0))
+        trace_sample_rate = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", 0.0))
+
+        send_pii = True if not_production else False
+        send_request_bodies = "medium" if not_production else "never"
+
+        # Disable transaction tracing in production for now - we've seen issues with memory/performance.
+        traces_sampler = partial(sentry_sampler, sample_rate=trace_sample_rate) if not_production else None
 
         sentry_sdk.init(
             dsn=sentry_dsn,
             environment=environment,
-            debug=False,
-            sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 1.0)),  # Error sampling rate
-            attach_stacktrace=False,  # Attach stacktraces to _all_ events (ie even log messages)
-            send_default_pii=False,  # Don't include any default PII (false by default, here for explicitness)
-            request_bodies="never",  # Include request body (eg POST payload) in sentry errors
-            traces_sampler=partial(
-                sentry_sampler, sample_rate=float(os.getenv("SENTRY_TRACING_SAMPLE_RATE", 0))
-            ),  # Custom decision-maker for sampling traces
+            sample_rate=error_sample_rate,
+            send_default_pii=send_pii,
+            request_bodies=send_request_bodies,
+            traces_sampler=traces_sampler,
         )

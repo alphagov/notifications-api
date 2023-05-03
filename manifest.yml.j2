@@ -158,7 +158,10 @@ applications:
 
       DVLA_API_TLS_CIPHERS: '{{ DVLA_API_TLS_CIPHERS }}'
 
+      SENTRY_ENABLED: '{{ NOTIFICATIONS_API_SENTRY_ENABLED }}'
       SENTRY_DSN: '{{ NOTIFICATIONS_API_SENTRY_DSN }}'
+      SENTRY_ERRORS_SAMPLE_RATE: '{{ NOTIFICATIONS_API_SENTRY_ERRORS_SAMPLE_RATE }}'
+      SENTRY_TRACES_SAMPLE_RATE: '{{ NOTIFICATIONS_API_SENTRY_TRACES_SAMPLE_RATE }}'
 
       {% for key, value in app.get('additional_env_vars', {}).items() %}
       {{key}}: '{{value}}'
