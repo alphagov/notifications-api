@@ -81,3 +81,4 @@ celerybeat-schedule
 # Local
 docker-compose.yml
 .env
+application.log.json
