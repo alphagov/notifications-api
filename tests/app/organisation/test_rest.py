@@ -819,7 +819,7 @@ def test_get_organisation_users_returns_users_for_organisation(admin_request, sa
 
 
 @freeze_time("2020-02-24 13:30")
-def test_get_organisation_services_usage(admin_request, notify_db_session):
+def test_get_organisation_services_usage(admin_request, notify_db_session, mocker):
     org = create_organisation(name="Organisation without live services")
     service = create_service()
     template = create_template(service=service)
@@ -828,10 +828,14 @@ def test_get_organisation_services_usage(admin_request, notify_db_session):
     create_ft_billing(
         bst_date=datetime.utcnow().date(), template=template, billable_unit=19, rate=0.060, notifications_sent=19
     )
-    response = admin_request.get(
-        "organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019}
+    mocker.patch(
+        "app.dao.fact_billing_dao.get_ft_billing_data_for_today_updated_at", return_value="2019-06-01T12:00:00+00:00"
     )
-    assert len(response) == 1
+    with freeze_time("2019-06-01"):
+        response = admin_request.get(
+            "organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019}
+        )
+    assert len(response) == 2
     assert len(response["services"]) == 1
     service_usage = response["services"][0]
     assert service_usage["service_id"] == str(service.id)
@@ -843,6 +847,7 @@ def test_get_organisation_services_usage(admin_request, notify_db_session):
     assert service_usage["sms_billable_units"] == 19
     assert service_usage["sms_remainder"] == 0
     assert service_usage["sms_cost"] == 0.54
+    assert response["updated_at"] == "2019-06-01T12:00:00+00:00"
 
 
 @pytest.mark.skip(
@@ -897,7 +902,7 @@ def test_get_organisation_services_usage_sort_active_first(admin_request, notify
     response = admin_request.get(
         "organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019}
     )
-    assert len(response) == 1
+    assert len(response) == 2
     assert len(response["services"]) == 2
     first_service = response["services"][0]
     assert first_service["service_id"] == str(archived_service.id)
@@ -907,6 +912,7 @@ def test_get_organisation_services_usage_sort_active_first(admin_request, notify
     assert last_service["service_id"] == str(service.id)
     assert last_service["service_name"] == service.name
     assert last_service["active"] is True
+    assert response["updated_at"] is None
 
     dao_archive_service(service_id=archived_service.id)
     response_after_archive = admin_request.get(

@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
 
+import pytz
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 
-from app import notify_celery
+from app import notify_celery, redis_store
 from app.config import QueueNames
-from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
+from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, CacheKeys
 from app.cronitor import cronitor
 from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
@@ -39,6 +40,7 @@ def create_nightly_billing(day_start=None):
 def update_ft_billing_for_today():
     process_day = convert_utc_to_bst(datetime.utcnow()).date().isoformat()
     create_or_update_ft_billing_for_day(process_day=process_day)
+    redis_store.set(CacheKeys.FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT, datetime.now(tz=pytz.utc).isoformat())
 
 
 @notify_celery.task(name="create-or-update-ft-billing-for-day")

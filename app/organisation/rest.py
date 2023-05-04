@@ -186,10 +186,10 @@ def get_organisation_services_usage(organisation_id):
         year = int(request.args.get("year", "none"))
     except ValueError:
         return jsonify(result="error", message="No valid year provided"), 400
-    services = fetch_usage_for_organisation(organisation_id, year)
+    services, updated_at = fetch_usage_for_organisation(organisation_id, year)
     list_services = services.values()
     sorted_services = sorted(list_services, key=lambda s: (-s["active"], s["service_name"].lower()))
-    return jsonify(services=sorted_services)
+    return jsonify(services=sorted_services, updated_at=updated_at)
 
 
 @organisation_blueprint.route("/<uuid:organisation_id>/users/<uuid:user_id>", methods=["POST"])
