@@ -88,6 +88,7 @@ class Config(object):
 
     # URL of api app (on AWS this is the internal api endpoint)
     API_HOST_NAME = os.getenv("API_HOST_NAME")
+    API_HOST_NAME_INTERNAL = os.getenv("API_HOST_NAME_INTERNAL")
 
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = "notify-admin"
@@ -424,6 +425,7 @@ class Config(object):
     TEMPLATE_PREVIEW_API_KEY = os.environ.get("TEMPLATE_PREVIEW_API_KEY", "my-secret-key")
 
     DOCUMENT_DOWNLOAD_API_HOST = os.environ.get("DOCUMENT_DOWNLOAD_API_HOST", "http://localhost:7000")
+    DOCUMENT_DOWNLOAD_API_HOST_INTERNAL = os.environ.get("DOCUMENT_DOWNLOAD_API_HOST_INTERNAL", "http://localhost:7000")
     DOCUMENT_DOWNLOAD_API_KEY = os.environ.get("DOCUMENT_DOWNLOAD_API_KEY", "auth-token")
 
     # these environment vars aren't defined in the manifest so to set them on paas use `cf set-env`
@@ -499,6 +501,7 @@ class Development(Config):
     ANTIVIRUS_ENABLED = os.getenv("ANTIVIRUS_ENABLED") == "1"
 
     API_HOST_NAME = os.getenv("API_HOST_NAME", "http://localhost:6011")
+    API_HOST_NAME_INTERNAL = os.getenv("API_HOST_NAME_INTERNAL", "http://localhost:6011")
     API_RATE_LIMIT_ENABLED = True
     DVLA_EMAIL_ADDRESSES = ["success@simulator.amazonses.com"]
 
@@ -538,6 +541,7 @@ class Test(Development):
 
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
+    API_HOST_NAME_INTERNAL = "http://localhost:6011"
 
     SMS_INBOUND_WHITELIST = ["203.0.113.195"]
     FIRETEXT_INBOUND_SMS_AUTH = ["testkey"]
