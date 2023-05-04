@@ -30,60 +30,60 @@ then
 
 elif [ "$1" == "delivery-worker-retry-tasks" ]
 then
-  $COMMON_CMD retry-tasks 2> /dev/null
+  $COMMON_CMD retry-tasks
 
 elif [ "$1" == "delivery-worker-letters" ]
 then
-  $COMMON_CMD create-letters-pdf-tasks,letter-tasks 2> /dev/null 
+  $COMMON_CMD create-letters-pdf-tasks,letter-tasks 
  
 elif [ "$1" == "delivery-worker-jobs" ]
 then
-  $COMMON_CMD database-tasks,job-tasks 2> /dev/null 
+  $COMMON_CMD database-tasks,job-tasks 
 
 elif [ "$1" == "delivery-worker-research" ]
 then
-  $COMMON_CMD research-mode-tasks 2> /dev/null 
+  $COMMON_CMD research-mode-tasks 
 
 elif [ "$1" == "delivery-worker-sender" ]
 then
-  $COMMON_CMD send-sms-tasks,send-email-tasks 2> /dev/null
+  $COMMON_CMD send-sms-tasks,send-email-tasks
 
 elif [ "$1" == "delivery-worker-sender-letters" ]
 then
-  $COMMON_CMD send-letter-tasks 2> /dev/null
+  $COMMON_CMD send-letter-tasks
 
 elif [ "$1" == "delivery-worker-periodic" ]
 then
-  $COMMON_CMD periodic-tasks 2> /dev/null
+  $COMMON_CMD periodic-tasks
 
 elif [ "$1" == "delivery-worker-reporting" ]
 then
-  $COMMON_CMD reporting-tasks 2> /dev/null
+  $COMMON_CMD reporting-tasks
 
 elif [ "$1" == "delivery-worker-priority" ]
 then
-  $COMMON_CMD priority-tasks 2> /dev/null
+  $COMMON_CMD priority-tasks
 
 # Only consume the notify-internal-tasks queue on this app so that Notify messages are processed as a priority
 elif [ "$1" == "delivery-worker-internal" ]
 then
-  $COMMON_CMD notify-internal-tasks 2> /dev/null
+  $COMMON_CMD notify-internal-tasks
 
 elif [ "$1" == "delivery-worker-broadcasts" ]
 then
-  $COMMON_CMD broadcast-tasks 2> /dev/null
+  $COMMON_CMD broadcast-tasks
 
 elif [ "$1" == "delivery-worker-receipts" ]
 then
-  $COMMON_CMD ses-callbacks,sms-callbacks 2> /dev/null
+  $COMMON_CMD ses-callbacks,sms-callbacks
 
 elif [ "$1" == "delivery-worker-service-callbacks" ]
 then
-  $COMMON_CMD service-callbacks,service-callbacks-retry 2> /dev/null
+  $COMMON_CMD service-callbacks,service-callbacks-retry
 
 elif [ "$1" == "delivery-worker-save-api-notifications" ]
 then
-  $COMMON_CMD save-api-email-tasks,save-api-sms-tasks 2> /dev/null
+  $COMMON_CMD save-api-email-tasks,save-api-sms-tasks
 
 elif [ "$1" == "delivery-celery-beat" ]
 then
