@@ -9,7 +9,7 @@ else
 fi
 
 # Define a common command prefix
-WORKER_CMD="celery -A run_celery.notify_celery worker --pidfile=\"/tmp/celery.pid\" --loglevel=INFO --concurrency=$CONCURRENCY"
+WORKER_CMD="celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=$CONCURRENCY"
 COMMON_CMD="$WORKER_CMD -Q"
 
 if [ "$1" == "worker" ]
