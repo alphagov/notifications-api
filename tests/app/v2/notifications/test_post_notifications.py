@@ -964,7 +964,7 @@ def test_post_notification_with_document_upload_simulated(api_client_request, no
 
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     document_download_mock = mocker.patch("app.v2.notifications.post_notifications.document_download_client")
-    document_download_mock.get_upload_url.return_value = "https://document-url"
+    document_download_mock.get_upload_url_for_simulated_email.return_value = "https://document-url"
 
     data = {
         "email_address": "simulate-delivered@notifications.service.gov.uk",

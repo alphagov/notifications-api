@@ -18,11 +18,22 @@ class DocumentDownloadError(Exception):
 
 class DocumentDownloadClient:
     def init_app(self, app):
-        self.api_host = app.config["DOCUMENT_DOWNLOAD_API_HOST"]
+        self.api_host_external = app.config["DOCUMENT_DOWNLOAD_API_HOST"]
+        self.api_host_internal = app.config["DOCUMENT_DOWNLOAD_API_HOST_INTERNAL"]
         self.auth_token = app.config["DOCUMENT_DOWNLOAD_API_KEY"]
 
-    def get_upload_url(self, service_id):
-        return "{}/services/{}/documents".format(self.api_host, service_id)
+    def get_upload_url_for_simulated_email(self, service_id):
+        """
+        This is the URL displayed in the API response for emails sent to a simulated email address.
+        """
+        return f"{self.api_host_external}/services/{service_id}/documents"
+
+    def _get_upload_url(self, service_id):
+        """
+        When uploading a document we use the internal route to document-download-api. This internal URL
+        can only be accessed from other apps, so should not be displayed to users.
+        """
+        return f"{self.api_host_internal}/services/{service_id}/documents"
 
     def upload_document(
         self,
@@ -45,7 +56,7 @@ class DocumentDownloadClient:
                 data["retention_period"] = retention_period
 
             response = requests.post(
-                self.get_upload_url(service_id),
+                self._get_upload_url(service_id),
                 headers={
                     "Authorization": "Bearer {}".format(self.auth_token),
                 },
