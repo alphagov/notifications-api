@@ -23,7 +23,7 @@ cachetools==5.2.0
 beautifulsoup4==4.11.1
 lxml==4.9.1
 
-notifications-python-client==6.3.0
+notifications-python-client==8.0.1
 
 # PaaS
 awscli-cwlogs==1.4.6
