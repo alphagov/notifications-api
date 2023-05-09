@@ -484,7 +484,6 @@ def process_virus_scan_failed(filename):
         )
 
     error = VirusScanError("notification id {} Virus scan failed: {}".format(notification.id, filename))
-    current_app.logger.exception(error)
     raise error
 
 
