@@ -591,7 +591,6 @@ def populate_annual_billing(year, missing_services_only):
         active_services = Service.query.filter(Service.active).all()
 
     for service in active_services:
-        print(f"update service {service.id} with default")
         set_default_free_allowance_for_service(service, year)
 
 
