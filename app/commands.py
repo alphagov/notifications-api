@@ -26,7 +26,6 @@ from app.celery.letters_pdf_tasks import (
     get_pdf_for_templated_letter,
     resanitise_pdf,
 )
-from app.celery.scheduled_tasks import populate_annual_billing
 from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
 from app.constants import KEY_TYPE_TEST, NOTIFICATION_CREATED, SMS_TYPE
@@ -785,22 +784,6 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
         dao_create_or_update_annual_billing_for_year(
             service_id=row.id, free_sms_fragment_limit=free_allowance[0], financial_year_start=int(year)
         )
-
-
-@notify_command(name="populate-annual-billing-with-defaults")
-@click.option(
-    "-y", "--year", required=True, type=int, help="""The year to populate the annual billing data for, i.e. 2021"""
-)
-@click.option(
-    "-m",
-    "--missing-services-only",
-    default=True,
-    type=bool,
-    help="""If true then only populate services missing from annual billing for the year.
-                      If false populate the default values for all active services.""",
-)
-def populate_annual_billing_with_defaults(year, missing_services_only):
-    populate_annual_billing(year, missing_services_only=missing_services_only)
 
 
 @click.option("-u", "--user-id", required=True)
