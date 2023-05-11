@@ -12,20 +12,34 @@ from app.clients.document_download import (
 def document_download(client, mocker):
     client = DocumentDownloadClient()
     current_app = mocker.Mock(
-        config={"DOCUMENT_DOWNLOAD_API_HOST": "https://document-download", "DOCUMENT_DOWNLOAD_API_KEY": "test-key"}
+        config={
+            "DOCUMENT_DOWNLOAD_API_HOST": "https://document-download",
+            "DOCUMENT_DOWNLOAD_API_HOST_INTERNAL": "https://document-download-internal",
+            "DOCUMENT_DOWNLOAD_API_KEY": "test-key",
+        },
     )
     client.init_app(current_app)
     return client
 
 
 def test_get_upload_url(document_download):
-    assert document_download.get_upload_url("service-id") == "https://document-download/services/service-id/documents"
+    assert (
+        document_download._get_upload_url("service-id")
+        == "https://document-download-internal/services/service-id/documents"
+    )
+
+
+def test_get_upload_url_for_simulated_email(document_download):
+    assert (
+        document_download.get_upload_url_for_simulated_email("service-id")
+        == "https://document-download/services/service-id/documents"
+    )
 
 
 def test_upload_document(document_download):
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
-            "https://document-download/services/service-id/documents",
+            "https://document-download-internal/services/service-id/documents",
             json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
             request_headers={
                 "Authorization": "Bearer test-key",
@@ -42,7 +56,7 @@ def test_upload_document(document_download):
 def test_upload_document_confirm_email(document_download, confirmation_email):
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
-            "https://document-download/services/service-id/documents",
+            "https://document-download-internal/services/service-id/documents",
             json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
             request_headers={
                 "Authorization": "Bearer test-key",
@@ -66,7 +80,7 @@ def test_upload_document_confirm_email(document_download, confirmation_email):
 def test_upload_document_retention_period(document_download, retention_period):
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
-            "https://document-download/services/service-id/documents",
+            "https://document-download-internal/services/service-id/documents",
             json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
             request_headers={"Authorization": "Bearer test-key"},
             status_code=201,
@@ -87,7 +101,7 @@ def test_upload_document_retention_period(document_download, retention_period):
 def test_should_raise_400s_as_DocumentDownloadErrors(document_download):
     with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post(
-            "https://document-download/services/service-id/documents",
+            "https://document-download-internal/services/service-id/documents",
             json={"error": "Invalid mime type"},
             status_code=400,
         )
@@ -101,7 +115,7 @@ def test_should_raise_400s_as_DocumentDownloadErrors(document_download):
 def test_should_raise_non_400_statuses_as_exceptions(document_download):
     with pytest.raises(Exception) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post(
-            "https://document-download/services/service-id/documents",
+            "https://document-download-internal/services/service-id/documents",
             json={"error": "Auth Error Of Some Kind"},
             status_code=403,
         )
@@ -115,7 +129,7 @@ def test_should_raise_non_400_statuses_as_exceptions(document_download):
 def test_should_raise_exceptions_without_http_response_bodies_as_exceptions(document_download):
     with pytest.raises(Exception) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post(
-            "https://document-download/services/service-id/documents", exc=requests.exceptions.ConnectTimeout
+            "https://document-download-internal/services/service-id/documents", exc=requests.exceptions.ConnectTimeout
         )
 
         document_download.upload_document("service-id", "abababab")

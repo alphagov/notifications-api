@@ -50,7 +50,7 @@ def send_email_response(reference, to):
 
 
 def make_request(notification_type, provider, data, headers):
-    api_call = "{}/notifications/{}/{}".format(current_app.config["API_HOST_NAME"], notification_type, provider)
+    api_call = f"{current_app.config['API_HOST_NAME_INTERNAL']}/notifications/{notification_type}/{provider}"
 
     try:
         response = request("POST", api_call, headers=headers, data=data, timeout=60)

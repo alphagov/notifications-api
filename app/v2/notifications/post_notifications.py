@@ -327,7 +327,9 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
 
     for key in file_keys:
         if simulated:
-            personalisation_data[key] = document_download_client.get_upload_url(service.id) + "/test-document"
+            personalisation_data[key] = (
+                document_download_client.get_upload_url_for_simulated_email(service.id) + "/test-document"
+            )
         else:
             confirm_email = personalisation_data[key].get("confirm_email_before_download", True)
             retention_period = (
