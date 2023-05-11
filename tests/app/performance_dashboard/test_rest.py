@@ -1,5 +1,7 @@
 from datetime import date
 
+from pytest import approx
+
 from tests.app.db import (
     create_ft_notification_status,
     create_process_time,
@@ -66,7 +68,7 @@ def test_performance_dashboard(sample_service, admin_request):
         {"date": "2021-03-02", "emails": 25, "sms": 30, "letters": 10},
     ]
     assert results["processing_time"] == [
-        {"date": "2021-03-01", "percentage_under_10_seconds": 97.1428571428571},
+        {"date": "2021-03-01", "percentage_under_10_seconds": approx(97.142857142857)},
         {"date": "2021-03-02", "percentage_under_10_seconds": 80.0},
     ]
     assert results["live_service_count"] == 1

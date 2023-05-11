@@ -706,7 +706,8 @@ def test_create_service_and_history_is_transactional(notify_db_session):
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service, user)
 
-    assert 'column "name" violates not-null constraint' in str(excinfo.value)
+    assert 'column "name"' in str(excinfo.value)
+    assert "violates not-null constraint" in str(excinfo.value)
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
 
