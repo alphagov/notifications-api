@@ -1219,7 +1219,7 @@ class Job(db.Model):
         db.String(255), db.ForeignKey("job_status.name"), index=True, nullable=False, default="pending"
     )
     archived = db.Column(db.Boolean, nullable=False, default=False)
-    contact_list_id = db.Column(UUID(as_uuid=True), db.ForeignKey("service_contact_list.id"), nullable=True)
+    contact_list_id = db.Column(UUID(as_uuid=True), db.ForeignKey("service_contact_list.id"), nullable=True, index=True)
 
 
 class VerifyCode(db.Model):
