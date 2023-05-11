@@ -392,7 +392,7 @@ class BaseTemplateSchema(BaseSchema):
         return template.get_reply_to_text()
 
     def get_letter_attachment(self, template):
-        return template.letter_attachment_id
+        return template.letter_attachment.serialize() if template.letter_attachment else None
 
     class Meta(BaseSchema.Meta):
         model = models.Template
@@ -478,7 +478,7 @@ class TemplateHistorySchema(BaseSchema):
         return template.get_reply_to_text()
 
     def get_letter_attachment(self, template):
-        return template.letter_attachment_id
+        return template.letter_attachment.serialize() if template.letter_attachment else None
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory

@@ -1067,26 +1067,26 @@ def test_check_for_low_available_inbound_sms_numbers_does_not_proceed_if_enough_
 
 
 class TestChangeDvlaPasswordTask:
-    def test_calls_dvla_succesfully(self, mocker):
+    def test_calls_dvla_succesfully(self, mocker, notify_api):
         mock_change_password = mocker.patch("app.dvla_client.change_password")
 
         change_dvla_password()
 
         mock_change_password.assert_called_once_with()
 
-    def test_silently_quits_if_lock_is_held(self, mocker):
+    def test_silently_quits_if_lock_is_held(self, mocker, notify_api):
         mocker.patch("app.dvla_client.change_password", side_effect=LockError)
 
         # does not raise any exceptions
         change_dvla_password()
 
-    def test_retries_if_dvla_throws_retryable_exception(self, mocker):
+    def test_retries_if_dvla_throws_retryable_exception(self, mocker, notify_api):
         mocker.patch("app.dvla_client.change_password", side_effect=DvlaThrottlingException)
 
         with pytest.raises(Retry):
             change_dvla_password()
 
-    def test_reraises_if_dvla_raises_non_retryable_exception(self, mocker):
+    def test_reraises_if_dvla_raises_non_retryable_exception(self, mocker, notify_api):
         mocker.patch("app.dvla_client.change_password", side_effect=DvlaNonRetryableException)
 
         with pytest.raises(DvlaNonRetryableException):
@@ -1094,7 +1094,7 @@ class TestChangeDvlaPasswordTask:
 
 
 class TestChangeDvlaApiKeyTask:
-    def test_calls_dvla_succesfully(self, mocker):
+    def test_calls_dvla_succesfully(self, mocker, notify_api):
         mock_change_api_key = mocker.patch("app.dvla_client.change_api_key")
 
         change_dvla_api_key()

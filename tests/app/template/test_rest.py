@@ -642,7 +642,8 @@ def test_get_template_returns_letter_attachment(admin_request, sample_letter_tem
         **extra_args,
     )
 
-    assert data["data"]["letter_attachment"] == str(attachment.id)
+    assert data["data"]["letter_attachment"]["id"] == str(attachment.id)
+    assert data["data"]["letter_attachment"]["page_count"] == attachment.page_count
 
 
 @pytest.mark.parametrize(
