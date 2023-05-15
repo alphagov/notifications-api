@@ -13,7 +13,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 )
 from notifications_utils.timezones import convert_utc_to_bst
 from redis.exceptions import LockError
-from sqlalchemy import between
+from sqlalchemy import and_, between
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db, dvla_client, notify_celery, statsd_client, zendesk_client
@@ -36,6 +36,8 @@ from app.constants import (
     SMS_TYPE,
 )
 from app.cronitor import cronitor
+from app.dao.annual_billing_dao import set_default_free_allowance_for_service
+from app.dao.date_util import get_current_financial_year_start_year
 from app.dao.inbound_numbers_dao import dao_get_available_inbound_numbers
 from app.dao.invited_org_user_dao import (
     delete_org_invitations_created_more_than_two_days_ago,
@@ -68,12 +70,14 @@ from app.dao.services_dao import (
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.letters.utils import generate_letter_pdf_filename
 from app.models import (
+    AnnualBilling,
     BroadcastMessage,
     BroadcastStatusType,
     EmailBranding,
     Event,
     Job,
     Organisation,
+    Service,
     User,
 )
 from app.notifications.process_notifications import send_notification_to_queue
@@ -561,3 +565,37 @@ def change_dvla_api_key(self):
     except DvlaRetryableException:
         current_app.logger.info("change-dvla-api-key DvlaRetryableException - retrying")
         self.retry()
+
+
+def populate_annual_billing(year, missing_services_only):
+    """
+    Add or update annual billing with free allowance defaults for all active services.
+    The default free allowances are stored in the DB in a table called `default_annual_allowance`.
+
+    If missing_services_only is true then only add rows for services that do not have annual billing for that year yet.
+    This is useful to prevent overriding any services that have a free allowance that is not the default.
+
+    If missing_services_only is false then add or update annual billing for all active services.
+    This is useful to ensure all services start the new year with the correct annual billing.
+    """
+    if missing_services_only:
+        active_services = (
+            Service.query.filter(Service.active)
+            .outerjoin(
+                AnnualBilling, and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == year)
+            )
+            .filter(AnnualBilling.id == None)  # noqa
+            .all()
+        )
+    else:
+        active_services = Service.query.filter(Service.active).all()
+
+    for service in active_services:
+        set_default_free_allowance_for_service(service, year)
+
+
+@notify_celery.task(name="run-populate-annual-billing")
+@cronitor("run-populate-annual-billing")
+def run_populate_annual_billing():
+    year = get_current_financial_year_start_year()
+    run_populate_annual_billing(year=year, missing_services_only=True)

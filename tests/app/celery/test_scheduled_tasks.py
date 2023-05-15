@@ -31,6 +31,7 @@ from app.celery.scheduled_tasks import (
     delete_old_records_from_events_table,
     delete_verify_codes,
     generate_sms_delivery_stats,
+    populate_annual_billing,
     remove_yesterdays_planned_tests_on_govuk_alerts,
     replay_created_notifications,
     run_scheduled_jobs,
@@ -52,6 +53,7 @@ from app.constants import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
 )
+from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.models import BroadcastStatusType, Event, InboundNumber
@@ -1209,3 +1211,24 @@ class TestWeeklyDWPReport:
         ]
         csv_file = mock_zendesk_update_ticket.call_args_list[0][1]["comment"].attachments[0].filedata
         assert csv_file.read() == 'result,text,comma\r\n1,something else,"quote,text"\r\n'
+
+
+def test_populate_annual_billing_missing_services_only(mocker, sample_service):
+    mock_set = mocker.patch(
+        "app.celery.scheduled_tasks.set_default_free_allowance_for_service",
+        side_effect=set_default_free_allowance_for_service,
+    )
+
+    # No AnnualBilling, should get created
+    populate_annual_billing(2023, True)
+    assert mock_set.call_args_list == [mocker.call(sample_service, 2023)]
+
+    # AnnualBilling exists and we are only processing missing services, nothing should happen
+    mock_set.reset_mock()
+    populate_annual_billing(2023, True)
+    assert mock_set.call_args_list == []
+
+    # AnnualBilling exists but we are re-processing all services, should get re-evaluated
+    mock_set.reset_mock()
+    populate_annual_billing(2023, False)
+    assert mock_set.call_args_list == [mocker.call(sample_service, 2023)]

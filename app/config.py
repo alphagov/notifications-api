@@ -256,6 +256,11 @@ class Config(object):
                 "schedule": crontab(minute="0, 15, 30, 45"),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "run-populate-annual-billing": {
+                "task": "run-populate-annual-billing",
+                "schedule": crontab(minute=1, hour=2, day_of_month=1, month_of_year=4),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             # app/celery/nightly_tasks.py
             "timeout-sending-notifications": {
                 "task": "timeout-sending-notifications",
