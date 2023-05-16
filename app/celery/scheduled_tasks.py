@@ -10,6 +10,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicketAttachment,
     NotifySupportTicketComment,
     NotifySupportTicketStatus,
+    NotifyTicketType,
 )
 from notifications_utils.timezones import convert_utc_to_bst
 from redis.exceptions import LockError
@@ -277,7 +278,7 @@ def check_if_letters_still_pending_virus_check():
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still pending virus check",
                 message=msg,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-                technical_ticket=True,
+                notify_ticket_type=NotifyTicketType.TECHNICAL,
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
@@ -301,7 +302,7 @@ def check_if_letters_still_in_created():
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still in 'created' status",
                 message=msg,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-                technical_ticket=True,
+                notify_ticket_type=NotifyTicketType.TECHNICAL,
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
@@ -364,7 +365,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] High failure rates for sms spotted for services",
                 message=message,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-                technical_ticket=True,
+                notify_ticket_type=NotifyTicketType.TECHNICAL,
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
 
@@ -462,7 +463,7 @@ def zendesk_new_email_branding_report():
             subject="Review new email brandings",
             message=message,
             ticket_type=NotifySupportTicket.TYPE_TASK,
-            technical_ticket=False,
+            notify_ticket_type=NotifyTicketType.NON_TECHNICAL,
             ticket_categories=["notify_no_ticket_category"],
             message_as_html=True,
         )
@@ -492,7 +493,7 @@ def check_for_low_available_inbound_sms_numbers():
         subject="Request more inbound SMS numbers",
         message=message,
         ticket_type=NotifySupportTicket.TYPE_TASK,
-        technical_ticket=True,
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
         ticket_categories=["notify_no_ticket_category"],
     )
     zendesk_client.send_ticket_to_zendesk(ticket)

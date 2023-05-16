@@ -4,6 +4,7 @@ from datetime import datetime
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
+    NotifyTicketType,
 )
 
 from app import zendesk_client
@@ -92,7 +93,7 @@ def _create_p1_zendesk_alert(broadcast_message):
         subject="Live broadcast sent",
         message=message,
         ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-        technical_ticket=True,
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
         org_id=current_app.config["BROADCAST_ORGANISATION_ID"],
         org_type="central",
         service_id=str(broadcast_message.service_id),

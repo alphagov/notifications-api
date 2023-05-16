@@ -4,6 +4,7 @@ import pytz
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
+    NotifyTicketType,
 )
 from notifications_utils.letter_timings import (
     get_dvla_working_day_offset_by,
@@ -208,7 +209,7 @@ def raise_alert_if_letter_notifications_still_sending():
                 email_ccs=current_app.config["DVLA_EMAIL_ADDRESSES"],
                 message=message,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-                technical_ticket=True,
+                notify_ticket_type=NotifyTicketType.TECHNICAL,
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
@@ -281,7 +282,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                 subject="Letter acknowledge error",
                 message=message,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-                technical_ticket=True,
+                notify_ticket_type=NotifyTicketType.TECHNICAL,
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)

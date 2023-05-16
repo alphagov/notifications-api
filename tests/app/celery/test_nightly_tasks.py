@@ -7,6 +7,7 @@ from flask import current_app
 from freezegun import freeze_time
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
+    NotifyTicketType,
 )
 
 from app.celery import nightly_tasks
@@ -220,7 +221,7 @@ def test_create_ticket_if_letter_notifications_still_sending(notify_api, mocker)
             "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"
         ),
         ticket_type="incident",
-        technical_ticket=True,
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
         ticket_categories=["notify_letters"],
     )
     mock_send_ticket_to_zendesk.assert_called_once()
@@ -375,7 +376,7 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db_se
         subject="Letter acknowledge error",
         message=ANY,
         ticket_type="incident",
-        technical_ticket=True,
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
         ticket_categories=["notify_letters"],
     )
     mock_send_ticket_to_zendesk.assert_called_once()
