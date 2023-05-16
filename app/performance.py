@@ -27,6 +27,13 @@ def init_performance_monitoring():
         # Disable transaction tracing in production for now - we've seen issues with memory/performance.
         traces_sampler = partial(sentry_sampler, sample_rate=trace_sample_rate) if not_production else None
 
+        try:
+            from app.version import __git_commit__
+
+            release = __git_commit__
+        except ImportError:
+            release = None
+
         sentry_sdk.init(
             dsn=sentry_dsn,
             environment=environment,
@@ -34,4 +41,5 @@ def init_performance_monitoring():
             send_default_pii=send_pii,
             request_bodies=send_request_bodies,
             traces_sampler=traces_sampler,
+            release=release,
         )
