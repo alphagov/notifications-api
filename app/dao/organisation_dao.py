@@ -15,7 +15,7 @@ from app.models import (
     Service,
     User,
 )
-from app.utils import get_archived_db_column_value
+from app.utils import escape_special_characters, get_archived_db_column_value
 
 
 def dao_get_organisations():
@@ -73,6 +73,11 @@ def dao_get_organisation_by_email_address(email_address):
             return Organisation.query.filter_by(id=domain.organisation_id).one()
 
     return None
+
+
+def dao_get_organisations_by_partial_name(organisation_name):
+    organisation_name = escape_special_characters(organisation_name)
+    return Organisation.query.filter(Organisation.name.ilike("%{}%".format(organisation_name))).all()
 
 
 def dao_get_organisation_by_service_id(service_id):

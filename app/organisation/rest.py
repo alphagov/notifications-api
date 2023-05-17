@@ -20,6 +20,7 @@ from app.dao.organisation_dao import (
     dao_get_organisation_by_id,
     dao_get_organisation_services,
     dao_get_organisations,
+    dao_get_organisations_by_partial_name,
     dao_get_users_for_organisation,
     dao_remove_email_branding_from_organisation_pool,
     dao_remove_letter_branding_from_organisation_pool,
@@ -89,6 +90,17 @@ def get_organisation_by_domain():
         abort(404)
 
     return jsonify(organisation.serialize())
+
+
+@organisation_blueprint.route("/search", methods=["GET"])
+def search():
+    organisation_name = request.args.get("name")
+    if not organisation_name:
+        errors = {"name": ["Missing data for required field."]}
+        raise InvalidRequest(errors, status_code=400)
+    fetched_organisations = dao_get_organisations_by_partial_name(organisation_name)
+    data = [organisation.serialize_for_list() for organisation in fetched_organisations]
+    return jsonify(data=data), 200
 
 
 @organisation_blueprint.route("", methods=["POST"])
