@@ -158,6 +158,14 @@ def test_find_services_by_name_handles_no_results(notify_db_session, admin_reque
     assert len(response) == 0
 
 
+def test_find_services_by_name_handles_special_characters(notify_db_session, admin_request):
+    create_service(service_name="ABCDEF")
+    service_2 = create_service(service_name="ZYX % WVU")
+    create_service(service_name="123456")
+    response = admin_request.get("service.find_services_by_name", service_name="%")
+    assert response["data"] == [service_2.serialize_for_org_dashboard()]
+
+
 def test_find_services_by_name_handles_no_service_name(notify_db_session, admin_request, mocker):
     mock_get_services_by_partial_name = mocker.patch("app.service.rest.get_services_by_partial_name")
     admin_request.get("service.find_services_by_name", _expected_status=400)

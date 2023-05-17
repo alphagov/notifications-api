@@ -167,6 +167,32 @@ def test_get_organisation_by_domain(admin_request, notify_db_session, domain, ex
         assert response["result"] == "error"
 
 
+def test_organisation_search_finds_organisations(notify_db_session, admin_request):
+    organisation_1 = create_organisation(name="ABCDEF")
+    organisation_2 = create_organisation(name="ABCGHT")
+    create_organisation(name="ZYSWVU")
+    response = admin_request.get("organisation.search", name="ABC")
+    assert response["data"] == [organisation_1.serialize_for_list(), organisation_2.serialize_for_list()]
+
+
+def test_organisation_search_handles_no_results(notify_db_session, admin_request):
+    create_organisation(name="ABCDEF")
+    response = admin_request.get("organisation.search", name="1234")
+    assert response["data"] == []
+
+
+def test_organisation_search_handles_special_characters(notify_db_session, admin_request):
+    create_organisation(name="ABCDEF")
+    organisation_2 = create_organisation(name="ZYX % WVU")
+    create_organisation(name="123456")
+    response = admin_request.get("organisation.search", name="%")
+    assert response["data"] == [organisation_2.serialize_for_list()]
+
+
+def test_organisation_search_handles_no_organisation_name(notify_db_session, admin_request):
+    admin_request.get("organisation.search", _expected_status=400)
+
+
 @pytest.mark.parametrize("crown", [True, False])
 def test_post_create_organisation(admin_request, notify_db_session, crown):
     data = {
