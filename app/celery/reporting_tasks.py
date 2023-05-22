@@ -11,6 +11,7 @@ from app.cronitor import cronitor
 from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
     update_ft_billing,
+    update_ft_billing_letter_despatch,
 )
 from app.dao.fact_notification_status_dao import update_fact_notification_status
 from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
@@ -32,6 +33,14 @@ def create_nightly_billing(day_start=None):
         create_or_update_ft_billing_for_day.apply_async(kwargs={"process_day": process_day}, queue=QueueNames.REPORTING)
         current_app.logger.info(
             f"create-nightly-billing task: create-or-update-ft-billing-for-day task created for {process_day}"
+        )
+
+        create_or_update_ft_billing_letter_despatch_for_day.apply_async(
+            kwargs={"process_day": process_day}, queue=QueueNames.REPORTING
+        )
+        current_app.logger.info(
+            "create-nightly-billing task: create-or-update-ft-billing-letter-despatch-for-day task created for "
+            f"{process_day}"
         )
 
 
@@ -60,6 +69,19 @@ def create_or_update_ft_billing_for_day(process_day: str):
 
     current_app.logger.info(
         f"create-nightly-billing-for-day task for {process_date}: task complete. {len(billing_data)} rows updated"
+    )
+
+
+@notify_celery.task(name="create-or-update-ft-billing-letter-despatch-for-day")
+def create_or_update_ft_billing_letter_despatch_for_day(process_day: str):
+    process_date = datetime.strptime(process_day, "%Y-%m-%d").date()
+    current_app.logger.info(f"create-or-update-ft-billing-letter-despatch-for-day task for {process_date}: started")
+
+    created, deleted = update_ft_billing_letter_despatch(process_date)
+
+    current_app.logger.info(
+        f"create-or-update-ft-billing-letter-despatch-for-day task for {process_date}: task complete. "
+        f"{deleted} old row(s) deleted, and {created} row(s) created."
     )
 
 

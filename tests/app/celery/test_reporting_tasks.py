@@ -53,12 +53,16 @@ def mocker_get_rate(
     ],
 )
 def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mocker, day_start, expected_kwargs):
-    mock_celery = mocker.patch("app.celery.reporting_tasks.create_or_update_ft_billing_for_day")
+    mock_ft_billing = mocker.patch("app.celery.reporting_tasks.create_or_update_ft_billing_for_day")
+    mock_ft_billing_letter_despatch = mocker.patch(
+        "app.celery.reporting_tasks.create_or_update_ft_billing_letter_despatch_for_day"
+    )
     create_nightly_billing(day_start)
 
-    assert mock_celery.apply_async.call_count == 10
-    for i in range(10):
-        assert mock_celery.apply_async.call_args_list[i][1]["kwargs"] == {"process_day": expected_kwargs[i]}
+    for mock in [mock_ft_billing, mock_ft_billing_letter_despatch]:
+        assert mock.apply_async.call_count == 10
+        for i in range(10):
+            assert mock.apply_async.call_args_list[i][1]["kwargs"] == {"process_day": expected_kwargs[i]}
 
 
 @freeze_time("2019-08-01T00:30")
