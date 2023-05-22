@@ -321,7 +321,10 @@ def insert_notification_history_delete_notifications(
     # Insert into NotificationHistory if the row already exists do nothing.
     insert_query = """
         insert into notification_history
-         SELECT * from NOTIFICATION_ARCHIVE
+         SELECT id, job_id, job_row_number, service_id, template_id, template_version, api_key_id,
+             key_type, notification_type, created_at, sent_at, sent_by, updated_at, reference, billable_units,
+             client_reference, international, phone_prefix, rate_multiplier, notification_status,
+              created_by_id, postage, document_download_count from NOTIFICATION_ARCHIVE
           ON CONFLICT ON CONSTRAINT notification_history_pkey
           DO NOTHING
     """
