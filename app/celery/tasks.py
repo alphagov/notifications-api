@@ -40,6 +40,7 @@ from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
 from app.dao.notifications_dao import (
     dao_get_last_notification_added_for_job_id,
     dao_get_notification_or_history_by_reference,
+    dao_record_letter_despatched_on,
     dao_update_notifications_by_reference,
     get_notification_by_id,
 )
@@ -525,7 +526,7 @@ def process_updates_from_file(response_file):
     return notification_updates, invalid_statuses
 
 
-def update_letter_notification(filename, temporary_failures, update):
+def update_letter_notification(filename: str, temporary_failures: list, update: NotificationUpdate):
     if update.status == DVLA_RESPONSE_STATUS_SENT:
         status = NOTIFICATION_DELIVERED
     else:
@@ -534,6 +535,9 @@ def update_letter_notification(filename, temporary_failures, update):
 
     updated_count, _ = dao_update_notifications_by_reference(
         references=[update.reference], update_dict={"status": status, "updated_at": datetime.utcnow()}
+    )
+    dao_record_letter_despatched_on(
+        reference=update.reference, despatched_on=update.despatch_date, cost_threshold=update.cost_threshold
     )
 
     if not updated_count:

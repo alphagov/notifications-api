@@ -13,7 +13,8 @@ from notifications_utils.recipients import (
     validate_and_format_email_address,
 )
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, or_, union
+from sqlalchemy import and_, asc, desc, func, literal, or_, union
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
@@ -44,8 +45,11 @@ from app.dao.dao_utils import autocommit
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 from app.models import (
     FactNotificationStatus,
+    LetterCostThreshold,
     Notification,
+    NotificationAllTimeView,
     NotificationHistory,
+    NotificationLetterDespatch,
     ProviderDetails,
 )
 from app.utils import (
@@ -809,3 +813,24 @@ def get_service_ids_with_notifications_on_date(notification_type, date):
         row.service_id
         for row in db.session.query(union(notification_table_query, ft_status_table_query).subquery()).distinct()
     }
+
+
+@autocommit
+def dao_record_letter_despatched_on(reference: str, despatched_on: datetime.date, cost_threshold: LetterCostThreshold):
+    stmt = (
+        insert(NotificationLetterDespatch)
+        .from_select(
+            ["notification_id", "despatched_on", "cost_threshold"],
+            NotificationAllTimeView.query.with_entities(
+                NotificationAllTimeView.id,
+                literal(despatched_on),
+                literal(cost_threshold.value),
+            ).filter(NotificationAllTimeView.reference == reference),
+        )
+        .on_conflict_do_update(
+            index_elements=["notification_id"],
+            set_={"despatched_on": despatched_on, "cost_threshold": cost_threshold.value},
+        )
+    )
+
+    db.session.execute(stmt)

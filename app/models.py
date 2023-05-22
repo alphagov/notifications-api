@@ -1642,6 +1642,7 @@ class NotificationLetterDespatch(db.Model):
     notification = db.relationship(
         "NotificationAllTimeView",
         primaryjoin="NotificationLetterDespatch.notification_id == foreign(NotificationAllTimeView.id)",
+        uselist=False,
     )
 
 
