@@ -6,7 +6,6 @@ from flask import current_app
 from freezegun import freeze_time
 
 from app.celery.tasks import (
-    LetterCostThreshold,
     check_billable_units,
     get_billing_date_in_bst_from_filename,
     persist_daily_sorted_letter_counts,
@@ -27,7 +26,7 @@ from app.dao.daily_sorted_letter_dao import (
     dao_get_daily_sorted_letter_by_billing_day,
 )
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
-from app.models import DailySortedLetter, NotificationHistory
+from app.models import DailySortedLetter, LetterCostThreshold, NotificationHistory
 from tests.app.db import (
     create_notification,
     create_notification_history,

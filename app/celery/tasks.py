@@ -1,4 +1,3 @@
-import enum
 import json
 from collections import defaultdict
 from dataclasses import dataclass
@@ -53,7 +52,7 @@ from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
-from app.models import DailySortedLetter
+from app.models import DailySortedLetter, LetterCostThreshold
 from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate
@@ -489,11 +488,6 @@ def persist_daily_sorted_letter_counts(day, file_name, sorted_letter_counts):
         sorted_count=sorted_letter_counts["sorted"],
     )
     dao_create_or_update_daily_sorted_letter(daily_letter_count)
-
-
-class LetterCostThreshold(enum.Enum):
-    sorted = "sorted"
-    unsorted = "unsorted"
 
 
 @dataclass
