@@ -6,6 +6,7 @@ from flask import current_app
 from freezegun import freeze_time
 
 from app.celery.tasks import (
+    LetterCostThreshold,
     check_billable_units,
     get_billing_date_in_bst_from_filename,
     persist_daily_sorted_letter_counts,
@@ -41,13 +42,21 @@ def notification_update():
     Returns an instance of the  NotificationUpdate dataclass to use as the argument
     for the check_billable_units function
     """
-    from app.celery.tasks import NotificationUpdate
+    from app.celery.tasks import LetterCostThreshold, NotificationUpdate
 
-    return NotificationUpdate("REFERENCE_ABC", "sent", "1", "cost", "2023-03-07")
+    return NotificationUpdate("REFERENCE_ABC", "sent", "1", LetterCostThreshold("sorted"), "2023-03-07")
 
 
-def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_api, mocker):
-    invalid_file = "ref-foo|Sent|1|Unsorted\nref-bar|Sent|2"
+@pytest.mark.parametrize(
+    "invalid_file",
+    (
+        "ref-foo|Sent|2",
+        "ref-foo|Sent|1|Unsorted",
+        "ref-foo|Sent|1|Unsorted|2023-01-01|unexpected",
+        "ref-foo|Sent|1|Unsorted|2023-01-01\nref-foo|Sent|1|Unsorted|2023-01-01|unexpected",
+    ),
+)
+def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_api, mocker, invalid_file):
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=invalid_file)
 
     with pytest.raises(DVLAException) as e:
@@ -96,7 +105,9 @@ def test_update_letter_notifications_statuses_calls_with_correct_bucket_location
 def test_update_letter_notifications_statuses_builds_updates_from_content(notify_api, mocker):
     valid_file = "ref-foo|Sent|1|Unsorted|23-02-2023\nref-bar|Sent|2|Sorted|22-02-2023"
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
-    update_mock = mocker.patch("app.celery.tasks.process_updates_from_file")
+    update_mock = mocker.patch("app.celery.tasks.process_updates_from_file", wraps=process_updates_from_file)
+    mocker.patch("app.celery.tasks.check_billable_units")
+    mocker.patch("app.celery.tasks.update_letter_notification")
 
     update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
 
@@ -105,19 +116,21 @@ def test_update_letter_notifications_statuses_builds_updates_from_content(notify
 
 def test_update_letter_notifications_statuses_builds_updates_list(notify_api):
     valid_file = "ref-foo|Sent|1|Unsorted|23-02-2023\nref-bar|Sent|2|Sorted|22-02-2023"
-    updates = process_updates_from_file(valid_file)
+    updates, invalid_statuses = process_updates_from_file(valid_file)
 
     assert len(updates) == 2
 
     assert updates[0].reference == "ref-foo"
     assert updates[0].status == "Sent"
     assert updates[0].page_count == "1"
-    assert updates[0].cost_threshold == "Unsorted"
+    assert updates[0].cost_threshold == LetterCostThreshold.unsorted
+    assert updates[0].despatch_date == "23-02-2023"
 
     assert updates[1].reference == "ref-bar"
     assert updates[1].status == "Sent"
     assert updates[1].page_count == "2"
-    assert updates[1].cost_threshold == "Sorted"
+    assert updates[1].cost_threshold == LetterCostThreshold.sorted
+    assert updates[1].despatch_date == "22-02-2023"
 
 
 def test_update_letter_notifications_statuses_persisted(notify_api, mocker, sample_letter_template):
