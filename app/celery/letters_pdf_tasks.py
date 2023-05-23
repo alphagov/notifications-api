@@ -140,44 +140,51 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline_utc_str: str):
     print_run_deadline_local = convert_utc_to_bst(datetime.fromisoformat(print_run_deadline_utc_str))
     _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline_local)
 
-    if current_app.config["DVLA_API_ENABLED"]:
-        return send_dvla_letters_via_api(print_run_deadline_local)
-
     for postage in POSTAGE_TYPES:
-        current_app.logger.info(f"starting collate-letter-pdfs-to-be-sent processing for postage class {postage}")
-        letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline_local, postage)
-
-        for i, letters in enumerate(group_letters(letters_to_print)):
-            filenames = [letter["Key"] for letter in letters]
-
-            service_id = letters[0]["ServiceId"]
-            organisation_id = letters[0]["OrganisationId"]
-
-            hash = urlsafe_b64encode(sha512("".join(filenames).encode()).digest())[:20].decode()
-            # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
-            dvla_filename = "NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.{organisation_id}.ZIP".format(
-                date=print_run_deadline_local.strftime("%Y-%m-%d"),
-                postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
-                num=i + 1,
-                hash=hash,
-                service_id=service_id,
-                organisation_id=organisation_id,
-            )
-
-            current_app.logger.info(
-                "Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes".format(
-                    len(filenames), dvla_filename, sum(letter["Size"] for letter in letters)
-                )
-            )
-            notify_celery.send_task(
-                name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
-                kwargs={"filenames_to_zip": filenames, "upload_filename": dvla_filename},
-                queue=QueueNames.PROCESS_FTP,
-                compression="zlib",
-            )
-        current_app.logger.info(f"finished collate-letter-pdfs-to-be-sent processing for postage class {postage}")
+        if (
+            current_app.config["DVLA_API_ENABLED"]
+            and postage not in current_app.config["DVLA_API_POSTAGE_TYPE_EXCLUDE_LIST"]
+        ):
+            send_dvla_letters_via_api(print_run_deadline_local, postage)
+        else:
+            _collate_letter_pdfs_to_be_sent_for_postage(print_run_deadline_local, postage)
 
     current_app.logger.info("finished collate-letter-pdfs-to-be-sent")
+
+
+def _collate_letter_pdfs_to_be_sent_for_postage(print_run_deadline_local, postage):
+    current_app.logger.info(f"starting collate-letter-pdfs-to-be-sent processing for postage class {postage}")
+    letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline_local, postage)
+
+    for i, letters in enumerate(group_letters(letters_to_print)):
+        filenames = [letter["Key"] for letter in letters]
+
+        service_id = letters[0]["ServiceId"]
+        organisation_id = letters[0]["OrganisationId"]
+
+        hash = urlsafe_b64encode(sha512("".join(filenames).encode()).digest())[:20].decode()
+        # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
+        dvla_filename = "NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.{organisation_id}.ZIP".format(
+            date=print_run_deadline_local.strftime("%Y-%m-%d"),
+            postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
+            num=i + 1,
+            hash=hash,
+            service_id=service_id,
+            organisation_id=organisation_id,
+        )
+
+        current_app.logger.info(
+            "Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes".format(
+                len(filenames), dvla_filename, sum(letter["Size"] for letter in letters)
+            )
+        )
+        notify_celery.send_task(
+            name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
+            kwargs={"filenames_to_zip": filenames, "upload_filename": dvla_filename},
+            queue=QueueNames.PROCESS_FTP,
+            compression="zlib",
+        )
+    current_app.logger.info(f"finished collate-letter-pdfs-to-be-sent processing for postage class {postage}")
 
 
 @notify_celery.task(name="check-time-to-collate-letters")
@@ -305,13 +312,12 @@ def group_letters(letter_pdfs):
         yield list_of_files
 
 
-def send_dvla_letters_via_api(print_run_deadline_local):
-    for postage in POSTAGE_TYPES:
-        current_app.logger.info(f"send-dvla-letters-for-day-via-api - starting queuing for postage class {postage}")
-        for letter in dao_get_letters_to_be_printed(print_run_deadline_local, postage):
-            deliver_letter.apply_async(kwargs={"notification_id": letter.id}, queue=QueueNames.SEND_LETTER)
+def send_dvla_letters_via_api(print_run_deadline_local, postage):
+    current_app.logger.info(f"send-dvla-letters-for-day-via-api - starting queuing for postage class {postage}")
+    for letter in dao_get_letters_to_be_printed(print_run_deadline_local, postage):
+        deliver_letter.apply_async(kwargs={"notification_id": letter.id}, queue=QueueNames.SEND_LETTER)
 
-        current_app.logger.info(f"send-dvla-letters-for-day-via-api - finished queuing for postage class {postage}")
+    current_app.logger.info(f"send-dvla-letters-for-day-via-api - finished queuing for postage class {postage}")
 
 
 @notify_celery.task(bind=True, name="sanitise-letter", max_retries=15, default_retry_delay=300)
