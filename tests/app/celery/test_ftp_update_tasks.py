@@ -102,7 +102,7 @@ def test_update_letter_notifications_statuses_calls_with_correct_bucket_location
 
 
 def test_update_letter_notifications_statuses_builds_updates_from_content(notify_api, mocker):
-    valid_file = "ref-foo|Sent|1|Unsorted|23-02-2023\nref-bar|Sent|2|Sorted|22-02-2023"
+    valid_file = "ref-foo|Sent|1|Unsorted|2023-02-23\nref-bar|Sent|2|Sorted|2023-02-22"
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
     update_mock = mocker.patch("app.celery.tasks.process_updates_from_file", wraps=process_updates_from_file)
     mocker.patch("app.celery.tasks.check_billable_units")
@@ -114,7 +114,7 @@ def test_update_letter_notifications_statuses_builds_updates_from_content(notify
 
 
 def test_update_letter_notifications_statuses_builds_updates_list(notify_api):
-    valid_file = "ref-foo|Sent|1|Unsorted|23-02-2023\nref-bar|Sent|2|Sorted|22-02-2023"
+    valid_file = "ref-foo|Sent|1|Unsorted|2023-02-23\nref-bar|Sent|2|Sorted|2023-02-22"
     updates, invalid_statuses = process_updates_from_file(valid_file)
 
     assert len(updates) == 2
@@ -123,13 +123,13 @@ def test_update_letter_notifications_statuses_builds_updates_list(notify_api):
     assert updates[0].status == "Sent"
     assert updates[0].page_count == "1"
     assert updates[0].cost_threshold == LetterCostThreshold.unsorted
-    assert updates[0].despatch_date == "23-02-2023"
+    assert updates[0].despatch_date == "2023-02-23"
 
     assert updates[1].reference == "ref-bar"
     assert updates[1].status == "Sent"
     assert updates[1].page_count == "2"
     assert updates[1].cost_threshold == LetterCostThreshold.sorted
-    assert updates[1].despatch_date == "22-02-2023"
+    assert updates[1].despatch_date == "2023-02-22"
 
 
 def test_update_letter_notifications_statuses_persisted(notify_api, mocker, sample_letter_template):
@@ -141,7 +141,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     )
     create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
     valid_file = (
-        f"{sent_letter.reference}|Sent|1|Unsorted|23-02-2023\n{failed_letter.reference}|Failed|2|Sorted|23-02-2023"
+        f"{sent_letter.reference}|Sent|1|Unsorted|2023-02-23\n{failed_letter.reference}|Failed|2|Sorted|2023-02-23"
     )
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
     with pytest.raises(expected_exception=DVLAException) as e:
