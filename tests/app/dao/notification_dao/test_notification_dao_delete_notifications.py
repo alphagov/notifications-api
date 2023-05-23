@@ -9,6 +9,7 @@ from moto import mock_s3
 
 from app.constants import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from app.dao.notifications_dao import (
+    FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY,
     insert_notification_history_delete_notifications,
     move_notifications_to_notification_history,
 )
@@ -19,6 +20,13 @@ from tests.app.db import (
     create_service,
     create_template,
 )
+
+
+def test_every_column_in_notification_history_is_filled_with_data_from_notifications():
+    # This test is there to prevent the case where we add a new column to notifications and notifications_history but
+    # forget to update our code to copy the data in that new column across to the notificataions_history table every
+    # night
+    assert len(FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY) == len(NotificationHistory.__table__.columns.keys())
 
 
 @mock_s3

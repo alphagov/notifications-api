@@ -54,6 +54,32 @@ from app.utils import (
     midnight_n_days_ago,
 )
 
+FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
+    "id",
+    "job_id",
+    "job_row_number",
+    "service_id",
+    "template_id",
+    "template_version",
+    "api_key_id",
+    "key_type",
+    "notification_type",
+    "created_at",
+    "sent_at",
+    "sent_by",
+    "updated_at",
+    "reference",
+    "billable_units",
+    "client_reference",
+    "international",
+    "phone_prefix",
+    "rate_multiplier",
+    "notification_status",
+    "created_by_id",
+    "postage",
+    "document_download_count",
+]
+
 
 def dao_get_last_date_template_was_used(template_id, service_id):
     last_date_from_notifications = (
@@ -291,12 +317,11 @@ def insert_notification_history_delete_notifications(
     """
     # Setting default query limit to 50,000 which take about 48 seconds on current table size
     # 10, 000 took 11s and 100,000 took 1 min 30 seconds.
-    select_into_temp_table = """
+    fields_to_transfer_to_notification_history = ", ".join(FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY)
+
+    select_into_temp_table = f"""
          CREATE TEMP TABLE NOTIFICATION_ARCHIVE ON COMMIT DROP AS
-         SELECT id, job_id, job_row_number, service_id, template_id, template_version, api_key_id,
-             key_type, notification_type, created_at, sent_at, sent_by, updated_at, reference, billable_units,
-             client_reference, international, phone_prefix, rate_multiplier, notification_status,
-              created_by_id, postage, document_download_count
+         SELECT {fields_to_transfer_to_notification_history}
           FROM notifications
         WHERE service_id = :service_id
           AND notification_type = :notification_type
@@ -304,12 +329,9 @@ def insert_notification_history_delete_notifications(
           AND key_type in ('normal', 'team')
         limit :qry_limit
         """
-    select_into_temp_table_for_letters = """
+    select_into_temp_table_for_letters = f"""
          CREATE TEMP TABLE NOTIFICATION_ARCHIVE ON COMMIT DROP AS
-         SELECT id, job_id, job_row_number, service_id, template_id, template_version, api_key_id,
-             key_type, notification_type, created_at, sent_at, sent_by, updated_at, reference, billable_units,
-             client_reference, international, phone_prefix, rate_multiplier, notification_status,
-              created_by_id, postage, document_download_count
+         SELECT {fields_to_transfer_to_notification_history}
           FROM notifications
         WHERE service_id = :service_id
           AND notification_type = :notification_type
@@ -319,12 +341,9 @@ def insert_notification_history_delete_notifications(
         limit :qry_limit
         """
     # Insert into NotificationHistory if the row already exists do nothing.
-    insert_query = """
+    insert_query = f"""
         insert into notification_history
-         SELECT id, job_id, job_row_number, service_id, template_id, template_version, api_key_id,
-             key_type, notification_type, created_at, sent_at, sent_by, updated_at, reference, billable_units,
-             client_reference, international, phone_prefix, rate_multiplier, notification_status,
-              created_by_id, postage, document_download_count from NOTIFICATION_ARCHIVE
+         SELECT {fields_to_transfer_to_notification_history} from NOTIFICATION_ARCHIVE
           ON CONFLICT ON CONSTRAINT notification_history_pkey
           DO NOTHING
     """
