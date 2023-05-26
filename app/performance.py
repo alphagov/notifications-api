@@ -43,3 +43,6 @@ def init_performance_monitoring():
             traces_sampler=traces_sampler,
             release=release,
         )
+
+        if app_name := os.getenv("NOTIFY_APP_NAME"):
+            sentry_sdk.set_tag("app", app_name)
