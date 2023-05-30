@@ -437,8 +437,33 @@ class TestCollateLetterPdfsToBeSent:
             with freeze_time("2021-06-01T17:00+00:00"):
                 collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
 
+        assert mock_send_via_api.call_count == 4
         # Expected to be called with a local (BST) value
-        mock_send_via_api.assert_called_with(datetime(2021, 6, 1, 17, 30))
+        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "first")
+        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "second")
+        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "europe")
+        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "rest-of-world")
+
+    def test_collate_letter_pdfs_uses_api_if_postage_not_on_exclude_list(self, notify_api, notify_db_session, mocker):
+        mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
+
+        mock_send_via_api = mocker.patch("app.celery.letters_pdf_tasks.send_dvla_letters_via_api")
+        mock_send_via_ftp = mocker.patch("app.celery.letters_pdf_tasks._collate_letter_pdfs_to_be_sent_for_postage")
+
+        with set_config_values(
+            notify_api,
+            {"DVLA_API_ENABLED": True, "DVLA_API_POSTAGE_TYPE_EXCLUDE_LIST": ["first", "second"]},
+        ):
+            with freeze_time("2021-06-01T17:00+00:00"):
+                collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
+
+        assert mock_send_via_ftp.call_count == 2
+        mock_send_via_ftp.assert_any_call(datetime(2021, 6, 1, 17, 30), "first")
+        mock_send_via_ftp.assert_any_call(datetime(2021, 6, 1, 17, 30), "second")
+
+        assert mock_send_via_api.call_count == 2
+        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "europe")
+        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "rest-of-world")
 
     @mock_s3
     def test_collate_letter_pdfs_to_be_sent(self, notify_api, mocker, sample_organisation):
@@ -620,20 +645,18 @@ def test_send_dvla_letters_via_api(sample_letter_template, mocker):
     mock_celery = mocker.patch("app.celery.provider_tasks.deliver_letter.apply_async")
 
     with freeze_time("2021-06-01 16:29"):
-        rest_of_world = create_notification(sample_letter_template, postage="rest-of-world")
         first_class = create_notification(sample_letter_template, postage="first")
-        second_class = create_notification(sample_letter_template, postage="second")
+        create_notification(sample_letter_template, postage="second")
+        create_notification(sample_letter_template, postage="rest-of-world")
 
     with freeze_time("2021-06-01 16:31"):
-        create_notification(sample_letter_template)  # too recent
+        create_notification(sample_letter_template, postage="first")  # too recent
 
     # note print_run_deadline is in local time
-    send_dvla_letters_via_api(datetime(2021, 6, 1, 17, 30))
+    send_dvla_letters_via_api(datetime(2021, 6, 1, 17, 30), "first")
 
     assert mock_celery.call_args_list == [
         call(kwargs={"notification_id": first_class.id}, queue="send-letter-tasks"),
-        call(kwargs={"notification_id": second_class.id}, queue="send-letter-tasks"),
-        call(kwargs={"notification_id": rest_of_world.id}, queue="send-letter-tasks"),
     ]
 
 
