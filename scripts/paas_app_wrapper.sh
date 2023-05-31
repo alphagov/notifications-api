@@ -36,10 +36,6 @@ case $NOTIFY_APP_NAME in
     exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \
     -Q reporting-tasks 2> /dev/null
     ;;
-  delivery-worker-priority)
-    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \
-    -Q priority-tasks 2> /dev/null
-    ;;
   # Only consume the notify-internal-tasks queue on this app so that Notify messages are processed as a priority
   delivery-worker-internal)
     exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \

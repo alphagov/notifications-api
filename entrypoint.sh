@@ -60,10 +60,6 @@ elif [ "$1" == "delivery-worker-reporting" ]
 then
   $COMMON_CMD reporting-tasks
 
-elif [ "$1" == "delivery-worker-priority" ]
-then
-  $COMMON_CMD priority-tasks
-
 # Only consume the notify-internal-tasks queue on this app so that Notify messages are processed as a priority
 elif [ "$1" == "delivery-worker-internal" ]
 then
