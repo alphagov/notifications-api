@@ -1,4 +1,5 @@
 import datetime
+import enum
 import itertools
 import uuid
 
@@ -1618,6 +1619,31 @@ class NotificationHistory(db.Model, HistoryModel):
     def update_from_original(self, original):
         super().update_from_original(original)
         self.status = original.status
+
+
+class LetterCostThreshold(enum.Enum):
+    sorted = "sorted"
+    unsorted = "unsorted"
+
+
+class NotificationLetterDespatch(db.Model):
+    __tablename__ = "notifications_letter_despatch"
+
+    notification_id = db.Column(UUID(as_uuid=True), primary_key=True)
+    despatched_on = db.Column(db.Date, index=True)
+    cost_threshold = db.Column(
+        db.Enum(LetterCostThreshold, name="letter_despatch_cost_threshold"), nullable=False, index=True
+    )
+
+    # WIP:
+    # Ignoring a strict foreign key relationship here for now. Notifications are archived to the NotificationHistory
+    # table by a nightly job and I haven't investigated whether that might break a strict FK yet or if it would
+    # work smoothly. We can still have a relationship using an explicit join condition.
+    notification = db.relationship(
+        "NotificationAllTimeView",
+        primaryjoin="NotificationLetterDespatch.notification_id == foreign(NotificationAllTimeView.id)",
+        uselist=False,
+    )
 
 
 class InviteStatusType(db.Model):

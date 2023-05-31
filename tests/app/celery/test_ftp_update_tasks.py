@@ -26,7 +26,7 @@ from app.dao.daily_sorted_letter_dao import (
     dao_get_daily_sorted_letter_by_billing_day,
 )
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
-from app.models import DailySortedLetter, NotificationHistory
+from app.models import DailySortedLetter, LetterCostThreshold, NotificationHistory, NotificationLetterDespatch
 from tests.app.db import (
     create_notification,
     create_notification_history,
@@ -42,12 +42,21 @@ def notification_update():
     for the check_billable_units function
     """
     from app.celery.tasks import NotificationUpdate
+    from app.models import LetterCostThreshold
 
-    return NotificationUpdate("REFERENCE_ABC", "sent", "1", "cost", "2023-03-07")
+    return NotificationUpdate("REFERENCE_ABC", "sent", "1", LetterCostThreshold("sorted"), "2023-03-07")
 
 
-def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_api, mocker):
-    invalid_file = "ref-foo|Sent|1|Unsorted\nref-bar|Sent|2"
+@pytest.mark.parametrize(
+    "invalid_file",
+    (
+        "ref-foo|Sent|2",
+        "ref-foo|Sent|1|Unsorted",
+        "ref-foo|Sent|1|Unsorted|2023-01-01|unexpected",
+        "ref-foo|Sent|1|Unsorted|2023-01-01\nref-foo|Sent|1|Unsorted|2023-01-01|unexpected",
+    ),
+)
+def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_api, mocker, invalid_file):
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=invalid_file)
 
     with pytest.raises(DVLAException) as e:
@@ -68,6 +77,23 @@ def test_update_letter_notification_statuses_when_notification_does_not_exist_up
 
     updated_history = NotificationHistory.query.filter_by(id=notification.id).one()
     assert updated_history.status == NOTIFICATION_DELIVERED
+
+
+def test_update_letter_notification_statuses_when_notification_does_not_exist_creates_letter_despatch_record(
+    sample_letter_template, mocker
+):
+    valid_file = "ref-foo|Sent|1|Unsorted|2023-01-12"
+    mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
+    notification = create_notification_history(
+        sample_letter_template, reference="ref-foo", status=NOTIFICATION_SENDING, billable_units=1
+    )
+
+    update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
+
+    letter_despatch = NotificationLetterDespatch.query.first()
+    assert letter_despatch.notification_id == notification.id
+    assert letter_despatch.despatched_on == date(2023, 1, 12)
+    assert letter_despatch.cost_threshold == LetterCostThreshold.unsorted
 
 
 def test_update_letter_notifications_statuses_raises_dvla_exception(notify_api, mocker, sample_letter_template):
@@ -94,30 +120,57 @@ def test_update_letter_notifications_statuses_calls_with_correct_bucket_location
 
 
 def test_update_letter_notifications_statuses_builds_updates_from_content(notify_api, mocker):
-    valid_file = "ref-foo|Sent|1|Unsorted|23-02-2023\nref-bar|Sent|2|Sorted|22-02-2023"
+    valid_file = "ref-foo|Sent|1|Unsorted|2023-02-23\nref-bar|Sent|2|Sorted|2023-02-22"
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
-    update_mock = mocker.patch("app.celery.tasks.process_updates_from_file")
+    update_mock = mocker.patch("app.celery.tasks.process_updates_from_file", wraps=process_updates_from_file)
+    mocker.patch("app.celery.tasks.check_billable_units")
+    mocker.patch("app.celery.tasks.update_letter_notification")
 
     update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
 
     update_mock.assert_called_with(valid_file)
 
 
+def test_update_letter_notifications_statuses_creates_letter_despatch_record(
+    notify_api, mocker, sample_letter_template
+):
+    valid_file = "ref-foo|Sent|1|Unsorted|2023-02-23\nref-bar|Sent|2|Sorted|2023-02-22"
+    mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
+    notification_bar = create_notification(
+        sample_letter_template, reference="ref-bar", status=NOTIFICATION_SENDING, billable_units=1
+    )
+    notification_foo = create_notification(
+        sample_letter_template, reference="ref-foo", status=NOTIFICATION_SENDING, billable_units=1
+    )
+
+    update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
+
+    letter_despatches = NotificationLetterDespatch.query.all()
+    assert letter_despatches[0].notification_id == notification_foo.id
+    assert letter_despatches[0].despatched_on == date(2023, 2, 23)
+    assert letter_despatches[0].cost_threshold == LetterCostThreshold.unsorted
+    assert letter_despatches[1].notification_id == notification_bar.id
+    assert letter_despatches[1].despatched_on == date(2023, 2, 22)
+    assert letter_despatches[1].cost_threshold == LetterCostThreshold.sorted
+
+
 def test_update_letter_notifications_statuses_builds_updates_list(notify_api):
-    valid_file = "ref-foo|Sent|1|Unsorted|23-02-2023\nref-bar|Sent|2|Sorted|22-02-2023"
-    updates = process_updates_from_file(valid_file)
+    valid_file = "ref-foo|Sent|1|Unsorted|2023-02-23\nref-bar|Sent|2|Sorted|2023-02-22"
+    updates, invalid_statuses = process_updates_from_file(valid_file)
 
     assert len(updates) == 2
 
     assert updates[0].reference == "ref-foo"
     assert updates[0].status == "Sent"
     assert updates[0].page_count == "1"
-    assert updates[0].cost_threshold == "Unsorted"
+    assert updates[0].cost_threshold == LetterCostThreshold.unsorted
+    assert updates[0].despatch_date == "2023-02-23"
 
     assert updates[1].reference == "ref-bar"
     assert updates[1].status == "Sent"
     assert updates[1].page_count == "2"
-    assert updates[1].cost_threshold == "Sorted"
+    assert updates[1].cost_threshold == LetterCostThreshold.sorted
+    assert updates[1].despatch_date == "2023-02-22"
 
 
 def test_update_letter_notifications_statuses_persisted(notify_api, mocker, sample_letter_template):
@@ -129,7 +182,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     )
     create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
     valid_file = (
-        f"{sent_letter.reference}|Sent|1|Unsorted|23-02-2023\n{failed_letter.reference}|Failed|2|Sorted|23-02-2023"
+        f"{sent_letter.reference}|Sent|1|Unsorted|2023-02-23\n{failed_letter.reference}|Failed|2|Sorted|2023-02-23"
     )
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
     with pytest.raises(expected_exception=DVLAException) as e:

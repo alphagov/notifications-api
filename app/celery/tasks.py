@@ -40,6 +40,7 @@ from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
 from app.dao.notifications_dao import (
     dao_get_last_notification_added_for_job_id,
     dao_get_notification_or_history_by_reference,
+    dao_record_letter_despatched_on,
     dao_update_notifications_by_reference,
     get_notification_by_id,
 )
@@ -52,7 +53,7 @@ from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
-from app.models import DailySortedLetter
+from app.models import DailySortedLetter, LetterCostThreshold
 from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate
@@ -449,12 +450,7 @@ def record_daily_sorted_counts(self, filename):
     sorted_letter_counts = defaultdict(int)
     notification_updates = parse_dvla_file(filename)
     for update in notification_updates:
-        sorted_letter_counts[update.cost_threshold.lower()] += 1
-
-    unknown_status = sorted_letter_counts.keys() - {"unsorted", "sorted"}
-    if unknown_status:
-        message = "DVLA response file: {} contains unknown Sorted status {}".format(filename, unknown_status.__repr__())
-        raise DVLAException(message)
+        sorted_letter_counts[update.cost_threshold.value] += 1
 
     billing_date = get_billing_date_in_bst_from_filename(filename)
     persist_daily_sorted_letter_counts(day=billing_date, file_name=filename, sorted_letter_counts=sorted_letter_counts)
@@ -465,9 +461,17 @@ def parse_dvla_file(filename):
     response_file_content = s3.get_s3_file(bucket_location, filename)
 
     try:
-        return process_updates_from_file(response_file_content)
-    except TypeError as e:
-        raise DVLAException("DVLA response file: {} has an invalid format".format(filename)) from e
+        updates, invalid_statuses = process_updates_from_file(response_file_content)
+    except ValueError as e:
+        if "not enough values to unpack" in str(e) or "too many values to unpack" in str(e):
+            raise DVLAException("DVLA response file: {} has an invalid format".format(filename)) from e
+
+        raise
+
+    if invalid_statuses:
+        raise DVLAException(f"DVLA response file: {filename} contains unknown Sorted status {invalid_statuses}")
+
+    return updates
 
 
 def get_billing_date_in_bst_from_filename(filename):
@@ -489,23 +493,40 @@ def persist_daily_sorted_letter_counts(day, file_name, sorted_letter_counts):
 
 @dataclass
 class NotificationUpdate:
-    """
-    A NotificationUpdate is used to wrap a row of a DVLA response file.
-    """
-
     reference: str
     status: str
     page_count: str
-    cost_threshold: str
+    cost_threshold: LetterCostThreshold
     despatch_date: str
 
 
 def process_updates_from_file(response_file):
-    notification_updates = [NotificationUpdate(*line.split("|")) for line in response_file.splitlines()]
-    return notification_updates
+    notification_updates = []
+    invalid_statuses = set()
+
+    for line in response_file.splitlines():
+        reference, status, page_count, raw_cost_threshold, despatch_date = line.split("|")
+
+        try:
+            cost_threshold = LetterCostThreshold(raw_cost_threshold.lower())
+        except ValueError:
+            invalid_statuses.add(raw_cost_threshold.lower())
+            continue
+
+        notification_updates.append(
+            NotificationUpdate(
+                reference=reference,
+                status=status,
+                page_count=page_count,
+                cost_threshold=cost_threshold,
+                despatch_date=despatch_date,
+            )
+        )
+
+    return notification_updates, invalid_statuses
 
 
-def update_letter_notification(filename, temporary_failures, update):
+def update_letter_notification(filename: str, temporary_failures: list, update: NotificationUpdate):
     if update.status == DVLA_RESPONSE_STATUS_SENT:
         status = NOTIFICATION_DELIVERED
     else:
@@ -514,6 +535,9 @@ def update_letter_notification(filename, temporary_failures, update):
 
     updated_count, _ = dao_update_notifications_by_reference(
         references=[update.reference], update_dict={"status": status, "updated_at": datetime.utcnow()}
+    )
+    dao_record_letter_despatched_on(
+        reference=update.reference, despatched_on=update.despatch_date, cost_threshold=update.cost_threshold
     )
 
     if not updated_count:
