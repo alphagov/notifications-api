@@ -128,7 +128,7 @@ def test_update_letter_notifications_statuses_builds_updates_from_content(notify
 
     update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
 
-    update_mock.assert_called_with(valid_file)
+    update_mock.assert_called_with(valid_file, filename="NOTIFY-20170823160812-RSP.TXT")
 
 
 def test_update_letter_notifications_statuses_creates_letter_despatch_record(
@@ -156,7 +156,7 @@ def test_update_letter_notifications_statuses_creates_letter_despatch_record(
 
 def test_update_letter_notifications_statuses_builds_updates_list(notify_api):
     valid_file = "ref-foo|Sent|1|Unsorted|2023-02-23\nref-bar|Sent|2|Sorted|2023-02-22"
-    updates, invalid_statuses = process_updates_from_file(valid_file)
+    updates = process_updates_from_file(valid_file, filename="file.txt")
 
     assert len(updates) == 2
 
