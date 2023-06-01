@@ -15,7 +15,6 @@ if os.environ.get("VCAP_SERVICES"):
 
 class QueueNames(object):
     PERIODIC = "periodic-tasks"
-    PRIORITY = "priority-tasks"
     DATABASE = "database-tasks"
     SEND_SMS = "send-sms-tasks"
     SEND_EMAIL = "send-email-tasks"
@@ -41,7 +40,6 @@ class QueueNames(object):
     @staticmethod
     def all_queues():
         return [
-            QueueNames.PRIORITY,
             QueueNames.PERIODIC,
             QueueNames.DATABASE,
             QueueNames.SEND_SMS,
