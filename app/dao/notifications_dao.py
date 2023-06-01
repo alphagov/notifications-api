@@ -346,7 +346,7 @@ def insert_notification_history_delete_notifications(
         """
     # Insert into NotificationHistory if the row already exists do nothing.
     insert_query = f"""
-        insert into notification_history
+        insert into notification_history ({fields_to_transfer_to_notification_history})
          SELECT {fields_to_transfer_to_notification_history} from NOTIFICATION_ARCHIVE
           ON CONFLICT ON CONSTRAINT notification_history_pkey
           DO NOTHING
