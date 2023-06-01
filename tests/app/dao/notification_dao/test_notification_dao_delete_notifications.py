@@ -393,3 +393,39 @@ def test_insert_notification_history_delete_notifications_insert_for_key_type(sa
     assert len(notifications) == 1
     assert with_test_key.id == notifications[0].id
     assert len(history_rows) == 2
+
+
+def test_insert_notification_history_delete_notifications_can_handle_different_column_orders(
+    sample_template, notify_db_session
+):
+    """Validate that the notification->history process can handle the history table's columns being in a different
+    order to the notification/notification_archive table - ie that we are explicitly saying which columns we are taking
+    from and where we are inserting into.
+
+    This is because our prod->staging migrate+anonymise process sometimes drops+recreates columns, which will have
+    them in a different order:
+
+    https://github.com/alphagov/notifications-aws/blob/main/scripts/remove-all-sensitive-and-personal-data/
+    remove-all-sensitive-and-personal-data-part-2.sql
+    """
+    create_notification(
+        template=sample_template,
+        created_at=datetime.utcnow() - timedelta(hours=4),
+        status="delivered",
+        key_type="normal",
+    )
+    create_notification(
+        template=sample_template, created_at=datetime.utcnow() - timedelta(hours=4), status="delivered", key_type="team"
+    )
+
+    notify_db_session.execute("drop view notifications_all_time_view")
+    notify_db_session.execute("alter table notification_history drop column client_reference")
+    notify_db_session.execute("alter table notification_history add column client_reference varchar")
+
+    del_count = insert_notification_history_delete_notifications(
+        notification_type=sample_template.template_type,
+        service_id=sample_template.service_id,
+        timestamp_to_delete_backwards_from=datetime.utcnow(),
+    )
+
+    assert del_count == 2
