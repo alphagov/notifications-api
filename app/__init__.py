@@ -421,6 +421,10 @@ def setup_sqlalchemy_events(app):
 
         @event.listens_for(db.engine, "checkin")
         def checkin(dbapi_connection, connection_record):
+            if "checkout_at" not in connection_record.info or "request_data" not in connection_record.info:
+                # we can get in this inconsistent state if the database is shutting down
+                return
+
             try:
                 # connection returned by a web worker
                 TOTAL_CHECKED_OUT_DB_CONNECTIONS.dec()
