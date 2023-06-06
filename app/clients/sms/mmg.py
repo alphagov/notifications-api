@@ -4,6 +4,7 @@ from requests import RequestException, request
 
 from app.clients.sms import SmsClient, SmsClientResponseException
 
+# For some extra context, see google drive: GOV.UK Notify -> SMS suppliers -> Detailed failure statuses
 mmg_response_map = {
     "2": {
         "status": "permanent-failure",
