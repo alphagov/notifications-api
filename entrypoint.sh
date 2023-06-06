@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Cater for specific concurrency level
-if [ "$1" == "delivery-worker-periodic" ] || [ "$1" == "delivery-worker-broadcasts" ]
+if [ "$1" == "worker-periodic" ] || [ "$1" == "worker-broadcasts" ]
 then
   CONCURRENCY=2
 else
@@ -28,60 +28,60 @@ elif [ "$1" == "migration" ]
 then
   flask db upgrade
 
-elif [ "$1" == "delivery-worker-retry-tasks" ]
+elif [ "$1" == "worker-retry-tasks" ]
 then
   $COMMON_CMD retry-tasks
 
-elif [ "$1" == "delivery-worker-letters" ]
+elif [ "$1" == "worker-letters" ]
 then
   $COMMON_CMD create-letters-pdf-tasks,letter-tasks 
  
-elif [ "$1" == "delivery-worker-jobs" ]
+elif [ "$1" == "worker-jobs" ]
 then
   $COMMON_CMD database-tasks,job-tasks 
 
-elif [ "$1" == "delivery-worker-research" ]
+elif [ "$1" == "worker-research" ]
 then
   $COMMON_CMD research-mode-tasks 
 
-elif [ "$1" == "delivery-worker-sender" ]
+elif [ "$1" == "worker-sender" ]
 then
   $COMMON_CMD send-sms-tasks,send-email-tasks
 
-elif [ "$1" == "delivery-worker-sender-letters" ]
+elif [ "$1" == "worker-sender-letters" ]
 then
   $COMMON_CMD send-letter-tasks
 
-elif [ "$1" == "delivery-worker-periodic" ]
+elif [ "$1" == "worker-periodic" ]
 then
   $COMMON_CMD periodic-tasks
 
-elif [ "$1" == "delivery-worker-reporting" ]
+elif [ "$1" == "worker-reporting" ]
 then
   $COMMON_CMD reporting-tasks
 
 # Only consume the notify-internal-tasks queue on this app so that Notify messages are processed as a priority
-elif [ "$1" == "delivery-worker-internal" ]
+elif [ "$1" == "worker-internal" ]
 then
   $COMMON_CMD notify-internal-tasks
 
-elif [ "$1" == "delivery-worker-broadcasts" ]
+elif [ "$1" == "worker-broadcasts" ]
 then
   $COMMON_CMD broadcast-tasks
 
-elif [ "$1" == "delivery-worker-receipts" ]
+elif [ "$1" == "worker-receipts" ]
 then
   $COMMON_CMD ses-callbacks,sms-callbacks
 
-elif [ "$1" == "delivery-worker-service-callbacks" ]
+elif [ "$1" == "worker-service-callbacks" ]
 then
   $COMMON_CMD service-callbacks,service-callbacks-retry
 
-elif [ "$1" == "delivery-worker-save-api-notifications" ]
+elif [ "$1" == "worker-save-api-notifications" ]
 then
   $COMMON_CMD save-api-email-tasks,save-api-sms-tasks
 
-elif [ "$1" == "delivery-celery-beat" ]
+elif [ "$1" == "celery-beat" ]
 then
   celery -A run_celery.notify_celery beat --loglevel=INFO
 
