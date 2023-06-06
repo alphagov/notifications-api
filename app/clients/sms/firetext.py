@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 #  See the code in the notification_dao.update_notifications_status_by_id
 firetext_responses = {"0": "delivered", "1": "permanent-failure", "2": "pending"}
 
+# For some extra context, see google drive: GOV.UK Notify -> SMS suppliers -> Detailed failure statuses
 firetext_codes = {
     # code '000' means 'No errors reported'
     "000": {"status": "temporary-failure", "reason": "No error reported"},
