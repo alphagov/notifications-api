@@ -17,6 +17,7 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.dao.services_dao import fetch_billing_details_for_all_services
 from app.errors import InvalidRequest, register_errors
+from app.models import FactBillingLetterDespatch
 from app.platform_stats.platform_stats_schema import platform_stats_request
 from app.schema_validation import validate
 from app.service.statistics import format_admin_stats
@@ -140,6 +141,46 @@ def get_data_for_billing_report():
         combined.values(), key=lambda x: (x["organisation_name"] == "", x["organisation_name"], x["service_name"])
     )
     return jsonify(result)
+
+
+@platform_stats_blueprint.route("data-for-dvla-billing-report")
+def get_data_for_dvla_billing_report():
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+
+    start_date, end_date = validate_date_range_is_within_a_financial_year(start_date, end_date)
+
+    billing_facts = (
+        FactBillingLetterDespatch.query.filter(
+            FactBillingLetterDespatch.bst_date >= start_date, FactBillingLetterDespatch.bst_date <= end_date
+        )
+        .with_entities(
+            FactBillingLetterDespatch.bst_date.label("date"),
+            FactBillingLetterDespatch.postage.label("postage"),
+            FactBillingLetterDespatch.cost_threshold.label("cost_threshold"),
+            FactBillingLetterDespatch.rate.label("rate"),
+            FactBillingLetterDespatch.billable_units.label("sheets"),
+            FactBillingLetterDespatch.notifications_sent.label("letters"),
+            (FactBillingLetterDespatch.rate * FactBillingLetterDespatch.notifications_sent).label("cost"),
+        )
+        .order_by("date", "postage", "cost_threshold", "rate", "sheets")
+        .all()
+    )
+
+    return jsonify(
+        [
+            {
+                "date": fact.date.isoformat(),
+                "postage": fact.postage,
+                "cost_threshold": fact.cost_threshold.value,
+                "sheets": fact.sheets,
+                "rate": float(fact.rate),
+                "letters": fact.letters,
+                "cost": float(fact.cost),
+            }
+            for fact in billing_facts
+        ]
+    )
 
 
 @platform_stats_blueprint.route("daily-volumes-report")

@@ -459,19 +459,7 @@ def record_daily_sorted_counts(self, filename):
 def parse_dvla_file(filename):
     bucket_location = "{}-ftp".format(current_app.config["NOTIFY_EMAIL_DOMAIN"])
     response_file_content = s3.get_s3_file(bucket_location, filename)
-
-    try:
-        updates, invalid_statuses = process_updates_from_file(response_file_content)
-    except ValueError as e:
-        if "not enough values to unpack" in str(e) or "too many values to unpack" in str(e):
-            raise DVLAException("DVLA response file: {} has an invalid format".format(filename)) from e
-
-        raise
-
-    if invalid_statuses:
-        raise DVLAException(f"DVLA response file: {filename} contains unknown Sorted status {invalid_statuses}")
-
-    return updates
+    return process_updates_from_file(response_file_content, filename=filename)
 
 
 def get_billing_date_in_bst_from_filename(filename):
@@ -500,12 +488,15 @@ class NotificationUpdate:
     despatch_date: str
 
 
-def process_updates_from_file(response_file):
+def process_updates_from_file(response_file, filename):
     notification_updates = []
     invalid_statuses = set()
 
     for line in response_file.splitlines():
-        reference, status, page_count, raw_cost_threshold, despatch_date = line.split("|")
+        try:
+            reference, status, page_count, raw_cost_threshold, despatch_date = line.split("|")
+        except ValueError as e:
+            raise DVLAException("DVLA response file: {} has an invalid format".format(filename)) from e
 
         try:
             cost_threshold = LetterCostThreshold(raw_cost_threshold.lower())
@@ -523,7 +514,10 @@ def process_updates_from_file(response_file):
             )
         )
 
-    return notification_updates, invalid_statuses
+    if invalid_statuses:
+        raise DVLAException(f"DVLA response file: {filename} contains unknown Sorted status {invalid_statuses}")
+
+    return notification_updates
 
 
 def update_letter_notification(filename: str, temporary_failures: list, update: NotificationUpdate):

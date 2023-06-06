@@ -3,9 +3,9 @@ from typing import Any, Optional
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import Date, Integer, and_, desc, func, union
+from sqlalchemy import Date, Integer, and_, desc, func, not_, union
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.sql.expression import case, literal
+from sqlalchemy.sql.expression import case, literal, tuple_
 
 from app import db
 from app.constants import (
@@ -29,8 +29,12 @@ from app.dao.organisation_dao import (
 from app.models import (
     AnnualBilling,
     FactBilling,
+    FactBillingLetterDespatch,
     LetterRate,
+    Notification,
     NotificationAllTimeView,
+    NotificationHistory,
+    NotificationLetterDespatch,
     Organisation,
     Rate,
     Service,
@@ -724,6 +728,116 @@ def update_ft_billing(billing_data: list, process_day: date):
     )
     db.session.connection().execute(stmt)
     db.session.commit()
+
+
+def update_ft_billing_letter_despatch(process_day: date):
+    # A basic query on NotificationLetterDespatch to get all records for the relevant day.
+    letter_despatches_subquery = NotificationLetterDespatch.query.with_entities(
+        NotificationLetterDespatch.notification_id
+    ).filter(NotificationLetterDespatch.despatched_on == process_day)
+
+    # A CTE that collects all Notification/NotificationHistory rows based on the NotificationLetterDespatch IDs.
+    # We don't use NotificationAllTimeView here as that was causing a full sequential scan rather than index-only scan
+    # on each of the constituent tables. By explicitly querying each table Postgres seems more willing to use the
+    # PK indexes.
+    letter_notifications_cte = (
+        Notification.query.with_entities(
+            Notification.id.label("id"),
+            Notification.postage.label("postage"),
+            Notification.billable_units.label("billable_units"),
+        )
+        .filter(Notification.id.in_(letter_despatches_subquery))
+        .union(
+            NotificationHistory.query.with_entities(
+                NotificationHistory.id.label("id"),
+                NotificationHistory.postage.label("postage"),
+                NotificationHistory.billable_units.label("billable_units"),
+            ).filter(NotificationHistory.id.in_(letter_despatches_subquery))
+        )
+    ).cte("letter_notifications_cte")
+
+    # Aggregate the actual stats for letter despatches based on postage+billable_units
+    billing_data = (
+        NotificationLetterDespatch.query.select_from(letter_notifications_cte)
+        .filter(
+            NotificationLetterDespatch.despatched_on == process_day,
+            letter_notifications_cte.c.id == NotificationLetterDespatch.notification_id,
+        )
+        .group_by(
+            NotificationLetterDespatch.despatched_on,
+            NotificationLetterDespatch.cost_threshold,
+            letter_notifications_cte.c.postage,
+            letter_notifications_cte.c.billable_units,
+        )
+        .with_entities(
+            NotificationLetterDespatch.despatched_on.label("bst_date"),
+            letter_notifications_cte.c.postage.label("postage"),
+            letter_notifications_cte.c.billable_units.label("letter_page_count"),
+            NotificationLetterDespatch.cost_threshold.label("cost_threshold"),
+            func.count().label("notifications_sent"),
+        )
+        .order_by("bst_date", "postage", "letter_page_count", "cost_threshold")
+        .all()
+    )
+    non_letter_rates, letter_rates = get_rates_for_billing()
+    billing_records_data = [
+        dict(
+            bst_date=billing_datum.bst_date,
+            postage=billing_datum.postage,
+            billable_units=billing_datum.letter_page_count,
+            cost_threshold=billing_datum.cost_threshold,
+            rate=get_rate(
+                non_letter_rates=non_letter_rates,
+                letter_rates=letter_rates,
+                notification_type="letter",
+                date=billing_datum.bst_date,
+                crown=None,
+                letter_page_count=billing_datum.letter_page_count,
+                post_class=billing_datum.postage,
+            ),
+            notifications_sent=billing_datum.notifications_sent,
+        )
+        for billing_datum in billing_data
+    ]
+
+    # Remove old facts that are no longer present for the day because we're generating everything we expect.
+    deleted = FactBillingLetterDespatch.query.filter(
+        FactBillingLetterDespatch.bst_date == process_day,
+        not_(
+            tuple_(
+                FactBillingLetterDespatch.postage,
+                FactBillingLetterDespatch.billable_units,
+                FactBillingLetterDespatch.cost_threshold,
+                FactBillingLetterDespatch.rate,
+            ).in_(
+                [
+                    (brd["postage"], brd["billable_units"], brd["cost_threshold"], brd["rate"])
+                    for brd in billing_records_data
+                ]
+            )
+        ),
+    ).delete()
+
+    if billing_records_data:
+        """
+        This uses the Postgres upsert to avoid race conditions when two threads try to insert
+        at the same row. The excluded object refers to values that we tried to insert but were
+        rejected.
+        http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#insert-on-conflict-upsert
+        """
+        stmt = insert(FactBillingLetterDespatch.__table__).values(billing_records_data)
+        stmt = stmt.on_conflict_do_update(
+            constraint="ft_billing_letter_despatch_pkey",
+            set_={
+                "notifications_sent": stmt.excluded.notifications_sent,
+                "updated_at": datetime.utcnow(),
+            },
+        )
+        db.session.execute(stmt)
+
+    db.session.commit()
+
+    return len(billing_records_data), deleted
 
 
 def create_billing_record(data, rate, process_day):

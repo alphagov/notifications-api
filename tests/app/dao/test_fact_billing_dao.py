@@ -21,9 +21,11 @@ from app.dao.fact_billing_dao import (
     fetch_volumes_by_service,
     get_rate,
     get_rates_for_billing,
+    update_ft_billing_letter_despatch,
 )
+from app.dao.notifications_dao import dao_record_letter_despatched_on
 from app.dao.organisation_dao import dao_add_service_to_organisation
-from app.models import FactBilling
+from app.models import FactBilling, FactBillingLetterDespatch, LetterCostThreshold
 from tests.app.db import (
     create_annual_billing,
     create_ft_billing,
@@ -1306,3 +1308,155 @@ def test_fetch_volumes_by_service_returns_free_allowance_for_end_date(sample_ser
 
     assert len(results) == 1
     assert results[0].free_allowance == 50
+
+
+class TestUpdateFtBillingLetterDespatch:
+    def test_inserts_all_expected_records(self, sample_service):
+        despatch_date = date(2020, 1, 1)
+        create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=1, sheet_count=1, post_class="first")
+        create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=0.5, sheet_count=2, post_class="second")
+        create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=0.75, sheet_count=3, post_class="second")
+        create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=1.5, sheet_count=4, post_class="europe")
+
+        # Send 1x 1st class (1 page), 1x 2nd class (1 page), 2x 2nd class (2 pages), 1x europe (3 pages)
+        letter_template = create_template(service=sample_service, template_type="letter")
+        create_notification(
+            template=letter_template, postage="first", billable_units=1, status="delivered", reference="first1s"
+        )
+        create_notification(
+            template=letter_template, postage="first", billable_units=1, status="delivered", reference="first1u"
+        )
+        create_notification(
+            template=letter_template, postage="second", billable_units=2, status="delivered", reference="second2s"
+        )
+        create_notification(
+            template=letter_template, postage="second", billable_units=3, status="delivered", reference="second3s"
+        )
+        create_notification(
+            template=letter_template, postage="second", billable_units=3, status="delivered", reference="second3s2"
+        )
+        create_notification(
+            template=letter_template, postage="second", billable_units=3, status="delivered", reference="second3u"
+        )
+        create_notification(
+            template=letter_template, postage="europe", billable_units=4, status="delivered", reference="europe4s"
+        )
+        dao_record_letter_despatched_on(
+            reference="first1s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        )
+        dao_record_letter_despatched_on(
+            reference="first1u", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.unsorted
+        )
+        dao_record_letter_despatched_on(
+            reference="second2s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        )
+        dao_record_letter_despatched_on(
+            reference="second3s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        )
+        dao_record_letter_despatched_on(
+            reference="second3s2", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        )
+        dao_record_letter_despatched_on(
+            reference="second3u", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.unsorted
+        )
+        dao_record_letter_despatched_on(
+            reference="europe4s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        )
+
+        assert FactBillingLetterDespatch.query.count() == 0
+
+        num_records, deleted = update_ft_billing_letter_despatch(despatch_date)
+
+        assert num_records == 6
+        assert deleted == 0
+
+        facts = FactBillingLetterDespatch.query.order_by(FactBillingLetterDespatch.billable_units).all()
+        assert len(facts) == 6
+        assert facts[0].billable_units == 1
+        assert facts[0].rate == 1
+        assert facts[0].cost_threshold == LetterCostThreshold.sorted
+        assert facts[0].postage == "first"
+
+        assert facts[1].billable_units == 1
+        assert facts[1].rate == 1
+        assert facts[1].cost_threshold == LetterCostThreshold.unsorted
+        assert facts[1].postage == "first"
+
+        assert facts[2].billable_units == 2
+        assert facts[2].rate == 0.5
+        assert facts[2].cost_threshold == LetterCostThreshold.sorted
+        assert facts[2].postage == "second"
+
+        assert facts[3].billable_units == 3
+        assert facts[3].rate == 0.75
+        assert facts[3].cost_threshold == LetterCostThreshold.sorted
+        assert facts[3].postage == "second"
+
+        assert facts[4].billable_units == 3
+        assert facts[4].rate == 0.75
+        assert facts[4].cost_threshold == LetterCostThreshold.unsorted
+        assert facts[4].postage == "second"
+
+        assert facts[5].billable_units == 4
+        assert facts[5].rate == 1.5
+        assert facts[5].cost_threshold == LetterCostThreshold.sorted
+        assert facts[5].postage == "europe"
+
+    def test_deletes_records_that_no_longer_exist(self, notify_db_session):
+        despatch_date = date(2020, 1, 1)
+        fact = FactBillingLetterDespatch(
+            bst_date=despatch_date,
+            billable_units=1,
+            rate=1,
+            postage="first",
+            cost_threshold=LetterCostThreshold.sorted,
+            notifications_sent=1,
+        )
+        db.session.add(fact)
+        db.session.commit()
+
+        num_records, deleted = update_ft_billing_letter_despatch(despatch_date)
+
+        assert num_records == 0
+        assert deleted == 1
+        assert FactBillingLetterDespatch.query.count() == 0
+
+    def test_can_upsert(self, notify_db_session, sample_service):
+        despatch_date = date(2020, 1, 1)
+        letter_template = create_template(service=sample_service, template_type="letter")
+        create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=1, sheet_count=1, post_class="first")
+        create_notification(
+            template=letter_template, postage="first", billable_units=1, status="delivered", reference="first1s"
+        )
+        dao_record_letter_despatched_on(
+            reference="first1s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        )
+
+        # We have an outdated billing fact that says 3 notifications were sent but there's actually only 1, so
+        # when we re-run update_ft_billing_letter_despatch the 3 should become a 1.
+        fact = FactBillingLetterDespatch(
+            bst_date=despatch_date,
+            billable_units=1,
+            rate=1,
+            postage="first",
+            cost_threshold=LetterCostThreshold.sorted,
+            notifications_sent=3,
+        )
+        db.session.add(fact)
+        db.session.commit()
+
+        assert fact.updated_at is None
+
+        with freeze_time("2023-01-01T12:00:00"):
+            num_records, deleted = update_ft_billing_letter_despatch(despatch_date)
+
+        assert num_records == 1
+        assert deleted == 0
+
+        facts = FactBillingLetterDespatch.query.all()
+        assert len(facts) == 1
+        assert facts[0].billable_units == 1
+        assert facts[0].rate == 1
+        assert facts[0].postage == "first"
+        assert facts[0].notifications_sent == 1
+        assert facts[0].updated_at == datetime(2023, 1, 1, 12, 0, 0)

@@ -1869,6 +1869,25 @@ class DailySortedLetter(db.Model):
     __table_args__ = (UniqueConstraint("file_name", "billing_day", name="uix_file_name_billing_day"),)
 
 
+class FactBillingLetterDespatch(db.Model):
+    __tablename__ = "ft_billing_letter_despatch"
+
+    bst_date = db.Column(db.Date, nullable=False, primary_key=True)
+    postage = db.Column(db.String, nullable=False, primary_key=True)
+    cost_threshold = db.Column(
+        # Reuse enum from NotificationLetterDespatch as the values are intrinsically linked
+        db.Enum(LetterCostThreshold, name="letter_despatch_cost_threshold"),
+        nullable=False,
+        index=True,
+        primary_key=True,
+    )
+    rate = db.Column(db.Numeric(), nullable=False, primary_key=True)
+    billable_units = db.Column(db.Integer(), nullable=True, primary_key=True)
+    notifications_sent = db.Column(db.Integer(), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+
 class FactBilling(db.Model):
     __tablename__ = "ft_billing"
 

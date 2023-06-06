@@ -5,6 +5,7 @@ from freezegun import freeze_time
 
 from app.constants import EMAIL_TYPE, SMS_TYPE
 from app.errors import InvalidRequest
+from app.models import FactBillingLetterDespatch, LetterCostThreshold
 from app.platform_stats.rest import (
     validate_date_range_is_within_a_financial_year,
 )
@@ -319,3 +320,149 @@ def test_daily_sms_provider_volumes_report(admin_request, sample_template):
         "sms_chargeable_units": 3,
         "sms_cost": 4.5,
     }
+
+
+class TestGetDataForDvlaBillingReport:
+    def test_no_rows(self, admin_request, notify_db_session):
+        response = admin_request.get(
+            "platform_stats.get_data_for_dvla_billing_report", start_date="2020-04-01", end_date="2021-03-31"
+        )
+        assert response == []
+
+    def test_happy_path(self, admin_request, notify_db_session):
+        f1 = FactBillingLetterDespatch(
+            bst_date="2020-04-01",
+            postage="first",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=1,
+            billable_units=1,
+            notifications_sent=5,
+        )
+        f2 = FactBillingLetterDespatch(
+            bst_date="2020-04-01",
+            postage="second",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=0.5,
+            billable_units=1,
+            notifications_sent=100,
+        )
+        f3 = FactBillingLetterDespatch(
+            bst_date="2020-05-01",
+            postage="second",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=0.75,
+            billable_units=2,
+            notifications_sent=25,
+        )
+        f4 = FactBillingLetterDespatch(
+            bst_date="2020-05-01",
+            postage="europe",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=1.5,
+            billable_units=1,
+            notifications_sent=10,
+        )
+        f5 = FactBillingLetterDespatch(
+            bst_date="2021-03-31",
+            postage="rest-of-world",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=1.5,
+            billable_units=1,
+            notifications_sent=5,
+        )
+        notify_db_session.add_all([f1, f2, f3, f4, f5])
+        notify_db_session.commit()
+
+        response = admin_request.get(
+            "platform_stats.get_data_for_dvla_billing_report", start_date="2020-04-01", end_date="2021-03-31"
+        )
+        assert response == [
+            {
+                "date": "2020-04-01",
+                "postage": "first",
+                "cost_threshold": "sorted",
+                "rate": 1.0,
+                "sheets": 1,
+                "letters": 5,
+                "cost": 5.0,
+            },
+            {
+                "date": "2020-04-01",
+                "postage": "second",
+                "cost_threshold": "sorted",
+                "rate": 0.5,
+                "sheets": 1,
+                "letters": 100,
+                "cost": 50.0,
+            },
+            {
+                "date": "2020-05-01",
+                "postage": "europe",
+                "cost_threshold": "sorted",
+                "rate": 1.5,
+                "sheets": 1,
+                "letters": 10,
+                "cost": 15.0,
+            },
+            {
+                "date": "2020-05-01",
+                "postage": "second",
+                "cost_threshold": "sorted",
+                "rate": 0.75,
+                "sheets": 2,
+                "letters": 25,
+                "cost": 18.75,
+            },
+            {
+                "date": "2021-03-31",
+                "postage": "rest-of-world",
+                "cost_threshold": "sorted",
+                "rate": 1.5,
+                "sheets": 1,
+                "letters": 5,
+                "cost": 7.5,
+            },
+        ]
+
+    def test_applies_date_filters(self, admin_request, notify_db_session):
+        f1 = FactBillingLetterDespatch(
+            bst_date="2020-01-01",
+            postage="first",
+            cost_threshold=LetterCostThreshold.unsorted,
+            rate=1,
+            billable_units=1,
+            notifications_sent=5,
+        )
+        f2 = FactBillingLetterDespatch(
+            bst_date="2020-02-01",
+            postage="first",
+            cost_threshold=LetterCostThreshold.unsorted,
+            rate=1,
+            billable_units=1,
+            notifications_sent=5,
+        )
+        f3 = FactBillingLetterDespatch(
+            bst_date="2020-03-01",
+            postage="first",
+            cost_threshold=LetterCostThreshold.unsorted,
+            rate=1,
+            billable_units=1,
+            notifications_sent=5,
+        )
+        notify_db_session.add_all([f1, f2, f3])
+        notify_db_session.commit()
+
+        response = admin_request.get(
+            "platform_stats.get_data_for_dvla_billing_report", start_date="2020-02-01", end_date="2020-02-01"
+        )
+        assert response == [
+            {
+                "date": "2020-02-01",
+                "postage": "first",
+                "cost_threshold": "unsorted",
+                "sheets": 1,
+                "rate": 1.0,
+                "letters": 5,
+                "cost": 5.0,
+            },
+        ]
