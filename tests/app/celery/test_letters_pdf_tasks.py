@@ -1,7 +1,7 @@
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
-from unittest.mock import call
+from unittest.mock import ANY, call
 
 import boto3
 import pytest
@@ -93,11 +93,12 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         "key_type": sample_letter_notification.key_type,
     }
 
-    encrypted_data = encryption.encrypt(letter_data)
-
     mock_celery.assert_called_once_with(
-        name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(encrypted_data,), queue=QueueNames.SANITISE_LETTERS
+        name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(ANY,), queue=QueueNames.SANITISE_LETTERS
     )
+
+    actual_data = encryption.decrypt(mock_celery.call_args.kwargs["args"][0])
+    assert letter_data == actual_data
 
     mock_generate_letter_pdf_filename.assert_called_once_with(
         reference=sample_letter_notification.reference,
