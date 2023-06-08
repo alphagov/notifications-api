@@ -68,7 +68,6 @@ class UUIDsAsStringsMixin:
     @post_dump()
     def __post_dump(self, data, **kwargs):
         for key, value in data.items():
-
             if isinstance(value, UUID):
                 data[key] = str(value)
 
@@ -100,7 +99,6 @@ class BaseSchema(ma.SQLAlchemyAutoSchema):
 
 
 class UserSchema(BaseSchema):
-
     permissions = fields.Method("user_permissions", dump_only=True)
     password_changed_at = field_for(models.User, "password_changed_at", format=DATETIME_FORMAT_NO_TIMEZONE)
     created_at = field_for(models.User, "created_at", format=DATETIME_FORMAT_NO_TIMEZONE)
@@ -223,7 +221,6 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
 
 class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
-
     created_by = field_for(models.Service, "created_by", required=True)
     organisation_type = field_for(models.Service, "organisation_type")
     letter_logo_filename = fields.Method(dump_only=True, serialize="get_letter_logo_filename")
@@ -400,15 +397,18 @@ class BaseTemplateSchema(BaseSchema):
 
 
 class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
-
     created_by = field_for(models.Template, "created_by", required=True)
     process_type = field_for(models.Template, "process_type")
     redact_personalisation = fields.Method("redact")
+    is_precompiled_letter = fields.Method("get_is_precompiled_letter")
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
 
     def redact(self, template):
         return template.redact_personalisation
+
+    def get_is_precompiled_letter(self, template):
+        return template.is_precompiled_letter
 
     @validates_schema
     def validate_type(self, data, **kwargs):
@@ -416,17 +416,6 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
             subject = data.get("subject")
             if not subject or subject.strip() == "":
                 raise ValidationError("Invalid template subject", "subject")
-
-
-class TemplateSchemaNested(TemplateSchema):
-    """
-    Contains extra 'is_precompiled_letter' field for use with NotificationWithTemplateSchema
-    """
-
-    is_precompiled_letter = fields.Method("get_is_precompiled_letter")
-
-    def get_is_precompiled_letter(self, template):
-        return template.is_precompiled_letter
 
 
 class TemplateSchemaNoDetail(TemplateSchema):
@@ -461,7 +450,6 @@ class TemplateSchemaNoDetail(TemplateSchema):
 
 
 class TemplateHistorySchema(BaseSchema):
-
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
     process_type = field_for(models.Template, "process_type")
@@ -486,7 +474,6 @@ class TemplateHistorySchema(BaseSchema):
 
 
 class ApiKeySchema(BaseSchema):
-
     created_by = field_for(models.ApiKey, "created_by", required=True)
     key_type = field_for(models.ApiKey, "key_type", required=True)
     expiry_date = FlexibleDateTime()
@@ -587,7 +574,7 @@ class NotificationWithTemplateSchema(BaseSchema):
         exclude = ("_personalisation",)
 
     template = fields.Nested(
-        TemplateSchemaNested,
+        TemplateSchema,
         only=[
             "id",
             "version",
