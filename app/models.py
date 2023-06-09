@@ -351,6 +351,30 @@ class OrganisationPermission(db.Model):
     )
 
 
+class OrganisationUserPermissionTypes(enum.Enum):
+    can_make_services_live = "can_make_services_live"
+
+
+class OrganisationUserPermissions(db.Model):
+    __tablename__ = "organisation_user_permissions"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True)
+    organisation = db.relationship("Organisation")
+
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
+    user = db.relationship("User")
+
+    permission = db.Column(
+        db.Enum(OrganisationUserPermissionTypes, name="organisation_user_permission_types"), index=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("organisation_id", "user_id", "permission", name="uix_organisation_user_permission"),
+    )
+
+
 class Organisation(db.Model):
     __tablename__ = "organisation"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
