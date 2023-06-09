@@ -284,11 +284,11 @@ def test_should_cache_template_and_service_in_redis(mocker, api_client_request, 
 
     assert service_call[0][0] == expected_service_key
     assert json.loads(service_call[0][1]) == {"data": service_dict}
-    assert service_call[1]["ex"] == 604_800
+    assert service_call[1]["ex"] == 2_419_200
 
     assert templates_call[0][0] == expected_templates_key
     assert json.loads(templates_call[0][1]) == {"data": template_dict}
-    assert templates_call[1]["ex"] == 604_800
+    assert templates_call[1]["ex"] == 2_419_200
 
 
 def test_should_return_template_if_found_in_redis(mocker, api_client_request, sample_template):
