@@ -389,7 +389,7 @@ class BaseTemplateSchema(BaseSchema):
         return template.get_reply_to_text()
 
     def get_letter_attachment(self, template):
-        return template.letter_attachment.serialize() if template.letter_attachment else None
+        return template.letter_attachment.serialize() if template.letter_attachment_id else None
 
     class Meta(BaseSchema.Meta):
         model = models.Template
@@ -466,7 +466,7 @@ class TemplateHistorySchema(BaseSchema):
         return template.get_reply_to_text()
 
     def get_letter_attachment(self, template):
-        return template.letter_attachment.serialize() if template.letter_attachment else None
+        return template.letter_attachment.serialize() if template.letter_attachment_id else None
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
@@ -577,6 +577,7 @@ class NotificationWithTemplateSchema(BaseSchema):
         TemplateSchema,
         only=[
             "id",
+            "service",
             "version",
             "name",
             "template_type",
@@ -584,6 +585,8 @@ class NotificationWithTemplateSchema(BaseSchema):
             "subject",
             "redact_personalisation",
             "is_precompiled_letter",
+            "letter_attachment",
+            "reply_to_text",
         ],
         dump_only=True,
     )

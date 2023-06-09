@@ -1,7 +1,7 @@
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
-from unittest.mock import call
+from unittest.mock import ANY, call
 
 import boto3
 import pytest
@@ -50,6 +50,7 @@ from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import ScanErrorType
 from app.models import Notification
 from tests.app.db import (
+    create_letter_attachment,
     create_letter_branding,
     create_notification,
     create_organisation,
@@ -82,9 +83,11 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
     letter_data = {
         "letter_contact_block": sample_letter_notification.reply_to_text,
         "template": {
+            "service": str(sample_letter_notification.service_id),
             "subject": sample_letter_notification.template.subject,
             "content": sample_letter_notification.template.content,
             "template_type": sample_letter_notification.template.template_type,
+            "letter_attachment": None,
         },
         "values": sample_letter_notification.personalisation,
         "logo_filename": logo_filename,
@@ -93,11 +96,12 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         "key_type": sample_letter_notification.key_type,
     }
 
-    encrypted_data = encryption.encrypt(letter_data)
-
     mock_celery.assert_called_once_with(
-        name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(encrypted_data,), queue=QueueNames.SANITISE_LETTERS
+        name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(ANY,), queue=QueueNames.SANITISE_LETTERS
     )
+
+    actual_data = encryption.decrypt(mock_celery.call_args.kwargs["args"][0])
+    assert letter_data == actual_data
 
     mock_generate_letter_pdf_filename.assert_called_once_with(
         reference=sample_letter_notification.reference,
@@ -105,6 +109,19 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         ignore_folder=False,
         postage="second",
     )
+
+
+def test_get_pdf_for_templated_letter_with_letter_attachment(mocker, sample_letter_notification):
+    attachment = create_letter_attachment(created_by_id=sample_letter_notification.template.created_by_id)
+    sample_letter_notification.template.letter_attachment_id = attachment.id
+
+    mock_celery = mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
+    mocker.patch("app.celery.letters_pdf_tasks.generate_letter_pdf_filename", return_value="LETTER.PDF")
+    get_pdf_for_templated_letter(sample_letter_notification.id)
+
+    actual_data = encryption.decrypt(mock_celery.call_args.kwargs["args"][0])
+
+    assert actual_data["template"]["letter_attachment"] == attachment.serialize()
 
 
 def test_get_pdf_for_templated_letter_non_existent_notification(notify_db_session, fake_uuid):

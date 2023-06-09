@@ -67,12 +67,19 @@ def get_pdf_for_templated_letter(self, notification_id):
             ignore_folder=notification.key_type == KEY_TYPE_TEST,
             postage=notification.postage,
         )
+
+        letter_attachment_json = (
+            notification.template.letter_attachment.serialize() if notification.template.letter_attachment_id else None
+        )
+
         letter_data = {
             "letter_contact_block": notification.reply_to_text,
             "template": {
+                "service": str(notification.service_id),
                 "subject": notification.template.subject,
                 "content": notification.template.content,
                 "template_type": notification.template.template_type,
+                "letter_attachment": letter_attachment_json,
             },
             "values": notification.personalisation,
             "logo_filename": notification.service.letter_branding and notification.service.letter_branding.filename,
