@@ -12,6 +12,8 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
 from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, SMS_TYPE
+from app.dao.organisation_dao import dao_get_organisation_by_id
+from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import (
     dao_get_service_user,
@@ -44,7 +46,7 @@ from app.dao.webauthn_credential_dao import (
     dao_update_webauthn_credential_logged_in_at,
 )
 from app.errors import InvalidRequest, register_errors
-from app.models import Permission, Service
+from app.models import OrganisationUserPermissions, Permission, Service
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -60,6 +62,7 @@ from app.schemas import (
 from app.user.users_schema import (
     post_send_user_email_code_schema,
     post_send_user_sms_code_schema,
+    post_set_organisation_user_permissions_schema,
     post_set_permissions_schema,
     post_verify_code_schema,
     post_verify_webauthn_schema,
@@ -454,6 +457,26 @@ def set_permissions(user_id, service_id):
 
         service_user.folders = folders
         dao_update_service_user(service_user)
+
+    return jsonify({}), 204
+
+
+@user_blueprint.route("/<uuid:user_id>/organisation/<uuid:organisation_id>/permissions", methods=["POST"])
+def set_organisation_permissions(user_id, organisation_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    user = get_user_by_id(user_id)
+
+    data = request.get_json()
+    validate(data, post_set_organisation_user_permissions_schema)
+
+    permission_list = [
+        OrganisationUserPermissions(organisation=organisation, user=user, permission=p["permission"])
+        for p in data["permissions"]
+    ]
+
+    organisation_user_permissions_dao.set_user_organisation_permission(
+        user, organisation, permission_list, _commit=True, replace=True
+    )
 
     return jsonify({}), 204
 

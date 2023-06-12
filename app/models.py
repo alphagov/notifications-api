@@ -2,6 +2,7 @@ import datetime
 import enum
 import itertools
 import uuid
+from collections import defaultdict
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -172,6 +173,15 @@ class User(db.Model):
             retval[service_id].append(x.permission)
         return retval
 
+    def get_organisation_permissions(self) -> dict[str, list[str]]:
+        from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
+
+        retval = defaultdict(list)
+        for p in organisation_user_permissions_dao.get_permissions_by_user_id(self.id):
+            retval[str(p.organisation_id)].append(p.permission.value)
+
+        return retval
+
     def serialize(self):
         return {
             "id": self.id,
@@ -186,6 +196,7 @@ class User(db.Model):
             "organisations": [x.id for x in self.organisations if x.active],
             "password_changed_at": self.password_changed_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
             "permissions": self.get_permissions(),
+            "organisation_permissions": self.get_organisation_permissions(),
             "platform_admin": self.platform_admin,
             "services": [x.id for x in self.services if x.active],
             "can_use_webauthn": self.can_use_webauthn,
