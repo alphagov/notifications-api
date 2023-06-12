@@ -415,17 +415,24 @@ def test_insert_notification_history_delete_notifications_can_handle_different_c
         key_type="normal",
     )
     create_notification(
-        template=sample_template, created_at=datetime.utcnow() - timedelta(hours=4), status="delivered", key_type="team"
+        template=sample_template,
+        created_at=datetime.utcnow() - timedelta(hours=4),
+        status="delivered",
+        key_type="team",
     )
 
-    notify_db_session.execute("drop view notifications_all_time_view")
-    notify_db_session.execute("alter table notification_history drop column client_reference")
-    notify_db_session.execute("alter table notification_history add column client_reference varchar")
+    with notify_db_session.begin_nested():
+        notify_db_session.execute("drop view notifications_all_time_view")
+        notify_db_session.execute("alter table notification_history drop column client_reference")
+        notify_db_session.execute("alter table notification_history add column client_reference varchar")
 
-    del_count = insert_notification_history_delete_notifications(
-        notification_type=sample_template.template_type,
-        service_id=sample_template.service_id,
-        timestamp_to_delete_backwards_from=datetime.utcnow(),
-    )
+        del_count = insert_notification_history_delete_notifications(
+            notification_type=sample_template.template_type,
+            service_id=sample_template.service_id,
+            timestamp_to_delete_backwards_from=datetime.utcnow(),
+        )
 
-    assert del_count == 2
+        assert del_count == 2
+
+        # Restore the view and undo column changes.
+        notify_db_session.rollback()
