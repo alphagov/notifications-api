@@ -68,6 +68,7 @@ from app.constants import (
     SMS_TYPE,
     TEMPLATE_TYPES,
     VERIFY_CODE_TYPES,
+    OrganisationUserPermissionTypes,
 )
 from app.hashing import check_hash, hashpw
 from app.history_meta import Versioned
@@ -360,10 +361,6 @@ class OrganisationPermission(db.Model):
         unique=False,
         nullable=False,
     )
-
-
-class OrganisationUserPermissionTypes(enum.Enum):
-    can_make_services_live = "can_make_services_live"
 
 
 class OrganisationUserPermissions(db.Model):
@@ -1719,6 +1716,11 @@ class InvitedOrganisationUser(db.Model):
     invited_by = db.relationship("User")
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
     organisation = db.relationship("Organisation")
+
+    # We can remove the default value when the admin app has been deployed and is always settings permissions explicitly
+    permissions = db.Column(
+        db.String, nullable=False, default=OrganisationUserPermissionTypes.can_make_services_live.value
+    )
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
 
     status = db.Column(db.String, db.ForeignKey("invite_status_type.name"), nullable=False, default=INVITE_PENDING)
@@ -1730,6 +1732,7 @@ class InvitedOrganisationUser(db.Model):
             "invited_by": str(self.invited_by_id),
             "organisation": str(self.organisation_id),
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "permissions": self.permissions.split(","),
             "status": self.status,
         }
 

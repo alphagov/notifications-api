@@ -40,6 +40,7 @@ def test_create_invited_org_user(
         organisation=str(sample_organisation.id),
         email_address=email_address,
         invited_by=str(sample_user.id),
+        permissions=["can_make_services_live"],
         **extra_args
     )
 
@@ -54,6 +55,7 @@ def test_create_invited_org_user(
     assert json_resp["data"]["email_address"] == email_address
     assert json_resp["data"]["invited_by"] == str(sample_user.id)
     assert json_resp["data"]["status"] == INVITE_PENDING
+    assert json_resp["data"]["permissions"] == ["can_make_services_live"]
     assert json_resp["data"]["id"]
 
     notification = Notification.query.first()

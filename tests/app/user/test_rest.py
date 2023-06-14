@@ -11,6 +11,7 @@ from app.constants import (
     MANAGE_SETTINGS,
     MANAGE_TEMPLATES,
     SMS_AUTH_TYPE,
+    OrganisationUserPermissionTypes,
 )
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.dao.permissions_dao import default_service_permissions
@@ -18,7 +19,7 @@ from app.dao.service_user_dao import (
     dao_get_service_user,
     dao_update_service_user,
 )
-from app.models import Notification, OrganisationUserPermissions, OrganisationUserPermissionTypes, Permission, User
+from app.models import Notification, OrganisationUserPermissions, Permission, User
 from tests import create_admin_authorization_header, create_service_authorization_header
 from tests.app.db import (
     create_organisation,

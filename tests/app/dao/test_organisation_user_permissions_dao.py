@@ -1,5 +1,6 @@
+from app.constants import OrganisationUserPermissionTypes
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
-from app.models import OrganisationUserPermissions, OrganisationUserPermissionTypes
+from app.models import OrganisationUserPermissions
 
 
 class TestOrganisationUserPermissionsDao:
