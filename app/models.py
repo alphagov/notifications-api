@@ -2491,6 +2491,7 @@ class LetterAttachment(db.Model):
             "page_count": self.page_count,
         }
 
+
 class TableOwnerPermissionsTest(db.Model):
     __tablename__ = "table_owner_permissions_test"
 
