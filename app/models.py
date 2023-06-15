@@ -2490,3 +2490,9 @@ class LetterAttachment(db.Model):
             "original_filename": self.original_filename,
             "page_count": self.page_count,
         }
+
+class TableOwnerPermissionsTest(db.Model):
+    __tablename__ = "table_owner_permissions_test"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
+    name = db.Column(db.String())
