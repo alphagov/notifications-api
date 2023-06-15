@@ -472,6 +472,8 @@ class Development(Config):
     DEBUG = True
     SQLALCHEMY_ECHO = False
 
+    SERVER_NAME = os.getenv("SERVER_NAME")
+
     REDIS_ENABLED = os.getenv("REDIS_ENABLED") == "1"
 
     S3_BUCKET_CSV_UPLOAD = "development-notifications-csv-upload"
