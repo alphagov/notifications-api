@@ -1697,7 +1697,7 @@ class InvitedUser(db.Model):
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name="invited_users_status_types"), nullable=False, default=INVITE_PENDING
     )
-    permissions = db.Column(db.String, nullable=True)
+    permissions = db.Column(db.String, nullable=False)
     auth_type = db.Column(db.String, db.ForeignKey("auth_type.name"), index=True, nullable=False, default=SMS_AUTH_TYPE)
     folder_permissions = db.Column(JSONB(none_as_null=True), nullable=False, default=[])
 
@@ -1732,7 +1732,7 @@ class InvitedOrganisationUser(db.Model):
             "invited_by": str(self.invited_by_id),
             "organisation": str(self.organisation_id),
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "permissions": (self.permissions or "").split(","),
+            "permissions": self.permissions.split(","),
             "status": self.status,
         }
 
