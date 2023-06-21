@@ -1732,7 +1732,7 @@ class InvitedOrganisationUser(db.Model):
             "invited_by": str(self.invited_by_id),
             "organisation": str(self.organisation_id),
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "permissions": self.permissions.split(","),
+            "permissions": (self.permissions or "").split(","),
             "status": self.status,
         }
 
