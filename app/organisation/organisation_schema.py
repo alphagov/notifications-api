@@ -1,4 +1,9 @@
-from app.constants import INVITED_USER_STATUS_TYPES, ORGANISATION_PERMISSION_TYPES, ORGANISATION_TYPES
+from app.constants import (
+    INVITED_USER_STATUS_TYPES,
+    ORGANISATION_PERMISSION_TYPES,
+    ORGANISATION_TYPES,
+    OrganisationUserPermissionTypes,
+)
 from app.schema_validation.definitions import uuid
 
 post_create_organisation_schema = {
@@ -45,6 +50,10 @@ post_create_invited_org_user_status_schema = {
         "email_address": {"type": "string", "format": "email_address"},
         "invited_by": uuid,
         "invite_link_host": {"type": "string"},
+        "permissions": {
+            "type": "array",
+            "items": {"type": "string", "enum": [OrganisationUserPermissionTypes.can_make_services_live.value]},
+        },
     },
     "required": ["email_address", "invited_by"],
 }

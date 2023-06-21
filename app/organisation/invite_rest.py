@@ -36,7 +36,11 @@ def invite_user_to_org(organisation_id):
     validate(data, post_create_invited_org_user_status_schema)
 
     invited_org_user = InvitedOrganisationUser(
-        email_address=data["email_address"], invited_by_id=data["invited_by"], organisation_id=organisation_id
+        email_address=data["email_address"],
+        invited_by_id=data["invited_by"],
+        organisation_id=organisation_id,
+        # TODO: Remove the .get/default value when admin is always sending this field
+        permissions=",".join(data.get("permissions", [])),
     )
     save_invited_org_user(invited_org_user)
 

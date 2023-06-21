@@ -66,3 +66,15 @@ post_set_permissions_schema = {
     "required": ["permissions"],
     "additionalProperties": False,
 }
+
+
+post_set_organisation_user_permissions_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST schema for setting organisation user permissions",
+    "type": "object",
+    "properties": {
+        "permissions": {"type": "array", "items": {"type": "object", "properties": {"permission": {"type": "string"}}}},
+    },
+    "required": ["permissions"],
+    "additionalProperties": False,
+}

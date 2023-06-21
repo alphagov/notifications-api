@@ -2,6 +2,7 @@ import datetime
 import enum
 import itertools
 import uuid
+from collections import defaultdict
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -67,6 +68,7 @@ from app.constants import (
     SMS_TYPE,
     TEMPLATE_TYPES,
     VERIFY_CODE_TYPES,
+    OrganisationUserPermissionTypes,
 )
 from app.hashing import check_hash, hashpw
 from app.history_meta import Versioned
@@ -172,6 +174,15 @@ class User(db.Model):
             retval[service_id].append(x.permission)
         return retval
 
+    def get_organisation_permissions(self) -> dict[str, list[str]]:
+        from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
+
+        retval = defaultdict(list)
+        for p in organisation_user_permissions_dao.get_permissions_by_user_id(self.id):
+            retval[str(p.organisation_id)].append(p.permission.value)
+
+        return retval
+
     def serialize(self):
         return {
             "id": self.id,
@@ -186,6 +197,7 @@ class User(db.Model):
             "organisations": [x.id for x in self.organisations if x.active],
             "password_changed_at": self.password_changed_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
             "permissions": self.get_permissions(),
+            "organisation_permissions": self.get_organisation_permissions(),
             "platform_admin": self.platform_admin,
             "services": [x.id for x in self.services if x.active],
             "can_use_webauthn": self.can_use_webauthn,
@@ -348,6 +360,26 @@ class OrganisationPermission(db.Model):
         index=False,
         unique=False,
         nullable=False,
+    )
+
+
+class OrganisationUserPermissions(db.Model):
+    __tablename__ = "organisation_user_permissions"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True)
+    organisation = db.relationship("Organisation")
+
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
+    user = db.relationship("User")
+
+    permission = db.Column(
+        db.Enum(OrganisationUserPermissionTypes, name="organisation_user_permission_types"), index=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("organisation_id", "user_id", "permission", name="uix_organisation_user_permission"),
     )
 
 
@@ -1684,6 +1716,11 @@ class InvitedOrganisationUser(db.Model):
     invited_by = db.relationship("User")
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
     organisation = db.relationship("Organisation")
+
+    # We can remove the default value when the admin app has been deployed and is always settings permissions explicitly
+    permissions = db.Column(
+        db.String, nullable=False, default=OrganisationUserPermissionTypes.can_make_services_live.value
+    )
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
 
     status = db.Column(db.String, db.ForeignKey("invite_status_type.name"), nullable=False, default=INVITE_PENDING)
@@ -1695,6 +1732,7 @@ class InvitedOrganisationUser(db.Model):
             "invited_by": str(self.invited_by_id),
             "organisation": str(self.organisation_id),
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "permissions": self.permissions.split(","),
             "status": self.status,
         }
 

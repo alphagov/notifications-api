@@ -3,15 +3,17 @@ from sqlalchemy import and_
 from sqlalchemy.sql.expression import func
 
 from app import db
-from app.constants import NHS_ORGANISATION_TYPES
+from app.constants import NHS_ORGANISATION_TYPES, OrganisationUserPermissionTypes
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_id
+from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.models import (
     AnnualBilling,
     Domain,
     EmailBranding,
     Organisation,
+    OrganisationUserPermissions,
     Service,
     User,
 )
@@ -200,6 +202,17 @@ def dao_add_user_to_organisation(organisation_id, user_id):
     organisation = dao_get_organisation_by_id(organisation_id)
     user = User.query.filter_by(id=user_id).one()
     user.organisations.append(organisation)
+
+    # temporary: to remove after admin can set permission
+    new_permissions = [
+        OrganisationUserPermissions(
+            user=user,
+            organisation=organisation,
+            permission=OrganisationUserPermissionTypes.can_make_services_live.value,
+        )
+    ]
+    organisation_user_permissions_dao.set_user_organisation_permission(user, organisation, new_permissions)
+
     db.session.add(organisation)
     return user
 
@@ -207,6 +220,7 @@ def dao_add_user_to_organisation(organisation_id, user_id):
 @autocommit
 def dao_remove_user_from_organisation(organisation, user):
     organisation.users.remove(user)
+    organisation_user_permissions_dao.remove_user_organisation_permissions(user, organisation)
 
 
 @autocommit

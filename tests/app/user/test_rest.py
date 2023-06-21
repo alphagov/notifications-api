@@ -3,7 +3,7 @@ from datetime import datetime
 from unittest import mock
 
 import pytest
-from flask import current_app
+from flask import current_app, url_for
 from freezegun import freeze_time
 
 from app.constants import (
@@ -11,13 +11,16 @@ from app.constants import (
     MANAGE_SETTINGS,
     MANAGE_TEMPLATES,
     SMS_AUTH_TYPE,
+    OrganisationUserPermissionTypes,
 )
+from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.dao.permissions_dao import default_service_permissions
 from app.dao.service_user_dao import (
     dao_get_service_user,
     dao_update_service_user,
 )
-from app.models import Notification, Permission, User
+from app.models import Notification, OrganisationUserPermissions, Permission, User
+from tests import create_admin_authorization_header, create_service_authorization_header
 from tests.app.db import (
     create_organisation,
     create_service,
@@ -554,6 +557,87 @@ def test_remove_user_folder_permissions(admin_request, sample_user, sample_servi
     )
 
     assert service_user.folders == []
+
+
+class TestSetOrganisationUserPermissions:
+    def _set_permissions(self, user, organisation, permissions: list[OrganisationUserPermissionTypes]):
+        permission_list = [
+            OrganisationUserPermissions(organisation=organisation, user=user, permission=p) for p in permissions
+        ]
+        organisation_user_permissions_dao.set_user_organisation_permission(
+            user, organisation, permission_list, _commit=True, replace=True
+        )
+        new_permissions = OrganisationUserPermissions.query.filter_by(user=user, organisation=organisation).all()
+        assert sorted([p.permission for p in new_permissions]) == sorted(permissions)
+
+    def test_requires_admin_auth(self, client, sample_user, sample_organisation, sample_service):
+        response = client.post(
+            url_for(
+                "user.set_organisation_permissions",
+                user_id=str(sample_user.id),
+                organisation_id=str(sample_organisation.id),
+            ),
+            data={"permissions": []},
+        )
+        assert response.status_code == 401
+
+        response = client.post(
+            url_for(
+                "user.set_organisation_permissions",
+                user_id=str(sample_user.id),
+                organisation_id=str(sample_organisation.id),
+            ),
+            data={"permissions": []},
+            headers=[create_service_authorization_header(sample_service.id)],
+        )
+        assert response.status_code == 401
+
+        response = client.post(
+            url_for(
+                "user.set_organisation_permissions",
+                user_id=str(sample_user.id),
+                organisation_id=str(sample_organisation.id),
+            ),
+            json={"permissions": []},
+            headers=[create_admin_authorization_header()],
+        )
+        assert response.status_code == 204
+
+    def test_can_add_permissions(self, admin_request, sample_user, sample_organisation):
+        admin_request.post(
+            "user.set_organisation_permissions",
+            user_id=str(sample_user.id),
+            organisation_id=str(sample_organisation.id),
+            _data={"permissions": [{"permission": "can_make_services_live"}]},
+            _expected_status=204,
+        )
+
+        permissions = (
+            OrganisationUserPermissions.query.filter_by(user=sample_user, organisation=sample_organisation)
+            .order_by("permission")
+            .all()
+        )
+        assert [p.permission for p in permissions] == [OrganisationUserPermissionTypes.can_make_services_live]
+
+    def test_can_remove_permissions(self, admin_request, sample_user, sample_organisation):
+        self._set_permissions(
+            sample_user, sample_organisation, [OrganisationUserPermissionTypes.can_make_services_live]
+        )
+
+        admin_request.post(
+            "user.set_organisation_permissions",
+            user_id=str(sample_user.id),
+            organisation_id=str(sample_organisation.id),
+            _data={"permissions": []},
+            _expected_status=204,
+        )
+
+        permissions = (
+            OrganisationUserPermissions.query.filter_by(user=sample_user, organisation=sample_organisation)
+            .order_by("permission")
+            .all()
+        )
+        assert [p.permission for p in permissions] == []
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
