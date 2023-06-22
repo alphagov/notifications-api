@@ -653,6 +653,7 @@ def create_invited_org_user(organisation, invited_by, email_address="invite@exam
         email_address=email_address,
         invited_by=invited_by,
         organisation=organisation,
+        permissions="can_make_services_live",
     )
     save_invited_org_user(invited_org_user)
     return invited_org_user
