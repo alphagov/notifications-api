@@ -2,7 +2,6 @@ import datetime
 import enum
 import itertools
 import uuid
-from collections import defaultdict
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -177,9 +176,15 @@ class User(db.Model):
     def get_organisation_permissions(self) -> dict[str, list[str]]:
         from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 
-        retval = defaultdict(list)
+        retval = {}
+
+        # Make sure that every org the user is in, is presented in the return value.
+        for org in self.organisations:
+            retval[str(org.id)] = []
+
         for p in organisation_user_permissions_dao.get_permissions_by_user_id(self.id):
-            retval[str(p.organisation_id)].append(p.permission.value)
+            org_id = str(p.organisation_id)
+            retval[org_id].append(p.permission.value)
 
         return retval
 
