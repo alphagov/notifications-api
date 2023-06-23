@@ -18,7 +18,7 @@ from app.dao.organisation_dao import (
     dao_add_user_to_organisation,
 )
 from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
-from app.models import AnnualBilling, Organisation
+from app.models import AnnualBilling, Organisation, OrganisationUserPermissions
 from tests.app.db import (
     create_annual_billing,
     create_domain,
@@ -1214,10 +1214,6 @@ def test_notify_org_users_of_request_to_go_live(
     )
     sample_service.organisation = sample_organisation
     sample_service.go_live_user = go_live_user
-    mocker.patch(
-        "app.models.User.get_organisation_permissions",
-        return_value={str(sample_organisation.id): ["can_make_services_live"]},
-    )
 
     admin_request.post(
         "organisation.notify_users_of_request_to_go_live",
@@ -1272,6 +1268,10 @@ def test_notify_org_users_of_request_to_go_live_requires_org_user_permission(
     dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first_org_user.id)
     dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second_org_user.id)
 
+    # Temporary: delete org user permissions which are added implicitly
+    OrganisationUserPermissions.query.filter_by(user_id=first_org_user.id).delete()
+    OrganisationUserPermissions.query.filter_by(user_id=second_org_user.id).delete()
+
     notifications = [object(), object()]
 
     mock_persist_notification = mocker.patch(
@@ -1283,10 +1283,6 @@ def test_notify_org_users_of_request_to_go_live_requires_org_user_permission(
     )
     sample_service.organisation = sample_organisation
     sample_service.go_live_user = go_live_user
-    mocker.patch(
-        "app.models.User.get_organisation_permissions",
-        return_value={sample_organisation.id: []},
-    )
 
     admin_request.post(
         "organisation.notify_users_of_request_to_go_live",
