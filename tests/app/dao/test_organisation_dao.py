@@ -402,8 +402,8 @@ def test_dao_get_users_for_organisation(sample_organisation):
     first = create_user(email="first@invited.com")
     second = create_user(email="another@invited.com")
 
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id, permissions=[])
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id, permissions=[])
 
     results = dao_get_users_for_organisation(organisation_id=sample_organisation.id)
 
@@ -421,8 +421,8 @@ def test_dao_get_users_for_organisation_only_returns_active_users(sample_organis
     first = create_user(email="first@invited.com")
     second = create_user(email="another@invited.com")
 
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id, permissions=[])
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id, permissions=[])
 
     second.state = "inactive"
 
@@ -431,23 +431,29 @@ def test_dao_get_users_for_organisation_only_returns_active_users(sample_organis
     assert results[0] == first
 
 
-def test_add_user_to_organisation_returns_user(sample_organisation):
+@pytest.mark.parametrize("permissions", ([], ["can_make_services_live"]))
+def test_add_user_to_organisation_returns_user(sample_organisation, permissions):
     org_user = create_user()
     assert not org_user.organisations
 
-    added_user = dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=org_user.id)
+    added_user = dao_add_user_to_organisation(
+        organisation_id=sample_organisation.id,
+        user_id=org_user.id,
+        permissions=permissions,
+    )
     assert len(added_user.organisations) == 1
     assert added_user.organisations[0] == sample_organisation
+    assert added_user.get_organisation_permissions()[str(sample_organisation.id)] == permissions
 
 
 def test_add_user_to_organisation_when_user_does_not_exist(sample_organisation):
     with pytest.raises(expected_exception=SQLAlchemyError):
-        dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=uuid.uuid4())
+        dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=uuid.uuid4(), permissions=[])
 
 
 def test_add_user_to_organisation_when_organisation_does_not_exist(sample_user):
     with pytest.raises(expected_exception=SQLAlchemyError):
-        dao_add_user_to_organisation(organisation_id=uuid.uuid4(), user_id=sample_user.id)
+        dao_add_user_to_organisation(organisation_id=uuid.uuid4(), user_id=sample_user.id, permissions=[])
 
 
 @pytest.mark.parametrize(

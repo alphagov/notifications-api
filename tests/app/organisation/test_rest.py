@@ -18,7 +18,7 @@ from app.dao.organisation_dao import (
     dao_add_user_to_organisation,
 )
 from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
-from app.models import AnnualBilling, Organisation, OrganisationUserPermissions
+from app.models import AnnualBilling, Organisation
 from tests.app.db import (
     create_annual_billing,
     create_domain,
@@ -598,7 +598,7 @@ def test_archive_organisation_raises_an_error_if_org_has_team_members(
     sample_organisation,
     sample_user,
 ):
-    dao_add_user_to_organisation(sample_organisation.id, sample_user.id)
+    dao_add_user_to_organisation(sample_organisation.id, sample_user.id, permissions=[])
 
     response = admin_request.post(
         "organisation.archive_organisation", organisation_id=sample_organisation.id, _expected_status=400
@@ -792,6 +792,7 @@ def test_add_user_to_organisation_returns_added_user(admin_request, sample_organ
         "organisation.add_user_to_organisation",
         organisation_id=str(sample_organisation.id),
         user_id=str(sample_user.id),
+        _data={"permissions": []},
         _expected_status=200,
     )
 
@@ -805,12 +806,13 @@ def test_add_user_to_organisation_returns_404_if_user_does_not_exist(admin_reque
         "organisation.add_user_to_organisation",
         organisation_id=str(sample_organisation.id),
         user_id=str(uuid.uuid4()),
+        _data={"permissions": []},
         _expected_status=404,
     )
 
 
 def test_remove_user_from_organisation(admin_request, sample_organisation, sample_user):
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=sample_user.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=sample_user.id, permissions=[])
 
     admin_request.delete(
         "organisation.remove_user_from_organisation", organisation_id=sample_organisation.id, user_id=sample_user.id
@@ -833,8 +835,8 @@ def test_remove_user_from_organisation_when_user_is_not_an_org_member(admin_requ
 def test_get_organisation_users_returns_users_for_organisation(admin_request, sample_organisation):
     first = create_user(email="first@invited.com")
     second = create_user(email="another@invited.com")
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id, permissions=[])
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id, permissions=[])
 
     response = admin_request.get(
         "organisation.get_organisation_users", organisation_id=sample_organisation.id, _expected_status=200
@@ -1200,8 +1202,12 @@ def test_notify_org_users_of_request_to_go_live(
     go_live_user = create_user(email="go-live-user@example.gov.uk", name="Go live user")
     first_org_user = create_user(email="first-org-user@example.gov.uk", name="First org user")
     second_org_user = create_user(email="second-org-user@example.gov.uk", name="Second org user")
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first_org_user.id)
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second_org_user.id)
+    dao_add_user_to_organisation(
+        organisation_id=sample_organisation.id, user_id=first_org_user.id, permissions=["can_make_services_live"]
+    )
+    dao_add_user_to_organisation(
+        organisation_id=sample_organisation.id, user_id=second_org_user.id, permissions=["can_make_services_live"]
+    )
 
     notifications = [object(), object()]
 
@@ -1265,12 +1271,8 @@ def test_notify_org_users_of_request_to_go_live_requires_org_user_permission(
     go_live_user = create_user(email="go-live-user@example.gov.uk", name="Go live user")
     first_org_user = create_user(email="first-org-user@example.gov.uk", name="First org user")
     second_org_user = create_user(email="second-org-user@example.gov.uk", name="Second org user")
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first_org_user.id)
-    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second_org_user.id)
-
-    # Temporary: delete org user permissions which are added implicitly
-    OrganisationUserPermissions.query.filter_by(user_id=first_org_user.id).delete()
-    OrganisationUserPermissions.query.filter_by(user_id=second_org_user.id).delete()
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first_org_user.id, permissions=[])
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second_org_user.id, permissions=[])
 
     notifications = [object(), object()]
 

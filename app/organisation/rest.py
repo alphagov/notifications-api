@@ -206,7 +206,8 @@ def get_organisation_services_usage(organisation_id):
 
 @organisation_blueprint.route("/<uuid:organisation_id>/users/<uuid:user_id>", methods=["POST"])
 def add_user_to_organisation(organisation_id, user_id):
-    new_org_user = dao_add_user_to_organisation(organisation_id, user_id)
+    permissions = [p["permission"] for p in request.get_json()["permissions"]]
+    new_org_user = dao_add_user_to_organisation(organisation_id, user_id, permissions)
     return jsonify(data=new_org_user.serialize())
 
 
