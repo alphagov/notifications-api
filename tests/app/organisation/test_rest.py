@@ -18,7 +18,7 @@ from app.dao.organisation_dao import (
     dao_add_user_to_organisation,
 )
 from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
-from app.models import AnnualBilling, Organisation
+from app.models import AnnualBilling, Organisation, OrganisationUserPermissions
 from tests.app.db import (
     create_annual_billing,
     create_domain,
@@ -1252,3 +1252,43 @@ def test_notify_org_users_of_request_to_go_live(
     assert mock_send_notification_to_queue.call_args_list == [
         call(notification, queue="notify-internal-tasks") for notification in notifications
     ]
+
+
+def test_notify_org_users_of_request_to_go_live_requires_org_user_permission(
+    mocker,
+    admin_request,
+    notify_service,
+    sample_organisation,
+    sample_service,
+    organisation_has_new_go_live_request_template,
+):
+    go_live_user = create_user(email="go-live-user@example.gov.uk", name="Go live user")
+    first_org_user = create_user(email="first-org-user@example.gov.uk", name="First org user")
+    second_org_user = create_user(email="second-org-user@example.gov.uk", name="Second org user")
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first_org_user.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second_org_user.id)
+
+    # Temporary: delete org user permissions which are added implicitly
+    OrganisationUserPermissions.query.filter_by(user_id=first_org_user.id).delete()
+    OrganisationUserPermissions.query.filter_by(user_id=second_org_user.id).delete()
+
+    notifications = [object(), object()]
+
+    mock_persist_notification = mocker.patch(
+        "app.organisation.sender.persist_notification",
+        side_effect=notifications,
+    )
+    mock_send_notification_to_queue = mocker.patch(
+        "app.organisation.sender.send_notification_to_queue",
+    )
+    sample_service.organisation = sample_organisation
+    sample_service.go_live_user = go_live_user
+
+    admin_request.post(
+        "organisation.notify_users_of_request_to_go_live",
+        service_id=sample_service.id,
+        _expected_status=204,
+    )
+
+    assert mock_persist_notification.call_args_list == []
+    assert mock_send_notification_to_queue.call_args_list == []

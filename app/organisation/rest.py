@@ -2,7 +2,7 @@ from flask import Blueprint, abort, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
-from app.constants import INVITE_PENDING, KEY_TYPE_NORMAL, NHS_ORGANISATION_TYPES
+from app.constants import INVITE_PENDING, KEY_TYPE_NORMAL, NHS_ORGANISATION_TYPES, OrganisationUserPermissionTypes
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.dao_utils import transaction
 from app.dao.fact_billing_dao import fetch_usage_for_organisation
@@ -308,6 +308,7 @@ def notify_users_of_request_to_go_live(service_id):
         organisation=organisation,
         template=template,
         reply_to_text=service.go_live_user.email_address,
+        with_permission=OrganisationUserPermissionTypes.can_make_services_live,
         personalisation={
             "service_name": service.name,
             "requester_name": service.go_live_user.name,
