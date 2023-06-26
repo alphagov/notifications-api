@@ -108,7 +108,7 @@ def test_add_letter_contact_when_multiple_defaults_exist_raises_exception(notify
     create_letter_contact(service=service, contact_block="Edinburgh, ED1 1AA")
     create_letter_contact(service=service, contact_block="Aberdeen, AB12 23X")
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa
         add_letter_contact_for_service(service_id=service.id, contact_block="Swansea, SN1 3CC", is_default=False)
 
 

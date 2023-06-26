@@ -109,7 +109,7 @@ def test_provider_to_use_raises_if_no_active_providers(mocker, restore_provider_
     mmg = get_provider_details_by_identifier("mmg")
     mmg.active = False
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa
         send_to_providers.provider_to_use("sms", international=True)
 
 
@@ -570,7 +570,7 @@ def test_should_set_notification_billable_units_and_reduces_provider_priority_if
     sample_notification.billable_units = 0
     assert sample_notification.sent_by is None
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa
         send_to_providers.send_sms_to_provider(sample_notification)
 
     assert sample_notification.billable_units == 1
