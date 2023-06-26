@@ -234,7 +234,7 @@ def process_sms_or_email_notification(
             # went over SQS's 256kb message limit. If the body is very large, it may exceed the HTTP max content length;
             # the exception we get here isn't handled correctly by botocore - we get a ResponseParserError instead.
             current_app.logger.info(
-                f"Notification {notification_id} failed to save to high volume queue. Using normal flow instead"
+                "Notification %s failed to save to high volume queue. Using normal flow instead", notification_id
             )
 
     persist_notification(
@@ -260,7 +260,7 @@ def process_sms_or_email_notification(
             notification_id=notification_id,
         )
     else:
-        current_app.logger.debug("POST simulated notification for id: {}".format(notification_id))
+        current_app.logger.debug("POST simulated notification for id: %s", notification_id)
 
     return resp
 
@@ -432,7 +432,7 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
 
     # call task to add the filename to anti virus queue
     if current_app.config["ANTIVIRUS_ENABLED"]:
-        current_app.logger.info("Calling task scan-file for {}".format(filename))
+        current_app.logger.info("Calling task scan-file for %s", filename)
         notify_celery.send_task(
             name=TaskNames.SCAN_FILE,
             kwargs={"filename": filename},

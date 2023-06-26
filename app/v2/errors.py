@@ -82,7 +82,7 @@ def register_errors(blueprint):
 
     @blueprint.errorhandler(AuthError)
     def auth_error(error):
-        current_app.logger.info("API AuthError, client: {} error: {}".format(request.headers.get("User-Agent"), error))
+        current_app.logger.info("API AuthError, client: %s error: %s", request.headers.get("User-Agent"), error)
         return jsonify(error.to_dict_v2()), error.code
 
     @blueprint.errorhandler(Exception)

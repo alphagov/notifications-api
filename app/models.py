@@ -97,7 +97,7 @@ class HistoryModel:
             if hasattr(original, c.name):
                 setattr(self, c.name, getattr(original, c.name))
             else:
-                current_app.logger.debug("{} has no column {} to copy from".format(original, c.name))
+                current_app.logger.debug("%s has no column %s to copy from", original, c.name)
 
 
 guest_list_recipient_types = db.Enum(*GUEST_LIST_RECIPIENT_TYPE, name="recipient_type")

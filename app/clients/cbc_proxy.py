@@ -131,7 +131,7 @@ class CBCProxyClientBase(ABC):
     def _invoke_lambda(self, lambda_name, payload):
         payload_bytes = bytes(json.dumps(payload), encoding="utf8")
         try:
-            current_app.logger.info(f"Calling lambda {lambda_name} with payload {str(payload)[:1000]}")
+            current_app.logger.info("Calling lambda %s with payload %s", lambda_name, str(payload)[:1000])
 
             result = self._lambda_client.invoke(
                 FunctionName=lambda_name,
@@ -139,19 +139,22 @@ class CBCProxyClientBase(ABC):
                 Payload=payload_bytes,
             )
         except botocore.exceptions.ClientError:
-            current_app.logger.exception(f"Boto ClientError calling lambda {lambda_name}")
+            current_app.logger.exception("Boto ClientError calling lambda %s", lambda_name)
             success = False
             return success
 
         if result["StatusCode"] > 299:
             current_app.logger.info(
-                f"Error calling lambda {lambda_name} with status code { result['StatusCode']}, {result.get('Payload')}"
+                "Error calling lambda %s with status code %s, %s",
+                lambda_name,
+                result["StatusCode"],
+                result.get("Payload"),
             )
             success = False
 
         elif "FunctionError" in result:
             current_app.logger.info(
-                f"Error calling lambda {lambda_name} with function error { result['Payload'].read() }"
+                "Error calling lambda %s with function error %s", lambda_name, result["Payload"].read()
             )
             success = False
 

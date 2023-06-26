@@ -66,7 +66,7 @@ from app.v2.errors import TooManyRequestsError
 def process_job(job_id, sender_id=None):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
-    current_app.logger.info("Starting process-job task for job id {} with status: {}".format(job_id, job.job_status))
+    current_app.logger.info("Starting process-job task for job id %s with status: %s", job_id, job.job_status)
 
     if job.job_status != JOB_STATUS_PENDING:
         return
@@ -80,7 +80,7 @@ def process_job(job_id, sender_id=None):
     if not service.active:
         job.job_status = JOB_STATUS_CANCELLED
         dao_update_job(job)
-        current_app.logger.warning("Job {} has been cancelled, service {} is inactive".format(job_id, service.id))
+        current_app.logger.warning("Job %s has been cancelled, service %s is inactive", job_id, service.id)
         return
 
     if __sending_limits_for_job_exceeded(service, job, job_id):
@@ -88,7 +88,7 @@ def process_job(job_id, sender_id=None):
 
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
-    current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
+    current_app.logger.info("Starting job %s processing %s notifications", job_id, job.notification_count)
 
     for row in recipient_csv.get_rows():
         process_row(row, template, job, service, sender_id=sender_id)
@@ -104,10 +104,10 @@ def job_complete(job, resumed=False, start=None):
     dao_update_job(job)
 
     if resumed:
-        current_app.logger.info("Resumed Job {} completed at {}".format(job.id, job.created_at))
+        current_app.logger.info("Resumed Job %s completed at %s", job.id, job.created_at)
     else:
         current_app.logger.info(
-            "Job {} created at {} started at {} finished at {}".format(job.id, job.created_at, start, finished)
+            "Job %s created at %s started at %s finished at %s", job.id, job.created_at, start, finished
         )
 
 
@@ -171,8 +171,11 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
         job.processing_finished = datetime.utcnow()
         dao_update_job(job)
         current_app.logger.info(
-            f"Job {job_id} size {job.notification_count} error. "
-            f"Sending limits ({e.limit_name}: {e.sending_limit}) exceeded."
+            "Job %s size %s error. Sending limits (%s: %s) exceeded.",
+            job_id,
+            job.notification_count,
+            e.limit_name,
+            e.sending_limit,
         )
         return True
 
@@ -195,7 +198,7 @@ def save_sms(self, service_id, notification_id, encrypted_notification, sender_i
         reply_to_text = template.reply_to_text
 
     if not service_allowed_to_send_to(notification["to"], service, KEY_TYPE_NORMAL):
-        current_app.logger.debug("SMS {} failed as restricted service".format(notification_id))
+        current_app.logger.debug("SMS %s failed as restricted service", notification_id)
         return
 
     try:
@@ -222,9 +225,10 @@ def save_sms(self, service_id, notification_id, encrypted_notification, sender_i
         )
 
         current_app.logger.debug(
-            "SMS {} created at {} for job {}".format(
-                saved_notification.id, saved_notification.created_at, notification.get("job", None)
-            )
+            "SMS %s created at %s for job %s",
+            saved_notification.id,
+            saved_notification.created_at,
+            notification.get("job", None),
         )
 
     except SQLAlchemyError as e:
@@ -248,7 +252,7 @@ def save_email(self, service_id, notification_id, encrypted_notification, sender
         reply_to_text = template.reply_to_text
 
     if not service_allowed_to_send_to(notification["to"], service, KEY_TYPE_NORMAL):
-        current_app.logger.info("Email {} failed as restricted service".format(notification_id))
+        current_app.logger.info("Email %s failed as restricted service", notification_id)
         return
 
     try:
@@ -274,7 +278,7 @@ def save_email(self, service_id, notification_id, encrypted_notification, sender
             queue=QueueNames.SEND_EMAIL,
         )
 
-        current_app.logger.debug("Email {} created at {}".format(saved_notification.id, saved_notification.created_at))
+        current_app.logger.debug("Email %s created at %s", saved_notification.id, saved_notification.created_at)
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 
@@ -318,17 +322,19 @@ def save_api_email_or_sms(self, encrypted_notification):
         q = QueueNames.SEND_EMAIL if notification["notification_type"] == EMAIL_TYPE else QueueNames.SEND_SMS
         provider_task.apply_async([notification["id"]], queue=q)
         current_app.logger.debug(
-            f"{notification['notification_type']} {notification['id']} has been persisted and sent to delivery queue."
+            "%s %s has been persisted and sent to delivery queue.",
+            notification["notification_type"],
+            notification["id"],
         )
     except IntegrityError:
-        current_app.logger.info(f"{notification['notification_type']} {notification['id']} already exists.")
+        current_app.logger.info("%s %s already exists.", notification["notification_type"], notification["id"])
 
     except SQLAlchemyError:
 
         try:
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
-            current_app.logger.error(f"Max retry failed Failed to persist notification {notification['id']}")
+            current_app.logger.error("Max retry failed Failed to persist notification %s", notification["id"])
 
 
 @notify_celery.task(bind=True, name="save-letter", max_retries=5, default_retry_delay=300)
@@ -374,7 +380,7 @@ def save_letter(
             [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
         )
 
-        current_app.logger.debug("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
+        current_app.logger.debug("Letter %s created at %s", saved_notification.id, saved_notification.created_at)
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 
@@ -394,7 +400,7 @@ def update_letter_notifications_to_sent_to_dvla(self, notification_references):
         },
     )
 
-    current_app.logger.info("Updated {} letter notifications to sending".format(updated_count))
+    current_app.logger.info("Updated %s letter notifications to sending", updated_count)
 
 
 @notify_celery.task(bind=True, name="update-letter-notifications-to-error")
@@ -421,11 +427,11 @@ def handle_exception(task, notification, notification_id, exc):
         # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
         # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
         # send to the retry queue.
-        current_app.logger.exception("Retry" + retry_msg)
+        current_app.logger.exception("Retry %s", retry_msg)
         try:
             task.retry(queue=QueueNames.RETRY, exc=exc)
         except task.MaxRetriesExceededError:
-            current_app.logger.error("Max retry failed" + retry_msg)
+            current_app.logger.error("Max retry failed %s", retry_msg)
 
 
 @notify_celery.task(bind=True, name="update-letter-notifications-statuses")
@@ -535,26 +541,25 @@ def update_letter_notification(filename: str, temporary_failures: list, update: 
     )
 
     if not updated_count:
-        msg = (
-            "Update letter notification file {filename} failed: notification either not found "
-            "or already updated from delivered. Status {status} for notification reference {reference}".format(
-                filename=filename, status=status, reference=update.reference
-            )
+        current_app.logger.info(
+            "Update letter notification file %s failed: notification either not found "
+            "or already updated from delivered. Status %s for notification reference %s",
+            filename,
+            status,
+            update.reference,
         )
-        current_app.logger.info(msg)
 
 
 def check_billable_units(notification_update):
     notification = dao_get_notification_or_history_by_reference(notification_update.reference)
 
     if int(notification_update.page_count) != notification.billable_units:
-        msg = "Notification with id {} has {} billable_units but DVLA says page count is {}".format(
-            notification.id, notification.billable_units, notification_update.page_count
+        current_app.logger.error(
+            "Notification with id %s has %s billable_units but DVLA says page count is %s",
+            notification.id,
+            notification.billable_units,
+            notification_update.page_count,
         )
-        try:
-            raise DVLAException(msg)
-        except DVLAException:
-            current_app.logger.exception(msg)
 
 
 @notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
@@ -583,27 +588,42 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
             timeout=60,
         )
         current_app.logger.debug(
-            f"send_inbound_sms_to_service sending {inbound_sms_id} to {inbound_api.url}, "
-            + f"response {response.status_code}"
+            "send_inbound_sms_to_service sending %s to %s, response %s",
+            inbound_sms_id,
+            inbound_api.url,
+            response.status_code,
         )
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            f"send_inbound_sms_to_service failed for service_id: {service_id} for inbound_sms_id: {inbound_sms_id} "
-            + f"and url: {inbound_api.url}. exception: {e}"
+            "send_inbound_sms_to_service failed for service_id: %s for inbound_sms_id: %s and url: %s. exception: %s",
+            service_id,
+            inbound_sms_id,
+            inbound_api.url,
+            e,
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500:
             try:
                 self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.error(
-                    "Retry: send_inbound_sms_to_service has retried the max number of"
-                    + f"times for service: {service_id} and inbound_sms {inbound_sms_id}"
+                    (
+                        "Retry: send_inbound_sms_to_service has retried the max number of times "
+                        "for service: %s and inbound_sms %s"
+                    ),
+                    service_id,
+                    inbound_sms_id,
                 )
         else:
             current_app.logger.warning(
-                f"send_inbound_sms_to_service is not being retried for service_id: {service_id} for "
-                + f"inbound_sms id: {inbound_sms_id} and url: {inbound_api.url}. exception: {e}"
+                (
+                    "send_inbound_sms_to_service is not being retried for service_id: %s "
+                    "for inbound_sms id: %s and url: %s. exception: %s"
+                ),
+                service_id,
+                inbound_sms_id,
+                inbound_api.url,
+                e,
             )
 
 
@@ -617,7 +637,7 @@ def process_incomplete_jobs(job_ids):
         job.processing_started = datetime.utcnow()
         dao_update_job(job)
 
-    current_app.logger.info("Resuming Job(s) {}".format(job_ids))
+    current_app.logger.info("Resuming job(s) %s", job_ids)
     for job_id in job_ids:
         process_incomplete_job(job_id)
 
@@ -632,7 +652,7 @@ def process_incomplete_job(job_id):
     else:
         resume_from_row = -1  # The first row in the csv with a number is row 0
 
-    current_app.logger.info("Resuming job {} from row {}".format(job_id, resume_from_row))
+    current_app.logger.info("Resuming job %s from row %s", job_id, resume_from_row)
 
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
@@ -652,7 +672,8 @@ def process_returned_letters_list(notification_references):
     insert_returned_letters(notification_references)
 
     current_app.logger.info(
-        "Updated {} letter notifications ({} history notifications, from {} references) to returned-letter".format(
-            updated, updated_history, len(notification_references)
-        )
+        "Updated %s letter notifications (%s history notifications, from %s references) to returned-letter",
+        updated,
+        updated_history,
+        len(notification_references),
     )

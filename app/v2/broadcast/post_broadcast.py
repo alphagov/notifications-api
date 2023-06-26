@@ -95,8 +95,10 @@ def create_broadcast():
         dao_save_object(broadcast_message)
 
         current_app.logger.info(
-            f"Broadcast message {broadcast_message.id} created for service "
-            f'{authenticated_service.id} with reference {broadcast_json["reference"]}'
+            "Broadcast message %s created for service %s with reference %s",
+            broadcast_message.id,
+            authenticated_service.id,
+            broadcast_json["reference"],
         )
 
         return jsonify(broadcast_message.serialize()), 201

@@ -134,8 +134,9 @@ def send_broadcast_event(broadcast_event_id):
 def send_broadcast_provider_message(self, broadcast_event_id, provider):
     if not current_app.config["CBC_PROXY_ENABLED"]:
         current_app.logger.info(
-            "CBC Proxy disabled, not sending broadcast_provider_message for "
-            f"broadcast_event_id {broadcast_event_id} with provider {provider}"
+            "CBC Proxy disabled, not sending broadcast_provider_message for broadcast_event_id %s with provider %s",
+            broadcast_event_id,
+            provider,
         )
         return
 
@@ -154,9 +155,10 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
         formatted_message_number = format_sequential_number(broadcast_provider_message.message_number)
 
     current_app.logger.info(
-        f"Invoking cbc proxy to send broadcast_provider_message with ID of {broadcast_provider_message.id} "
-        f"and broadcast_event ID of {broadcast_event_id} "
-        f"msgType {broadcast_event.message_type}"
+        "Invoking cbc proxy to send broadcast_provider_message with ID of %s and broadcast_event ID of %s msgType %s",
+        broadcast_provider_message.id,
+        broadcast_event_id,
+        broadcast_event.message_type,
     )
 
     areas = [{"polygon": polygon} for polygon in broadcast_event.transmitted_areas["simple_polygons"]]
@@ -203,8 +205,14 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
     except CBCProxyRetryableException as exc:
         delay = get_retry_delay(self.request.retries)
         current_app.logger.exception(
-            f"Retrying send_broadcast_provider_message for broadcast event {broadcast_event_id}, "
-            f"provider message {broadcast_provider_message.id}, provider {provider} in {delay} seconds"
+            (
+                "Retrying send_broadcast_provider_message for broadcast event %s, "
+                "provider message %s, provider %s in %s seconds"
+            ),
+            broadcast_event_id,
+            broadcast_provider_message.id,
+            provider,
+            delay,
         )
 
         self.retry(

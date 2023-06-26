@@ -133,7 +133,7 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
             raise InvalidRequest(msg, status_code=400) from e
 
         if template.archived:
-            current_app.logger.info("Could not move to folder: Template {} is archived. (Skipping)".format(template_id))
+            current_app.logger.info("Could not move to folder: Template %s is archived. (Skipping)", template_id)
         else:
             template.folder = target_template_folder
     return "", 204

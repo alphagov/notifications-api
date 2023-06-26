@@ -110,9 +110,11 @@ def requires_auth():
     api_key = _decode_jwt_token(auth_token, service.api_keys, service.id)
 
     current_app.logger.info(
-        "API authorised for service {} with api key {}, using issuer {} for URL: {}".format(
-            service_id, api_key.id, request.headers.get("User-Agent"), request.base_url
-        )
+        "API authorised for service %s with api key %s, using issuer %s for URL: %s",
+        service_id,
+        api_key.id,
+        request.headers.get("User-Agent"),
+        request.base_url,
     )
 
     g.api_user = api_key
@@ -127,10 +129,11 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
         except TokenExpiredError as e:
             err_msg = "Error: Your system clock must be accurate to within 30 seconds"
             current_app.logger.info(
-                "Rejecting user authentication with `"
-                + err_msg
-                + f"` (token.iat: {e.token.get('iat')}, us: {int(time.time())}) "
-                + f"[X-Amz-Cf-Id: {request.headers.get('x-amz-cf-id')}]"
+                "Rejecting user authentication with `%s`` (token.iat: %s, us: %s) [X-Amz-Cf-Id: %s]",
+                err_msg,
+                e.token.get("iat"),
+                int(time.time()),
+                request.headers.get("x-amz-cf-id"),
             )
             raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id) from e
         except TokenAlgorithmError as e:
