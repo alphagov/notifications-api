@@ -282,7 +282,10 @@ def check_if_letters_still_pending_virus_check():
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
-            current_app.logger.error(msg)
+            current_app.logger.error(
+                "Letters still pending virus check",
+                extra=dict(number_of_letters=len(letters), notification_ids=sorted(letter_ids)),
+            )
 
 
 @notify_celery.task(name="check-if-letters-still-in-created")
@@ -291,7 +294,7 @@ def check_if_letters_still_in_created():
 
     if len(letters) > 0:
         msg = (
-            "%s letters were created before 17.30 yesterday and still have 'created' status. "
+            f"{len(letters)} letters were created before 17.30 yesterday and still have 'created' status. "
             "Follow runbook to resolve: "
             "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook"
             "#deal-with-Letters-still-in-created."
@@ -300,13 +303,16 @@ def check_if_letters_still_in_created():
         if current_app.should_send_zendesk_alerts:
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still in 'created' status",
-                message=msg % (len(letters)),
+                message=msg,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
                 notify_ticket_type=NotifyTicketType.TECHNICAL,
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
-            current_app.logger.error(msg, len(letters))
+            current_app.logger.error(
+                "Letters created before 17:30 yesterday still have 'created' status",
+                extra=dict(num_letters=len(letters)),
+            )
 
 
 @notify_celery.task(name="check-for-missing-rows-in-completed-jobs")
@@ -340,6 +346,13 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 str(service.service_id),
             )
             message += "service: {} failure rate: {},\n".format(service_dashboard, service.permanent_failure_rate)
+
+        current_app.logger.error(
+            "%s services have had a high permanent-failure rate for text messages in the last 24 hours.",
+            len(services_with_failures),
+            extra=dict(service_ids=[service.service_id for service in services_with_failures]),
+        )
+
     elif services_sending_to_tv_numbers:
         message += "{} service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n".format(
             len(services_sending_to_tv_numbers)
@@ -353,9 +366,17 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 service_dashboard, service.notification_count
             )
 
-    if services_with_failures or services_sending_to_tv_numbers:
-        current_app.logger.warning(message)
+        current_app.logger.error(
+            "%s services have sent over 500 text messages to tv numbers in the last 24 hours.",
+            len(services_sending_to_tv_numbers),
+            extra=dict(
+                service_ids_and_number_sent={
+                    service.service_id: service.notification_count for service in services_sending_to_tv_numbers
+                }
+            ),
+        )
 
+    if services_with_failures or services_sending_to_tv_numbers:
         if current_app.should_send_zendesk_alerts:
             message += (
                 "\nYou can find instructions for this ticket in our manual:\n"

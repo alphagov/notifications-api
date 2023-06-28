@@ -206,12 +206,13 @@ def raise_alert_if_letter_notifications_still_sending():
     still_sending_count, sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
 
     if still_sending_count:
-        message = "There are {} letters in the 'sending' state from {}".format(
-            still_sending_count, sent_date.strftime("%A %d %B")
-        )
 
         if current_app.should_send_zendesk_alerts:
-            message += ". Resolve using https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"  # noqa
+            message = (
+                f"There are {still_sending_count} letters in the 'sending' state from {sent_date.strftime('%A %d %B')}."
+                " Resolve using https://github.com/alphagov/notifications-manuals/wiki"
+                "/Support-Runbook#deal-with-letters-still-in-sending"
+            )
 
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still sending",
@@ -223,7 +224,11 @@ def raise_alert_if_letter_notifications_still_sending():
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
         else:
-            current_app.logger.info(message)
+            current_app.logger.error(
+                "There are %s letters in the 'sending' state from %s",
+                still_sending_count,
+                sent_date.strftime("%A %d %B"),
+            )
 
 
 def get_letter_notifications_still_sending_when_they_shouldnt_be():
@@ -270,20 +275,19 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     ):
         ack_file_set.add(key.lstrip("root/dispatch").upper().replace(".ACK.TXT", ""))  # noqa
 
-    message = "\n".join(
-        [
-            "Letter ack file does not contain all zip files sent." "",
-            f"See runbook at https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#letter-ack-file-does-not-contain-all-zip-files-sent\n",  # noqa
-            f"pdf bucket: {current_app.config['S3_BUCKET_LETTERS_PDF']}, subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent",  # noqa
-            f"ack bucket: {current_app.config['S3_BUCKET_DVLA_RESPONSE']}",
-            "",
-            f"Missing ack for zip files: {str(sorted(zip_file_set - ack_file_set))}",
-        ]
-    )
-
     # strip empty element before comparison
     ack_file_set.discard("")
     zip_file_set.discard("")
+
+    message = (
+        "Letter ack file does not contain all zip files sent. See runbook at "
+        "https://github.com/alphagov/notifications-manuals/wiki"
+        "/Support-Runbook#letter-ack-file-does-not-contain-all-zip-files-sent\n\n"
+        f"pdf bucket: {current_app.config['S3_BUCKET_LETTERS_PDF']}, "
+        f"subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent\n"
+        f"ack bucket: {current_app.config['S3_BUCKET_DVLA_RESPONSE']}\n\n"
+        f"Missing ack for zip files: {str(sorted(zip_file_set - ack_file_set))}"
+    )
 
     if len(zip_file_set - ack_file_set) > 0:
         if current_app.should_send_zendesk_alerts:
@@ -295,7 +299,16 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
-        current_app.logger.error(message)
+
+        current_app.logger.error(
+            "Letter ack file does not contain all zip files sent.",
+            extra=dict(
+                pdf_bucket=current_app.config["S3_BUCKET_LETTERS_PDF"],
+                subfolder=datetime.utcnow().strftime("%Y-%m-%d") + "/zips_sent",
+                ack_bucket=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
+                missing_ack_for_zip_files=str(sorted(zip_file_set - ack_file_set)),
+            ),
+        )
 
     if len(ack_file_set - zip_file_set) > 0:
         current_app.logger.info("letter ack contains zip that is not for today: %s", ack_file_set - zip_file_set)
