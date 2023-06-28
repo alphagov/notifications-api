@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Cater for specific concurrency level
-if [ "$1" == "worker-periodic" ] || [ "$1" == "worker-broadcasts" ]
+if [ "$1" == "api-worker-periodic" ] || [ "$1" == "api-worker-broadcasts" ]
 then
   CONCURRENCY=2
 else
@@ -28,56 +28,56 @@ elif [ "$1" == "migration" ]
 then
   flask db upgrade
 
-elif [ "$1" == "worker-retry-tasks" ]
+elif [ "$1" == "api-worker-retry-tasks" ]
 then
   $COMMON_CMD retry-tasks
 
-elif [ "$1" == "worker-letters" ]
+elif [ "$1" == "api-worker-letters" ]
 then
   $COMMON_CMD create-letters-pdf-tasks,letter-tasks 
  
-elif [ "$1" == "worker-jobs" ]
+elif [ "$1" == "api-worker-jobs" ]
 then
   $COMMON_CMD database-tasks,job-tasks 
 
-elif [ "$1" == "worker-research" ]
+elif [ "$1" == "api-worker-research" ]
 then
   $COMMON_CMD research-mode-tasks 
 
-elif [ "$1" == "worker-sender" ]
+elif [ "$1" == "api-worker-sender" ]
 then
   $COMMON_CMD send-sms-tasks,send-email-tasks
 
-elif [ "$1" == "worker-sender-letters" ]
+elif [ "$1" == "api-worker-sender-letters" ]
 then
   $COMMON_CMD send-letter-tasks
 
-elif [ "$1" == "worker-periodic" ]
+elif [ "$1" == "api-worker-periodic" ]
 then
   $COMMON_CMD periodic-tasks
 
-elif [ "$1" == "worker-reporting" ]
+elif [ "$1" == "api-worker-reporting" ]
 then
   $COMMON_CMD reporting-tasks
 
 # Only consume the notify-internal-tasks queue on this app so that Notify messages are processed as a priority
-elif [ "$1" == "worker-internal" ]
+elif [ "$1" == "api-worker-internal" ]
 then
   $COMMON_CMD notify-internal-tasks
 
-elif [ "$1" == "worker-broadcasts" ]
+elif [ "$1" == "api-worker-broadcasts" ]
 then
   $COMMON_CMD broadcast-tasks
 
-elif [ "$1" == "worker-receipts" ]
+elif [ "$1" == "api-worker-receipts" ]
 then
   $COMMON_CMD ses-callbacks,sms-callbacks
 
-elif [ "$1" == "worker-service-callbacks" ]
+elif [ "$1" == "api-worker-service-callbacks" ]
 then
   $COMMON_CMD service-callbacks,service-callbacks-retry
 
-elif [ "$1" == "worker-save-api-notifications" ]
+elif [ "$1" == "api-worker-save-api-notifications" ]
 then
   $COMMON_CMD save-api-email-tasks,save-api-sms-tasks
 
