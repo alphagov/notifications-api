@@ -129,7 +129,7 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
         except TokenExpiredError as e:
             err_msg = "Error: Your system clock must be accurate to within 30 seconds"
             current_app.logger.info(
-                "Rejecting user authentication with `%s`` (token.iat: %s, us: %s) [X-Amz-Cf-Id: %s]",
+                'Rejecting user authentication with "%s" (token.iat: %s, us: %s) [X-Amz-Cf-Id: %s]',
                 err_msg,
                 e.token.get("iat"),
                 int(time.time()),
