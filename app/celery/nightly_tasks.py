@@ -132,13 +132,15 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
 
     current_app.logger.info(
         (
-            "delete-notifications-older-than-retention: triggered subtasks for notification_type %s: "
-            "%s services with flexible data retention, "
-            "%s services without flexible data retention"
+            "delete-notifications-older-than-retention: triggered subtasks for notification_type %(type)s: "
+            "%(num_service_ids_with_data_retention)s services with flexible data retention, "
+            "%(num_service_ids_to_purge)s services without flexible data retention"
         ),
-        notification_type,
-        len(service_ids_with_data_retention),
-        len(service_ids_to_purge),
+        dict(
+            type=notification_type,
+            num_service_ids_with_data_retention=len(service_ids_with_data_retention),
+            num_service_ids_to_purge=len(service_ids_to_purge),
+        ),
     )
 
 
@@ -155,12 +157,12 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
         current_app.logger.info(
             (
                 "delete-notifications-for-service-and-type: "
-                "service: %s, notification_type: %s, count deleted: %s, duration: %s seconds"
+                "service: %(service_id)s, notification_type: %(type)s, "
+                "count deleted: %(num_deleted)s, duration: %(duration)s seconds"
             ),
-            service_id,
-            notification_type,
-            num_deleted,
-            (end - start).seconds,
+            dict(
+                service_id=service_id, type=notification_type, num_deleted=num_deleted, duration=(end - start).seconds
+            ),
         )
 
 
@@ -190,10 +192,8 @@ def delete_inbound_sms():
         start = datetime.utcnow()
         deleted = delete_inbound_sms_older_than_retention()
         current_app.logger.info(
-            "Delete inbound sms job started %s finished %s deleted %s inbound sms notifications",
-            start,
-            datetime.utcnow(),
-            deleted,
+            "Delete inbound sms job started %(start)s finished %(now)s deleted %(deleted)s inbound sms notifications",
+            dict(start=start, now=datetime.utcnow(), deleted=deleted),
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete inbound sms notifications")

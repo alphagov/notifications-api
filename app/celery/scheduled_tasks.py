@@ -217,9 +217,11 @@ def replay_created_notifications():
 
         if len(notifications_to_resend) > 0:
             current_app.logger.info(
-                "Sending %s %s notifications to the delivery queue because the notification status was created.",
-                len(notifications_to_resend),
-                notification_type,
+                (
+                    "Sending %(num)s %(type)s notifications to the delivery queue because the "
+                    "notification status was created."
+                ),
+                dict(num=len(notifications_to_resend), type=notification_type),
             )
 
         for n in notifications_to_resend:
@@ -231,12 +233,12 @@ def replay_created_notifications():
     if len(letters) > 0:
         current_app.logger.info(
             (
-                "%s letters were created over an hour ago, but do not have an updated_at timestamp or billable units.\n"
+                "%(num)s letters were created over an hour ago, "
+                "but do not have an updated_at timestamp or billable units.\n"
                 "Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 "
-                "and update notifications for the following notification ids:\n%s"
+                "and update notifications for the following notification ids:\n%(ids)s"
             ),
-            len(letters),
-            [x.id for x in letters],
+            dict(num=len(letters), ids=[x.id for x in letters]),
         )
         for letter in letters:
             get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)

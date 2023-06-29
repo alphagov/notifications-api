@@ -120,10 +120,8 @@ def update_billable_units_for_letter(self, notification_id, page_count):
         dao_update_notification(notification)
 
         current_app.logger.info(
-            "Letter notification id: %s reference %s: billable units set to %s",
-            notification_id,
-            notification.reference,
-            billable_units,
+            "Letter notification id: %(id)s reference %(ref)s: billable units set to %(units)s",
+            dict(id=notification_id, ref=notification.reference, units=billable_units),
         )
 
 
@@ -135,7 +133,8 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
     notification.status = NOTIFICATION_VALIDATION_FAILED
     dao_update_notification(notification)
     current_app.logger.info(
-        "Validation failed: letter is too long %s for letter with id: %s", page_count, notification_id
+        "Validation failed: letter is too long %(page_count)s for letter with id: %(id)s",
+        dict(page_count=page_count, id=notification_id),
     )
 
 
@@ -185,10 +184,15 @@ def _collate_letter_pdfs_to_be_sent_for_postage(print_run_deadline_local, postag
         )
 
         current_app.logger.info(
-            "Calling task zip-and-send-letter-pdfs for %s pdfs to upload %s with total size %s bytes",
-            len(filenames),
-            dvla_filename,
-            "{:,}".format(sum(letter["Size"] for letter in letters)),
+            (
+                "Calling task zip-and-send-letter-pdfs for %(num)s pdfs to upload %(dvla_filename)s "
+                "with total size %(size)s bytes"
+            ),
+            dict(
+                num=len(filenames),
+                dvla_filename=dvla_filename,
+                size="{:,}".format(sum(letter["Size"] for letter in letters)),
+            ),
         )
         notify_celery.send_task(
             name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,

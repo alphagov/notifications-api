@@ -82,11 +82,9 @@ def create_or_update_ft_billing_letter_despatch_for_day(process_day: str):
     created, deleted = update_ft_billing_letter_despatch(process_date)
 
     current_app.logger.info(
-        "create-or-update-ft-billing-letter-despatch-for-day task for %s: task complete. "
-        "%s old row(s) deleted, and %s row(s) created.",
-        process_date,
-        deleted,
-        created,
+        "create-or-update-ft-billing-letter-despatch-for-day task for %(date)s: task complete. "
+        "%(deleted)s old row(s) deleted, and %(created)s row(s) created.",
+        dict(date=process_date, deleted=deleted, created=created),
     )
 
 
@@ -146,9 +144,9 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
 
     end = datetime.utcnow()
     current_app.logger.info(
-        "create-nightly-notification-status-for-service-and-day task update for %s, %s for %s: updated in %s seconds",
-        service_id,
-        notification_type,
-        process_day,
-        (end - start).seconds,
+        (
+            "create-nightly-notification-status-for-service-and-day task update for "
+            "%(service_id)s, %(type)s for %(date)s: updated in %(duration)s seconds"
+        ),
+        dict(service_id=service_id, type=notification_type, date=process_day, duration=(end - start).seconds),
     )
