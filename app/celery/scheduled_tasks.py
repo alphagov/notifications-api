@@ -312,8 +312,8 @@ def check_if_letters_still_in_created():
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
             current_app.logger.error(
-                "Letters created before 17:30 yesterday still have 'created' status",
-                extra=dict(num_letters=len(letters)),
+                "%s letters created before 17:30 yesterday still have 'created' status",
+                len(letters),
             )
 
 
