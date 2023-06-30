@@ -96,7 +96,7 @@ def get_pdf_for_templated_letter(self, notification_id):
     except Exception as e:
         try:
             current_app.logger.exception(
-                f"RETRY: calling create-letter-pdf task for notification {notification_id} failed"
+                "RETRY: calling create-letter-pdf task for notification %s failed", notification_id
             )
             self.retry(exc=e, queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError as e:
@@ -120,8 +120,8 @@ def update_billable_units_for_letter(self, notification_id, page_count):
         dao_update_notification(notification)
 
         current_app.logger.info(
-            f"Letter notification id: {notification_id} reference {notification.reference}: "
-            f"billable units set to {billable_units}"
+            "Letter notification id: %(id)s reference %(ref)s: billable units set to %(units)s",
+            dict(id=notification_id, ref=notification.reference, units=billable_units),
         )
 
 
@@ -132,7 +132,10 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
     notification = get_notification_by_id(notification_id, _raise=True)
     notification.status = NOTIFICATION_VALIDATION_FAILED
     dao_update_notification(notification)
-    current_app.logger.info(f"Validation failed: letter is too long {page_count} for letter with id: {notification_id}")
+    current_app.logger.info(
+        "Validation failed: letter is too long %(page_count)s for letter with id: %(id)s",
+        dict(page_count=page_count, id=notification_id),
+    )
 
 
 @notify_celery.task(name="collate-letter-pdfs-to-be-sent")
@@ -160,7 +163,7 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline_utc_str: str):
 
 
 def _collate_letter_pdfs_to_be_sent_for_postage(print_run_deadline_local, postage):
-    current_app.logger.info(f"starting collate-letter-pdfs-to-be-sent processing for postage class {postage}")
+    current_app.logger.info("starting collate-letter-pdfs-to-be-sent processing for postage class %s", postage)
     letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline_local, postage)
 
     for i, letters in enumerate(group_letters(letters_to_print)):
@@ -181,9 +184,15 @@ def _collate_letter_pdfs_to_be_sent_for_postage(print_run_deadline_local, postag
         )
 
         current_app.logger.info(
-            "Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes".format(
-                len(filenames), dvla_filename, sum(letter["Size"] for letter in letters)
-            )
+            (
+                "Calling task zip-and-send-letter-pdfs for %(num)s pdfs to upload %(dvla_filename)s "
+                "with total size %(size)s bytes"
+            ),
+            dict(
+                num=len(filenames),
+                dvla_filename=dvla_filename,
+                size="{:,}".format(sum(letter["Size"] for letter in letters)),
+            ),
         )
         notify_celery.send_task(
             name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
@@ -191,7 +200,7 @@ def _collate_letter_pdfs_to_be_sent_for_postage(print_run_deadline_local, postag
             queue=QueueNames.PROCESS_FTP,
             compression="zlib",
         )
-    current_app.logger.info(f"finished collate-letter-pdfs-to-be-sent processing for postage class {postage}")
+    current_app.logger.info("finished collate-letter-pdfs-to-be-sent processing for postage class %s", postage)
 
 
 @notify_celery.task(name="check-time-to-collate-letters")
@@ -283,7 +292,7 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline_local, po
             }
         except (BotoClientError, LetterPDFNotFound):
             current_app.logger.exception(
-                f"Error getting letter from bucket for notification: {letter.id} with reference: {letter.reference}"
+                "Error getting letter from bucket for notification: %s with reference: %s", letter.id, letter.reference
             )
 
 
@@ -320,11 +329,11 @@ def group_letters(letter_pdfs):
 
 
 def send_dvla_letters_via_api(print_run_deadline_local, postage):
-    current_app.logger.info(f"send-dvla-letters-for-day-via-api - starting queuing for postage class {postage}")
+    current_app.logger.info("send-dvla-letters-for-day-via-api - starting queuing for postage class %s", postage)
     for letter in dao_get_letters_to_be_printed(print_run_deadline_local, postage):
         deliver_letter.apply_async(kwargs={"notification_id": letter.id}, queue=QueueNames.SEND_LETTER)
 
-    current_app.logger.info(f"send-dvla-letters-for-day-via-api - finished queuing for postage class {postage}")
+    current_app.logger.info("send-dvla-letters-for-day-via-api - finished queuing for postage class %s", postage)
 
 
 @notify_celery.task(bind=True, name="sanitise-letter", max_retries=15, default_retry_delay=300)
@@ -333,13 +342,11 @@ def sanitise_letter(self, filename):
         reference = get_reference_from_filename(filename)
         notification = dao_get_notification_by_reference(reference)
 
-        current_app.logger.info("Notification ID {} Virus scan passed: {}".format(notification.id, filename))
+        current_app.logger.info("Notification ID %s Virus scan passed: %s", notification.id, filename)
 
         if notification.status != NOTIFICATION_PENDING_VIRUS_CHECK:
             current_app.logger.info(
-                "Sanitise letter called for notification {} which is in {} state".format(
-                    notification.id, notification.status
-                )
+                "Sanitise letter called for notification %s which is in %s state", notification.id, notification.status
             )
             return
 
@@ -355,7 +362,7 @@ def sanitise_letter(self, filename):
     except Exception:
         try:
             current_app.logger.exception(
-                "RETRY: calling sanitise_letter task for notification {} failed".format(notification.id)
+                "RETRY: calling sanitise_letter task for notification %s failed", notification.id
             )
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError as e:
@@ -375,14 +382,14 @@ def process_sanitised_letter(self, sanitise_data):
     filename = letter_details["filename"]
     notification_id = letter_details["notification_id"]
 
-    current_app.logger.info("Processing sanitised letter with id {}".format(notification_id))
+    current_app.logger.info("Processing sanitised letter with id %s", notification_id)
     notification = get_notification_by_id(notification_id, _raise=True)
 
     if notification.status != NOTIFICATION_PENDING_VIRUS_CHECK:
         current_app.logger.info(
-            "process-sanitised-letter task called for notification {} which is in {} state".format(
-                notification.id, notification.status
-            )
+            "process-sanitised-letter task called for notification %s which is in %s state",
+            notification.id,
+            notification.status,
         )
         return
 
@@ -391,7 +398,7 @@ def process_sanitised_letter(self, sanitise_data):
 
         if letter_details["validation_status"] == "failed":
             current_app.logger.info(
-                "Processing invalid precompiled pdf with id {} (file {})".format(notification_id, filename)
+                "Processing invalid precompiled pdf with id %s (file %s)", notification_id, filename
             )
 
             _move_invalid_letter_and_update_status(
@@ -404,9 +411,7 @@ def process_sanitised_letter(self, sanitise_data):
             )
             return
 
-        current_app.logger.info(
-            "Processing valid precompiled pdf with id {} (file {})".format(notification_id, filename)
-        )
+        current_app.logger.info("Processing valid precompiled pdf with id %s (file %s)", notification_id, filename)
 
         billable_units = get_billable_units_for_letter_page_count(letter_details["page_count"])
         is_test_key = notification.key_type == KEY_TYPE_TEST
@@ -442,14 +447,14 @@ def process_sanitised_letter(self, sanitise_data):
         # Boto exceptions are likely to be caused by the file(s) being in the wrong place, so retrying won't help -
         # we'll need to manually investigate
         current_app.logger.exception(
-            f"Boto error when processing sanitised letter for notification {notification.id} (file {filename})"
+            "Boto error when processing sanitised letter for notification %s (file %s)", notification.id, filename
         )
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException from e
     except Exception:
         try:
             current_app.logger.exception(
-                "RETRY: calling process_sanitised_letter task for notification {} failed".format(notification.id)
+                "RETRY: calling process_sanitised_letter task for notification %s failed", notification.id
             )
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError as e:
@@ -475,9 +480,7 @@ def _move_invalid_letter_and_update_status(
             reference=notification.reference, status=NOTIFICATION_VALIDATION_FAILED, billable_units=0
         )
     except BotoClientError as e:
-        current_app.logger.exception(
-            "Error when moving letter with id {} to invalid PDF bucket".format(notification.id)
-        )
+        current_app.logger.exception("Error when moving letter with id %s to invalid PDF bucket", notification.id)
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException from e
 
@@ -513,9 +516,8 @@ def process_virus_scan_error(filename):
                 updated_count
             )
         )
-    error = VirusScanError("notification id {} Virus scan error: {}".format(notification.id, filename))
-    current_app.logger.exception(error)
-    raise error
+    current_app.logger.error("notification id %s Virus scan error: %s", notification.id, filename)
+    raise VirusScanError("notification id {} Virus scan error: {}".format(notification.id, filename))
 
 
 def update_letter_pdf_status(reference, status, billable_units, recipient_address=None):
@@ -541,7 +543,7 @@ def replay_letters_in_error(filename=None):
     if filename:
         move_error_pdf_to_scan_bucket(filename)
         # call task to add the filename to anti virus queue
-        current_app.logger.info("Calling scan_file for: {}".format(filename))
+        current_app.logger.info("Calling scan_file for: %s", filename)
 
         if current_app.config["ANTIVIRUS_ENABLED"]:
             notify_celery.send_task(
@@ -556,7 +558,7 @@ def replay_letters_in_error(filename=None):
         error_files = get_file_names_from_error_bucket()
         for item in error_files:
             moved_file_name = item.key.split("/")[1]
-            current_app.logger.info("Calling scan_file for: {}".format(moved_file_name))
+            current_app.logger.info("Calling scan_file for: %s", moved_file_name)
             move_error_pdf_to_scan_bucket(moved_file_name)
             # call task to add the filename to anti virus queue
             if current_app.config["ANTIVIRUS_ENABLED"]:

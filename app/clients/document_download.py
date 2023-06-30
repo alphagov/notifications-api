@@ -72,7 +72,7 @@ class DocumentDownloadClient:
                 raise Exception(f"Unhandled document download error: {repr(e)}") from e
             elif e.response.status_code == 400:
                 error = DocumentDownloadError.from_exception(e)
-                current_app.logger.info("Document download request failed with error: {}".format(error.message))
+                current_app.logger.info("Document download request failed with error: %s", error.message)
                 raise error from e
             else:
                 raise Exception(f"Unhandled document download error: {e.response.text}") from e

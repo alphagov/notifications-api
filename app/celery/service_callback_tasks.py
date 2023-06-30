@@ -66,31 +66,38 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
             timeout=5,
         )
         current_app.logger.info(
-            "{} sending {} to {}, response {}".format(
-                function_name, notification_id, service_callback_url, response.status_code
-            )
+            "%s sending %s to %s, response %s",
+            function_name,
+            notification_id,
+            service_callback_url,
+            response.status_code,
         )
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            "{} request failed for notification_id: {} and url: {}. exception: {}".format(
-                function_name, notification_id, service_callback_url, e
-            )
+            "%s request failed for notification_id: %s and url: %s. exception: %s",
+            function_name,
+            notification_id,
+            service_callback_url,
+            e,
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500 or e.response.status_code == 429:
             try:
                 self.retry(queue=QueueNames.CALLBACKS_RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.warning(
-                    "Retry: {} has retried the max num of times for callback url {} and notification_id: {}".format(
-                        function_name, service_callback_url, notification_id
-                    )
+                    "Retry: %s has retried the max num of times for callback url %s and notification_id: %s",
+                    function_name,
+                    service_callback_url,
+                    notification_id,
                 )
         else:
             current_app.logger.warning(
-                "{} callback is not being retried for notification_id: {} and url: {}. exception: {}".format(
-                    function_name, notification_id, service_callback_url, e
-                )
+                "%s callback is not being retried for notification_id: %s and url: %s. exception: %s",
+                function_name,
+                notification_id,
+                service_callback_url,
+                e,
             )
 
 

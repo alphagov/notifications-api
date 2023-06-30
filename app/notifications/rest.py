@@ -117,7 +117,7 @@ def send_notification(notification_type):
     if not simulated:
         send_notification_to_queue(notification=notification_model)
     else:
-        current_app.logger.debug("POST simulated notification for id: {}".format(notification_model.id))
+        current_app.logger.debug("POST simulated notification for id: %s", notification_model.id)
     notification_form.update({"template_version": template.version})
 
     return (

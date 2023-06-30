@@ -64,7 +64,7 @@ def _remove_csv_files(job_types):
     for job in jobs:
         s3.remove_job_from_s3(job.service_id, job.id)
         dao_archive_job(job)
-        current_app.logger.info("Job ID {} has been removed from s3.".format(job.id))
+        current_app.logger.info("Job ID %s has been removed from s3.", job.id)
 
 
 @notify_celery.task(name="delete-notifications-older-than-retention")
@@ -131,9 +131,16 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
         )
 
     current_app.logger.info(
-        f"delete-notifications-older-than-retention: triggered subtasks for notification_type {notification_type}: "
-        f"{len(service_ids_with_data_retention)} services with flexible data retention, "
-        f"{len(service_ids_to_purge)} services without flexible data retention"
+        (
+            "delete-notifications-older-than-retention: triggered subtasks for notification_type %(type)s: "
+            "%(num_service_ids_with_data_retention)s services with flexible data retention, "
+            "%(num_service_ids_to_purge)s services without flexible data retention"
+        ),
+        dict(
+            type=notification_type,
+            num_service_ids_with_data_retention=len(service_ids_with_data_retention),
+            num_service_ids_to_purge=len(service_ids_to_purge),
+        ),
     )
 
 
@@ -148,11 +155,14 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
     if num_deleted:
         end = datetime.utcnow()
         current_app.logger.info(
-            f"delete-notifications-for-service-and-type: "
-            f"service: {service_id}, "
-            f"notification_type: {notification_type}, "
-            f"count deleted: {num_deleted}, "
-            f"duration: {(end - start).seconds} seconds"
+            (
+                "delete-notifications-for-service-and-type: "
+                "service: %(service_id)s, notification_type: %(type)s, "
+                "count deleted: %(num_deleted)s, duration: %(duration)s seconds"
+            ),
+            dict(
+                service_id=service_id, type=notification_type, num_deleted=num_deleted, duration=(end - start).seconds
+            ),
         )
 
 
@@ -171,7 +181,7 @@ def timeout_notifications():
             check_and_queue_callback_task(notification)
 
         current_app.logger.info(
-            "Timeout period reached for {} notifications, status has been updated.".format(len(notifications))
+            "Timeout period reached for %s notifications, status has been updated.", len(notifications)
         )
 
 
@@ -182,9 +192,8 @@ def delete_inbound_sms():
         start = datetime.utcnow()
         deleted = delete_inbound_sms_older_than_retention()
         current_app.logger.info(
-            "Delete inbound sms job started {} finished {} deleted {} inbound sms notifications".format(
-                start, datetime.utcnow(), deleted
-            )
+            "Delete inbound sms job started %(start)s finished %(now)s deleted %(deleted)s inbound sms notifications",
+            dict(start=start, now=datetime.utcnow(), deleted=deleted),
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete inbound sms notifications")
@@ -197,12 +206,13 @@ def raise_alert_if_letter_notifications_still_sending():
     still_sending_count, sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
 
     if still_sending_count:
-        message = "There are {} letters in the 'sending' state from {}".format(
-            still_sending_count, sent_date.strftime("%A %d %B")
-        )
 
         if current_app.should_send_zendesk_alerts:
-            message += ". Resolve using https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"  # noqa
+            message = (
+                f"There are {still_sending_count} letters in the 'sending' state from {sent_date.strftime('%A %d %B')}."
+                " Resolve using https://github.com/alphagov/notifications-manuals/wiki"
+                "/Support-Runbook#deal-with-letters-still-in-sending"
+            )
 
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still sending",
@@ -214,7 +224,11 @@ def raise_alert_if_letter_notifications_still_sending():
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
         else:
-            current_app.logger.info(message)
+            current_app.logger.error(
+                "There are %s letters in the 'sending' state from %s",
+                still_sending_count,
+                sent_date.strftime("%A %d %B"),
+            )
 
 
 def get_letter_notifications_still_sending_when_they_shouldnt_be():
@@ -261,20 +275,19 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     ):
         ack_file_set.add(key.lstrip("root/dispatch").upper().replace(".ACK.TXT", ""))  # noqa
 
-    message = "\n".join(
-        [
-            "Letter ack file does not contain all zip files sent." "",
-            f"See runbook at https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#letter-ack-file-does-not-contain-all-zip-files-sent\n",  # noqa
-            f"pdf bucket: {current_app.config['S3_BUCKET_LETTERS_PDF']}, subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent",  # noqa
-            f"ack bucket: {current_app.config['S3_BUCKET_DVLA_RESPONSE']}",
-            "",
-            f"Missing ack for zip files: {str(sorted(zip_file_set - ack_file_set))}",
-        ]
-    )
-
     # strip empty element before comparison
     ack_file_set.discard("")
     zip_file_set.discard("")
+
+    message = (
+        "Letter ack file does not contain all zip files sent. See runbook at "
+        "https://github.com/alphagov/notifications-manuals/wiki"
+        "/Support-Runbook#letter-ack-file-does-not-contain-all-zip-files-sent\n\n"
+        f"pdf bucket: {current_app.config['S3_BUCKET_LETTERS_PDF']}, "
+        f"subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent\n"
+        f"ack bucket: {current_app.config['S3_BUCKET_DVLA_RESPONSE']}\n\n"
+        f"Missing ack for zip files: {str(sorted(zip_file_set - ack_file_set))}"
+    )
 
     if len(zip_file_set - ack_file_set) > 0:
         if current_app.should_send_zendesk_alerts:
@@ -286,10 +299,19 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
-        current_app.logger.error(message)
+
+        current_app.logger.error(
+            "Letter ack file does not contain all zip files sent.",
+            extra=dict(
+                pdf_bucket=current_app.config["S3_BUCKET_LETTERS_PDF"],
+                subfolder=datetime.utcnow().strftime("%Y-%m-%d") + "/zips_sent",
+                ack_bucket=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
+                missing_ack_for_zip_files=str(sorted(zip_file_set - ack_file_set)),
+            ),
+        )
 
     if len(ack_file_set - zip_file_set) > 0:
-        current_app.logger.info("letter ack contains zip that is not for today: {}".format(ack_file_set - zip_file_set))
+        current_app.logger.info("letter ack contains zip that is not for today: %s", ack_file_set - zip_file_set)
 
 
 @notify_celery.task(name="save-daily-notification-processing-time")

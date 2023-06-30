@@ -42,7 +42,7 @@ def dao_get_provider_versions(provider_id):
 
 def _adjust_provider_priority(provider, new_priority):
     current_app.logger.info(
-        f"Adjusting provider priority - {provider.identifier} going from {provider.priority} to {new_priority}"
+        "Adjusting provider priority - %s going from %s to %s", provider.identifier, provider.priority, new_priority
     )
     provider.priority = new_priority
 
@@ -71,7 +71,7 @@ def _get_sms_providers_for_update(time_threshold):
 
     # if something updated recently, don't update again. If the updated_at is null, treat it as min time
     if any((provider.updated_at or datetime.min) > datetime.utcnow() - time_threshold for provider in q):
-        current_app.logger.info(f"Not adjusting providers, providers updated less than {time_threshold} ago.")
+        current_app.logger.info("Not adjusting providers, providers updated less than %s ago.", time_threshold)
         return []
 
     return q

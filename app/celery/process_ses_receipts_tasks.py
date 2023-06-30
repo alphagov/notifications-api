@@ -42,19 +42,22 @@ def process_ses_results(self, response):
             message_time = iso8601.parse_date(ses_message["mail"]["timestamp"]).replace(tzinfo=None)
             if datetime.utcnow() - message_time < timedelta(minutes=5):
                 current_app.logger.info(
-                    f"notification not found for reference: {reference} (update to {notification_status}). "
-                    f"Callback may have arrived before notification was persisted to the DB. Adding task to retry queue"
+                    "notification not found for reference: %s (update to %s). "
+                    "Callback may have arrived before notification was persisted to the DB. Adding task to retry queue",
+                    reference,
+                    notification_status,
                 )
                 self.retry(queue=QueueNames.RETRY)
             else:
                 current_app.logger.warning(
-                    f"notification not found for reference: {reference} (update to {notification_status})"
+                    "notification not found for reference: %s (update to %s)", reference, notification_status
                 )
             return
 
         if bounce_message:
             current_app.logger.info(
-                f"SES bounce for notification ID {notification.id}",
+                "SES bounce for notification ID %s",
+                notification.id,
                 extra=dict(bounce_message=json.dumps(bounce_message)),
             )
 
@@ -81,5 +84,5 @@ def process_ses_results(self, response):
         raise
 
     except Exception as e:
-        current_app.logger.exception("Error processing SES results: {}".format(type(e)))
+        current_app.logger.exception("Error processing SES results: %s", type(e))
         self.retry(queue=QueueNames.RETRY)

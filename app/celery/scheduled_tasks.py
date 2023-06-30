@@ -91,7 +91,7 @@ def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
             process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
-            current_app.logger.info("Job ID {} added to process job queue".format(job.id))
+            current_app.logger.info("Job ID %s added to process job queue", job.id)
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
         raise
@@ -103,7 +103,7 @@ def delete_verify_codes():
         start = datetime.utcnow()
         deleted = delete_codes_older_created_more_than_a_day_ago()
         current_app.logger.info(
-            "Delete job started {} finished {} deleted {} verify codes".format(start, datetime.utcnow(), deleted)
+            "Delete job started %s finished %s deleted %s verify codes", start, datetime.utcnow(), deleted
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete verify codes")
@@ -117,7 +117,7 @@ def delete_invitations():
         deleted_invites = delete_invitations_created_more_than_two_days_ago()
         deleted_invites += delete_org_invitations_created_more_than_two_days_ago()
         current_app.logger.info(
-            "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted_invites)
+            "Delete job started %s finished %s deleted %s invitations", start, datetime.utcnow(), deleted_invites
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete invitations")
@@ -142,7 +142,7 @@ def switch_current_sms_provider_on_slow_delivery():
     if len(set(slow_delivery_notifications.values())) != 1:
         for provider_name, is_slow in slow_delivery_notifications.items():
             if is_slow:
-                current_app.logger.warning("Slow delivery notifications detected for provider {}".format(provider_name))
+                current_app.logger.warning("Slow delivery notifications detected for provider %s", provider_name)
                 dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
 
 
@@ -204,7 +204,7 @@ def check_job_status():
         job_ids.append(str(job.id))
 
     if job_ids:
-        current_app.logger.info("Job(s) {} have not completed.".format(job_ids))
+        current_app.logger.info("Job(s) %s have not completed.", job_ids)
         process_incomplete_jobs.apply_async([job_ids], queue=QueueNames.JOBS)
 
 
@@ -217,9 +217,11 @@ def replay_created_notifications():
 
         if len(notifications_to_resend) > 0:
             current_app.logger.info(
-                "Sending {} {} notifications "
-                "to the delivery queue because the notification "
-                "status was created.".format(len(notifications_to_resend), notification_type)
+                (
+                    "Sending %(num)s %(type)s notifications to the delivery queue because the "
+                    "notification status was created."
+                ),
+                dict(num=len(notifications_to_resend), type=notification_type),
             )
 
         for n in notifications_to_resend:
@@ -229,15 +231,15 @@ def replay_created_notifications():
     letters = letters_missing_from_sending_bucket(resend_created_notifications_older_than)
 
     if len(letters) > 0:
-        msg = (
-            "{} letters were created over an hour ago, "
-            "but do not have an updated_at timestamp or billable units. "
-            "\n Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 "
-            "and update notifications for the following notification ids: "
-            "\n {}".format(len(letters), [x.id for x in letters])
+        current_app.logger.info(
+            (
+                "%(num)s letters were created over an hour ago, "
+                "but do not have an updated_at timestamp or billable units.\n"
+                "Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 "
+                "and update notifications for the following notification ids:\n%(ids)s"
+            ),
+            dict(num=len(letters), ids=[x.id for x in letters]),
         )
-
-        current_app.logger.info(msg)
         for letter in letters:
             get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
@@ -254,7 +256,7 @@ def check_if_letters_still_pending_virus_check():
 
         if s3.file_exists(current_app.config["S3_BUCKET_LETTERS_SCAN"], filename):
             current_app.logger.warning(
-                f"Letter id {letter.id} got stuck in pending-virus-check. Sending off for scan again."
+                "Letter id %s got stuck in pending-virus-check. Sending off for scan again.", letter.id
             )
             notify_celery.send_task(
                 name=TaskNames.SCAN_FILE,
@@ -282,7 +284,10 @@ def check_if_letters_still_pending_virus_check():
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
-            current_app.logger.error(msg)
+            current_app.logger.error(
+                "Letters still pending virus check",
+                extra=dict(number_of_letters=len(letters), notification_ids=sorted(letter_ids)),
+            )
 
 
 @notify_celery.task(name="check-if-letters-still-in-created")
@@ -291,10 +296,10 @@ def check_if_letters_still_in_created():
 
     if len(letters) > 0:
         msg = (
-            "{} letters were created before 17.30 yesterday and still have 'created' status. "
+            f"{len(letters)} letters were created before 17.30 yesterday and still have 'created' status. "
             "Follow runbook to resolve: "
             "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook"
-            "#deal-with-Letters-still-in-created.".format(len(letters))
+            "#deal-with-Letters-still-in-created."
         )
 
         if current_app.should_send_zendesk_alerts:
@@ -306,7 +311,10 @@ def check_if_letters_still_in_created():
                 ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
-            current_app.logger.error(msg)
+            current_app.logger.error(
+                "%s letters created before 17:30 yesterday still have 'created' status",
+                len(letters),
+            )
 
 
 @notify_celery.task(name="check-for-missing-rows-in-completed-jobs")
@@ -317,7 +325,7 @@ def check_for_missing_rows_in_completed_jobs():
         missing_rows = find_missing_row_for_job(job.id, job.notification_count)
         for row_to_process in missing_rows:
             row = recipient_csv[row_to_process.missing_row]
-            current_app.logger.info("Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
+            current_app.logger.info("Processing missing row: %s for job: %s", row_to_process.missing_row, job.id)
             process_row(row, template, job, job.service, sender_id=sender_id)
 
 
@@ -340,6 +348,13 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 str(service.service_id),
             )
             message += "service: {} failure rate: {},\n".format(service_dashboard, service.permanent_failure_rate)
+
+        current_app.logger.error(
+            "%s services have had a high permanent-failure rate for text messages in the last 24 hours.",
+            len(services_with_failures),
+            extra=dict(service_ids=[service.service_id for service in services_with_failures]),
+        )
+
     elif services_sending_to_tv_numbers:
         message += "{} service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n".format(
             len(services_sending_to_tv_numbers)
@@ -353,9 +368,17 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 service_dashboard, service.notification_count
             )
 
-    if services_with_failures or services_sending_to_tv_numbers:
-        current_app.logger.warning(message)
+        current_app.logger.error(
+            "%s services have sent over 500 text messages to tv numbers in the last 24 hours.",
+            len(services_sending_to_tv_numbers),
+            extra=dict(
+                service_ids_and_number_sent={
+                    service.service_id: service.notification_count for service in services_sending_to_tv_numbers
+                }
+            ),
+        )
 
+    if services_with_failures or services_sending_to_tv_numbers:
         if current_app.should_send_zendesk_alerts:
             message += (
                 "\nYou can find instructions for this ticket in our manual:\n"
@@ -406,7 +429,7 @@ def delete_old_records_from_events_table():
 
     deleted_count = event_query.delete()
 
-    current_app.logger.info(f"Deleted {deleted_count} historical events from before {delete_events_before}.")
+    current_app.logger.info("Deleted %s historical events from before %s.", deleted_count, delete_events_before)
 
     db.session.commit()
 
@@ -433,7 +456,7 @@ def zendesk_new_email_branding_report():
         .all()
     )
 
-    current_app.logger.info(f"{len(new_email_brands)} new email brands to review since {previous_weekday}.")
+    current_app.logger.info("%s new email brands to review since %s.", len(new_email_brands), previous_weekday)
 
     if not new_email_brands:
         return
@@ -474,11 +497,11 @@ def zendesk_new_email_branding_report():
 @cronitor("check-for-low-available-inbound-sms-numbers")
 def check_for_low_available_inbound_sms_numbers():
     if not current_app.should_send_zendesk_alerts:
-        current_app.logger.info(f"Skipping report run on in {current_app.config['NOTIFY_ENVIRONMENT']}")
+        current_app.logger.info("Skipping report run on in %s", current_app.config["NOTIFY_ENVIRONMENT"])
         return
 
     num_available_inbound_numbers = len(dao_get_available_inbound_numbers())
-    current_app.logger.info(f"There are {num_available_inbound_numbers} available inbound SMS numbers.")
+    current_app.logger.info("There are %s available inbound SMS numbers.", num_available_inbound_numbers)
     if num_available_inbound_numbers > current_app.config["LOW_INBOUND_SMS_NUMBER_THRESHOLD"]:
         return
 
@@ -504,7 +527,7 @@ def weekly_dwp_report():
     report_config = current_app.config["ZENDESK_REPORTING"].get("weekly-dwp-report")
 
     if not current_app.should_send_zendesk_alerts:
-        current_app.logger.info(f"Skipping DWP report run in {current_app.config['NOTIFY_ENVIRONMENT']}")
+        current_app.logger.info("Skipping DWP report run in %s", current_app.config["NOTIFY_ENVIRONMENT"])
         return
 
     if (

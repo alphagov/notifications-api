@@ -515,16 +515,14 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
 
         check_if_letters_still_in_created()
 
-    message = (
-        "2 letters were created before 17.30 yesterday and still have 'created' status. "
-        "Follow runbook to resolve: "
-        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
-    )
-
-    assert message in caplog.messages
+    assert "2 letters created before 17:30 yesterday still have 'created' status" in caplog.messages
     mock_create_ticket.assert_called_with(
         ANY,
-        message=message,
+        message=(
+            "2 letters were created before 17.30 yesterday and still have 'created' status. "
+            "Follow runbook to resolve: "
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
+        ),
         subject="[test] Letters still in 'created' status",
         ticket_type="incident",
         notify_ticket_type=NotifyTicketType.TECHNICAL,
@@ -553,16 +551,14 @@ def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_temp
 
         check_if_letters_still_in_created()
 
-    message = (
-        "2 letters were created before 17.30 yesterday and still have 'created' status. "
-        "Follow runbook to resolve: "
-        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
-    )
-
-    assert message in caplog.messages
+    assert "2 letters created before 17:30 yesterday still have 'created' status" in caplog.messages
     mock_create_ticket.assert_called_once_with(
         ANY,
-        message=message,
+        message=(
+            "2 letters were created before 17.30 yesterday and still have 'created' status. "
+            "Follow runbook to resolve: "
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
+        ),
         subject="[test] Letters still in 'created' status",
         ticket_type="incident",
         notify_ticket_type=NotifyTicketType.TECHNICAL,
@@ -695,24 +691,26 @@ MockServicesWithHighFailureRate = namedtuple(
 
 
 @pytest.mark.parametrize(
-    "failure_rates, sms_to_tv_numbers, expected_message",
+    "failure_rates, sms_to_tv_numbers, expected_log, expected_message",
     [
         [
             [MockServicesWithHighFailureRate("123", 0.3)],
             [],
+            "1 services have had a high permanent-failure rate for text messages in the last 24 hours.",
             "1 service(s) have had high permanent-failure rates for sms messages in last "
             "24 hours:\nservice: {}/services/{} failure rate: 0.3,\n".format(Config.ADMIN_BASE_URL, "123"),
         ],
         [
             [],
             [MockServicesSendingToTVNumbers("123", 300)],
+            "1 services have sent over 500 text messages to tv numbers in the last 24 hours.",
             "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
             "service: {}/services/{} count of sms to tv numbers: 300,\n".format(Config.ADMIN_BASE_URL, "123"),
         ],
     ],
 )
 def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
-    mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_message, caplog
+    mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_log, expected_message, caplog
 ):
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
     mock_send_ticket_to_zendesk = mocker.patch(
@@ -733,7 +731,7 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
 
     assert mock_failure_rates.called
     assert mock_sms_to_tv_numbers.called
-    assert expected_message in caplog.messages
+    assert expected_log in caplog.messages
     mock_create_ticket.assert_called_with(
         ANY,
         message=expected_message + zendesk_actions,

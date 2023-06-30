@@ -152,9 +152,9 @@ def send_pdf_letter_notification(service_id, post_data):
         letter = utils_s3download(current_app.config["S3_BUCKET_TRANSIENT_UPLOADED_LETTERS"], file_location)
     except S3ObjectNotFound as e:
         current_app.logger.warning(
-            "Letter {}.pdf not in transient {} bucket".format(
-                post_data["file_id"], current_app.config["S3_BUCKET_TRANSIENT_UPLOADED_LETTERS"]
-            )
+            "Letter %s.pdf not in transient %s bucket",
+            post_data["file_id"],
+            current_app.config["S3_BUCKET_TRANSIENT_UPLOADED_LETTERS"],
         )
 
         raise e

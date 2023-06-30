@@ -128,11 +128,11 @@ def _decide_permanent_temporary_failure(status, notification, detailed_status_co
             try:
                 status, reason = get_message_status_and_reason_from_firetext_code(detailed_status_code)
                 current_app.logger.info(
-                    f"Updating notification id {notification.id} to status {status}, reason: {reason}"
+                    "Updating notification id %s to status %s, reason: %s", notification.id, status, reason
                 )
                 return status
             except KeyError:
-                current_app.logger.warning(f"Failure code {detailed_status_code} from Firetext not recognised")
+                current_app.logger.warning("Failure code %s from Firetext not recognised", detailed_status_code)
         # fallback option:
         if status == NOTIFICATION_PERMANENT_FAILURE and notification.status == NOTIFICATION_PENDING:
             status = NOTIFICATION_TEMPORARY_FAILURE
@@ -158,9 +158,7 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
     notification = Notification.query.with_for_update().filter(Notification.id == notification_id).first()
 
     if not notification:
-        current_app.logger.info(
-            "notification not found for id {} (update to status {})".format(notification_id, status)
-        )
+        current_app.logger.info("notification not found for id %s (update to status %s)", notification_id, status)
         return None
 
     if notification.status not in {
@@ -422,9 +420,9 @@ def _delete_letters_from_s3(notification_type, service_id, date_to_delete_from, 
             letter_pdf = find_letter_pdf_in_s3(letter)
             letter_pdf.delete()
         except ClientError:
-            current_app.logger.exception("Error deleting S3 object for letter: {}".format(letter.id))
+            current_app.logger.exception("Error deleting S3 object for letter: %s", letter.id)
         except LetterPDFNotFound:
-            current_app.logger.warning("No S3 object to delete for letter: {}".format(letter.id))
+            current_app.logger.warning("No S3 object to delete for letter: %s", letter.id)
 
 
 @autocommit
@@ -786,21 +784,21 @@ def dao_precompiled_letters_still_pending_virus_check():
 
 
 def _duplicate_update_warning(notification, status):
+    time_diff = datetime.utcnow() - (notification.updated_at or notification.created_at)
     current_app.logger.info(
-        (
-            "Duplicate callback received for service {service_id}. "
-            "Notification ID {id} with type {type} sent by {sent_by}. "
-            "New status was {new_status}, current status is {old_status}. "
-            "This happened {time_diff} after being first set."
-        ).format(
-            id=notification.id,
-            old_status=notification.status,
-            new_status=status,
-            time_diff=datetime.utcnow() - (notification.updated_at or notification.created_at),
+        "Duplicate callback received for service %(service_id)s. Notification ID %(notification_id)s with "
+        "type %(type)s sent by %(sent_by)s. "
+        "New status was %(new_status)s, current status is %(current_status)s. "
+        "This happened %(time_diff)s after being first set.",
+        dict(
+            service_id=notification.service_id,
+            notification_id=notification.id,
             type=notification.notification_type,
             sent_by=notification.sent_by,
-            service_id=notification.service_id,
-        )
+            new_status=status,
+            current_status=notification.status,
+            time_diff=time_diff,
+        ),
     )
 
 

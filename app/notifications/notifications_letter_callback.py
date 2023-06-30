@@ -46,12 +46,12 @@ def validate_schema(schema):
 @validate_schema(dvla_sns_callback_schema)
 def process_letter_response():
     req_json = request.get_json(force=True)
-    current_app.logger.debug("Received SNS callback: {}".format(req_json))
+    current_app.logger.debug("Received SNS callback: %s", req_json)
     if not autoconfirm_subscription(req_json):
         # The callback should have one record for an S3 Put Event.
         message = json.loads(req_json["Message"])
         filename = message["Records"][0]["s3"]["object"]["key"]
-        current_app.logger.info("Received file from DVLA: {}".format(filename))
+        current_app.logger.info("Received file from DVLA: %s", filename)
 
         if filename.lower().endswith("rs.txt") or filename.lower().endswith("rsp.txt"):
             current_app.logger.info("DVLA callback: Calling task to update letter notifications")

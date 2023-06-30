@@ -499,7 +499,7 @@ def delete_billing_data_for_day(process_day: date, service_ids=None):
 def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
-    current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
+    current_app.logger.info("Populate ft_billing for %s to %s", start_date, end_date)
     billing_data = []
     if service_ids is None:
         service_ids = [id_ for (id_,) in Service.query.with_entities(Service.id).all()]

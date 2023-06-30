@@ -160,9 +160,7 @@ def persist_notification(
                     redis_store.set(cache_key, 1, ex=86400)
                 else:
                     redis_store.incr(cache_key)
-        current_app.logger.info(
-            "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
-        )
+        current_app.logger.info("%s %s created at %s", notification_type, notification_id, notification_created_at)
     return notification
 
 
@@ -189,9 +187,7 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
         dao_delete_notifications_by_id(notification_id)
         raise
 
-    current_app.logger.debug(
-        "{} {} sent to the {} queue for delivery".format(notification_type, notification_id, queue)
-    )
+    current_app.logger.debug("%s %s sent to the %s queue for delivery", notification_type, notification_id, queue)
 
 
 def send_notification_to_queue(notification, queue=None):

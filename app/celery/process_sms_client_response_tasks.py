@@ -27,7 +27,7 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
     try:
         uuid.UUID(provider_reference, version=4)
     except ValueError as e:
-        current_app.logger.exception(f"{client_name} callback with invalid reference {provider_reference}")
+        current_app.logger.exception("%s callback with invalid reference %s", client_name, provider_reference)
         raise e
 
     response_parser = sms_response_mapper[client_name]
@@ -36,8 +36,13 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
     try:
         notification_status, detailed_status = response_parser(status, detailed_status_code)
         current_app.logger.info(
-            f"{client_name} callback returned status of {notification_status}"
-            f"({status}): {detailed_status}({detailed_status_code}) for reference: {provider_reference}"
+            "%s callback returned status of %s(%s): %s(%s) for reference: %s",
+            client_name,
+            notification_status,
+            status,
+            detailed_status,
+            detailed_status_code,
+            provider_reference,
         )
     except KeyError as e:
         _process_for_status(

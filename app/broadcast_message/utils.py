@@ -32,7 +32,7 @@ def update_broadcast_message_status(broadcast_message, new_status, updating_user
         broadcast_message.cancelled_by_api_key_id = api_key_id
 
     current_app.logger.info(
-        f"broadcast_message {broadcast_message.id} moving from {broadcast_message.status} to {new_status}"
+        "broadcast_message %s moving from %s to %s", broadcast_message.id, broadcast_message.status, new_status
     )
     broadcast_message.status = new_status
 
@@ -137,6 +137,7 @@ def _create_broadcast_event(broadcast_message):
         # service is live (or vice versa). We don't think it's safe to send such broadcasts, as the service
         # has changed since they were created. Log an error instead.
         current_app.logger.error(
-            f"Broadcast event not created. Stubbed status of broadcast message was {broadcast_message.stubbed}"
-            f' but service was {"in trial mode" if service.restricted else "live"}'
+            "Broadcast event not created. Stubbed status of broadcast message was %s but service was %s",
+            broadcast_message.stubbed,
+            "in trial mode" if service.restricted else "live",
         )

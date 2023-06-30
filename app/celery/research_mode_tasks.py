@@ -56,9 +56,7 @@ def make_request(notification_type, provider, data, headers):
         response = request("POST", api_call, headers=headers, data=data, timeout=60)
         response.raise_for_status()
     except HTTPError as e:
-        current_app.logger.error(
-            "API POST request on {} failed with status {}".format(api_call, e.response.status_code)
-        )
+        current_app.logger.error("API POST request on %s failed with status %s", api_call, e.response.status_code)
         raise e
     finally:
         current_app.logger.info("Mocked provider callback request finished")
@@ -128,9 +126,11 @@ def create_fake_letter_response_file(self, reference):
         file_location=upload_file_name,
     )
     current_app.logger.info(
-        "Fake DVLA response file {}, content [{}], uploaded to {}, created at {}".format(
-            upload_file_name, dvla_response_data, current_app.config["S3_BUCKET_DVLA_RESPONSE"], now
-        )
+        "Fake DVLA response file %s, content [%s], uploaded to %s, created at %s",
+        upload_file_name,
+        dvla_response_data,
+        current_app.config["S3_BUCKET_DVLA_RESPONSE"],
+        now,
     )
 
     # on development we can't trigger SNS callbacks so we need to manually hit the DVLA callback endpoint

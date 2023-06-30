@@ -1,6 +1,6 @@
 -r requirements.txt
 black==22.8.0  # Also update `.pre-commit-config.yaml` if this changes
-ruff==0.0.261  # Also update `.pre-commit-config.yaml` if this changes
+ruff==0.0.275  # Also update `.pre-commit-config.yaml` if this changes
 
 flaky==3.7.0
 moto==4.0.11

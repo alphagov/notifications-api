@@ -123,7 +123,7 @@ def test_add_reply_to_email_address_ensures_first_reply_to_is_default(sample_ser
 def test_add_reply_to_email_address_ensure_there_is_not_more_than_one_default(sample_service):
     create_reply_to_email(service=sample_service, email_address="first@email.com", is_default=True)
     create_reply_to_email(service=sample_service, email_address="second@email.com", is_default=True)
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa
         add_reply_to_email_address_for_service(
             service_id=sample_service.id, email_address="third_email@address.com", is_default=False
         )

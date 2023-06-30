@@ -89,9 +89,11 @@ def get_reference_from_filename(filename):
 
 def upload_letter_pdf(notification, pdf_data, precompiled=False):
     current_app.logger.info(
-        "PDF Letter {} reference {} created at {}, {} bytes".format(
-            notification.id, notification.reference, notification.created_at, len(pdf_data)
-        )
+        "PDF Letter %s reference %s created at %s, %s bytes",
+        notification.id,
+        notification.reference,
+        notification.created_at,
+        len(pdf_data),
     )
 
     upload_file_name = generate_letter_pdf_filename(
@@ -116,7 +118,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     )
 
     current_app.logger.info(
-        "Uploaded letters PDF {} to {} for notification id {}".format(upload_file_name, bucket_name, notification.id)
+        "Uploaded letters PDF %s to %s for notification id %s", upload_file_name, bucket_name, notification.id
     )
     return upload_file_name
 
@@ -209,7 +211,7 @@ def _move_s3_object(source_bucket, source_filename, target_bucket, target_filena
     s3.Object(source_bucket, source_filename).delete()
 
     current_app.logger.info(
-        "Moved letter PDF: {}/{} to {}/{}".format(source_bucket, source_filename, target_bucket, target_filename)
+        "Moved letter PDF: %s/%s to %s/%s", source_bucket, source_filename, target_bucket, target_filename
     )
 
 

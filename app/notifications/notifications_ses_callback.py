@@ -29,7 +29,7 @@ def determine_notification_bounce_type(notification_type, ses_message):
 
 def handle_complaint(ses_message):
     recipient_email = remove_emails_from_complaint(ses_message)[0]
-    current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
+    current_app.logger.info("Complaint from SES: \n%s", ses_message)
     try:
         reference = ses_message["mail"]["messageId"]
     except KeyError:
