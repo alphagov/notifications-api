@@ -173,7 +173,7 @@ cf-deploy-api-db-migration:
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
 	make -s CF_APP=notify-api-db-migration generate-manifest > ${CF_MANIFEST_PATH}
 
-	cf push notify-api-db-migration --no-route -f ${CF_MANIFEST_PATH}
+	$(if ${USE_DROPLETS},CF_APP=${CF_APP} CF_MANIFEST_PATH=${CF_MANIFEST_PATH} ./scripts/deploy.sh,CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --no-route -f ${CF_MANIFEST_PATH})
 	rm ${CF_MANIFEST_PATH}
 
 	cf run-task notify-api-db-migration --command="flask db upgrade" --name api_db_migration
