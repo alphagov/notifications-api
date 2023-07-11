@@ -348,7 +348,7 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
         ("+447900900123", False, "44", 1),  # UK
         ("07700910222", True, "44", 1),  # UK (Jersey)
         ("07700900222", False, "44", 1),  # TV number
-        ("73122345678", True, "7", 1),  # Russia
+        ("73122345678", True, "7", 4),  # Russia
         ("360623400400", True, "36", 3),
     ],  # Hungary
 )
