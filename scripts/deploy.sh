@@ -65,5 +65,7 @@ cf apply-manifest -f ${CF_MANIFEST_PATH}
 echo "Set the new droplet for the app"
 cf set-droplet ${CF_APP} ${DROPLET_GUID}
 
-echo "Restart the app to pickup the new droplet"
-CF_STARTUP_TIMEOUT=15 cf restart ${CF_APP} --strategy rolling
+if [[ "${CF_APP}" != "notify-api-db-migration" ]]; then
+  echo "Restart the app to pickup the new droplet"
+  CF_STARTUP_TIMEOUT=15 cf restart ${CF_APP} --strategy rolling
+fi
