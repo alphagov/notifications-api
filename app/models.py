@@ -127,6 +127,7 @@ class User(db.Model):
     email_access_validated_at = db.Column(
         db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow
     )
+    take_part_in_research = db.Column(db.Boolean, nullable=False, default=True)
 
     # either email auth or a mobile number must be provided
     CheckConstraint("auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null")
@@ -207,6 +208,7 @@ class User(db.Model):
             "services": [x.id for x in self.services if x.active],
             "can_use_webauthn": self.can_use_webauthn,
             "state": self.state,
+            "take_part_in_research": self.take_part_in_research,
         }
 
     def serialize_for_users_list(self):
