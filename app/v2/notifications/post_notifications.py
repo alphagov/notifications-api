@@ -332,6 +332,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
             )
         else:
             confirm_email = personalisation_data[key].get("confirm_email_before_download", True)
+
             retention_period = (
                 personalisation_data[key].get("retention_period") or DEFAULT_DOCUMENT_DOWNLOAD_RETENTION_PERIOD
             )
@@ -341,7 +342,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
                     service.id,
                     personalisation_data[key]["file"],
                     personalisation_data[key].get("is_csv"),
-                    confirmation_email=send_to if confirm_email else None,
+                    confirmation_email=send_to if confirm_email is not False else None,
                     retention_period=retention_period,
                 )
             except DocumentDownloadError as e:
