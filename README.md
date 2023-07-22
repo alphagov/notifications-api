@@ -81,6 +81,19 @@ We use [pre-commit](https://pre-commit.com/) to ensure that committed code meets
 
 Install pre-commit system-wide with, eg `brew install pre-commit`. Then, install the hooks in this repository with `pre-commit install --install-hooks`.
 
+### detect-secrets
+
+We use [detect-secrets](https://github.com/Yelp/detect-secrets) to help prevent committing secrets to the repository. This runs automatically through `pre-commit` and requires that to be configured with the hooks installed.
+
+The file '.secrets.baseline' contains a list of 'secret' values already in the repository when this was integrated. All of these are false positives.
+
+With pre-commit installed, if you try to commit a secret you will get an error flagging the location of the secret value. If it's a real secret, oops, delete it and carry on. If it's a false positive, you can deal with this in a few ways:
+
+1) Append `# pragma: allowlist secret` to the end of the line
+2) Insert `# pragma: allowlist nextline secret` on the preceding line.
+
+We should not need to generate a new `.secrets.baseline` file as it's intended to only track secrets that were in the repository at the time of integration. If we do need to update it for some reason, you'll need to install `detect-secrets` (either via brew or pip) and run `detect-secrets scan > .secrets.baseline`.
+
 ##  To run the application
 
 ```

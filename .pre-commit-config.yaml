@@ -9,10 +9,15 @@ repos:
 - repo: https://github.com/charliermarsh/ruff-pre-commit
   rev: 'v0.0.275'
   hooks:
-    - id: ruff
-      args: [--fix, --exit-non-zero-on-fix]
+  - id: ruff
+    args: [--fix, --exit-non-zero-on-fix]
 - repo: https://github.com/psf/black
   rev: 22.8.0
   hooks:
-    - id: black
-      name: black (python)
+  - id: black
+    name: black (python)
+- repo: https://github.com/Yelp/detect-secrets
+  rev: v1.4.0
+  hooks:
+  - id: detect-secrets
+    args: ['--baseline', '.secrets.baseline']
