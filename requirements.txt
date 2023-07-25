@@ -46,7 +46,7 @@ celery[sqs]==5.2.7
     # via
     #   -r requirements.in
     #   sentry-sdk
-certifi==2022.12.7
+certifi==2023.7.22
     # via
     #   pyproj
     #   requests
@@ -120,7 +120,7 @@ idna==3.4
     # via
     #   jsonschema
     #   requests
-importlib-metadata==6.6.0
+importlib-metadata==6.8.0
     # via flask
 iso8601==1.1.0
     # via -r requirements.in
@@ -262,7 +262,7 @@ sqlalchemy==1.4.41
     #   sentry-sdk
 statsd==3.3.0
     # via notifications-utils
-typing-extensions==4.6.0
+typing-extensions==4.7.1
     # via pypdf
 uri-template==1.2.0
     # via jsonschema
@@ -283,5 +283,5 @@ webcolors==1.12
     # via jsonschema
 werkzeug==2.3.3
     # via flask
-zipp==3.15.0
+zipp==3.16.2
     # via importlib-metadata
