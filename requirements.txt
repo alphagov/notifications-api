@@ -165,7 +165,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==8.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@65.2.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@66.0.0
     # via -r requirements.in
 orderedset==2.0.3
     # via notifications-utils
@@ -195,7 +195,7 @@ pyjwt==2.5.0
     #   notifications-python-client
 pyparsing==3.0.9
     # via packaging
-pypdf2==2.11.0
+pypdf==3.13.0
     # via notifications-utils
 pyproj==3.4.1
     # via notifications-utils
@@ -234,6 +234,8 @@ s3transfer==0.6.0
     # via
     #   awscli
     #   boto3
+segno==1.5.2
+    # via notifications-utils
 sentry-sdk[celery,flask,sqlalchemy]==1.21.1
     # via -r requirements.in
 shapely==1.8.4
@@ -260,7 +262,7 @@ sqlalchemy==1.4.41
 statsd==3.3.0
     # via notifications-utils
 typing-extensions==4.6.0
-    # via pypdf2
+    # via pypdf
 uri-template==1.2.0
     # via jsonschema
 urllib3==1.26.12

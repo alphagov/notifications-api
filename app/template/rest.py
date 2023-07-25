@@ -9,7 +9,7 @@ from notifications_utils.template import (
     BroadcastMessageTemplate,
     SMSMessageTemplate,
 )
-from PyPDF2.errors import PdfReadError
+from pypdf.errors import PdfReadError
 from requests import post as requests_post
 from sqlalchemy.orm.exc import NoResultFound
 
