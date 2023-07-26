@@ -1,7 +1,7 @@
-from flask import Flask
+from flask_openapi3 import OpenAPI
 
 
-class NotifyApiFlaskApp(Flask):
+class NotifyApiFlaskApp(OpenAPI):
     @property
     def is_prod(self):
         return self.config["NOTIFY_ENVIRONMENT"] == "production"

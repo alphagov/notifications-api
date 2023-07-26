@@ -8,6 +8,7 @@ flask-marshmallow==0.14.0
 Flask-Migrate==3.1.0
 flask-sqlalchemy==3.0.2
 Flask==2.3.2
+flask-openapi3>=3.0.0rc1
 click-datetime==0.2
 gunicorn[eventlet]>=21.2.0
 iso8601==1.1.0

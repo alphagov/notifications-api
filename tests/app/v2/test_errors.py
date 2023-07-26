@@ -1,19 +1,19 @@
 import pytest
 from flask import url_for
+from flask_openapi3 import OpenAPI
 from notifications_utils.recipients import InvalidPhoneError
 from sqlalchemy.exc import DataError
 
 
 @pytest.fixture(scope="function")
 def app_for_test():
-    import flask
     from flask import Blueprint
 
     from app import init_app
     from app.authentication.auth import AuthError
     from app.v2.errors import BadRequestError, TooManyRequestsError
 
-    app = flask.Flask(__name__)
+    app = OpenAPI(__name__)
     app.config["TESTING"] = True
     init_app(app)
     from app import statsd_client
