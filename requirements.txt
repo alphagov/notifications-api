@@ -8,6 +8,8 @@ alembic==1.8.1
     # via flask-migrate
 amqp==5.1.1
     # via kombu
+annotated-types==0.5.0
+    # via pydantic
 arrow==1.2.3
     # via isoduration
 async-timeout==4.0.2
@@ -86,6 +88,7 @@ flask==3.0.0
     #   flask-bcrypt
     #   flask-marshmallow
     #   flask-migrate
+    #   flask-openapi3
     #   flask-redis
     #   flask-sqlalchemy
     #   gds-metrics
@@ -96,6 +99,8 @@ flask-bcrypt==1.0.1
 flask-marshmallow==0.14.0
     # via -r requirements.in
 flask-migrate==3.1.0
+    # via -r requirements.in
+flask-openapi3==3.0.0rc1
     # via -r requirements.in
 flask-redis==0.4.0
     # via notifications-utils
@@ -189,6 +194,10 @@ pycparser==2.21
     # via cffi
 pycurl==7.44.1
     # via kombu
+pydantic==2.3.0
+    # via flask-openapi3
+pydantic-core==2.6.3
+    # via pydantic
 pyjwt==2.5.0
     # via
     #   -r requirements.in
@@ -256,7 +265,10 @@ sqlalchemy==1.4.41
 statsd==3.3.0
     # via notifications-utils
 typing-extensions==4.8.0
-    # via pypdf
+    # via
+    #   pydantic
+    #   pydantic-core
+    #   pypdf
 uri-template==1.2.0
     # via jsonschema
 urllib3==1.26.18
