@@ -1,4 +1,5 @@
 ##!/usr/bin/env python
+from app.openapi_swagger import swagger_html_string
 from app.performance import init_performance_monitoring
 
 init_performance_monitoring()
@@ -27,6 +28,7 @@ application = NotifyApiFlaskApp(
             ),
         },
     },
+    ui_templates={"swagger": swagger_html_string},
 )
 
 create_app(application)
