@@ -1,7 +1,7 @@
 import datetime
 import enum
 import uuid
-from typing import Union
+from typing import Union, Literal, Optional
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -49,6 +49,8 @@ from app.constants import (
     INVITE_PENDING,
     INVITED_USER_STATUS_TYPES,
     LETTER_TYPE,
+    LITERAL_POSTAGE_TYPES,
+    LITERAL_TEMPLATE_TYPES,
     MOBILE_TYPE,
     NORMAL,
     NOTIFICATION_CREATED,
@@ -1145,28 +1147,46 @@ class TemplateBase(db.Model):
         template.values = values
         return template
 
-    def serialize_for_v2(self):
-        serialized = {
-            "id": str(self.id),
-            "type": self.template_type,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-            "created_by": self.created_by.email_address,
-            "version": self.version,
-            "body": self.content,
-            "subject": self.subject if self.template_type in {EMAIL_TYPE, LETTER_TYPE} else None,
-            "name": self.name,
-            "personalisation": {
+    def v2_serializer(self) -> "TemplateV2Serializer":
+        return TemplateV2Serializer(
+            id=self.id,
+            type=self.template_type,
+            created_at=self.created_at,
+            created_by=self.created_by.email_address,
+            updated_at=self.updated_at,
+            version=self.version,
+            body=self.content,
+            subject=self.subject if self.template_type in {EMAIL_TYPE, LETTER_TYPE} else None,
+            name=self.name,
+            personalisation={
                 key: {
                     "required": True,
                 }
                 for key in self._as_utils_template().placeholders
             },
-            "postage": self.postage,
-            "letter_contact_block": self.service_letter_contact.contact_block if self.service_letter_contact else None,
-        }
+            postage=self.postage,
+            letter_contact_block=self.service_letter_contact.contact_block if self.service_letter_contact else None,
+        )
 
-        return serialized
+
+class TemplateV2Serializer(BaseModel):
+    class Config:
+        title = "V2Template"
+        from_attributes = True
+        json_encoders = {datetime.datetime: get_dt_string_or_none}
+
+    id: uuid.UUID
+    type: LITERAL_TEMPLATE_TYPES
+    name: str = Field(max_length=255)
+    created_at: datetime.datetime
+    created_by: str
+    updated_at: Optional[datetime.datetime]
+    version: int
+    body: str
+    subject: Optional[str]
+    postage: Optional[LITERAL_POSTAGE_TYPES]
+    personalisation: dict[str, dict[Literal["required"], Literal[True]]]
+    letter_contact_block: Optional[str]
 
 
 class Template(TemplateBase):
@@ -1240,7 +1260,9 @@ class TemplateHistory(TemplateBase):
         )
 
     def get_link(self):
-        return url_for("v2_template.get_template_by_id", template_id=self.id, version=self.version, _external=True)
+        return url_for(
+            "v2_template.get_template_version_by_id", template_id=self.id, version=self.version, _external=True
+        )
 
 
 class ProviderDetails(db.Model):

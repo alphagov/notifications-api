@@ -7,7 +7,6 @@ from jsonschema.exceptions import ValidationError
 from app.constants import EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
 from app.schema_validation import validate
 from app.v2.template.template_schemas import (
-    get_template_by_id_request,
     get_template_by_id_response,
     post_template_preview_request,
     post_template_preview_response,
@@ -74,23 +73,6 @@ valid_json_post_response_with_optionals = {
     "postage": "second",
     "html": "<p>some body</p>",
 }
-
-
-@pytest.mark.parametrize("args", valid_request_args)
-def test_get_template_request_schema_against_valid_args_is_valid(args):
-    assert validate(args, get_template_by_id_request) == args
-
-
-@pytest.mark.parametrize("args,error_message", invalid_request_args)
-def test_get_template_request_schema_against_invalid_args_is_invalid(args, error_message):
-    with pytest.raises(ValidationError) as e:
-        validate(args, get_template_by_id_request)
-    errors = json.loads(str(e.value))
-
-    assert errors["status_code"] == 400
-
-    for error in errors["errors"]:
-        assert error["message"] in error_message
 
 
 @pytest.mark.parametrize("template_type", TEMPLATE_TYPES)

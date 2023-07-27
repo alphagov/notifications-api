@@ -308,10 +308,10 @@ def register_v2_blueprints(application):
     application.register_blueprint(v2_notification_blueprint)
 
     v2_templates_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_templates_blueprint)
+    application.register_api(v2_templates_blueprint)
 
     v2_template_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_template_blueprint)
+    application.register_api(v2_template_blueprint)
 
     v2_inbound_sms_blueprint.before_request(requires_auth)
     application.register_blueprint(v2_inbound_sms_blueprint)
