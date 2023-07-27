@@ -1,16 +1,34 @@
-from flask import Blueprint, jsonify, request
+from flask_openapi3 import APIBlueprint, Tag
+from pydantic import BaseModel, Field
 
 from app.dao.events_dao import dao_create_event
 from app.errors import register_errors
-from app.schemas import event_schema
+from app.models import Event, EventSerializer
+from app.openapi import UnauthorizedResponse
 
-events = Blueprint("events", __name__, url_prefix="/events")
+events = APIBlueprint(
+    "events",
+    __name__,
+    url_prefix="/events",
+    abp_tags=[Tag(name="events")],
+    abp_security=[{"admin": []}],
+    abp_responses={"401": UnauthorizedResponse},
+)
 register_errors(events)
 
 
-@events.route("", methods=["POST"])
-def create_event():
-    data = request.get_json()
-    event = event_schema.load(data)
+class CreateEvent(BaseModel):
+    event_type: str = Field(max_length=255)
+    data: dict
+
+
+class EventResponse(BaseModel):
+    data: EventSerializer
+
+
+@events.post("", responses={"201": EventResponse})
+def create_event(body: CreateEvent):
+    event = Event(event_type=body.event_type, data=body.data)
     dao_create_event(event)
-    return jsonify(data=event_schema.dump(event)), 201
+    event_response = EventSerializer.from_orm(event)
+    return EventResponse(data=event_response).json(), 201
