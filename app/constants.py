@@ -1,5 +1,6 @@
 # Notification status values
 import enum
+from typing import Literal
 
 NOTIFICATION_CANCELLED = "cancelled"
 NOTIFICATION_CREATED = "created"
@@ -96,6 +97,9 @@ SECOND_CLASS = "second"
 EUROPE = "europe"
 REST_OF_WORLD = "rest-of-world"
 
+# for type hints, can't reference variables
+LITERAL_POSTAGE_TYPES = Literal["first", "second", "europe", "rest-of-world"]
+
 # Aggregated letter postage types
 POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS, EUROPE, REST_OF_WORLD]
 UK_POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS]
@@ -124,6 +128,7 @@ EMAIL_TYPE = "email"
 LETTER_TYPE = "letter"
 BROADCAST_TYPE = "broadcast"
 TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, BROADCAST_TYPE]
+LITERAL_TEMPLATE_TYPES = Literal["sms", "email", "letter", "broadcast"]
 NOTIFICATION_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]  # not broadcast
 NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]  # duplicate that can probably be cleaned up
 

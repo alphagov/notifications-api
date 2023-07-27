@@ -1,15 +1,6 @@
 from app.constants import TEMPLATE_TYPES
 from app.schema_validation.definitions import personalisation, uuid
 
-get_template_by_id_request = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "description": "schema for parameters allowed when getting template by id",
-    "type": "object",
-    "properties": {"id": uuid, "version": {"type": ["integer", "null"], "minimum": 1}},
-    "required": ["id"],
-    "additionalProperties": False,
-}
-
 get_template_by_id_response = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET template by id schema response",
