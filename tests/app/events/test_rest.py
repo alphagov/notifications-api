@@ -3,7 +3,7 @@ import json
 from tests import create_admin_authorization_header
 
 
-def test_create_event(notify_api):
+def test_create_event(notify_api, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {"event_type": "sucessful_login", "data": {"something": "random", "in_fact": "could be anything"}}
