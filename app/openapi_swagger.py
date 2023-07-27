@@ -27,7 +27,73 @@ swagger_html_string = """
 <div id="swagger-ui"></div>
 <script src="static/js/swagger-ui-bundle.js"></script>
 <script src="static/js/swagger-ui-standalone-preset.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <script>
+    function base64url(source) {
+        // Encode in classical base64
+        let encodedSource = CryptoJS.enc.Base64.stringify(source);
+
+        // Remove padding equal characters
+        encodedSource = encodedSource.replace(/=+$/, '');
+
+        // Replace characters according to base64url specifications
+        encodedSource = encodedSource.replace(/\\+/g, '-');
+        encodedSource = encodedSource.replace(/\\//g, '_');
+
+        return encodedSource;
+    }
+
+    function createNotifyJWT(service_id, secret) {
+        // Set headers for JWT
+        let header = {
+            'typ': 'JWT',
+            'alg': 'HS256'
+        };
+
+        // Prepare timestamp in seconds
+        let currentTimestamp = Math.floor(Date.now() / 1000);
+
+        let data = {
+            'iss': service_id,
+            'iat': currentTimestamp
+        };
+
+        // encode header
+        let stringifiedHeader = CryptoJS.enc.Utf8.parse(JSON.stringify(header));
+        let encodedHeader = base64url(stringifiedHeader);
+
+        // encode data
+        let stringifiedData = CryptoJS.enc.Utf8.parse(JSON.stringify(data));
+        let encodedData = base64url(stringifiedData);
+
+        // build token
+        let token = `${encodedHeader}.${encodedData}`;
+
+        // sign token
+        let signature = CryptoJS.HmacSHA256(token, secret);
+        signature = base64url(signature);
+
+        return `${token}.${signature}`;
+    }
+
+    function overrideAuthenticationHeader(request)
+    {
+        let authHeader = request.headers.Authorization;
+        if (authHeader !== undefined && authHeader.startsWith('Basic ')) {
+            let base64_username_and_password = authHeader.substring(6);
+            let [username, password] = atob(base64_username_and_password).split(':');
+            let jwt = createNotifyJWT(username, password);
+            request.headers.Authorization = `Bearer ${jwt}`;
+        } else if (authHeader && authHeader.startsWith('Bearer ')) {
+            let apiKey = authHeader.substring(7);
+            let serviceUuid = apiKey.substring(apiKey.length - (36 + 1 + 36), apiKey.length - (36 + 1));
+            let secretUuid = apiKey.substring(apiKey.length - 36, apiKey.length);
+            let jwt = createNotifyJWT(serviceUuid, secretUuid);
+            request.headers.Authorization = `Bearer ${jwt}`;
+        }
+        return request;
+    }
+
     window.onload = function () {
         // Begin Swagger UI call region
         window.ui = SwaggerUIBundle({
@@ -44,7 +110,8 @@ swagger_html_string = """
             layout: "StandaloneLayout",
             docExpansion: "{{ doc_expansion }}",
             showExtensions: true,
-            showCommonExtensions: true
+            showCommonExtensions: true,
+            requestInterceptor: overrideAuthenticationHeader,
         })
         // End Swagger UI call region
         const oauthConfig = JSON.parse(`{{ oauth_config|tojson }}`);
