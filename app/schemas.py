@@ -803,13 +803,6 @@ class ApiKeyHistorySchema(ma.Schema):
     created_by_id = fields.UUID()
 
 
-class EventSchema(BaseSchema):
-    created_at = FlexibleDateTime()
-
-    class Meta(BaseSchema.Meta):
-        model = models.Event
-
-
 class UnarchivedTemplateSchema(BaseSchema):
     archived = fields.Boolean(required=True)
 
@@ -841,7 +834,6 @@ notifications_filter_schema = NotificationsFilterSchema()
 service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
-event_schema = EventSchema()
 provider_details_schema = ProviderDetailsSchema()
 provider_details_history_schema = ProviderDetailsHistorySchema()
 unarchived_template_schema = UnarchivedTemplateSchema()
