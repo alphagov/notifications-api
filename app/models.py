@@ -23,6 +23,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
 )
 from notifications_utils.timezones import convert_utc_to_bst
+from pydantic import BaseModel, Field
 from sqlalchemy import (
     CheckConstraint,
     Index,
@@ -1787,6 +1788,17 @@ class Event(db.Model):
     event_type = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     data = db.Column(JSON, nullable=False)
+
+
+class EventSerializer(BaseModel):
+    class Config:
+        title = "Event"
+        from_attributes = True
+
+    id: uuid.UUID
+    event_type: str = Field(max_length=255)
+    created_at: datetime.datetime
+    data: dict
 
 
 class Rate(db.Model):

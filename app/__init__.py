@@ -230,7 +230,7 @@ def register_blueprint(application):
     application.register_blueprint(template_statistics_blueprint)
 
     events_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(events_blueprint)
+    application.register_api(events_blueprint)
 
     provider_details_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(provider_details_blueprint, url_prefix="/provider-details")
