@@ -11,4 +11,5 @@ def extract_cloudfoundry_config():
             "postgres", "postgresql"
         )
     # Redis config
-    os.environ["REDIS_URL"] = vcap_services["redis"][0]["credentials"]["uri"]
+    if "REDIS_URL" not in os.environ:
+        os.environ["REDIS_URL"] = vcap_services["redis"][0]["credentials"]["uri"]
