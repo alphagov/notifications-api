@@ -49,7 +49,14 @@
     },
   },
 
-  'notify-delivery-celery-beat': {'memory': '512M'},
+  'notify-delivery-celery-beat': {
+    'memory': '512M',
+    'instances': {
+      'preview': 0,
+      'staging': 1,
+      'production': 1
+    },
+  },
   'notify-delivery-worker-jobs': {'memory': '2G'},
   'notify-delivery-worker-research': {},
   'notify-delivery-worker-sender': {'disk_quota': '2G', 'memory': '4G'},
