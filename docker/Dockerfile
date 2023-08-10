@@ -5,18 +5,25 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    build-essential \
-    git \
-    libcurl4-openssl-dev \
-    curl \
-    libssl-dev \
-    && apt-get -y clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/*
+    libcurl4 && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/*
 
 WORKDIR /home/vcap/app
 
 ##### Python Build Image #####################################################
 FROM base AS python_build
+
+RUN echo "Install OS dependencies for python app requirements" &&  \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    libcurl4-openssl-dev \
+    curl \
+    libssl-dev && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/*
 
 COPY requirements.txt .
 
@@ -53,13 +60,14 @@ FROM production as test
 
 USER root
 RUN chown -R notify:notify /opt/venv
-RUN echo "Install OS dependencies for test build" && apt-get update && \
-    apt-get upgrade -y && \
+RUN echo "Install OS dependencies for test build" && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
-			curl \
-			git \
-    && apt-get -y clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/*
+			make \
+      curl \
+			git && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/*
 USER notify
 
 # Make sure the app/ directory is there so that "make bootstrap" can create app/version.py
