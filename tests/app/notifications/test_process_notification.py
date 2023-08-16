@@ -55,6 +55,16 @@ def test_create_content_for_notification_allows_additional_personalisation(sampl
     create_content_for_notification(template, {"name": "Bobby", "Additional placeholder": "Data"})
 
 
+def test_create_content_for_notification_raises_error_on_qr_code_too_long(sample_service):
+    db_template = create_template(sample_service, template_type="letter", content="qr: ((code))")
+    template = SerialisedTemplate.from_id_and_service_id(db_template.id, db_template.service_id)
+
+    with pytest.raises(BadRequestError) as e:
+        create_content_for_notification(template, {"code": "too much data " * 50})
+
+    assert e.value.message == "WIP: This notification creates a QR code with too much data (max 504 bytes)"
+
+
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_persist_notification_creates_and_save_to_db(sample_template, sample_api_key, sample_job):
 

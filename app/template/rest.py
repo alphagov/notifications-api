@@ -7,13 +7,14 @@ from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
 from notifications_utils.template import (
     BroadcastMessageTemplate,
+    LetterPreviewTemplate,
     SMSMessageTemplate,
 )
 from pypdf.errors import PdfReadError
 from requests import post as requests_post
 from sqlalchemy.orm.exc import NoResultFound
 
-from app.constants import BROADCAST_TYPE, LETTER_TYPE, SECOND_CLASS, SMS_TYPE
+from app.constants import BROADCAST_TYPE, LETTER_TYPE, QR_CODE_TOO_LONG, SECOND_CLASS, SMS_TYPE
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_folder_dao import (
@@ -61,6 +62,11 @@ def _content_count_greater_than_limit(content, template_type):
     return False
 
 
+def _qr_code_too_long(subject: str, content: str):
+    template = LetterPreviewTemplate({"subject": subject, "content": content, "template_type": "letter"})
+    return template.has_qr_code_with_too_much_data()
+
+
 def validate_parent_folder(template_json):
     if template_json.get("parent_folder_id"):
         try:
@@ -97,6 +103,11 @@ def create_template(service_id):
         message = "Content has a character count greater than the limit of {}".format(SMS_CHAR_COUNT_LIMIT)
         errors = {"content": [message]}
         raise InvalidRequest(errors, status_code=400)
+
+    if new_template.template_type == LETTER_TYPE and _qr_code_too_long(
+        subject=new_template.subject, content=new_template.content
+    ):
+        raise InvalidRequest({"content": [QR_CODE_TOO_LONG]}, status_code=400)
 
     check_reply_to(service_id, new_template.reply_to, new_template.template_type)
 
@@ -144,6 +155,11 @@ def update_template(service_id, template_id):
         message = "Content has a character count greater than the limit of {}".format(SMS_CHAR_COUNT_LIMIT)
         errors = {"content": [message]}
         raise InvalidRequest(errors, status_code=400)
+
+    if fetched_template.template_type == LETTER_TYPE and _qr_code_too_long(
+        subject=updated_template["subject"], content=updated_template["content"]
+    ):
+        raise InvalidRequest({"content": [QR_CODE_TOO_LONG]}, status_code=400)
 
     update_dict = template_schema.load(updated_template)
     if update_dict.archived:

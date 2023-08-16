@@ -308,3 +308,7 @@ class Retention:
 # Redis cache keys
 class CacheKeys:
     FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT = "update_ft_billing_for_today:updated-at-utc-isoformat"
+
+
+# Admin API error codes
+QR_CODE_TOO_LONG = "qr-code-too-long"

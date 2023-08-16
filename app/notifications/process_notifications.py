@@ -69,6 +69,12 @@ def create_content_for_notification(template, personalisation):
             contact_block=template.reply_to_text,
         )
 
+        if error := template_object.has_qr_code_with_too_much_data():
+            raise BadRequestError(
+                message=f"WIP: This notification creates a QR code with too much data (max {error.max_bytes} bytes)",
+                status_code=400,
+            )
+
     check_placeholders(template_object)
 
     return template_object
@@ -103,7 +109,7 @@ def persist_notification(
     billable_units=None,
     postage=None,
     document_download_count=None,
-    updated_at=None
+    updated_at=None,
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
