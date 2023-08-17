@@ -998,6 +998,8 @@ class TemplateBase(db.Model):
     archived = db.Column(db.Boolean, nullable=False, default=False)
     hidden = db.Column(db.Boolean, nullable=False, default=False)
     subject = db.Column(db.Text)
+    welsh_subject = db.Column(db.Text)
+    welsh_content = db.Column(db.Text)
     postage = db.Column(db.String, nullable=True)
     broadcast_data = db.Column(JSONB(none_as_null=True), nullable=True)
 

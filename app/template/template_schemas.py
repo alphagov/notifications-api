@@ -35,6 +35,8 @@ post_update_template_schema = {
         "process_type": {"enum": TEMPLATE_PROCESS_TYPE},
         "content": {"type": "string"},
         "subject": {"type": "string"},
+        "welsh_content": {"type": "string"},
+        "welsh_subject": {"type": "string"},
         "postage": {"type": "string", "format": "postage"},
         "reply_to": nullable_uuid,
         "created_by": uuid,
