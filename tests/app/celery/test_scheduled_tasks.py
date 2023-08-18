@@ -521,7 +521,7 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
         message=(
             "2 letters were created before 17.30 yesterday and still have 'created' status. "
             "Follow runbook to resolve: "
-            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-created."
         ),
         subject="[test] Letters still in 'created' status",
         ticket_type="incident",
@@ -557,7 +557,7 @@ def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_temp
         message=(
             "2 letters were created before 17.30 yesterday and still have 'created' status. "
             "Follow runbook to resolve: "
-            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-created."
         ),
         subject="[test] Letters still in 'created' status",
         ticket_type="incident",
@@ -724,7 +724,7 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
         "app.celery.scheduled_tasks.dao_find_services_sending_to_tv_numbers", return_value=sms_to_tv_numbers
     )
 
-    zendesk_actions = "\nYou can find instructions for this ticket in our manual:\nhttps://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
+    zendesk_actions = "\nYou can find instructions for this ticket in our manual:\nhttps://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
 
     with caplog.at_level("WARNING"):
         check_for_services_with_high_failure_rates_or_sending_to_tv_numbers()
@@ -1042,7 +1042,7 @@ def test_check_for_low_available_inbound_sms_numbers_logs_zendesk_ticket_if_too_
                 "There are only 5 inbound SMS numbers currently available for services.\n\n"
                 "Request more from our provider (MMG) and load them into the database.\n\n"
                 "Follow the guidance here: "
-                "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Add-new-inbound-SMS-numbers"
+                "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#add-new-inbound-sms-numbers"
             ),
             ticket_type=mock_ticket.TYPE_TASK,
             notify_ticket_type=NotifyTicketType.TECHNICAL,
