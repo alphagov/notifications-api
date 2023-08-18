@@ -214,7 +214,16 @@ def get_template_versions(service_id, template_id):
 def _template_has_not_changed(current_data, updated_template):
     return all(
         current_data[key] == updated_template[key]
-        for key in ("name", "content", "subject", "archived", "process_type", "postage")
+        for key in (
+            "name",
+            "content",
+            "subject",
+            "archived",
+            "process_type",
+            "postage",
+            "welsh_content",
+            "welsh_subject",
+        )
     )
 
 
