@@ -117,10 +117,15 @@ def create_app(application):
     return application
 
 
+def _should_register_functional_testing_blueprint(environment):
+    return environment in {"development", "test", "preview"}
+
+
 def register_blueprint(application):
     from app.authentication.auth import (
         requires_admin_auth,
         requires_auth,
+        requires_functional_test_auth,
         requires_govuk_alerts_auth,
         requires_no_auth,
     )
@@ -129,6 +134,7 @@ def register_blueprint(application):
     from app.complaint.complaint_rest import complaint_blueprint
     from app.email_branding.rest import email_branding_blueprint
     from app.events.rest import events as events_blueprint
+    from app.functional_tests import test_blueprint
     from app.govuk_alerts.rest import govuk_alerts_blueprint
     from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
@@ -273,6 +279,10 @@ def register_blueprint(application):
 
     letter_attachment_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(letter_attachment_blueprint)
+
+    if _should_register_functional_testing_blueprint(application.config["NOTIFY_ENVIRONMENT"]):
+        test_blueprint.before_request(requires_functional_test_auth)
+        application.register_blueprint(test_blueprint)
 
 
 def register_v2_blueprints(application):
