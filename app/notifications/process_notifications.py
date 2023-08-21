@@ -32,7 +32,7 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_by_id,
 )
 from app.models import Notification
-from app.v2.errors import BadRequestError
+from app.v2.errors import BadRequestError, QrCodeTooLongError
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
     "redis_get_and_incr_daily_limit_duration_seconds",
@@ -69,6 +69,15 @@ def create_content_for_notification(template, personalisation):
             contact_block=template.reply_to_text,
         )
 
+        if error := template_object.has_qr_code_with_too_much_data():
+            raise QrCodeTooLongError(
+                message="Cannot create a usable QR code - the link is too long",
+                status_code=400,
+                num_bytes=error.num_bytes,
+                max_bytes=error.max_bytes,
+                data=error.data,
+            )
+
     check_placeholders(template_object)
 
     return template_object
@@ -103,7 +112,7 @@ def persist_notification(
     billable_units=None,
     postage=None,
     document_download_count=None,
-    updated_at=None
+    updated_at=None,
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:

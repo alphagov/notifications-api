@@ -934,6 +934,28 @@ def test_create_template_validates_against_json_schema(
     assert response["errors"] == expected_errors
 
 
+def test_create_template_validates_qr_code_too_long(
+    admin_request,
+    sample_service_full_permissions,
+):
+    response = admin_request.post(
+        "template.create_template",
+        service_id=sample_service_full_permissions.id,
+        _data={
+            "name": "my template",
+            "template_type": "letter",
+            "subject": "subject",
+            "content": "qr: " + ("too long " * 100),
+            "postage": "second",
+            "service": str(sample_service_full_permissions.id),
+            "created_by": "30587644-9083-44d8-a114-98887f07f1e3",
+        },
+        _expected_status=400,
+    )
+
+    assert response == {"result": "error", "message": {"content": ["qr-code-too-long"]}}
+
+
 @pytest.mark.parametrize(
     "template_default, service_default",
     [("template address", "service address"), (None, "service address"), ("template address", None), (None, None)],
@@ -1114,6 +1136,19 @@ def test_update_redact_template_400s_if_no_created_by(admin_request, sample_temp
 
     assert sample_template.redact_personalisation is False
     assert sample_template.template_redacted.updated_at == original_updated_time
+
+
+def test_update_template_400s_if_static_qr_code_too_long(admin_request, sample_service_full_permissions):
+    sample_template = create_template(sample_service_full_permissions, template_type=LETTER_TYPE, content="before")
+    resp = admin_request.post(
+        "template.update_template",
+        service_id=sample_template.service_id,
+        template_id=sample_template.id,
+        _data={"content": "qr: " + ("too long " * 100)},
+        _expected_status=400,
+    )
+
+    assert resp == {"result": "error", "message": {"content": ["qr-code-too-long"]}}
 
 
 def test_preview_letter_template_by_id_invalid_file_type(sample_letter_notification, admin_request):

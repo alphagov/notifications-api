@@ -20,7 +20,7 @@ from app.notifications.process_notifications import (
     simulated_recipient,
 )
 from app.serialised_models import SerialisedTemplate
-from app.v2.errors import BadRequestError
+from app.v2.errors import BadRequestError, QrCodeTooLongError
 from tests.app.db import create_api_key, create_service, create_template
 from tests.conftest import set_config
 
@@ -53,6 +53,19 @@ def test_create_content_for_notification_allows_additional_personalisation(sampl
         sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
     )
     create_content_for_notification(template, {"name": "Bobby", "Additional placeholder": "Data"})
+
+
+def test_create_content_for_notification_raises_error_on_qr_code_too_long(sample_service):
+    db_template = create_template(sample_service, template_type="letter", content="qr: ((code))")
+    template = SerialisedTemplate.from_id_and_service_id(db_template.id, db_template.service_id)
+
+    with pytest.raises(QrCodeTooLongError) as e:
+        create_content_for_notification(template, {"code": "too much data " * 50})
+
+    assert e.value.message == "Cannot create a usable QR code - the link is too long"
+    assert e.value.num_bytes == 700
+    assert e.value.max_bytes == 504
+    assert e.value.data == "too much data " * 50
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

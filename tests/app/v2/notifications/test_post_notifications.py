@@ -9,6 +9,7 @@ from flask import current_app, json
 from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
+    LETTER_TYPE,
     NOTIFICATION_CREATED,
     SMS_TYPE,
 )
@@ -404,6 +405,46 @@ def test_post_notification_with_too_long_reference_returns_400(
         assert error_resp["errors"] == [
             {"error": "ValidationError", "message": "reference " + ("a" * 1001) + " is too long"}
         ]
+
+
+def test_post_notification_errors_with_too_much_qr_code_data(
+    api_client_request,
+    sample_service_full_permissions,
+):
+    letter_template = create_template(
+        sample_service_full_permissions, template_type=LETTER_TYPE, postage="second", content="qr: ((qrcode))"
+    )
+
+    data = {
+        "personalisation": {
+            "address_line_1": "The king",
+            "address_line_2": "Buckingham Palace",
+            "postcode": "SW1 1AA",
+            "qrcode": "too much data" * 50,
+        },
+        "template_id": letter_template.id,
+        "reference": "qr code",
+    }
+
+    error_resp = api_client_request.post(
+        letter_template.service_id,
+        "v2_notifications.post_notification",
+        notification_type=LETTER_TYPE,
+        _data=data,
+        _expected_status=400,
+        headers=[("Content-Type", "application/json")],
+    )
+
+    assert error_resp["status_code"] == 400
+    assert error_resp["errors"] == [
+        {
+            "error": "ValidationError",
+            "message": "Cannot create a usable QR code - the link is too long",
+            "data": "too much data" * 50,
+            "max_bytes": 504,
+            "num_bytes": 650,
+        }
+    ]
 
 
 @pytest.mark.parametrize(
