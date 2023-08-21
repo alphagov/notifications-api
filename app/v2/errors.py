@@ -55,6 +55,33 @@ class PDFNotReadyError(BadRequestError):
         super().__init__(message="PDF not available yet, try again later", status_code=400)
 
 
+class QrCodeTooLongError(ValidationError):
+    message = "Cannot create a usable QR code - the link is too long"
+
+    def __init__(self, fields=None, message=None, status_code=400, *, num_bytes, max_bytes, data):
+        super().__init__(fields=fields, message=message, status_code=status_code)
+        self.num_bytes = num_bytes
+        self.max_bytes = max_bytes
+        self.data = data
+
+    def to_dict_v2(self):
+        """
+        Version 2 of the public api error response.
+        """
+        return {
+            "status_code": self.status_code,
+            "errors": [
+                {
+                    "error": "ValidationError",
+                    "message": self.message,
+                    "data": self.data,
+                    "num_bytes": self.num_bytes,
+                    "max_bytes": self.max_bytes,
+                }
+            ],
+        }
+
+
 def register_errors(blueprint):
     @blueprint.errorhandler(InvalidEmailError)
     def invalid_format(error):
