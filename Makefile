@@ -66,7 +66,7 @@ run-celery-beat: ## Run celery beat
 
 .PHONY: run-celery-beat-with-docker
 run-celery-beat-with-docker: ## Run celery beat in Docker container (useful if you can't install pycurl locally)
-	./scripts/run_locally_with_docker.sh beat
+	./scripts/run_locally_with_docker.sh celery-beat
 
 .PHONY: run-migrations-with-docker
 run-migrations-with-docker: ## Run alembic migrations in Docker container
