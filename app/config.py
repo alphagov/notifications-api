@@ -198,6 +198,7 @@ class Config(object):
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
             "is_secure": True,
         },
+        "result_expires": 0,
         "timezone": "UTC",
         "imports": [
             "app.celery.tasks",
