@@ -299,7 +299,7 @@ def check_if_letters_still_in_created():
             f"{len(letters)} letters were created before 17.30 yesterday and still have 'created' status. "
             "Follow runbook to resolve: "
             "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook"
-            "#deal-with-Letters-still-in-created."
+            "#deal-with-letters-still-in-created."
         )
 
         if current_app.should_send_zendesk_alerts:
@@ -382,7 +382,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         if current_app.should_send_zendesk_alerts:
             message += (
                 "\nYou can find instructions for this ticket in our manual:\n"
-                "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
+                "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
             )  # noqa
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] High failure rates for sms spotted for services",
@@ -509,7 +509,7 @@ def check_for_low_available_inbound_sms_numbers():
         f"There are only {num_available_inbound_numbers} inbound SMS numbers currently available for services.\n\n"
         "Request more from our provider (MMG) and load them into the database.\n\n"
         "Follow the guidance here: "
-        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Add-new-inbound-SMS-numbers"
+        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#add-new-inbound-sms-numbers"
     )
 
     ticket = NotifySupportTicket(
