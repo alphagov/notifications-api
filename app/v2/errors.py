@@ -2,7 +2,7 @@ import json
 
 from flask import current_app, jsonify, request
 from jsonschema import ValidationError as JsonSchemaValidationError
-from notifications_utils.recipients import InvalidEmailError
+from notifications_utils.recipients import InvalidEmailError, InvalidPhoneError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -85,9 +85,15 @@ class QrCodeTooLongError(ValidationError):
 def register_errors(blueprint):
     @blueprint.errorhandler(InvalidEmailError)
     def invalid_format(error):
-        # Please not that InvalidEmailError is re-raised for InvalidEmail or InvalidPhone,
+        # Please note that InvalidEmailError is re-raised for InvalidEmail or InvalidPhone,
         # work should be done in the utils app to tidy up these errors.
+        if isinstance(error, InvalidPhoneError):
+            from app.notifications.validators import remap_phone_number_validation_messages
+
+            error = InvalidPhoneError(remap_phone_number_validation_messages(str(error)))
+
         current_app.logger.info(error)
+
         return jsonify(status_code=400, errors=[{"error": error.__class__.__name__, "message": str(error)}]), 400
 
     @blueprint.errorhandler(InvalidRequest)

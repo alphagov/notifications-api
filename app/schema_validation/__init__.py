@@ -12,6 +12,8 @@ from notifications_utils.recipients import (
     validate_phone_number,
 )
 
+from app.notifications.validators import remap_phone_number_validation_messages
+
 format_checker = FormatChecker()
 
 
@@ -25,7 +27,10 @@ def validate_uuid(instance):
 @format_checker.checks("phone_number", raises=InvalidPhoneError)
 def validate_schema_phone_number(instance):
     if isinstance(instance, str):
-        validate_phone_number(instance, international=True)
+        try:
+            validate_phone_number(instance, international=True)
+        except InvalidPhoneError as error:
+            raise InvalidPhoneError(remap_phone_number_validation_messages(str(error))) from error
     return True
 
 

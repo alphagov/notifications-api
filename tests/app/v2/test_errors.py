@@ -1,5 +1,6 @@
 import pytest
 from flask import url_for
+from notifications_utils.recipients import InvalidPhoneError
 from sqlalchemy.exc import DataError
 
 
@@ -45,6 +46,17 @@ def app_for_test():
     @blue.route("raise_data_error", methods=["GET"])
     def raising_data_error():
         raise DataError("There was a db problem", "params", "orig")
+
+    @blue.route("raise_phone_error/<error_id>", methods=["GET"])
+    def raising_invalid_phone_error(error_id):
+        errors = {
+            "symbol": "Mobile numbers can only include: 0 1 2 3 4 5 6 7 8 9 ( ) + -",
+            "too-short": "Mobile number is too long",
+            "too-long": "Mobile number is too short",
+            "invalid-country": "Country code not found - double check the mobile number you entered",
+            "invalid-uk": "This does not look like a UK mobile number - double check the mobile number you entered",
+        }
+        raise InvalidPhoneError(errors[error_id])
 
     @blue.route("raise_exception", methods=["GET"])
     def raising_exception():
@@ -133,4 +145,25 @@ def test_bad_method(app_for_test):
             assert response.get_json(force=True) == {
                 "result": "error",
                 "message": "The method is not allowed for the requested URL.",
+            }
+
+
+@pytest.mark.parametrize(
+    "error_id, expected_response",
+    (
+        ("symbol", "Must not contain letters or symbols"),
+        ("too-short", "Too many digits"),
+        ("too-long", "Not enough digits"),
+        ("invalid-country", "Not a valid country prefix"),
+        ("invalid-uk", "Not a UK mobile number"),
+    ),
+)
+def test_invalid_phone_error(app_for_test, error_id, expected_response):
+    with app_for_test.test_request_context():
+        with app_for_test.test_client() as client:
+            response = client.get(url_for("v2_under_test.raising_invalid_phone_error", error_id=error_id))
+            assert response.status_code == 400
+            assert response.json == {
+                "status_code": 400,
+                "errors": [{"error": "InvalidPhoneError", "message": expected_response}],
             }
