@@ -59,7 +59,6 @@ ENTRYPOINT [ "/home/vcap/app/entrypoint.sh" ]
 FROM production as test
 
 USER root
-RUN chown -R notify:notify /opt/venv
 RUN echo "Install OS dependencies for test build" && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -75,6 +74,9 @@ USER notify
 
 # Make sure the app/ directory is there so that "make bootstrap" can create app/version.py
 RUN mkdir -p app
+
+# Copying to overwrite is faster than RUN chown notify:notify ...
+COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
 COPY --chown=notify:notify Makefile requirements.txt requirements_for_test.txt ./
