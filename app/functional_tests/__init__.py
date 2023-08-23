@@ -4,7 +4,11 @@ import uuid
 from flask import Blueprint, request
 
 from app import db
-from app.dao.organisation_dao import dao_add_user_to_organisation, dao_get_organisation_by_id
+from app.dao.organisation_dao import (
+    dao_add_user_to_organisation,
+    dao_get_organisation_by_id,
+    dao_remove_user_from_organisation,
+)
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_add_user_to_service
 from app.errors import register_errors
@@ -50,12 +54,15 @@ def create_functional_test_users():
         else:
             permission_dao.set_user_service_permission(user, service, permissions, replace=True)
 
-        organisation = dao_get_organisation_by_id(user_info["organisation_id"])
-        if organisation not in user.organisations:
-            user.organisations.append(organisation)
+        # Remove user from any organisations it's in, so that we can cleanly set it up according to the current
+        # request
+        for organisation in user.organisations:
+            dao_remove_user_from_organisation(organisation=organisation, user=user)
 
-        if created:
-            dao_add_user_to_organisation(user_info["organisation_id"], str(user.id), [])
+        organisation_id = user_info.get("organisation_id")
+        if organisation_id:
+            dao_get_organisation_by_id(organisation_id)
+            dao_add_user_to_organisation(organisation_id, str(user.id), [])
 
         db.session.commit()
 
