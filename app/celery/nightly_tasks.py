@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import dateutil
 import pytz
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
@@ -14,7 +15,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, statsd_client, zendesk_client
+from app import db, notify_celery, statsd_client, zendesk_client
 from app.aws import s3
 from app.config import QueueNames
 from app.constants import (
@@ -40,7 +41,7 @@ from app.dao.notifications_dao import (
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention_for_all_services_by_notification_type,
 )
-from app.models import FactProcessingTime, Notification
+from app.models import FactProcessingTime, Notification, NotificationHistory
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
@@ -333,4 +334,43 @@ def save_daily_notification_processing_time(bst_date=None):
             messages_total=result.messages_total,
             messages_within_10_secs=result.messages_within_10_secs,
         )
+    )
+
+
+@notify_celery.task(name="delete-oldest-quarter-of-unneeded-notification-history")
+def delete_oldest_quarter_of_unneeded_notification_history():
+    # This retention limit is hardcoded for the moment. It is picked from
+    # https://github.com/alphagov/notifications-aws/blob/main/decisions/2022-12-01-notification-history-retention-period.md
+    # and can be increased in the future when we move 3 months into the next financial year
+    retention_limit = datetime(2022, 4, 1)
+
+    oldest_record = db.session.query(func.min(NotificationHistory.created_at)).one()[0]
+    if oldest_record >= retention_limit:
+        current_app.logger.info(
+            "No notifications older than retention date of %s so nothing to delete", retention_limit
+        )
+        return
+
+    # Pick a potential deletion date to start, that we know is older than the oldest notification
+    # in notification_history at the time of writing this code
+    deletion_date = datetime(2019, 10, 1)
+    while deletion_date < oldest_record:
+        # There are no notifications older than our deletion date, lets add 3 months
+        # and see if that is still true
+        # When we finally find a deletion date that has notifications older than the deletion date
+        # we can then delete anything older (ie the previous quarters data)
+        deletion_date = deletion_date + dateutil.relativedelta.relativedelta(months=3)
+
+    delete_notification_history_older_than_datetime(deletion_date)
+
+
+def delete_notification_history_older_than_datetime(older_than_datetime):
+    current_app.logger.info("Beginning to delete notification_history older than %s", older_than_datetime)
+
+    num_rows_deleted = NotificationHistory.query.filter(
+        NotificationHistory.sent_at < older_than_datetime,
+    ).delete()
+
+    current_app.logger.info(
+        "Deleted %s rows from notification_history older than %s", num_rows_deleted, older_than_datetime
     )
