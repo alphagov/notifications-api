@@ -827,7 +827,7 @@ def test_delete_old_records_from_events_table(notify_db_session):
 
 
 @freeze_time("2022-11-01 00:30:00", tick=True)
-def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_user):
+def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_user, hostnames):
     org_1 = create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
     org_2 = create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
     email_brand_1 = create_email_branding(
@@ -879,25 +879,25 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
         "<h2>New email branding to review</h2>\n<p>Uploaded since Monday 31 October 2022:</p>",
         (
             "<p>"
-            '<a href="http://localhost:6012/organisations/'
+            f'<a href="{hostnames.admin}/organisations/'
             '113d51e7-f204-44d0-99c6-020f3542a527/settings/email-branding">org-1</a> (no default):'
             "</p>"
             "<ul>"
             "<li>"
-            '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480">brand-1</a>'
+            f'<a href="{hostnames.admin}/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480">brand-1</a>'
             "</li>"
             "<li>"
-            '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
+            f'<a href="{hostnames.admin}/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
             "</li>"
             "</ul>"
             "<hr>"
             "<p>"
-            '<a href="http://localhost:6012/organisations/'
+            f'<a href="{hostnames.admin}/organisations/'
             'd6bc2309-9f79-4779-b864-46c2892db90e/settings/email-branding">org-2</a>:'
             "</p>"
             "<ul>"
             "<li>"
-            '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
+            f'<a href="{hostnames.admin}/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
             "</li>"
             "</ul>"
         ),
@@ -905,7 +905,7 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
             "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
             "<ul>"
             "<li>"
-            '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e">brand-3</a>'
+            f'<a href="{hostnames.admin}/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e">brand-3</a>'
             "</li>"
             "</ul>"
         ),
@@ -914,7 +914,9 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
 
 
 @freeze_time("2022-11-01 00:30:00")
-def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_db_session, mocker, notify_user):
+def test_zendesk_new_email_branding_report_for_unassigned_branding_only(
+    notify_db_session, mocker, notify_user, hostnames
+):
     create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
     create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
     create_email_branding(
@@ -936,11 +938,11 @@ def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_d
         "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
         "<ul>"
         "<li>"
-        '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480">brand-1</a>'
+        f'<a href="{hostnames.admin}/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480">brand-1</a>'
         "</li><li>"
-        '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
+        f'<a href="{hostnames.admin}/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
         "</li><li>"
-        '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e">brand-3</a>'
+        f'<a href="{hostnames.admin}/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e">brand-3</a>'
         "</li>"
         "</ul>"
     )

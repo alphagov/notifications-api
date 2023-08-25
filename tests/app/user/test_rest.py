@@ -666,7 +666,7 @@ def test_send_user_reset_password_should_send_reset_password_link(
             {
                 "email": "notify@digital.cabinet-office.gov.uk",
             },
-            ("http://localhost:6012/new-password/"),
+            ("{hostnames.admin}/new-password/"),
         ),
         (
             {
@@ -685,6 +685,7 @@ def test_send_user_reset_password_should_use_provided_base_url(
     mocker,
     data,
     expected_url,
+    hostnames,
 ):
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
 
@@ -694,7 +695,7 @@ def test_send_user_reset_password_should_use_provided_base_url(
         _expected_status=204,
     )
 
-    assert Notification.query.first().personalisation["url"].startswith(expected_url)
+    assert Notification.query.first().personalisation["url"].startswith(expected_url.format(hostnames=hostnames))
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

@@ -548,6 +548,7 @@ def test_post_update_organisation_set_mou_emails_signed_by(
     on_behalf_of_name,
     on_behalf_of_email_address,
     templates_and_recipients,
+    hostnames,
 ):
     queue_mock = mocker.patch("app.organisation.rest.send_notification_to_queue")
     sample_organisation.agreement_signed_on_behalf_of_name = on_behalf_of_name
@@ -566,9 +567,9 @@ def test_post_update_organisation_set_mou_emails_signed_by(
     for n in notifications:
         # we pass in the same personalisation for all templates (though some templates don't use all fields)
         assert n.personalisation == {
-            "mou_link": "http://localhost:6012/agreement/non-crown.pdf",
+            "mou_link": f"{hostnames.admin}/agreement/non-crown.pdf",
             "org_name": "sample organisation",
-            "org_dashboard_link": "http://localhost:6012/organisations/{}".format(sample_organisation.id),
+            "org_dashboard_link": f"{hostnames.admin}/organisations/{sample_organisation.id}",
             "signed_by_name": "Test User",
             "on_behalf_of_name": on_behalf_of_name,
         }
@@ -1196,6 +1197,7 @@ def test_notify_org_users_of_request_to_go_live(
     sample_organisation,
     sample_service,
     organisation_has_new_go_live_request_template,
+    hostnames,
 ):
     notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
 
@@ -1244,8 +1246,8 @@ def test_notify_org_users_of_request_to_go_live(
                 "service_name": "Sample service",
                 "requester_name": "Go live user",
                 "requester_email_address": "go-live-user@example.gov.uk",
-                "make_service_live_link": f"http://localhost:6012/services/{sample_service.id}/make-service-live",
-                "support_page_link": "http://localhost:6012/support",
+                "make_service_live_link": f"{hostnames.admin}/services/{sample_service.id}/make-service-live",
+                "support_page_link": f"{hostnames.admin}/support",
                 "organisation_name": "sample organisation",
                 "name": ANY,
             },

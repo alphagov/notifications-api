@@ -1,5 +1,6 @@
 import os
 import subprocess
+from collections import namedtuple
 from contextlib import contextmanager
 
 import freezegun
@@ -173,6 +174,17 @@ def os_environ():
     os.environ.clear()
     for k, v in old_env.items():
         os.environ[k] = v
+
+
+@pytest.fixture(scope="session")
+def hostnames(notify_api):
+    api_url = notify_api.config["API_HOST_NAME"]
+    admin_url = notify_api.config["ADMIN_BASE_URL"]
+    template_preview_url = notify_api.config["TEMPLATE_PREVIEW_API_HOST"]
+
+    return namedtuple("NotifyHostnames", ["api", "admin", "template_preview"])(
+        api=api_url, admin=admin_url, template_preview=template_preview_url
+    )
 
 
 def pytest_generate_tests(metafunc):

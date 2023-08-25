@@ -15,7 +15,7 @@ from tests.app.db import create_invited_user
 @pytest.mark.parametrize(
     "extra_args, expected_start_of_invite_url",
     [
-        ({}, "http://localhost:6012/invitation/"),
+        ({}, "{hostnames.admin}/invitation/"),
         ({"invite_link_host": "https://www.example.com"}, "https://www.example.com/invitation/"),
     ],
 )
@@ -26,6 +26,7 @@ def test_create_invited_user(
     invitation_email_template,
     extra_args,
     expected_start_of_invite_url,
+    hostnames,
 ):
     mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     email_address = "invited_user@service.gov.uk"
@@ -60,8 +61,8 @@ def test_create_invited_user(
     assert len(notification.personalisation.keys()) == 3
     assert notification.personalisation["service_name"] == "Sample service"
     assert notification.personalisation["user_name"] == "Test User"
-    assert notification.personalisation["url"].startswith(expected_start_of_invite_url)
-    assert len(notification.personalisation["url"]) > len(expected_start_of_invite_url)
+    assert notification.personalisation["url"].startswith(expected_start_of_invite_url.format(hostnames=hostnames))
+    assert len(notification.personalisation["url"]) > len(expected_start_of_invite_url.format(hostnames=hostnames))
     assert str(notification.template_id) == current_app.config["INVITATION_EMAIL_TEMPLATE_ID"]
 
     mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
@@ -70,7 +71,7 @@ def test_create_invited_user(
 @pytest.mark.parametrize(
     "extra_args, expected_start_of_invite_url",
     [
-        ({}, "http://localhost:6012/invitation/"),
+        ({}, "{hostnames.admin}/invitation/"),
         ({"invite_link_host": "https://www.example.com"}, "https://www.example.com/invitation/"),
     ],
 )
@@ -81,6 +82,7 @@ def test_invited_user_for_broadcast_service_receives_broadcast_invite_email(
     broadcast_invitation_email_template,
     extra_args,
     expected_start_of_invite_url,
+    hostnames,
 ):
     mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     email_address = "invited_user@service.gov.uk"
@@ -107,8 +109,8 @@ def test_invited_user_for_broadcast_service_receives_broadcast_invite_email(
     assert len(notification.personalisation.keys()) == 3
     assert notification.personalisation["service_name"] == "Sample broadcast service"
     assert notification.personalisation["user_name"] == "Test User"
-    assert notification.personalisation["url"].startswith(expected_start_of_invite_url)
-    assert len(notification.personalisation["url"]) > len(expected_start_of_invite_url)
+    assert notification.personalisation["url"].startswith(expected_start_of_invite_url.format(hostnames=hostnames))
+    assert len(notification.personalisation["url"]) > len(expected_start_of_invite_url.format(hostnames=hostnames))
     assert str(notification.template_id) == current_app.config["BROADCAST_INVITATION_EMAIL_TEMPLATE_ID"]
 
     mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
