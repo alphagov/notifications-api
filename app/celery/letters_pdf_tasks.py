@@ -32,7 +32,7 @@ from app.dao.notifications_dao import (
     dao_get_letters_and_sheets_volume_by_postage,
     dao_get_letters_to_be_printed,
     dao_get_notification_by_reference,
-    dao_record_notification_event,
+    dao_record_notification_event_via_celery,
     dao_update_notification,
     dao_update_notifications_by_reference,
     get_notification_by_id,
@@ -133,7 +133,7 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
     notification = get_notification_by_id(notification_id, _raise=True)
     notification.status = NOTIFICATION_VALIDATION_FAILED
     dao_update_notification(notification)
-    dao_record_notification_event(notification)
+    dao_record_notification_event_via_celery(notification)
     current_app.logger.info(
         "Validation failed: letter is too long %(page_count)s for letter with id: %(id)s",
         dict(page_count=page_count, id=notification_id),

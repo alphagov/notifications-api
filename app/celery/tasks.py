@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app import create_random_identifier, create_uuid, db, encryption, notify_celery
 from app.aws import s3
 from app.celery import letters_pdf_tasks, provider_tasks
-from app.config import QueueNames
+from app.config import QueueNames, TaskNames
 from app.constants import (
     DVLA_RESPONSE_STATUS_SENT,
     EMAIL_TYPE,
@@ -695,7 +695,7 @@ def _record_notification_event(*, notification_id: str, happened_at: datetime, s
 
 
 @notify_celery.task(
-    name="record-notification-event",
+    name=TaskNames.RECORD_NOTIFICATION_EVENT,
     queue=QueueNames.NOTIFY,
     bind=True,
     max_retries=5,

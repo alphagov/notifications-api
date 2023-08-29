@@ -120,7 +120,7 @@ def dao_create_notification(notification):
         notification.status = NOTIFICATION_CREATED
 
     db.session.add(notification)
-    dao_record_notification_event(notification)
+    dao_record_notification_event_via_celery(notification)
 
 
 def _send_record_notification_event(notification: Notification, notes: Optional[str] = None):
@@ -128,14 +128,14 @@ def _send_record_notification_event(notification: Notification, notes: Optional[
     # app.dao.notifications_dao._send_record_notification_event. The other public dao_ function can be imported in
     # many places.
     notify_celery.send_task(
-        "record-notification-event",
+        TaskNames.RECORD_NOTIFICATION_EVENT,
         kwargs=dict(
             notification_id=notification.id, status=notification.status, notes=notes, happened_at=datetime.utcnow()
         ),
     )
 
 
-def dao_record_notification_event(notification, notes=None):
+def dao_record_notification_event_via_celery(notification, notes=None):
     _send_record_notification_event(notification, notes=notes)
 
 
@@ -170,7 +170,7 @@ def _update_notification_status(notification, status, detailed_status_code=None)
     )
     notification.status = status
     dao_update_notification(notification)
-    dao_record_notification_event(
+    dao_record_notification_event_via_celery(
         notification, notes=f"detailed status code: {detailed_status_code}" if detailed_status_code else None
     )
     return notification
@@ -856,7 +856,7 @@ def _duplicate_update_warning(notification, status):
             time_diff=time_diff,
         ),
     )
-    dao_record_notification_event(
+    dao_record_notification_event_via_celery(
         notification,
         notes=(
             f"Duplicate callback\n"
