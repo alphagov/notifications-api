@@ -649,7 +649,7 @@ def test_check_reply_to_letter_type(sample_service):
     assert check_reply_to(sample_service.id, letter_contact.id, LETTER_TYPE) == "123456"
 
 
-def test_check_if_service_can_send_files_by_email_raises_if_no_contact_link_set(sample_service):
+def test_check_if_service_can_send_files_by_email_raises_if_no_contact_link_set(sample_service, hostnames):
     with pytest.raises(BadRequestError) as e:
         check_if_service_can_send_files_by_email(
             service_contact_link=sample_service.contact_link, service_id=sample_service.id
@@ -657,7 +657,7 @@ def test_check_if_service_can_send_files_by_email_raises_if_no_contact_link_set(
 
     message = (
         f"Send files by email has not been set up - add contact details for your service at "
-        f"http://localhost:6012/services/{sample_service.id}/service-settings/send-files-by-email"
+        f"{hostnames.admin}/services/{sample_service.id}/service-settings/send-files-by-email"
     )
     assert e.value.status_code == 400
     assert e.value.message == message

@@ -17,7 +17,7 @@ from tests.app.db import create_invited_org_user
 @pytest.mark.parametrize(
     "extra_args, expected_start_of_invite_url",
     [
-        ({}, "http://localhost:6012/organisation-invitation/"),
+        ({}, "{hostnames.admin}/organisation-invitation/"),
         ({"invite_link_host": "https://www.example.com"}, "https://www.example.com/organisation-invitation/"),
     ],
 )
@@ -31,6 +31,7 @@ def test_create_invited_org_user(
     expected_start_of_invite_url,
     platform_admin,
     expected_invited_by,
+    hostnames,
 ):
     mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     email_address = "invited_user@example.com"
@@ -65,8 +66,8 @@ def test_create_invited_org_user(
     assert len(notification.personalisation.keys()) == 3
     assert notification.personalisation["organisation_name"] == "sample organisation"
     assert notification.personalisation["user_name"] == expected_invited_by
-    assert notification.personalisation["url"].startswith(expected_start_of_invite_url)
-    assert len(notification.personalisation["url"]) > len(expected_start_of_invite_url)
+    assert notification.personalisation["url"].startswith(expected_start_of_invite_url.format(hostnames=hostnames))
+    assert len(notification.personalisation["url"]) > len(expected_start_of_invite_url.format(hostnames=hostnames))
 
     mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
 

@@ -538,8 +538,8 @@ class Test(Development):
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "test-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "test-letters-sanitise"
 
-    # this is overriden in jenkins and on cloudfoundry
-    SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", "postgresql://localhost/test_notification_api")
+    # when testing, the SQLALCHEMY_DATABASE_URI is used for the postgres server's location
+    # but the database name is set in the _notify_db fixture
     SQLALCHEMY_RECORD_QUERIES = False
 
     CELERY = {**Config.CELERY, "broker_url": "you-forgot-to-mock-celery-in-your-tests://"}

@@ -1,6 +1,8 @@
 import os
 import subprocess
+from collections import namedtuple
 from contextlib import contextmanager
+from urllib.parse import urlparse
 
 import freezegun
 import pytest
@@ -84,12 +86,15 @@ def _notify_db(notify_api, worker_id):
     Manages the connection to the database. Generally this shouldn't be used, instead you should use the
     `notify_db_session` fixture which also cleans up any data you've got left over after your test run.
     """
-    assert "test_notification_api" in db.engine.url.database, "dont run tests against main db"
-
-    # create a database for this worker thread -
     from flask import current_app
 
-    current_app.config["SQLALCHEMY_DATABASE_URI"] += "_{}".format(worker_id)
+    # the path as used with urlparse has a leading slash
+    db_name = f"/test_notification_api_{worker_id}"
+    db_uri = urlparse(str(db.engine.url))._replace(path=db_name).geturl()
+
+    # create a database for this worker thread -
+    current_app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
+
     # reinitalise the db so it picks up on the new test database name
     db.init_app(notify_api)
     create_test_db(current_app.config["SQLALCHEMY_DATABASE_URI"])
@@ -173,6 +178,17 @@ def os_environ():
     os.environ.clear()
     for k, v in old_env.items():
         os.environ[k] = v
+
+
+@pytest.fixture(scope="session")
+def hostnames(notify_api):
+    api_url = notify_api.config["API_HOST_NAME"]
+    admin_url = notify_api.config["ADMIN_BASE_URL"]
+    template_preview_url = notify_api.config["TEMPLATE_PREVIEW_API_HOST"]
+
+    return namedtuple("NotifyHostnames", ["api", "admin", "template_preview"])(
+        api=api_url, admin=admin_url, template_preview=template_preview_url
+    )
 
 
 def pytest_generate_tests(metafunc):

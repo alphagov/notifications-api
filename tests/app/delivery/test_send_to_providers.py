@@ -446,7 +446,7 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
     assert options == {"govuk_banner": True, "brand_banner": False}
 
 
-def test_get_html_email_renderer_prepends_logo_path(notify_api):
+def test_get_html_email_renderer_prepends_logo_path(notify_api, hostnames):
     Service = namedtuple("Service", ["email_branding"])
     EmailBranding = namedtuple("EmailBranding", ["brand_type", "colour", "name", "logo", "text", "alt_text"])
 
