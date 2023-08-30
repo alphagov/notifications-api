@@ -436,6 +436,7 @@ def handle_exception(task, notification, notification_id, exc):
 
 @notify_celery.task(bind=True, name="update-letter-notifications-statuses")
 def update_letter_notifications_statuses(self, filename):
+    current_app.logger.info("update_letter_notifications_statuses has started for filename %s", filename)
     notification_updates = parse_dvla_file(filename)
 
     temporary_failures = []
@@ -449,10 +450,12 @@ def update_letter_notifications_statuses(self, filename):
             filename=filename, failures=temporary_failures
         )
         raise DVLAException(message)
+    current_app.logger.info("update_letter_notifications_statuses has finished for filename %s", filename)
 
 
 @notify_celery.task(bind=True, name="record-daily-sorted-counts")
 def record_daily_sorted_counts(self, filename):
+    current_app.logger.info("record_daily_sorted_counts has started for filename %s", filename)
     sorted_letter_counts = defaultdict(int)
     notification_updates = parse_dvla_file(filename)
     for update in notification_updates:
@@ -460,6 +463,7 @@ def record_daily_sorted_counts(self, filename):
 
     billing_date = get_billing_date_in_bst_from_filename(filename)
     persist_daily_sorted_letter_counts(day=billing_date, file_name=filename, sorted_letter_counts=sorted_letter_counts)
+    current_app.logger.info("record_daily_sorted_counts has finished for filename %s", filename)
 
 
 def parse_dvla_file(filename):
