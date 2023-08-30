@@ -64,6 +64,10 @@ def requires_admin_auth():
     requires_internal_auth(current_app.config.get("ADMIN_CLIENT_ID"))
 
 
+def requires_functional_test_auth():
+    requires_internal_auth(current_app.config.get("FUNCTIONAL_TESTS_CLIENT_ID"))
+
+
 def requires_internal_auth(expected_client_id):
     if expected_client_id not in current_app.config.get("INTERNAL_CLIENT_API_KEYS"):
         raise TypeError("Unknown client_id for internal auth")

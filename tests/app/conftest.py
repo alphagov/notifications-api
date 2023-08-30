@@ -54,6 +54,7 @@ from app.models import (
 )
 from tests import (
     create_admin_authorization_header,
+    create_functional_tests_authorization_header,
     create_service_authorization_header,
 )
 from tests.app.db import (
@@ -1055,6 +1056,28 @@ def admin_request(client):
             return json_resp
 
     return AdminRequest
+
+
+@pytest.fixture
+def functional_tests_request(client):
+    class FunctionalTestsRequest:
+        app = client.application
+
+        @staticmethod
+        def put(endpoint, _data=None, _expected_status=200, **endpoint_kwargs):
+            resp = client.put(
+                url_for(endpoint, **(endpoint_kwargs or {})),
+                data=json.dumps(_data),
+                headers=[("Content-Type", "application/json"), create_functional_tests_authorization_header()],
+            )
+            if resp.get_data():
+                json_resp = resp.json
+            else:
+                json_resp = None
+            assert resp.status_code == _expected_status
+            return json_resp
+
+    return FunctionalTestsRequest
 
 
 @pytest.fixture
