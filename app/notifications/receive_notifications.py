@@ -8,7 +8,7 @@ from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app.celery import tasks
 from app.config import QueueNames
-from app.constants import INBOUND_SMS_TYPE, SMS_TYPE
+from app.constants import INBOUND_SMS_TYPE
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.services_dao import dao_fetch_service_by_inbound_number
 from app.errors import register_errors
@@ -170,7 +170,7 @@ def fetch_potential_service(inbound_number, provider_name):
 
 def has_inbound_sms_permissions(permissions):
     str_permissions = [p.permission for p in permissions]
-    return set([INBOUND_SMS_TYPE, SMS_TYPE]).issubset(set(str_permissions))
+    return INBOUND_SMS_TYPE in str_permissions
 
 
 def strip_leading_forty_four(number):
