@@ -614,6 +614,7 @@ def test_delete_notification_history_older_than_datetime(notify_db_session, samp
         [datetime(2020, 6, 1), datetime(2020, 7, 1)],
         [datetime(2021, 12, 1), datetime(2022, 1, 1)],
         [datetime(2022, 3, 31), datetime(2022, 4, 1)],
+        [datetime(2023, 3, 31), datetime(2023, 4, 1)],
     ],
 )
 def test_delete_oldest_quarter_of_unneeded_notification_history_deletes_expected(
@@ -640,9 +641,9 @@ def test_delete_oldest_quarter_of_unneeded_notification_history_doesnt_delete_if
     create_notification_history(
         sample_letter_template,
         status="delivered",
-        created_at=datetime(2022, 4, 1),
-        sent_at=datetime(2022, 4, 1),
-        updated_at=datetime(2022, 4, 1),
+        created_at=datetime(2023, 4, 1),
+        sent_at=datetime(2023, 4, 1),
+        updated_at=datetime(2023, 4, 1),
     )
 
     delete_oldest_quarter_of_unneeded_notification_history()

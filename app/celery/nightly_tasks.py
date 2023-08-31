@@ -342,7 +342,7 @@ def delete_oldest_quarter_of_unneeded_notification_history():
     # This retention limit is hardcoded for the moment. It is picked from
     # https://github.com/alphagov/notifications-aws/blob/main/decisions/2022-12-01-notification-history-retention-period.md
     # and can be increased in the future when we move 3 months into the next financial year
-    retention_limit = datetime(2022, 4, 1)
+    retention_limit = datetime(2023, 4, 1)
 
     oldest_record = db.session.query(func.min(NotificationHistory.created_at)).one()[0]
     if oldest_record >= retention_limit:
