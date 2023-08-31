@@ -1,4 +1,4 @@
-from app.constants import TEMPLATE_PROCESS_TYPE, TEMPLATE_TYPES
+from app.constants import TEMPLATE_LANGUAGE_OPTIONS, TEMPLATE_PROCESS_TYPE, TEMPLATE_TYPES
 from app.schema_validation.definitions import nullable_uuid, uuid
 
 post_create_template_schema = {
@@ -40,5 +40,8 @@ post_update_template_schema = {
         "created_by": uuid,
         "archived": {"type": "boolean"},
         "current_user": uuid,
+        "welsh_subject": {"type": "string"},
+        "welsh_content": {"type": "string"},
+        "languages": {"enum": TEMPLATE_LANGUAGE_OPTIONS},
     },
 }

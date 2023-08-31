@@ -544,6 +544,7 @@ def test_should_get_return_all_fields_by_default(
         "id",
         "is_precompiled_letter",
         "letter_attachment",
+        "languages",
         "name",
         "postage",
         "process_type",
@@ -557,6 +558,8 @@ def test_should_get_return_all_fields_by_default(
         "template_type",
         "updated_at",
         "version",
+        "welsh_content",
+        "welsh_subject",
     }
 
 

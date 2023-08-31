@@ -443,6 +443,9 @@ class TemplateSchemaNoDetail(TemplateSchema):
             "template_redacted",
             "updated_at",
             "version",
+            "welsh_subject",
+            "welsh_content",
+            "languages",
         )
 
     @pre_dump
