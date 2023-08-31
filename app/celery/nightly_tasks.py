@@ -361,6 +361,12 @@ def delete_oldest_quarter_of_unneeded_notification_history():
         # we can then delete anything older (ie the previous quarters data)
         deletion_date = deletion_date + dateutil.relativedelta.relativedelta(months=3)
 
+    # in case there is an error in our logic above, let us just double check that we aren't trying to delete for
+    # anything after our retention limit
+    if deletion_date > retention_limit:
+        current_app.logger.exception("Attempted to delete past our notification_history retention limit")
+        raise
+
     delete_notification_history_older_than_datetime(deletion_date)
 
 
