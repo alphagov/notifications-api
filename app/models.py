@@ -44,6 +44,7 @@ from app.constants import (
     BRANDING_ORG,
     BROADCAST_TYPE,
     EMAIL_TYPE,
+    ENGLISH_LANGUAGE,
     GUEST_LIST_RECIPIENT_TYPE,
     INVITE_PENDING,
     INVITED_USER_STATUS_TYPES,
@@ -65,6 +66,7 @@ from app.constants import (
     PRECOMPILED_TEMPLATE_NAME,
     SMS_AUTH_TYPE,
     SMS_TYPE,
+    TEMPLATE_LANGUAGE_OPTIONS,
     TEMPLATE_TYPES,
     VERIFY_CODE_TYPES,
     OrganisationUserPermissionTypes,
@@ -1001,6 +1003,16 @@ class TemplateBase(db.Model):
     subject = db.Column(db.Text)
     postage = db.Column(db.String, nullable=True)
     broadcast_data = db.Column(JSONB(none_as_null=True), nullable=True)
+
+    welsh_content = db.Column(db.Text)
+    welsh_subject = db.Column(db.Text)
+    languages = db.Column(
+        db.Enum(*TEMPLATE_LANGUAGE_OPTIONS, name="template_language_options"),
+        index=False,
+        unique=False,
+        nullable=False,
+        default=ENGLISH_LANGUAGE,
+    )
 
     @declared_attr
     def service_id(cls):
