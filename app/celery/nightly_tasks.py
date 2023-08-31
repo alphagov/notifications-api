@@ -354,7 +354,7 @@ def delete_oldest_quarter_of_unneeded_notification_history():
     # Pick a potential deletion date to start, that we know is older than the oldest notification
     # in notification_history at the time of writing this code
     deletion_date = datetime(2019, 10, 1)
-    while deletion_date < oldest_record:
+    while deletion_date <= oldest_record:
         # There are no notifications older than our deletion date, lets add 3 months
         # and see if that is still true
         # When we finally find a deletion date that has notifications older than the deletion date

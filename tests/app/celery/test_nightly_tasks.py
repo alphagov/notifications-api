@@ -611,9 +611,10 @@ def test_delete_notification_history_older_than_datetime(notify_db_session, samp
         # 2019-10-1 is the first possible deletion date so that is why it isnt 2019-7-1 for the start of the
         # next quarter
         [datetime(2019, 6, 1), datetime(2019, 10, 1)],
-        [datetime(2020, 6, 1), datetime(2020, 7, 1)],
+        [datetime(2020, 4, 1), datetime(2020, 7, 1)],
         [datetime(2021, 12, 1), datetime(2022, 1, 1)],
         [datetime(2022, 3, 31), datetime(2022, 4, 1)],
+        [datetime(2023, 1, 1), datetime(2023, 4, 1)],
         [datetime(2023, 3, 31), datetime(2023, 4, 1)],
     ],
 )
