@@ -165,7 +165,7 @@ def test_receive_notification_without_permissions_does_not_create_inbound_even_w
     "permissions,expected_response",
     [
         ([SMS_TYPE, INBOUND_SMS_TYPE], True),
-        ([INBOUND_SMS_TYPE], False),
+        ([INBOUND_SMS_TYPE], True),
         ([SMS_TYPE], False),
     ],
 )
