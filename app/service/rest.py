@@ -259,6 +259,10 @@ def create_service():
         raise InvalidRequest(errors, status_code=400)
     data.pop("service_domain", None)
 
+    # TODO: remove this once we start passing `normalised_service_name` through from the admin interface
+    if "email_from" in data and "normalised_service_name" not in data:
+        data["normalised_service_name"] = data["email_from"]
+
     # validate json with marshmallow
     service_schema.load(data)
 
@@ -280,6 +284,10 @@ def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
     # Capture the status change here as Marshmallow changes this later
     service_going_live = fetched_service.restricted and not req_json.get("restricted", True)
+
+    # TODO: remove this once we start passing `normalised_service_name` through from the admin interface
+    if "email_from" in req_json and "normalised_service_name" not in req_json:
+        req_json["normalised_service_name"] = req_json["email_from"]
     current_data = dict(service_schema.dump(fetched_service).items())
     current_data.update(request.get_json())
 
@@ -499,7 +507,6 @@ def get_all_notifications_for_service(service_id):
 
 @service_blueprint.route("/<uuid:service_id>/notifications/<uuid:notification_id>", methods=["GET"])
 def get_notification_for_service(service_id, notification_id):
-
     notification = notifications_dao.get_notification_with_personalisation(
         service_id,
         notification_id,
@@ -633,7 +640,6 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
             include_from_test_key=include_from_test_key, only_active=only_active
         )
     else:
-
         stats = fetch_stats_for_all_services_by_date_range(
             start_date=start_date,
             end_date=end_date,
@@ -998,7 +1004,6 @@ def check_if_reply_to_address_already_in_use(service_id, email_address):
 
 @service_blueprint.route("/<uuid:service_id>/returned-letter-statistics", methods=["GET"])
 def returned_letter_statistics(service_id):
-
     most_recent = fetch_most_recent_returned_letter(service_id)
 
     if not most_recent:

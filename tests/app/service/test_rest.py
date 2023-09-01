@@ -135,7 +135,7 @@ def test_get_service_list_by_user_should_return_empty_list_if_no_services(admin_
     assert json_resp["data"] == []
 
 
-def test_get_service_list_should_return_empty_list_if_no_services(admin_request):
+def test_get_service_list_should_return_empty_list_if_no_services(notify_db_session, admin_request):
     json_resp = admin_request.get("service.get_services")
     assert len(json_resp["data"]) == 0
 
@@ -262,6 +262,7 @@ def test_get_service_by_id(admin_request, sample_service):
         "letter_branding",
         "letter_message_limit",
         "name",
+        "normalised_service_name",
         "notes",
         "organisation",
         "organisation_type",
@@ -421,6 +422,56 @@ def test_create_service(
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
     assert service_sms_senders[0].sms_sender == current_app.config["FROM_NUMBER"]
+
+
+@pytest.mark.parametrize(
+    "extra_data, expected_normalised_service_name",
+    [({"email_from": "foo"}, "foo"), ({"email_from": "foo", "normalised_service_name": "bar"}, "bar")],
+)
+def test_create_service_populates_email_from_and_normalised_service_name(
+    admin_request, sample_user, extra_data, expected_normalised_service_name
+):
+    data = {
+        "name": "created service",
+        "user_id": str(sample_user.id),
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
+        "restricted": False,
+        "created_by": str(sample_user.id),
+    }
+    data.update(extra_data)
+    json_resp = admin_request.post("service.create_service", _data=data, _expected_status=201)
+
+    assert json_resp["data"]["email_from"] == "foo"
+    assert json_resp["data"]["normalised_service_name"] == expected_normalised_service_name
+
+    service_db = Service.query.get(json_resp["data"]["id"])
+    assert service_db.email_from == "foo"
+    assert service_db.normalised_service_name == expected_normalised_service_name
+
+
+@pytest.mark.parametrize(
+    "existing_normalised_service_name, data, expected_normalised_service_name",
+    [
+        (None, {}, None),
+        ("foo", {}, "foo"),
+        (None, {"email_from": "foo"}, "foo"),
+        ("bar", {"email_from": "foo"}, "foo"),
+        (None, {"email_from": "foo", "normalised_service_name": "bar"}, "bar"),
+        ("baz", {"email_from": "foo", "normalised_service_name": "bar"}, "bar"),
+    ],
+)
+def test_update_service_populates_email_from_and_normalised_service_name(
+    admin_request, sample_service, existing_normalised_service_name, data, expected_normalised_service_name
+):
+    sample_service.normalised_service_name = existing_normalised_service_name
+    json_resp = admin_request.post("service.update_service", service_id=sample_service.id, _data=data)
+
+    assert json_resp["data"]["normalised_service_name"] == expected_normalised_service_name
+
+    service_db = Service.query.get(json_resp["data"]["id"])
+    assert service_db.normalised_service_name == expected_normalised_service_name
 
 
 @pytest.mark.parametrize(
