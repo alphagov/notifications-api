@@ -11,7 +11,7 @@ from notifications_utils.letter_timings import (
     get_dvla_working_day_offset_by,
     is_dvla_working_day,
 )
-from notifications_utils.timezones import convert_utc_to_bst
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -340,32 +340,53 @@ def save_daily_notification_processing_time(bst_date=None):
 
 @notify_celery.task(name="delete-oldest-quarter-of-unneeded-notification-history")
 def delete_oldest_quarter_of_unneeded_notification_history():
-    # This retention limit is hardcoded for the moment. It is picked from
+    # This function will delete either 1 or 0 quarters of notifications from the notification_history
+    # table. It will pick the oldest quarter available before our retention limit and delete that.
+    # If there are no notifications older than our retention limit, then it won't do anything.
+    # By running this task several nights in a row, it will slowly delete a quarter of notification_history
+    # per night until we reach out retention limit
+    #
+    # We do everything in this function in BST up until the final point
+    # This is because we care about quarters in the BST timezone because this is
+    # how we bill our users and is easier to reason about.
+    # When we finally figure out which BST quarter we can delete, we convert the time
+    # to UTC so that we delete the correct notifications from our database
+    #
+    # This retention limit is hardcoded and picked from
     # https://github.com/alphagov/notifications-aws/blob/main/decisions/2022-12-01-notification-history-retention-period.md
     # and can be increased in the future when we move 3 months into the next financial year
-    retention_limit = datetime(2023, 4, 1)
+    retention_limit_bst = datetime(2023, 4, 1)
 
-    oldest_record = db.session.query(func.min(NotificationHistory.created_at)).one()[0]
-    if oldest_record >= retention_limit:
+    oldest_notification_bst = convert_utc_to_bst(db.session.query(func.min(NotificationHistory.created_at)).one()[0])
+    if oldest_notification_bst >= retention_limit_bst:
         current_app.logger.info(
-            "No notifications older than retention date of %s so nothing to delete", retention_limit
+            "No notifications older than retention date of %s so nothing to delete", retention_limit_bst
         )
         return
 
-    # Pick a potential deletion date to start, that we know is older than the oldest notification
-    # in notification_history at the time of writing this code
+    deletion_date_bst = pick_bst_quarter_to_delete_back_from(oldest_notification_bst)
+
+    # in case there is an error in our logic above, let us just double check that we aren't trying to delete for
+    # anything after our retention limit
+    if deletion_date_bst > retention_limit_bst:
+        current_app.logger.exception("Attempted to delete past our notification_history retention limit")
+        raise
+
+    deletion_date_utc = convert_bst_to_utc(deletion_date_bst)
+
+    delete_notification_history_older_than_datetime(deletion_date_utc)
+
+
+def pick_bst_quarter_to_delete_back_from(oldest_notification_bst):
+    # We've picked a potential deletion date to start that we know is older than the oldest notification
+    # in notification_history at the time of writing this code.
+    # The potential deletion date to start is intentionally the BST start of a new quarter
     deletion_date = datetime(2019, 10, 1)
-    while deletion_date <= oldest_record:
+    while deletion_date <= oldest_notification_bst:
         # There are no notifications older than our deletion date, lets add 3 months
         # and see if that is still true
         # When we finally find a deletion date that has notifications older than the deletion date
         # we can then delete anything older (ie the previous quarters data)
         deletion_date = deletion_date + dateutil.relativedelta.relativedelta(months=3)
 
-    # in case there is an error in our logic above, let us just double check that we aren't trying to delete for
-    # anything after our retention limit
-    if deletion_date > retention_limit:
-        current_app.logger.exception("Attempted to delete past our notification_history retention limit")
-        raise
-
-    delete_notification_history_older_than_datetime(deletion_date)
+    return deletion_date
