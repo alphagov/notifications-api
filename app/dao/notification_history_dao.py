@@ -1,8 +1,10 @@
 from flask import current_app
 
+from app.dao.dao_utils import autocommit
 from app.models import NotificationHistory
 
 
+@autocommit
 def delete_notification_history_older_than_datetime(older_than_datetime):
     current_app.logger.info("Beginning to delete notification_history older than %s", older_than_datetime)
 
