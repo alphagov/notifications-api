@@ -32,6 +32,7 @@ from app.dao.jobs_dao import (
     dao_archive_job,
     dao_get_jobs_older_than_data_retention,
 )
+from app.dao.notification_history_dao import delete_notification_history_older_than_datetime
 from app.dao.notifications_dao import (
     dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
@@ -368,15 +369,3 @@ def delete_oldest_quarter_of_unneeded_notification_history():
         raise
 
     delete_notification_history_older_than_datetime(deletion_date)
-
-
-def delete_notification_history_older_than_datetime(older_than_datetime):
-    current_app.logger.info("Beginning to delete notification_history older than %s", older_than_datetime)
-
-    num_rows_deleted = NotificationHistory.query.filter(
-        NotificationHistory.sent_at < older_than_datetime,
-    ).delete()
-
-    current_app.logger.info(
-        "Deleted %s rows from notification_history older than %s", num_rows_deleted, older_than_datetime
-    )

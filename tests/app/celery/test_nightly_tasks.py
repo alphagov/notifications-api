@@ -16,7 +16,6 @@ from app.celery.nightly_tasks import (
     delete_email_notifications_older_than_retention,
     delete_inbound_sms,
     delete_letter_notifications_older_than_retention,
-    delete_notification_history_older_than_datetime,
     delete_oldest_quarter_of_unneeded_notification_history,
     delete_sms_notifications_older_than_retention,
     get_letter_notifications_still_sending_when_they_shouldnt_be,
@@ -580,29 +579,6 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
             ),
         ],
     )
-
-
-def test_delete_notification_history_older_than_datetime(notify_db_session, sample_letter_template):
-    notification_history_datetimes = [
-        datetime(2022, 2, 7),
-        datetime(2022, 6, 29),
-        datetime(2022, 6, 30, 23, 59, 59),
-        datetime(2022, 7, 1),
-        datetime(2023, 9, 4),
-    ]
-    for dt in notification_history_datetimes:
-        create_notification_history(
-            sample_letter_template, status="delivered", created_at=dt, sent_at=dt, updated_at=dt
-        )
-    notification_history_rows = NotificationHistory.query.order_by(NotificationHistory.created_at).all()
-    assert len(notification_history_rows) == 5
-    assert notification_history_rows[0].created_at == datetime(2022, 2, 7)
-
-    delete_notification_history_older_than_datetime(datetime(2022, 7, 1))
-
-    notification_history_rows = NotificationHistory.query.order_by(NotificationHistory.created_at).all()
-    assert len(notification_history_rows) == 2
-    assert notification_history_rows[0].created_at == datetime(2022, 7, 1)
 
 
 @pytest.mark.parametrize(
