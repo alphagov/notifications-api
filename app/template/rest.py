@@ -237,9 +237,9 @@ def _template_has_not_changed(current_data, updated_template):
             "archived",
             "process_type",
             "postage",
-            "welsh_subject",
-            "welsh_content",
-            "languages",
+            "letter_welsh_subject",
+            "letter_welsh_content",
+            "letter_languages",
         )
     )
 

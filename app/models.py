@@ -48,6 +48,7 @@ from app.constants import (
     GUEST_LIST_RECIPIENT_TYPE,
     INVITE_PENDING,
     INVITED_USER_STATUS_TYPES,
+    LETTER_LANGUAGE_OPTIONS,
     LETTER_TYPE,
     MOBILE_TYPE,
     NORMAL,
@@ -66,7 +67,6 @@ from app.constants import (
     PRECOMPILED_TEMPLATE_NAME,
     SMS_AUTH_TYPE,
     SMS_TYPE,
-    TEMPLATE_LANGUAGE_OPTIONS,
     TEMPLATE_TYPES,
     VERIFY_CODE_TYPES,
     OrganisationUserPermissionTypes,
@@ -1004,10 +1004,10 @@ class TemplateBase(db.Model):
     postage = db.Column(db.String, nullable=True)
     broadcast_data = db.Column(JSONB(none_as_null=True), nullable=True)
 
-    welsh_content = db.Column(db.Text)
-    welsh_subject = db.Column(db.Text)
-    languages = db.Column(
-        db.Enum(*TEMPLATE_LANGUAGE_OPTIONS, name="template_language_options"),
+    letter_welsh_content = db.Column(db.Text)
+    letter_welsh_subject = db.Column(db.Text)
+    letter_languages = db.Column(
+        db.Enum(*LETTER_LANGUAGE_OPTIONS, name="LETTER_LANGUAGE_OPTIONS"),
         index=False,
         unique=False,
         nullable=False,
