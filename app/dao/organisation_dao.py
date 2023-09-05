@@ -79,7 +79,11 @@ def dao_get_organisation_by_email_address(email_address):
 
 def dao_get_organisations_by_partial_name(organisation_name):
     organisation_name = escape_special_characters(organisation_name)
-    return Organisation.query.filter(Organisation.name.ilike("%{}%".format(organisation_name))).all()
+    return (
+        Organisation.query.filter(Organisation.name.ilike("%{}%".format(organisation_name)))
+        .order_by(Organisation.name)
+        .all()
+    )
 
 
 def dao_get_organisation_by_service_id(service_id):
