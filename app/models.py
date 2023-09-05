@@ -23,7 +23,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
 )
 from notifications_utils.timezones import convert_utc_to_bst
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy import (
     CheckConstraint,
     Index,
@@ -1148,25 +1148,8 @@ class TemplateBase(db.Model):
         return template
 
     def v2_serializer(self) -> "TemplateV2Serializer":
-        return TemplateV2Serializer(
-            id=self.id,
-            type=self.template_type,
-            created_at=self.created_at,
-            created_by=self.created_by.email_address,
-            updated_at=self.updated_at,
-            version=self.version,
-            body=self.content,
-            subject=self.subject if self.template_type in {EMAIL_TYPE, LETTER_TYPE} else None,
-            name=self.name,
-            personalisation={
-                key: {
-                    "required": True,
-                }
-                for key in self._as_utils_template().placeholders
-            },
-            postage=self.postage,
-            letter_contact_block=self.service_letter_contact.contact_block if self.service_letter_contact else None,
-        )
+        breakpoint()
+        return TemplateV2Serializer.model_validate(self)
 
 
 class TemplateV2Serializer(BaseModel):
@@ -1187,6 +1170,16 @@ class TemplateV2Serializer(BaseModel):
     postage: Optional[LITERAL_POSTAGE_TYPES]
     personalisation: dict[str, dict[Literal["required"], Literal[True]]]
     letter_contact_block: Optional[str]
+
+    @field_serializer("personalisation")
+    def serialize_personalisation(self, personalisation, info):
+        breakpoint()
+        return {
+            key: {
+                "required": True,
+            }
+            for key in self._as_utils_template().placeholders
+        }
 
 
 class Template(TemplateBase):
