@@ -385,6 +385,7 @@ class BaseTemplateSchema(BaseSchema):
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
     letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
+    letter_languages = fields.Method("get_letter_languages", "load_letter_languages")
 
     def get_reply_to(self, template):
         return template.reply_to
@@ -394,6 +395,12 @@ class BaseTemplateSchema(BaseSchema):
 
     def get_letter_attachment(self, template):
         return template.letter_attachment.serialize() if template.letter_attachment_id else None
+
+    def get_letter_languages(self, template):
+        return template.letter_languages.value
+
+    def load_letter_languages(self, value):
+        return app.constants.LetterLanguageOptions(value)
 
     class Meta(BaseSchema.Meta):
         model = models.Template
@@ -461,6 +468,7 @@ class TemplateHistorySchema(BaseSchema):
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
     process_type = field_for(models.Template, "process_type")
     letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
+    letter_languages = fields.Method("get_letter_languages")
 
     created_by = fields.Nested(UserSchema, only=["id", "name", "email_address"], dump_only=True)
     created_at = field_for(models.Template, "created_at", format=DATETIME_FORMAT_NO_TIMEZONE)
@@ -474,6 +482,9 @@ class TemplateHistorySchema(BaseSchema):
 
     def get_letter_attachment(self, template):
         return template.letter_attachment.serialize() if template.letter_attachment_id else None
+
+    def get_letter_languages(self, template):
+        return template.letter_languages.value
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory

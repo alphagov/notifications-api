@@ -44,11 +44,9 @@ from app.constants import (
     BRANDING_ORG,
     BROADCAST_TYPE,
     EMAIL_TYPE,
-    ENGLISH_LANGUAGE,
     GUEST_LIST_RECIPIENT_TYPE,
     INVITE_PENDING,
     INVITED_USER_STATUS_TYPES,
-    LETTER_LANGUAGE_OPTIONS,
     LETTER_TYPE,
     MOBILE_TYPE,
     NORMAL,
@@ -69,6 +67,7 @@ from app.constants import (
     SMS_TYPE,
     TEMPLATE_TYPES,
     VERIFY_CODE_TYPES,
+    LetterLanguageOptions,
     OrganisationUserPermissionTypes,
 )
 from app.hashing import check_hash, hashpw
@@ -1007,11 +1006,11 @@ class TemplateBase(db.Model):
     letter_welsh_content = db.Column(db.Text)
     letter_welsh_subject = db.Column(db.Text)
     letter_languages = db.Column(
-        db.Enum(*LETTER_LANGUAGE_OPTIONS, name="LETTER_LANGUAGE_OPTIONS"),
+        db.Enum(LetterLanguageOptions, name="letter_language_options"),
         index=False,
         unique=False,
         nullable=False,
-        default=ENGLISH_LANGUAGE,
+        default=LetterLanguageOptions.english.value,
     )
 
     @declared_attr
