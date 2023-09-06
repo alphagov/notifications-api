@@ -982,6 +982,13 @@ template_folder_map = db.Table(
 )
 
 
+def letter_languages_default(context):
+    if context.get_current_parameters()["template_type"] == LETTER_TYPE:
+        return LetterLanguageOptions.english.value
+    else:
+        return None
+
+
 class TemplateBase(db.Model):
     __abstract__ = True
 
@@ -1009,8 +1016,8 @@ class TemplateBase(db.Model):
         db.Enum(LetterLanguageOptions, name="letter_language_options"),
         index=False,
         unique=False,
-        nullable=False,
-        default=LetterLanguageOptions.english.value,
+        nullable=True,
+        default=letter_languages_default,
     )
 
     @declared_attr
@@ -1054,6 +1061,10 @@ class TemplateBase(db.Model):
             CheckConstraint(
                 "template_type = 'letter' OR letter_attachment_id IS NULL",
                 name=f"ck_{cls.__tablename__}_letter_attachments",
+            ),
+            CheckConstraint(
+                "(template_type != 'letter' AND letter_languages IS NULL) OR"
+                " (template_type = 'letter' AND letter_languages IS NOT NULL)"
             ),
         )
 

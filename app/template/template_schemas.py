@@ -42,6 +42,6 @@ post_update_template_schema = {
         "current_user": uuid,
         "letter_welsh_subject": {"type": "string"},
         "letter_welsh_content": {"type": "string"},
-        "letter_languages": {"enum": [i.value for i in list(LetterLanguageOptions)]},
+        "letter_languages": {"type": "string", "enum": [i.value for i in list(LetterLanguageOptions)]},
     },
 }
