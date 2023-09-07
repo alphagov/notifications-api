@@ -376,8 +376,7 @@ def delete_oldest_quarter_of_unneeded_notification_history():
     # in case there is an error in our logic above, let us just double check that we aren't trying to delete for
     # anything after our retention limit
     if deletion_date_bst > retention_limit_bst:
-        current_app.logger.exception("Attempted to delete past our notification_history retention limit")
-        raise
+        raise Exception("Attempted to delete past our notification_history retention limit")
 
     deletion_date_utc = convert_bst_to_utc(deletion_date_bst)
 
