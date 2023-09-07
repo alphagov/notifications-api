@@ -370,6 +370,28 @@ def test_update_should_update_a_template(client, sample_user):
     assert sample_user.id in template_created_by_users
 
 
+def test_update_letter_languages_should_update_a_template(client, sample_user):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type="letter", postage="second")
+
+    assert template.created_by == service.created_by
+    assert template.created_by != sample_user
+
+    data = {"letter_languages": "welsh_then_english"}
+    data = json.dumps(data)
+    auth_header = create_admin_authorization_header()
+
+    update_response = client.post(
+        "/service/{}/template/{}".format(service.id, template.id),
+        headers=[("Content-Type", "application/json"), auth_header],
+        data=data,
+    )
+
+    assert update_response.status_code == 200
+    update_json_resp = json.loads(update_response.get_data(as_text=True))
+    assert update_json_resp["data"]["letter_languages"] == "welsh_then_english"
+
+
 def test_should_be_able_to_archive_template(client, sample_template):
     data = {
         "name": sample_template.name,
@@ -544,6 +566,7 @@ def test_should_get_return_all_fields_by_default(
         "id",
         "is_precompiled_letter",
         "letter_attachment",
+        "letter_languages",
         "name",
         "postage",
         "process_type",
@@ -557,6 +580,8 @@ def test_should_get_return_all_fields_by_default(
         "template_type",
         "updated_at",
         "version",
+        "letter_welsh_content",
+        "letter_welsh_subject",
     }
 
 

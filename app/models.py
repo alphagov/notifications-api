@@ -67,6 +67,7 @@ from app.constants import (
     SMS_TYPE,
     TEMPLATE_TYPES,
     VERIFY_CODE_TYPES,
+    LetterLanguageOptions,
     OrganisationUserPermissionTypes,
 )
 from app.hashing import check_hash, hashpw
@@ -981,6 +982,13 @@ template_folder_map = db.Table(
 )
 
 
+def letter_languages_default(context):
+    if context.get_current_parameters()["template_type"] == LETTER_TYPE:
+        return LetterLanguageOptions.english
+    else:
+        return None
+
+
 class TemplateBase(db.Model):
     __abstract__ = True
 
@@ -1001,6 +1009,16 @@ class TemplateBase(db.Model):
     subject = db.Column(db.Text)
     postage = db.Column(db.String, nullable=True)
     broadcast_data = db.Column(JSONB(none_as_null=True), nullable=True)
+
+    letter_welsh_content = db.Column(db.Text)
+    letter_welsh_subject = db.Column(db.Text)
+    letter_languages = db.Column(
+        db.Enum(LetterLanguageOptions, name="letter_language_options"),
+        index=False,
+        unique=False,
+        nullable=True,
+        default=letter_languages_default,
+    )
 
     @declared_attr
     def service_id(cls):
@@ -1043,6 +1061,10 @@ class TemplateBase(db.Model):
             CheckConstraint(
                 "template_type = 'letter' OR letter_attachment_id IS NULL",
                 name=f"ck_{cls.__tablename__}_letter_attachments",
+            ),
+            CheckConstraint(
+                "(template_type != 'letter' AND letter_languages IS NULL) OR"
+                " (template_type = 'letter' AND letter_languages IS NOT NULL)"
             ),
         )
 

@@ -385,6 +385,7 @@ class BaseTemplateSchema(BaseSchema):
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
     letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
+    letter_languages = fields.Method("get_letter_languages", "load_letter_languages", allow_none=True)
 
     def get_reply_to(self, template):
         return template.reply_to
@@ -394,6 +395,12 @@ class BaseTemplateSchema(BaseSchema):
 
     def get_letter_attachment(self, template):
         return template.letter_attachment.serialize() if template.letter_attachment_id else None
+
+    def get_letter_languages(self, template):
+        return template.letter_languages
+
+    def load_letter_languages(self, value):
+        return app.constants.LetterLanguageOptions(value) if value else None
 
     class Meta(BaseSchema.Meta):
         model = models.Template
@@ -443,6 +450,9 @@ class TemplateSchemaNoDetail(TemplateSchema):
             "template_redacted",
             "updated_at",
             "version",
+            "letter_welsh_subject",
+            "letter_welsh_content",
+            "letter_languages",
         )
 
     @pre_dump
