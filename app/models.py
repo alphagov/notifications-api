@@ -984,7 +984,7 @@ template_folder_map = db.Table(
 
 def letter_languages_default(context):
     if context.get_current_parameters()["template_type"] == LETTER_TYPE:
-        return LetterLanguageOptions.english.value
+        return LetterLanguageOptions.english
     else:
         return None
 

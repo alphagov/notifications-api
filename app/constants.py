@@ -127,8 +127,9 @@ TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, BROADCAST_TYPE]
 NOTIFICATION_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]  # not broadcast
 NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]  # duplicate that can probably be cleaned up
 
+
 # Language options supported for bilingual letter templates
-class LetterLanguageOptions(enum.Enum):
+class LetterLanguageOptions(str, enum.Enum):
     english = "english"
     welsh_then_english = "welsh_then_english"
 
