@@ -1062,10 +1062,6 @@ class TemplateBase(db.Model):
                 "template_type = 'letter' OR letter_attachment_id IS NULL",
                 name=f"ck_{cls.__tablename__}_letter_attachments",
             ),
-            CheckConstraint(
-                "(template_type != 'letter' AND letter_languages IS NULL) OR"
-                " (template_type = 'letter' AND letter_languages IS NOT NULL)"
-            ),
         )
 
     @property
