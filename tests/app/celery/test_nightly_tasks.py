@@ -591,8 +591,8 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
         [datetime(2020, 4, 1), datetime(2020, 7, 1)],
         [datetime(2021, 12, 1), datetime(2022, 1, 1)],
         [datetime(2022, 3, 31), datetime(2022, 4, 1)],
-        [datetime(2023, 1, 1), datetime(2023, 4, 1)],
-        [datetime(2023, 3, 31), datetime(2023, 4, 1)],
+        [datetime(2022, 10, 1), datetime(2023, 1, 1)],
+        [datetime(2022, 12, 31), datetime(2023, 1, 1)],
     ],
 )
 def test_pick_bst_quarter_to_delete_back_from(oldest_notification_datetime, expected_delete_back_from):
@@ -603,10 +603,10 @@ def test_pick_bst_quarter_to_delete_back_from(oldest_notification_datetime, expe
 @pytest.mark.parametrize(
     "oldest_notification_datetime,expected_delete_back_from",
     [
+        [datetime(2022, 1, 1), datetime(2022, 3, 31, 23, 0, 0)],
         [datetime(2022, 3, 31, 23, 0, 0), datetime(2022, 6, 30, 23, 0, 0)],
         [datetime(2022, 6, 30, 23, 0, 0), datetime(2022, 9, 30, 23, 0, 0)],
         [datetime(2022, 9, 30, 23, 0, 0), datetime(2023, 1, 1)],
-        [datetime(2023, 1, 1), datetime(2023, 3, 31, 23, 0, 0)],
     ],
 )
 def test_delete_oldest_quarter_of_unneeded_notification_history_deletes_correct_utc_datetime(
@@ -633,9 +633,9 @@ def test_delete_oldest_quarter_of_unneeded_notification_history_doesnt_delete_if
     create_notification_history(
         sample_letter_template,
         status="delivered",
-        created_at=datetime(2023, 3, 31, 23, 0, 0),
-        sent_at=datetime(2023, 3, 31, 23, 0, 0),
-        updated_at=datetime(2023, 3, 31, 23, 0, 0),
+        created_at=datetime(2023, 1, 1),
+        sent_at=datetime(2023, 1, 1),
+        updated_at=datetime(2023, 1, 1),
     )
 
     delete_oldest_quarter_of_unneeded_notification_history()
@@ -651,14 +651,12 @@ def test_delete_notification_history_older_than_retention_limit(notify_db_sessio
         datetime(2022, 6, 29),
         datetime(2022, 6, 30, 23, 59, 59),
         datetime(2022, 7, 1),
-        datetime(2023, 3, 31),
-        datetime(2023, 3, 31, 22, 59, 59),
+        datetime(2022, 12, 31),
+        datetime(2022, 12, 31, 23, 59, 59),
         # should delete everything before here
-        datetime(2023, 3, 31, 23, 0, 0),
-        datetime(2023, 3, 31, 23, 0, 1),
-        datetime(2023, 3, 31, 23, 59, 59),
+        datetime(2023, 1, 1),
+        datetime(2023, 1, 1, 0, 0, 1),
         datetime(2023, 4, 1),
-        datetime(2023, 4, 1, 0, 0, 1),
         datetime(2023, 9, 4),
     ]
     for dt in notification_history_datetimes:
@@ -666,7 +664,7 @@ def test_delete_notification_history_older_than_retention_limit(notify_db_sessio
             sample_letter_template, status="delivered", created_at=dt, sent_at=dt, updated_at=dt
         )
     notification_history_rows = NotificationHistory.query.order_by(NotificationHistory.created_at).all()
-    assert len(notification_history_rows) == 14
+    assert len(notification_history_rows) == 12
     assert notification_history_rows[0].created_at == datetime(2019, 6, 8, 1, 4)
 
     # we run this 15 times to replicate it running many days in a row such that it has done all of its work
@@ -675,5 +673,5 @@ def test_delete_notification_history_older_than_retention_limit(notify_db_sessio
         delete_oldest_quarter_of_unneeded_notification_history()
 
     notification_history_rows = NotificationHistory.query.order_by(NotificationHistory.created_at).all()
-    assert len(notification_history_rows) == 6
-    assert notification_history_rows[0].created_at == datetime(2023, 3, 31, 23, 0, 0)
+    assert len(notification_history_rows) == 4
+    assert notification_history_rows[0].created_at == datetime(2023, 1, 1)

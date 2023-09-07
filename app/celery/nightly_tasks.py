@@ -352,10 +352,17 @@ def delete_oldest_quarter_of_unneeded_notification_history():
     # When we finally figure out which BST quarter we can delete, we convert the time
     # to UTC so that we delete the correct notifications from our database
     #
-    # This retention limit is hardcoded and picked from
+    # This retention limit is hardcoded and was originally picked from
     # https://github.com/alphagov/notifications-aws/blob/main/decisions/2022-12-01-notification-history-retention-period.md
-    # and can be increased in the future when we move 3 months into the next financial year
-    retention_limit_bst = datetime(2023, 4, 1)
+    # It was supposed to be 2023-4-1.
+    # However, at the time of writing this code we realised the FtBillingLetterDispatch table has been introduced
+    # which means we need to store letters older than 2023-4-1 in order to rebuild that table (because that table
+    # uses the date of dispatch, not the date of creation for which date to bill for). To keep it simple, we keep
+    # an extra quarters worth of data giving us plenty of buffer
+    #
+    # In the future, we will be able to update this retention_limit_bst value when we have progressed 3 quarters
+    # into the next financial year
+    retention_limit_bst = datetime(2023, 1, 1)
 
     oldest_notification_bst = convert_utc_to_bst(db.session.query(func.min(NotificationHistory.created_at)).one()[0])
     if oldest_notification_bst >= retention_limit_bst:
