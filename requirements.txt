@@ -114,7 +114,7 @@ govuk-bank-holidays==0.11
     # via notifications-utils
 greenlet==1.1.3
     # via eventlet
-gunicorn[eventlet]==21.2.0
+gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via -r requirements.in
 idna==3.4
     # via
@@ -171,7 +171,6 @@ orderedset==2.0.3
     # via notifications-utils
 packaging==21.3
     # via
-    #   gunicorn
     #   marshmallow
     #   marshmallow-sqlalchemy
 phonenumbers==8.13.18
@@ -285,3 +284,6 @@ werkzeug==2.3.3
     # via flask
 zipp==3.16.2
     # via importlib-metadata
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools
