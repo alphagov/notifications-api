@@ -13,6 +13,7 @@ worker_connections = 256
 bind = "0.0.0.0:{}".format(os.getenv("PORT"))
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 gunicorn.SERVER_SOFTWARE = "None"
+keepalive = 90
 
 
 def on_starting(server):
