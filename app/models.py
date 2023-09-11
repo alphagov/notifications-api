@@ -533,7 +533,7 @@ class Service(db.Model, Versioned):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False, unique=True)
-    normalised_service_name = db.Column(db.String, nullable=True, unique=True)
+    normalised_service_name = db.Column(db.String, nullable=False, unique=True)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
@@ -541,7 +541,7 @@ class Service(db.Model, Versioned):
     sms_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
     email_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
-    email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
+    email_from = db.Column(db.Text, index=False, nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
     created_by = db.relationship("User", foreign_keys=[created_by_id])
     prefix_sms = db.Column(db.Boolean, nullable=False, default=True)
