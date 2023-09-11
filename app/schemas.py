@@ -304,11 +304,11 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             duplicates = list(set([x for x in permissions if permissions.count(x) > 1]))
             raise ValidationError("Duplicate Service Permission: {}".format(duplicates))
 
-    @validates("email_from")
-    def validate_email_from(self, value):
+    @validates("normalised_service_name")
+    def validate_normalised_service_name(self, value):
         if not all(char in string.ascii_lowercase + string.digits + "." for char in value):
             raise ValidationError(
-                "Unacceptable characters: `email_from` may only contain letters, numbers and full stops."
+                "Unacceptable characters: `normalised_service_name` may only contain letters, numbers and full stops."
             )
 
     @pre_load()

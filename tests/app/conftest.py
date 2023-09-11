@@ -81,7 +81,7 @@ def rmock():
 @pytest.fixture(scope="function")
 def service_factory(sample_user):
     class ServiceFactory(object):
-        def get(self, service_name, user=None, template_type=None, email_from=None):
+        def get(self, service_name, user=None, template_type=None, email_from=None, normalised_service_name=None):
             if not user:
                 user = sample_user
             if not email_from:
@@ -89,6 +89,7 @@ def service_factory(sample_user):
 
             service = create_service(
                 email_from=email_from,
+                normalised_service_name=normalised_service_name or email_from,
                 service_name=service_name,
                 service_permissions=None,
                 user=user,
