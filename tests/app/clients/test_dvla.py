@@ -744,6 +744,24 @@ def test_send_letter_when_5xx_status_code_is_returned(dvla_authenticate, dvla_cl
     assert str(exc.value) == f"Received 500 from {url}"
 
 
+@pytest.mark.parametrize(
+    "exc_type", [ConnectionResetError, requests.exceptions.SSLError, requests.exceptions.ConnectTimeout]
+)
+def test_send_letter_when_connection_error_is_returned(dvla_authenticate, dvla_client, rmock, exc_type):
+    rmock.post(f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs", exc=exc_type)
+
+    with pytest.raises(DvlaRetryableException):
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+        )
+
+
 def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_client, rmock):
     rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",

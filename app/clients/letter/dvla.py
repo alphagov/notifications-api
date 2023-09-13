@@ -51,6 +51,8 @@ class DvlaThrottlingException(DvlaRetryableException):
 def _handle_common_dvla_errors(custom_httperror_exc_handler: Callable[[requests.HTTPError], None] = lambda x: None):
     try:
         yield
+    except (ConnectionError, requests.ConnectionError, requests.Timeout) as e:
+        raise DvlaRetryableException() from e
     except requests.HTTPError as e:
         custom_httperror_exc_handler(e)
 
