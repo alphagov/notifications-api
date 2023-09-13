@@ -4,6 +4,8 @@
 if [ "$1" == "api-worker-periodic" ] || [ "$1" == "api-worker-broadcasts" ]
 then
   CONCURRENCY=2
+elif [ "$1" == "api-worker-sender-letters" ]
+  CONCURRENCY=3
 else
   CONCURRENCY=4
 fi
@@ -34,15 +36,15 @@ then
 
 elif [ "$1" == "api-worker-letters" ]
 then
-  $COMMON_CMD create-letters-pdf-tasks,letter-tasks 
- 
+  $COMMON_CMD create-letters-pdf-tasks,letter-tasks
+
 elif [ "$1" == "api-worker-jobs" ]
 then
-  $COMMON_CMD database-tasks,job-tasks 
+  $COMMON_CMD database-tasks,job-tasks
 
 elif [ "$1" == "api-worker-research" ]
 then
-  $COMMON_CMD research-mode-tasks 
+  $COMMON_CMD research-mode-tasks
 
 elif [ "$1" == "api-worker-sender" ]
 then

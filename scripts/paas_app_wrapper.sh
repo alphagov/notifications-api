@@ -25,7 +25,8 @@ case $NOTIFY_APP_NAME in
     --logfile=/dev/null --pidfile=/tmp/celery%N.pid -Q send-sms-tasks,send-email-tasks
     ;;
   delivery-worker-sender-letters)
-    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \
+    # at the default of 2 instances with 4 concurrent workers, we hit DVLA's 50rps rate limit 
+    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=3 \
     -Q send-letter-tasks 2> /dev/null
     ;;
   delivery-worker-periodic)
