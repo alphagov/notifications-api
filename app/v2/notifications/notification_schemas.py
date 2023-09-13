@@ -85,7 +85,7 @@ get_notifications_request = {
             "type": "array",
             "items": {
                 "enum": NOTIFICATION_STATUS_TYPES
-                + [NOTIFICATION_STATUS_LETTER_ACCEPTED + ", " + NOTIFICATION_STATUS_LETTER_RECEIVED]
+                + [NOTIFICATION_STATUS_LETTER_ACCEPTED, NOTIFICATION_STATUS_LETTER_RECEIVED]
             },
         },
         "template_type": {"type": "array", "items": {"enum": NOTIFICATION_TYPES}},
