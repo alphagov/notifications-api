@@ -1,7 +1,9 @@
 import base64
+import contextlib
 import secrets
 import string
 import time
+from collections.abc import Callable
 from typing import Literal
 
 import boto3
@@ -43,6 +45,21 @@ class DvlaUnauthorisedRequestException(DvlaRetryableException):
 
 class DvlaThrottlingException(DvlaRetryableException):
     pass
+
+
+@contextlib.contextmanager
+def _handle_common_dvla_errors(custom_httperror_exc_handler: Callable[[requests.HTTPError], None] = lambda x: None):
+    try:
+        yield
+    except requests.HTTPError as e:
+        custom_httperror_exc_handler(e)
+
+        if e.response.status_code == 429:
+            raise DvlaThrottlingException() from e
+        elif e.response.status_code >= 500:
+            raise DvlaRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e
+        else:
+            raise DvlaNonRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e
 
 
 class SSMParameter:
@@ -125,19 +142,20 @@ class DVLAClient:
 
         return self._jwt_token
 
-    def _handle_common_dvla_errors(self, e: requests.HTTPError):
-        if e.response.status_code == 429:
-            raise DvlaThrottlingException() from e
-        elif e.response.status_code >= 500:
-            raise DvlaRetryableException() from e
-        else:
-            raise DvlaNonRetryableException() from e
-
     def authenticate(self):
         """
         Fetch a JWT from the DVLA API that can be used in other DVLA API requests
         """
-        try:
+
+        def _handle_401(e: requests.HTTPError):
+            if e.response.status_code == 401:
+                # likely the old password has already expired
+                current_app.logger.exception("Failed to generate a DVLA jwt token")
+
+                self.dvla_password.clear()
+                raise DvlaRetryableException(e.response.json()[0]["detail"]) from e
+
+        with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_401):
             response = self.session.post(
                 f"{self.base_url}/thirdparty-access/v1/authenticate",
                 json={
@@ -146,15 +164,6 @@ class DVLAClient:
                 },
             )
             response.raise_for_status()
-        except requests.HTTPError as e:
-            if e.response.status_code == 401:
-                # likely the old password has already expired
-                current_app.logger.exception("Failed to generate a DVLA jwt token")
-
-                self.dvla_password.clear()
-                raise DvlaRetryableException(e.response.json()[0]["detail"]) from e
-
-            self._handle_common_dvla_errors(e)
 
         return response.json()["id-token"]
 
@@ -165,13 +174,7 @@ class DVLAClient:
             # clear and re-fetch dvla api key, just to ensure we have the latest version
             self.dvla_api_key.clear()
 
-            try:
-                response = self.session.post(
-                    f"{self.base_url}/thirdparty-access/v1/new-api-key",
-                    headers=self._get_auth_headers(),
-                )
-                response.raise_for_status()
-            except requests.HTTPError as e:
+            def _handle_401(e: requests.HTTPError):
                 if e.response.status_code == 401:
                     # the api key is invalid, but we know it's current as per SSM as we fetched it at the beginning of
                     # this block. It feels most likely that the api key has just been changed by another process and
@@ -182,7 +185,12 @@ class DVLAClient:
                     self.dvla_api_key.clear()
                     raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
 
-                self._handle_common_dvla_errors(e)
+            with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_401):
+                response = self.session.post(
+                    f"{self.base_url}/thirdparty-access/v1/new-api-key",
+                    headers=self._get_auth_headers(),
+                )
+                response.raise_for_status()
 
             self.dvla_api_key.set(response.json()["newApiKey"])
 
@@ -195,17 +203,7 @@ class DVLAClient:
             # clear and re-fetch dvla password, just to ensure we have the latest version
             self.dvla_password.clear()
 
-            try:
-                response = self.session.post(
-                    f"{self.base_url}/thirdparty-access/v1/password",
-                    json={
-                        "userName": self.dvla_username.get(),
-                        "password": self.dvla_password.get(),
-                        "newPassword": new_password,
-                    },
-                )
-                response.raise_for_status()
-            except requests.HTTPError as e:
+            def _handle_401(e: requests.HTTPError):
                 if e.response.status_code == 401:
                     # the password is invalid, but we know it's current as per SSM as we fetched it at the beginning of
                     # this block. It feels most likely that the password has just been changed by another process and
@@ -216,7 +214,16 @@ class DVLAClient:
                     self.dvla_password.clear()
                     raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
 
-                self._handle_common_dvla_errors(e)
+            with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_401):
+                response = self.session.post(
+                    f"{self.base_url}/thirdparty-access/v1/password",
+                    json={
+                        "userName": self.dvla_username.get(),
+                        "password": self.dvla_password.get(),
+                        "newPassword": new_password,
+                    },
+                )
+                response.raise_for_status()
 
             self.dvla_password.set(new_password)
 
@@ -265,7 +272,18 @@ class DVLAClient:
         Sends a letter to the DVLA for printing
         """
 
-        try:
+        def _handle_http_errors(e: requests.HTTPError):
+            if e.response.status_code == 400:
+                raise DvlaNonRetryableException(e.response.json()["errors"][0]["detail"]) from e
+            elif e.response.status_code in {401, 403}:
+                # probably the api key is not valid
+                self.dvla_api_key.clear()
+
+                raise DvlaUnauthorisedRequestException(e.response.json()["errors"][0]["detail"]) from e
+            elif e.response.status_code == 409:
+                raise DvlaDuplicatePrintRequestException(e.response.json()["errors"][0]["detail"]) from e
+
+        with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_http_errors):
             response = self.session.post(
                 f"{self.base_url}/print-request/v1/print/jobs",
                 headers=self._get_auth_headers(),
@@ -280,21 +298,6 @@ class DVLAClient:
                 ),
             )
             response.raise_for_status()
-        except requests.HTTPError as e:
-            # Catch errors and raise our own to indicate what action to take.
-            # If the error has details, we add them to the error message.
-            if e.response.status_code == 400:
-                raise DvlaNonRetryableException(e.response.json()["errors"][0]["detail"]) from e
-            elif e.response.status_code in {401, 403}:
-                # probably the api key is not valid
-                self.dvla_api_key.clear()
-
-                raise DvlaUnauthorisedRequestException(e.response.json()["errors"][0]["detail"]) from e
-            elif e.response.status_code == 409:
-                raise DvlaDuplicatePrintRequestException(e.response.json()["errors"][0]["detail"]) from e
-
-            self._handle_common_dvla_errors(e)
-        else:
             return response.json()
 
     def _format_create_print_job_json(
