@@ -344,9 +344,7 @@ def test_get_all_notifications_filter_by_single_status(api_client_request, sampl
     (
         ("created", "accepted", True),
         ("sending", "accepted", True),
-        pytest.param(
-            "delivered", "received", True, marks=pytest.mark.xfail(reason="bug in Notification.substitute_status impl")
-        ),
+        ("delivered", "received", True),
         pytest.param(
             "returned-letter",
             "received",
