@@ -340,11 +340,11 @@ def test_get_all_notifications_filter_by_single_status(api_client_request, sampl
 
 
 @pytest.mark.parametrize(
-    "internal_status, filter_status, should_get",
+    "internal_status, filter_status, expect_num_notifications",
     (
-        ("created", "accepted", True),
-        ("sending", "accepted", True),
-        ("delivered", "received", True),
+        ("created", "accepted", 1),
+        ("sending", "accepted", 1),
+        ("delivered", "received", 1),
         pytest.param(
             "returned-letter",
             "received",
@@ -358,13 +358,13 @@ def test_get_all_notifications_filter_by_single_status(api_client_request, sampl
                 )
             ),
         ),
-        ("created", "received", False),
-        ("sending", "received", False),
-        ("delivered", "accepted", False),
+        ("created", "received", 0),
+        ("sending", "received", 0),
+        ("delivered", "accepted", 0),
     ),
 )
 def test_get_letter_notifications_filter_by_single_status(
-    api_client_request, sample_letter_template, internal_status, filter_status, should_get
+    api_client_request, sample_letter_template, internal_status, filter_status, expect_num_notifications
 ):
     # the internal notification status `delivered` is mapped to `received` externally.
     notification = create_notification(template=sample_letter_template, status=internal_status)
@@ -376,10 +376,10 @@ def test_get_letter_notifications_filter_by_single_status(
     )
 
     assert json_response["links"]["current"].endswith(f"/v2/notifications?status={filter_status}")
+    assert len(json_response["notifications"]) == expect_num_notifications
 
-    if should_get:
+    if expect_num_notifications > 0:
         assert "next" in json_response["links"].keys()
-        assert len(json_response["notifications"]) == 1
         assert json_response["notifications"][0]["id"] == str(notification.id)
         assert json_response["notifications"][0]["status"] == filter_status
 
