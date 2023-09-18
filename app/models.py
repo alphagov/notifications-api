@@ -1670,6 +1670,7 @@ class NotificationHistory(db.Model, HistoryModel):
         Index(
             "ix_notification_history_service_id_composite", "service_id", "key_type", "notification_type", "created_at"
         ),
+        Index("ix_notification_history_created_at", "created_at", postgresql_concurrently=True),
     )
 
     @classmethod
