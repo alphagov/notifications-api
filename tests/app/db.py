@@ -132,13 +132,16 @@ def create_service(
     if check_if_service_exists:
         service = Service.query.filter_by(name=service_name).first()
     if (not check_if_service_exists) or (check_if_service_exists and not service):
+        email_from = (email_from or service_name.lower().replace(" ", "."),)
+
         service = Service(
             name=service_name,
             email_message_limit=email_message_limit,
             sms_message_limit=sms_message_limit,
             letter_message_limit=letter_message_limit,
             restricted=restricted,
-            email_from=email_from if email_from else service_name.lower().replace(" ", "."),
+            email_from=email_from,
+            normalised_service_name=email_from,
             created_by=user if user else create_user(email="{}@digital.cabinet-office.gov.uk".format(uuid.uuid4())),
             prefix_sms=prefix_sms,
             organisation_type=organisation_type,
@@ -605,7 +608,6 @@ def create_annual_billing(service_id, free_sms_fragment_limit, financial_year_st
 
 
 def create_domain(domain, organisation_id):
-
     domain = Domain(domain=domain, organisation_id=organisation_id)
 
     db.session.add(domain)
@@ -870,7 +872,6 @@ def create_service_data_retention(service, notification_type="sms", days_of_rete
 
 
 def create_invited_user(service=None, to_email_address=None):
-
     if service is None:
         service = create_service()
     if to_email_address is None:
