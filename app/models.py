@@ -1,7 +1,7 @@
 import datetime
 import enum
-import itertools
 import uuid
+from typing import Union
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -1431,55 +1431,29 @@ class Notification(db.Model):
         return None
 
     @staticmethod
-    def substitute_status(status_or_statuses):
+    def substitute_status(status_or_statuses: Union[str, list[str]]) -> list[str]:
         """
         static function that takes a status or list of statuses and substitutes our new failure types if it finds
         the deprecated one
-
-        > IN
-        'failed'
-
-        < OUT
-        ['technical-failure', 'temporary-failure', 'permanent-failure']
-
-        -
-
-        > IN
-        ['failed', 'created', 'accepted']
-
-        < OUT
-        ['technical-failure', 'temporary-failure', 'permanent-failure', 'created', 'sending']
-
-
-        -
-
-        > IN
-        'delivered'
-
-        < OUT
-        ['received']
-
-        :param status_or_statuses: a single status or list of statuses
-        :return: a single status or list with the current failure statuses substituted for 'failure'
         """
-
-        def _substitute_status_str(_status):
-            return (
-                NOTIFICATION_STATUS_TYPES_FAILED
-                if _status == NOTIFICATION_FAILED
-                else [NOTIFICATION_CREATED, NOTIFICATION_SENDING]
-                if _status == NOTIFICATION_STATUS_LETTER_ACCEPTED
-                else NOTIFICATION_DELIVERED
-                if _status == NOTIFICATION_STATUS_LETTER_RECEIVED
-                else [_status]
-            )
-
-        def _substitute_status_seq(_statuses):
-            return list(set(itertools.chain.from_iterable(_substitute_status_str(status) for status in _statuses)))
-
         if isinstance(status_or_statuses, str):
-            return _substitute_status_str(status_or_statuses)
-        return _substitute_status_seq(status_or_statuses)
+            status_or_statuses = [status_or_statuses]
+
+        def _substitute_status(_status: str) -> list[str]:
+            if _status == NOTIFICATION_FAILED:
+                return NOTIFICATION_STATUS_TYPES_FAILED
+            elif _status == NOTIFICATION_STATUS_LETTER_ACCEPTED:
+                return [NOTIFICATION_CREATED, NOTIFICATION_SENDING]
+            elif _status == NOTIFICATION_STATUS_LETTER_RECEIVED:
+                return [NOTIFICATION_DELIVERED]
+
+            return [_status]
+
+        unique_substituted_statuses = {
+            substitute for status in status_or_statuses for substitute in _substitute_status(status)
+        }
+
+        return list(unique_substituted_statuses)
 
     @property
     def content(self):

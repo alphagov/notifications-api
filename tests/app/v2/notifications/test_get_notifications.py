@@ -339,6 +339,51 @@ def test_get_all_notifications_filter_by_single_status(api_client_request, sampl
     assert json_response["notifications"][0]["status"] == "pending"
 
 
+@pytest.mark.parametrize(
+    "internal_status, filter_status, expect_num_notifications",
+    (
+        ("created", "accepted", 1),
+        ("sending", "accepted", 1),
+        ("delivered", "received", 1),
+        pytest.param(
+            "returned-letter",
+            "received",
+            True,
+            marks=pytest.mark.xfail(
+                reason=(
+                    "When we serialize a notification with status `returned-letter`, we display it as `received` "
+                    "instead. But we don't currently do the inverse when filtering on `received`. We probably should, "
+                    "but it would be a backwards-incompatible change and so may need flagging with API users before "
+                    "we fix this."
+                )
+            ),
+        ),
+        ("created", "received", 0),
+        ("sending", "received", 0),
+        ("delivered", "accepted", 0),
+    ),
+)
+def test_get_letter_notifications_filter_by_single_status(
+    api_client_request, sample_letter_template, internal_status, filter_status, expect_num_notifications
+):
+    # the internal notification status `delivered` is mapped to `received` externally.
+    notification = create_notification(template=sample_letter_template, status=internal_status)
+
+    json_response = api_client_request.get(
+        notification.service_id,
+        "v2_notifications.get_notifications",
+        status=filter_status,
+    )
+
+    assert json_response["links"]["current"].endswith(f"/v2/notifications?status={filter_status}")
+    assert len(json_response["notifications"]) == expect_num_notifications
+
+    if expect_num_notifications > 0:
+        assert "next" in json_response["links"].keys()
+        assert json_response["notifications"][0]["id"] == str(notification.id)
+        assert json_response["notifications"][0]["status"] == filter_status
+
+
 def test_get_all_notifications_filter_by_status_invalid_status(api_client_request, sample_notification):
     json_response = api_client_request.get(
         sample_notification.service_id, "v2_notifications.get_notifications", status="elephant", _expected_status=400
