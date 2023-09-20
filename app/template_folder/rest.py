@@ -1,5 +1,6 @@
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import raiseload, selectinload
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.dao_utils import autocommit
@@ -7,7 +8,6 @@ from app.dao.service_user_dao import (
     dao_get_active_service_users,
     dao_get_service_user,
 )
-from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_folder_dao import (
     dao_create_template_folder,
     dao_delete_template_folder,
@@ -16,7 +16,7 @@ from app.dao.template_folder_dao import (
 )
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
 from app.errors import InvalidRequest, register_errors
-from app.models import TemplateFolder
+from app.models import Service, TemplateFolder
 from app.schema_validation import validate
 from app.template_folder.template_folder_schema import (
     post_create_template_folder_schema,
@@ -40,7 +40,11 @@ def handle_integrity_error(exc):
 
 @template_folder_blueprint.route("", methods=["GET"])
 def get_template_folders_for_service(service_id):
-    service = dao_fetch_service_by_id(service_id)
+    service = (
+        Service.query.filter_by(id=service_id)
+        .options(raiseload("users"), selectinload("all_template_folders").options(selectinload("users")))
+        .one()
+    )
 
     template_folders = [o.serialize() for o in service.all_template_folders]
     return jsonify(template_folders=template_folders)
