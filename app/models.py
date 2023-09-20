@@ -946,6 +946,7 @@ class TemplateFolder(db.Model):
         backref=db.backref("folders", foreign_keys="user_folder_permissions.c.template_folder_id"),
         secondary="user_folder_permissions",
         primaryjoin="TemplateFolder.id == user_folder_permissions.c.template_folder_id",
+        lazy="joined",
     )
 
     __table_args__ = (UniqueConstraint("id", "service_id", name="ix_id_service_id"), {})
