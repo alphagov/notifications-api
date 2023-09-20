@@ -149,6 +149,7 @@ def sample_service(sample_user):
         "letter_message_limit": 1000,
         "restricted": False,
         "email_from": email_from,
+        "normalised_service_name": email_from,
         "created_by": sample_user,
         "crown": True,
     }
@@ -181,6 +182,7 @@ def sample_broadcast_service(broadcast_organisation, sample_user):
         "letter_message_limit": 1000,
         "restricted": False,
         "email_from": email_from,
+        "normalised_service_name": email_from,
         "created_by": sample_user,
         "crown": True,
         "count_as_live": False,
@@ -210,6 +212,7 @@ def sample_broadcast_service_2(broadcast_organisation, sample_user):
         "letter_message_limit": 1000,
         "restricted": False,
         "email_from": email_from,
+        "normalised_service_name": email_from,
         "created_by": sample_user,
         "crown": True,
         "count_as_live": False,
@@ -909,6 +912,7 @@ def notify_service(notify_db_session, sample_user):
             letter_message_limit=1000,
             restricted=False,
             email_from="notify.service",
+            normalised_service_name="notify.service",
             created_by=sample_user,
             prefix_sms=False,
         )

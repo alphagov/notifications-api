@@ -165,16 +165,15 @@ def handle_integrity_error(exc):
     """
     if any(
         'duplicate key value violates unique constraint "{}"'.format(constraint) in str(exc)
-        for constraint in {"services_name_key", "services_email_from_key"}
+        for constraint in {"services_name_key", "services_email_from_key", "services_normalised_service_name_key"}
     ):
+        duplicate_name = (
+            exc.params.get("name") or exc.params.get("normalised_service_name") or exc.params.get("email_from", "")
+        )
         return (
             jsonify(
                 result="error",
-                message={
-                    "name": [
-                        "Duplicate service name '{}'".format(exc.params.get("name", exc.params.get("email_from", "")))
-                    ]
-                },
+                message={"name": [f"Duplicate service name '{duplicate_name}'"]},
             ),
             400,
         )

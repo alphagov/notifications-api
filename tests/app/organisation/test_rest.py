@@ -172,7 +172,9 @@ def test_organisation_search_finds_organisations(notify_db_session, admin_reques
     organisation_2 = create_organisation(name="ABCGHT")
     create_organisation(name="ZYSWVU")
     response = admin_request.get("organisation.search", name="ABC")
-    assert response["data"] == [organisation_1.serialize_for_list(), organisation_2.serialize_for_list()]
+    assert sorted(response["data"], key=lambda x: x["id"]) == sorted(
+        [organisation_1.serialize_for_list(), organisation_2.serialize_for_list()], key=lambda x: x["id"]
+    )
 
 
 def test_organisation_search_handles_no_results(notify_db_session, admin_request):

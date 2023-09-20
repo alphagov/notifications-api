@@ -454,11 +454,8 @@ def test_create_service_populates_email_from_and_normalised_service_name(
 @pytest.mark.parametrize(
     "existing_normalised_service_name, data, expected_normalised_service_name",
     [
-        (None, {}, None),
         ("foo", {}, "foo"),
-        (None, {"email_from": "foo"}, "foo"),
         ("bar", {"email_from": "foo"}, "foo"),
-        (None, {"email_from": "foo", "normalised_service_name": "bar"}, "bar"),
         ("baz", {"email_from": "foo", "normalised_service_name": "bar"}, "bar"),
     ],
 )
