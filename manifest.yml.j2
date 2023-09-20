@@ -47,6 +47,7 @@
       'staging': 0,
       'production': 0
     },
+    'stack': 'cflinuxfs4'
   },
 
   'notify-delivery-celery-beat': {
@@ -95,6 +96,8 @@ applications:
     {%- endif %}
     memory: {{ app.get('memory', '1G') }}
     disk_quota: {{ app.get('disk_quota', '1G')}}
+
+    stack: {{ app.get('stack', 'cflinuxfs3') }}
 
     routes:
       {%- for route in app.get('routes', {}).get(environment, []) %}
