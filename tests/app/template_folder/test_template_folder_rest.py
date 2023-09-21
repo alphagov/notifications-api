@@ -84,7 +84,9 @@ def test_get_folders_returns_users_with_permission(admin_request, sample_service
         "SQLALCHEMY_RECORD_QUERIES on app.config.Test"
     )
 )
-def test_get_folders_returns_users_with_permission_does_not_do_n_plus_1_sql_queries(admin_request, sample_service):
+def test_get_folders_returns_users_with_permission_does_not_do_n_plus_1_sql_queries(
+    admin_request, sample_service, notify_db_session
+):
     users = [create_user(email=f"user-{_}@gov.uk") for _ in range(10)]
     template_folders = [create_template_folder(sample_service) for _ in range(25)]
     sample_service.users = users
@@ -93,14 +95,17 @@ def test_get_folders_returns_users_with_permission_does_not_do_n_plus_1_sql_quer
     for service_user in service_users:
         service_user.folders = template_folders
 
+    service_id = sample_service.id
+    notify_db_session.commit()
+
     with count_sqlalchemy_queries() as get_query_count:
-        resp = admin_request.get("template_folder.get_template_folders_for_service", service_id=sample_service.id)
+        resp = admin_request.get("template_folder.get_template_folders_for_service", service_id=service_id)
 
     users_with_permission = resp["template_folders"][0]["users_with_permission"]
 
     assert len(users_with_permission) == 10
     assert all([str(user.id) in users_with_permission for user in users])
-    assert get_query_count() == 4
+    assert get_query_count() == 3
 
 
 @pytest.mark.parametrize("has_parent", [True, False])
