@@ -370,14 +370,39 @@ def test_update_should_update_a_template(client, sample_user):
     assert sample_user.id in template_created_by_users
 
 
-def test_update_letter_languages_should_update_a_template(client, sample_user):
+@pytest.mark.parametrize(
+    "languages, welsh_subject, welsh_content",
+    (
+        ("welsh_then_english", "subject", "content"),
+        pytest.param(
+            "welsh_then_english",
+            None,
+            None,
+            marks=pytest.mark.xfail(
+                raises=AssertionError, reason="if welsh_then_english, welsh subject and content must be provided"
+            ),
+        ),
+        ("english", None, None),
+        pytest.param(
+            "english",
+            "subject",
+            "content",
+            marks=pytest.mark.xfail(raises=AssertionError, reason="if english, then welsh data must be nulled out"),
+        ),
+    ),
+)
+def test_update_template_language(client, sample_user, languages, welsh_subject, welsh_content):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="second")
 
     assert template.created_by == service.created_by
     assert template.created_by != sample_user
 
-    data = {"letter_languages": "welsh_then_english"}
+    data = {
+        "letter_languages": languages,
+        "letter_welsh_subject": welsh_subject,
+        "letter_welsh_content": welsh_content,
+    }
     data = json.dumps(data)
     auth_header = create_admin_authorization_header()
 
@@ -389,7 +414,7 @@ def test_update_letter_languages_should_update_a_template(client, sample_user):
 
     assert update_response.status_code == 200
     update_json_resp = json.loads(update_response.get_data(as_text=True))
-    assert update_json_resp["data"]["letter_languages"] == "welsh_then_english"
+    assert update_json_resp["data"]["letter_languages"] == languages
 
 
 def test_should_be_able_to_archive_template(client, sample_template):

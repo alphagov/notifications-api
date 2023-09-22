@@ -40,8 +40,29 @@ post_update_template_schema = {
         "created_by": uuid,
         "archived": {"type": "boolean"},
         "current_user": uuid,
-        "letter_welsh_subject": {"type": "string"},
-        "letter_welsh_content": {"type": "string"},
         "letter_languages": {"type": "string", "enum": [i.value for i in LetterLanguageOptions]},
+        "letter_welsh_subject": {},
+        "letter_welsh_content": {},
+    },
+    "if": {
+        "properties": {"letter_languages": {"const": LetterLanguageOptions.english.value}},
+    },
+    "then": {
+        "properties": {
+            "letter_welsh_subject": {"type": "null"},
+            "letter_welsh_content": {"type": "null"},
+        }
+    },
+    "else": {
+        "if": {
+            "properties": {"letter_languages": {"const": LetterLanguageOptions.welsh_then_english.value}},
+        },
+        "then": {
+            "properties": {
+                "letter_welsh_subject": {"type": "string"},
+                "letter_welsh_content": {"type": "string"},
+            },
+            "required": ["letter_welsh_subject", "letter_welsh_content"],
+        },
     },
 }
