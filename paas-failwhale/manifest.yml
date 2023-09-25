@@ -6,3 +6,4 @@ applications:
       - nginx_buildpack
     memory: 256M
     no-route: true
+    stack: cflinuxfs4
