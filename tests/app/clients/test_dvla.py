@@ -203,7 +203,6 @@ def test_authenticate_raises_retryable_exception_if_credentials_are_invalid(dvla
     }.items(),
 )
 def test_authenticate_handles_generic_errors(dvla_client, rmock, status_code, exc_class):
-
     error_response = [{"status": status_code, "title": "Authentication Failure", "detail": "Some detail"}]
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
     rmock.request("POST", endpoint, json=error_response, status_code=status_code)
@@ -729,10 +728,27 @@ def test_send_letter_when_throttling_error_is_raised(dvla_authenticate, dvla_cli
 
 
 def test_send_letter_when_5xx_status_code_is_returned(dvla_authenticate, dvla_client, rmock):
-    rmock.post(
-        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
-        status_code=500,
-    )
+    url = f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs"
+    rmock.post(url, status_code=500)
+
+    with pytest.raises(DvlaRetryableException) as exc:
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+        )
+    assert str(exc.value) == f"Received 500 from {url}"
+
+
+@pytest.mark.parametrize(
+    "exc_type", [ConnectionResetError, requests.exceptions.SSLError, requests.exceptions.ConnectTimeout]
+)
+def test_send_letter_when_connection_error_is_returned(dvla_authenticate, dvla_client, rmock, exc_type):
+    rmock.post(f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs", exc=exc_type)
 
     with pytest.raises(DvlaRetryableException):
         dvla_client.send_letter(

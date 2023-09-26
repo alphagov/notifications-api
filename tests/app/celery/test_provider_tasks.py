@@ -30,6 +30,7 @@ from app.clients.letter.dvla import (
 )
 from app.clients.sms import SmsClientResponseException
 from app.constants import (
+    KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
@@ -129,7 +130,7 @@ def test_should_call_send_email_to_provider_from_deliver_email_task(sample_notif
     app.delivery.send_to_providers.send_email_to_provider.assert_called_with(sample_notification)
 
 
-def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_email_task(mocker):
+def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_email_task(notify_api, mocker):
     mocker.patch("app.delivery.send_to_providers.send_email_to_provider")
     mocker.patch("app.celery.provider_tasks.deliver_email.retry")
 
@@ -387,6 +388,44 @@ def test_deliver_letter_logs_a_warning_when_the_print_request_is_duplicate(
     assert not mock_retry.called
     assert letter.status == NOTIFICATION_CREATED
     assert f"Duplicate deliver_letter task called for notification {letter.id}" in caplog.messages
+
+
+@freeze_time("2020-02-17 16:00:00")
+def test_deliver_letter_logs_an_error_when_test_letter(mocker, sample_letter_template, caplog):
+    mock_send = mocker.patch("app.celery.provider_tasks.dvla_client.send_letter")
+    mock_retry = mocker.patch("app.celery.provider_tasks.deliver_letter.retry")
+
+    letter = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_CREATED,
+        key_type=KEY_TYPE_TEST,
+    )
+
+    with caplog.at_level("ERROR"):
+        deliver_letter(letter.id)
+
+    assert not mock_retry.called
+    assert not mock_send.called
+    assert f"deliver_letter task called for notification {letter.id} with key type test" in caplog.messages
+
+
+@freeze_time("2020-02-17 16:00:00")
+def test_deliver_letter_logs_an_error_when_letter_not_created(mocker, sample_letter_template, caplog):
+    mock_send = mocker.patch("app.celery.provider_tasks.dvla_client.send_letter")
+    mock_retry = mocker.patch("app.celery.provider_tasks.deliver_letter.retry")
+
+    letter = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_SENDING,
+        key_type=KEY_TYPE_TEST,
+    )
+
+    with caplog.at_level("WARNING"):
+        deliver_letter(letter.id)
+
+    assert not mock_retry.called
+    assert not mock_send.called
+    assert f"deliver_letter task called for notification {letter.id} in status sending" in caplog.messages
 
 
 @mock_s3

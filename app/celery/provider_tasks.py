@@ -16,7 +16,9 @@ from app.clients.letter.dvla import (
 from app.clients.sms import SmsClientResponseException
 from app.config import QueueNames
 from app.constants import (
+    KEY_TYPE_NORMAL,
     LETTER_TYPE,
+    NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
 )
@@ -93,6 +95,18 @@ def deliver_letter(self, notification_id):
     current_app.logger.info("Start sending letter for notification id: %s", notification_id)
     notification = notifications_dao.get_notification_by_id(notification_id, _raise=True)
     postal_address = PostalAddress(notification.to, allow_international_letters=True)
+
+    if notification.status != NOTIFICATION_CREATED:
+        current_app.logger.warning(
+            "deliver_letter task called for notification %s in status %s", notification_id, notification.status
+        )
+        return
+
+    if notification.key_type != KEY_TYPE_NORMAL:
+        current_app.logger.error(
+            "deliver_letter task called for notification %s with key type %s", notification_id, notification.key_type
+        )
+        return
 
     try:
         file_bytes = find_letter_pdf_in_s3(notification).get()["Body"].read()
