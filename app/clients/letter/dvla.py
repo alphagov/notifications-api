@@ -305,6 +305,9 @@ class DVLAClient:
         # uncertainty from the PostalAddress resolving to something else dynamically.
         recipient, address_data = self._parse_recipient_and_address(postage=postage, address=address)
 
+        recipient = recipient[:255]
+        address_data = self._truncate_long_address_lines(address_data)
+
         json_payload = {
             "id": notification_id,
             "standardParams": {
@@ -339,6 +342,7 @@ class DVLAClient:
 
         # The first line has already been used as the recipient, so we include everything other than that.
         unstructured_address = dict(zip(address_line_keys, address_lines[:-1]))
+
         unstructured_address[last_line_key] = last_line
 
         return unstructured_address
@@ -376,3 +380,17 @@ class DVLAClient:
             return recipient, {"internationalAddress": self._build_address(address_lines, "country")}
 
         return recipient, {"unstructuredAddress": self._build_address(address_lines, "postcode")}
+
+    def _truncate_long_address_lines(self, address_data: dict) -> tuple[str, dict]:
+        def truncate_line(key: str, value):
+            if not isinstance(value, str):
+                return value
+
+            max_length = {"postcode": 10, "country": 256}.get(key, 45)
+            return value[:max_length]
+
+        # there'll only ever be one nested dict in address_data, but we dont know what the key is so we need to iterate
+        for address_dict_type, address_dict in address_data.items():
+            return {address_dict_type: {k: truncate_line(k, v) for k, v in address_dict.items()}}
+
+        raise RuntimeError(f"Expected values in {address_data}")

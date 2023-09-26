@@ -203,7 +203,6 @@ def test_authenticate_raises_retryable_exception_if_credentials_are_invalid(dvla
     }.items(),
 )
 def test_authenticate_handles_generic_errors(dvla_client, rmock, status_code, exc_class):
-
     error_response = [{"status": status_code, "title": "Authentication Failure", "detail": "Some detail"}]
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
     rmock.request("POST", endpoint, json=error_response, status_code=status_code)
@@ -462,6 +461,16 @@ def test_format_create_print_job_json_adds_despatchMethod_key_for_first_class_po
             "The user",
             {"line1": "1", "line2": "2", "line3": "3", "line4": "4", "line5": "5", "postcode": "SW1 1AA"},
         ),
+        (
+            PostalAddress("The user\n1\n" + ("2" * 50) + "\n3\n4\n5\nSW1 1AA"),
+            "The user",
+            {"line1": "1", "line2": "2" * 45, "line3": "3", "line4": "4", "line5": "5", "postcode": "SW1 1AA"},
+        ),
+        (
+            PostalAddress("The user\n1\n2\n3\n4\n5\nPostcode over ten characters"),
+            "The user",
+            {"line1": "1", "line2": "2", "line3": "3", "line4": "4", "line5": "5", "postcode": "Postcode o"},
+        ),
     ],
 )
 def test_format_create_print_job_json_formats_address_lines(dvla_client, address, recipient, unstructured_address):
@@ -477,6 +486,24 @@ def test_format_create_print_job_json_formats_address_lines(dvla_client, address
 
     assert formatted_json["standardParams"]["recipientName"] == recipient
     assert formatted_json["standardParams"]["address"]["unstructuredAddress"] == unstructured_address
+
+
+def test_format_create_print_job_json_formats_international_address_lines(dvla_client):
+    address = PostalAddress("The user\nThe road\nSW1 1AA\nFrance", allow_international_letters=True)
+    expected_address = {"line1": "The road", "line2": "SW1 1AA", "country": "France"}
+
+    formatted_json = dvla_client._format_create_print_job_json(
+        notification_id="my_notification_id",
+        reference="ABCDEFGHIJKL",
+        address=address,
+        postage="europe",
+        service_id="my_service_id",
+        organisation_id="my_organisation_id",
+        pdf_file=b"pdf_content",
+    )
+
+    assert formatted_json["standardParams"]["recipientName"] == "The user"
+    assert formatted_json["standardParams"]["address"]["internationalAddress"] == expected_address
 
 
 def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
