@@ -599,6 +599,7 @@ class Staging(Config):
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
     DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
+    REDIS_ENABLED = False
 
 
 class Production(Config):
