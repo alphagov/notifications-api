@@ -114,7 +114,7 @@ class Config(object):
 
     # URL of redis instance
     REDIS_URL = os.getenv("REDIS_URL")
-    REDIS_ENABLED = True
+    REDIS_ENABLED = False if os.environ.get("REDIS_ENABLED") == "0" else True
     EXPIRE_CACHE_TEN_MINUTES = 600
     EXPIRE_CACHE_EIGHT_DAYS = 8 * 24 * 60 * 60
 
