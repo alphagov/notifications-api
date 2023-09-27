@@ -126,8 +126,8 @@ def send_email_to_provider(notification):
             update_notification_to_sending(notification, provider)
             send_email_response(notification.reference, notification.to)
         else:
-            from_address = '"{}" <{}@{}>'.format(
-                service.name, service.email_from, current_app.config["NOTIFY_EMAIL_DOMAIN"]
+            from_address = (
+                f'"{service.name}" <{service.normalised_service_name}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
             )
 
             reference = provider.send_email(

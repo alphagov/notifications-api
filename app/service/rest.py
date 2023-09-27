@@ -258,10 +258,6 @@ def create_service():
         raise InvalidRequest(errors, status_code=400)
     data.pop("service_domain", None)
 
-    # TODO: remove this once we start passing `normalised_service_name` through from the admin interface
-    if "email_from" in data and "normalised_service_name" not in data:
-        data["normalised_service_name"] = data["email_from"]
-
     # validate json with marshmallow
     service_schema.load(data)
 
@@ -284,9 +280,6 @@ def update_service(service_id):
     # Capture the status change here as Marshmallow changes this later
     service_going_live = fetched_service.restricted and not req_json.get("restricted", True)
 
-    # TODO: remove this once we start passing `normalised_service_name` through from the admin interface
-    if "email_from" in req_json and "normalised_service_name" not in req_json:
-        req_json["normalised_service_name"] = req_json["email_from"]
     current_data = dict(service_schema.dump(fetched_service).items())
     current_data.update(request.get_json())
 
