@@ -1,7 +1,7 @@
 ---
 applications:
 - name: ((app_name))
-  stack: cflinuxfs4
+  stack: cflinuxfs3
   processes:
   - type: web
     instances: 0

@@ -95,7 +95,7 @@ applications:
     {%- endif %}
     memory: {{ app.get('memory', '1G') }}
     disk_quota: {{ app.get('disk_quota', '1G')}}
-    stack: cflinuxfs4
+    stack: cflinuxfs3
 
     routes:
       {%- for route in app.get('routes', {}).get(environment, []) %}
