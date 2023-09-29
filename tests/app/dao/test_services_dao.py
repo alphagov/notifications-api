@@ -226,31 +226,6 @@ def test_cannot_create_two_services_with_same_name(notify_db_session):
     assert 'duplicate key value violates unique constraint "services_name_key"' in str(excinfo.value)
 
 
-# TODO: remove test when dropping email_from entirely
-@pytest.mark.xfail(reason="email_from no longer has a constraint")
-def test_cannot_create_two_services_with_same_email_from(notify_db_session):
-    user = create_user()
-    assert Service.query.count() == 0
-    service1 = Service(
-        name="service_name1",
-        email_from="email_1",
-        normalised_service_name="normalised_1",
-        restricted=False,
-        created_by=user,
-    )
-    service2 = Service(
-        name="service_name2",
-        email_from="email_1",
-        normalised_service_name="normalised_2",
-        restricted=False,
-        created_by=user,
-    )
-    with pytest.raises(IntegrityError) as excinfo:
-        dao_create_service(service1, user)
-        dao_create_service(service2, user)
-    assert 'duplicate key value violates unique constraint "services_email_from_key"' in str(excinfo.value)
-
-
 def test_cannot_create_two_services_with_same_normalised_service_name(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
