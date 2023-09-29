@@ -16,9 +16,11 @@ from app.celery.nightly_tasks import (
     delete_email_notifications_older_than_retention,
     delete_inbound_sms,
     delete_letter_notifications_older_than_retention,
+    delete_oldest_quarter_of_unneeded_notification_history,
     delete_sms_notifications_older_than_retention,
     get_letter_notifications_still_sending_when_they_shouldnt_be,
     letter_raise_alert_if_no_ack_file_for_zip,
+    pick_bst_quarter_to_delete_back_from,
     raise_alert_if_letter_notifications_still_sending,
     remove_letter_csv_files,
     remove_sms_email_csv_files,
@@ -27,10 +29,11 @@ from app.celery.nightly_tasks import (
     timeout_notifications,
 )
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
-from app.models import FactProcessingTime
+from app.models import FactProcessingTime, NotificationHistory
 from tests.app.db import (
     create_job,
     create_notification,
+    create_notification_history,
     create_service,
     create_service_data_retention,
     create_template,
@@ -577,3 +580,98 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
             ),
         ],
     )
+
+
+@pytest.mark.parametrize(
+    "oldest_notification_datetime,expected_delete_back_from",
+    [
+        # 2019-10-1 is the first possible deletion date so that is why it isnt 2019-7-1 for the start of the
+        # next quarter
+        [datetime(2019, 6, 1), datetime(2019, 10, 1)],
+        [datetime(2020, 4, 1), datetime(2020, 7, 1)],
+        [datetime(2021, 12, 1), datetime(2022, 1, 1)],
+        [datetime(2022, 3, 31), datetime(2022, 4, 1)],
+        [datetime(2022, 10, 1), datetime(2023, 1, 1)],
+        [datetime(2022, 12, 31), datetime(2023, 1, 1)],
+    ],
+)
+def test_pick_bst_quarter_to_delete_back_from(oldest_notification_datetime, expected_delete_back_from):
+    result = pick_bst_quarter_to_delete_back_from(oldest_notification_datetime)
+    assert result == expected_delete_back_from
+
+
+@pytest.mark.parametrize(
+    "oldest_notification_datetime,expected_delete_back_from",
+    [
+        [datetime(2022, 1, 1), datetime(2022, 3, 31, 23, 0, 0)],
+        [datetime(2022, 3, 31, 23, 0, 0), datetime(2022, 6, 30, 23, 0, 0)],
+        [datetime(2022, 6, 30, 23, 0, 0), datetime(2022, 9, 30, 23, 0, 0)],
+        [datetime(2022, 9, 30, 23, 0, 0), datetime(2023, 1, 1)],
+    ],
+)
+def test_delete_oldest_quarter_of_unneeded_notification_history_deletes_correct_utc_datetime(
+    mocker, notify_db_session, sample_letter_template, oldest_notification_datetime, expected_delete_back_from
+):
+    delete_mock = mocker.patch("app.celery.nightly_tasks.delete_notification_history_older_than_datetime")
+    create_notification_history(
+        sample_letter_template,
+        status="delivered",
+        created_at=oldest_notification_datetime,
+        sent_at=oldest_notification_datetime,
+        updated_at=oldest_notification_datetime,
+    )
+
+    delete_oldest_quarter_of_unneeded_notification_history()
+
+    delete_mock.assert_called_once_with(expected_delete_back_from)
+
+
+def test_delete_oldest_quarter_of_unneeded_notification_history_doesnt_delete_if_past_retention_limit(
+    mocker, notify_db_session, sample_letter_template
+):
+    delete_mock = mocker.patch("app.celery.nightly_tasks.delete_notification_history_older_than_datetime")
+    create_notification_history(
+        sample_letter_template,
+        status="delivered",
+        created_at=datetime(2023, 1, 1),
+        sent_at=datetime(2023, 1, 1),
+        updated_at=datetime(2023, 1, 1),
+    )
+
+    delete_oldest_quarter_of_unneeded_notification_history()
+
+    delete_mock.assert_not_called()
+
+
+def test_delete_notification_history_older_than_retention_limit(notify_db_session, sample_letter_template):
+    notification_history_datetimes = [
+        datetime(2019, 6, 8, 1, 4),
+        datetime(2021, 1, 1),
+        datetime(2022, 2, 7),
+        datetime(2022, 6, 29),
+        datetime(2022, 6, 30, 23, 59, 59),
+        datetime(2022, 7, 1),
+        datetime(2022, 12, 31),
+        datetime(2022, 12, 31, 23, 59, 59),
+        # should delete everything before here
+        datetime(2023, 1, 1),
+        datetime(2023, 1, 1, 0, 0, 1),
+        datetime(2023, 4, 1),
+        datetime(2023, 9, 4),
+    ]
+    for dt in notification_history_datetimes:
+        create_notification_history(
+            sample_letter_template, status="delivered", created_at=dt, sent_at=dt, updated_at=dt
+        )
+    notification_history_rows = NotificationHistory.query.order_by(NotificationHistory.created_at).all()
+    assert len(notification_history_rows) == 12
+    assert notification_history_rows[0].created_at == datetime(2019, 6, 8, 1, 4)
+
+    # we run this 15 times to replicate it running many days in a row such that it has done all of its work
+    # and reached a point of equilibrium where nothing further needs to be deleted
+    for _i in range(15):
+        delete_oldest_quarter_of_unneeded_notification_history()
+
+    notification_history_rows = NotificationHistory.query.order_by(NotificationHistory.created_at).all()
+    assert len(notification_history_rows) == 4
+    assert notification_history_rows[0].created_at == datetime(2023, 1, 1)
