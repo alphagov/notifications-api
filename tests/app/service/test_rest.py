@@ -252,7 +252,6 @@ def test_get_service_by_id(admin_request, sample_service):
         "count_as_live",
         "created_by",
         "email_branding",
-        "email_from",
         "email_message_limit",
         "go_live_at",
         "go_live_user",
