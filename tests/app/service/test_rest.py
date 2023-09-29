@@ -424,49 +424,6 @@ def test_create_service(
     assert service_sms_senders[0].sms_sender == current_app.config["FROM_NUMBER"]
 
 
-# TODO: remove this test when we remove email_from
-def test_create_service_populates_email_from_and_normalised_service_name(admin_request, sample_user):
-    data = {
-        "name": "created service",
-        "user_id": str(sample_user.id),
-        "email_message_limit": 1000,
-        "sms_message_limit": 1000,
-        "letter_message_limit": 1000,
-        "restricted": False,
-        "created_by": str(sample_user.id),
-        "email_from": "foo",
-        "normalised_service_name": "bar",
-    }
-    json_resp = admin_request.post("service.create_service", _data=data, _expected_status=201)
-
-    assert json_resp["data"]["email_from"] == "foo"
-    assert json_resp["data"]["normalised_service_name"] == "bar"
-
-    service_db = Service.query.get(json_resp["data"]["id"])
-    assert service_db.email_from == "foo"
-    assert service_db.normalised_service_name == "bar"
-
-
-# TODO: remove this test when we remove email_from
-@pytest.mark.parametrize(
-    "existing_normalised_service_name, data, expected_normalised_service_name",
-    [
-        ("bar", {"email_from": "foo"}, "bar"),
-        ("baz", {"email_from": "foo", "normalised_service_name": "bar"}, "bar"),
-    ],
-)
-def test_update_service_populates_email_from_and_normalised_service_name(
-    admin_request, sample_service, existing_normalised_service_name, data, expected_normalised_service_name
-):
-    sample_service.normalised_service_name = existing_normalised_service_name
-    json_resp = admin_request.post("service.update_service", service_id=sample_service.id, _data=data)
-
-    assert json_resp["data"]["normalised_service_name"] == expected_normalised_service_name
-
-    service_db = Service.query.get(json_resp["data"]["id"])
-    assert service_db.normalised_service_name == expected_normalised_service_name
-
-
 @pytest.mark.parametrize(
     "domain, expected_org",
     (
@@ -1677,8 +1634,8 @@ def test_get_service_and_api_key_history(notify_api, sample_service, sample_api_
 
 
 def test_get_all_notifications_for_service_in_order(client, notify_db_session):
-    service_1 = create_service(service_name="1", email_from="1")
-    service_2 = create_service(service_name="2", email_from="2")
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
 
     service_1_template = create_template(service_1)
     service_2_template = create_template(service_2)
@@ -1781,7 +1738,7 @@ def test_get_all_notifications_for_service_formatted_for_csv(client, sample_temp
 
 
 def test_get_notification_for_service_without_uuid(client, notify_db_session):
-    service_1 = create_service(service_name="1", email_from="1")
+    service_1 = create_service(service_name="1")
     response = client.get(
         path="/service/{}/notifications/{}".format(service_1.id, "foo"), headers=[create_admin_authorization_header()]
     )
@@ -1789,8 +1746,8 @@ def test_get_notification_for_service_without_uuid(client, notify_db_session):
 
 
 def test_get_notification_for_service(client, notify_db_session):
-    service_1 = create_service(service_name="1", email_from="1")
-    service_2 = create_service(service_name="2", email_from="2")
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
 
     service_1_template = create_template(service_1)
     service_2_template = create_template(service_2)
@@ -2099,8 +2056,8 @@ def test_get_services_with_detailed_flag_defaults_to_today(client, mocker):
 def test_get_detailed_services_groups_by_service(notify_db_session):
     from app.service.rest import get_detailed_services
 
-    service_1 = create_service(service_name="1", email_from="1")
-    service_2 = create_service(service_name="2", email_from="2")
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
 
     service_1_template = create_template(service_1)
     service_2_template = create_template(service_2)
@@ -2131,8 +2088,8 @@ def test_get_detailed_services_groups_by_service(notify_db_session):
 def test_get_detailed_services_includes_services_with_no_notifications(notify_db_session):
     from app.service.rest import get_detailed_services
 
-    service_1 = create_service(service_name="1", email_from="1")
-    service_2 = create_service(service_name="2", email_from="2")
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
 
     service_1_template = create_template(service_1)
     create_notification(service_1_template)

@@ -243,7 +243,6 @@ def test_should_cache_template_lookups_in_memory(mocker, api_client_request, sam
 
 
 def test_should_cache_template_and_service_in_redis(mocker, api_client_request, sample_template):
-
     from app.schemas import service_schema, template_schema
 
     mock_redis_get = mocker.patch(
@@ -293,7 +292,6 @@ def test_should_cache_template_and_service_in_redis(mocker, api_client_request, 
 
 
 def test_should_return_template_if_found_in_redis(mocker, api_client_request, sample_template):
-
     from app.schemas import service_schema, template_schema
 
     service_dict = service_schema.dump(sample_template.service)
@@ -504,7 +502,8 @@ def test_post_email_notification_returns_201(
     assert resp_json["content"]["body"] == sample_email_template_with_placeholders.content.replace("((name))", "Bob")
     assert resp_json["content"]["subject"] == sample_email_template_with_placeholders.subject.replace("((name))", "Bob")
     assert resp_json["content"]["from_email"] == "{}@{}".format(
-        sample_email_template_with_placeholders.service.email_from, current_app.config["NOTIFY_EMAIL_DOMAIN"]
+        sample_email_template_with_placeholders.service.normalised_service_name,
+        current_app.config["NOTIFY_EMAIL_DOMAIN"],
     )
     assert "v2/notifications/{}".format(notification.id) in resp_json["uri"]
     assert resp_json["template"]["id"] == str(sample_email_template_with_placeholders.id)
