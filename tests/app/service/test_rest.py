@@ -661,7 +661,7 @@ def test_should_not_create_service_with_duplicate_name(notify_api, sample_user, 
 def test_create_service_should_throw_duplicate_key_constraint_for_existing_normalised_service_name(
     notify_api, service_factory, sample_user
 ):
-    first_service = service_factory.get("First service", email_from="first.service")
+    first_service = service_factory.get("First service", normalised_service_name="first.service")
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_name = "First SERVICE"
@@ -1093,7 +1093,9 @@ def test_should_not_update_service_with_duplicate_name(notify_api, notify_db_ses
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_name = "another name"
-            service = create_service(service_name=service_name, user=sample_user, email_from="another.name")
+            service = create_service(
+                service_name=service_name, user=sample_user, normalised_service_name="another.name"
+            )
             data = {"name": service_name, "created_by": str(service.created_by.id)}
 
             auth_header = create_admin_authorization_header()
@@ -1109,15 +1111,21 @@ def test_should_not_update_service_with_duplicate_name(notify_api, notify_db_ses
             assert "Duplicate service name '{}'".format(service_name) in json_resp["message"]["name"]
 
 
-def test_should_not_update_service_with_duplicate_email_from(
+def test_should_not_update_service_with_duplicate_normalised_service_name(
     notify_api, notify_db_session, sample_user, sample_service
 ):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            email_from = "duplicate.name"
+            normalised_service_name = "duplicate.name"
             service_name = "duplicate name"
-            service = create_service(service_name=service_name, user=sample_user, email_from=email_from)
-            data = {"name": service_name, "email_from": email_from, "created_by": str(service.created_by.id)}
+            service = create_service(
+                service_name=service_name, user=sample_user, normalised_service_name=normalised_service_name
+            )
+            data = {
+                "name": service_name,
+                "normalised_service_name": normalised_service_name,
+                "created_by": str(service.created_by.id),
+            }
 
             auth_header = create_admin_authorization_header()
 
@@ -1131,7 +1139,7 @@ def test_should_not_update_service_with_duplicate_email_from(
             assert json_resp["result"] == "error"
             assert (
                 "Duplicate service name '{}'".format(service_name) in json_resp["message"]["name"]
-                or "Duplicate service name '{}'".format(email_from) in json_resp["message"]["name"]
+                or "Duplicate service name '{}'".format(normalised_service_name) in json_resp["message"]["name"]
             )
 
 
@@ -3416,7 +3424,7 @@ def test_get_returned_letter_statistics_with_old_returned_letters(
         "app.service.rest.fetch_recent_returned_letter_count",
     )
 
-    assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id,) == {
+    assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id) == {
         "returned_letter_count": 0,
         "most_recent_report": "2019-12-03 00:00:00.000000",
     }
@@ -3433,7 +3441,7 @@ def test_get_returned_letter_statistics_with_no_returned_letters(
         "app.service.rest.fetch_recent_returned_letter_count",
     )
 
-    assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id,) == {
+    assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id) == {
         "returned_letter_count": 0,
         "most_recent_report": None,
     }
