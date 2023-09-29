@@ -112,7 +112,6 @@ def create_service(
     count_as_live=True,
     service_permissions=None,
     active=True,
-    email_from=None,
     normalised_service_name=None,
     prefix_sms=True,
     email_message_limit=1000,
@@ -133,16 +132,13 @@ def create_service(
     if check_if_service_exists:
         service = Service.query.filter_by(name=service_name).first()
     if (not check_if_service_exists) or (check_if_service_exists and not service):
-        email_from = (email_from or service_name.lower().replace(" ", "."),)
-
         service = Service(
             name=service_name,
             email_message_limit=email_message_limit,
             sms_message_limit=sms_message_limit,
             letter_message_limit=letter_message_limit,
             restricted=restricted,
-            email_from=email_from,
-            normalised_service_name=normalised_service_name or email_from,
+            normalised_service_name=normalised_service_name or service_name.lower().replace(" ", "."),
             created_by=user if user else create_user(email="{}@digital.cabinet-office.gov.uk".format(uuid.uuid4())),
             prefix_sms=prefix_sms,
             organisation_type=organisation_type,
