@@ -63,8 +63,16 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
+    # abort any migrations if the lock cannot be acquired after one second.
+    #
+    # if we see issues with this lock timeout failing, we should try running again when there are no locks on that
+    # table, perhaps at a quieter time.
+    options = {"lock_timeout": "1000"}
     engine = engine_from_config(
-        config.get_section(config.config_ini_section), prefix="sqlalchemy.", poolclass=pool.NullPool
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+        connect_args={"options": " ".join(f"-c {opt_key}={opt_value}" for opt_key, opt_value in options.items())},
     )
 
     connection = engine.connect()
