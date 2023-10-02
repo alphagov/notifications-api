@@ -362,9 +362,12 @@ def delete_oldest_quarter_of_unneeded_notification_history():
     #
     # In the future, we will be able to update this retention_limit_bst value when we have progressed 3 quarters
     # into the next financial year
+    current_app.logger.info("Beginning celery task delete_oldest_quarter_of_unneeded_notification_history")
     retention_limit_bst = datetime(2023, 1, 1)
 
-    oldest_notification_bst = convert_utc_to_bst(db.session.query(func.min(NotificationHistory.created_at)).one()[0])
+    oldest_notification_utc = db.session.query(func.min(NotificationHistory.created_at)).one()[0]
+    current_app.logger.info("Oldest notification in notification_history found is %s UTC", oldest_notification_utc)
+    oldest_notification_bst = convert_utc_to_bst(oldest_notification_utc)
     if oldest_notification_bst >= retention_limit_bst:
         current_app.logger.info(
             "No notifications older than retention date of %s so nothing to delete", retention_limit_bst
