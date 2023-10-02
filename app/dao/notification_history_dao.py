@@ -1,17 +1,35 @@
 from flask import current_app
+from sqlalchemy import select
 
-from app.dao.dao_utils import autocommit
+from app import db
 from app.models import NotificationHistory
 
 
-@autocommit
-def delete_notification_history_older_than_datetime(older_than_datetime):
+def delete_notification_history_older_than_datetime(older_than_datetime, query_limit=50000):
     current_app.logger.info("Beginning to delete notification_history older than %s", older_than_datetime)
 
-    num_rows_deleted = NotificationHistory.query.filter(
-        NotificationHistory.created_at < older_than_datetime,
-    ).delete()
+    total_deleted = 0
+    deleted_this_iteration = 1
+    while deleted_this_iteration > 0:
+        notification_ids_to_delete = (
+            select(NotificationHistory.id)
+            .where(NotificationHistory.created_at < older_than_datetime)
+            .order_by(NotificationHistory.created_at)
+            .limit(query_limit)
+        )
+
+        num_rows_deleted = NotificationHistory.query.filter(
+            NotificationHistory.id.in_(notification_ids_to_delete),
+            # Restrict on created_at again, just in case there was a problem
+            # with the query above
+            NotificationHistory.created_at < older_than_datetime,
+        ).delete(synchronize_session=False)
+
+        deleted_this_iteration = num_rows_deleted
+        total_deleted += num_rows_deleted
+
+        db.session.commit()
 
     current_app.logger.info(
-        "Deleted %s rows from notification_history older than %s", num_rows_deleted, older_than_datetime
+        "Deleted %s rows from notification_history older than %s", total_deleted, older_than_datetime
     )

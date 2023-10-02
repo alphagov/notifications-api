@@ -21,7 +21,7 @@ def test_delete_notification_history_older_than_datetime(notify_db_session, samp
     assert len(notification_history_rows) == 5
     assert notification_history_rows[0].created_at == datetime(2022, 2, 7)
 
-    delete_notification_history_older_than_datetime(datetime(2022, 7, 1))
+    delete_notification_history_older_than_datetime(datetime(2022, 7, 1), query_limit=1)
 
     notification_history_rows = NotificationHistory.query.order_by(NotificationHistory.created_at).all()
     assert len(notification_history_rows) == 2
