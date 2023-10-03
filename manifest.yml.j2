@@ -1,7 +1,7 @@
 {%- set app_vars = {
   'notify-api': {
     'NOTIFY_APP_NAME': 'api',
-    'disk_quota': '2G',
+    'disk_quota': '10G',
     'sqlalchemy_pool_size': 15,
     'additional_env_vars': {
       'STATSD_HOST': None
@@ -22,7 +22,7 @@
 
   'notify-api-sms-receipts': {
     'NOTIFY_APP_NAME': 'api',
-    'disk_quota': '2G',
+    'disk_quota': '4G',
     'additional_env_vars': {
       'STATSD_HOST': None
     },
@@ -58,8 +58,8 @@
     },
   },
   'notify-delivery-worker-jobs': {'memory': '2G'},
-  'notify-delivery-worker-research': {},
-  'notify-delivery-worker-sender': {'disk_quota': '2G', 'memory': '4G'},
+  'notify-delivery-worker-research': {'disk_quota': '10G'},
+  'notify-delivery-worker-sender': {'disk_quota': '4G', 'memory': '4G'},
   'notify-delivery-worker-sender-letters': {},
   'notify-delivery-worker-periodic': {},
   'notify-delivery-worker-reporting': {
@@ -78,8 +78,8 @@
     }
   },
   'notify-delivery-worker-receipts': {},
-  'notify-delivery-worker-service-callbacks': {'disk_quota': '2G'},
-  'notify-delivery-worker-save-api-notifications': {'disk_quota': '2G'},
+  'notify-delivery-worker-service-callbacks': {'disk_quota': '4G'},
+  'notify-delivery-worker-save-api-notifications': {'disk_quota': '4G'},
 } -%}
 
 {%- set app = app_vars[CF_APP] -%}
@@ -94,7 +94,7 @@ applications:
     instances: {{ instance_count }}
     {%- endif %}
     memory: {{ app.get('memory', '1G') }}
-    disk_quota: {{ app.get('disk_quota', '1G')}}
+    disk_quota: {{ app.get('disk_quota', '2G')}}
     stack: cflinuxfs3
 
     routes:
