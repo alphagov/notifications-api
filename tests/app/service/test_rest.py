@@ -252,7 +252,6 @@ def test_get_service_by_id(admin_request, sample_service):
         "count_as_live",
         "created_by",
         "email_branding",
-        "email_from",
         "email_message_limit",
         "go_live_at",
         "go_live_user",
@@ -422,49 +421,6 @@ def test_create_service(
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
     assert service_sms_senders[0].sms_sender == current_app.config["FROM_NUMBER"]
-
-
-# TODO: remove this test when we remove email_from
-def test_create_service_populates_email_from_and_normalised_service_name(admin_request, sample_user):
-    data = {
-        "name": "created service",
-        "user_id": str(sample_user.id),
-        "email_message_limit": 1000,
-        "sms_message_limit": 1000,
-        "letter_message_limit": 1000,
-        "restricted": False,
-        "created_by": str(sample_user.id),
-        "email_from": "foo",
-        "normalised_service_name": "bar",
-    }
-    json_resp = admin_request.post("service.create_service", _data=data, _expected_status=201)
-
-    assert json_resp["data"]["email_from"] == "foo"
-    assert json_resp["data"]["normalised_service_name"] == "bar"
-
-    service_db = Service.query.get(json_resp["data"]["id"])
-    assert service_db.email_from == "foo"
-    assert service_db.normalised_service_name == "bar"
-
-
-# TODO: remove this test when we remove email_from
-@pytest.mark.parametrize(
-    "existing_normalised_service_name, data, expected_normalised_service_name",
-    [
-        ("bar", {"email_from": "foo"}, "bar"),
-        ("baz", {"email_from": "foo", "normalised_service_name": "bar"}, "bar"),
-    ],
-)
-def test_update_service_populates_email_from_and_normalised_service_name(
-    admin_request, sample_service, existing_normalised_service_name, data, expected_normalised_service_name
-):
-    sample_service.normalised_service_name = existing_normalised_service_name
-    json_resp = admin_request.post("service.update_service", service_id=sample_service.id, _data=data)
-
-    assert json_resp["data"]["normalised_service_name"] == expected_normalised_service_name
-
-    service_db = Service.query.get(json_resp["data"]["id"])
-    assert service_db.normalised_service_name == expected_normalised_service_name
 
 
 @pytest.mark.parametrize(
@@ -704,7 +660,7 @@ def test_should_not_create_service_with_duplicate_name(notify_api, sample_user, 
 def test_create_service_should_throw_duplicate_key_constraint_for_existing_normalised_service_name(
     notify_api, service_factory, sample_user
 ):
-    first_service = service_factory.get("First service", email_from="first.service")
+    first_service = service_factory.get("First service", normalised_service_name="first.service")
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_name = "First SERVICE"
@@ -1136,7 +1092,9 @@ def test_should_not_update_service_with_duplicate_name(notify_api, notify_db_ses
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_name = "another name"
-            service = create_service(service_name=service_name, user=sample_user, email_from="another.name")
+            service = create_service(
+                service_name=service_name, user=sample_user, normalised_service_name="another.name"
+            )
             data = {"name": service_name, "created_by": str(service.created_by.id)}
 
             auth_header = create_admin_authorization_header()
@@ -1152,15 +1110,21 @@ def test_should_not_update_service_with_duplicate_name(notify_api, notify_db_ses
             assert "Duplicate service name '{}'".format(service_name) in json_resp["message"]["name"]
 
 
-def test_should_not_update_service_with_duplicate_email_from(
+def test_should_not_update_service_with_duplicate_normalised_service_name(
     notify_api, notify_db_session, sample_user, sample_service
 ):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            email_from = "duplicate.name"
+            normalised_service_name = "duplicate.name"
             service_name = "duplicate name"
-            service = create_service(service_name=service_name, user=sample_user, email_from=email_from)
-            data = {"name": service_name, "email_from": email_from, "created_by": str(service.created_by.id)}
+            service = create_service(
+                service_name=service_name, user=sample_user, normalised_service_name=normalised_service_name
+            )
+            data = {
+                "name": service_name,
+                "normalised_service_name": normalised_service_name,
+                "created_by": str(service.created_by.id),
+            }
 
             auth_header = create_admin_authorization_header()
 
@@ -1174,7 +1138,7 @@ def test_should_not_update_service_with_duplicate_email_from(
             assert json_resp["result"] == "error"
             assert (
                 "Duplicate service name '{}'".format(service_name) in json_resp["message"]["name"]
-                or "Duplicate service name '{}'".format(email_from) in json_resp["message"]["name"]
+                or "Duplicate service name '{}'".format(normalised_service_name) in json_resp["message"]["name"]
             )
 
 
@@ -1677,8 +1641,8 @@ def test_get_service_and_api_key_history(notify_api, sample_service, sample_api_
 
 
 def test_get_all_notifications_for_service_in_order(client, notify_db_session):
-    service_1 = create_service(service_name="1", email_from="1")
-    service_2 = create_service(service_name="2", email_from="2")
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
 
     service_1_template = create_template(service_1)
     service_2_template = create_template(service_2)
@@ -1781,7 +1745,7 @@ def test_get_all_notifications_for_service_formatted_for_csv(client, sample_temp
 
 
 def test_get_notification_for_service_without_uuid(client, notify_db_session):
-    service_1 = create_service(service_name="1", email_from="1")
+    service_1 = create_service(service_name="1")
     response = client.get(
         path="/service/{}/notifications/{}".format(service_1.id, "foo"), headers=[create_admin_authorization_header()]
     )
@@ -1789,8 +1753,8 @@ def test_get_notification_for_service_without_uuid(client, notify_db_session):
 
 
 def test_get_notification_for_service(client, notify_db_session):
-    service_1 = create_service(service_name="1", email_from="1")
-    service_2 = create_service(service_name="2", email_from="2")
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
 
     service_1_template = create_template(service_1)
     service_2_template = create_template(service_2)
@@ -2099,8 +2063,8 @@ def test_get_services_with_detailed_flag_defaults_to_today(client, mocker):
 def test_get_detailed_services_groups_by_service(notify_db_session):
     from app.service.rest import get_detailed_services
 
-    service_1 = create_service(service_name="1", email_from="1")
-    service_2 = create_service(service_name="2", email_from="2")
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
 
     service_1_template = create_template(service_1)
     service_2_template = create_template(service_2)
@@ -2131,8 +2095,8 @@ def test_get_detailed_services_groups_by_service(notify_db_session):
 def test_get_detailed_services_includes_services_with_no_notifications(notify_db_session):
     from app.service.rest import get_detailed_services
 
-    service_1 = create_service(service_name="1", email_from="1")
-    service_2 = create_service(service_name="2", email_from="2")
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
 
     service_1_template = create_template(service_1)
     create_notification(service_1_template)
@@ -3459,7 +3423,7 @@ def test_get_returned_letter_statistics_with_old_returned_letters(
         "app.service.rest.fetch_recent_returned_letter_count",
     )
 
-    assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id,) == {
+    assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id) == {
         "returned_letter_count": 0,
         "most_recent_report": "2019-12-03 00:00:00.000000",
     }
@@ -3476,7 +3440,7 @@ def test_get_returned_letter_statistics_with_no_returned_letters(
         "app.service.rest.fetch_recent_returned_letter_count",
     )
 
-    assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id,) == {
+    assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id) == {
         "returned_letter_count": 0,
         "most_recent_report": None,
     }

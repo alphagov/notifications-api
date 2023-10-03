@@ -919,9 +919,7 @@ def test_create_a_template_with_reply_to(admin_request, sample_user):
 
 def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_user):
     service = create_service(service_permissions=["letter"])
-    service2 = create_service(
-        service_name="test service", email_from="test@example.com", service_permissions=["letter"]
-    )
+    service2 = create_service(service_name="test service", service_permissions=["letter"])
     letter_contact = create_letter_contact(service2, "Edinburgh, ED1 1AA")
     data = {
         "name": "my template",
@@ -1092,9 +1090,7 @@ def test_update_template_validates_postage(admin_request, sample_service_full_pe
 def test_update_template_with_foreign_service_reply_to(client, sample_letter_template):
     auth_header = create_admin_authorization_header()
 
-    service2 = create_service(
-        service_name="test service", email_from="test@example.com", service_permissions=["letter"]
-    )
+    service2 = create_service(service_name="test service", service_permissions=["letter"])
     letter_contact = create_letter_contact(service2, "Edinburgh, ED1 1AA")
 
     data = {

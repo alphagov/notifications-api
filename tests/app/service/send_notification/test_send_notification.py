@@ -270,8 +270,8 @@ def test_should_not_allow_template_from_another_service(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocked = mocker.patch("app.celery.provider_tasks.deliver_{}.apply_async".format(template_type))
-            service_1 = service_factory.get("service 1", user=sample_user, email_from="service.1")
-            service_2 = service_factory.get("service 2", user=sample_user, email_from="service.2")
+            service_1 = service_factory.get("service 1", user=sample_user)
+            service_2 = service_factory.get("service 2", user=sample_user)
 
             service_2_templates = dao_get_all_templates_for_service(service_id=service_2.id)
             to = sample_user.mobile_number if template_type == SMS_TYPE else sample_user.email_address

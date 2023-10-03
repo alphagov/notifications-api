@@ -78,7 +78,6 @@ class SerialisedService(SerialisedModel):
         "name",
         "active",
         "contact_link",
-        "email_from",
         "normalised_service_name",
         "email_message_limit",
         "letter_message_limit",

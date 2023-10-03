@@ -81,15 +81,12 @@ def rmock():
 @pytest.fixture(scope="function")
 def service_factory(sample_user):
     class ServiceFactory(object):
-        def get(self, service_name, user=None, template_type=None, email_from=None, normalised_service_name=None):
+        def get(self, service_name, user=None, template_type=None, normalised_service_name=None):
             if not user:
                 user = sample_user
-            if not email_from:
-                email_from = service_name
 
             service = create_service(
-                email_from=email_from,
-                normalised_service_name=normalised_service_name or email_from,
+                normalised_service_name=normalised_service_name or service_name,
                 service_name=service_name,
                 service_permissions=None,
                 user=user,
@@ -100,7 +97,7 @@ def service_factory(sample_user):
                     service,
                     template_name="Template Name",
                     template_type=template_type,
-                    subject=service.email_from,
+                    subject=service.normalised_service_name,
                 )
             else:
                 create_template(
@@ -141,7 +138,6 @@ def sample_sms_code(notify_db_session):
 @pytest.fixture(scope="function")
 def sample_service(sample_user):
     service_name = "Sample service"
-    email_from = service_name.lower().replace(" ", ".")
 
     data = {
         "name": service_name,
@@ -149,8 +145,7 @@ def sample_service(sample_user):
         "sms_message_limit": 1000,
         "letter_message_limit": 1000,
         "restricted": False,
-        "email_from": email_from,
-        "normalised_service_name": email_from,
+        "normalised_service_name": service_name.lower().replace(" ", "."),
         "created_by": sample_user,
         "crown": True,
     }
@@ -174,7 +169,6 @@ def sample_service_with_email_branding(sample_service):
 @pytest.fixture(scope="function")
 def sample_broadcast_service(broadcast_organisation, sample_user):
     service_name = "Sample broadcast service"
-    email_from = service_name.lower().replace(" ", ".")
 
     data = {
         "name": service_name,
@@ -182,8 +176,7 @@ def sample_broadcast_service(broadcast_organisation, sample_user):
         "sms_message_limit": 1000,
         "letter_message_limit": 1000,
         "restricted": False,
-        "email_from": email_from,
-        "normalised_service_name": email_from,
+        "normalised_service_name": service_name.lower().replace(" ", "."),
         "created_by": sample_user,
         "crown": True,
         "count_as_live": False,
@@ -204,7 +197,6 @@ def sample_broadcast_service(broadcast_organisation, sample_user):
 @pytest.fixture(scope="function")
 def sample_broadcast_service_2(broadcast_organisation, sample_user):
     service_name = "Sample broadcast service 2"
-    email_from = service_name.lower().replace(" ", ".")
 
     data = {
         "name": service_name,
@@ -212,8 +204,7 @@ def sample_broadcast_service_2(broadcast_organisation, sample_user):
         "sms_message_limit": 1000,
         "letter_message_limit": 1000,
         "restricted": False,
-        "email_from": email_from,
-        "normalised_service_name": email_from,
+        "normalised_service_name": service_name.lower().replace(" ", "."),
         "created_by": sample_user,
         "crown": True,
         "count_as_live": False,
@@ -912,7 +903,6 @@ def notify_service(notify_db_session, sample_user):
             sms_message_limit=1000,
             letter_message_limit=1000,
             restricted=False,
-            email_from="notify.service",
             normalised_service_name="notify.service",
             created_by=sample_user,
             prefix_sms=False,

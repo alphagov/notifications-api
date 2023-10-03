@@ -264,7 +264,6 @@ def dao_archive_service(service_id):
 
     service.active = False
     service.name = get_archived_db_column_value(service.name)
-    service.email_from = get_archived_db_column_value(service.email_from)
     service.normalised_service_name = get_archived_db_column_value(service.normalised_service_name)
 
     for template in service.templates:
@@ -290,7 +289,6 @@ def dao_create_service(  # noqa: C901
     service_id=None,
     service_permissions=None,
 ):
-
     if not user:
         raise ValueError("Can't create a service without a user")
 

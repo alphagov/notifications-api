@@ -344,7 +344,6 @@ class DetailedServiceSchema(BaseSchema):
             "crown",
             "email_branding",
             "email_message_limit",
-            "email_from",
             "guest_list",
             "inbound_api",
             "inbound_number",
@@ -779,7 +778,6 @@ class ServiceHistorySchema(ma.Schema):
     sms_message_limit = fields.Integer()
     letter_message_limit = fields.Integer()
     restricted = fields.Boolean()
-    email_from = fields.String()
     normalised_service_name = fields.String()
     created_by_id = fields.UUID()
     version = fields.Integer()
