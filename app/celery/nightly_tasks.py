@@ -363,6 +363,16 @@ def delete_oldest_quarter_of_unneeded_notification_history():
     # In the future, we will be able to update this retention_limit_bst value when we have progressed 3 quarters
     # into the next financial year
     current_app.logger.info("Beginning celery task delete_oldest_quarter_of_unneeded_notification_history")
+
+    if current_app.config["NOTIFY_ENVIRONMENT"] == "staging":
+        # We don't want to run this in staging as we want to keep some older notifications in there for migration
+        # testing
+        # After we've migrated our database, we should be able to remove this check and let this run in staging
+        current_app.logger.info(
+            "Aborting delete_oldest_quarter_of_unneeded_notification_history as staging environment"
+        )
+        return
+
     retention_limit_bst = datetime(2023, 1, 1)
 
     oldest_notification_utc = db.session.query(func.min(NotificationHistory.created_at)).one()[0]
