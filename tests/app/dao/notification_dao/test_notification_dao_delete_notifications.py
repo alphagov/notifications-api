@@ -186,7 +186,9 @@ def test_move_notifications_only_moves_notifications_older_than_provided_timesta
     assert NotificationHistory.query.one().id == old_notification_id
 
 
-def test_move_notifications_keeps_calling_until_no_more_to_delete_and_then_returns_total_deleted(mocker):
+def test_move_notifications_keeps_calling_until_no_more_to_delete_and_then_returns_total_deleted(
+    notify_db_session, mocker
+):
     mock_insert = mocker.patch(
         "app.dao.notifications_dao.insert_notification_history_delete_notifications", side_effect=[5, 5, 1, 0]
     )
@@ -196,7 +198,7 @@ def test_move_notifications_keeps_calling_until_no_more_to_delete_and_then_retur
     result = move_notifications_to_notification_history("sms", service_id, timestamp, qry_limit=5)
     assert result == 11
 
-    mock_insert.asset_called_with(
+    mock_insert.assert_called_with(
         notification_type="sms", service_id=service_id, timestamp_to_delete_backwards_from=timestamp, qry_limit=5
     )
     assert mock_insert.call_count == 4
