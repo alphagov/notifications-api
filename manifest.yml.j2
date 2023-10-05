@@ -93,7 +93,7 @@ applications:
     {% if instance_count is not none %}
     instances: {{ instance_count }}
     {%- endif %}
-    memory: {{ app.get('memory', '1G') }}
+    memory: {{ app.get('memory', '1.5G') }}
     disk_quota: {{ app.get('disk_quota', '2G')}}
     stack: cflinuxfs3
 
