@@ -24,8 +24,11 @@ def init_performance_monitoring():
         send_pii = True if not_production else False
         send_request_bodies = "medium" if not_production else "never"
 
-        # Disable transaction tracing in production for now - we've seen issues with memory/performance.
-        traces_sampler = partial(sentry_sampler, sample_rate=trace_sample_rate) if not_production else None
+        # Enable tracing requests on only a single API instance in production while we check performance there.
+        if not_production or os.getenv("CF_INSTANCE_INDEX", "-1") == "1":
+            traces_sampler = partial(sentry_sampler, sample_rate=trace_sample_rate)
+        else:
+            traces_sampler = None
 
         try:
             from app.version import __git_commit__
