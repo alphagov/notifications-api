@@ -520,8 +520,8 @@ class JobSchema(BaseSchema):
         if value < datetime.utcnow():
             raise ValidationError("Date cannot be in the past")
 
-        if value > datetime.utcnow() + timedelta(hours=96):
-            raise ValidationError("Date cannot be more than 96hrs in the future")
+        if value > datetime.utcnow() + timedelta(days=4):
+            raise ValidationError("Date cannot be more than 4 days in the future")
 
     class Meta(BaseSchema.Meta):
         model = models.Job

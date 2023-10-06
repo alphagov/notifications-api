@@ -378,7 +378,7 @@ def test_should_not_create_scheduled_job_more_then_96_hours_in_the_future(client
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json["result"] == "error"
     assert "scheduled_for" in resp_json["message"]
-    assert resp_json["message"]["scheduled_for"] == ["Date cannot be more than 96hrs in the future"]
+    assert resp_json["message"]["scheduled_for"] == ["Date cannot be more than 4 days in the future"]
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
