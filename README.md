@@ -51,12 +51,12 @@ notify-pass credentials/mmg
 
 Install [Postgres.app](http://postgresapp.com/).
 
-Currently the API works with PostgreSQL 11. After installation, open the Postgres app, open the sidebar, and update or replace the default server with a compatible version.
+The API (on Notify) works with PostgreSQL 15. After installation, open the Postgres app, open the sidebar, and update or replace the default server with a compatible version.
 
 **Note:** you may need to add the following directory to your PATH in order to bootstrap the app.
 
 ```
-export PATH=${PATH}:/Applications/Postgres.app/Contents/Versions/11/bin/
+export PATH=${PATH}:/Applications/Postgres.app/Contents/Versions/15/bin/
 ```
 
 ### Redis
