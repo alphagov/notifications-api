@@ -18,12 +18,13 @@ def delete_notification_history_older_than_datetime(older_than_datetime, query_l
             .limit(query_limit)
         )
 
+        current_app.logger.info("Found chunk of rows from notification_history to delete")
+
         num_rows_deleted = NotificationHistory.query.filter(
             NotificationHistory.id.in_(notification_ids_to_delete),
-            # Restrict on created_at again, just in case there was a problem
-            # with the query above
-            NotificationHistory.created_at < older_than_datetime,
         ).delete(synchronize_session=False)
+
+        current_app.logger.info("Deleted chunk of %s rows from notification_history", num_rows_deleted)
 
         deleted_this_iteration = num_rows_deleted
         total_deleted += num_rows_deleted
