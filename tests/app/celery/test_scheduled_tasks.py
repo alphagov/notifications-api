@@ -19,7 +19,6 @@ from redis.exceptions import LockError
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
-    auto_expire_broadcast_messages,
     change_dvla_api_key,
     change_dvla_password,
     check_for_low_available_inbound_sms_numbers,
@@ -33,11 +32,9 @@ from app.celery.scheduled_tasks import (
     delete_verify_codes,
     generate_sms_delivery_stats,
     populate_annual_billing,
-    remove_yesterdays_planned_tests_on_govuk_alerts,
     replay_created_notifications,
     run_scheduled_jobs,
     switch_current_sms_provider_on_slow_delivery,
-    trigger_link_tests,
     weekly_dwp_report,
     zendesk_new_email_branding_report,
 )
@@ -57,10 +54,9 @@ from app.constants import (
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.provider_details_dao import get_provider_details_by_identifier
-from app.models import BroadcastStatusType, Event, InboundNumber
+from app.models import Event, InboundNumber
 from tests.app import load_example_csv
 from tests.app.db import (
-    create_broadcast_message,
     create_email_branding,
     create_job,
     create_notification,
@@ -69,19 +65,6 @@ from tests.app.db import (
     create_user,
 )
 from tests.conftest import set_config
-
-
-def _create_slow_delivery_notification(template, provider="mmg"):
-    now = datetime.utcnow()
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    create_notification(
-        template=template,
-        status="delivered",
-        sent_by=provider,
-        updated_at=five_minutes_from_now,
-        sent_at=now,
-    )
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_db_session, mocker):
@@ -740,74 +723,6 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
         notify_ticket_type=NotifyTicketType.TECHNICAL,
     )
     mock_send_ticket_to_zendesk.assert_called_once()
-
-
-def test_trigger_link_tests_calls_for_all_providers(mocker, notify_api):
-    mock_trigger_link_test = mocker.patch(
-        "app.celery.scheduled_tasks.trigger_link_test",
-    )
-
-    with set_config(notify_api, "ENABLED_CBCS", ["ee", "vodafone"]):
-        trigger_link_tests()
-
-    assert mock_trigger_link_test.apply_async.call_args_list == [
-        call(kwargs={"provider": "ee"}, queue="broadcast-tasks"),
-        call(kwargs={"provider": "vodafone"}, queue="broadcast-tasks"),
-    ]
-
-
-def test_trigger_link_does_nothing_if_cbc_proxy_disabled(mocker, notify_api):
-    mock_trigger_link_test = mocker.patch(
-        "app.celery.scheduled_tasks.trigger_link_test",
-    )
-
-    with set_config(notify_api, "ENABLED_CBCS", ["ee", "vodafone"]), set_config(notify_api, "CBC_PROXY_ENABLED", False):
-        trigger_link_tests()
-
-    assert mock_trigger_link_test.called is False
-
-
-@freeze_time("2021-07-19 15:50")
-@pytest.mark.parametrize(
-    "status, finishes_at, final_status, should_call_publish_task",
-    [
-        (BroadcastStatusType.BROADCASTING, "2021-07-19 16:00", BroadcastStatusType.BROADCASTING, False),
-        (BroadcastStatusType.BROADCASTING, "2021-07-19 15:40", BroadcastStatusType.COMPLETED, True),
-        (BroadcastStatusType.BROADCASTING, None, BroadcastStatusType.BROADCASTING, False),
-        (BroadcastStatusType.PENDING_APPROVAL, None, BroadcastStatusType.PENDING_APPROVAL, False),
-        (BroadcastStatusType.CANCELLED, "2021-07-19 15:40", BroadcastStatusType.CANCELLED, False),
-    ],
-)
-def test_auto_expire_broadcast_messages(
-    mocker,
-    status,
-    finishes_at,
-    final_status,
-    sample_template,
-    should_call_publish_task,
-):
-    message = create_broadcast_message(
-        status=status,
-        finishes_at=finishes_at,
-        template=sample_template,
-    )
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.notify_celery.send_task")
-
-    auto_expire_broadcast_messages()
-    assert message.status == final_status
-
-    if should_call_publish_task:
-        mock_celery.assert_called_once_with(name=TaskNames.PUBLISH_GOVUK_ALERTS, queue=QueueNames.GOVUK_ALERTS)
-    else:
-        assert not mock_celery.called
-
-
-def test_remove_yesterdays_planned_tests_on_govuk_alerts(mocker):
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.notify_celery.send_task")
-
-    remove_yesterdays_planned_tests_on_govuk_alerts()
-
-    mock_celery.assert_called_once_with(name=TaskNames.PUBLISH_GOVUK_ALERTS, queue=QueueNames.GOVUK_ALERTS)
 
 
 def test_delete_old_records_from_events_table(notify_db_session):

@@ -349,21 +349,6 @@ class Config(object):
                 "schedule": crontab(hour=22, minute=45),
                 "options": {"queue": QueueNames.PERIODIC},
             },
-            "trigger-link-tests": {
-                "task": "trigger-link-tests",
-                "schedule": timedelta(minutes=15),
-                "options": {"queue": QueueNames.PERIODIC},
-            },
-            "auto-expire-broadcast-messages": {
-                "task": "auto-expire-broadcast-messages",
-                "schedule": timedelta(minutes=5),
-                "options": {"queue": QueueNames.PERIODIC},
-            },
-            "remove-yesterdays-planned-tests-on-govuk-alerts": {
-                "task": "remove-yesterdays-planned-tests-on-govuk-alerts",
-                "schedule": crontab(hour=00, minute=00),
-                "options": {"queue": QueueNames.PERIODIC},
-            },
             "delete-old-records-from-events-table": {
                 "task": "delete-old-records-from-events-table",
                 "schedule": crontab(hour=3, minute=4),
