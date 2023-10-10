@@ -40,16 +40,6 @@ def _validate_positive_number(value, msg="Not a positive integer"):
         raise ValidationError(msg)
 
 
-def _validate_datetime_not_more_than_96_hours_in_future(dte, msg="Date cannot be more than 96hrs in the future"):
-    if dte > datetime.utcnow() + timedelta(hours=96):
-        raise ValidationError(msg)
-
-
-def _validate_datetime_not_in_past(dte, msg="Date cannot be in the past"):
-    if dte < datetime.utcnow():
-        raise ValidationError(msg)
-
-
 class FlexibleDateTime(fields.DateTime):
     """
     Allows input data to not contain tz info.
@@ -527,8 +517,11 @@ class JobSchema(BaseSchema):
 
     @validates("scheduled_for")
     def validate_scheduled_for(self, value):
-        _validate_datetime_not_in_past(value)
-        _validate_datetime_not_more_than_96_hours_in_future(value)
+        if value < datetime.utcnow():
+            raise ValidationError("Date cannot be in the past")
+
+        if value > datetime.utcnow() + timedelta(days=7):
+            raise ValidationError("Date cannot be more than 7 days in the future")
 
     class Meta(BaseSchema.Meta):
         model = models.Job
