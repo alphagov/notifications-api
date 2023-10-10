@@ -14,7 +14,6 @@ def delete_notification_history_older_than_datetime(older_than_datetime, query_l
         notification_ids_to_delete = (
             select(NotificationHistory.id)
             .where(NotificationHistory.created_at < older_than_datetime)
-            .order_by(NotificationHistory.created_at)
             .limit(query_limit)
         )
 
