@@ -1,9 +1,14 @@
+from collections.abc import Callable, Iterable, Mapping
+import psycopg2
+import time
+from contextlib import contextmanager
 from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
 from flask import current_app
 from sqlalchemy import engine_from_config, pool
+import sqlalchemy
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -99,7 +104,31 @@ def run_migrations_online():
         connection.close()
 
 
+def retry_on_lock_error(
+    *,
+    func: Callable,
+    args: Iterable = [],
+    kwargs: Mapping = {},
+    max_retries: int = 1,
+    delay_secs: int = 0,
+):
+    for i in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except sqlalchemy.exc.OperationalError as e:
+            # on the last attempt raise so we get a full stack trace
+            if i + 1 == max_retries:
+                raise
+
+            if not isinstance(e.orig, psycopg2.errors.LockNotAvailable):
+                raise
+
+            print("Retrying due to LockNotAvailable error")
+            print(e)
+            time.sleep(delay_secs)
+
+
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    retry_on_lock_error(func=run_migrations_online, max_retries=10, delay_secs=10)
