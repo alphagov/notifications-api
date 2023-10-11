@@ -264,7 +264,7 @@ class Config(object):
             # app/celery/nightly_tasks.py
             "delete-oldest-quarter-of-unneeded-notification-history": {
                 "task": "delete-oldest-quarter-of-unneeded-notification-history",
-                "schedule": crontab(hour=19, minute="0,10,20,30"),
+                "schedule": crontab(hour=16, minute="0,10,20,30"),
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "timeout-sending-notifications": {
