@@ -19,7 +19,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import db, dvla_client, notify_celery, statsd_client, zendesk_client
 from app.aws import s3
-from app.celery.broadcast_message_tasks import trigger_link_test
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
     get_recipient_csv_and_template_and_sender_id,
@@ -72,8 +71,6 @@ from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.letters.utils import generate_letter_pdf_filename
 from app.models import (
     AnnualBilling,
-    BroadcastMessage,
-    BroadcastStatusType,
     EmailBranding,
     Event,
     Job,
@@ -391,34 +388,6 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 notify_ticket_type=NotifyTicketType.TECHNICAL,
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
-
-
-@notify_celery.task(name="trigger-link-tests")
-def trigger_link_tests():
-    if current_app.config["CBC_PROXY_ENABLED"]:
-        for cbc_name in current_app.config["ENABLED_CBCS"]:
-            trigger_link_test.apply_async(kwargs={"provider": cbc_name}, queue=QueueNames.BROADCASTS)
-
-
-@notify_celery.task(name="auto-expire-broadcast-messages")
-def auto_expire_broadcast_messages():
-    expired_broadcasts = BroadcastMessage.query.filter(
-        BroadcastMessage.finishes_at <= datetime.now(),
-        BroadcastMessage.status == BroadcastStatusType.BROADCASTING,
-    ).all()
-
-    for broadcast in expired_broadcasts:
-        broadcast.status = BroadcastStatusType.COMPLETED
-
-    db.session.commit()
-
-    if expired_broadcasts:
-        notify_celery.send_task(name=TaskNames.PUBLISH_GOVUK_ALERTS, queue=QueueNames.GOVUK_ALERTS)
-
-
-@notify_celery.task(name="remove-yesterdays-planned-tests-on-govuk-alerts")
-def remove_yesterdays_planned_tests_on_govuk_alerts():
-    notify_celery.send_task(name=TaskNames.PUBLISH_GOVUK_ALERTS, queue=QueueNames.GOVUK_ALERTS)
 
 
 @notify_celery.task(name="delete-old-records-from-events-table")
