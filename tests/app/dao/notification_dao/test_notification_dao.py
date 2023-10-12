@@ -812,6 +812,86 @@ def test_should_exclude_test_key_notifications_by_default(
     assert len(all_notifications) == 1
 
 
+def test_get_notifications_for_service_injects_hint_plan_for_composite_index(
+    sample_job, sample_api_key, sample_team_api_key, sample_test_api_key
+):
+    create_notification(template=sample_job.template, created_at=datetime.utcnow(), job=sample_job)
+
+    n2 = create_notification(
+        template=sample_job.template,
+        created_at=datetime.utcnow(),
+        api_key=sample_api_key,
+        key_type=sample_api_key.key_type,
+    )
+    create_notification(
+        template=sample_job.template,
+        created_at=datetime.utcnow(),
+        api_key=sample_team_api_key,
+        key_type=sample_team_api_key.key_type,
+    )
+    create_notification(
+        template=sample_job.template,
+        created_at=datetime.utcnow(),
+        api_key=sample_test_api_key,
+        key_type=sample_test_api_key.key_type,
+    )
+
+    expected_hint = "/*+ IndexScan(notifications ix_notifications_service_id_composite) */"
+    all_notifications = get_notifications_for_service(sample_job.service_id, limit_days=1)
+    assert expected_hint not in str(
+        all_notifications._query_args["query"]
+    ), "Should only add hint if querying with service_id, created_at, status, template_type"
+
+    all_notifications = get_notifications_for_service(sample_job.service_id, limit_days=1, include_jobs=True)
+    assert expected_hint not in str(
+        all_notifications._query_args["query"]
+    ), "Should only add hint if querying with service_id, created_at, status, template_type"
+
+    all_notifications = get_notifications_for_service(sample_job.service_id, limit_days=1, key_type=KEY_TYPE_TEST)
+    assert expected_hint not in str(
+        all_notifications._query_args["query"]
+    ), "Should only add hint if querying with service_id, created_at, status, template_type"
+
+    all_notifications = get_notifications_for_service(
+        sample_job.service_id, limit_days=1, key_type=KEY_TYPE_TEST, filter_dict={"status": "created"}
+    )
+    assert expected_hint not in str(
+        all_notifications._query_args["query"]
+    ), "Should only add hint if querying with service_id, created_at, status, template_type"
+
+    all_notifications = get_notifications_for_service(
+        sample_job.service_id,
+        limit_days=1,
+        key_type=KEY_TYPE_TEST,
+        filter_dict={"status": "created", "template_type": sample_job.template.template_type},
+    )
+    assert expected_hint in str(
+        all_notifications._query_args["query"]
+    ), "Should add hint since the query will filter on service_id, created_at, status, template_type"
+
+    all_notifications = get_notifications_for_service(
+        sample_job.service_id,
+        older_than=str(n2.id),
+        key_type=KEY_TYPE_TEST,
+        filter_dict={"status": "created", "template_type": sample_job.template.template_type},
+    )
+    assert expected_hint in str(
+        all_notifications._query_args["query"]
+    ), "Should add hint since the query will filter on service_id, created_at, status, template_type"
+
+    all_notifications = get_notifications_for_service(
+        sample_job.service_id,
+        limit_days=1,
+        key_type=KEY_TYPE_TEST,
+        filter_dict={"status": "created", "template_type": sample_job.template.template_type},
+        client_reference="blah",
+    )
+    assert expected_hint not in str(all_notifications._query_args["query"]), (
+        "Should not add hint if a client reference is supplied, "
+        "so that it can use client_reference index, which is probably generally good"
+    )
+
+
 @pytest.mark.parametrize(
     "normal_sending,slow_sending,normal_delivered,slow_delivered,threshold,expected_result",
     [
