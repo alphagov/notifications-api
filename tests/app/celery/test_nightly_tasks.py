@@ -18,6 +18,8 @@ from app.celery.nightly_tasks import (
     delete_letter_notifications_older_than_retention,
     delete_oldest_quarter_of_unneeded_notification_history,
     delete_sms_notifications_older_than_retention,
+    delete_unneeded_notification_history_by_hour,
+    delete_unneeded_notification_history_for_specific_hour,
     get_letter_notifications_still_sending_when_they_shouldnt_be,
     letter_raise_alert_if_no_ack_file_for_zip,
     pick_bst_quarter_to_delete_back_from,
@@ -675,3 +677,32 @@ def test_delete_notification_history_older_than_retention_limit(notify_db_sessio
     notification_history_rows = NotificationHistory.query.order_by(NotificationHistory.created_at).all()
     assert len(notification_history_rows) == 4
     assert notification_history_rows[0].created_at == datetime(2023, 1, 1)
+
+
+def test_delete_unneeded_notification_history_for_specific_hour(mocker):
+    delete_mock = mocker.patch("app.celery.nightly_tasks.delete_notification_history_between_two_datetimes")
+
+    start = datetime(2022, 4, 4, 1, 0, 0)
+    end = datetime(2022, 4, 4, 2, 0, 0)
+    delete_unneeded_notification_history_for_specific_hour(start, end)
+
+    delete_mock.assert_called_once_with(start, end)
+
+
+def test_delete_unneeded_notification_history_by_hour(mocker):
+    mock_subtask = mocker.patch("app.celery.nightly_tasks.delete_unneeded_notification_history_for_specific_hour")
+
+    delete_unneeded_notification_history_by_hour()
+
+    assert mock_subtask.apply_async.call_args_list[0] == call(
+        [datetime(2020, 8, 1, 0, 0, 0), datetime(2020, 8, 1, 1, 0, 0)], queue=ANY
+    )
+    assert mock_subtask.apply_async.call_args_list[1] == call(
+        [datetime(2020, 8, 1, 1, 0, 0), datetime(2020, 8, 1, 2, 0, 0)], queue=ANY
+    )
+    assert mock_subtask.apply_async.call_args_list[-2] == call(
+        [datetime(2022, 12, 31, 22, 0, 0), datetime(2022, 12, 31, 23, 0, 0)], queue=ANY
+    )
+    assert mock_subtask.apply_async.call_args_list[-1] == call(
+        [datetime(2022, 12, 31, 23, 0, 0), datetime(2023, 1, 1, 0, 0, 0)], queue=ANY
+    )
