@@ -221,7 +221,7 @@ def get_notification_by_id(notification_id, service_id=None, _raise=False):
     return query.one() if _raise else query.first()
 
 
-def get_notifications_for_service(  # noqa: C901
+def get_notifications_for_service(
     service_id,
     filter_dict=None,
     page=1,
@@ -269,25 +269,6 @@ def get_notifications_for_service(  # noqa: C901
     query = _filter_query(query, filter_dict)
     if personalisation:
         query = query.options(joinedload("template"))
-
-    # If we are filtering on all of the columns in our composite index (service_id, type, status, created_at), let's
-    # strongly suggest to the query planner that it always use that index. This is to tackle an issue that we've seen
-    # on some high-volume services when the filters we apply end up matching few results (eg failed letters). Quite
-    # often that query ends up ignoring this index and doing a backwards index scan on
-    # ix_notifications_service_created_at instead, which can end up being very slow.
-    # The reason it does this is because our page_size is relatively small (50 by default), so it thinks that it can
-    # just do a quick scan backwards on that index and it will quickly find 50 rows. In some cases, eg failed letters,
-    # this can quite often not be the case, and so it ends up scanning _all_ notifications for that service within
-    # limit_days. This can mean scanning millions of emails/text messages even when we know we're only looking for
-    # letters. This has ended up timing out the "view notifications" page for eg NHS.
-    if (
-        (limit_days or older_than)
-        and filter_dict
-        and "status" in filter_dict
-        and "template_type" in filter_dict
-        and not client_reference
-    ):
-        query = query.prefix_with("/*+ IndexScan(notifications ix_notifications_service_id_composite) */")
 
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
