@@ -332,8 +332,10 @@ class DetailedServiceSchema(BaseSchema):
             "contact_list",
             "created_by",
             "crown",
+            "custom_email_sender_name",
             "email_branding",
             "email_message_limit",
+            "email_sender_local_part",
             "guest_list",
             "inbound_api",
             "inbound_number",
@@ -776,6 +778,8 @@ class ServiceHistorySchema(ma.Schema):
     letter_message_limit = fields.Integer()
     restricted = fields.Boolean()
     normalised_service_name = fields.String()
+    custom_email_sender_name = fields.String()
+    email_sender_local_part = fields.String()
     created_by_id = fields.UUID()
     version = fields.Integer()
 

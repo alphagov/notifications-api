@@ -490,6 +490,7 @@ def create_response_for_post_notification(
         create_resp_partial = functools.partial(
             create_post_email_response_from_notification,
             subject=template_with_content.subject,
+            # TODO: replace this with email_sender_local_part once field is populated in db
             email_from=f"{authenticated_service.normalised_service_name}@{current_app.config['NOTIFY_EMAIL_DOMAIN']}",
         )
     elif notification_type == LETTER_TYPE:

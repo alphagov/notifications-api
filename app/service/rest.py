@@ -289,6 +289,9 @@ def update_service(service_id):
     if "letter_branding" in req_json:
         letter_branding_id = req_json["letter_branding"]
         service.letter_branding = None if not letter_branding_id else LetterBranding.query.get(letter_branding_id)
+
+    # TODO: set email_sender_local_part based on custom_emails_sender_name if set
+
     dao_update_service(service)
 
     if service_going_live:
