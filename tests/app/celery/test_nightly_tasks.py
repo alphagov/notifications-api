@@ -584,8 +584,8 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
 def test_delete_unneeded_notification_history_for_specific_hour(mocker):
     delete_mock = mocker.patch("app.celery.nightly_tasks.delete_notification_history_between_two_datetimes")
 
-    start = datetime(2022, 4, 4, 1, 0, 0)
-    end = datetime(2022, 4, 4, 2, 0, 0)
+    start = "2022-04-04T01:00:00"
+    end = "2022-04-04T02:00:00"
     delete_unneeded_notification_history_for_specific_hour(start, end)
 
     delete_mock.assert_called_once_with(start, end)

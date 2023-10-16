@@ -365,6 +365,8 @@ def delete_unneeded_notification_history_by_hour():
     while start_datetime < retention_limit:
         end_datetime = start_datetime + timedelta(hours=1)
         delete_unneeded_notification_history_for_specific_hour.apply_async(
+            # We pass datetimes as args to the next task but celery will actually call `isoformat` on these
+            # and send them over as strings
             [start_datetime, end_datetime],
             # We use the broadcasts queue temporarily as it pulled from by a worker doing no work
             # We don't want to put the tasks on the periodic queue because they make take up all
@@ -380,7 +382,7 @@ def delete_unneeded_notification_history_by_hour():
 
 
 @notify_celery.task(name="delete_unneeded_notification_history_for_specific_hour")
-def delete_unneeded_notification_history_for_specific_hour(start_datetime, end_datetime):
+def delete_unneeded_notification_history_for_specific_hour(start_datetime: str, end_datetime: str):
     current_app.logger.info(
         "Beginning delete_unneeded_notification_history_for_specific_hour between %s and %s",
         start_datetime,
