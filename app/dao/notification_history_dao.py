@@ -4,7 +4,7 @@ from app import db
 from app.models import NotificationHistory
 
 
-def delete_notification_history_between_two_datetimes(start, end):
+def delete_notification_history_between_two_datetimes(start: str, end: str):
     # start time is inclusive, end time is exclusive
     current_app.logger.info("Beginning to delete notification_history between %s and %s", start, end)
 
