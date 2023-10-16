@@ -10,7 +10,7 @@ from tests.app.db import (
     create_template_folder,
     create_user,
 )
-from tests.utils import count_sqlalchemy_queries
+from tests.utils import QueryRecorder
 
 
 def test_get_folders_for_service(admin_request, notify_db_session):
@@ -86,14 +86,14 @@ def test_get_folders_returns_users_with_permission_does_not_do_n_plus_1_sql_quer
     service_id = sample_service.id
     notify_db_session.commit()
 
-    with count_sqlalchemy_queries() as get_query_count:
+    with QueryRecorder() as query_recorder:
         resp = admin_request.get("template_folder.get_template_folders_for_service", service_id=service_id)
 
     users_with_permission = resp["template_folders"][0]["users_with_permission"]
 
     assert len(users_with_permission) == 10
     assert all([str(user.id) in users_with_permission for user in users])
-    assert get_query_count() == 3
+    assert len(query_recorder.queries) == 3
 
 
 @pytest.mark.parametrize("has_parent", [True, False])

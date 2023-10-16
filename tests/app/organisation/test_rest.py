@@ -30,7 +30,7 @@ from tests.app.db import (
     create_template,
     create_user,
 )
-from tests.utils import count_sqlalchemy_queries
+from tests.utils import QueryRecorder
 
 
 def test_get_all_organisations(admin_request, notify_db_session, nhs_email_branding, nhs_letter_branding):
@@ -899,10 +899,10 @@ def test_get_organisation_services_usage_limit_queries_executed(admin_request, n
                 notifications_sent=num_billing_days + 1,
             )
 
-    with count_sqlalchemy_queries() as get_query_count:
+    with QueryRecorder() as query_recorder:
         admin_request.get("organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019})
 
-    assert get_query_count() == 5, (
+    assert len(query_recorder.queries) == 5, (
         "The number of queries executed by this view has changed. The number of queries executed "
         "shouldn't increase as the number of org services increases. If this has increased by 1 or 2 queries, and "
         "affects all parameterized versions of this test, you can probably accept the change. If only one of the "
