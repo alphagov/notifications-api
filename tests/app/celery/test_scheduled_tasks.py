@@ -19,6 +19,7 @@ from redis.exceptions import LockError
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
+    _check_slow_text_message_delivery_reports_and_raise_error_if_needed,
     change_dvla_api_key,
     change_dvla_password,
     check_for_low_available_inbound_sms_numbers,
@@ -156,19 +157,35 @@ def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
     assert mock_reduce.called is False
 
 
-def test_generate_sms_delivery_stats(mocker):
+@pytest.mark.parametrize(
+    "environment, expect_check_slow_delivery",
+    (
+        (
+            "preview",
+            False,
+        ),
+        (
+            "production",
+            True,
+        ),
+    ),
+)
+def test_generate_sms_delivery_stats(environment, expect_check_slow_delivery, mocker, notify_api):
+    slow_delivery_reports = [
+        SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.4, slow_notifications=40, total_notifications=100),
+        SlowProviderDeliveryReport(provider="firetext", slow_ratio=0.8, slow_notifications=80, total_notifications=100),
+    ]
     mocker.patch(
         "app.celery.scheduled_tasks.get_ratio_of_messages_delivered_slowly_per_provider",
-        return_value=[
-            SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.4, slow_notifications=40, total_notifications=100),
-            SlowProviderDeliveryReport(
-                provider="firetext", slow_ratio=0.8, slow_notifications=80, total_notifications=100
-            ),
-        ],
+        return_value=slow_delivery_reports,
     )
     mock_statsd = mocker.patch("app.celery.scheduled_tasks.statsd_client.gauge")
+    mock_check_slow_delivery = mocker.patch(
+        "app.celery.scheduled_tasks._check_slow_text_message_delivery_reports_and_raise_error_if_needed"
+    )
 
-    generate_sms_delivery_stats()
+    with set_config(notify_api, "NOTIFY_ENVIRONMENT", environment):
+        generate_sms_delivery_stats()
 
     calls = [
         call("slow-delivery.mmg.delivered-within-minutes.1.ratio", 0.4),
@@ -179,6 +196,32 @@ def test_generate_sms_delivery_stats(mocker):
         call("slow-delivery.firetext.delivered-within-minutes.10.ratio", 0.8),
     ]
     mock_statsd.assert_has_calls(calls, any_order=True)
+
+    assert mock_check_slow_delivery.call_args_list == (
+        [mocker.call(slow_delivery_reports)] if expect_check_slow_delivery else []
+    )
+
+
+def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(caplog, notify_api):
+    _check_slow_text_message_delivery_reports_and_raise_error_if_needed(
+        [
+            SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.10, slow_notifications=10, total_notifications=100),
+            SlowProviderDeliveryReport(
+                provider="firetext", slow_ratio=0.09, slow_notifications=9, total_notifications=100
+            ),
+        ]
+    )
+    assert ">10%% of text messages are taking longer than 5 minutes to deliver." not in caplog.messages
+
+    _check_slow_text_message_delivery_reports_and_raise_error_if_needed(
+        [
+            SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.10, slow_notifications=10, total_notifications=100),
+            SlowProviderDeliveryReport(
+                provider="firetext", slow_ratio=0.10, slow_notifications=10, total_notifications=100
+            ),
+        ]
+    )
+    assert ">10%% of text messages are taking longer than 5 minutes to deliver." in caplog.messages
 
 
 def test_check_job_status_task_calls_process_incomplete_jobs(mocker, sample_template):

@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 import jinja2
+import sentry_sdk
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
@@ -52,6 +53,7 @@ from app.dao.jobs_dao import (
     find_missing_row_for_job,
 )
 from app.dao.notifications_dao import (
+    SlowProviderDeliveryReport,
     dao_old_letters_with_created_status,
     dao_precompiled_letters_still_pending_virus_check,
     get_ratio_of_messages_delivered_slowly_per_provider,
@@ -143,6 +145,33 @@ def switch_current_sms_provider_on_slow_delivery():
                 dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
 
 
+def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports: list[SlowProviderDeliveryReport]):
+    total_notifications = sum(report.total_notifications for report in reports)
+    slow_notifications = sum(report.slow_notifications for report in reports)
+    percent_slow_notifications = (slow_notifications / total_notifications) * 100
+
+    # If over 10% of all text messages sent over the period have taken longer than 5 minutes to deliver, let's flag a
+    # sentry error for us to investigate.
+    if percent_slow_notifications >= 10:
+        with sentry_sdk.push_scope() as scope:
+            error_context = {
+                "Dashboard URL": (
+                    "https://grafana-notify.cloudapps.digital/d/icjsQ-MWk2/notify-summary?var-env=preview"
+                ),
+                "Slow text messages - #": slow_notifications,
+                "Slow text messages - %": percent_slow_notifications,
+                "Total text messages": total_notifications,
+            }
+
+            for report in reports:
+                error_context[f"provider.{report.provider}.slow_ratio"] = report.slow_ratio
+                error_context[f"provider.{report.provider}.slow_notifications"] = report.slow_notifications
+                error_context[f"provider.{report.provider}.total_notifications"] = report.total_notifications
+
+            scope.set_context("Slow delivery data", error_context)
+            current_app.logger.error(">10%% of text messages are taking longer than 5 minutes to deliver.")
+
+
 @notify_celery.task(name="generate-sms-delivery-stats")
 def generate_sms_delivery_stats():
     for delivery_interval in (1, 5, 10):
@@ -154,6 +183,11 @@ def generate_sms_delivery_stats():
             statsd_client.gauge(
                 f"slow-delivery.{report.provider}.delivered-within-minutes.{delivery_interval}.ratio", report.slow_ratio
             )
+
+        # For the 5-minute delivery interval, let's check the percentage of all text messages sent that were slow.
+        # TODO: delete this when we have a way to raise these alerts from eg grafana, prometheus, something else.
+        if delivery_interval == 5 and current_app.is_prod:
+            _check_slow_text_message_delivery_reports_and_raise_error_if_needed(providers_slow_delivery_reports)
 
 
 @notify_celery.task(name="tend-providers-back-to-middle")
