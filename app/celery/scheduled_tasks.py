@@ -146,12 +146,14 @@ def switch_current_sms_provider_on_slow_delivery():
 @notify_celery.task(name="generate-sms-delivery-stats")
 def generate_sms_delivery_stats():
     for delivery_interval in (1, 5, 10):
-        providers_slow_delivery_ratios = get_ratio_of_messages_delivered_slowly_per_provider(
+        providers_slow_delivery_reports = get_ratio_of_messages_delivered_slowly_per_provider(
             created_within_minutes=15, delivered_within_minutes=delivery_interval
         )
 
-        for provider, ratio in providers_slow_delivery_ratios.items():
-            statsd_client.gauge(f"slow-delivery.{provider}.delivered-within-minutes.{delivery_interval}.ratio", ratio)
+        for report in providers_slow_delivery_reports:
+            statsd_client.gauge(
+                f"slow-delivery.{report.provider}.delivered-within-minutes.{delivery_interval}.ratio", report.slow_ratio
+            )
 
 
 @notify_celery.task(name="tend-providers-back-to-middle")

@@ -53,6 +53,7 @@ from app.constants import (
 )
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.jobs_dao import dao_get_job_by_id
+from app.dao.notifications_dao import SlowProviderDeliveryReport
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.models import Event, InboundNumber
 from tests.app import load_example_csv
@@ -158,7 +159,12 @@ def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
 def test_generate_sms_delivery_stats(mocker):
     mocker.patch(
         "app.celery.scheduled_tasks.get_ratio_of_messages_delivered_slowly_per_provider",
-        return_value={"mmg": 0.4, "firetext": 0.8},
+        return_value=[
+            SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.4, slow_notifications=40, total_notifications=100),
+            SlowProviderDeliveryReport(
+                provider="firetext", slow_ratio=0.8, slow_notifications=80, total_notifications=100
+            ),
+        ],
     )
     mock_statsd = mocker.patch("app.celery.scheduled_tasks.statsd_client.gauge")
 
