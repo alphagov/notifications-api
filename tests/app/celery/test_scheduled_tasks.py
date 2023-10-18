@@ -176,7 +176,7 @@ def test_generate_sms_delivery_stats(environment, expect_check_slow_delivery, mo
         SlowProviderDeliveryReport(provider="firetext", slow_ratio=0.8, slow_notifications=80, total_notifications=100),
     ]
     mocker.patch(
-        "app.celery.scheduled_tasks.get_ratio_of_messages_delivered_slowly_per_provider",
+        "app.celery.scheduled_tasks.get_slow_text_message_delivery_reports_by_provider",
         return_value=slow_delivery_reports,
     )
     mock_statsd = mocker.patch("app.celery.scheduled_tasks.statsd_client.gauge")

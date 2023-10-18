@@ -474,7 +474,7 @@ def is_delivery_slow_for_providers(
     sent in the last `created_within_minutes` minutes took over
     `delivered_within_minutes` minutes to be delivered
     """
-    providers_slow_delivery_reports = get_ratio_of_messages_delivered_slowly_per_provider(
+    providers_slow_delivery_reports = get_slow_text_message_delivery_reports_by_provider(
         created_within_minutes, delivered_within_minutes
     )
 
@@ -496,7 +496,7 @@ class SlowProviderDeliveryReport:
     total_notifications: int
 
 
-def get_ratio_of_messages_delivered_slowly_per_provider(
+def get_slow_text_message_delivery_reports_by_provider(
     created_within_minutes, delivered_within_minutes
 ) -> list[SlowProviderDeliveryReport]:
     """

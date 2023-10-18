@@ -56,7 +56,7 @@ from app.dao.notifications_dao import (
     SlowProviderDeliveryReport,
     dao_old_letters_with_created_status,
     dao_precompiled_letters_still_pending_virus_check,
-    get_ratio_of_messages_delivered_slowly_per_provider,
+    get_slow_text_message_delivery_reports_by_provider,
     is_delivery_slow_for_providers,
     letters_missing_from_sending_bucket,
     notifications_not_yet_sent,
@@ -175,7 +175,7 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
 @notify_celery.task(name="generate-sms-delivery-stats")
 def generate_sms_delivery_stats():
     for delivery_interval in (1, 5, 10):
-        providers_slow_delivery_reports = get_ratio_of_messages_delivered_slowly_per_provider(
+        providers_slow_delivery_reports = get_slow_text_message_delivery_reports_by_provider(
             created_within_minutes=15, delivered_within_minutes=delivery_interval
         )
 
