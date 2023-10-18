@@ -194,6 +194,9 @@ def test_generate_sms_delivery_stats(environment, expect_check_slow_delivery, mo
         call("slow-delivery.firetext.delivered-within-minutes.1.ratio", 0.8),
         call("slow-delivery.firetext.delivered-within-minutes.5.ratio", 0.8),
         call("slow-delivery.firetext.delivered-within-minutes.10.ratio", 0.8),
+        call("slow-delivery.sms.delivered-within-minutes.1.ratio", 0.6),
+        call("slow-delivery.sms.delivered-within-minutes.5.ratio", 0.6),
+        call("slow-delivery.sms.delivered-within-minutes.10.ratio", 0.6),
     ]
     mock_statsd.assert_has_calls(calls, any_order=True)
 

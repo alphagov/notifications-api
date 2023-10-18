@@ -184,6 +184,14 @@ def generate_sms_delivery_stats():
                 f"slow-delivery.{report.provider}.delivered-within-minutes.{delivery_interval}.ratio", report.slow_ratio
             )
 
+        total_notifications = sum(report.total_notifications for report in providers_slow_delivery_reports)
+        slow_notifications = sum(report.slow_notifications for report in providers_slow_delivery_reports)
+        ratio_slow_notifications = slow_notifications / total_notifications
+
+        statsd_client.gauge(
+            f"slow-delivery.sms.delivered-within-minutes.{delivery_interval}.ratio", ratio_slow_notifications
+        )
+
         # For the 5-minute delivery interval, let's check the percentage of all text messages sent that were slow.
         # TODO: delete this when we have a way to raise these alerts from eg grafana, prometheus, something else.
         if delivery_interval == 5 and current_app.is_prod:
