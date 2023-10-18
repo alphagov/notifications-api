@@ -158,7 +158,6 @@ def persist_notification(
     if not simulated:
         dao_create_notification(notification)
         if key_type != KEY_TYPE_TEST and current_app.config["REDIS_ENABLED"]:
-
             for notification_type_ in [None, notification_type]:
                 cache_key = redis.daily_limit_cache_key(service.id, notification_type=notification_type_)
                 if redis_store.get(cache_key) is None:
@@ -191,7 +190,11 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
         deliver_task = get_pdf_for_templated_letter
 
     try:
-        deliver_task.apply_async([str(notification_id)], queue=queue)
+        # this change has to be merged separate and after the function definition change
+        from flask import request
+
+        kwargs = {"use_stub": request.headers.get("x-use-stub") == "1"}
+        deliver_task.apply_async([str(notification_id)], kwargs=kwargs, queue=queue)
     except Exception:
         dao_delete_notifications_by_id(notification_id)
         raise

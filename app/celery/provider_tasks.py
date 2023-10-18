@@ -33,7 +33,7 @@ from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 
 
 @notify_celery.task(bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300)
-def deliver_sms(self, notification_id):
+def deliver_sms(self, notification_id, use_stub=False):
     try:
         current_app.logger.info("Start sending SMS for notification id: %s", notification_id)
         notification = notifications_dao.get_notification_by_id(notification_id)
@@ -61,7 +61,7 @@ def deliver_sms(self, notification_id):
 
 
 @notify_celery.task(bind=True, name="deliver_email", max_retries=48, default_retry_delay=300)
-def deliver_email(self, notification_id):
+def deliver_email(self, notification_id, use_stub=False):
     try:
         current_app.logger.info("Start sending email for notification id: %s", notification_id)
         notification = notifications_dao.get_notification_by_id(notification_id)
