@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import groupby
 from operator import attrgetter
@@ -473,21 +474,31 @@ def is_delivery_slow_for_providers(
     sent in the last `created_within_minutes` minutes took over
     `delivered_within_minutes` minutes to be delivered
     """
-    providers_slow_delivery_ratios = get_ratio_of_messages_delivered_slowly_per_provider(
+    providers_slow_delivery_reports = get_slow_text_message_delivery_reports_by_provider(
         created_within_minutes, delivered_within_minutes
     )
 
     slow_providers = {}
-    for provider, ratio in providers_slow_delivery_ratios.items():
-        slow_providers[provider] = ratio >= threshold
+    for report in providers_slow_delivery_reports:
+        slow_providers[report.provider] = report.slow_ratio >= threshold
         # TODO: when we are happy with the new metrics in generate_sms_delivery_stats then this
         # can be removed as it will be redundant
-        statsd_client.gauge(f"slow-delivery.{provider}.ratio", ratio)
+        statsd_client.gauge(f"slow-delivery.{report.provider}.ratio", report.slow_ratio)
 
     return slow_providers
 
 
-def get_ratio_of_messages_delivered_slowly_per_provider(created_within_minutes, delivered_within_minutes):
+@dataclass
+class SlowProviderDeliveryReport:
+    provider: str
+    slow_ratio: float
+    slow_notifications: int
+    total_notifications: int
+
+
+def get_slow_text_message_delivery_reports_by_provider(
+    created_within_minutes, delivered_within_minutes
+) -> list[SlowProviderDeliveryReport]:
     """
     Returns a dict of providers with the ratio of their messages sent in the
     last `created_within_minutes` minutes that took over
@@ -531,14 +542,21 @@ def get_ratio_of_messages_delivered_slowly_per_provider(created_within_minutes, 
         .group_by(ProviderDetails.identifier, "slow")
     )
 
-    providers_slow_delivery_ratios = {}
+    providers_slow_delivery_reports = []
     for provider, rows in groupby(slow_notification_counts, key=attrgetter("identifier")):
         rows = list(rows)
         total_notifications = sum(row.count for row in rows)
         slow_notifications = sum(row.count for row in rows if row.slow)
-        providers_slow_delivery_ratios[provider] = slow_notifications / total_notifications
+        providers_slow_delivery_reports.append(
+            SlowProviderDeliveryReport(
+                provider=provider,
+                slow_ratio=slow_notifications / total_notifications,
+                slow_notifications=slow_notifications,
+                total_notifications=total_notifications,
+            )
+        )
 
-    return providers_slow_delivery_ratios
+    return providers_slow_delivery_reports
 
 
 @autocommit
