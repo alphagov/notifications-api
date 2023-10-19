@@ -155,8 +155,8 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
     if percent_slow_notifications >= 10:
         with sentry_sdk.push_scope() as scope:
             error_context = {
-                "Dashboard URL": (
-                    "https://grafana-notify.cloudapps.digital/d/icjsQ-MWk2/notify-summary?var-env=preview"
+                "Support runbook": (
+                    "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#slow-sms-delivery"
                 ),
                 "Slow text messages - #": slow_notifications,
                 "Slow text messages - %": percent_slow_notifications,
@@ -168,8 +168,10 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
                 error_context[f"provider.{report.provider}.slow_notifications"] = report.slow_notifications
                 error_context[f"provider.{report.provider}.total_notifications"] = report.total_notifications
 
-            scope.set_context("Slow delivery data", error_context)
-            current_app.logger.error(">10%% of text messages are taking longer than 5 minutes to deliver.")
+            scope.set_context("Slow SMS delivery", error_context)
+            current_app.logger.error(
+                "Over 10% of text messages sent in the last 15 minutes have taken over 5 minutes to deliver."
+            )
 
 
 @notify_celery.task(name="generate-sms-delivery-stats")

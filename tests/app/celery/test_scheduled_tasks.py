@@ -214,7 +214,10 @@ def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(capl
             ),
         ]
     )
-    assert ">10%% of text messages are taking longer than 5 minutes to deliver." not in caplog.messages
+    assert (
+        "Over 10% of text messages sent in the last 15 minutes have taken over 5 minutes to deliver."
+        not in caplog.messages
+    )
 
     _check_slow_text_message_delivery_reports_and_raise_error_if_needed(
         [
@@ -224,7 +227,9 @@ def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(capl
             ),
         ]
     )
-    assert ">10%% of text messages are taking longer than 5 minutes to deliver." in caplog.messages
+    assert (
+        "Over 10% of text messages sent in the last 15 minutes have taken over 5 minutes to deliver." in caplog.messages
+    )
 
 
 def test_check_job_status_task_calls_process_incomplete_jobs(mocker, sample_template):
