@@ -205,31 +205,54 @@ def test_generate_sms_delivery_stats(environment, expect_check_slow_delivery, mo
     )
 
 
-def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(caplog, notify_api):
-    _check_slow_text_message_delivery_reports_and_raise_error_if_needed(
-        [
-            SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.10, slow_notifications=10, total_notifications=100),
-            SlowProviderDeliveryReport(
-                provider="firetext", slow_ratio=0.09, slow_notifications=9, total_notifications=100
-            ),
-        ]
-    )
-    assert (
-        "Over 10% of text messages sent in the last 15 minutes have taken over 5 minutes to deliver."
-        not in caplog.messages
-    )
+@pytest.mark.parametrize("consecutive_failures,should_log", ((1, False), (3, False), (5, True)))
+def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(
+    mocker, caplog, notify_api, consecutive_failures, should_log
+):
+    mock_incr = mocker.patch("app.celery.scheduled_tasks.redis_store.incr")
+    mock_set = mocker.patch("app.celery.scheduled_tasks.redis_store.set")
+    mock_incr.return_value = 1
 
-    _check_slow_text_message_delivery_reports_and_raise_error_if_needed(
-        [
-            SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.10, slow_notifications=10, total_notifications=100),
-            SlowProviderDeliveryReport(
-                provider="firetext", slow_ratio=0.10, slow_notifications=10, total_notifications=100
-            ),
-        ]
-    )
-    assert (
-        "Over 10% of text messages sent in the last 15 minutes have taken over 5 minutes to deliver." in caplog.messages
-    )
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        # Below 10% threshold, should not trigger logs and should set redis cache key to 0
+        for _ in range(consecutive_failures):
+            mock_incr.return_value = consecutive_failures
+            mock_set.reset_mock()
+            _check_slow_text_message_delivery_reports_and_raise_error_if_needed(
+                [
+                    SlowProviderDeliveryReport(
+                        provider="mmg", slow_ratio=0.10, slow_notifications=10, total_notifications=100
+                    ),
+                    SlowProviderDeliveryReport(
+                        provider="firetext", slow_ratio=0.09, slow_notifications=9, total_notifications=100
+                    ),
+                ]
+            )
+            assert (
+                "Over 10% of text messages sent in the last 20 minutes have taken over 5 minutes to deliver."
+                not in caplog.messages
+            )
+            assert mock_set.call_args_list == [mocker.call("slow-sms-delivery:number-of-times-over-threshold", 0)]
+
+        # At 10%+, should increment redis and log an error when it's the fifth consecutive call.
+        for _ in range(consecutive_failures):
+            mock_incr.reset_mock()
+            mock_incr.return_value = consecutive_failures
+            _check_slow_text_message_delivery_reports_and_raise_error_if_needed(
+                [
+                    SlowProviderDeliveryReport(
+                        provider="mmg", slow_ratio=0.10, slow_notifications=10, total_notifications=100
+                    ),
+                    SlowProviderDeliveryReport(
+                        provider="firetext", slow_ratio=0.10, slow_notifications=10, total_notifications=100
+                    ),
+                ]
+            )
+            assert (
+                "Over 10% of text messages sent in the last 20 minutes have taken over 5 minutes to deliver."
+                in caplog.messages
+            ) is should_log
+            assert mock_incr.call_args_list == [mocker.call("slow-sms-delivery:number-of-times-over-threshold")]
 
 
 def test_check_job_status_task_calls_process_incomplete_jobs(mocker, sample_template):
