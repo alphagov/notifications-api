@@ -74,6 +74,9 @@ def create_app(application):
     application.config.from_object(configs[notify_environment])
 
     application.config["NOTIFY_APP_NAME"] = application.name
+    application.config["SQLALCHEMY_ENGINE_OPTIONS"]["connect_args"]["application_name"] = os.environ.get(
+        "NOTIFY_APP_NAME", "api"
+    )
     init_app(application)
 
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
