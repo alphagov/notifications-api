@@ -181,7 +181,7 @@ prometheus-client==0.14.1
     #   gds-metrics
 prompt-toolkit==3.0.31
     # via click-repl
-psycopg2-binary==2.9.3
+psycopg2-binary==2.9.6
     # via -r requirements.in
 pyasn1==0.4.8
     # via rsa
