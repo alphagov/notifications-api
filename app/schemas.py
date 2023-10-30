@@ -456,6 +456,7 @@ class TemplateHistorySchema(BaseSchema):
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
     process_type = field_for(models.Template, "process_type")
+    is_precompiled_letter = fields.Method("get_is_precompiled_letter")
     letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
 
     created_by = fields.Nested(UserSchema, only=["id", "name", "email_address"], dump_only=True)
@@ -470,6 +471,9 @@ class TemplateHistorySchema(BaseSchema):
 
     def get_letter_attachment(self, template):
         return template.letter_attachment.serialize() if template.letter_attachment_id else None
+
+    def get_is_precompiled_letter(self, template):
+        return template.is_precompiled_letter
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
