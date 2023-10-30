@@ -18,7 +18,7 @@ from redis.exceptions import LockError
 from sqlalchemy import and_, between
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db, dvla_client, notify_celery, statsd_client, zendesk_client
+from app import db, dvla_client, notify_celery, redis_store, statsd_client, zendesk_client
 from app.aws import s3
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
@@ -35,6 +35,7 @@ from app.constants import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
     SMS_TYPE,
+    CacheKeys,
 )
 from app.cronitor import cronitor
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
@@ -153,25 +154,36 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
     # If over 10% of all text messages sent over the period have taken longer than 5 minutes to deliver, let's flag a
     # sentry error for us to investigate.
     if percent_slow_notifications >= 10:
-        with sentry_sdk.push_scope() as scope:
-            error_context = {
-                "Support runbook": (
-                    "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#slow-sms-delivery"
-                ),
-                "Slow text messages - #": slow_notifications,
-                "Slow text messages - %": percent_slow_notifications,
-                "Total text messages": total_notifications,
-            }
+        count = redis_store.incr(CacheKeys.NUMBER_OF_TIMES_OVER_SLOW_SMS_DELIVERY_THRESHOLD)
 
-            for report in reports:
-                error_context[f"provider.{report.provider}.slow_ratio"] = report.slow_ratio
-                error_context[f"provider.{report.provider}.slow_notifications"] = report.slow_notifications
-                error_context[f"provider.{report.provider}.total_notifications"] = report.total_notifications
+        # If this is the fifth consecutive time we've seen the threshold breached, then we log an error to Sentry.
+        # This tells us that for at least 20 minutes we've seen delivery take longer than 5 minutes for >10% of
+        # texts. At that point it's probably worth investigating. By only checking for == 5, we don't log any
+        # further errors until we recover and then starting slowing down again. This should mean that each instance
+        # of the error on Sentry actually deserves to be investigated as a separate issue/potential incident.
+        if count == 5:
+            with sentry_sdk.push_scope() as scope:
+                error_context = {
+                    "Support runbook": (
+                        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#slow-sms-delivery"
+                    ),
+                    "Slow text messages - #": slow_notifications,
+                    "Slow text messages - %": percent_slow_notifications,
+                    "Total text messages": total_notifications,
+                }
 
-            scope.set_context("Slow SMS delivery", error_context)
-            current_app.logger.error(
-                "Over 10% of text messages sent in the last 15 minutes have taken over 5 minutes to deliver."
-            )
+                for report in reports:
+                    error_context[f"provider.{report.provider}.slow_ratio"] = report.slow_ratio
+                    error_context[f"provider.{report.provider}.slow_notifications"] = report.slow_notifications
+                    error_context[f"provider.{report.provider}.total_notifications"] = report.total_notifications
+
+                scope.set_context("Slow SMS delivery", error_context)
+                current_app.logger.error(
+                    "Over 10% of text messages sent in the last 20 minutes have taken over 5 minutes to deliver."
+                )
+
+    else:
+        redis_store.set(CacheKeys.NUMBER_OF_TIMES_OVER_SLOW_SMS_DELIVERY_THRESHOLD, 0)
 
 
 @notify_celery.task(name="generate-sms-delivery-stats")

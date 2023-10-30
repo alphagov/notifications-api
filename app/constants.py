@@ -315,6 +315,7 @@ class Retention:
 # Redis cache keys
 class CacheKeys:
     FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT = "update_ft_billing_for_today:updated-at-utc-isoformat"
+    NUMBER_OF_TIMES_OVER_SLOW_SMS_DELIVERY_THRESHOLD = "slow-sms-delivery:number-of-times-over-threshold"
 
 
 # Admin API error codes
