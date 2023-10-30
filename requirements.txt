@@ -113,7 +113,9 @@ geojson==2.5.0
 govuk-bank-holidays==0.11
     # via notifications-utils
 greenlet==1.1.3
-    # via eventlet
+    # via
+    #   eventlet
+    #   sqlalchemy
 gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via -r requirements.in
 idna==3.4
@@ -281,7 +283,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webcolors==1.12
     # via jsonschema
-werkzeug==2.3.3
+werkzeug==3.0.1
     # via flask
 zipp==3.17.0
     # via importlib-metadata
