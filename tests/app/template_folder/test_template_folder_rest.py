@@ -10,7 +10,7 @@ from tests.app.db import (
     create_template_folder,
     create_user,
 )
-from tests.utils import count_sqlalchemy_queries
+from tests.utils import QueryRecorder
 
 
 def test_get_folders_for_service(admin_request, notify_db_session):
@@ -72,18 +72,6 @@ def test_get_folders_returns_users_with_permission(admin_request, sample_service
     assert str(user_2.id) in users_with_permission
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Another test (`test_cbc_proxy_vodafone_send_link_test_invokes_function`) fails when we enable "
-        "SQLALCHEMY_RECORD_QUERIES, which is a requirement for this test. So we can't run this for now ... but "
-        "maybe the flask-sqlalchemy/psycopg2 edge case causing the exception (below) will eventually be fixed and we "
-        "can re-enable this. This exception is thrown when trying to record the query result, after sqlalchemy fetches "
-        "the next value from a sequence (sqlalchemy.engine.default.DefaultExecutionContext._execute_scalar).\n\n"
-        "Test error: *** AttributeError: 'PGExecutionContext_psycopg2' object has no attribute 'parameters'\n\n"
-        "For review you can run this test manually locally, commenting out this skip and enabling "
-        "SQLALCHEMY_RECORD_QUERIES on app.config.Test"
-    )
-)
 def test_get_folders_returns_users_with_permission_does_not_do_n_plus_1_sql_queries(
     admin_request, sample_service, notify_db_session
 ):
@@ -98,14 +86,14 @@ def test_get_folders_returns_users_with_permission_does_not_do_n_plus_1_sql_quer
     service_id = sample_service.id
     notify_db_session.commit()
 
-    with count_sqlalchemy_queries() as get_query_count:
+    with QueryRecorder() as query_recorder:
         resp = admin_request.get("template_folder.get_template_folders_for_service", service_id=service_id)
 
     users_with_permission = resp["template_folders"][0]["users_with_permission"]
 
     assert len(users_with_permission) == 10
     assert all([str(user.id) in users_with_permission for user in users])
-    assert get_query_count() == 3
+    assert len(query_recorder.queries) == 3
 
 
 @pytest.mark.parametrize("has_parent", [True, False])

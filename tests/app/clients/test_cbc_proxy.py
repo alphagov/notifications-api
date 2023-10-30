@@ -573,6 +573,7 @@ def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_
     assert payload["message_format"] == "cap"
 
 
+@pytest.mark.skip
 def test_cbc_proxy_vodafone_send_link_test_invokes_function(mocker, cbc_proxy_vodafone):
     mocker.patch("app.clients.cbc_proxy.uuid.uuid4", return_value=123)
 

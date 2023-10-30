@@ -1,15 +1,14 @@
-from contextlib import contextmanager
-
 import flask_sqlalchemy
 
 
-@contextmanager
-def count_sqlalchemy_queries():
-    """Returns a callable that counts the number of SQLAlchemy queries executed since creation"""
-    before = len(flask_sqlalchemy.get_debug_queries())
+class QueryRecorder:
+    def __init__(self):
+        self.queries = []
+        self._count_on_enter = None
 
-    def get_query_count():
-        after = len(flask_sqlalchemy.get_debug_queries())
-        return after - before
+    def __enter__(self):
+        self._count_on_enter = len(flask_sqlalchemy.get_debug_queries())
+        return self
 
-    yield get_query_count
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.queries = flask_sqlalchemy.get_debug_queries()[self._count_on_enter :]

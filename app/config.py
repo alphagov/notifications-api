@@ -527,7 +527,7 @@ class Test(Development):
 
     # when testing, the SQLALCHEMY_DATABASE_URI is used for the postgres server's location
     # but the database name is set in the _notify_db fixture
-    SQLALCHEMY_RECORD_QUERIES = False
+    SQLALCHEMY_RECORD_QUERIES = True
 
     CELERY = {**Config.CELERY, "broker_url": "you-forgot-to-mock-celery-in-your-tests://"}
 
