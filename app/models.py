@@ -521,7 +521,7 @@ class Service(db.Model, Versioned):
 
     _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
     # TODO: once data is migrated this should be not nullable
-    email_sender_local_part = db.Column(db.String(255), nullable=True)
+    _email_sender_local_part = db.Column("email_sender_local_part", db.String(255), nullable=True)
 
     @hybrid_property  # a hybrid_property enables us to still use it in queries
     def custom_email_sender_name(self):
@@ -531,10 +531,24 @@ class Service(db.Model, Versioned):
     def custom_email_sender_name(self, value):
         self._custom_email_sender_name = value
         if value:
-            self.email_sender_local_part = make_string_safe_for_email_local_part(value)
+            self._email_sender_local_part = make_string_safe_for_email_local_part(value)
         else:
             # clearing custom sender name, so set email from back to service name
-            self.email_sender_local_part = self.normalised_service_name
+            self._email_sender_local_part = self.normalised_service_name
+
+    @hybrid_property
+    def email_sender_local_part(self):
+        return self._email_sender_local_part
+
+    @email_sender_local_part.setter
+    def email_sender_local_part(self, value):
+        # we can't allow this to be set manually.
+        # Imagine we've updated just `custom_email_sender_name` via a serialised json blob. When that is set, it will
+        # also update the value of email_sender_local_part. We don't want to then undo that good work by setting to the
+        # old value (that was also passed through in the json to `service_schema.load``).
+        raise NotImplementedError(
+            "email_sender_local_part can only be written to via `custom_email_sender_name` or `name`"
+        )
 
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)

@@ -227,6 +227,8 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     allowed_broadcast_provider = fields.Method(dump_only=True, serialize="_get_allowed_broadcast_provider")
     broadcast_channel = fields.Method(dump_only=True, serialize="_get_broadcast_channel")
     custom_email_sender_name = fields.String(allow_none=True)
+    # this can only be set via custom_email_sender_name or name
+    email_sender_local_part = fields.String(dump_only=True)
 
     def _get_allowed_broadcast_provider(self, service):
         return service.allowed_broadcast_provider
@@ -283,6 +285,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             "users",
             "version",
             "_custom_email_sender_name",
+            "_email_sender_local_part",
         )
 
     @validates("permissions")
@@ -324,6 +327,7 @@ class DetailedServiceSchema(BaseSchema):
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
     custom_email_sender_name = fields.String(required=False)
+    email_sender_local_part = fields.String()
 
     class Meta(BaseSchema.Meta):
         model = models.Service
@@ -336,9 +340,9 @@ class DetailedServiceSchema(BaseSchema):
             "created_by",
             "crown",
             "_custom_email_sender_name",
+            "_email_sender_local_part",
             "email_branding",
             "email_message_limit",
-            "email_sender_local_part",
             "guest_list",
             "inbound_api",
             "inbound_number",

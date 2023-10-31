@@ -140,7 +140,6 @@ def create_service(
             restricted=restricted,
             normalised_service_name=normalised_service_name or service_name.lower().replace(" ", "."),
             custom_email_sender_name=None,
-            email_sender_local_part=None,
             created_by=user if user else create_user(email="{}@digital.cabinet-office.gov.uk".format(uuid.uuid4())),
             prefix_sms=prefix_sms,
             organisation_type=organisation_type,

@@ -4087,8 +4087,9 @@ def test_update_service_set_custom_email_sender_name_sets_email_sender_local_par
     new_custom_email_sender_name,
     expected_email_sender_local_part,
 ):
+    # set columns directly to avoid hitting the hybrid properties
     sample_service._custom_email_sender_name = "existing name"
-    sample_service.email_sender_local_part = "existing.name"
+    sample_service._email_sender_local_part = "existing.name"
 
     admin_request.post(
         "service.update_service",
