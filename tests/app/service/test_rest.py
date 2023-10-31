@@ -4071,3 +4071,32 @@ def test_set_as_broadcast_service_revokes_api_keys(
 
     # This key is from a different service
     assert api_key_3.expiry_date is None
+
+
+@pytest.mark.parametrize(
+    "new_custom_email_sender_name, expected_email_sender_local_part",
+    [
+        ("some other name", "some.other.name"),
+        # clearing custom_email_sender_name sets local part back to the normalised service name
+        (None, "sample.service"),
+    ],
+)
+def test_update_service_set_custom_email_sender_name_sets_email_sender_local_part(
+    sample_service,
+    admin_request,
+    new_custom_email_sender_name,
+    expected_email_sender_local_part,
+):
+    sample_service._custom_email_sender_name = "existing name"
+    sample_service.email_sender_local_part = "existing.name"
+
+    admin_request.post(
+        "service.update_service",
+        service_id=sample_service.id,
+        _data={"custom_email_sender_name": new_custom_email_sender_name},
+    )
+
+    assert sample_service.name == "Sample service"
+    assert sample_service.normalised_service_name == "sample.service"
+    assert sample_service.custom_email_sender_name == new_custom_email_sender_name
+    assert sample_service.email_sender_local_part == expected_email_sender_local_part

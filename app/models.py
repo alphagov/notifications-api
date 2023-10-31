@@ -16,6 +16,7 @@ from notifications_utils.recipients import (
     validate_email_address,
     validate_phone_number,
 )
+from notifications_utils.safe_string import make_string_safe_for_email_local_part
 from notifications_utils.template import (
     BroadcastMessageTemplate,
     LetterPrintTemplate,
@@ -518,10 +519,22 @@ class Service(db.Model, Versioned):
     name = db.Column(db.String(255), nullable=False, unique=True)
     normalised_service_name = db.Column(db.String, nullable=False, unique=True)
 
-    # if not set, email_sender_local_part should match normalised_service_name
-    custom_email_sender_name = db.Column(db.String(255), nullable=True)
+    _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
     # TODO: once data is migrated this should be not nullable
     email_sender_local_part = db.Column(db.String(255), nullable=True)
+
+    @hybrid_property  # a hybrid_property enables us to still use it in queries
+    def custom_email_sender_name(self):
+        return self._custom_email_sender_name
+
+    @custom_email_sender_name.setter
+    def custom_email_sender_name(self, value):
+        self._custom_email_sender_name = value
+        if value:
+            self.email_sender_local_part = make_string_safe_for_email_local_part(value)
+        else:
+            # clearing custom sender name, so set email from back to service name
+            self.email_sender_local_part = self.normalised_service_name
 
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
