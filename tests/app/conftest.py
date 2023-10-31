@@ -893,6 +893,57 @@ def organisation_has_new_go_live_request_template(notify_service):
     )
 
 
+@pytest.fixture(scope="function")
+def organisation_continue_go_live_request_template(notify_service):
+    template_content = textwrap.dedent(
+        """\
+        ((body))
+        """
+    )
+
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="ORGANISATION_CONTINUE_GO_LIVE_REQUEST_TEMPLATE_ID",
+        content=template_content,
+        subject="Request to go live: ((service_name))",
+        template_type="email",
+    )
+
+
+@pytest.fixture(scope="function")
+def organisation_reject_go_live_request_template(notify_service):
+    template_content = textwrap.dedent(
+        """\
+        Hi ((name))
+
+        You sent a request to go live for the following GOV.UK Notify service:
+
+        ((service_name))
+
+        The request was rejected by ((organisation_team_member_name)) at ((organisation_name)). They gave the following reason:
+
+        “((reason))”
+
+        If you have any questions, you can email ((organisation_team_member_name)) at ((organisation_team_member_email))
+
+        Thanks
+
+        GOV.​UK Notify team
+        https://www.gov.uk/notify
+        """  # noqa
+    )
+
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="ORGANISATION_REJECTED_GO_LIVE_REQUEST_TEMPLATE_ID",
+        content=template_content,
+        subject="Your request to go live has been rejected",
+        template_type="email",
+    )
+
+
 @pytest.fixture
 def notify_service(notify_db_session, sample_user):
     service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])

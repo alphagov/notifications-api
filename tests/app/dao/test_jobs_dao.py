@@ -177,10 +177,7 @@ def test_get_jobs_for_service_by_contact_list(sample_template):
         job_1,
     ]
 
-    assert dao_get_jobs_by_service_id(
-        sample_template.service.id,
-        contact_list_id=contact_list.id,
-    ).items == [
+    assert dao_get_jobs_by_service_id(sample_template.service.id, contact_list_id=contact_list.id,).items == [
         job_2,
     ]
 

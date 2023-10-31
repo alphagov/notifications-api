@@ -39,6 +39,8 @@ from app.notifications.process_notifications import (
 from app.organisation.organisation_schema import (
     post_create_organisation_schema,
     post_link_service_to_organisation_schema,
+    post_notify_org_member_about_continuation_of_go_live_request,
+    post_notify_service_member_of_rejected_request_to_go_live,
     post_update_org_email_branding_pool_schema,
     post_update_org_letter_branding_pool_schema,
     post_update_organisation_schema,
@@ -320,6 +322,71 @@ def notify_users_of_request_to_go_live(service_id):
         },
         include_user_fields={"name"},
     )
+
+    return {}, 204
+
+
+@organisation_blueprint.route(
+    "/notify-org-member-about-continuation-of-go-live-request/<uuid:service_id>", methods=["POST"]
+)
+def notify_org_member_about_continuation_of_go_live_request(service_id):
+    data = request.get_json()
+    validate(data, post_notify_org_member_about_continuation_of_go_live_request)
+
+    template = dao_get_template_by_id(current_app.config["ORGANISATION_CONTINUE_GO_LIVE_REQUEST_TEMPLATE_ID"])
+    service = dao_fetch_service_by_id(service_id)
+    if not service.go_live_user or not service.has_active_go_live_request:
+        abort(400)
+
+    notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=data["to"],
+        service=notify_service,
+        personalisation={"service_name": data["service_name"], "body": data["body"]},
+        notification_type=template.template_type,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=notify_service.get_default_reply_to_email_address(),
+    )
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
+
+    return {}, 204
+
+
+@organisation_blueprint.route(
+    "/notify-service-member-of-rejected-request-to-go-live/<uuid:service_id>", methods=["POST"]
+)
+def notify_service_member_of_rejected_request_to_go_live(service_id):
+    data = request.get_json()
+    validate(data, post_notify_service_member_of_rejected_request_to_go_live)
+
+    template = dao_get_template_by_id(current_app.config["ORGANISATION_REJECTED_GO_LIVE_REQUEST_TEMPLATE_ID"])
+    service = dao_fetch_service_by_id(service_id)
+    if not service.go_live_user or not service.has_active_go_live_request:
+        abort(400)
+
+    notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=service.go_live_user.email_address,
+        service=notify_service,
+        personalisation={
+            "name": data["name"],
+            "service_name": data["service_name"],
+            "organisation_name": data["organisation_name"],
+            "reason": data["reason"],
+            "organisation_team_member_name": data["organisation_team_member_name"],
+            "organisation_team_member_email": data["organisation_team_member_email"],
+        },
+        notification_type=template.template_type,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=notify_service.get_default_reply_to_email_address(),
+    )
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
     return {}, 204
 
