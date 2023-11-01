@@ -81,7 +81,7 @@ docutils==0.16
     # via awscli
 eventlet==0.33.1
     # via gunicorn
-flask==2.3.2
+flask==3.0.0
     # via
     #   -r requirements.in
     #   flask-bcrypt
@@ -281,7 +281,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webcolors==1.12
     # via jsonschema
-werkzeug==2.3.3
+werkzeug==3.0.1
     # via flask
 zipp==3.17.0
     # via importlib-metadata
