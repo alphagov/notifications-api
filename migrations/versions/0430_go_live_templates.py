@@ -25,11 +25,11 @@ reject_template_content = textwrap.dedent(
     """
 Hi ((name))
 
-You sent a request to go live for the following GOV.UK Notify service:
+# Your request to go live was rejected
 
-((service_name))
+You sent a request to go live for a GOV.UK Notify service called ‘((service_name))’.
 
-The request was rejected by ((organisation_team_member_name)) at ((organisation_name)). They gave the following reason:
+((organisation_team_member_name)) at ((organisation_name)) rejected the request for the following reason:
 
 ((reason))
 

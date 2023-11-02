@@ -917,13 +917,13 @@ def organisation_reject_go_live_request_template(notify_service):
         """\
         Hi ((name))
 
-        You sent a request to go live for the following GOV.UK Notify service:
+        # Your request to go live was rejected
 
-        ((service_name))
+        You sent a request to go live for a GOV.UK Notify service called ‘((service_name))’.
 
-        The request was rejected by ((organisation_team_member_name)) at ((organisation_name)). They gave the following reason:
+        ((organisation_team_member_name)) at ((organisation_name)) rejected the request for the following reason:
 
-        “((reason))”
+        ((reason))
 
         If you have any questions, you can email ((organisation_team_member_name)) at ((organisation_team_member_email))
 
