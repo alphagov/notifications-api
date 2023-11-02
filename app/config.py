@@ -29,6 +29,7 @@ class QueueNames(object):
     CALLBACKS = "service-callbacks"
     CALLBACKS_RETRY = "service-callbacks-retry"
     LETTERS = "letter-tasks"
+    SES_CALLBACKS = "ses-callbacks"
     SMS_CALLBACKS = "sms-callbacks"
     ANTIVIRUS = "antivirus-tasks"
     SANITISE_LETTERS = "sanitise-letter-tasks"
@@ -54,6 +55,7 @@ class QueueNames(object):
             QueueNames.CALLBACKS,
             QueueNames.CALLBACKS_RETRY,
             QueueNames.LETTERS,
+            QueueNames.SES_CALLBACKS,
             QueueNames.SMS_CALLBACKS,
             QueueNames.SAVE_API_EMAIL,
             QueueNames.SAVE_API_SMS,
