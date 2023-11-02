@@ -1292,7 +1292,7 @@ def test_notify_org_users_of_request_to_go_live_requires_org_user_permission(
     assert mock_send_notification_to_queue.call_args_list == []
 
 
-def test_notify_org_member_about_continuation_of_go_live_request(
+def test_notify_org_member_about_next_steps_of_go_live_request(
     mocker,
     admin_request,
     notify_service,
@@ -1327,7 +1327,7 @@ def test_notify_org_member_about_continuation_of_go_live_request(
     sample_service.go_live_user = go_live_user
 
     admin_request.post(
-        "organisation.notify_org_member_about_continuation_of_go_live_request",
+        "organisation.notify_org_member_about_next_steps_of_go_live_request",
         service_id=sample_service.id,
         _data={"to": "first-org-user@example.gov.uk", "service_name": "test service", "body": "blah blah blah"},
         _expected_status=204,

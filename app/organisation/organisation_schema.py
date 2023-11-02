@@ -85,9 +85,9 @@ post_update_org_letter_branding_pool_schema = {
     "required": ["branding_ids"],
 }
 
-post_notify_org_member_about_continuation_of_go_live_request = {
+post_notify_org_member_about_next_steps_of_go_live_request = {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "description": "POST notify org member about continuation of go live request",
+    "description": "POST notify org member about next steps of go live request",
     "type": "object",
     "properties": {
         "to": {"type": "string", "format": "email_address"},

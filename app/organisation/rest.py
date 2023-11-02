@@ -39,7 +39,7 @@ from app.notifications.process_notifications import (
 from app.organisation.organisation_schema import (
     post_create_organisation_schema,
     post_link_service_to_organisation_schema,
-    post_notify_org_member_about_continuation_of_go_live_request,
+    post_notify_org_member_about_next_steps_of_go_live_request,
     post_notify_service_member_of_rejected_request_to_go_live,
     post_update_org_email_branding_pool_schema,
     post_update_org_letter_branding_pool_schema,
@@ -327,11 +327,11 @@ def notify_users_of_request_to_go_live(service_id):
 
 
 @organisation_blueprint.route(
-    "/notify-org-member-about-continuation-of-go-live-request/<uuid:service_id>", methods=["POST"]
+    "/notify-org-member-about-next-steps-of-go-live-request/<uuid:service_id>", methods=["POST"]
 )
-def notify_org_member_about_continuation_of_go_live_request(service_id):
+def notify_org_member_about_next_steps_of_go_live_request(service_id):
     data = request.get_json()
-    validate(data, post_notify_org_member_about_continuation_of_go_live_request)
+    validate(data, post_notify_org_member_about_next_steps_of_go_live_request)
 
     template = dao_get_template_by_id(current_app.config["ORGANISATION_CONTINUE_GO_LIVE_REQUEST_TEMPLATE_ID"])
     service = dao_fetch_service_by_id(service_id)
