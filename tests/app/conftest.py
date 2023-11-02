@@ -886,7 +886,7 @@ def organisation_has_new_go_live_request_template(notify_service):
     return create_custom_template(
         service=notify_service,
         user=notify_service.users[0],
-        template_config_name="ORGANISATION_HAS_NEW_GO_LIVE_REQUEST_TEMPLATE_ID",
+        template_config_name="GO_LIVE_NEW_REQUEST_FOR_ORG_USERS_TEMPLATE_ID",
         content=template_content,
         subject="Request to go live: ((service_name))",
         template_type="email",
@@ -894,7 +894,7 @@ def organisation_has_new_go_live_request_template(notify_service):
 
 
 @pytest.fixture(scope="function")
-def organisation_continue_go_live_request_template(notify_service):
+def organisation_next_steps_for_go_live_request_template(notify_service):
     template_content = textwrap.dedent(
         """\
         ((body))
@@ -904,7 +904,7 @@ def organisation_continue_go_live_request_template(notify_service):
     return create_custom_template(
         service=notify_service,
         user=notify_service.users[0],
-        template_config_name="ORGANISATION_CONTINUE_GO_LIVE_REQUEST_TEMPLATE_ID",
+        template_config_name="GO_LIVE_REQUEST_NEXT_STEPS_FOR_ORG_USER_TEMPLATE_ID",
         content=template_content,
         subject="Request to go live: ((service_name))",
         template_type="email",
@@ -937,7 +937,7 @@ def organisation_reject_go_live_request_template(notify_service):
     return create_custom_template(
         service=notify_service,
         user=notify_service.users[0],
-        template_config_name="ORGANISATION_REJECTED_GO_LIVE_REQUEST_TEMPLATE_ID",
+        template_config_name="GO_LIVE_REQUEST_REJECTED_BY_ORG_USER_TEMPLATE_ID",
         content=template_content,
         subject="Your request to go live has been rejected",
         template_type="email",

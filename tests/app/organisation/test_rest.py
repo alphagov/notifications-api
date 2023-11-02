@@ -1298,7 +1298,7 @@ def test_notify_org_member_about_next_steps_of_go_live_request(
     notify_service,
     sample_organisation,
     sample_service,
-    organisation_continue_go_live_request_template,
+    organisation_next_steps_for_go_live_request_template,
     hostnames,
 ):
     notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])

@@ -301,7 +301,7 @@ def remove_letter_branding_from_organisation_pool(organisation_id, letter_brandi
 
 @organisation_blueprint.route("/notify-users-of-request-to-go-live/<uuid:service_id>", methods=["POST"])
 def notify_users_of_request_to_go_live(service_id):
-    template = dao_get_template_by_id(current_app.config["ORGANISATION_HAS_NEW_GO_LIVE_REQUEST_TEMPLATE_ID"])
+    template = dao_get_template_by_id(current_app.config["GO_LIVE_NEW_REQUEST_FOR_ORG_USERS_TEMPLATE_ID"])
     service = dao_fetch_service_by_id(service_id)
     organisation = service.organisation
     make_service_live_link = f"{current_app.config['ADMIN_BASE_URL']}/services/{service.id}/make-service-live"
@@ -333,7 +333,7 @@ def notify_org_member_about_next_steps_of_go_live_request(service_id):
     data = request.get_json()
     validate(data, post_notify_org_member_about_next_steps_of_go_live_request)
 
-    template = dao_get_template_by_id(current_app.config["ORGANISATION_CONTINUE_GO_LIVE_REQUEST_TEMPLATE_ID"])
+    template = dao_get_template_by_id(current_app.config["GO_LIVE_REQUEST_NEXT_STEPS_FOR_ORG_USER_TEMPLATE_ID"])
     service = dao_fetch_service_by_id(service_id)
     if not service.go_live_user or not service.has_active_go_live_request:
         abort(400)
@@ -362,7 +362,7 @@ def notify_service_member_of_rejected_request_to_go_live(service_id):
     data = request.get_json()
     validate(data, post_notify_service_member_of_rejected_request_to_go_live)
 
-    template = dao_get_template_by_id(current_app.config["ORGANISATION_REJECTED_GO_LIVE_REQUEST_TEMPLATE_ID"])
+    template = dao_get_template_by_id(current_app.config["GO_LIVE_REQUEST_REJECTED_BY_ORG_USER_TEMPLATE_ID"])
     service = dao_fetch_service_by_id(service_id)
     if not service.go_live_user or not service.has_active_go_live_request:
         abort(400)
