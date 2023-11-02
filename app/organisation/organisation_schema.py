@@ -97,9 +97,9 @@ post_notify_org_member_about_next_steps_of_go_live_request = {
     "required": ["to", "service_name", "body"],
 }
 
-post_notify_service_member_of_rejected_request_to_go_live = {
+post_notify_service_member_of_rejected_go_live_request = {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "description": "POST notify service member of rejected request to go live",
+    "description": "POST notify service member of rejected go live request",
     "type": "object",
     "properties": {
         "name": {"type": "string"},

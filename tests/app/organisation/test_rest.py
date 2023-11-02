@@ -1396,7 +1396,7 @@ def test_notify_service_member_of_rejected_request_to_go_live(
         "organisation_team_member_email": "first-org-user@example.gov.uk",
     }
     admin_request.post(
-        "organisation.notify_service_member_of_rejected_request_to_go_live",
+        "organisation.notify_service_member_of_rejected_go_live_request",
         service_id=sample_service.id,
         _data=personalisation,
         _expected_status=204,

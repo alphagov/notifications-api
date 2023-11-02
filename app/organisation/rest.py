@@ -40,7 +40,7 @@ from app.organisation.organisation_schema import (
     post_create_organisation_schema,
     post_link_service_to_organisation_schema,
     post_notify_org_member_about_next_steps_of_go_live_request,
-    post_notify_service_member_of_rejected_request_to_go_live,
+    post_notify_service_member_of_rejected_go_live_request,
     post_update_org_email_branding_pool_schema,
     post_update_org_letter_branding_pool_schema,
     post_update_organisation_schema,
@@ -355,12 +355,10 @@ def notify_org_member_about_next_steps_of_go_live_request(service_id):
     return {}, 204
 
 
-@organisation_blueprint.route(
-    "/notify-service-member-of-rejected-request-to-go-live/<uuid:service_id>", methods=["POST"]
-)
-def notify_service_member_of_rejected_request_to_go_live(service_id):
+@organisation_blueprint.route("/notify-service-member-of-rejected-go-live-request/<uuid:service_id>", methods=["POST"])
+def notify_service_member_of_rejected_go_live_request(service_id):
     data = request.get_json()
-    validate(data, post_notify_service_member_of_rejected_request_to_go_live)
+    validate(data, post_notify_service_member_of_rejected_go_live_request)
 
     template = dao_get_template_by_id(current_app.config["GO_LIVE_REQUEST_REJECTED_BY_ORG_USER_TEMPLATE_ID"])
     service = dao_fetch_service_by_id(service_id)
