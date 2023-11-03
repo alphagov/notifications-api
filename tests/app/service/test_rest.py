@@ -4082,22 +4082,40 @@ def test_set_as_broadcast_service_revokes_api_keys(
     ],
 )
 def test_update_service_set_custom_email_sender_name_sets_email_sender_local_part(
-    sample_service,
+    sample_user,
     admin_request,
     new_custom_email_sender_name,
     expected_email_sender_local_part,
 ):
     # set columns directly to avoid hitting the hybrid properties
-    sample_service._custom_email_sender_name = "existing name"
-    sample_service._email_sender_local_part = "existing.name"
+    service = Service(
+        name="Sample service",
+        normalised_service_name="sample.service",
+        _custom_email_sender_name="existing name",
+        _email_sender_local_part="existing.name",
+        restricted=True,
+        created_by=sample_user,
+    )
+    from app.dao.services_dao import dao_update_service
+
+    # use the dao method as it creates a proper history version
+    dao_update_service(service)
 
     admin_request.post(
         "service.update_service",
-        service_id=sample_service.id,
+        service_id=service.id,
         _data={"custom_email_sender_name": new_custom_email_sender_name},
     )
 
-    assert sample_service.name == "Sample service"
-    assert sample_service.normalised_service_name == "sample.service"
-    assert sample_service.custom_email_sender_name == new_custom_email_sender_name
-    assert sample_service.email_sender_local_part == expected_email_sender_local_part
+    assert service.name == "Sample service"
+    assert service.normalised_service_name == "sample.service"
+    assert service.custom_email_sender_name == new_custom_email_sender_name
+    assert service.email_sender_local_part == expected_email_sender_local_part
+
+    ServiceHistory = Service.get_history_model()
+    prev_history, new_history = ServiceHistory.query.filter_by(id=service.id).order_by(ServiceHistory.version)
+    assert prev_history.version == 2
+    assert prev_history.email_sender_local_part == "existing.name"
+
+    assert new_history.version == 3
+    assert new_history.email_sender_local_part == expected_email_sender_local_part

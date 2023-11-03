@@ -611,7 +611,11 @@ def test_create_service_creates_a_history_record_with_current_data(notify_db_ses
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
     service = Service(
-        name="service_name", normalised_service_name="normalised_service_name", restricted=False, created_by=user
+        name="service_name",
+        normalised_service_name="normalised_service_name",
+        restricted=False,
+        created_by=user,
+        custom_email_sender_name="email sender",
     )
     dao_create_service(service, user)
     assert Service.query.count() == 1
@@ -626,6 +630,8 @@ def test_create_service_creates_a_history_record_with_current_data(notify_db_ses
     assert service_from_db.version == service_history.version
     assert user.id == service_history.created_by_id
     assert service_from_db.created_by.id == service_history.created_by_id
+    assert service_history.custom_email_sender_name == "email sender"
+    assert service_history.email_sender_local_part == "email.sender"
 
 
 def test_update_service_creates_a_history_record_with_current_data(notify_db_session):

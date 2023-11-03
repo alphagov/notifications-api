@@ -16,7 +16,7 @@ session events.
 """
 import datetime
 
-from sqlalchemy import Column, ForeignKeyConstraint, Integer, Table, util
+from sqlalchemy import Column, Integer, Table, util
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import attributes, mapper, object_mapper
 from sqlalchemy.orm.properties import ColumnProperty, RelationshipProperty
@@ -42,12 +42,6 @@ def _history_mapper(local_mapper):  # noqa (C901 too complex)
     for prop in local_mapper.iterate_properties:
         getattr(local_mapper.class_, prop.key).impl.active_history = True
 
-    super_mapper = local_mapper.inherits
-    super_history_mapper = getattr(cls, "__history_mapper__", None)
-
-    polymorphic_on = None
-    super_fks = []
-
     def _col_copy(col):
         orig = col
         col = col.copy()
@@ -62,76 +56,33 @@ def _history_mapper(local_mapper):  # noqa (C901 too complex)
         return col
 
     properties = util.OrderedDict()
-    if not super_mapper or local_mapper.local_table is not super_mapper.local_table:
-        cols = []
-        version_meta = {"version_meta": True}
-        for column in local_mapper.local_table.c:
-            if _is_versioning_col(column):
-                continue
+    cols = []
+    version_meta = {"version_meta": True}
+    for column in local_mapper.local_table.c:
+        col = _col_copy(column)
 
-            col = _col_copy(column)
+        cols.append(col)
 
-            if super_mapper and col_references_table(column, super_mapper.local_table):
-                super_fks.append((col.key, list(super_history_mapper.local_table.primary_key)[0]))
+    # "version" stores the integer version id.  This column is required.
+    cols.append(Column("version", Integer, primary_key=True, autoincrement=False, info=version_meta))
 
-            cols.append(col)
-
-            if column is local_mapper.polymorphic_on:
-                polymorphic_on = col
-
-            orig_prop = local_mapper.get_property_by_column(column)
-            # carry over column re-mappings
-            if len(orig_prop.columns) > 1 or orig_prop.columns[0].key != orig_prop.key:
-                properties[orig_prop.key] = tuple(col.info["history_copy"] for col in orig_prop.columns)
-
-        if super_mapper:
-            super_fks.append(("version", super_history_mapper.local_table.c.version))
-
-        # "version" stores the integer version id.  This column is
-        # required.
-        cols.append(Column("version", Integer, primary_key=True, autoincrement=False, info=version_meta))
-
-        if super_fks:
-            cols.append(ForeignKeyConstraint(*zip(*super_fks)))
-
-        table = Table(
-            local_mapper.local_table.name + "_history",
-            local_mapper.local_table.metadata,
-            *cols,
-            schema=local_mapper.local_table.schema
-        )
-    else:
-        # single table inheritance.  take any additional columns that may have
-        # been added and add them to the history table.
-        for column in local_mapper.local_table.c:
-            if column.key not in super_history_mapper.local_table.c:
-                col = _col_copy(column)
-                super_history_mapper.local_table.append_column(col)
-        table = None
-
-    if super_history_mapper:
-        bases = (super_history_mapper.class_,)
-
-        if table is not None:
-            properties["changed"] = (table.c.changed,) + tuple(super_history_mapper.attrs.changed.columns)
-
-    else:
-        bases = local_mapper.base_mapper.class_.__bases__
-    versioned_cls = type.__new__(type, "%sHistory" % cls.__name__, bases, {})
+    table = Table(
+        f"{local_mapper.local_table.name}_history",
+        local_mapper.local_table.metadata,
+        *cols,
+        schema=local_mapper.local_table.schema,
+    )
+    versioned_cls = type.__new__(type, f"{cls.__name__}History", cls.__bases__, {})
 
     m = mapper(
         versioned_cls,
         table,
-        inherits=super_history_mapper,
-        polymorphic_on=polymorphic_on,
-        polymorphic_identity=local_mapper.polymorphic_identity,
         properties=properties,
     )
     cls.__history_mapper__ = m
 
-    if not super_history_mapper:
-        local_mapper.local_table.append_column(Column("version", Integer, default=1, nullable=False))
-        local_mapper.add_property("version", local_mapper.local_table.c.version)
+    local_mapper.local_table.append_column(Column("version", Integer, default=1, nullable=False))
+    local_mapper.add_property("version", local_mapper.local_table.c.version)
 
 
 class Versioned(object):
@@ -167,8 +118,15 @@ def create_history(obj, history_cls=None):
 
         # if prop is a normal col just set it on history model
         if isinstance(prop, ColumnProperty):
-            if not data.get(prop.key):
-                data[prop.key] = getattr(obj, prop.key)
+            # if the field is normally accessed via a property/hybrid property, then
+            # prop.key might be for example `_bearer_token`. However, in the history model
+            # we don't have these properties, and instead the column's python variable name
+            # will match the database (eg `bearer_token`). We want to always write to a
+            # field that matches the database column name.
+            column_name = prop.columns[0].name
+
+            if not data.get(column_name):
+                data[column_name] = getattr(obj, prop.key)
 
         # if the prop is a relationship property and there is a
         # corresponding prop on hist object then set the
