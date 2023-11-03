@@ -516,8 +516,29 @@ class Service(db.Model, Versioned):
     __tablename__ = "services"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = db.Column(db.String(255), nullable=False, unique=True)
-    normalised_service_name = db.Column(db.String, nullable=False, unique=True)
+    _name = db.Column("name", db.String(255), nullable=False, unique=True)
+    _normalised_service_name = db.Column("normalised_service_name", db.String, nullable=False, unique=True)
+
+    @hybrid_property  # a hybrid_property enables us to still use it in queries
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+        self._normalised_service_name = make_string_safe_for_email_local_part(value)
+
+        # if the service hasn't set their own sender, update their sender to reflect normalised_service_name
+        if not self.custom_email_sender_name:
+            self._email_sender_local_part = self._normalised_service_name
+
+    @hybrid_property
+    def normalised_service_name(self):
+        return self._normalised_service_name
+
+    @normalised_service_name.setter
+    def normalised_service_name(self, value):
+        raise NotImplementedError("normalised_service_name can only be written to via `name`")
 
     _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
     # TODO: once data is migrated this should be not nullable
@@ -611,6 +632,9 @@ class Service(db.Model, Versioned):
         """
         # validate json with marshmallow
         fields = data.copy()
+
+        # TODO: remove this line once admin stops passing through normalised_service_name:
+        fields.pop("normalised_service_name", None)
 
         fields["created_by_id"] = fields.pop("created_by")
 
