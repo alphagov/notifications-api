@@ -1391,7 +1391,7 @@ def test_notify_service_member_of_rejected_request_to_go_live(
         "name": "Sam",
         "service_name": sample_service.name,
         "organisation_name": sample_organisation.name,
-        "reason": "^ line 1\n^ line 2",
+        "reason": "line 1\nline 2",
         "organisation_team_member_name": "First",
         "organisation_team_member_email": "first-org-user@example.gov.uk",
     }
@@ -1410,7 +1410,7 @@ def test_notify_service_member_of_rejected_request_to_go_live(
         template_version=1,
         recipient="go-live-user@example.gov.uk",
         service=notify_service,
-        personalisation=personalisation,
+        personalisation={**personalisation, "reason": "^ line 1\n^ line 2"},
         notification_type="email",
         api_key_id=None,
         key_type="normal",

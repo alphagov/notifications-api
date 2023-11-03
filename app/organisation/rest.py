@@ -365,6 +365,9 @@ def notify_service_member_of_rejected_go_live_request(service_id):
     if not service.go_live_user or not service.has_active_go_live_request:
         abort(400)
 
+    # Add carets before each line of the rejection reason so that it appears as inset text.
+    data["reason"] = "\n".join(f"^ {line}" for line in data["reason"].split("\n"))
+
     notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
     saved_notification = persist_notification(
         template_id=template.id,
