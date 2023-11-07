@@ -45,14 +45,12 @@ class VersionOptions:
 
 
 def version_class(*version_options):
-
     if len(version_options) == 1 and not isinstance(version_options[0], VersionOptions):
         version_options = (VersionOptions(version_options[0]),)
 
     def versioned(func):
         @wraps(func)
         def record_version(*args, **kwargs):
-
             func(*args, **kwargs)
 
             session_objects = []

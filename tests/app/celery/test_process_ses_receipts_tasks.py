@@ -130,7 +130,6 @@ def test_ses_callback_should_not_retry_if_notification_is_old(client, notify_db_
 def test_ses_callback_should_update_multiple_notification_status_sent(
     client, notify_db_session, sample_email_template, mocker
 ):
-
     send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
     create_notification(
         template=sample_email_template,

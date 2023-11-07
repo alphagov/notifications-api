@@ -364,7 +364,6 @@ def create_random_identifier():
 
 
 def setup_sqlalchemy_events(app):
-
     TOTAL_DB_CONNECTIONS = Gauge(
         "db_connection_total_connected",
         "How many db connections are currently held (potentially idle) by the server",

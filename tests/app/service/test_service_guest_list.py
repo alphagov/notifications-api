@@ -74,7 +74,6 @@ def test_update_guest_list_replaces_old_guest_list(client, sample_service_guest_
 
 
 def test_update_guest_list_doesnt_remove_old_guest_list_if_error(client, sample_service_guest_list):
-
     data = {"email_addresses": [""], "phone_numbers": ["07123456789"]}
 
     response = client.put(

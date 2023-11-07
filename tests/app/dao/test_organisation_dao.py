@@ -464,7 +464,6 @@ def test_add_user_to_organisation_when_organisation_does_not_exist(sample_user):
     ),
 )
 def test_get_organisation_by_email_address(domain, expected_org, notify_db_session):
-
     org = create_organisation()
     create_domain("example.gov.uk", org.id)
     create_domain("test.gov.uk", org.id)

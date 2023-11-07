@@ -123,7 +123,6 @@ def get_invited_org_user(invited_org_user_id):
 @organisation_invite_blueprint.route("/invite/organisation/<token>", methods=["GET"])
 @organisation_invite_blueprint.route("/invite/organisation/check/<token>", methods=["GET"])
 def validate_invitation_token(token):
-
     max_age_seconds = 60 * 60 * 24 * current_app.config["INVITATION_EXPIRATION_DAYS"]
 
     try:

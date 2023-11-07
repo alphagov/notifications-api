@@ -209,7 +209,6 @@ def raise_alert_if_letter_notifications_still_sending():
     still_sending_count, sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
 
     if still_sending_count:
-
         if current_app.should_send_zendesk_alerts:
             message = (
                 f"There are {still_sending_count} letters in the 'sending' state from {sent_date.strftime('%A %d %B')}."

@@ -15,7 +15,6 @@ down_revision = "0139_migrate_sms_allowance_data"
 
 
 def upgrade():
-
     op.execute(
         """
         update services
@@ -35,7 +34,6 @@ def upgrade():
 
 
 def downgrade():
-
     op.alter_column(
         "services",
         "prefix_sms",

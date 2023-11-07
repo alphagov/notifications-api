@@ -583,7 +583,6 @@ def dao_get_notifications_by_recipient_or_reference(
     page_size=None,
     error_out=True,
 ):
-
     if notification_type == SMS_TYPE:
         normalised = try_validate_and_format_phone_number(search_term)
 

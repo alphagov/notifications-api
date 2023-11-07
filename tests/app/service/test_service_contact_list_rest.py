@@ -217,7 +217,6 @@ def test_archive_contact_list_when_unused(mocker, admin_request, sample_service)
 
 
 def test_archive_contact_list_by_id_for_different_service(mocker, admin_request, sample_service):
-
     mock_s3 = mocker.patch("app.service.rest.s3.remove_contact_list_from_s3")
 
     service_1 = create_service(service_name="Service under test")

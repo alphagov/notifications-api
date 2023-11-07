@@ -129,7 +129,6 @@ def dao_adjust_provider_priority_back_to_resting_points():
 
 
 def get_provider_details_by_notification_type(notification_type, supports_international=False):
-
     filters = [ProviderDetails.notification_type == notification_type]
 
     if supports_international:

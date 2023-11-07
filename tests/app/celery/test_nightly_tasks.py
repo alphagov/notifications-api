@@ -534,7 +534,6 @@ def test_delete_notifications_task_calls_task_for_services_with_data_retention_b
 def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifications_recently(
     notify_db_session, mocker
 ):
-
     service_will_delete_1 = create_service(service_name="a")
     service_will_delete_2 = create_service(service_name="b")
     service_nothing_to_delete = create_service(service_name="c")

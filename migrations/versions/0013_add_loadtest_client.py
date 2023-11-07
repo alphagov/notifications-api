@@ -18,7 +18,6 @@ from sqlalchemy.dialects import postgresql
 
 
 def upgrade():
-
     op.execute(
         "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active) values ('{}', 'Loadtesting', 'loadtesting', 30, 'sms', true)".format(
             str(uuid.uuid4())

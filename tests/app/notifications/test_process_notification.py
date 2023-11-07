@@ -70,7 +70,6 @@ def test_create_content_for_notification_raises_error_on_qr_code_too_long(sample
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_persist_notification_creates_and_save_to_db(sample_template, sample_api_key, sample_job):
-
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
     notification = persist_notification(
