@@ -106,8 +106,6 @@ applications:
     health-check-invocation-timeout: {{ app.get('health-check-invocation-timeout', 1) }}
 
     services:
-      - notify-db
-      - notify-redis
       - logit-ssl-syslog-drain
       {% if CF_APP == 'notify-api' %}
       - notify-splunk
