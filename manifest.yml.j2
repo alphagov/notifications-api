@@ -131,9 +131,7 @@ applications:
       ROUTE_SECRET_KEY_2: '{{ ROUTE_SECRET_KEY_2 }}'
       CRONITOR_KEYS: '{{ CRONITOR_KEYS | tojson }}'
       METRICS_BASIC_AUTH_TOKEN: {{ METRICS_BASIC_AUTH_TOKEN }}
-      {% if SQLALCHEMY_DATABASE_URI is defined %}
       SQLALCHEMY_DATABASE_URI: '{{ SQLALCHEMY_DATABASE_URI }}'
-      {% endif %}
       REDIS_URL: '{{ REDIS_URL }}'
 
       HIGH_VOLUME_SERVICE: '{{ HIGH_VOLUME_SERVICE | tojson }}'
