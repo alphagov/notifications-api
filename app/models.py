@@ -84,23 +84,6 @@ def filter_null_value_fields(obj):
     return dict(filter(lambda x: x[1] is not None, obj.items()))
 
 
-class HistoryModel:
-    @classmethod
-    def from_original(cls, original):
-        history = cls()
-        history.update_from_original(original)
-        return history
-
-    def update_from_original(self, original):
-        for c in self.__table__.columns:
-            # in some cases, columns may have different names to their underlying db column -  so only copy those
-            # that we can, and leave it up to subclasses to deal with any oddities/properties etc.
-            if hasattr(original, c.name):
-                setattr(self, c.name, getattr(original, c.name))
-            else:
-                current_app.logger.debug("%s has no column %s to copy from", original, c.name)
-
-
 guest_list_recipient_types = db.Enum(*GUEST_LIST_RECIPIENT_TYPE, name="recipient_type")
 notification_types = db.Enum(*NOTIFICATION_TYPE, name="notification_type")
 template_types = db.Enum(*TEMPLATE_TYPES, name="template_type")
@@ -1233,7 +1216,7 @@ class ProviderDetails(db.Model):
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
 
-class ProviderDetailsHistory(db.Model, HistoryModel):
+class ProviderDetailsHistory(db.Model):
     __tablename__ = "provider_details_history"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False)
@@ -1247,6 +1230,15 @@ class ProviderDetailsHistory(db.Model, HistoryModel):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_by = db.relationship("User")
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
+
+    @classmethod
+    def from_original(cls, original):
+        history = cls()
+        for c in history.__table__.columns:
+            if hasattr(original, c.name):
+                setattr(history, c.name, getattr(original, c.name))
+
+        return history
 
 
 class JobStatus(db.Model):
@@ -1594,7 +1586,7 @@ class Notification(db.Model):
         return serialized
 
 
-class NotificationHistory(db.Model, HistoryModel):
+class NotificationHistory(db.Model):
     __tablename__ = "notification_history"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True)
@@ -1645,16 +1637,6 @@ class NotificationHistory(db.Model, HistoryModel):
         ),
         Index("ix_notification_history_created_at", "created_at", postgresql_concurrently=True),
     )
-
-    @classmethod
-    def from_original(cls, notification):
-        history = super().from_original(notification)
-        history.status = notification.status
-        return history
-
-    def update_from_original(self, original):
-        super().update_from_original(original)
-        self.status = original.status
 
 
 class LetterCostThreshold(enum.Enum):
@@ -1813,7 +1795,7 @@ class InboundSms(db.Model):
         }
 
 
-class InboundSmsHistory(db.Model, HistoryModel):
+class InboundSmsHistory(db.Model):
     __tablename__ = "inbound_sms_history"
     id = db.Column(UUID(as_uuid=True), primary_key=True)
     created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)
