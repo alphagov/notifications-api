@@ -24,7 +24,6 @@ from app.xml_schemas import validate_xml
 
 @v2_broadcast_blueprint.route("", methods=["POST"])
 def create_broadcast():
-
     check_service_has_permission(
         BROADCAST_TYPE,
         authenticated_service.permissions,

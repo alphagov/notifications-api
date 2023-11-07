@@ -16,7 +16,6 @@ from sqlalchemy.dialects import postgresql
 
 
 def upgrade():
-
     op.create_table(
         "monthly_billing",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),

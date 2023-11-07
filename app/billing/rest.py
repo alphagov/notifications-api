@@ -51,7 +51,6 @@ def get_yearly_billing_usage_summary_from_ft_billing(service_id):
 
 @billing_blueprint.route("/free-sms-fragment-limit", methods=["GET"])
 def get_free_sms_fragment_limit(service_id):
-
     financial_year_start = request.args.get("financial_year_start")
 
     annual_billing = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
@@ -73,7 +72,6 @@ def get_free_sms_fragment_limit(service_id):
 
 @billing_blueprint.route("/free-sms-fragment-limit", methods=["POST"])
 def create_or_update_free_sms_fragment_limit(service_id):
-
     req_args = request.get_json()
 
     form = validate(req_args, create_or_update_free_sms_fragment_limit_schema)

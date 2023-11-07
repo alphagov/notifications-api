@@ -275,7 +275,6 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
 def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_sending_and_sends_fake_response_file(
     notify_api, api_client_request, sample_letter_template, mocker, env
 ):
-
     data = {
         "template_id": str(sample_letter_template.id),
         "personalisation": {

@@ -280,7 +280,6 @@ class CBCProxyVodafone(CBCProxyClientBase):
         self._invoke_lambda_with_failover(payload=payload)
 
     def cancel_broadcast(self, identifier, previous_provider_messages, sent, message_number):
-
         payload = {
             "message_type": "cancel",
             "identifier": identifier,

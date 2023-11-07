@@ -305,7 +305,6 @@ def test_volumes_by_service_report(
 
 
 def test_daily_sms_provider_volumes_report(admin_request, sample_template):
-
     create_ft_billing("2022-03-01", sample_template, provider="foo", rate=1.5, notifications_sent=1, billable_unit=3)
     resp = admin_request.get(
         "platform_stats.daily_sms_provider_volumes_report", start_date="2022-03-01", end_date="2022-03-01"

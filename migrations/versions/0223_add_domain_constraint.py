@@ -10,7 +10,6 @@ down_revision = "0222_drop_service_branding"
 
 
 def upgrade():
-
     op.execute(
         """
         update
@@ -25,5 +24,4 @@ def upgrade():
 
 
 def downgrade():
-
     op.drop_constraint("uq_email_branding_domain", "email_branding")

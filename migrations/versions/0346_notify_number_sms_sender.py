@@ -19,7 +19,6 @@ INBOUND_NUMBER = current_app.config["NOTIFY_INTERNATIONAL_SMS_SENDER"]
 
 
 def upgrade():
-
     sql = f"""INSERT INTO service_sms_senders (id, sms_sender, service_id, is_default, created_at)
             VALUES ('{SMS_SENDER_ID}', '{INBOUND_NUMBER}', '{NOTIFY_SERVICE_ID}',false, now())"""
 

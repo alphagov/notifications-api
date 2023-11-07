@@ -21,7 +21,6 @@ STATUSES = [
 
 
 def upgrade():
-
     broadcast_provider_message_status_type = op.create_table(
         "broadcast_provider_message_status_type",
         sa.Column("name", sa.String(), nullable=False),

@@ -442,7 +442,6 @@ def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_
     key_type, sample_service, mocker
 ):
     with freeze_time("2016-01-01 12:00:00.000000"):
-
         if key_type == "live":
             api_key_type = "normal"
         else:

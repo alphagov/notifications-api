@@ -24,7 +24,6 @@ def test_dao_update_free_sms_fragment_limit(notify_db_session, sample_service):
 
 
 def test_create_annual_billing(sample_service):
-
     dao_create_or_update_annual_billing_for_year(sample_service.id, 9999, 2016)
 
     free_limit = dao_get_free_sms_fragment_limit_for_year(sample_service.id, 2016)
@@ -89,7 +88,6 @@ def test_dao_update_annual_billing_for_future_years(notify_db_session, sample_se
     ],
 )
 def test_set_default_free_allowance_for_service(notify_db_session, org_type, year, expected_default):
-
     service = create_service(organisation_type=org_type)
 
     set_default_free_allowance_for_service(service=service, year_start=year)

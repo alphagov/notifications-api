@@ -1,2 +1,5 @@
 # Ignore bulk code reformatting
 4a6e271cf3ca365202ca0d7a024b648293aff7ff
+
+# Bump black version to 23.10.1
+6899d627932d824f1d1f2b24d1f01e876e1e8770

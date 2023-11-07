@@ -1,5 +1,5 @@
 -r requirements.txt
-black==22.8.0  # Also update `.pre-commit-config.yaml` if this changes
+black==23.10.1  # Also update `.pre-commit-config.yaml` if this changes
 ruff==0.0.275  # Also update `.pre-commit-config.yaml` if this changes
 
 flaky==3.7.0

@@ -914,7 +914,6 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
 
 @freeze_time("2017-07-17 07:17")
 def test_get_scheduled_job_stats_when_no_scheduled_jobs(admin_request, sample_template):
-
     # This sets up a bunch of regular, non-scheduled jobs
     _setup_jobs(sample_template)
 
@@ -929,7 +928,6 @@ def test_get_scheduled_job_stats_when_no_scheduled_jobs(admin_request, sample_te
 
 @freeze_time("2017-07-17 07:17")
 def test_get_scheduled_job_stats(admin_request):
-
     service_1 = create_service(service_name="service 1")
     service_1_template = create_template(service=service_1)
     service_2 = create_service(service_name="service 2")
@@ -947,12 +945,18 @@ def test_get_scheduled_job_stats(admin_request):
     # Should be counted – service 2
     create_job(service_2_template, job_status="scheduled", scheduled_for="2017-07-17 11:00")
 
-    assert admin_request.get("job.get_scheduled_job_stats", service_id=service_1.id,) == {
+    assert admin_request.get(
+        "job.get_scheduled_job_stats",
+        service_id=service_1.id,
+    ) == {
         "count": 3,
         "soonest_scheduled_for": "2017-07-17T09:00:00+00:00",
     }
 
-    assert admin_request.get("job.get_scheduled_job_stats", service_id=service_2.id,) == {
+    assert admin_request.get(
+        "job.get_scheduled_job_stats",
+        service_id=service_2.id,
+    ) == {
         "count": 1,
         "soonest_scheduled_for": "2017-07-17T11:00:00+00:00",
     }

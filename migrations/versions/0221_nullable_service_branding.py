@@ -12,7 +12,6 @@ down_revision = "0220_email_brand_type_non_null"
 
 
 def upgrade():
-
     op.drop_constraint("services_branding_fkey", "services", type_="foreignkey")
 
     op.drop_index("ix_services_history_branding", table_name="services_history")
@@ -47,7 +46,6 @@ def upgrade():
 
 
 def downgrade():
-
     op.create_index(op.f("ix_services_branding"), "services", ["branding"], unique=False)
     op.create_index(op.f("ix_services_history_branding"), "services_history", ["branding"], unique=False)
 

@@ -420,7 +420,6 @@ def test_filter_by_status_and_template_type(client, sample_template, sample_emai
 
 
 def test_get_notification_by_id_returns_merged_template_content(client, sample_template_with_placeholders):
-
     sample_notification = create_notification(sample_template_with_placeholders, personalisation={"name": "world"})
 
     auth_header = create_service_authorization_header(service_id=sample_notification.service_id)

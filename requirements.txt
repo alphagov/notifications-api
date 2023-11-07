@@ -170,7 +170,7 @@ notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@70
     # via -r requirements.in
 orderedset==2.0.3
     # via notifications-utils
-packaging==21.3
+packaging==23.2
     # via
     #   marshmallow
     #   marshmallow-sqlalchemy
@@ -194,8 +194,6 @@ pyjwt==2.5.0
     # via
     #   -r requirements.in
     #   notifications-python-client
-pyparsing==3.0.9
-    # via packaging
 pypdf==3.17.0
     # via notifications-utils
 pyproj==3.4.1

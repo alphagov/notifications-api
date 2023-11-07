@@ -23,7 +23,6 @@ def test_empty_live_service_and_organisation_counts(admin_request):
 
 
 def test_populated_live_service_and_organisation_counts(admin_request):
-
     # Org 1 has three real live services and one fake, for a total of 3
     org_1 = create_organisation("org 1")
     live_service_1 = create_service(service_name="1")

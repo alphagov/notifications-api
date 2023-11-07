@@ -13,7 +13,6 @@ down_revision = "0214_another_letter_org"
 
 
 def upgrade():
-
     op.add_column("email_branding", sa.Column("brand_type", sa.String(length=255), nullable=True))
     op.create_index(op.f("ix_email_branding_brand_type"), "email_branding", ["brand_type"], unique=False)
     op.create_foreign_key(None, "email_branding", "branding_type", ["brand_type"], ["name"])

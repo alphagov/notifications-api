@@ -411,7 +411,6 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
     "branding_type, govuk_banner", [(BRANDING_ORG, False), (BRANDING_BOTH, True), (BRANDING_ORG_BANNER, False)]
 )
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db_session, sample_service):
-
     email_branding = EmailBranding(
         brand_type=branding_type,
         colour="#000000",

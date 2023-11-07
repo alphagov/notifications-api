@@ -889,7 +889,6 @@ def test_delivery_is_delivery_slow_for_providers_filters_out_notifications_it_sh
 
 
 def test_dao_get_notifications_by_recipient(sample_template):
-
     recipient_to_search_for = {"to_field": "+447700900855", "normalised_to": "447700900855"}
 
     notification1 = create_notification(template=sample_template, **recipient_to_search_for)
@@ -906,7 +905,6 @@ def test_dao_get_notifications_by_recipient(sample_template):
 
 
 def test_dao_get_notifications_by_recipient_is_limited_to_50_results(sample_template):
-
     for _ in range(100):
         create_notification(
             template=sample_template,
@@ -979,7 +977,6 @@ def test_dao_get_notifications_by_recipient_escapes(
     search_term,
     expected_result_count,
 ):
-
     for email_address in {
         "foo%_@example.com",
         "%%bar@example.com",
@@ -1029,7 +1026,6 @@ def test_dao_get_notifications_by_reference_escapes_special_character(
     search_term,
     expected_result_count,
 ):
-
     for reference in {
         "foo%_",
         "%%bar",
@@ -1075,7 +1071,6 @@ def test_dao_get_notifications_by_recipient_matches_partial_phone_numbers(
     sample_template,
     search_term,
 ):
-
     notification_1 = create_notification(
         template=sample_template,
         to_field="+447700900100",
@@ -1350,7 +1345,6 @@ def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_temp
 
 
 def test_dao_get_last_notification_added_for_job_id_no_job(sample_template, fake_uuid):
-
     assert dao_get_last_notification_added_for_job_id(fake_uuid) is None
 
 

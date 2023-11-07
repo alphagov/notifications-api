@@ -18,7 +18,6 @@ down_revision = "0335_broadcast_msg_content"
 
 
 def upgrade():
-
     conn = op.get_bind()
 
     results = conn.execute(

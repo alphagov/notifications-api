@@ -160,7 +160,6 @@ def create_history(obj, history_cls=None):
     obj_state = attributes.instance_state(obj)
     data = {}
     for prop in obj_mapper.iterate_properties:
-
         # expired object attributes and also deferred cols might not
         # be in the dict.  force it them load no matter what by using getattr().
         if prop.key not in obj_state.dict:

@@ -4,7 +4,6 @@ from lxml import etree
 
 
 def validate_xml(document, schema_file_name):
-
     path = Path(__file__).resolve().parent / schema_file_name
     contents = path.read_text()
 

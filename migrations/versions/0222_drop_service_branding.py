@@ -11,12 +11,10 @@ down_revision = "0221_nullable_service_branding"
 
 
 def upgrade():
-
     op.drop_column("services_history", "branding")
     op.drop_column("services", "branding")
 
 
 def downgrade():
-
     op.add_column("services", sa.Column("branding", sa.String(length=255)))
     op.add_column("services_history", sa.Column("branding", sa.String(length=255)))
