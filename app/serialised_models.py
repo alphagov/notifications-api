@@ -79,6 +79,9 @@ class SerialisedService(SerialisedModel):
         "active",
         "contact_link",
         "normalised_service_name",
+        # TODO: add these fields when data migrated. check how these interact with hybrid properties on model.
+        # "custom_email_sender_name",
+        # "email_sender_local_part",
         "email_message_limit",
         "letter_message_limit",
         "sms_message_limit",
