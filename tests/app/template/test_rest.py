@@ -371,39 +371,47 @@ def test_update_should_update_a_template(client, sample_user):
 
 
 @pytest.mark.parametrize(
-    "languages, welsh_subject, welsh_content",
+    "post_data",
     (
-        ("welsh_then_english", "subject", "content"),
+        {},
+        {"letter_welsh_subject": "", "letter_welsh_content": ""},
+        {"letter_welsh_subject": None, "letter_welsh_content": None},
         pytest.param(
-            "welsh_then_english",
-            None,
-            None,
+            {"letter_welsh_subject": "", "letter_welsh_content": None},
+            marks=pytest.mark.xfail(
+                raises=AssertionError,
+                reason=(
+                    "if `letter_languages` is not present, `letter_welsh_subject` and `letter_welsh_content` "
+                    "data types must match (either null or string)"
+                ),
+            ),
+        ),
+        {
+            "letter_languages": "welsh_then_english",
+            "letter_welsh_subject": "subject",
+            "letter_welsh_content": "content",
+        },
+        pytest.param(
+            {"letter_languages": "welsh_then_english", "letter_welsh_subject": None, "letter_welsh_content": None},
             marks=pytest.mark.xfail(
                 raises=AssertionError, reason="if welsh_then_english, welsh subject and content must be provided"
             ),
         ),
-        ("english", None, None),
+        {"letter_languages": "english", "letter_welsh_subject": None, "letter_welsh_content": None},
         pytest.param(
-            "english",
-            "subject",
-            "content",
+            {"letter_languages": "english", "letter_welsh_subject": "subject", "letter_welsh_content": "content"},
             marks=pytest.mark.xfail(raises=AssertionError, reason="if english, then welsh data must be nulled out"),
         ),
     ),
 )
-def test_update_template_language(client, sample_user, languages, welsh_subject, welsh_content):
+def test_update_template_language(client, sample_user, post_data):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="second")
 
     assert template.created_by == service.created_by
     assert template.created_by != sample_user
 
-    data = {
-        "letter_languages": languages,
-        "letter_welsh_subject": welsh_subject,
-        "letter_welsh_content": welsh_content,
-    }
-    data = json.dumps(data)
+    data = json.dumps(post_data)
     auth_header = create_admin_authorization_header()
 
     update_response = client.post(
@@ -414,7 +422,9 @@ def test_update_template_language(client, sample_user, languages, welsh_subject,
 
     assert update_response.status_code == 200
     update_json_resp = json.loads(update_response.get_data(as_text=True))
-    assert update_json_resp["data"]["letter_languages"] == languages
+    assert update_json_resp["data"]["letter_languages"] == post_data.get("letter_languages", "english")
+    assert update_json_resp["data"]["letter_welsh_subject"] == post_data.get("letter_welsh_subject", None)
+    assert update_json_resp["data"]["letter_welsh_content"] == post_data.get("letter_welsh_content", None)
 
 
 def test_should_be_able_to_archive_template(client, sample_template):
