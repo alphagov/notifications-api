@@ -39,6 +39,8 @@ from app.notifications.process_notifications import (
 from app.organisation.organisation_schema import (
     post_create_organisation_schema,
     post_link_service_to_organisation_schema,
+    post_notify_org_member_about_next_steps_of_go_live_request,
+    post_notify_service_member_of_rejected_go_live_request,
     post_update_org_email_branding_pool_schema,
     post_update_org_letter_branding_pool_schema,
     post_update_organisation_schema,
@@ -299,7 +301,7 @@ def remove_letter_branding_from_organisation_pool(organisation_id, letter_brandi
 
 @organisation_blueprint.route("/notify-users-of-request-to-go-live/<uuid:service_id>", methods=["POST"])
 def notify_users_of_request_to_go_live(service_id):
-    template = dao_get_template_by_id(current_app.config["ORGANISATION_HAS_NEW_GO_LIVE_REQUEST_TEMPLATE_ID"])
+    template = dao_get_template_by_id(current_app.config["GO_LIVE_NEW_REQUEST_FOR_ORG_USERS_TEMPLATE_ID"])
     service = dao_fetch_service_by_id(service_id)
     organisation = service.organisation
     make_service_live_link = f"{current_app.config['ADMIN_BASE_URL']}/services/{service.id}/make-service-live"
@@ -320,6 +322,72 @@ def notify_users_of_request_to_go_live(service_id):
         },
         include_user_fields={"name"},
     )
+
+    return {}, 204
+
+
+@organisation_blueprint.route(
+    "/notify-org-member-about-next-steps-of-go-live-request/<uuid:service_id>", methods=["POST"]
+)
+def notify_org_member_about_next_steps_of_go_live_request(service_id):
+    data = request.get_json()
+    validate(data, post_notify_org_member_about_next_steps_of_go_live_request)
+
+    template = dao_get_template_by_id(current_app.config["GO_LIVE_REQUEST_NEXT_STEPS_FOR_ORG_USER_TEMPLATE_ID"])
+    service = dao_fetch_service_by_id(service_id)
+    if not service.go_live_user or not service.has_active_go_live_request:
+        abort(400)
+
+    notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=data["to"],
+        service=notify_service,
+        personalisation={"service_name": data["service_name"], "body": data["body"]},
+        notification_type=template.template_type,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=notify_service.get_default_reply_to_email_address(),
+    )
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
+
+    return {}, 204
+
+
+@organisation_blueprint.route("/notify-service-member-of-rejected-go-live-request/<uuid:service_id>", methods=["POST"])
+def notify_service_member_of_rejected_go_live_request(service_id):
+    data = request.get_json()
+    validate(data, post_notify_service_member_of_rejected_go_live_request)
+
+    template = dao_get_template_by_id(current_app.config["GO_LIVE_REQUEST_REJECTED_BY_ORG_USER_TEMPLATE_ID"])
+    service = dao_fetch_service_by_id(service_id)
+    if not service.go_live_user or not service.has_active_go_live_request:
+        abort(400)
+
+    # Add carets before each line of the rejection reason so that it appears as inset text.
+    data["reason"] = "\n".join(f"^ {line}" for line in data["reason"].split("\n"))
+
+    notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=service.go_live_user.email_address,
+        service=notify_service,
+        personalisation={
+            "name": data["name"],
+            "service_name": data["service_name"],
+            "organisation_name": data["organisation_name"],
+            "reason": data["reason"],
+            "organisation_team_member_name": data["organisation_team_member_name"],
+            "organisation_team_member_email": data["organisation_team_member_email"],
+        },
+        notification_type=template.template_type,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=notify_service.get_default_reply_to_email_address(),
+    )
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
     return {}, 204
 

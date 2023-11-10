@@ -84,3 +84,37 @@ post_update_org_letter_branding_pool_schema = {
     "properties": {"branding_ids": {"type": "array", "items": uuid}},
     "required": ["branding_ids"],
 }
+
+post_notify_org_member_about_next_steps_of_go_live_request = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST notify org member about next steps of go live request",
+    "type": "object",
+    "properties": {
+        "to": {"type": "string", "format": "email_address"},
+        "service_name": {"type": "string"},
+        "body": {"type": "string"},
+    },
+    "required": ["to", "service_name", "body"],
+}
+
+post_notify_service_member_of_rejected_go_live_request = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST notify service member of rejected go live request",
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "service_name": {"type": "string"},
+        "organisation_team_member_name": {"type": "string"},
+        "organisation_team_member_email": {"type": "string"},
+        "reason": {"type": "string"},
+        "organisation_name": {"type": "string"},
+    },
+    "required": [
+        "name",
+        "service_name",
+        "organisation_name",
+        "reason",
+        "organisation_team_member_name",
+        "organisation_team_member_email",
+    ],
+}
