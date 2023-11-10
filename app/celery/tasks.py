@@ -104,7 +104,7 @@ def job_complete(job, resumed=False, start=None):
     dao_update_job(job)
 
     if resumed:
-        current_app.logger.info("Resumed Job %s completed at %s", job.id, job.created_at)
+        current_app.logger.info("Resumed Job %s completed at %s", job.id, job.processing_finished)
     else:
         current_app.logger.info(
             "Job %s created at %s started at %s finished at %s", job.id, job.created_at, start, finished
