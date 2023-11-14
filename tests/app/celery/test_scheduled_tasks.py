@@ -205,7 +205,7 @@ def test_generate_sms_delivery_stats(environment, expect_check_slow_delivery, mo
     )
 
 
-@pytest.mark.parametrize("consecutive_failures,should_log", ((1, False), (3, False), (5, True)))
+@pytest.mark.parametrize("consecutive_failures,should_log", ((1, False), (9, False), (10, True)))
 def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(
     mocker, caplog, notify_api, consecutive_failures, should_log
 ):
@@ -229,7 +229,7 @@ def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(
                 ]
             )
             assert (
-                "Over 10% of text messages sent in the last 20 minutes have taken over 5 minutes to deliver."
+                "Over 10% of text messages sent in the last 25 minutes have taken over 5 minutes to deliver."
                 not in caplog.messages
             )
             assert mock_set.call_args_list == [mocker.call("slow-sms-delivery:number-of-times-over-threshold", 0)]
@@ -249,7 +249,7 @@ def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(
                 ]
             )
             assert (
-                "Over 10% of text messages sent in the last 20 minutes have taken over 5 minutes to deliver."
+                "Over 10% of text messages sent in the last 25 minutes have taken over 5 minutes to deliver."
                 in caplog.messages
             ) is should_log
             assert mock_incr.call_args_list == [mocker.call("slow-sms-delivery:number-of-times-over-threshold")]

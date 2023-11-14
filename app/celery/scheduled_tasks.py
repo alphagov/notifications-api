@@ -156,12 +156,25 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
     if percent_slow_notifications >= 10:
         count = redis_store.incr(CacheKeys.NUMBER_OF_TIMES_OVER_SLOW_SMS_DELIVERY_THRESHOLD)
 
-        # If this is the fifth consecutive time we've seen the threshold breached, then we log an error to Sentry.
-        # This tells us that for at least 20 minutes we've seen delivery take longer than 5 minutes for >10% of
-        # texts. At that point it's probably worth investigating. By only checking for == 5, we don't log any
-        # further errors until we recover and then starting slowing down again. This should mean that each instance
-        # of the error on Sentry actually deserves to be investigated as a separate issue/potential incident.
-        if count == 5:
+        # If this is the tenth consecutive time we've seen the threshold breached, then we log an error to Sentry.
+        # This tells us that for at least 10 minutes we've seen delivery take longer than 5 minutes for >10% of
+        # texts sent in the last 15 minutes (yes this is convoluted).
+        #
+        # Every minute, we check all the messages sent in the last 15 minutes. If more than 10% of those took >5
+        # minutes to go from sending->delivered, then we consider that a breach for that minute. This could be triggered
+        # in a number of different ways, for example:
+        #
+        # * 10% of messages taking >5 minutes to deliver, for 10 minutes consecutively.
+        # * 100% of messages taking >5 minutes to deliver, for 3 minutes consecutively. For the following 7 minutes,
+        #   assuming consistent throughput, the average will skew above 10% and continue to breach the threshold. On
+        #   the tenth minute, even if all messages are now delivering quickly, we'll still probably log an error.
+        #
+        # In either case, it's worth investigating.
+        #
+        # By only checking for == 10, we don't log any further errors until we recover and then starting slowing down
+        # again. This should mean that each instance of the error on Sentry actually deserves to be investigated as
+        # a separate issue/potential incident.
+        if count == 10:
             with sentry_sdk.push_scope() as scope:
                 error_context = {
                     "Support runbook": (
@@ -179,7 +192,7 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
 
                 scope.set_context("Slow SMS delivery", error_context)
                 current_app.logger.error(
-                    "Over 10% of text messages sent in the last 20 minutes have taken over 5 minutes to deliver."
+                    "Over 10% of text messages sent in the last 25 minutes have taken over 5 minutes to deliver."
                 )
 
     else:
