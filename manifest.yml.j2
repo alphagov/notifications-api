@@ -109,9 +109,6 @@ applications:
       - notify-db
       - notify-redis
       - logit-ssl-syslog-drain
-      {% if CF_APP == 'notify-api' %}
-      - notify-splunk
-      {% endif %}
 
     env:
       NOTIFY_APP_NAME: {{ app.get('NOTIFY_APP_NAME', CF_APP.replace('notify-', '')) }}
