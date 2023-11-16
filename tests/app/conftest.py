@@ -81,12 +81,11 @@ def rmock():
 @pytest.fixture(scope="function")
 def service_factory(sample_user):
     class ServiceFactory(object):
-        def get(self, service_name, user=None, template_type=None, normalised_service_name=None):
+        def get(self, service_name, user=None, template_type=None):
             if not user:
                 user = sample_user
 
             service = create_service(
-                normalised_service_name=normalised_service_name or service_name,
                 service_name=service_name,
                 service_permissions=None,
                 user=user,
@@ -145,7 +144,6 @@ def sample_service(sample_user):
         "sms_message_limit": 1000,
         "letter_message_limit": 1000,
         "restricted": False,
-        "normalised_service_name": service_name.lower().replace(" ", "."),
         "created_by": sample_user,
         "crown": True,
     }
@@ -176,7 +174,6 @@ def sample_broadcast_service(broadcast_organisation, sample_user):
         "sms_message_limit": 1000,
         "letter_message_limit": 1000,
         "restricted": False,
-        "normalised_service_name": service_name.lower().replace(" ", "."),
         "created_by": sample_user,
         "crown": True,
         "count_as_live": False,
@@ -204,7 +201,6 @@ def sample_broadcast_service_2(broadcast_organisation, sample_user):
         "sms_message_limit": 1000,
         "letter_message_limit": 1000,
         "restricted": False,
-        "normalised_service_name": service_name.lower().replace(" ", "."),
         "created_by": sample_user,
         "crown": True,
         "count_as_live": False,
@@ -954,7 +950,6 @@ def notify_service(notify_db_session, sample_user):
             sms_message_limit=1000,
             letter_message_limit=1000,
             restricted=False,
-            normalised_service_name="notify.service",
             created_by=sample_user,
             prefix_sms=False,
         )

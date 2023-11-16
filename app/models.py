@@ -16,6 +16,7 @@ from notifications_utils.recipients import (
     validate_email_address,
     validate_phone_number,
 )
+from notifications_utils.safe_string import make_string_safe_for_email_local_part
 from notifications_utils.template import (
     BroadcastMessageTemplate,
     LetterPrintTemplate,
@@ -515,13 +516,60 @@ class Service(db.Model, Versioned):
     __tablename__ = "services"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = db.Column(db.String(255), nullable=False, unique=True)
-    normalised_service_name = db.Column(db.String, nullable=False, unique=True)
+    _name = db.Column("name", db.String(255), nullable=False, unique=True)
+    _normalised_service_name = db.Column("normalised_service_name", db.String, nullable=False, unique=True)
 
-    # if not set, email_sender_local_part should match normalised_service_name
-    custom_email_sender_name = db.Column(db.String(255), nullable=True)
+    @hybrid_property  # a hybrid_property enables us to still use it in queries
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+        self._normalised_service_name = make_string_safe_for_email_local_part(value)
+
+        # if the service hasn't set their own sender, update their sender to reflect normalised_service_name
+        if not self.custom_email_sender_name:
+            self._email_sender_local_part = self._normalised_service_name
+
+    @hybrid_property
+    def normalised_service_name(self):
+        return self._normalised_service_name
+
+    @normalised_service_name.setter
+    def normalised_service_name(self, value):
+        raise NotImplementedError("normalised_service_name can only be written to via `name`")
+
+    _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
     # TODO: once data is migrated this should be not nullable
-    email_sender_local_part = db.Column(db.String(255), nullable=True)
+    _email_sender_local_part = db.Column("email_sender_local_part", db.String(255), nullable=True)
+
+    @hybrid_property  # a hybrid_property enables us to still use it in queries
+    def custom_email_sender_name(self):
+        return self._custom_email_sender_name
+
+    @custom_email_sender_name.setter
+    def custom_email_sender_name(self, value):
+        self._custom_email_sender_name = value
+        if value:
+            self._email_sender_local_part = make_string_safe_for_email_local_part(value)
+        else:
+            # clearing custom sender name, so set email from back to service name
+            self._email_sender_local_part = self.normalised_service_name
+
+    @hybrid_property
+    def email_sender_local_part(self):
+        return self._email_sender_local_part
+
+    @email_sender_local_part.setter
+    def email_sender_local_part(self, value):
+        # we can't allow this to be set manually.
+        # Imagine we've updated just `custom_email_sender_name` via a serialised json blob. When that is set, it will
+        # also update the value of email_sender_local_part. We don't want to then undo that good work by setting to the
+        # old value (that was also passed through in the json to `service_schema.load``).
+        raise NotImplementedError(
+            "email_sender_local_part can only be written to via `custom_email_sender_name` or `name`"
+        )
 
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -584,6 +632,9 @@ class Service(db.Model, Versioned):
         """
         # validate json with marshmallow
         fields = data.copy()
+
+        # TODO: remove this line once admin stops passing through normalised_service_name:
+        fields.pop("normalised_service_name", None)
 
         fields["created_by_id"] = fields.pop("created_by")
 

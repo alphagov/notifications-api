@@ -226,6 +226,12 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     go_live_at = field_for(models.Service, "go_live_at", format=DATETIME_FORMAT_NO_TIMEZONE)
     allowed_broadcast_provider = fields.Method(dump_only=True, serialize="_get_allowed_broadcast_provider")
     broadcast_channel = fields.Method(dump_only=True, serialize="_get_broadcast_channel")
+    name = fields.String(required=True)
+    # this can only be set via name
+    normalised_service_name = fields.String(dump_only=True)
+    custom_email_sender_name = fields.String(allow_none=True)
+    # this can only be set via custom_email_sender_name or name
+    email_sender_local_part = fields.String(dump_only=True)
 
     def _get_allowed_broadcast_provider(self, service):
         return service.allowed_broadcast_provider
@@ -281,6 +287,10 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             "updated_at",
             "users",
             "version",
+            "_name",
+            "_normalised_service_name",
+            "_custom_email_sender_name",
+            "_email_sender_local_part",
         )
 
     @validates("permissions")
@@ -321,6 +331,10 @@ class DetailedServiceSchema(BaseSchema):
     go_live_at = FlexibleDateTime()
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
+    name = fields.String()
+    normalised_service_name = fields.String()
+    custom_email_sender_name = fields.String(required=False)
+    email_sender_local_part = fields.String()
 
     class Meta(BaseSchema.Meta):
         model = models.Service
@@ -332,10 +346,12 @@ class DetailedServiceSchema(BaseSchema):
             "contact_list",
             "created_by",
             "crown",
-            "custom_email_sender_name",
+            "_name",
+            "_normalised_service_name",
+            "_custom_email_sender_name",
+            "_email_sender_local_part",
             "email_branding",
             "email_message_limit",
-            "email_sender_local_part",
             "guest_list",
             "inbound_api",
             "inbound_number",

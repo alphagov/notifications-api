@@ -399,7 +399,8 @@ def test_create_service(
         "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
-        "normalised_service_name": "created.service",
+        # TODO: remove this line after admin stops sending back normalised_service_name
+        "normalised_service_name": "ignore me",
         "created_by": str(sample_user.id),
     }
 
@@ -465,7 +466,6 @@ def test_create_service_with_domain_sets_organisation(
         "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
-        "normalised_service_name": "created.service",
         "created_by": str(sample_user.id),
         "service_domain": domain,
     }
@@ -487,7 +487,6 @@ def test_create_service_should_create_annual_billing_for_service(admin_request, 
         "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
-        "normalised_service_name": "created.service",
         "created_by": str(sample_user.id),
     }
     assert len(AnnualBilling.query.all()) == 0
@@ -509,7 +508,6 @@ def test_create_service_should_raise_exception_and_not_create_service_if_annual_
         "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
-        "normalised_service_name": "created.service",
         "created_by": str(sample_user.id),
     }
     assert len(AnnualBilling.query.all()) == 0
@@ -543,7 +541,6 @@ def test_create_service_inherits_branding_from_organisation(
             "letter_message_limit": 1000,
             "restricted": False,
             "active": False,
-            "normalised_service_name": "created.service",
             "created_by": str(sample_user.id),
         },
         _expected_status=201,
@@ -557,7 +554,6 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_u
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
-                "normalised_service_name": "service",
                 "name": "created service",
                 "email_message_limit": 1000,
                 "sms_message_limit": 1000,
@@ -579,7 +575,6 @@ def test_should_error_if_created_by_missing(notify_api, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
-                "normalised_service_name": "service",
                 "name": "created service",
                 "email_message_limit": 1000,
                 "sms_message_limit": 1000,
@@ -601,7 +596,6 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
-                "normalised_service_name": "service",
                 "user_id": fake_uuid,
                 "name": "created service",
                 "email_message_limit": 1000,
@@ -648,7 +642,6 @@ def test_should_not_create_service_with_duplicate_name(notify_api, sample_user, 
                 "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
-                "normalised_service_name": "sample.service2",
                 "created_by": str(sample_user.id),
             }
             auth_header = create_admin_authorization_header()
@@ -662,7 +655,7 @@ def test_should_not_create_service_with_duplicate_name(notify_api, sample_user, 
 def test_create_service_should_throw_duplicate_key_constraint_for_existing_normalised_service_name(
     notify_api, service_factory, sample_user
 ):
-    first_service = service_factory.get("First service", normalised_service_name="first.service")
+    first_service = service_factory.get("First service")
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_name = "First SERVICE"
@@ -674,7 +667,6 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_norma
                 "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
-                "normalised_service_name": "first.service",
                 "created_by": str(sample_user.id),
             }
             auth_header = create_admin_authorization_header()
@@ -683,43 +675,6 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_norma
             json_resp = resp.json
             assert json_resp["result"] == "error"
             assert "Duplicate service name '{}'".format(service_name) in json_resp["message"]["name"]
-
-
-@pytest.mark.parametrize(
-    "normalised_service_name, should_error",
-    (
-        ("sams.sarnies", False),  # We are happy with plain ascii alnum/full-stops.
-        ("SAMS.SARNIES", True),  # We will reject anything with uppercase characters
-        ("sam's.sarnies", True),  # We reject punctuation other than a full-stop `.`
-        ("sams.Бутерброды", True),  # We reject unicode outside of the ascii charset
-        ("sams.ü", True),  # Even if it could theoretically be downcast to ascii
-        ("sams.u", False),  # Like this, which would be fine
-    ),
-)
-def test_create_service_allows_only_lowercase_digits_and_fullstops_in_normalised_service_name(
-    admin_request, service_factory, sample_user, normalised_service_name, should_error
-):
-    first_service = service_factory.get("First service", normalised_service_name="first.service")
-    service_name = "First SERVICE"
-    data = {
-        "name": service_name,
-        "user_id": str(first_service.users[0].id),
-        "email_message_limit": 1000,
-        "sms_message_limit": 1000,
-        "letter_message_limit": 1000,
-        "restricted": False,
-        "active": False,
-        "normalised_service_name": normalised_service_name,
-        "created_by": str(sample_user.id),
-    }
-    json_resp = admin_request.post("service.create_service", _data=data, _expected_status=400 if should_error else 201)
-
-    if should_error:
-        assert json_resp["result"] == "error"
-        assert (
-            "Unacceptable characters: `normalised_service_name` may only contain letters, numbers and full stops."
-            in json_resp["message"]["normalised_service_name"]
-        )
 
 
 @pytest.mark.parametrize("has_active_go_live_request", (True, False))
@@ -732,7 +687,8 @@ def test_update_service(client, notify_db_session, sample_service, has_active_go
 
     data = {
         "name": "updated service name",
-        "normalised_service_name": "updated.service.name",
+        # TODO: remove this line after admin stops sending back normalised_service_name
+        "normalised_service_name": "ignore me",
         "created_by": str(sample_service.created_by.id),
         "email_branding": str(brand.id),
         "organisation_type": "school_or_college",
@@ -758,7 +714,6 @@ def test_update_service(client, notify_db_session, sample_service, has_active_go
 def test_cant_update_service_org_type_to_random_value(client, sample_service):
     data = {
         "name": "updated service name",
-        "normalised_service_name": "updated.service.name",
         "created_by": str(sample_service.created_by.id),
         "organisation_type": "foo",
     }
@@ -996,37 +951,6 @@ def test_update_service_permissions_will_add_service_permissions(client, sample_
 
 
 @pytest.mark.parametrize(
-    "normalised_service_name, should_error",
-    (
-        ("sams.sarnies", False),  # We are happy with plain ascii alnum/full-stops.
-        ("SAMS.SARNIES", True),  # We will reject anything with uppercase characters
-        ("sam's.sarnies", True),  # We reject punctuation other than a full-stop `.`
-        ("sams.Бутерброды", True),  # We reject unicode outside of the ascii charset
-        ("sams.ü", True),  # Even if it could theoretically be downcast to ascii
-        ("sams.u", False),  # Like this, which would be fine
-    ),
-)
-def test_update_service_allows_only_lowercase_digits_and_fullstops_in_normalised_service_name(
-    admin_request, sample_service, normalised_service_name, should_error
-):
-    data = {"service_name": "Sam's sarnies", "normalised_service_name": normalised_service_name}
-
-    result = admin_request.post(
-        "service.update_service",
-        service_id=sample_service.id,
-        _data=data,
-        _expected_status=400 if should_error else 200,
-    )
-
-    if should_error:
-        assert result["result"] == "error"
-        assert (
-            "Unacceptable characters: `normalised_service_name` may only contain letters, numbers and full stops."
-            in result["message"]["normalised_service_name"]
-        )
-
-
-@pytest.mark.parametrize(
     "permission_to_add",
     [
         (EMAIL_TYPE),
@@ -1094,9 +1018,7 @@ def test_should_not_update_service_with_duplicate_name(notify_api, notify_db_ses
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_name = "another name"
-            service = create_service(
-                service_name=service_name, user=sample_user, normalised_service_name="another.name"
-            )
+            service = create_service(service_name=service_name, user=sample_user)
             data = {"name": service_name, "created_by": str(service.created_by.id)}
 
             auth_header = create_admin_authorization_header()
@@ -1117,16 +1039,10 @@ def test_should_not_update_service_with_duplicate_normalised_service_name(
 ):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            normalised_service_name = "duplicate.name"
-            service_name = "duplicate name"
-            service = create_service(
-                service_name=service_name, user=sample_user, normalised_service_name=normalised_service_name
-            )
-            data = {
-                "name": service_name,
-                "normalised_service_name": normalised_service_name,
-                "created_by": str(service.created_by.id),
-            }
+            # create a second service
+            create_service(service_name="service name", user=sample_user)
+
+            data = {"name": "SERVICE (name)", "created_by": str(sample_user.id)}
 
             auth_header = create_admin_authorization_header()
 
@@ -1138,10 +1054,7 @@ def test_should_not_update_service_with_duplicate_normalised_service_name(
             assert resp.status_code == 400
             json_resp = resp.json
             assert json_resp["result"] == "error"
-            assert (
-                "Duplicate service name '{}'".format(service_name) in json_resp["message"]["name"]
-                or "Duplicate service name '{}'".format(normalised_service_name) in json_resp["message"]["name"]
-            )
+            assert "Duplicate service name 'SERVICE (name)'" in json_resp["message"]["name"]
 
 
 def test_update_service_should_404_if_id_is_invalid(notify_api):
@@ -1221,7 +1134,6 @@ def test_default_permissions_are_added_for_user_service(notify_api, notify_db_se
                 "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
-                "normalised_service_name": "created.service",
                 "created_by": str(sample_user.id),
             }
             auth_header = create_admin_authorization_header()
@@ -4071,3 +3983,49 @@ def test_set_as_broadcast_service_revokes_api_keys(
 
     # This key is from a different service
     assert api_key_3.expiry_date is None
+
+
+@pytest.mark.parametrize(
+    "new_custom_email_sender_name, expected_email_sender_local_part",
+    [
+        ("some other name", "some.other.name"),
+        # clearing custom_email_sender_name sets local part back to the normalised service name
+        (None, "sample.service"),
+    ],
+)
+def test_update_service_set_custom_email_sender_name_sets_email_sender_local_part(
+    sample_user,
+    admin_request,
+    new_custom_email_sender_name,
+    expected_email_sender_local_part,
+):
+    # set columns directly to avoid hitting the hybrid properties
+    service = Service(
+        name="Sample service",
+        _custom_email_sender_name="existing name",
+        _email_sender_local_part="existing.name",
+        restricted=True,
+        created_by=sample_user,
+    )
+    from app.dao.services_dao import dao_update_service
+
+    # use the dao method as it creates a proper history version
+    dao_update_service(service)
+
+    admin_request.post(
+        "service.update_service",
+        service_id=service.id,
+        _data={"custom_email_sender_name": new_custom_email_sender_name},
+    )
+
+    assert service.name == "Sample service"
+    assert service.custom_email_sender_name == new_custom_email_sender_name
+    assert service.email_sender_local_part == expected_email_sender_local_part
+
+    ServiceHistory = Service.get_history_model()
+    prev_history, new_history = ServiceHistory.query.filter_by(id=service.id).order_by(ServiceHistory.version)
+    assert prev_history.version == 2
+    assert prev_history.email_sender_local_part == "existing.name"
+
+    assert new_history.version == 3
+    assert new_history.email_sender_local_part == expected_email_sender_local_part
