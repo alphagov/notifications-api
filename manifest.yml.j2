@@ -106,8 +106,6 @@ applications:
     health-check-invocation-timeout: {{ app.get('health-check-invocation-timeout', 1) }}
 
     services:
-      - notify-db
-      - notify-redis
       - logit-ssl-syslog-drain
       {% if CF_APP == 'notify-api' %}
       - notify-splunk
@@ -131,15 +129,8 @@ applications:
       ROUTE_SECRET_KEY_2: '{{ ROUTE_SECRET_KEY_2 }}'
       CRONITOR_KEYS: '{{ CRONITOR_KEYS | tojson }}'
       METRICS_BASIC_AUTH_TOKEN: {{ METRICS_BASIC_AUTH_TOKEN }}
-      {% if SQLALCHEMY_DATABASE_URI is defined %}
       SQLALCHEMY_DATABASE_URI: '{{ SQLALCHEMY_DATABASE_URI }}'
-      {% endif %}
-      {% if REDIS_URL is defined %}
       REDIS_URL: '{{ REDIS_URL }}'
-      {% endif %}
-      {% if REDIS_ENABLED is defined %}
-      REDIS_ENABLED: '{{ REDIS_ENABLED }}'
-      {% endif %}
 
       HIGH_VOLUME_SERVICE: '{{ HIGH_VOLUME_SERVICE | tojson }}'
 
