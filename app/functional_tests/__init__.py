@@ -32,7 +32,6 @@ def create_functional_test_users():
             user = User()
             user.id = uuid.uuid4()
             user.created_at = datetime.datetime.utcnow()
-            user.email_access_validated_at = datetime.datetime.utcnow()
             db.session.add(user)
 
         user.name = user_info["name"]
@@ -41,6 +40,7 @@ def create_functional_test_users():
         user.auth_type = user_info["auth_type"]
         user.password = user_info["password"]
         user.state = user_info["state"]
+        user.email_access_validated_at = datetime.datetime.utcnow()
         user.platform_admin = False
 
         permissions = [
