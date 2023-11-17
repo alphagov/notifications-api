@@ -1,3 +1,6 @@
+import datetime
+
+import freezegun
 import pytest
 from flask import url_for
 
@@ -57,29 +60,31 @@ class TestCreateFunctionalTestUsers:
             auth_type="sms_auth",
             password="bad old password",
             state="inactive",
+            email_access_validated_at=datetime.datetime(2020, 1, 1, 12, 0, 0),
         )
 
         user.organisations.append(organisation)
         user.services.append(service)
         notify_db_session.commit()
 
-        functional_tests_request.put(
-            "functional_tests.create_functional_test_users",
-            _data=[
-                {
-                    "name": "my updated test user",
-                    "email_address": "something@example.com",
-                    "mobile_number": "07700900999",
-                    "auth_type": "email_auth",
-                    "password": "good new password",
-                    "state": "active",
-                    "permissions": ["send_emails", "send_letters", "send_texts"],
-                    "service_id": str(service.id),
-                    "organisation_id": str(organisation.id),
-                }
-            ],
-            _expected_status=201,
-        )
+        with freezegun.freeze_time("2020-06-01T13:00:00"):
+            functional_tests_request.put(
+                "functional_tests.create_functional_test_users",
+                _data=[
+                    {
+                        "name": "my updated test user",
+                        "email_address": "something@example.com",
+                        "mobile_number": "07700900999",
+                        "auth_type": "email_auth",
+                        "password": "good new password",
+                        "state": "active",
+                        "permissions": ["send_emails", "send_letters", "send_texts"],
+                        "service_id": str(service.id),
+                        "organisation_id": str(organisation.id),
+                    }
+                ],
+                _expected_status=201,
+            )
 
         notify_db_session.refresh(user)
         assert user.id == user.id
@@ -88,3 +93,4 @@ class TestCreateFunctionalTestUsers:
         assert user.auth_type == "email_auth"
         assert user.state == "active"
         assert set(user.get_permissions()[str(service.id)]) == {"send_emails", "send_letters", "send_texts"}
+        assert user.email_access_validated_at == datetime.datetime(2020, 6, 1, 13)
