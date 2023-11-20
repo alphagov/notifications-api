@@ -517,6 +517,7 @@ class Service(db.Model, Versioned):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     _name = db.Column("name", db.String(255), nullable=False, unique=True)
+    # this isn't intended to be accessed, just used for checking service name uniqueness. See `email_sender_local_part`
     _normalised_service_name = db.Column("normalised_service_name", db.String, nullable=False, unique=True)
 
     @hybrid_property  # a hybrid_property enables us to still use it in queries
@@ -532,14 +533,6 @@ class Service(db.Model, Versioned):
         if not self.custom_email_sender_name:
             self._email_sender_local_part = self._normalised_service_name
 
-    @hybrid_property
-    def normalised_service_name(self):
-        return self._normalised_service_name
-
-    @normalised_service_name.setter
-    def normalised_service_name(self, value):
-        raise NotImplementedError("normalised_service_name can only be written to via `name`")
-
     _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
     # TODO: once data is migrated this should be not nullable
     _email_sender_local_part = db.Column("email_sender_local_part", db.String(255), nullable=True)
@@ -551,11 +544,8 @@ class Service(db.Model, Versioned):
     @custom_email_sender_name.setter
     def custom_email_sender_name(self, value):
         self._custom_email_sender_name = value
-        if value:
-            self._email_sender_local_part = make_string_safe_for_email_local_part(value)
-        else:
-            # clearing custom sender name, so set email from back to service name
-            self._email_sender_local_part = self.normalised_service_name
+        # if value is None, then we're clearing custom sender name, so set the local part based on service name
+        self._email_sender_local_part = make_string_safe_for_email_local_part(value or self.name)
 
     @hybrid_property
     def email_sender_local_part(self):

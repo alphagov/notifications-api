@@ -263,7 +263,6 @@ def test_get_service_by_id(admin_request, sample_service):
         "letter_branding",
         "letter_message_limit",
         "name",
-        "normalised_service_name",
         "notes",
         "organisation",
         "organisation_type",
@@ -406,7 +405,7 @@ def test_create_service(
 
     assert json_resp["data"]["id"]
     assert json_resp["data"]["name"] == "created service"
-    assert json_resp["data"]["normalised_service_name"] == "created.service"
+    assert json_resp["data"]["email_sender_local_part"] == "created.service"
     assert json_resp["data"]["letter_branding"] is None
     assert json_resp["data"]["count_as_live"] is expected_count_as_live
 
@@ -701,7 +700,7 @@ def test_update_service(client, notify_db_session, sample_service, has_active_go
     result = resp.json
     assert resp.status_code == 200
     assert result["data"]["name"] == "updated service name"
-    assert result["data"]["normalised_service_name"] == "updated.service.name"
+    assert result["data"]["email_sender_local_part"] == "updated.service.name"
     assert result["data"]["email_branding"] == str(brand.id)
     assert result["data"]["organisation_type"] == "school_or_college"
     assert result["data"]["has_active_go_live_request"] == has_active_go_live_request
@@ -1139,7 +1138,6 @@ def test_default_permissions_are_added_for_user_service(notify_api, notify_db_se
             assert resp.status_code == 201
             assert json_resp["data"]["id"]
             assert json_resp["data"]["name"] == "created service"
-            assert json_resp["data"]["normalised_service_name"] == "created.service"
 
             auth_header_fetch = create_admin_authorization_header()
 

@@ -226,8 +226,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     allowed_broadcast_provider = fields.Method(dump_only=True, serialize="_get_allowed_broadcast_provider")
     broadcast_channel = fields.Method(dump_only=True, serialize="_get_broadcast_channel")
     name = fields.String(required=True)
-    # this can only be set via name
-    normalised_service_name = fields.String(dump_only=True)
     custom_email_sender_name = fields.String(allow_none=True)
     # this can only be set via custom_email_sender_name or name
     email_sender_local_part = fields.String(dump_only=True)
@@ -324,7 +322,6 @@ class DetailedServiceSchema(BaseSchema):
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
     name = fields.String()
-    normalised_service_name = fields.String()
     custom_email_sender_name = fields.String(required=False)
     email_sender_local_part = fields.String()
 
@@ -350,7 +347,6 @@ class DetailedServiceSchema(BaseSchema):
             "inbound_sms",
             "jobs",
             "letter_message_limit",
-            "normalised_service_name",
             "permissions",
             "rate_limit",
             "reply_to_email_addresses",
@@ -785,7 +781,6 @@ class ServiceHistorySchema(ma.Schema):
     sms_message_limit = fields.Integer()
     letter_message_limit = fields.Integer()
     restricted = fields.Boolean()
-    normalised_service_name = fields.String()
     custom_email_sender_name = fields.String()
     email_sender_local_part = fields.String()
     created_by_id = fields.UUID()

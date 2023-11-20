@@ -78,8 +78,6 @@ class SerialisedService(SerialisedModel):
         "name",
         "active",
         "contact_link",
-        # TODO: do we still need this?
-        "normalised_service_name",
         "custom_email_sender_name",
         "email_sender_local_part",
         "email_message_limit",
