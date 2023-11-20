@@ -41,28 +41,47 @@ post_update_template_schema = {
         "archived": {"type": "boolean"},
         "current_user": uuid,
         "letter_languages": {"type": "string", "enum": [i.value for i in LetterLanguageOptions]},
-        "letter_welsh_subject": {},
-        "letter_welsh_content": {},
     },
+    # read as: "if `letter_languages` is present
     "if": {
-        "properties": {"letter_languages": {"const": LetterLanguageOptions.english.value}},
+        "required": ["letter_languages"],
     },
     "then": {
-        "properties": {
-            "letter_welsh_subject": {"type": "null"},
-            "letter_welsh_content": {"type": "null"},
-        }
+        "oneOf": [
+            # if `letter_languages=english`, `welsh_subject`+`welsh_content` must be present, and be null
+            {
+                "properties": {
+                    "letter_languages": {"const": LetterLanguageOptions.english.value},
+                    "letter_welsh_subject": {"type": "null"},
+                    "letter_welsh_content": {"type": "null"},
+                },
+                "required": ["letter_welsh_subject", "letter_welsh_content"],
+            },
+            # if `letter_languages=welsh_then_english`, `welsh_subject`+`welsh_content` must be present, and be strings
+            {
+                "properties": {
+                    "letter_languages": {"const": LetterLanguageOptions.welsh_then_english.value},
+                    "letter_welsh_subject": {"type": "string"},
+                    "letter_welsh_content": {"type": "string"},
+                },
+                "required": ["letter_welsh_subject", "letter_welsh_content"],
+            },
+        ]
     },
     "else": {
-        "if": {
-            "properties": {"letter_languages": {"const": LetterLanguageOptions.welsh_then_english.value}},
-        },
-        "then": {
-            "properties": {
-                "letter_welsh_subject": {"type": "string"},
-                "letter_welsh_content": {"type": "string"},
+        "oneOf": [
+            # option 1) `welsh_subject`+`welsh_content` must both be missing
+            {"not": {"required": ["letter_welsh_subject", "letter_welsh_content"]}},
+            # option 2) `welsh_subject`+`welsh_content` must both be present, and be null
+            {
+                "properties": {"letter_welsh_subject": {"type": "null"}, "letter_welsh_content": {"type": "null"}},
+                "required": ["letter_welsh_subject", "letter_welsh_content"],
             },
-            "required": ["letter_welsh_subject", "letter_welsh_content"],
-        },
+            # option 3) `welsh_subject`+`welsh_content` must both be present, and be strings
+            {
+                "properties": {"letter_welsh_subject": {"type": "string"}, "letter_welsh_content": {"type": "string"}},
+                "required": ["letter_welsh_subject", "letter_welsh_content"],
+            },
+        ]
     },
 }
