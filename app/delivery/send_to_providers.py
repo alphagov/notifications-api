@@ -126,9 +126,8 @@ def send_email_to_provider(notification):
             update_notification_to_sending(notification, provider)
             send_email_response(notification.reference, notification.to)
         else:
-            # TODO: replace this with email_sender_local_part once field is populated in db
             from_address = (
-                f'"{service.name}" <{service.normalised_service_name}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
+                f'"{service.name}" <{service.email_sender_local_part}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
             )
 
             reference = provider.send_email(

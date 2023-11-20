@@ -399,8 +399,6 @@ def test_create_service(
         "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
-        # TODO: remove this line after admin stops sending back normalised_service_name
-        "normalised_service_name": "ignore me",
         "created_by": str(sample_user.id),
     }
 
@@ -687,8 +685,6 @@ def test_update_service(client, notify_db_session, sample_service, has_active_go
 
     data = {
         "name": "updated service name",
-        # TODO: remove this line after admin stops sending back normalised_service_name
-        "normalised_service_name": "ignore me",
         "created_by": str(sample_service.created_by.id),
         "email_branding": str(brand.id),
         "organisation_type": "school_or_college",

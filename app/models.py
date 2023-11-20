@@ -633,9 +633,6 @@ class Service(db.Model, Versioned):
         # validate json with marshmallow
         fields = data.copy()
 
-        # TODO: remove this line once admin stops passing through normalised_service_name:
-        fields.pop("normalised_service_name", None)
-
         fields["created_by_id"] = fields.pop("created_by")
 
         return cls(**fields)
