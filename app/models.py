@@ -534,8 +534,7 @@ class Service(db.Model, Versioned):
             self._email_sender_local_part = self._normalised_service_name
 
     _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
-    # TODO: once data is migrated this should be not nullable
-    _email_sender_local_part = db.Column("email_sender_local_part", db.String(255), nullable=True)
+    _email_sender_local_part = db.Column("email_sender_local_part", db.String(255), nullable=False)
 
     @hybrid_property  # a hybrid_property enables us to still use it in queries
     def custom_email_sender_name(self):
