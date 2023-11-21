@@ -4,8 +4,10 @@ import itertools
 import logging
 import os
 import random
+import sys
 import uuid
 from datetime import date, datetime, timedelta
+from itertools import accumulate, repeat
 from time import monotonic
 from unittest import mock
 
@@ -19,6 +21,14 @@ from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import SMSMessageTemplate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import (
+    Numeric,
+    and_,
+    case,
+    cast,
+    func,
+    select,
+)
 
 from app import db
 from app.aws import s3
@@ -816,6 +826,99 @@ def local_dev_broadcast_permissions(user_id):
         ]
 
         permission_dao.set_user_service_permission(user, service, permission_list, _commit=True, replace=True)
+
+
+def _get_min_scale_cases(var, max_scale=7):
+    # values used in types must be constants so we need
+    # to do this slightly ridiculous case statement covering
+    # each scale we expect to encounter
+    return case(
+        {i: cast(var, Numeric(1000, i)) for i in range(max_scale)},
+        value=func.min_scale(var),
+        else_=var,
+    )
+
+
+@click.option("-n", "--n-blocks", type=int, default=64)
+@notify_command(name="update-notification-numerics-min-scale")
+def update_notification_numerics_min_scale(n_blocks):
+    # apply in blocks to avoid locking whole table at once
+    block_step = (1 << 128) // n_blocks
+    for block_start in range(0, 1 << 128, block_step):
+        block_end = block_start + block_step
+        block_start_uuid = uuid.UUID(int=block_start)
+        # using closed interval because (1<<128) itself isn't representable as a UUID
+        block_end_uuid = uuid.UUID(int=block_end - 1)
+
+        with db.session.begin():
+            print(f"Updating Notification from id {block_start_uuid} to {block_end_uuid}", sys.stderr)
+            Notification.query.filter(
+                Notification.c.id >= block_start_uuid,
+                Notification.c.id <= block_end_uuid,
+            ).update({
+                "rate_multiplier": _get_cases(Notification.c.rate_multiplier),
+            })
+
+
+@click.option("-n", "--n-blocks", type=int, default=64)
+@notify_command(name="update-fact-billing-numerics-min-scale")
+def update_fact_billing_numerics_min_scale(n_blocks):
+    # apply in blocks to avoid locking whole table at once
+    block_step = (1 << 128) // n_blocks
+    for block_start in range(0, 1 << 128, block_step):
+        block_end = block_start + block_step
+        block_start_uuid = uuid.UUID(int=block_start)
+        # using closed interval because (1<<128) itself isn't representable as a UUID
+        block_end_uuid = uuid.UUID(int=block_end - 1)
+
+        with db.session.begin():
+            print(f"Updating FactBilling from template_id {block_start_uuid} to {block_end_uuid}", sys.stderr)
+            FactBilling.query.filter(
+                FactBilling.c.template_id >= block_start_uuid,
+                FactBilling.c.template_id <= block_end_uuid,
+            ).update({
+                "rate": _get_cases(FactBilling.c.rate),
+            })
+
+
+@click.option("-h", "--block-hours", type=float, default=1.0)
+@notify_command(name="update-notification-history-numerics-min-scale")
+def update_notification_history_numerics_min_scale(block_hours):
+    block_period = timedelta(microseconds=block_hours*60*60*1e3*1e3)
+
+    with db.session.begin():
+        min_max_row = select(
+            func.min(NotificationHistory.c.created_at),
+            func.max(NotificationHistory.c.created_at),
+        )).first()
+
+    if not min_max_row:
+        print(f"No rows found in NotificationHistory", sys.stderr)
+        return
+
+    created_at_min, created_at_max = min_max_row
+
+    for block_start in accumulate(
+        repeat(block_period),
+        initial=created_at_min,
+    ):
+        block_end = block_start + block_period
+
+        with db.session.begin():
+            print(
+                "Updating NotificationHistory from created_at "
+                + f"{block_start.isoformat()} to {block_end.isoformat()}",
+                sys.stderr,
+            )
+            NotificationHistory.query.filter(
+                NotificationHistory.c.created_at >= block_start_uuid,
+                NotificationHistory.c.created_at <= block_end_uuid,
+            ).update({
+                "rate_multiplier": _get_cases(NotificationHistory.c.rate_multiplier),
+            })
+
+        if block_end > created_at_max:
+            break
 
 
 @click.option("-u", "--user-id", required=True)
