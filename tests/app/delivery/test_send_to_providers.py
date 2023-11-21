@@ -681,6 +681,22 @@ def test_send_email_to_provider_uses_reply_to_from_notification(sample_email_tem
     )
 
 
+def test_send_email_to_provider_uses_custom_email_sender_name_if_set(sample_email_notification, mocker):
+    sample_email_notification.service.custom_email_sender_name = "Custom Sender Name"
+    mocker.patch("app.aws_ses_client.send_email", return_value="reference")
+
+    send_to_providers.send_email_to_provider(sample_email_notification)
+
+    app.aws_ses_client.send_email.assert_called_once_with(
+        '"Custom Sender Name" <custom.sender.name@test.notify.com>',
+        ANY,
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=ANY,
+    )
+
+
 def test_send_sms_to_provider_should_use_normalised_to(mocker, client, sample_template):
     send_mock = mocker.patch("app.mmg_client.send_sms")
     notification = create_notification(template=sample_template, to_field="+447700900855", normalised_to="447700900855")
