@@ -105,7 +105,7 @@ def test_create_service(notify_db_session):
     service_db = Service.query.one()
     assert service_db.name == "service name"
     assert service_db.id == service.id
-    assert service_db.normalised_service_name == "service.name"
+    assert service_db.email_sender_local_part == "service.name"
     assert service_db.prefix_sms is True
     assert service.active is True
     assert user in service_db.users

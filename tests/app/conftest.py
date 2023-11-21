@@ -96,7 +96,7 @@ def service_factory(sample_user):
                     service,
                     template_name="Template Name",
                     template_type=template_type,
-                    subject=service.normalised_service_name,
+                    subject=service.email_sender_local_part,
                 )
             else:
                 create_template(

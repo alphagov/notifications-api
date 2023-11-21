@@ -1,4 +1,3 @@
-import string
 from datetime import datetime, timedelta
 from uuid import UUID
 
@@ -227,8 +226,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     allowed_broadcast_provider = fields.Method(dump_only=True, serialize="_get_allowed_broadcast_provider")
     broadcast_channel = fields.Method(dump_only=True, serialize="_get_broadcast_channel")
     name = fields.String(required=True)
-    # this can only be set via name
-    normalised_service_name = fields.String(dump_only=True)
     custom_email_sender_name = fields.String(allow_none=True)
     # this can only be set via custom_email_sender_name or name
     email_sender_local_part = fields.String(dump_only=True)
@@ -304,13 +301,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             duplicates = list(set([x for x in permissions if permissions.count(x) > 1]))
             raise ValidationError("Duplicate Service Permission: {}".format(duplicates))
 
-    @validates("normalised_service_name")
-    def validate_normalised_service_name(self, value):
-        if not all(char in string.ascii_lowercase + string.digits + "." for char in value):
-            raise ValidationError(
-                "Unacceptable characters: `normalised_service_name` may only contain letters, numbers and full stops."
-            )
-
     @pre_load()
     def format_for_data_model(self, in_data, **kwargs):
         if isinstance(in_data, dict) and "permissions" in in_data:
@@ -332,7 +322,6 @@ class DetailedServiceSchema(BaseSchema):
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
     name = fields.String()
-    normalised_service_name = fields.String()
     custom_email_sender_name = fields.String(required=False)
     email_sender_local_part = fields.String()
 
@@ -358,7 +347,6 @@ class DetailedServiceSchema(BaseSchema):
             "inbound_sms",
             "jobs",
             "letter_message_limit",
-            "normalised_service_name",
             "permissions",
             "rate_limit",
             "reply_to_email_addresses",
@@ -793,7 +781,6 @@ class ServiceHistorySchema(ma.Schema):
     sms_message_limit = fields.Integer()
     letter_message_limit = fields.Integer()
     restricted = fields.Boolean()
-    normalised_service_name = fields.String()
     custom_email_sender_name = fields.String()
     email_sender_local_part = fields.String()
     created_by_id = fields.UUID()
