@@ -890,7 +890,7 @@ def update_notification_history_numerics_min_scale(block_hours):
         min_max_row = select(
             func.min(NotificationHistory.c.created_at),
             func.max(NotificationHistory.c.created_at),
-        )).first()
+        ).first()
 
     if not min_max_row:
         print(f"No rows found in NotificationHistory", sys.stderr)
