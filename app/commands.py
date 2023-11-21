@@ -858,7 +858,7 @@ def update_notification_numerics_min_scale(n_blocks):
                 Notification.id >= block_start_uuid,
                 Notification.id <= block_end_uuid,
             ).update({
-                "rate_multiplier": _get_cases(Notification.rate_multiplier),
+                "rate_multiplier": _get_min_scale_cases(Notification.rate_multiplier),
             })
 
 
@@ -879,7 +879,7 @@ def update_fact_billing_numerics_min_scale(n_blocks):
                 FactBilling.template_id >= block_start_uuid,
                 FactBilling.template_id <= block_end_uuid,
             ).update({
-                "rate": _get_cases(FactBilling.rate),
+                "rate": _get_min_scale_cases(FactBilling.rate),
             })
 
 
@@ -916,7 +916,7 @@ def update_notification_history_numerics_min_scale(block_hours):
                 NotificationHistory.created_at >= block_start_uuid,
                 NotificationHistory.created_at <= block_end_uuid,
             ).update({
-                "rate_multiplier": _get_cases(NotificationHistory.rate_multiplier),
+                "rate_multiplier": _get_min_scale_cases(NotificationHistory.rate_multiplier),
             })
 
         if block_end > created_at_max:
