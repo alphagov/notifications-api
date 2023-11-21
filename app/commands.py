@@ -73,8 +73,10 @@ from app.dao.users_dao import (
 from app.models import (
     Domain,
     EmailBranding,
+    FactBilling,
     LetterBranding,
     Notification,
+    NotificationHistory,
     Organisation,
     Permission,
     Service,
@@ -853,10 +855,10 @@ def update_notification_numerics_min_scale(n_blocks):
         with db.session.begin():
             print(f"Updating Notification from id {block_start_uuid} to {block_end_uuid}", sys.stderr)
             Notification.query.filter(
-                Notification.c.id >= block_start_uuid,
-                Notification.c.id <= block_end_uuid,
+                Notification.id >= block_start_uuid,
+                Notification.id <= block_end_uuid,
             ).update({
-                "rate_multiplier": _get_cases(Notification.c.rate_multiplier),
+                "rate_multiplier": _get_cases(Notification.rate_multiplier),
             })
 
 
@@ -874,10 +876,10 @@ def update_fact_billing_numerics_min_scale(n_blocks):
         with db.session.begin():
             print(f"Updating FactBilling from template_id {block_start_uuid} to {block_end_uuid}", sys.stderr)
             FactBilling.query.filter(
-                FactBilling.c.template_id >= block_start_uuid,
-                FactBilling.c.template_id <= block_end_uuid,
+                FactBilling.template_id >= block_start_uuid,
+                FactBilling.template_id <= block_end_uuid,
             ).update({
-                "rate": _get_cases(FactBilling.c.rate),
+                "rate": _get_cases(FactBilling.rate),
             })
 
 
@@ -888,8 +890,8 @@ def update_notification_history_numerics_min_scale(block_hours):
 
     with db.session.begin():
         min_max_row = select(
-            func.min(NotificationHistory.c.created_at),
-            func.max(NotificationHistory.c.created_at),
+            func.min(NotificationHistory.created_at),
+            func.max(NotificationHistory.created_at),
         ).first()
 
     if not min_max_row:
@@ -911,10 +913,10 @@ def update_notification_history_numerics_min_scale(block_hours):
                 sys.stderr,
             )
             NotificationHistory.query.filter(
-                NotificationHistory.c.created_at >= block_start_uuid,
-                NotificationHistory.c.created_at <= block_end_uuid,
+                NotificationHistory.created_at >= block_start_uuid,
+                NotificationHistory.created_at <= block_end_uuid,
             ).update({
-                "rate_multiplier": _get_cases(NotificationHistory.c.rate_multiplier),
+                "rate_multiplier": _get_cases(NotificationHistory.rate_multiplier),
             })
 
         if block_end > created_at_max:
