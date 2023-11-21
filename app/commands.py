@@ -913,8 +913,8 @@ def update_notification_history_numerics_min_scale(block_hours):
                 sys.stderr,
             )
             NotificationHistory.query.filter(
-                NotificationHistory.created_at >= block_start_uuid,
-                NotificationHistory.created_at <= block_end_uuid,
+                NotificationHistory.created_at >= block_start,
+                NotificationHistory.created_at <= block_end,
             ).update({
                 "rate_multiplier": _get_min_scale_cases(NotificationHistory.rate_multiplier),
             })
