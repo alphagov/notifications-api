@@ -889,10 +889,10 @@ def update_notification_history_numerics_min_scale(block_hours):
     block_period = timedelta(microseconds=block_hours*60*60*1e3*1e3)
 
     with db.session.begin():
-        min_max_row = select(
+        min_max_row = db.session.execute(select(
             func.min(NotificationHistory.created_at),
             func.max(NotificationHistory.created_at),
-        ).first()
+        )).first()
 
     if not min_max_row:
         print(f"No rows found in NotificationHistory", sys.stderr)
