@@ -853,7 +853,11 @@ def update_notification_numerics_min_scale(n_blocks):
         block_end_uuid = uuid.UUID(int=block_end - 1)
 
         with db.session.begin():
-            print(f"Updating Notification from id {block_start_uuid} to {block_end_uuid}", sys.stderr)
+            current_app.logger.info(
+                "Updating Notification from id %s to %s",
+                block_start_uuid,
+                block_end_uuid,
+            )
             Notification.query.filter(
                 Notification.id >= block_start_uuid,
                 Notification.id <= block_end_uuid,
@@ -874,7 +878,11 @@ def update_fact_billing_numerics_min_scale(n_blocks):
         block_end_uuid = uuid.UUID(int=block_end - 1)
 
         with db.session.begin():
-            print(f"Updating FactBilling from template_id {block_start_uuid} to {block_end_uuid}", sys.stderr)
+            current_app.logger.info(
+                "Updating FactBilling from id %s to %s",
+                block_start_uuid,
+                block_end_uuid,
+            )
             FactBilling.query.filter(
                 FactBilling.template_id >= block_start_uuid,
                 FactBilling.template_id <= block_end_uuid,
@@ -895,7 +903,7 @@ def update_notification_history_numerics_min_scale(block_hours):
         )).first()
 
     if not min_max_row:
-        print(f"No rows found in NotificationHistory", sys.stderr)
+        current_app.logger.error("No rows found in NotificationHistory")
         return
 
     created_at_min, created_at_max = min_max_row
@@ -907,10 +915,10 @@ def update_notification_history_numerics_min_scale(block_hours):
         block_end = block_start + block_period
 
         with db.session.begin():
-            print(
-                "Updating NotificationHistory from created_at "
-                + f"{block_start.isoformat()} to {block_end.isoformat()}",
-                sys.stderr,
+            current_app.logger.info(
+                "Updating NotificationHistory from created_at %s to %s",
+                block_start.isoformat(),
+                block_end.isoformat(),
             )
             NotificationHistory.query.filter(
                 NotificationHistory.created_at >= block_start,
