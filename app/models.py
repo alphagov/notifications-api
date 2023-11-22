@@ -517,48 +517,11 @@ class Service(db.Model, Versioned):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     _name = db.Column("name", db.String(255), nullable=False, unique=True)
+
     # this isn't intended to be accessed, just used for checking service name uniqueness. See `email_sender_local_part`
     _normalised_service_name = db.Column("normalised_service_name", db.String, nullable=False, unique=True)
-
-    @hybrid_property  # a hybrid_property enables us to still use it in queries
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        self._name = value
-        self._normalised_service_name = make_string_safe_for_email_local_part(value)
-
-        # if the service hasn't set their own sender, update their sender to reflect normalised_service_name
-        if not self.custom_email_sender_name:
-            self._email_sender_local_part = self._normalised_service_name
-
     _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
     _email_sender_local_part = db.Column("email_sender_local_part", db.String(255), nullable=False)
-
-    @hybrid_property  # a hybrid_property enables us to still use it in queries
-    def custom_email_sender_name(self):
-        return self._custom_email_sender_name
-
-    @custom_email_sender_name.setter
-    def custom_email_sender_name(self, value):
-        self._custom_email_sender_name = value
-        # if value is None, then we're clearing custom sender name, so set the local part based on service name
-        self._email_sender_local_part = make_string_safe_for_email_local_part(value or self.name)
-
-    @hybrid_property
-    def email_sender_local_part(self):
-        return self._email_sender_local_part
-
-    @email_sender_local_part.setter
-    def email_sender_local_part(self, value):
-        # we can't allow this to be set manually.
-        # Imagine we've updated just `custom_email_sender_name` via a serialised json blob. When that is set, it will
-        # also update the value of email_sender_local_part. We don't want to then undo that good work by setting to the
-        # old value (that was also passed through in the json to `service_schema.load``).
-        raise NotImplementedError(
-            "email_sender_local_part can only be written to via `custom_email_sender_name` or `name`"
-        )
 
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -610,6 +573,43 @@ class Service(db.Model, Versioned):
 
     allowed_broadcast_provider = association_proxy("service_broadcast_settings", "provider")
     broadcast_channel = association_proxy("service_broadcast_settings", "channel")
+
+    @hybrid_property  # a hybrid_property enables us to still use it in queries
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+        self._normalised_service_name = make_string_safe_for_email_local_part(value)
+
+        # if the service hasn't set their own sender, update their sender to reflect normalised_service_name
+        if not self.custom_email_sender_name:
+            self._email_sender_local_part = self._normalised_service_name
+
+    @hybrid_property  # a hybrid_property enables us to still use it in queries
+    def custom_email_sender_name(self):
+        return self._custom_email_sender_name
+
+    @custom_email_sender_name.setter
+    def custom_email_sender_name(self, value):
+        self._custom_email_sender_name = value
+        # if value is None, then we're clearing custom sender name, so set the local part based on service name
+        self._email_sender_local_part = make_string_safe_for_email_local_part(value or self.name)
+
+    @hybrid_property
+    def email_sender_local_part(self):
+        return self._email_sender_local_part
+
+    @email_sender_local_part.setter
+    def email_sender_local_part(self, value):
+        # we can't allow this to be set manually.
+        # Imagine we've updated just `custom_email_sender_name` via a serialised json blob. When that is set, it will
+        # also update the value of email_sender_local_part. We don't want to then undo that good work by setting to the
+        # old value (that was also passed through in the json to `service_schema.load``).
+        raise NotImplementedError(
+            "email_sender_local_part can only be written to via `custom_email_sender_name` or `name`"
+        )
 
     @classmethod
     def from_json(cls, data):
