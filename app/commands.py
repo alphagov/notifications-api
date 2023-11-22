@@ -854,7 +854,7 @@ def update_notification_numerics_min_scale(n_blocks):
 
         with db.session.begin():
             current_app.logger.info(
-                "Updating Notification from id %s to %s",
+                "Updating Notification from id %s to %s inclusive",
                 block_start_uuid,
                 block_end_uuid,
             )
@@ -879,7 +879,7 @@ def update_fact_billing_numerics_min_scale(n_blocks):
 
         with db.session.begin():
             current_app.logger.info(
-                "Updating FactBilling from id %s to %s",
+                "Updating FactBilling from id %s to %s inclusive",
                 block_start_uuid,
                 block_end_uuid,
             )
