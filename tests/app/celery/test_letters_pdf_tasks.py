@@ -84,8 +84,11 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         "letter_contact_block": sample_letter_notification.reply_to_text,
         "template": {
             "service": str(sample_letter_notification.service_id),
+            "letter_languages": sample_letter_notification.template.letter_languages,
             "subject": sample_letter_notification.template.subject,
             "content": sample_letter_notification.template.content,
+            "letter_welsh_subject": sample_letter_notification.template.letter_welsh_subject,
+            "letter_welsh_content": sample_letter_notification.template.letter_welsh_content,
             "template_type": sample_letter_notification.template.template_type,
             "letter_attachment": None,
         },
