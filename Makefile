@@ -89,6 +89,15 @@ drop-test-dbs:
 	@dropdb test_notification_api_master --if-exists
 	@echo "Done."
 
+.PHONY: drop-test-dbs-in-docker
+drop-test-dbs-in-docker:
+	@echo "Dropping test DBs in docker."
+	@for number in $$(seq 0 $$(python -c 'import os; print(os.cpu_count() - 1)')); do \
+	    PGUSER=notify PGPASSWORD=notify PGHOST=0.0.0.0 PGPORT=5433 dropdb test_notification_api_gw$${number} --if-exists; \
+	done
+	@PGUSER=notify PGPASSWORD=notify PGHOST=0.0.0.0 PGPORT=5433 dropdb test_notification_api_master --if-exists
+	@echo "Done."
+
 .PHONY: test
 test: ## Run tests
 	ruff check .

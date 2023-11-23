@@ -76,8 +76,11 @@ def get_pdf_for_templated_letter(self, notification_id):
             "letter_contact_block": notification.reply_to_text,
             "template": {
                 "service": str(notification.service_id),
+                "letter_languages": notification.template.letter_languages,
                 "subject": notification.template.subject,
                 "content": notification.template.content,
+                "letter_welsh_subject": notification.template.letter_welsh_subject,
+                "letter_welsh_content": notification.template.letter_welsh_content,
                 "template_type": notification.template.template_type,
                 "letter_attachment": letter_attachment_json,
             },
