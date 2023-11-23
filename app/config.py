@@ -312,7 +312,7 @@ class Config(object):
             },
             "check-if-letters-still-pending-virus-check": {
                 "task": "check-if-letters-still-pending-virus-check",
-                "schedule": crontab(day_of_week="mon-fri", hour="9,15", minute=0),
+                "schedule": crontab(hour="*", minute=0),
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "check-for-services-with-high-failure-rates-or-sending-to-tv-numbers": {
