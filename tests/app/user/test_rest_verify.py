@@ -94,7 +94,7 @@ def test_user_verify_code_rejects_good_code_if_too_many_failed_logins(
 
 @freeze_time("2020-04-01 12:00")
 @pytest.mark.parametrize("code_type", [EMAIL_TYPE, SMS_TYPE])
-def test_user_verify_code_expired_code_and_increments_failed_login_count(code_type, admin_request, sample_user):
+def test_user_verify_code_expired_code_and_increments_failed_login_count(code_type, admin_request, sample_user, caplog):
     magic_code = str(uuid.uuid4())
     verify_code = create_user_code(sample_user, magic_code, code_type)
     verify_code.expiry_datetime = datetime(2020, 4, 1, 11, 59)
@@ -107,6 +107,7 @@ def test_user_verify_code_expired_code_and_increments_failed_login_count(code_ty
     assert sample_user.logged_in_at is None
     assert sample_user.current_session_id is None
     assert sample_user.failed_login_count == 1
+    assert f"Rejecting 2fa code for {sample_user.id} because expired=True, used=False" in caplog.messages
 
 
 @freeze_time("2016-01-01 10:00:00.000000")
@@ -329,7 +330,9 @@ def test_send_email_verification_returns_404_for_bad_input_data(client, notify_d
     assert mocked.call_count == 0
 
 
-def test_user_verify_user_code_returns_404_when_code_is_right_but_user_account_is_locked(client, sample_sms_code):
+def test_user_verify_user_code_returns_404_when_code_is_right_but_user_account_is_locked(
+    client, sample_sms_code, caplog
+):
     sample_sms_code.user.failed_login_count = 10
     data = json.dumps({"code_type": sample_sms_code.code_type, "code": sample_sms_code.txt_code})
     resp = client.post(
@@ -340,6 +343,7 @@ def test_user_verify_user_code_returns_404_when_code_is_right_but_user_account_i
     assert resp.status_code == 404
     assert sample_sms_code.user.failed_login_count == 10
     assert not sample_sms_code.code_used
+    assert f"Too many login attempts for {sample_sms_code.user.id}: 10 attempts >= limit of 10" in caplog.messages
 
 
 def test_user_verify_user_code_valid_code_resets_failed_login_count(client, sample_sms_code):
