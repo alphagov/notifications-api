@@ -205,14 +205,25 @@ def verify_user_code(user_id):
 
     code = get_user_code(user_to_verify, data["code"], data["code_type"])
     if user_to_verify.failed_login_count >= current_app.config.get("MAX_FAILED_LOGIN_COUNT"):
+        current_app.logger.warning(
+            "Too many login attempts for %s: %s attempts >= limit of %s",
+            user_id,
+            user_to_verify.failed_login_count,
+            current_app.config.get("MAX_FAILED_LOGIN_COUNT"),
+        )
         raise InvalidRequest("Code not found", status_code=404)
+
     if not code:
         # only relevant from sms
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code not found", status_code=404)
-    if datetime.utcnow() > code.expiry_datetime or code.code_used:
+
+    expired = datetime.utcnow() > code.expiry_datetime
+    used = code.code_used
+    if expired or used:
         # sms and email
         increment_failed_login_count(user_to_verify)
+        current_app.logger.warning("Rejecting 2fa code for %s because expired=%s, used=%s", user_id, expired, used)
         raise InvalidRequest("Code has expired", status_code=400)
 
     user_to_verify.current_session_id = str(uuid.uuid4())
