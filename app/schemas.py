@@ -604,6 +604,9 @@ class NotificationWithTemplateSchema(BaseSchema):
             "is_precompiled_letter",
             "letter_attachment",
             "reply_to_text",
+            "letter_languages",
+            "letter_welsh_subject",
+            "letter_welsh_content",
         ],
         dump_only=True,
     )
