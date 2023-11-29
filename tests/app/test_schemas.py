@@ -38,10 +38,22 @@ def test_notification_schema_adds_api_key_name(sample_notification):
     assert data["key_name"] == "Test key"
 
 
+def test_notification_schema_includes_templates_bilingual_related_fields(sample_letter_notification):
+    from app.schemas import notification_with_template_schema
+
+    sample_letter_notification.template.letter_languages = "welsh_then_english"
+    sample_letter_notification.template.letter_welsh_subject = "Bore da"
+    sample_letter_notification.template.letter_welsh_content = "Cymraeg da"
+
+    data = notification_with_template_schema.dump(sample_letter_notification)
+    assert data["template"]["letter_languages"] == "welsh_then_english"
+    assert data["template"]["letter_welsh_subject"] == "Bore da"
+    assert data["template"]["letter_welsh_content"] == "Cymraeg da"
+
+
 @pytest.mark.parametrize(
     "schema_name",
     [
-        "notification_with_template_schema",
         "notification_schema",
         "notification_with_template_schema",
         "notification_with_personalisation_schema",
