@@ -5,8 +5,9 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    libcurl4 && \
-    apt-get -y clean && \
+    libcurl4 \
+    curl \
+    && apt-get -y clean && \
     rm -rf /var/lib/apt/lists/* /tmp/*
 
 WORKDIR /home/vcap/app
@@ -20,7 +21,6 @@ RUN echo "Install OS dependencies for python app requirements" &&  \
     build-essential \
     git \
     libcurl4-openssl-dev \
-    curl \
     libssl-dev && \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/* /tmp/*
