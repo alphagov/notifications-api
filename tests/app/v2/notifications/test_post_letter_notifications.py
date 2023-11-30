@@ -49,7 +49,7 @@ def test_post_letter_notification_returns_201(api_client_request, sample_letter_
         data.update({"reference": reference})
 
     resp_json = api_client_request.post(
-        sample_letter_template.service_id, "v2_notifications.post_notification", notification_type="letter", _data=data
+        sample_letter_template.service_id, "v2_notifications.post_letter_notification", _data=data
     )
 
     assert validate(resp_json, post_letter_response) == resp_json
@@ -87,9 +87,7 @@ def test_post_letter_notification_sets_postage(api_client_request, notify_db_ses
         },
     }
 
-    resp_json = api_client_request.post(
-        service.id, "v2_notifications.post_notification", notification_type="letter", _data=data
-    )
+    resp_json = api_client_request.post(service.id, "v2_notifications.post_letter_notification", _data=data)
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
@@ -111,9 +109,7 @@ def test_post_letter_notification_formats_postcode(api_client_request, notify_db
         },
     }
 
-    resp_json = api_client_request.post(
-        service.id, "v2_notifications.post_notification", notification_type="letter", _data=data
-    )
+    resp_json = api_client_request.post(service.id, "v2_notifications.post_letter_notification", _data=data)
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
@@ -135,9 +131,7 @@ def test_post_letter_notification_stores_country(api_client_request, notify_db_s
         },
     }
 
-    resp_json = api_client_request.post(
-        service.id, "v2_notifications.post_notification", notification_type="letter", _data=data
-    )
+    resp_json = api_client_request.post(service.id, "v2_notifications.post_letter_notification", _data=data)
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
@@ -164,9 +158,7 @@ def test_post_letter_notification_international_sets_rest_of_world(api_client_re
         },
     }
 
-    resp_json = api_client_request.post(
-        service.id, "v2_notifications.post_notification", notification_type="letter", _data=data
-    )
+    resp_json = api_client_request.post(service.id, "v2_notifications.post_letter_notification", _data=data)
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
@@ -220,7 +212,7 @@ def test_post_letter_notification_throws_error_for_bad_address(
     data = {"template_id": str(template.id), "personalisation": personalisation}
 
     error_json = api_client_request.post(
-        service.id, "v2_notifications.post_notification", notification_type="letter", _data=data, _expected_status=400
+        service.id, "v2_notifications.post_letter_notification", _data=data, _expected_status=400
     )
 
     assert error_json["status_code"] == 400
@@ -251,8 +243,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
     with set_config_values(notify_api, {"NOTIFY_ENVIRONMENT": env}):
         api_client_request.post(
             sample_letter_template.service_id,
-            "v2_notifications.post_notification",
-            notification_type="letter",
+            "v2_notifications.post_letter_notification",
             _data=data,
             _api_key_type=KEY_TYPE_TEST,
         )
@@ -294,8 +285,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
     with set_config_values(notify_api, {"NOTIFY_ENVIRONMENT": env}):
         api_client_request.post(
             sample_letter_template.service_id,
-            "v2_notifications.post_notification",
-            notification_type="letter",
+            "v2_notifications.post_letter_notification",
             _data=data,
             _api_key_type=KEY_TYPE_TEST,
         )
@@ -312,8 +302,7 @@ def test_post_letter_notification_returns_400_and_missing_template(api_client_re
 
     error_json = api_client_request.post(
         sample_service_full_permissions.id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=400,
     )
@@ -332,8 +321,7 @@ def test_post_letter_notification_returns_400_for_empty_personalisation(
 
     error_json = api_client_request.post(
         sample_service_full_permissions.id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=400,
     )
@@ -368,8 +356,7 @@ def test_post_notification_returns_400_for_missing_letter_contact_block_personal
 
     error_json = api_client_request.post(
         sample_service.id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=400,
     )
@@ -383,8 +370,7 @@ def test_notification_returns_400_for_missing_template_field(api_client_request,
 
     error_json = api_client_request.post(
         sample_service_full_permissions.id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=400,
     )
@@ -405,8 +391,7 @@ def test_notification_returns_400_if_address_doesnt_have_underscores(api_client_
 
     error_json = api_client_request.post(
         sample_letter_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=400,
     )
@@ -426,8 +411,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(api_client_request,
 
     error_json = api_client_request.post(
         sample_letter_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=429,
     )
@@ -472,8 +456,7 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
 
     error_json = api_client_request.post(
         service.id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=expected_status,
     )
@@ -491,8 +474,7 @@ def test_post_letter_notification_doesnt_accept_team_key(api_client_request, sam
 
     error_json = api_client_request.post(
         sample_letter_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _api_key_type=KEY_TYPE_TEAM,
         _expected_status=403,
@@ -511,8 +493,7 @@ def test_post_letter_notification_doesnt_send_in_trial(api_client_request, sampl
 
     error_json = api_client_request.post(
         sample_trial_letter_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=403,
     )
@@ -535,8 +516,7 @@ def test_post_letter_notification_is_delivered_but_still_creates_pdf_if_in_trial
 
     api_client_request.post(
         sample_trial_letter_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _api_key_type=KEY_TYPE_TEST,
     )
@@ -556,7 +536,7 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
 
     api_client_request.post(
         sample_letter_service.id,
-        "v2_notifications.post_precompiled_letter_notification",
+        "v2_notifications.post_letter_notification",
         _data=data,
         _api_key_type=KEY_TYPE_TEST,
     )
@@ -579,7 +559,7 @@ def test_post_letter_notification_ignores_reply_to_text_for_service(api_client_r
 
     api_client_request.post(
         service.id,
-        "v2_notifications.post_precompiled_letter_notification",
+        "v2_notifications.post_letter_notification",
         _data=data,
     )
 
@@ -604,8 +584,7 @@ def test_post_letter_notification_persists_notification_reply_to_text_for_templa
 
     api_client_request.post(
         service.id,
-        "v2_notifications.post_notification",
-        notification_type="letter",
+        "v2_notifications.post_letter_notification",
         _data=data,
     )
 
@@ -621,7 +600,7 @@ def test_post_precompiled_letter_with_invalid_base64(api_client_request, mocker)
     data = {"reference": "letter-reference", "content": "hi"}
 
     resp_json = api_client_request.post(
-        sample_service.id, "v2_notifications.post_precompiled_letter_notification", _data=data, _expected_status=400
+        sample_service.id, "v2_notifications.post_letter_notification", _data=data, _expected_status=400
     )
 
     assert resp_json["errors"][0]["message"] == "Cannot decode letter content (invalid base64 encoding)"
@@ -642,9 +621,7 @@ def test_post_precompiled_letter_notification_returns_201(
     if notification_postage:
         data["postage"] = notification_postage
 
-    resp_json = api_client_request.post(
-        sample_service.id, "v2_notifications.post_precompiled_letter_notification", _data=data
-    )
+    resp_json = api_client_request.post(sample_service.id, "v2_notifications.post_letter_notification", _data=data)
 
     s3mock.assert_called_once_with(ANY, b"letter-content", precompiled=True)
 
@@ -669,7 +646,7 @@ def test_post_precompiled_letter_notification_if_s3_upload_fails_notification_is
     data = {"reference": "letter-reference", "content": "bGV0dGVyLWNvbnRlbnQ="}
 
     with pytest.raises(expected_exception=Exception):
-        api_client_request.post(sample_service.id, "v2_notifications.post_precompiled_letter_notification", _data=data)
+        api_client_request.post(sample_service.id, "v2_notifications.post_letter_notification", _data=data)
 
     assert s3mock.called
     assert persist_letter_mock.called
@@ -680,7 +657,7 @@ def test_post_letter_notification_throws_error_for_invalid_postage(api_client_re
     sample_service = create_service(service_permissions=["letter"])
     data = {"reference": "letter-reference", "content": "bGV0dGVyLWNvbnRlbnQ=", "postage": "space unicorn"}
     resp_json = api_client_request.post(
-        sample_service.id, "v2_notifications.post_precompiled_letter_notification", _data=data, _expected_status=400
+        sample_service.id, "v2_notifications.post_letter_notification", _data=data, _expected_status=400
     )
     assert resp_json["errors"][0]["message"] == "postage invalid. It must be first, second, europe or rest-of-world."
 

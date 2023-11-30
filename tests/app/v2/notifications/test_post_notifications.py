@@ -46,8 +46,7 @@ def test_post_sms_notification_returns_201(api_client_request, sample_template_w
 
     resp_json = api_client_request.post(
         sample_template_with_placeholders.service_id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -84,8 +83,7 @@ def test_post_sms_notification_uses_inbound_number_as_sender(api_client_request,
 
     resp_json = api_client_request.post(
         service.id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -108,8 +106,7 @@ def test_post_sms_notification_uses_inbound_number_reply_to_as_sender(api_client
 
     resp_json = api_client_request.post(
         service.id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -137,8 +134,7 @@ def test_post_sms_notification_returns_201_with_sms_sender_id(
 
     resp_json = api_client_request.post(
         sample_template_with_placeholders.service_id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -164,8 +160,7 @@ def test_post_sms_notification_uses_sms_sender_id_reply_to(
 
     resp_json = api_client_request.post(
         sample_template_with_placeholders.service_id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -191,8 +186,7 @@ def test_notification_reply_to_text_is_original_value_if_sender_is_changed_after
 
     api_client_request.post(
         sample_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -230,8 +224,7 @@ def test_should_cache_template_lookups_in_memory(mocker, api_client_request, sam
     for _ in range(5):
         api_client_request.post(
             sample_template.service_id,
-            "v2_notifications.post_notification",
-            notification_type="sms",
+            "v2_notifications.post_sms_notification",
             _data=data,
         )
 
@@ -262,8 +255,7 @@ def test_should_cache_template_and_service_in_redis(mocker, api_client_request, 
 
     api_client_request.post(
         sample_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -316,8 +308,7 @@ def test_should_return_template_if_found_in_redis(mocker, api_client_request, sa
 
     api_client_request.post(
         sample_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -336,8 +327,7 @@ def test_post_notification_returns_400_and_missing_template(
 
     error_json = api_client_request.post(
         sample_service.id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
+        f"v2_notifications.post_{notification_type}_notification",
         _data=data,
         _expected_status=400,
     )
@@ -392,8 +382,7 @@ def test_post_notification_with_too_long_reference_returns_400(
 
         error_resp = api_client_request.post(
             template.service_id,
-            "v2_notifications.post_notification",
-            notification_type=notification_type,
+            f"v2_notifications.post_{notification_type}_notification",
             _data=data,
             _expected_status=400,
             headers=[("Content-Type", "application/json")],
@@ -426,8 +415,7 @@ def test_post_notification_errors_with_too_much_qr_code_data(
 
     error_resp = api_client_request.post(
         letter_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type=LETTER_TYPE,
+        "v2_notifications.post_letter_notification",
         _data=data,
         _expected_status=400,
         headers=[("Content-Type", "application/json")],
@@ -456,8 +444,7 @@ def test_notification_returns_400_and_for_schema_problems(
 
     error_resp = api_client_request.post(
         sample_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
+        f"v2_notifications.post_{notification_type}_notification",
         _data=data,
         _expected_status=400,
     )
@@ -485,8 +472,7 @@ def test_post_email_notification_returns_201(
 
     resp_json = api_client_request.post(
         sample_email_template_with_placeholders.service_id,
-        "v2_notifications.post_notification",
-        notification_type="email",
+        "v2_notifications.post_email_notification",
         _data=data,
     )
 
@@ -635,8 +621,7 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
 
     response = api_client_request.post(
         template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="email",
+        "v2_notifications.post_email_notification",
         _data=data,
         _expected_status=expected_status,
     )
@@ -679,8 +664,7 @@ def test_should_not_persist_or_send_notification_if_simulated_recipient(
 
     resp_json = api_client_request.post(
         sample_email_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
+        f"v2_notifications.post_{notification_type}_notification",
         _data=data,
     )
 
@@ -708,8 +692,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
     resp_json = api_client_request.post(
         sample_service.id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
+        f"v2_notifications.post_{notification_type}_notification",
         _data=data,
         _expected_status=429,
     )
@@ -734,7 +717,7 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
     data = {"phone_number": "20-12-1234-1234", "template_id": template.id}
 
     error_json = api_client_request.post(
-        service.id, "v2_notifications.post_notification", notification_type="sms", _data=data, _expected_status=400
+        service.id, "v2_notifications.post_sms_notification", _data=data, _expected_status=400
     )
 
     assert error_json["status_code"] == 400
@@ -750,8 +733,7 @@ def test_post_sms_notification_with_archived_reply_to_id_returns_400(api_client_
 
     resp_json = api_client_request.post(
         sample_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
         _expected_status=400,
     )
@@ -781,8 +763,7 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
 
     error_json = api_client_request.post(
         sample_template_without_permission.service_id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
+        f"v2_notifications.post_{notification_type}_notification",
         _data=data,
         _expected_status=400,
     )
@@ -807,8 +788,7 @@ def test_post_sms_notification_returns_400_if_number_not_in_guest_list(
 
     error_json = api_client_request.post(
         service.id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _api_key_type="team",
         _data=data,
         _expected_status=400,
@@ -832,8 +812,7 @@ def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(
 
     api_client_request.post(
         sample_service.id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -848,8 +827,7 @@ def test_post_sms_should_persist_supplied_sms_number(api_client_request, sample_
 
     resp_json = api_client_request.post(
         sample_template_with_placeholders.service_id,
-        "v2_notifications.post_notification",
-        notification_type="sms",
+        "v2_notifications.post_sms_notification",
         _data=data,
     )
 
@@ -859,13 +837,6 @@ def test_post_sms_should_persist_supplied_sms_number(api_client_request, sample_
     assert "+(44) 77009-00855" == notifications[0].to
     assert resp_json["id"] == str(notification_id)
     assert mocked.called
-
-
-def test_post_notification_raises_bad_request_if_not_valid_notification_type(api_client_request, sample_service):
-    error_json = api_client_request.post(
-        sample_service.id, "v2_notifications.post_notification", notification_type="foo", _data={}, _expected_status=404
-    )
-    assert "The requested URL was not found on the server." in error_json["message"]
 
 
 @pytest.mark.parametrize("notification_type", ["sms", "email"])
@@ -883,8 +854,7 @@ def test_post_notification_with_wrong_type_of_sender(
 
     resp_json = api_client_request.post(
         template.service_id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
+        f"v2_notifications.post_{notification_type}_notification",
         _data=data,
         _expected_status=400,
     )
@@ -907,8 +877,7 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(api_client_r
 
     resp_json = api_client_request.post(
         sample_email_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="email",
+        "v2_notifications.post_email_notification",
         _data=data,
     )
 
@@ -933,8 +902,7 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(
 
     resp_json = api_client_request.post(
         sample_email_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="email",
+        "v2_notifications.post_email_notification",
         _data=data,
         _expected_status=400,
     )
@@ -963,8 +931,7 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(
 
     resp_json = api_client_request.post(
         sample_email_template.service_id,
-        "v2_notifications.post_notification",
-        notification_type="email",
+        "v2_notifications.post_email_notification",
         _data=data,
         _expected_status=400,
     )
@@ -1013,8 +980,7 @@ def test_post_notification_with_document_upload(
 
     resp_json = api_client_request.post(
         service.id,
-        "v2_notifications.post_notification",
-        notification_type="email",
+        "v2_notifications.post_email_notification",
         _data=data,
     )
 
@@ -1064,8 +1030,7 @@ def test_post_notification_with_document_upload_simulated(api_client_request, no
 
     resp_json = api_client_request.post(
         service.id,
-        "v2_notifications.post_notification",
-        notification_type="email",
+        "v2_notifications.post_email_notification",
         _data=data,
     )
 
@@ -1088,9 +1053,7 @@ def test_post_notification_without_document_upload_permission(api_client_request
         "personalisation": {"document": {"file": "abababab"}},
     }
 
-    api_client_request.post(
-        service.id, "v2_notifications.post_notification", notification_type="email", _data=data, _expected_status=400
-    )
+    api_client_request.post(service.id, "v2_notifications.post_email_notification", _data=data, _expected_status=400)
 
 
 @pytest.mark.parametrize(
@@ -1112,8 +1075,7 @@ def test_post_notification_with_document_rejects_sms_and_letter(
 
     response_json = api_client_request.post(
         sample_service.id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
+        f"v2_notifications.post_{notification_type}_notification",
         _data=data,
         _expected_status=400,
     )
@@ -1192,8 +1154,7 @@ def test_post_notification_returns_201_when_content_type_is_missing_but_payload_
 def test_post_email_notification_when_data_is_empty_returns_400(api_client_request, sample_service, notification_type):
     resp_json = api_client_request.post(
         sample_service.id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
+        f"v2_notifications.post_{notification_type}_notification",
         _data=None,
         _expected_status=400,
     )
@@ -1276,8 +1237,7 @@ def test_post_notifications_saves_email_or_sms_normally_if_saving_to_queue_fails
 
         json_resp = api_client_request.post(
             service.id,
-            "v2_notifications.post_notification",
-            notification_type=notification_type,
+            f"v2_notifications.post_{notification_type}_notification",
             _data=data,
         )
 
@@ -1312,9 +1272,8 @@ def test_post_notifications_doesnt_use_save_queue_for_test_notifications(
 
         json_resp = api_client_request.post(
             service.id,
-            "v2_notifications.post_notification",
+            f"v2_notifications.post_{notification_type}_notification",
             _api_key_type="test",
-            notification_type=notification_type,
             _data=data,
         )
 
@@ -1347,7 +1306,7 @@ def test_post_notification_does_not_use_save_queue_for_letters(api_client_reques
         }
         json_resp = api_client_request.post(
             sample_letter_template.service_id,
-            "v2_notifications.post_notification",
+            "v2_notifications.post_letter_notification",
             notification_type="letter",
             _data=data,
         )

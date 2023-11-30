@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 import botocore
-from flask import abort, current_app, jsonify, request
+from flask import current_app, jsonify, request
 from gds_metrics import Histogram
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
@@ -83,14 +83,40 @@ POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
 )
 
 
-@v2_notification_blueprint.route("/{}".format(LETTER_TYPE), methods=["POST"])
-def post_precompiled_letter_notification():
-    request_json = get_valid_json()
-    if "content" not in (request_json or {}):
-        return post_notification(LETTER_TYPE)
+@v2_notification_blueprint.route("/letter", methods=["POST"])
+def post_letter_notification():
+    with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
+        request_json = get_valid_json()
 
-    form = validate(request_json, post_precompiled_letter_request)
+        if "content" not in (request_json or {}):
+            form = validate(request_json, post_letter_request)
+            handler = functools.partial(post_notification, notification_type="letter")
+        else:
+            form = validate(request_json, post_precompiled_letter_request)
+            handler = post_precompiled_letter_notification
 
+    return handler(form=form)
+
+
+@v2_notification_blueprint.route("/email", methods=["POST"])
+def post_email_notification():
+    with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
+        request_json = get_valid_json()
+        form = validate(request_json, post_email_request)
+
+    return post_notification(EMAIL_TYPE, form)
+
+
+@v2_notification_blueprint.route("/sms", methods=["POST"])
+def post_sms_notification():
+    with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
+        request_json = get_valid_json()
+        form = validate(request_json, post_sms_request)
+
+    return post_notification(SMS_TYPE, form)
+
+
+def post_precompiled_letter_notification(form):
     # Check permission to send letters
     check_service_has_permission(LETTER_TYPE, authenticated_service.permissions)
 
@@ -115,20 +141,7 @@ def post_precompiled_letter_notification():
     return jsonify(notification), 201
 
 
-@v2_notification_blueprint.route("/<notification_type>", methods=["POST"])
-def post_notification(notification_type):
-    with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
-        request_json = get_valid_json()
-
-        if notification_type == EMAIL_TYPE:
-            form = validate(request_json, post_email_request)
-        elif notification_type == SMS_TYPE:
-            form = validate(request_json, post_sms_request)
-        elif notification_type == LETTER_TYPE:
-            form = validate(request_json, post_letter_request)
-        else:
-            abort(404)
-
+def post_notification(notification_type, form):
     check_service_has_permission(notification_type, authenticated_service.permissions)
 
     check_rate_limiting(authenticated_service, api_user, notification_type=notification_type)
