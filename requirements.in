@@ -1,6 +1,8 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements.in
 
+apispec==6.3.0
+apispec-webframeworks==0.5.2
 cffi==1.15.1
 celery[sqs]==5.2.7
 Flask-Bcrypt==1.0.1
