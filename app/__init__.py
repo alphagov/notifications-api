@@ -5,6 +5,9 @@ import time
 import uuid
 from time import monotonic
 
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
+from apispec_webframeworks.flask import FlaskPlugin
 from celery import current_task
 from flask import (
     current_app,
@@ -37,6 +40,7 @@ from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.letter.dvla import DVLAClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.openapi.openapi import openapi_blueprint, setup_openapi
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -54,6 +58,12 @@ redis_store = RedisClient()
 cbc_proxy_client = CBCProxyClient()
 document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()
+openapi_spec = APISpec(
+    title="GOV.UK Notify - Public API",
+    version="2.0.0",
+    openapi_version="3.0.2",
+    plugins=[MarshmallowPlugin(), FlaskPlugin()],
+)
 
 notification_provider_clients = NotificationProviderClients()
 
@@ -116,6 +126,8 @@ def create_app(application):
 
     # set up sqlalchemy events
     setup_sqlalchemy_events(application)
+
+    setup_openapi(application, openapi_spec)
 
     return application
 
@@ -184,6 +196,8 @@ def register_blueprint(application):
         g.user_id = None
 
     application.before_request(ensure_user_id_attribute_before_request)
+
+    application.register_blueprint(openapi_blueprint)
 
     service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix="/service")

@@ -85,6 +85,46 @@ POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
 
 @v2_notification_blueprint.route("/letter", methods=["POST"])
 def post_letter_notification():
+    """Send a letter
+    ---
+    post:
+        description: Send a letter
+        requestBody:
+            required: true
+            content:
+                application/json:
+                    schema:
+                      oneOf:
+                        - type: object
+                          properties:
+                            reference:
+                                type: string
+                                maxLength: 1000
+                            template_id:
+                                type: string
+                                format: uuid
+                            personalisation:
+                                type: object
+                        - type: object
+                          properties:
+                            reference:
+                                type: string
+                                maxLength: 1000
+                            content:
+                                type: string
+                            postage:
+                                enum:
+                                    - first
+                                    - second
+                                    - europe
+                                    - rest-of-world
+        responses:
+            200:
+                description: The created letter
+                content:
+                    application/json:
+                        schema: Notification
+    """
     with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
         request_json = get_valid_json()
 
@@ -100,6 +140,17 @@ def post_letter_notification():
 
 @v2_notification_blueprint.route("/email", methods=["POST"])
 def post_email_notification():
+    """Send an email
+    ---
+    post:
+        description: Send an email
+        responses:
+            200:
+                description: The created email
+                content:
+                    application/json:
+                        schema: Notification
+    """
     with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
         request_json = get_valid_json()
         form = validate(request_json, post_email_request)
@@ -109,6 +160,17 @@ def post_email_notification():
 
 @v2_notification_blueprint.route("/sms", methods=["POST"])
 def post_sms_notification():
+    """Send a text message
+    ---
+    post:
+        description: Send a text message
+        responses:
+            200:
+                description: The created text message
+                content:
+                    application/json:
+                        schema: Notification
+    """
     with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
         request_json = get_valid_json()
         form = validate(request_json, post_sms_request)
