@@ -1,5 +1,6 @@
 from collections.abc import Callable, Iterable, Mapping
 import psycopg2
+import struct
 import time
 from contextlib import contextmanager
 from logging.config import fileConfig
@@ -68,28 +69,38 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    # abort any migrations if the lock cannot be acquired after one second.
-    #
-    # if we see issues with this lock timeout failing, we should try running again when there are no locks on that
-    # table, perhaps at a quieter time.
-    options = {"lock_timeout": "1000"}
     engine = engine_from_config(
         config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        connect_args={"options": " ".join(f"-c {opt_key}={opt_value}" for opt_key, opt_value in options.items())},
     )
 
     connection = engine.connect()
-    context.configure(
-        connection=connection,
-        compare_type=True,
-        include_object=include_object,
-        target_metadata=target_metadata,
-        transaction_per_migration=True,
-    )
-
     try:
+        context.configure(
+            connection=connection,
+            compare_type=True,
+            include_object=include_object,
+            target_metadata=target_metadata,
+            transaction_per_migration=True,
+        )
+
+        # take a *session-level* advisory lock to prevent multiple migration
+        # processes attempting to run concurrently. being a session-level lock,
+        # it should safely cover our few migrations that need to perform multiple
+        # transactions.
+        # advisory lock ids are 64b (signed) integers, so use the null-padded,
+        # big-endian representation of the string "alembic"
+        lock_id = struct.unpack(">q", struct.pack("8s", b"alembic"))[0]
+        connection.execute("SELECT pg_advisory_lock(%s)", lock_id)
+
+        # abort any migrations if a lock (other than the above advisory lock)
+        # cannot be acquired after one second.
+        #
+        # if we see issues with this lock timeout failing, we should try running
+        # again when there are no locks on that table, perhaps at a quieter time.
+        connection.execute("SET lock_timeout = 1000")
+
         with context.begin_transaction():
             context.run_migrations()
 
