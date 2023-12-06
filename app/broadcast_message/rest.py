@@ -1,6 +1,6 @@
 import iso8601
 from flask import Blueprint, jsonify, request
-from notifications_utils.template import BroadcastMessageTemplate
+from notifications_utils.template import SMS_CHAR_COUNT_LIMIT, SMSMessageTemplate
 
 from app.broadcast_message import utils as broadcast_utils
 from app.broadcast_message.broadcast_message_schema import (
@@ -61,11 +61,10 @@ def create_broadcast_message(service_id):
         content = str(template._as_utils_template_with_personalisation(personalisation))
         reference = None
     else:
-        temporary_template = BroadcastMessageTemplate.from_content(data["content"])
-        if temporary_template.content_too_long:
+        temporary_template = SMSMessageTemplate({"content": data["content"], "template_type": "sms"})
+        if temporary_template.is_message_too_long():
             raise InvalidRequest(
-                (f"Content must be {temporary_template.max_content_count:,.0f} characters or fewer")
-                + (" (because it could not be GSM7 encoded)" if temporary_template.non_gsm_characters else ""),
+                f"Content must be {SMS_CHAR_COUNT_LIMIT:,.0f} characters or fewer",
                 status_code=400,
             )
         template = None

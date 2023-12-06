@@ -18,7 +18,6 @@ from notifications_utils.recipients import (
 )
 from notifications_utils.safe_string import make_string_safe_for_email_local_part
 from notifications_utils.template import (
-    BroadcastMessageTemplate,
     LetterPrintTemplate,
     PlainTextEmailTemplate,
     SMSMessageTemplate,
@@ -1133,7 +1132,7 @@ class TemplateBase(db.Model):
         if self.template_type == SMS_TYPE:
             return SMSMessageTemplate(self.__dict__)
         if self.template_type == BROADCAST_TYPE:
-            return BroadcastMessageTemplate(self.__dict__)
+            return SMSMessageTemplate(self.__dict__ | {"template_type": "sms"})
         if self.template_type == LETTER_TYPE:
             return LetterPrintTemplate(
                 self.__dict__,

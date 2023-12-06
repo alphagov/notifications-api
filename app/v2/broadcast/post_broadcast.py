@@ -1,7 +1,7 @@
 from itertools import chain
 
 from flask import current_app, jsonify, request
-from notifications_utils.template import BroadcastMessageTemplate
+from notifications_utils.template import SMS_CHAR_COUNT_LIMIT, SMSMessageTemplate
 from sqlalchemy.orm.exc import MultipleResultsFound
 
 from app import api_user, authenticated_service, redis_store
@@ -116,11 +116,10 @@ def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
 
 
 def _validate_template(broadcast_json):
-    template = BroadcastMessageTemplate.from_content(broadcast_json["content"])
+    template = SMSMessageTemplate({"content": broadcast_json["content"], "template_type": "sms"})
 
-    if template.content_too_long:
+    if template.is_message_too_long():
         raise ValidationError(
-            message=(f"description must be {template.max_content_count:,.0f} characters or fewer")
-            + (" (because it could not be GSM7 encoded)" if template.non_gsm_characters else ""),
+            message=(f"description must be {SMS_CHAR_COUNT_LIMIT:,.0f} characters or fewer"),
             status_code=400,
         )

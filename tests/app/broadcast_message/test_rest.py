@@ -206,11 +206,11 @@ def test_create_broadcast_message_400s_if_json_schema_fails_validation(
     "content, expected_status, expected_errors",
     (
         ("a", 201, None),
-        ("a" * 1_395, 201, None),
-        ("a\r\n" * 697, 201, None),  # 1,394 chars – new lines normalised to \n
-        ("a" * 1_396, 400, ("Content must be 1,395 characters or fewer")),
-        ("ŵ" * 615, 201, None),
-        ("ŵ" * 616, 400, ("Content must be 615 characters or fewer " "(because it could not be GSM7 encoded)")),
+        ("a" * 918, 201, None),
+        ("a\r\n" * 459, 201, None),  # 918 chars – new lines normalised to \n
+        ("a" * 919, 400, "Content must be 918 characters or fewer"),
+        ("ŵ" * 918, 201, None),
+        ("ŵ" * 919, 400, "Content must be 918 characters or fewer"),
     ),
 )
 def test_create_broadcast_message_400s_if_content_too_long(

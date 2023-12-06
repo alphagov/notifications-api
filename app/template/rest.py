@@ -6,7 +6,6 @@ from flask import Blueprint, current_app, jsonify, request
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
 from notifications_utils.template import (
-    BroadcastMessageTemplate,
     LetterPreviewTemplate,
     SMSMessageTemplate,
 )
@@ -53,11 +52,8 @@ register_errors(template_blueprint)
 
 
 def _content_count_greater_than_limit(content, template_type):
-    if template_type == SMS_TYPE:
-        template = SMSMessageTemplate({"content": content, "template_type": template_type})
-        return template.is_message_too_long()
-    if template_type == BROADCAST_TYPE:
-        template = BroadcastMessageTemplate({"content": content, "template_type": template_type})
+    if template_type in {SMS_TYPE, BROADCAST_TYPE}:
+        template = SMSMessageTemplate({"content": content, "template_type": SMS_TYPE})
         return template.is_message_too_long()
     return False
 
