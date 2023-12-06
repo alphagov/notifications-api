@@ -237,9 +237,7 @@ def verify_user_code(user_id):
     return jsonify({}), 204
 
 
-# TODO: Remove the "verify" endpoint once admin no longer points at it
 @user_blueprint.route("/<uuid:user_id>/complete/webauthn-login", methods=["POST"])
-@user_blueprint.route("/<uuid:user_id>/verify/webauthn-login", methods=["POST"])
 def complete_login_after_webauthn_authentication_attempt(user_id):
     """
     complete login after a webauthn authentication. There's nothing webauthn specific in this code
