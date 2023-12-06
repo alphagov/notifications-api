@@ -1,7 +1,6 @@
 from itertools import chain
 
 from flask import current_app, jsonify, request
-from notifications_utils.polygons import Polygons
 from notifications_utils.template import BroadcastMessageTemplate
 from sqlalchemy.orm.exc import MultipleResultsFound
 
@@ -60,18 +59,11 @@ def create_broadcast():
     else:
         _validate_template(broadcast_json)
 
-        polygons = Polygons(
-            list(
-                chain.from_iterable(
-                    ([[[y, x] for x, y in polygon] for polygon in area["polygons"]] for area in broadcast_json["areas"])
-                )
+        polygons = list(
+            chain.from_iterable(
+                ([[[x, y] for x, y in polygon] for polygon in area["polygons"]] for area in broadcast_json["areas"])
             )
         )
-
-        if len(polygons) > 12 or polygons.point_count > 250:
-            simple_polygons = polygons.smooth.simplify
-        else:
-            simple_polygons = polygons
 
         broadcast_message = BroadcastMessage(
             service_id=authenticated_service.id,
@@ -80,7 +72,7 @@ def create_broadcast():
             cap_event=broadcast_json["cap_event"],
             areas={
                 "names": [area["name"] for area in broadcast_json["areas"]],
-                "simple_polygons": simple_polygons.as_coordinate_pairs_lat_long,
+                "simple_polygons": polygons,
             },
             status=BroadcastStatusType.PENDING_APPROVAL,
             created_by_api_key_id=api_user.id,
