@@ -9,7 +9,7 @@ from notifications_utils.url_safe_token import generate_token
 from app.constants import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE
 from app.models import Notification
 from tests import create_admin_authorization_header
-from tests.app.db import create_invited_user
+from tests.app.db import create_invited_user, create_user
 
 
 @pytest.mark.parametrize(
@@ -337,3 +337,17 @@ def test_get_invited_user(admin_request, sample_invited_user):
 def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, sample_invited_user, fake_uuid):
     json_resp = admin_request.get("service_invite.get_invited_user", invited_user_id=fake_uuid, _expected_status=404)
     assert json_resp["result"] == "error"
+
+
+def test_request_user_invite(admin_request, sample_service):
+    data = dict(from_user_ids=[], reason="oops", invite_list_host="oops")
+    user_to_invite = create_user()
+    json_resp = admin_request.post(
+        "service_invite.request_user_invite",
+        service_id=sample_service.id,
+        user_to_invite_id=user_to_invite.id,
+        _data=data,
+        _expected_status=200,
+    )
+
+    assert json_resp["reason"] == data["reason"]

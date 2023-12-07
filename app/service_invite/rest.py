@@ -10,7 +10,9 @@ from app.dao.invited_user_dao import (
     get_invited_users_for_service,
     save_invited_user,
 )
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
+from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
 from app.models import Service
 from app.notifications.process_notifications import (
@@ -98,6 +100,20 @@ def invited_user_url(invited_user_id, invite_link_host=None):
 def get_invited_user(invited_user_id):
     invited_user = get_invited_user_by_id(invited_user_id)
     return jsonify(data=invited_user_schema.dump(invited_user)), 200
+
+
+@service_invite.route("/service/<uuid:service_id>/invite/request-for/<uuid:user_to_invite_id>", methods=["POST"])
+def request_user_invite(service_id, user_to_invite_id):
+    request_json = request.get_json()
+    get_user_by_id(user_to_invite_id)
+    Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
+    dao_fetch_service_by_id(service_id)
+    data = {
+        "from_user_ids": request_json[""],
+        "reason": request_json["reason"],
+        "invite_list_host": request_json["oops"],
+    }
+    return jsonify(data=data), 200
 
 
 @service_invite.route("/invite/service/<token>", methods=["GET"])
