@@ -9,7 +9,7 @@ from notifications_utils.url_safe_token import generate_token
 from app.constants import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE
 from app.models import Notification
 from tests import create_admin_authorization_header
-from tests.app.db import create_invited_user, create_user
+from tests.app.db import create_invited_user, create_permissions, create_user
 
 
 @pytest.mark.parametrize(
@@ -339,15 +339,49 @@ def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, sample_invi
     assert json_resp["result"] == "error"
 
 
-def test_request_user_invite(admin_request, sample_service):
-    data = dict(from_user_ids=[], reason="oops", invite_list_host="oops")
-    user_to_invite = create_user()
+def test_request_user_invite_is_sent_to_valid_service_managers(admin_request, sample_service):
+    user_requesting_invite = create_user()
+    service_manager_1 = create_user()
+    service_manager_2 = create_user()
+    service_manager_3 = create_user()
+    create_permissions(service_manager_1, sample_service, "manage_settings")
+    create_permissions(service_manager_2, sample_service, "manage_settings")
+    create_permissions(service_manager_3, sample_service, "manage_settings")
+    recipients_of_invite_request = [service_manager_1.id, service_manager_2.id, service_manager_3.id]
+    reason = "Lots of reasons"
+    invite_link_host = "random string"
+    data = dict(
+        from_user_ids=list(map(lambda x: str(x), recipients_of_invite_request)),
+        reason=reason,
+        invite_link_host=invite_link_host,
+    )
+    admin_request.post(
+        "service_invite.request_user_invite",
+        service_id=sample_service.id,
+        user_to_invite_id=user_requesting_invite.id,
+        _data=data,
+        _expected_status=204,
+    )
+
+
+def test_invite_request_is_not_sent_if_requester_is_already_part_of_service(admin_request, sample_service):
+    # We want to test that only valid service managers are sent service invite request
+    user_requesting_invite = create_user()
+    user_requesting_invite.services = [sample_service]
+    service_manager_1 = create_user()
+    create_permissions(service_manager_1, sample_service)
+    service_managers = [service_manager_1]
+    reason = "Lots of reasons"
+    invite_link_host = "random string"
+    data = dict(
+        from_user_ids=list(map(lambda x: str(x.id), service_managers)), reason=reason, invite_link_host=invite_link_host
+    )
+
     json_resp = admin_request.post(
         "service_invite.request_user_invite",
         service_id=sample_service.id,
-        user_to_invite_id=user_to_invite.id,
+        user_to_invite_id=user_requesting_invite.id,
         _data=data,
-        _expected_status=200,
+        _expected_status=400,
     )
-
-    assert json_resp["reason"] == data["reason"]
+    assert json_resp["message"] == "You are already a member of Sample service"
