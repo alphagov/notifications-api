@@ -237,9 +237,7 @@ def verify_user_code(user_id):
     return jsonify({}), 204
 
 
-# TODO: Remove the "verify" endpoint once admin no longer points at it
 @user_blueprint.route("/<uuid:user_id>/complete/webauthn-login", methods=["POST"])
-@user_blueprint.route("/<uuid:user_id>/verify/webauthn-login", methods=["POST"])
 def complete_login_after_webauthn_authentication_attempt(user_id):
     """
     complete login after a webauthn authentication. There's nothing webauthn specific in this code
@@ -497,18 +495,6 @@ def fetch_user_by_email():
     email = email_data_request_schema.load(request.get_json())
 
     fetched_user = get_user_by_email(email["email"])
-    result = fetched_user.serialize()
-    return jsonify(data=result)
-
-
-# TODO: Deprecate this GET endpoint
-@user_blueprint.route("/email", methods=["GET"])
-def get_by_email():
-    email = request.args.get("email")
-    if not email:
-        error = "Invalid request. Email query string param required"
-        raise InvalidRequest(error, status_code=400)
-    fetched_user = get_user_by_email(email)
     result = fetched_user.serialize()
     return jsonify(data=result)
 
