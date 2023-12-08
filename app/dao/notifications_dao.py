@@ -788,11 +788,11 @@ def letters_missing_from_sending_bucket(seconds_to_subtract):
 
 
 def dao_precompiled_letters_still_pending_virus_check():
-    ninety_minutes_ago = datetime.utcnow() - timedelta(seconds=5400)
+    ten_minutes_ago = datetime.utcnow() - timedelta(seconds=600)
 
     notifications = (
         Notification.query.filter(
-            Notification.created_at < ninety_minutes_ago, Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
+            Notification.created_at < ten_minutes_ago, Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
         )
         .order_by(Notification.created_at)
         .all()

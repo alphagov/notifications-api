@@ -481,10 +481,16 @@ def test_check_if_letters_still_pending_virus_check_restarts_scan_for_stuck_lett
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=5401),
+        created_at=datetime.utcnow() - timedelta(seconds=601),
         reference="one",
     )
-    expected_filename = "NOTIFY.ONE.D.2.C.20190530122959.PDF"
+    create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(seconds=599),
+        reference="still has time to send",
+    )
+    expected_filename = "NOTIFY.ONE.D.2.C.20190530134959.PDF"
 
     check_if_letters_still_pending_virus_check()
 
@@ -512,23 +518,25 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=5400),
+        created_at=datetime.utcnow() - timedelta(seconds=600),
+        reference="ignore as still has time",
     )
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_DELIVERED,
-        created_at=datetime.utcnow() - timedelta(seconds=6000),
+        created_at=datetime.utcnow() - timedelta(seconds=1000),
+        reference="ignore as status in delivered",
     )
     notification_1 = create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=5401),
+        created_at=datetime.utcnow() - timedelta(seconds=601),
         reference="one",
     )
     notification_2 = create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=70000),
+        created_at=datetime.utcnow() - timedelta(seconds=1000),
         reference="two",
     )
 
@@ -537,8 +545,8 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
     assert mock_file_exists.call_count == 2
     mock_file_exists.assert_has_calls(
         [
-            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20190530122959.PDF"),
-            call("test-letters-scan", "NOTIFY.TWO.D.2.C.20190529183320.PDF"),
+            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20190530134959.PDF"),
+            call("test-letters-scan", "NOTIFY.TWO.D.2.C.20190530134320.PDF"),
         ],
         any_order=True,
     )

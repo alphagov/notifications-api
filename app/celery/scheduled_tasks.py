@@ -337,7 +337,7 @@ def check_if_letters_still_pending_virus_check():
     if len(letters) > 0:
         letter_ids = [(str(letter.id), letter.reference) for letter in letters]
 
-        msg = f"""{len(letters)} precompiled letters have been pending-virus-check for over 90 minutes.
+        msg = f"""{len(letters)} precompiled letters have been pending-virus-check for over 10 minutes
             We couldn't find them in the scan bucket. We'll need to find out where the files are and kick them off
             again or move them to technical failure.
 
