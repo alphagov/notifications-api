@@ -579,7 +579,7 @@ class Staging(Config):
     S3_BUCKET_LETTER_SANITISE = "staging-letters-sanitise"
     FROM_NUMBER = "stage"
     API_RATE_LIMIT_ENABLED = True
-    CHECK_PROXY_HEADER = True
+    CHECK_PROXY_HEADER = False if os.environ.get("CHECK_PROXY_HEADER") == "0" else True
     DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
 
 
@@ -597,7 +597,7 @@ class Production(Config):
     S3_BUCKET_LETTER_SANITISE = "production-letters-sanitise"
     FROM_NUMBER = "GOVUK"
     API_RATE_LIMIT_ENABLED = True
-    CHECK_PROXY_HEADER = True
+    CHECK_PROXY_HEADER = False if os.environ.get("CHECK_PROXY_HEADER") == "0" else True
     SES_STUB_URL = None
 
     CRONITOR_ENABLED = True
