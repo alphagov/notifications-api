@@ -64,7 +64,6 @@ def dao_update_template_reply_to(template_id, reply_to):
             "archived": template.archived,
             "process_type": template.process_type,
             "service_letter_contact_id": template.service_letter_contact_id,
-            "broadcast_data": template.broadcast_data,
         }
     )
     db.session.add(history)
