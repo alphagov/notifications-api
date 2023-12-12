@@ -225,8 +225,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     sms_message_limit = field_for(models.Service, "sms_message_limit", required=True)
     letter_message_limit = field_for(models.Service, "letter_message_limit", required=True)
     go_live_at = field_for(models.Service, "go_live_at", format=DATETIME_FORMAT_NO_TIMEZONE)
-    allowed_broadcast_provider = fields.Method(dump_only=True, serialize="_get_allowed_broadcast_provider")
-    broadcast_channel = fields.Method(dump_only=True, serialize="_get_broadcast_channel")
     name = fields.String(required=True)
     custom_email_sender_name = fields.String(allow_none=True)
     # this can only be set via custom_email_sender_name or name
@@ -238,12 +236,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             {"callback_id": str(callback.id), "callback_type": callback.callback_type}
             for callback in service.service_callback_api
         ]
-
-    def _get_allowed_broadcast_provider(self, service):
-        return service.allowed_broadcast_provider
-
-    def _get_broadcast_channel(self, service):
-        return service.broadcast_channel
 
     def get_letter_logo_filename(self, service):
         return service.letter_branding and service.letter_branding.filename
@@ -272,7 +264,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             "all_template_folders",
             "annual_billing",
             "api_keys",
-            "broadcast_messages",
             "complaints",
             "contact_list",
             "created_at",
@@ -286,8 +277,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             "letter_logo_filename",
             "reply_to_email_addresses",
             "returned_letters",
-            "service_broadcast_provider_restriction",
-            "service_broadcast_settings",
             "service_sms_senders",
             "templates",
             "updated_at",
@@ -349,7 +338,6 @@ class DetailedServiceSchema(BaseSchema):
             "all_template_folders",
             "annual_billing",
             "api_keys",
-            "broadcast_messages",
             "contact_list",
             "created_by",
             "crown",
@@ -445,7 +433,6 @@ class TemplateSchemaNoDetail(TemplateSchema):
     class Meta(TemplateSchema.Meta):
         exclude = TemplateSchema.Meta.exclude + (
             "archived",
-            "broadcast_data",
             "created_at",
             "created_by",
             "created_by_id",
@@ -467,13 +454,6 @@ class TemplateSchemaNoDetail(TemplateSchema):
             "letter_welsh_content",
             "letter_languages",
         )
-
-    @pre_dump
-    def remove_content_for_non_broadcast_templates(self, template, **kwargs):
-        if template.template_type != app.constants.BROADCAST_TYPE:
-            template.content = None
-
-        return template
 
 
 class TemplateHistorySchema(BaseSchema):
@@ -501,7 +481,6 @@ class TemplateHistorySchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
-        exclude = ("broadcast_messages",)
 
 
 class ApiKeySchema(BaseSchema):

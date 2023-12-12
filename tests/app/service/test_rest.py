@@ -12,7 +12,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.celery.provider_tasks import deliver_email
 from app.celery.tasks import process_report_request
 from app.constants import (
-    BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
     EMAIL_TYPE,
     INBOUND_SMS_TYPE,
@@ -256,16 +255,12 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp["data"]["id"] == str(sample_service.id)
     assert json_resp["data"]["email_branding"] is None
     assert json_resp["data"]["prefix_sms"] is False
-    assert json_resp["data"]["allowed_broadcast_provider"] is None
-    assert json_resp["data"]["broadcast_channel"] is None
 
     assert set(json_resp["data"].keys()) == {
         "active",
-        "allowed_broadcast_provider",
         "billing_contact_email_addresses",
         "billing_contact_names",
         "billing_reference",
-        "broadcast_channel",
         "confirmed_unique",
         "consent_to_research",
         "contact_link",
@@ -914,13 +909,12 @@ def test_update_service_permissions_will_add_service_permissions(client, sample_
 @pytest.mark.parametrize(
     "permission_to_add",
     [
-        (EMAIL_TYPE),
-        (SMS_TYPE),
-        (INTERNATIONAL_SMS_TYPE),
-        (LETTER_TYPE),
-        (INBOUND_SMS_TYPE),
-        (EMAIL_AUTH_TYPE),
-        (BROADCAST_TYPE),  # TODO: remove this ability to set broadcast permission this way
+        EMAIL_TYPE,
+        SMS_TYPE,
+        INTERNATIONAL_SMS_TYPE,
+        LETTER_TYPE,
+        INBOUND_SMS_TYPE,
+        EMAIL_AUTH_TYPE,
     ],
 )
 def test_add_service_permission_will_add_permission(client, service_with_no_permissions, permission_to_add):
