@@ -1,6 +1,6 @@
 """
 
-Revision ID: 0438_request_invite_to_a_service_templates
+Revision ID: 0438_request_invite_templates
 Revises: 0437_min_numeric_scl_aux_tbls
 Create Date: 2023-12-11 16:21:05.947886
 
@@ -10,7 +10,7 @@ from alembic import op
 from flask import current_app
 
 
-revision = "0438_request_invite_to_a_service_templates"
+revision = "0438_request_invite_templates"
 down_revision = "0437_min_numeric_scl_aux_tbls"
 
 
@@ -21,7 +21,7 @@ request_invite_to_a_service_template_content = textwrap.dedent(
 
 ((requester_name)) would like to join the ‘((service_name))’ team on GOV.UK Notify.
 
-((reason_given??They gave the following reason for wanting to join:))
+((reason??They gave the following reason for wanting to join:))
 
 ((reason))
 

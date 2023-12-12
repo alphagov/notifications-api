@@ -131,18 +131,22 @@ def request_user_invite(service_id, user_to_invite_id):
     request_json = request.get_json()
 
     user_requesting_invite = get_user_by_id(user_to_invite_id)
-    recipients_of_invite_request_ids = request_json["from_user_ids"]
-    [get_user_by_id(recipient_id) for recipient_id in recipients_of_invite_request_ids]
+    recipients_of_invite_request_ids = request_json["from_user_id"]
+    recipients_of_invite_request = [get_user_by_id(recipient_id) for recipient_id in recipients_of_invite_request_ids]
     service = dao_fetch_service_by_id(service_id)
-    request_json["reason"]
-    request_json["invite_link_host"]
+    reason_for_request = request_json["reason"]
+    invite_link_host = request_json["invite_link_host"]
+    print(invite_link_host)
+
+    # Ensure that the user making the request is already not part of the service
     if user_requesting_invite.services and service in user_requesting_invite.services:
         message = f"You are already a member of {service.name}"
         raise BadRequestError(message=message)
 
     # Send the user's service invite request to the service managers listed
-    # send_service_invite_request(recipients_of_invite_request,
-    # service, reason_for_request, invite_link_host)
+    send_service_invite_request(
+        user_requesting_invite, recipients_of_invite_request, service, reason_for_request, invite_link_host
+    )
 
     # Send a receipt email to the user that requested the invite
     # send_receipt_after_sending_request_invite_letter(user_requesting_invite.name, service)
@@ -151,29 +155,26 @@ def request_user_invite(service_id, user_to_invite_id):
 
 
 def send_service_invite_request(
-    recipients_of_invite_request,
-    service,
-    reason_for_request,
-    invite_link_host,
+    user_requesting_invite, recipients_of_invite_request, service, reason_for_request, invite_link_host
 ):
     # TODO REQUEST_INVITE_TO_SERVICE_TEMPLATE needs to be created
     template_id = current_app.config["REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID"]
     template = dao_get_template_by_id(template_id)
     notify_service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
+    invite_link_host = invite_link_host
     for recipient in recipients_of_invite_request:
-        if service.name in recipient.services:
+        if service in recipient.services:
             saved_notification = persist_notification(
                 template_id=template.id,
                 template_version=template.version,
                 # TODO change recipient to actual email address of service managers when the testing phase completes
-                recipient="notify-join-service-request@digital.cabinet-office.gov.uk",
+                recipient="chukwugozie.mbeledogu+request_invite_test@digital.cabinet-office.gov.uk",
                 service=notify_service,
                 # TODO flesh out personalisation
                 personalisation={
-                    "service_name": service.name,
-                    "service_manager_name": recipient.name,
-                    "reason_for_request": reason_for_request,
-                    "invite_link_host": invite_link_host,
+                    "name": service.name,
+                    "requester_name": user_requesting_invite.name,
+                    "reason": reason_for_request,
                 },
                 notification_type=template.template_type,
                 api_key_id=None,
