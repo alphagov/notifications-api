@@ -612,45 +612,21 @@ def test_should_get_return_all_fields_by_default(
     }
 
 
-@pytest.mark.parametrize(
-    "extra_args",
-    (
-        {"detailed": False},
-        {"detailed": "False"},
-    ),
-)
-@pytest.mark.parametrize(
-    "template_type, expected_content",
-    (
-        (EMAIL_TYPE, None),
-        (SMS_TYPE, None),
-        (LETTER_TYPE, None),
-    ),
-)
-def test_should_not_return_content_and_subject_if_requested(
-    admin_request,
-    sample_service,
-    extra_args,
-    template_type,
-    expected_content,
-):
-    create_template(
-        sample_service,
-        template_type=template_type,
-        content="This is a test",
-    )
+@pytest.mark.parametrize("template_type", (EMAIL_TYPE, SMS_TYPE, LETTER_TYPE))
+def test_should_not_return_content_and_subject_if_requested(admin_request, sample_service, template_type):
+    create_template(sample_service, template_type=template_type)
     json_response = admin_request.get(
-        "template.get_all_templates_for_service", service_id=sample_service.id, **extra_args
+        "template.get_all_templates_for_service",
+        service_id=sample_service.id,
+        detailed=False,
     )
     assert json_response["data"][0].keys() == {
-        "content",
         "folder",
         "id",
         "is_precompiled_letter",
         "name",
         "template_type",
     }
-    assert json_response["data"][0]["content"] == expected_content
 
 
 @pytest.mark.parametrize(
