@@ -4,7 +4,6 @@ from typing import Optional
 import pytz
 from flask import url_for
 from notifications_utils.template import (
-    BroadcastMessageTemplate,
     HTMLEmailTemplate,
     LetterPrintTemplate,
     SMSMessageTemplate,
@@ -64,7 +63,7 @@ def get_template_instance(template, values):
         SMS_TYPE: SMSMessageTemplate,
         EMAIL_TYPE: HTMLEmailTemplate,
         LETTER_TYPE: LetterPrintTemplate,
-        BROADCAST_TYPE: BroadcastMessageTemplate,
+        BROADCAST_TYPE: SMSMessageTemplate,
     }[template["template_type"]](template, values)
 
 
