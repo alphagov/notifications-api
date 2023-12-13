@@ -129,52 +129,53 @@ def validate_service_invitation_token(token):
 @service_invite.route("/service/<service_id>/invite/request-for/<user_to_invite_id>", methods=["POST"])
 def request_user_invite(service_id, user_to_invite_id):
     request_json = request.get_json()
-
     user_requesting_invite = get_user_by_id(user_to_invite_id)
-    recipients_of_invite_request_ids = request_json["from_user_id"]
+    recipients_of_invite_request_ids = request_json["service_managers_ids"]
     recipients_of_invite_request = [get_user_by_id(recipient_id) for recipient_id in recipients_of_invite_request_ids]
     service = dao_fetch_service_by_id(service_id)
     reason_for_request = request_json["reason"]
     invite_link_host = request_json["invite_link_host"]
-    print(invite_link_host)
+    accept_invite_request_url = f"{invite_link_host}/services/{service.id}/users/invite/{user_requesting_invite.id}"
 
-    # Ensure that the user making the request is already not part of the service
+    # # Ensure that the user making the request is already not part of the service
     if user_requesting_invite.services and service in user_requesting_invite.services:
         message = f"You are already a member of {service.name}"
         raise BadRequestError(message=message)
 
     # Send the user's service invite request to the service managers listed
     send_service_invite_request(
-        user_requesting_invite, recipients_of_invite_request, service, reason_for_request, invite_link_host
+        user_requesting_invite, recipients_of_invite_request, service, reason_for_request, accept_invite_request_url
     )
 
     # Send a receipt email to the user that requested the invite
-    # send_receipt_after_sending_request_invite_letter(user_requesting_invite.name, service)
+    send_receipt_after_sending_request_invite_letter(user_requesting_invite)
 
     return {}, 204
 
 
 def send_service_invite_request(
-    user_requesting_invite, recipients_of_invite_request, service, reason_for_request, invite_link_host
+    user_requesting_invite, recipients_of_invite_request, service, reason_for_request, accept_invite_request_url
 ):
-    # TODO REQUEST_INVITE_TO_SERVICE_TEMPLATE needs to be created
     template_id = current_app.config["REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID"]
     template = dao_get_template_by_id(template_id)
     notify_service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
-    invite_link_host = invite_link_host
+    number_of_notifications_generated = 0
     for recipient in recipients_of_invite_request:
         if service in recipient.services:
             saved_notification = persist_notification(
                 template_id=template.id,
                 template_version=template.version,
                 # TODO change recipient to actual email address of service managers when the testing phase completes
-                recipient="chukwugozie.mbeledogu+request_invite_test@digital.cabinet-office.gov.uk",
+                recipient="notify-join-service-request@digital.cabinet-office.gov.uk",
                 service=notify_service,
-                # TODO flesh out personalisation
                 personalisation={
-                    "name": service.name,
+                    "name": user_requesting_invite.name,
                     "requester_name": user_requesting_invite.name,
+                    "requester_email": user_requesting_invite.email_address,
+                    "service_name": service.name,
+                    "reason_given": "yes" if reason_for_request else "no",
                     "reason": reason_for_request,
+                    "url": accept_invite_request_url,
                 },
                 notification_type=template.template_type,
                 api_key_id=None,
@@ -182,14 +183,22 @@ def send_service_invite_request(
                 reply_to_text=notify_service.get_default_reply_to_email_address(),
             )
             send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
+            number_of_notifications_generated += 1
 
         else:
+            # In a scenario were multiple service managers are listed, and the list contains an
+            # invalid service manager, we would rather log the errors and not raise an exception so
+            # that notifications can still be sent to the valid service managers
             message = f"Can’t create notification - {recipient.name} is not part of the {service.name}"
-            raise BadRequestError(message=message)
+            current_app.logger.error(message)
+
+    if number_of_notifications_generated == 0:
+        # If no notification is sent we want to raise an exception
+        message = f"Can’t create notification as the service manager listed is not part of the {service.name}"
+        raise BadRequestError(message=message)
 
 
-def send_receipt_after_sending_request_invite_letter(user_requesting_invite, service):
-    # TODO RECEIPT_FOR_REQUEST_INVITE_TO_SERVICE_TEMPLATE needs to be created
+def send_receipt_after_sending_request_invite_letter(user_requesting_invite):
     template_id = current_app.config["RECEIPT_FOR_REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID"]
     template = dao_get_template_by_id(template_id)
     notify_service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
@@ -198,10 +207,9 @@ def send_receipt_after_sending_request_invite_letter(user_requesting_invite, ser
         template_id=template.id,
         template_version=template.version,
         # TODO change recipient to actual email address of service managers when the testing phase completes
-        recipient="notify-join-service-request@digital.cabinet-office.gov.uk",
+        recipient=user_requesting_invite.email_address,
         service=notify_service,
-        # TODO flesh out personalisation
-        personalisation={"service_name": service, "user_requesting_invite_name": user_requesting_invite},
+        personalisation={"name": user_requesting_invite.name},
         notification_type=template.template_type,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL,

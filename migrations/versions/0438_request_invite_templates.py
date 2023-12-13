@@ -17,11 +17,11 @@ down_revision = "0437_min_numeric_scl_aux_tbls"
 request_invite_to_a_service_template_id = "77677459-f862-44ee-96d9-b8cb2323d407"
 request_invite_to_a_service_template_content = textwrap.dedent(
     """\
-    Hi ((name))
+Hi ((name))
 
 ((requester_name)) would like to join the ‘((service_name))’ team on GOV.UK Notify.
 
-((reason??They gave the following reason for wanting to join:))
+((reason_given??They gave the following reason for wanting to join:))
 
 ((reason))
 
