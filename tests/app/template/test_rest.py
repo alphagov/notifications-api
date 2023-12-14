@@ -927,6 +927,33 @@ def test_create_a_template_with_reply_to(admin_request, sample_user):
     assert th.service_letter_contact_id == letter_contact.id
 
 
+def test_create_template_bilingual_letter(admin_request, sample_service_full_permissions, sample_user):
+    letter_contact = create_letter_contact(sample_service_full_permissions, "Edinburgh, ED1 1AA")
+    json_resp = admin_request.post(
+        "template.create_template",
+        service_id=sample_service_full_permissions.id,
+        _data={
+            "name": "my template",
+            "template_type": "letter",
+            "subject": "subject",
+            "content": "content",
+            "postage": "second",
+            "service": str(sample_service_full_permissions.id),
+            "created_by": str(sample_user.id),
+            "reply_to": str(letter_contact.id),
+            "letter_languages": "welsh_then_english",
+            "letter_welsh_subject": "welsh subject",
+            "letter_welsh_content": "welsh body",
+        },
+        _expected_status=201,
+    )
+
+    t = Template.query.get(json_resp["data"]["id"])
+    assert t.letter_languages == "welsh_then_english"
+    assert t.letter_welsh_subject == "welsh subject"
+    assert t.letter_welsh_content == "welsh body"
+
+
 def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_user):
     service = create_service(service_permissions=["letter"])
     service2 = create_service(service_name="test service", service_permissions=["letter"])
