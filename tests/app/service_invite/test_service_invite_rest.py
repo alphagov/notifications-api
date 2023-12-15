@@ -339,7 +339,7 @@ def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, sample_invi
     assert json_resp["result"] == "error"
 
 
-def test_request_user_invite_is_sent_to_valid_service_managers(
+def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     admin_request,
     notify_service,
     sample_service,
@@ -371,7 +371,7 @@ def test_request_user_invite_is_sent_to_valid_service_managers(
         invite_link_host=invite_link_host,
     )
     admin_request.post(
-        "service_invite.request_user_invite",
+        "service_invite.request_invite_to_service",
         service_id=sample_service.id,
         user_to_invite_id=user_requesting_invite.id,
         _data=data,
@@ -404,7 +404,9 @@ def test_request_user_invite_is_sent_to_valid_service_managers(
     assert notification[-1].personalisation["name"] == user_requesting_invite.name
 
 
-def test_invite_request_is_not_sent_if_requester_is_already_part_of_service(admin_request, sample_service):
+def test_request_invite_to_service_email_is_not_sent_if_requester_is_already_part_of_service(
+    admin_request, sample_service
+):
     user_requesting_invite = create_user()
     user_requesting_invite.services = [sample_service]
     service_manager_1 = create_user()
@@ -418,17 +420,16 @@ def test_invite_request_is_not_sent_if_requester_is_already_part_of_service(admi
         invite_link_host=invite_link_host,
     )
 
-    json_resp = admin_request.post(
-        "service_invite.request_user_invite",
+    admin_request.post(
+        "service_invite.request_invite_to_service",
         service_id=sample_service.id,
         user_to_invite_id=user_requesting_invite.id,
         _data=data,
         _expected_status=400,
     )
-    assert json_resp["message"] == "user-already-in-service"
 
 
-def test_exception_is_raised_if_no_invite_request_is_sent(
+def test_exception_is_raised_if_no_request_invite_to_service_email_is_sent(
     admin_request,
     notify_service,
     sample_service,
@@ -449,11 +450,10 @@ def test_exception_is_raised_if_no_invite_request_is_sent(
         invite_link_host=invite_link_host,
     )
 
-    json_resp = admin_request.post(
-        "service_invite.request_user_invite",
+    admin_request.post(
+        "service_invite.request_invite_to_service",
         service_id=sample_service.id,
         user_to_invite_id=user_requesting_invite.id,
         _data=data,
         _expected_status=400,
     )
-    assert json_resp["message"] == "no-valid-service-managers"

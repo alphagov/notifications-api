@@ -127,7 +127,7 @@ def validate_service_invitation_token(token):
 
 
 @service_invite.route("/service/<service_id>/invite/request-for/<user_to_invite_id>", methods=["POST"])
-def request_user_invite(service_id, user_to_invite_id):
+def request_invite_to_service(service_id, user_to_invite_id):
     request_json = request.get_json()
     user_requesting_invite = get_user_by_id(user_to_invite_id)
     recipients_of_invite_request_ids = request_json["service_managers_ids"]
@@ -138,8 +138,7 @@ def request_user_invite(service_id, user_to_invite_id):
     accept_invite_request_url = f"{invite_link_host}/services/{service.id}/users/invite/{user_requesting_invite.id}"
 
     if user_requesting_invite.services and service in user_requesting_invite.services:
-        message = "user-already-in-service"
-        raise BadRequestError(message=message)
+        raise BadRequestError(400, "user-already-in-service")
 
     send_service_invite_request(
         user_requesting_invite, recipients_of_invite_request, service, reason_for_request, accept_invite_request_url
@@ -185,13 +184,15 @@ def send_service_invite_request(
             # In a scenario were multiple service managers are listed, and the list contains an
             # invalid service manager, we would rather log the errors and not raise an exception so
             # that notifications can still be sent to the valid service managers
-            message = "not-a-valid-service-manager"
-            current_app.logger.error(message)
+            current_app.logger.error(
+                "request-to-join-service email not sent to user %s - they are not part of service %s",
+                recipient.id,
+                service.id,
+            )
 
     if number_of_notifications_generated == 0:
         # If no notification is sent we want to raise an exception
-        message = "no-valid-service-managers"
-        raise BadRequestError(message=message)
+        raise BadRequestError(400, "no-valid-service-managers-ids")
 
 
 def send_receipt_after_sending_request_invite_letter(user_requesting_invite):
