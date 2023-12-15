@@ -137,17 +137,14 @@ def request_user_invite(service_id, user_to_invite_id):
     invite_link_host = request_json["invite_link_host"]
     accept_invite_request_url = f"{invite_link_host}/services/{service.id}/users/invite/{user_requesting_invite.id}"
 
-    # # Ensure that the user making the request is already not part of the service
     if user_requesting_invite.services and service in user_requesting_invite.services:
-        message = f"You are already a member of {service.name}"
+        message = "user-already-in-service"
         raise BadRequestError(message=message)
 
-    # Send the user's service invite request to the service managers listed
     send_service_invite_request(
         user_requesting_invite, recipients_of_invite_request, service, reason_for_request, accept_invite_request_url
     )
 
-    # Send a receipt email to the user that requested the invite
     send_receipt_after_sending_request_invite_letter(user_requesting_invite)
 
     return {}, 204
@@ -165,7 +162,6 @@ def send_service_invite_request(
             saved_notification = persist_notification(
                 template_id=template.id,
                 template_version=template.version,
-                # TODO change recipient to actual email address of service managers when the testing phase completes
                 recipient="notify-join-service-request@digital.cabinet-office.gov.uk",
                 service=notify_service,
                 personalisation={
@@ -189,12 +185,12 @@ def send_service_invite_request(
             # In a scenario were multiple service managers are listed, and the list contains an
             # invalid service manager, we would rather log the errors and not raise an exception so
             # that notifications can still be sent to the valid service managers
-            message = f"Can’t create notification - {recipient.name} is not part of the {service.name}"
+            message = "not-a-valid-service-manager"
             current_app.logger.error(message)
 
     if number_of_notifications_generated == 0:
         # If no notification is sent we want to raise an exception
-        message = f"Can’t create notification as the service manager listed is not part of the {service.name}"
+        message = "no-valid-service-managers"
         raise BadRequestError(message=message)
 
 
@@ -206,7 +202,6 @@ def send_receipt_after_sending_request_invite_letter(user_requesting_invite):
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
-        # TODO change recipient to actual email address of service managers when the testing phase completes
         recipient=user_requesting_invite.email_address,
         service=notify_service,
         personalisation={"name": user_requesting_invite.name},

@@ -425,7 +425,7 @@ def test_invite_request_is_not_sent_if_requester_is_already_part_of_service(admi
         _data=data,
         _expected_status=400,
     )
-    assert json_resp["message"] == "You are already a member of Sample service"
+    assert json_resp["message"] == "user-already-in-service"
 
 
 def test_exception_is_raised_if_no_invite_request_is_sent(
@@ -435,7 +435,6 @@ def test_exception_is_raised_if_no_invite_request_is_sent(
     request_invite_email_template,
     receipt_for_request_invite_email_template,
 ):
-    # We want to test that an exception is raised if all service managers listed are invalid
     user_requesting_invite = create_user()
     service_manager = create_user()
     another_service = create_service(service_name="Another Service")
@@ -457,7 +456,4 @@ def test_exception_is_raised_if_no_invite_request_is_sent(
         _data=data,
         _expected_status=400,
     )
-    assert (
-        json_resp["message"]
-        == f"Can’t create notification as the service manager listed is not part of the {sample_service.name}"
-    )
+    assert json_resp["message"] == "no-valid-service-managers"
