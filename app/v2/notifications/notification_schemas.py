@@ -123,7 +123,7 @@ send_a_file_validation = {
         },
         "is_csv": {
             "format": "send_a_file_is_csv",
-            "required": False,
+            # "required": False,
         },
         "confirm_email_before_download": {
             "format": "send_a_file_confirm_email_before_download",
@@ -133,7 +133,23 @@ send_a_file_validation = {
             "format": "send_a_file_retention_period",
             "required": False,
         },
+        "filename": {
+            "format": "send_a_file_filename",
+            # "required": False,
+        },
     },
+    "allOf": [
+        {
+            "anyOf": [
+                {"not": {"required": ["is_csv"]}},
+                {"not": {"required": ["filename"]}},
+            ],
+            "validationMessage": (
+                "`filename` and `is_csv` are exclusive. "
+                "If you want to set `filename` explicitly, do not send a value for `is_csv`."
+            ),
+        }
+    ],
 }
 
 post_sms_request = {

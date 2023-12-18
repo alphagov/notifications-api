@@ -82,6 +82,20 @@ def validate_schema_retention_period(instance):
     )
 
 
+@format_checker.checks("send_a_file_filename", raises=ValidationError)
+def validate_send_a_file_filename(instance):
+    if instance is None:
+        return True
+
+    if isinstance(instance, str):
+        if "." in instance:
+            return True
+
+    raise ValidationError(
+        f"Unsupported value for filename: {instance}. Filename must include an extension, eg `file.csv`"
+    )
+
+
 @format_checker.checks("send_a_file_is_csv", raises=ValidationError)
 def send_a_file_is_csv(instance):
     if instance is None or isinstance(instance, bool):
@@ -125,7 +139,7 @@ def build_error_message(errors):
     fields = []
     for e in errors:
         field = (
-            "{} {}".format(e.path[0], e.schema["validationMessage"])
+            "{} {}".format(e.path[0] if e.path else "", e.schema["validationMessage"]).strip()
             if "validationMessage" in e.schema
             else __format_message(e)
         )

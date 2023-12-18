@@ -519,19 +519,23 @@ def test_post_email_notification_returns_201(
 
 
 @pytest.mark.parametrize(
-    "personalisation, expected_status, expect_error_message, expect_upload, expected_confirmation, expected_retention",
     (
-        ({"doc": "just some text"}, 201, None, False, None, None),
-        ({"doc": {"file": False}}, 400, None, False, None, None),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK"}}, 201, None, True, True, "26 weeks"),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": None}}, 201, None, True, True, "26 weeks"),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True}}, 201, None, True, True, "26 weeks"),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": False}}, 201, None, True, True, "26 weeks"),
+        "personalisation, expected_status, expect_error_message, expect_upload, "
+        "expected_confirmation, expected_retention, expected_filename"
+    ),
+    (
+        ({"doc": "just some text"}, 201, None, False, None, None, None),
+        ({"doc": {"file": False}}, 400, None, False, None, None, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK"}}, 201, None, True, True, "26 weeks", None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": None}}, 201, None, True, True, "26 weeks", None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True}}, 201, None, True, True, "26 weeks", None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": False}}, 201, None, True, True, "26 weeks", None),
         (
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": "bad"}},
             400,
             "Unsupported value for is_csv: bad. Use a boolean true or false value.",
             False,
+            None,
             None,
             None,
         ),
@@ -542,6 +546,7 @@ def test_post_email_notification_returns_201(
             True,
             True,
             "26 weeks",
+            None,
         ),
         (
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": True}},
@@ -550,6 +555,7 @@ def test_post_email_notification_returns_201(
             True,
             True,
             "26 weeks",
+            None,
         ),
         (
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": False}},
@@ -558,6 +564,7 @@ def test_post_email_notification_returns_201(
             True,
             False,
             "26 weeks",
+            None,
         ),
         (
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": "potato"}},
@@ -566,15 +573,25 @@ def test_post_email_notification_returns_201(
             False,
             None,
             None,
+            None,
         ),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": None}}, 201, None, True, True, "26 weeks"),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "1 week"}}, 201, None, True, True, "1 week"),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "70 weeks"}}, 201, None, True, True, "70 weeks"),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": None}}, 201, None, True, True, "26 weeks", None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "1 week"}}, 201, None, True, True, "1 week", None),
+        (
+            {"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "70 weeks"}},
+            201,
+            None,
+            True,
+            True,
+            "70 weeks",
+            None,
+        ),
         (
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "9999 weeks"}},
             400,
             "Unsupported value for retention_period: 9999 weeks",
             False,
+            None,
             None,
             None,
         ),
@@ -585,6 +602,7 @@ def test_post_email_notification_returns_201(
             False,
             None,
             None,
+            None,
         ),
         (
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": False}},
@@ -593,10 +611,41 @@ def test_post_email_notification_returns_201(
             False,
             None,
             None,
+            None,
         ),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "other": "attribute"}}, 400, None, False, None, None),
-        ({"doc": {"potato": "YSxiLGMKMSwyLDMK"}}, 201, None, False, None, None),
-        ({"doc": {"potato": "YSxiLGMKMSwyLDMK", "is_csv": "cucumber"}}, 201, None, False, None, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "other": "attribute"}}, 400, None, False, None, None, None),
+        ({"doc": {"potato": "YSxiLGMKMSwyLDMK"}}, 201, None, False, None, None, None),
+        ({"doc": {"potato": "YSxiLGMKMSwyLDMK", "is_csv": "cucumber"}}, 201, None, False, None, None, None),
+        (
+            {"doc": {"file": "YSxiLGMKMSwyLDMK", "filename": "file.csv"}},
+            201,
+            None,
+            False,
+            None,
+            None,
+            "file.csv",
+        ),
+        (
+            {"doc": {"file": "YSxiLGMKMSwyLDMK", "filename": "file"}},
+            400,
+            "Unsupported value for filename: file. Filename must include an extension, eg `file.csv`",
+            False,
+            None,
+            None,
+            None,
+        ),
+        (
+            {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "filename": "file.csv"}},
+            400,
+            (
+                "`filename` and `is_csv` are exclusive. "
+                "If you want to set `filename` explicitly, do not send a value for `is_csv`."
+            ),
+            False,
+            None,
+            None,
+            None,
+        ),
     ),
 )
 def test_post_email_notification_validates_personalisation_send_a_file_values(
@@ -608,6 +657,7 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
     expect_upload,
     expected_confirmation,
     expected_retention,
+    expected_filename,
 ):
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     document_download_mock = mocker.patch("app.v2.notifications.post_notifications.document_download_client")
@@ -652,6 +702,7 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
                 mocker.ANY,
                 confirmation_email=template.service.users[0].email_address if expected_confirmation else None,
                 retention_period=expected_retention,
+                filename=expected_filename,
             )
         ]
 
@@ -1029,6 +1080,7 @@ def test_post_notification_with_document_upload(
             extra.get("is_csv"),
             confirmation_email=confirmation_email,
             retention_period=expect_retention_period,
+            filename=None,
         ),
         call(
             str(service.id),
@@ -1036,6 +1088,7 @@ def test_post_notification_with_document_upload(
             extra.get("is_csv"),
             confirmation_email=confirmation_email,
             retention_period=expect_retention_period,
+            filename=None,
         ),
     ]
 
