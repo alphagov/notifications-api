@@ -702,6 +702,30 @@ def org_invite_email_template(notify_service):
 
 
 @pytest.fixture(scope="function")
+def request_invite_email_template(notify_service):
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID",
+        content="((user_name)) ((organisation_name)) ((url))",
+        subject="((requester_name)) wants to join your GOV.UK Notify service",
+        template_type="email",
+    )
+
+
+@pytest.fixture(scope="function")
+def receipt_for_request_invite_email_template(notify_service):
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="RECEIPT_FOR_REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID",
+        content="((name)) ((requester_name)) ((service_name)) ((reason)) ((url)) ((requester_email))",
+        subject="",
+        template_type="email",
+    )
+
+
+@pytest.fixture(scope="function")
 def password_reset_email_template(notify_service):
     return create_custom_template(
         service=notify_service,

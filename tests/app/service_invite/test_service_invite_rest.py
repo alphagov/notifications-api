@@ -9,7 +9,7 @@ from notifications_utils.url_safe_token import generate_token
 from app.constants import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE
 from app.models import Notification
 from tests import create_admin_authorization_header
-from tests.app.db import create_invited_user
+from tests.app.db import create_invited_user, create_permissions, create_service, create_user
 
 
 @pytest.mark.parametrize(
@@ -39,7 +39,7 @@ def test_create_invited_user(
         permissions="send_messages,manage_service,manage_api_keys",
         auth_type=EMAIL_AUTH_TYPE,
         folder_permissions=["folder_1", "folder_2", "folder_3"],
-        **extra_args
+        **extra_args,
     )
 
     json_resp = admin_request.post(
@@ -95,7 +95,7 @@ def test_invited_user_for_broadcast_service_receives_broadcast_invite_email(
         permissions="send_messages,manage_service,manage_api_keys",
         auth_type=EMAIL_AUTH_TYPE,
         folder_permissions=["folder_1", "folder_2", "folder_3"],
-        **extra_args
+        **extra_args,
     )
 
     admin_request.post(
@@ -337,3 +337,123 @@ def test_get_invited_user(admin_request, sample_invited_user):
 def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, sample_invited_user, fake_uuid):
     json_resp = admin_request.get("service_invite.get_invited_user", invited_user_id=fake_uuid, _expected_status=404)
     assert json_resp["result"] == "error"
+
+
+def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
+    admin_request,
+    notify_service,
+    sample_service,
+    request_invite_email_template,
+    receipt_for_request_invite_email_template,
+    mocker,
+):
+    # This test also covers a scenario where a list that contains valid service managers also contains an invalid
+    # service manager. Expected behaviour is that notifications will be sent only to the valid service managers.
+    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    user_requesting_invite = create_user()
+    service_manager_1 = create_user()
+    service_manager_2 = create_user()
+    service_manager_3 = create_user()
+    another_service = create_service(service_name="Another Service")
+    service_manager_1.services = [sample_service]
+    service_manager_2.services = [sample_service]
+    service_manager_3.services = [another_service]
+    create_permissions(service_manager_1, sample_service, "manage_settings")
+    create_permissions(service_manager_2, sample_service, "manage_settings")
+    create_permissions(service_manager_3, another_service, "manage_settings")
+    recipients_of_invite_request = [service_manager_1.id, service_manager_2.id, service_manager_3.id]
+    reason = "Lots of reasons"
+    invite_link_host = current_app.config["ADMIN_BASE_URL"]
+
+    data = dict(
+        service_managers_ids=list(map(lambda x: str(x), recipients_of_invite_request)),
+        reason=reason,
+        invite_link_host=invite_link_host,
+    )
+    admin_request.post(
+        "service_invite.request_invite_to_service",
+        service_id=sample_service.id,
+        user_to_invite_id=user_requesting_invite.id,
+        _data=data,
+        _expected_status=204,
+    )
+
+    # Two sets of notifications are sent:
+    # 1.request invite notifications to the service manager(s)
+    # 2.receipt for request invite notification to the user that initiated the invite request.
+    # We are assuming the first result will be a request invite notification and the last result will
+    # be a receipt for request invite notification
+
+    notification = Notification.query.all()
+    mocked.call_count = 3
+    # Request invite notification
+    assert len(notification[0].personalisation.keys()) == 7
+    assert len(notification) == 3
+    assert notification[0].personalisation["name"] == service_manager_1.name
+    assert notification[0].personalisation["requester_name"] == user_requesting_invite.name
+    assert notification[0].personalisation["service_name"] == sample_service.name
+    assert notification[0].personalisation["reason_given"] == "yes"
+    assert notification[0].personalisation["reason"] == reason
+    assert (
+        notification[0].personalisation["url"]
+        == f"{invite_link_host}/services/{sample_service.id}/users/invite/{user_requesting_invite.id}"
+    )
+
+    # Receipt for request invite notification
+    assert len(notification[-1].personalisation.keys()) == 1
+    assert notification[-1].personalisation["name"] == user_requesting_invite.name
+
+
+def test_request_invite_to_service_email_is_not_sent_if_requester_is_already_part_of_service(
+    admin_request, sample_service
+):
+    user_requesting_invite = create_user()
+    user_requesting_invite.services = [sample_service]
+    service_manager_1 = create_user()
+    create_permissions(service_manager_1, sample_service)
+    service_managers = [service_manager_1]
+    reason = "Lots of reasons"
+    invite_link_host = current_app.config["ADMIN_BASE_URL"]
+    data = dict(
+        service_managers_ids=list(map(lambda x: str(x.id), service_managers)),
+        reason=reason,
+        invite_link_host=invite_link_host,
+    )
+
+    admin_request.post(
+        "service_invite.request_invite_to_service",
+        service_id=sample_service.id,
+        user_to_invite_id=user_requesting_invite.id,
+        _data=data,
+        _expected_status=400,
+    )
+
+
+def test_exception_is_raised_if_no_request_invite_to_service_email_is_sent(
+    admin_request,
+    notify_service,
+    sample_service,
+    request_invite_email_template,
+    receipt_for_request_invite_email_template,
+):
+    user_requesting_invite = create_user()
+    service_manager = create_user()
+    another_service = create_service(service_name="Another Service")
+    service_manager.services = [another_service]
+    create_permissions(service_manager, another_service, "manage_settings")
+    recipients_of_invite_request = [service_manager.id]
+    reason = "Lots of reasons"
+    invite_link_host = current_app.config["ADMIN_BASE_URL"]
+    data = dict(
+        service_managers_ids=list(map(lambda x: str(x), recipients_of_invite_request)),
+        reason=reason,
+        invite_link_host=invite_link_host,
+    )
+
+    admin_request.post(
+        "service_invite.request_invite_to_service",
+        service_id=sample_service.id,
+        user_to_invite_id=user_requesting_invite.id,
+        _data=data,
+        _expected_status=400,
+    )
