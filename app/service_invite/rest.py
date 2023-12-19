@@ -173,7 +173,7 @@ def send_service_invite_request(
                     "requester_email": user_requesting_invite.email_address,
                     "service_name": service.name,
                     "reason_given": "yes" if reason_for_request else "no",
-                    "reason": reason_for_request,
+                    "reason": "\n".join(f"^ {line}" for line in reason_for_request.splitlines()),
                     "url": accept_invite_request_url,
                 },
                 notification_type=template.template_type,
