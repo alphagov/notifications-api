@@ -22,7 +22,7 @@ from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
 from werkzeug.datastructures import MultiDict
 
-from app import create_uuid, db, statsd_client
+from app import create_uuid, db
 from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
@@ -481,9 +481,6 @@ def is_delivery_slow_for_providers(
     slow_providers = {}
     for report in providers_slow_delivery_reports:
         slow_providers[report.provider] = report.slow_ratio >= threshold
-        # TODO: when we are happy with the new metrics in generate_sms_delivery_stats then this
-        # can be removed as it will be redundant
-        statsd_client.gauge(f"slow-delivery.{report.provider}.ratio", report.slow_ratio)
 
     return slow_providers
 
