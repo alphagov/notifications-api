@@ -339,6 +339,26 @@ def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, sample_invi
     assert json_resp["result"] == "error"
 
 
+@pytest.mark.parametrize(
+    "reason, expected_reason_given, expected_reason",
+    (
+        (
+            "",
+            "no",
+            "",
+        ),
+        (
+            "One reason given",
+            "yes",
+            "^ One reason given",
+        ),
+        (
+            "Lots of reasons\n\nIncluding more in a new paragraph",
+            "yes",
+            "^ Lots of reasons\n^ \n^ Including more in a new paragraph",
+        ),
+    ),
+)
 def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     admin_request,
     notify_service,
@@ -346,6 +366,9 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     request_invite_email_template,
     receipt_for_request_invite_email_template,
     mocker,
+    reason,
+    expected_reason_given,
+    expected_reason,
 ):
     # This test also covers a scenario where a list that contains valid service managers also contains an invalid
     # service manager. Expected behaviour is that notifications will be sent only to the valid service managers.
@@ -362,7 +385,6 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     create_permissions(service_manager_2, sample_service, "manage_settings")
     create_permissions(service_manager_3, another_service, "manage_settings")
     recipients_of_invite_request = [service_manager_1.id, service_manager_2.id, service_manager_3.id]
-    reason = "Lots of reasons"
     invite_link_host = current_app.config["ADMIN_BASE_URL"]
 
     data = dict(
@@ -392,8 +414,8 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     assert notification[0].personalisation["name"] == service_manager_1.name
     assert notification[0].personalisation["requester_name"] == user_requesting_invite.name
     assert notification[0].personalisation["service_name"] == sample_service.name
-    assert notification[0].personalisation["reason_given"] == "yes"
-    assert notification[0].personalisation["reason"] == reason
+    assert notification[0].personalisation["reason_given"] == expected_reason_given
+    assert notification[0].personalisation["reason"] == expected_reason
     assert (
         notification[0].personalisation["url"]
         == f"{invite_link_host}/services/{sample_service.id}/users/invite/{user_requesting_invite.id}"
