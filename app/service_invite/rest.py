@@ -144,7 +144,11 @@ def request_invite_to_service(service_id, user_to_invite_id):
         user_requesting_invite, recipients_of_invite_request, service, reason_for_request, accept_invite_request_url
     )
 
-    send_receipt_after_sending_request_invite_letter(user_requesting_invite)
+    send_receipt_after_sending_request_invite_letter(
+        user_requesting_invite,
+        service=service,
+        recipients_of_invite_request=recipients_of_invite_request,
+    )
 
     return {}, 204
 
@@ -164,7 +168,7 @@ def send_service_invite_request(
                 recipient="notify-join-service-request@digital.cabinet-office.gov.uk",
                 service=notify_service,
                 personalisation={
-                    "name": user_requesting_invite.name,
+                    "name": recipient.name,
                     "requester_name": user_requesting_invite.name,
                     "requester_email": user_requesting_invite.email_address,
                     "service_name": service.name,
@@ -195,7 +199,7 @@ def send_service_invite_request(
         raise BadRequestError(400, "no-valid-service-managers-ids")
 
 
-def send_receipt_after_sending_request_invite_letter(user_requesting_invite):
+def send_receipt_after_sending_request_invite_letter(user_requesting_invite, *, service, recipients_of_invite_request):
     template_id = current_app.config["RECEIPT_FOR_REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID"]
     template = dao_get_template_by_id(template_id)
     notify_service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
@@ -205,7 +209,11 @@ def send_receipt_after_sending_request_invite_letter(user_requesting_invite):
         template_version=template.version,
         recipient=user_requesting_invite.email_address,
         service=notify_service,
-        personalisation={"name": user_requesting_invite.name},
+        personalisation={
+            "name": user_requesting_invite.name,
+            "service name": service.name,
+            "service admin names": [user.name for user in recipients_of_invite_request],
+        },
         notification_type=template.template_type,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL,

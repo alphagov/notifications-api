@@ -351,9 +351,9 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     # service manager. Expected behaviour is that notifications will be sent only to the valid service managers.
     mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     user_requesting_invite = create_user()
-    service_manager_1 = create_user()
-    service_manager_2 = create_user()
-    service_manager_3 = create_user()
+    service_manager_1 = create_user(name="Manager 1")
+    service_manager_2 = create_user(name="Manager 2")
+    service_manager_3 = create_user(name="Manager 3")
     another_service = create_service(service_name="Another Service")
     service_manager_1.services = [sample_service]
     service_manager_2.services = [sample_service]
@@ -400,8 +400,15 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     )
 
     # Receipt for request invite notification
-    assert len(notification[-1].personalisation.keys()) == 1
-    assert notification[-1].personalisation["name"] == user_requesting_invite.name
+    assert notification[-1].personalisation == {
+        "name": user_requesting_invite.name,
+        "service name": "Sample service",
+        "service admin names": [
+            service_manager_1.name,
+            service_manager_2.name,
+            service_manager_3.name,
+        ],
+    }
 
 
 def test_request_invite_to_service_email_is_not_sent_if_requester_is_already_part_of_service(
