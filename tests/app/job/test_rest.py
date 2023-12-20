@@ -874,6 +874,7 @@ def test_get_all_notifications_for_job_returns_csv_format(admin_request, sample_
         "row_number",
         "recipient",
         "client_reference",
+        "api_key_name",
     }
 
 
