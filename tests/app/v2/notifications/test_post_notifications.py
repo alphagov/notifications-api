@@ -628,7 +628,7 @@ def test_post_email_notification_returns_201(
         (
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "filename": "file"}},
             400,
-            "Unsupported value for filename: file. Filename must include an extension, eg `file.csv`",
+            "`filename` must end with a file extension. For example, filename.csv",
             False,
             None,
             None,

@@ -91,9 +91,7 @@ def validate_send_a_file_filename(instance):
         if "." in instance:
             return True
 
-    raise ValidationError(
-        f"Unsupported value for filename: {instance}. Filename must include an extension, eg `file.csv`"
-    )
+    raise ValidationError("`filename` must end with a file extension. For example, filename.csv")
 
 
 @format_checker.checks("send_a_file_is_csv", raises=ValidationError)
