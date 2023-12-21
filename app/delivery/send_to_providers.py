@@ -87,6 +87,7 @@ def send_sms_to_provider(notification):
             else:
                 notification.billable_units = template.fragment_count
                 update_notification_to_sending(notification, provider)
+                statsd_client.incr(f"international-sms.{NOTIFICATION_SENT}.{notification.phone_prefix}")
 
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
         statsd_client.timing("sms.total-time", delta_seconds)
