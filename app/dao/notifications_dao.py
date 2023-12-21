@@ -268,8 +268,11 @@ def get_notifications_for_service(
 
     query = Notification.query.filter(*filters)
     query = _filter_query(query, filter_dict)
+
     if personalisation:
         query = query.options(joinedload("template"))
+
+    query = query.options(joinedload("api_key"))
 
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
