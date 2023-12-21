@@ -1576,6 +1576,7 @@ class Notification(db.Model):
             "created_at": created_at_in_bst.strftime("%Y-%m-%d %H:%M:%S"),
             "created_by_name": self.get_created_by_name(),
             "created_by_email_address": self.get_created_by_email_address(),
+            "api_key_name": self.api_key.name if self.api_key else None,
         }
 
         return serialized
