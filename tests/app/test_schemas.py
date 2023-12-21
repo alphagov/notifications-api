@@ -2,11 +2,13 @@ import pytest
 from marshmallow import ValidationError
 from sqlalchemy import desc
 
+from app.constants import COMPLAINT_CALLBACK_TYPE, DELIVERY_STATUS_CALLBACK_TYPE
 from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_provider_details_by_identifier,
 )
-from app.models import ProviderDetailsHistory
+from app.dao.service_callback_api_dao import save_service_callback_api
+from app.models import ProviderDetailsHistory, ServiceCallbackApi
 from tests.app.db import create_api_key
 
 
@@ -149,3 +151,29 @@ def test_provider_details_history_schema_returns_user_details(
     data = provider_details_schema.dump(current_sms_provider_in_history)
 
     assert sorted(data["created_by"].keys()) == sorted(["id", "email_address", "name"])
+
+
+def test_service_schema_only_returns_delivery_status_callback_api(sample_service):
+    from app.schemas import service_schema
+
+    service_delivery_callback_api = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/delivery_callback_endpoint",
+        bearer_token="delivery_unique_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type=DELIVERY_STATUS_CALLBACK_TYPE,
+    )
+    save_service_callback_api(service_delivery_callback_api)
+
+    service_complaint_callback_api = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/complaint_callback_endpoint",
+        bearer_token="complaint_unique_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type=COMPLAINT_CALLBACK_TYPE,
+    )
+    save_service_callback_api(service_complaint_callback_api)
+
+    data = service_schema.dump(sample_service)
+
+    assert data["service_callback_api"] == [str(service_delivery_callback_api.id)]
