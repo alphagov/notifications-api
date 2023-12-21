@@ -1033,7 +1033,7 @@ def test_remove_email_branding_from_organisation_pool(
     dao_add_email_branding_to_organisation_pool(
         organisation_id=sample_organisation.id, email_branding_id=second_branding.id
     )
-    assert sample_organisation.email_branding_pool == [first_branding, second_branding]
+    assert set(sample_organisation.email_branding_pool) == {first_branding, second_branding}
 
     admin_request.delete(
         "organisation.remove_email_branding_from_organisation_pool",
