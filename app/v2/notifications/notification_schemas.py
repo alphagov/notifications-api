@@ -144,10 +144,7 @@ send_a_file_validation = {
                 {"not": {"required": ["is_csv"]}},
                 {"not": {"required": ["filename"]}},
             ],
-            "validationMessage": (
-                "`filename` and `is_csv` are exclusive. "
-                "If you want to set `filename` explicitly, do not send a value for `is_csv`."
-            ),
+            "validationMessage": "Do not set a value for `is_csv` if `filename` is already set.",
         }
     ],
 }

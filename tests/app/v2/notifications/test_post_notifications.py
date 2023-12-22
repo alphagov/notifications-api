@@ -637,10 +637,7 @@ def test_post_email_notification_returns_201(
         (
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "filename": "file.csv"}},
             400,
-            (
-                "`filename` and `is_csv` are exclusive. "
-                "If you want to set `filename` explicitly, do not send a value for `is_csv`."
-            ),
+            "Do not set a value for `is_csv` if `filename` is already set.",
             False,
             None,
             None,
