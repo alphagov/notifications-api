@@ -123,7 +123,6 @@ send_a_file_validation = {
         },
         "is_csv": {
             "format": "send_a_file_is_csv",
-            # "required": False,
         },
         "confirm_email_before_download": {
             "format": "send_a_file_confirm_email_before_download",
@@ -135,7 +134,6 @@ send_a_file_validation = {
         },
         "filename": {
             "format": "send_a_file_filename",
-            # "required": False,
         },
     },
     "allOf": [
