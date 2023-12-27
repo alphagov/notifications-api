@@ -306,49 +306,22 @@ class TestCollateLetterPdfsToBeSent:
         with freeze_time(time_now):
             assert schedule.is_due(last_run_at).next == due_in_seconds
 
-    @pytest.mark.parametrize(
-        "api_enabled_env_flag", [True, pytest.param(False, marks=pytest.mark.xfail(raises=AssertionError))]
-    )
-    def test_collate_letter_pdfs_uses_api_on_selected_environments(
+    def test_collate_letter_pdfs_uses_api(
         self,
         notify_api,
         notify_db_session,
         mocker,
-        api_enabled_env_flag,
     ):
         mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
-        mocker.patch("app.celery.letters_pdf_tasks.get_key_and_size_of_letters_to_be_sent_to_print", return_value=[])
         mock_send_via_api = mocker.patch("app.celery.letters_pdf_tasks.send_dvla_letters_via_api")
 
-        with set_config_values(notify_api, {"DVLA_API_ENABLED": api_enabled_env_flag}):
-            with freeze_time("2021-06-01T17:00+00:00"):
-                collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
+        with freeze_time("2021-06-01T17:00+00:00"):
+            collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
 
         assert mock_send_via_api.call_count == 4
         # Expected to be called with a local (BST) value
         mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "first")
         mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "second")
-        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "europe")
-        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "rest-of-world")
-
-    def test_collate_letter_pdfs_uses_api_if_postage_not_on_exclude_list(self, notify_api, notify_db_session, mocker):
-        mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
-
-        mock_send_via_api = mocker.patch("app.celery.letters_pdf_tasks.send_dvla_letters_via_api")
-        mock_send_via_ftp = mocker.patch("app.celery.letters_pdf_tasks._collate_letter_pdfs_to_be_sent_for_postage")
-
-        with set_config_values(
-            notify_api,
-            {"DVLA_API_ENABLED": True, "DVLA_API_POSTAGE_TYPE_EXCLUDE_LIST": ["first", "second"]},
-        ):
-            with freeze_time("2021-06-01T17:00+00:00"):
-                collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
-
-        assert mock_send_via_ftp.call_count == 2
-        mock_send_via_ftp.assert_any_call(datetime(2021, 6, 1, 17, 30), "first")
-        mock_send_via_ftp.assert_any_call(datetime(2021, 6, 1, 17, 30), "second")
-
-        assert mock_send_via_api.call_count == 2
         mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "europe")
         mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "rest-of-world")
 
