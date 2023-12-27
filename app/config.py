@@ -17,7 +17,6 @@ class QueueNames(object):
     JOBS = "job-tasks"
     RETRY = "retry-tasks"
     NOTIFY = "notify-internal-tasks"
-    PROCESS_FTP = "process-ftp-tasks"
     CREATE_LETTERS_PDF = "create-letters-pdf-tasks"
     CALLBACKS = "service-callbacks"
     CALLBACKS_RETRY = "service-callbacks-retry"
@@ -149,10 +148,6 @@ class Config(object):
     ONE_OFF_MESSAGE_FILENAME = "Report"
     MAX_VERIFY_CODE_COUNT = 5
     MAX_FAILED_LOGIN_COUNT = 10
-
-    # be careful increasing this size without being sure that we won't see slowness in pysftp
-    MAX_LETTER_PDF_ZIP_FILESIZE = 40 * 1024 * 1024  # 40mb
-    MAX_LETTER_PDF_COUNT_PER_ZIP = 500
 
     CHECK_PROXY_HEADER = False
 
@@ -331,8 +326,7 @@ class Config(object):
             # difference to the truncate date which translates to the filename to process
             # We schedule it for 16:50 and 17:50 UTC. This task is then responsible for determining if the local time
             # is 17:50, and if so, actually kicking off letter collation.
-            # If updating the cron schedule, you should update the task as well - at least while we're still processing
-            # letters by FTP. With the API changes we should have more flexibility.
+            # If updating the cron schedule, you should update the task as well.
             "check-time-to-collate-letters": {
                 "task": "check-time-to-collate-letters",
                 "schedule": crontab(hour="16,17", minute=50),
