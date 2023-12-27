@@ -1,6 +1,5 @@
-import uuid
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import ANY, call
 
 import boto3
@@ -51,11 +50,8 @@ from tests.app.db import (
     create_letter_attachment,
     create_letter_branding,
     create_notification,
-    create_organisation,
     create_service,
-    create_template,
 )
-from tests.conftest import set_config_values
 
 
 def test_should_have_decorated_tasks_functions():
@@ -213,7 +209,6 @@ def test_update_validation_failed_for_templated_letter_with_too_many_pages(
 
 
 class TestCheckTimeToCollateLetters:
-    @mock_s3
     @pytest.mark.parametrize(
         "frozen_time, expected_time_called_with",
         [
@@ -239,7 +234,6 @@ class TestCheckTimeToCollateLetters:
             mocker.call([expected_time_called_with], queue=QueueNames.PERIODIC)
         ]
 
-    @mock_s3
     @pytest.mark.parametrize(
         "time_to_run_task, should_run",
         [
@@ -306,7 +300,7 @@ class TestCollateLetterPdfsToBeSent:
         with freeze_time(time_now):
             assert schedule.is_due(last_run_at).next == due_in_seconds
 
-    def test_collate_letter_pdfs_uses_api(
+    def test_collate_letter_pdfs_to_be_sent(
         self,
         notify_api,
         notify_db_session,
@@ -324,181 +318,6 @@ class TestCollateLetterPdfsToBeSent:
         mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "second")
         mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "europe")
         mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "rest-of-world")
-
-    @mock_s3
-    def test_collate_letter_pdfs_to_be_sent(self, notify_api, mocker, sample_organisation):
-        with freeze_time("2020-02-17T18:00:00+00:00"):
-            service_1 = create_service(service_name="service 1", service_id="f2fe37b0-1301-11eb-aba9-4c3275916899")
-            service_1.organisation = sample_organisation
-            letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
-            # second class
-            create_notification(
-                template=letter_template_1,
-                status="created",
-                reference="ref0",
-                created_at=(datetime.now() - timedelta(hours=2)),
-            )
-            create_notification(
-                template=letter_template_1,
-                status="created",
-                reference="ref1",
-                created_at=(datetime.now() - timedelta(hours=3)),
-            )
-            create_notification(
-                template=letter_template_1,
-                status="created",
-                reference="ref2",
-                created_at=(datetime.now() - timedelta(days=2)),
-            )
-
-            # first class
-            create_notification(
-                template=letter_template_1,
-                status="created",
-                reference="first_class",
-                created_at=(datetime.now() - timedelta(hours=4)),
-                postage="first",
-            )
-
-            # international
-            create_notification(
-                template=letter_template_1,
-                status="created",
-                reference="international",
-                created_at=(datetime.now() - timedelta(days=3)),
-                postage="europe",
-            )
-            create_notification(
-                template=letter_template_1,
-                status="created",
-                reference="international",
-                created_at=(datetime.now() - timedelta(days=4)),
-                postage="rest-of-world",
-            )
-
-            # different service second class, belonging to a different organisation
-            org_2_id = uuid.uuid4()
-            organisation_two = create_organisation("Org 2", organisation_id=org_2_id)
-            service_2 = create_service(
-                service_name="service 2",
-                service_id="3a5cea08-29fd-4bb9-b582-8dedd928b149",
-                organisation=organisation_two,
-            )
-            letter_template_2 = create_template(service_2, template_type=LETTER_TYPE)
-            create_notification(
-                template=letter_template_2,
-                status="created",
-                reference="another_service",
-                created_at=(datetime.now() - timedelta(hours=2)),
-            )
-
-        bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
-        s3 = boto3.client("s3", region_name="eu-west-1")
-        s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
-
-        filenames = [
-            "2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF",
-            "2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF",
-            "2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF",
-            "2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF",
-            "2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF",
-            "2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF",
-            "2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF",
-        ]
-
-        for filename in filenames:
-            s3.put_object(Bucket=bucket_name, Key=filename, Body=b"f")
-
-        mock_celery = mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
-        mock_send_email_to_dvla = mocker.patch("app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla")
-
-        with set_config_values(notify_api, {"MAX_LETTER_PDF_COUNT_PER_ZIP": 2}):
-            collate_letter_pdfs_to_be_sent("2020-02-17T17:30:00")
-
-        mock_send_email_to_dvla.assert_called_once_with(
-            [(1, 1, "europe"), (1, 1, "first"), (1, 1, "rest-of-world"), (4, 4, "second")], datetime(2020, 2, 17).date()
-        )
-
-        assert len(mock_celery.call_args_list) == 6
-        assert mock_celery.call_args_list[0] == call(
-            name="zip-and-send-letter-pdfs",
-            kwargs={
-                "filenames_to_zip": ["2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF"],
-                "upload_filename": (
-                    "NOTIFY.2020-02-17.1.001.sO6RKzPyNrkxrR8OLonl."
-                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
-                ),
-                # noqa
-            },
-            queue="process-ftp-tasks",
-            compression="zlib",
-        )
-        assert mock_celery.call_args_list[1] == call(
-            name="zip-and-send-letter-pdfs",
-            kwargs={
-                "filenames_to_zip": ["2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF"],
-                "upload_filename": f"NOTIFY.2020-02-17.2.001.bGS-FKKV0QHcOUZgacEu.{service_2.id}.{org_2_id}.ZIP",
-            },
-            queue="process-ftp-tasks",
-            compression="zlib",
-        )
-        assert mock_celery.call_args_list[2] == call(
-            name="zip-and-send-letter-pdfs",
-            kwargs={
-                "filenames_to_zip": [
-                    "2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF",
-                    "2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF",
-                ],
-                "upload_filename": (
-                    "NOTIFY.2020-02-17.2.002.AmmswUYqPToXwlSZiFyK."
-                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
-                ),
-                # noqa
-            },
-            queue="process-ftp-tasks",
-            compression="zlib",
-        )
-        assert mock_celery.call_args_list[3] == call(
-            name="zip-and-send-letter-pdfs",
-            kwargs={
-                "filenames_to_zip": ["2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF"],
-                "upload_filename": (
-                    "NOTIFY.2020-02-17.2.003.36PwhyI9lFKjzbPiWxwv."
-                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
-                ),
-                # noqa
-            },
-            queue="process-ftp-tasks",
-            compression="zlib",
-        )
-        assert mock_celery.call_args_list[4] == call(
-            name="zip-and-send-letter-pdfs",
-            kwargs={
-                "filenames_to_zip": ["2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF"],
-                "upload_filename": (
-                    "NOTIFY.2020-02-17.E.001.lDBwqhnG__URJeGz3tH1."
-                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
-                ),
-                # noqa
-            },
-            queue="process-ftp-tasks",
-            compression="zlib",
-        )
-        assert mock_celery.call_args_list[5] == call(
-            name="zip-and-send-letter-pdfs",
-            kwargs={
-                "filenames_to_zip": [
-                    "2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF",
-                ],
-                "upload_filename": (
-                    "NOTIFY.2020-02-17.N.001.ZE7k_jm7Bg5sYwLswkr4."
-                    f"{letter_template_1.service_id}.{sample_organisation.id}.ZIP"
-                ),
-                # noqa
-            },
-            queue="process-ftp-tasks",
-            compression="zlib",
-        )
 
 
 def test_send_dvla_letters_via_api(sample_letter_template, mocker):
