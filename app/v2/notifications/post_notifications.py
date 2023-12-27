@@ -337,6 +337,8 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
                 personalisation_data[key].get("retention_period") or DEFAULT_DOCUMENT_DOWNLOAD_RETENTION_PERIOD
             )
 
+            filename = personalisation_data[key].get("filename")
+
             try:
                 personalisation_data[key] = document_download_client.upload_document(
                     service.id,
@@ -344,6 +346,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
                     personalisation_data[key].get("is_csv"),
                     confirmation_email=send_to if confirm_email is not False else None,
                     retention_period=retention_period,
+                    filename=filename,
                 )
             except DocumentDownloadError as e:
                 raise BadRequestError(message=e.message, status_code=e.status_code) from e

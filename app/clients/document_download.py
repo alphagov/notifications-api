@@ -42,6 +42,7 @@ class DocumentDownloadClient:
         is_csv=None,
         confirmation_email: Optional[str] = None,
         retention_period: Optional[str] = None,
+        filename: Optional[str] = None,
     ):
         try:
             data = {
@@ -54,6 +55,9 @@ class DocumentDownloadClient:
 
             if retention_period:
                 data["retention_period"] = retention_period
+
+            if filename:
+                data["filename"] = filename
 
             response = requests.post(
                 self._get_upload_url(service_id),
