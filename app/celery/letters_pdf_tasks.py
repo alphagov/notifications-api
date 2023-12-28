@@ -1,7 +1,5 @@
-from base64 import urlsafe_b64encode
 from datetime import datetime, timedelta
 from datetime import time as dt_time
-from hashlib import sha512
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
@@ -25,7 +23,6 @@ from app.constants import (
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
     POSTAGE_TYPES,
-    RESOLVE_POSTAGE_FOR_FILE_NAME,
 )
 from app.cronitor import cronitor
 from app.dao.notifications_dao import (
@@ -41,9 +38,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import (
-    LetterPDFNotFound,
     ScanErrorType,
-    find_letter_pdf_in_s3,
     generate_letter_pdf_filename,
     get_billable_units_for_letter_page_count,
     get_file_names_from_error_bucket,
@@ -154,56 +149,9 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline_utc_str: str):
     _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline_local)
 
     for postage in POSTAGE_TYPES:
-        if (
-            current_app.config["DVLA_API_ENABLED"]
-            and postage not in current_app.config["DVLA_API_POSTAGE_TYPE_EXCLUDE_LIST"]
-        ):
-            send_dvla_letters_via_api(print_run_deadline_local, postage)
-        else:
-            _collate_letter_pdfs_to_be_sent_for_postage(print_run_deadline_local, postage)
+        send_dvla_letters_via_api(print_run_deadline_local, postage)
 
     current_app.logger.info("finished collate-letter-pdfs-to-be-sent")
-
-
-def _collate_letter_pdfs_to_be_sent_for_postage(print_run_deadline_local, postage):
-    current_app.logger.info("starting collate-letter-pdfs-to-be-sent processing for postage class %s", postage)
-    letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline_local, postage)
-
-    for i, letters in enumerate(group_letters(letters_to_print)):
-        filenames = [letter["Key"] for letter in letters]
-
-        service_id = letters[0]["ServiceId"]
-        organisation_id = letters[0]["OrganisationId"]
-
-        hash = urlsafe_b64encode(sha512("".join(filenames).encode()).digest())[:20].decode()
-        # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
-        dvla_filename = "NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.{organisation_id}.ZIP".format(
-            date=print_run_deadline_local.strftime("%Y-%m-%d"),
-            postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
-            num=i + 1,
-            hash=hash,
-            service_id=service_id,
-            organisation_id=organisation_id,
-        )
-
-        current_app.logger.info(
-            (
-                "Calling task zip-and-send-letter-pdfs for %(num)s pdfs to upload %(dvla_filename)s "
-                "with total size %(size)s bytes"
-            ),
-            dict(
-                num=len(filenames),
-                dvla_filename=dvla_filename,
-                size="{:,}".format(sum(letter["Size"] for letter in letters)),
-            ),
-        )
-        notify_celery.send_task(
-            name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
-            kwargs={"filenames_to_zip": filenames, "upload_filename": dvla_filename},
-            queue=QueueNames.PROCESS_FTP,
-            compression="zlib",
-        )
-    current_app.logger.info("finished collate-letter-pdfs-to-be-sent processing for postage class %s", postage)
 
 
 @notify_celery.task(name="check-time-to-collate-letters")
@@ -280,55 +228,6 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
         )
 
         send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
-
-
-def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline_local, postage):
-    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline_local, postage)
-    for letter in letters_awaiting_sending:
-        try:
-            letter_pdf = find_letter_pdf_in_s3(letter)
-            yield {
-                "Key": letter_pdf.key,
-                "Size": letter_pdf.size,
-                "ServiceId": str(letter.service_id),
-                "OrganisationId": str(letter.service.organisation_id),
-            }
-        except (BotoClientError, LetterPDFNotFound):
-            current_app.logger.exception(
-                "Error getting letter from bucket for notification: %s with reference: %s", letter.id, letter.reference
-            )
-
-
-def group_letters(letter_pdfs):
-    """
-    Group letters in chunks of MAX_LETTER_PDF_ZIP_FILESIZE. Will add files to lists, never going over that size.
-    If a single file is (somehow) larger than MAX_LETTER_PDF_ZIP_FILESIZE that'll be in a list on it's own.
-    If there are no files, will just exit (rather than yielding an empty list).
-    """
-    running_filesize = 0
-    list_of_files = []
-    service_id = None
-    for letter in letter_pdfs:
-        if letter["Key"].lower().endswith(".pdf"):
-            if not service_id:
-                service_id = letter["ServiceId"]
-            if (
-                running_filesize + letter["Size"] > current_app.config["MAX_LETTER_PDF_ZIP_FILESIZE"]
-                or len(list_of_files) >= current_app.config["MAX_LETTER_PDF_COUNT_PER_ZIP"]
-                or letter["ServiceId"] != service_id
-            ):
-                yield list_of_files
-                running_filesize = 0
-                list_of_files = []
-                service_id = None
-
-            if not service_id:
-                service_id = letter["ServiceId"]
-            running_filesize += letter["Size"]
-            list_of_files.append(letter)
-
-    if list_of_files:
-        yield list_of_files
 
 
 def send_dvla_letters_via_api(print_run_deadline_local, postage):

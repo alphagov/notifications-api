@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 
 import pytest
 from flask import current_app
@@ -12,20 +12,16 @@ from app.celery.tasks import (
     process_updates_from_file,
     record_daily_sorted_counts,
     update_letter_notifications_statuses,
-    update_letter_notifications_to_error,
-    update_letter_notifications_to_sent_to_dvla,
 )
 from app.constants import (
-    NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
-    NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
 )
 from app.dao.daily_sorted_letter_dao import (
     dao_get_daily_sorted_letter_by_billing_day,
 )
-from app.exceptions import DVLAException, NotificationTechnicalFailureException
+from app.exceptions import DVLAException
 from app.models import DailySortedLetter, LetterCostThreshold, NotificationHistory, NotificationLetterDespatch
 from tests.app.db import (
     create_notification,
@@ -212,40 +208,6 @@ def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(
 
     update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
     send_mock.assert_not_called()
-
-
-def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notification_references(
-    client, sample_letter_template
-):
-    first = create_notification(sample_letter_template, reference="first ref")
-    second = create_notification(sample_letter_template, reference="second ref")
-
-    dt = datetime.utcnow()
-    with freeze_time(dt):
-        update_letter_notifications_to_sent_to_dvla([first.reference])
-
-    assert first.status == NOTIFICATION_SENDING
-    assert first.sent_by == "dvla"
-    assert first.sent_at == dt
-    assert first.updated_at == dt
-    assert second.status == NOTIFICATION_CREATED
-
-
-def test_update_letter_notifications_to_error_updates_based_on_notification_references(sample_letter_template):
-    first = create_notification(sample_letter_template, reference="first ref")
-    second = create_notification(sample_letter_template, reference="second ref")
-    create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
-    dt = datetime.utcnow()
-    with freeze_time(dt):
-        with pytest.raises(NotificationTechnicalFailureException) as e:
-            update_letter_notifications_to_error([first.reference])
-    assert first.reference in str(e.value)
-
-    assert first.status == NOTIFICATION_TECHNICAL_FAILURE
-    assert first.sent_by is None
-    assert first.sent_at is None
-    assert first.updated_at == dt
-    assert second.status == NOTIFICATION_CREATED
 
 
 def test_check_billable_units_when_billable_units_matches_page_count(
