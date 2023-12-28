@@ -1,7 +1,8 @@
 import datetime
 import enum
 import uuid
-from typing import Union
+from abc import abstractmethod
+from typing import Annotated, Callable, Optional, Union
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -23,6 +24,8 @@ from notifications_utils.template import (
     SMSMessageTemplate,
 )
 from notifications_utils.timezones import convert_utc_to_bst
+from pydantic import AliasPath, BaseModel, ConfigDict, Field, model_serializer, model_validator
+from pydantic_core.core_schema import SerializerFunctionWrapHandler
 from sqlalchemy import (
     CheckConstraint,
     Index,
@@ -48,6 +51,7 @@ from app.constants import (
     INVITE_PENDING,
     INVITED_USER_STATUS_TYPES,
     LETTER_TYPE,
+    LITERAL_TEMPLATE_TYPES,
     MOBILE_TYPE,
     NORMAL,
     NOTIFICATION_CREATED,
@@ -1167,6 +1171,19 @@ class TemplateBase(db.Model):
 
         return serialized
 
+    @property
+    def uri(self):
+        return self.get_link()
+
+    @property
+    @abstractmethod
+    def get_link(self):
+        raise NotImplementedError()
+
+
+class TemplateSerializer(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Template(TemplateBase):
     __tablename__ = "templates"
@@ -1388,6 +1405,96 @@ class NotificationAllTimeView(db.Model):
     document_download_count = db.Column(db.Integer)
 
 
+class NotificationEmbeddedTemplateSerializer(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    version: int
+    uri: str
+
+
+class OmitOnCondition:
+    def __init__(self, check_condition: Callable):
+        self.check_condition = check_condition
+
+
+omit_if_not_letter = OmitOnCondition(lambda self: self.type != "letter")
+
+
+class NotificationSerializer(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True, json_encoders={datetime.datetime: lambda v: v.strftime(DATETIME_FORMAT)}
+    )
+
+    id: uuid.UUID
+    type: LITERAL_TEMPLATE_TYPES = Field(validation_alias="notification_type")
+    reference: Optional[str]
+    status: str = Field(validation_alias="normalised_status")
+    body: str = Field(validation_alias="content")
+    template: NotificationEmbeddedTemplateSerializer
+    personalisation: dict = Field(exclude=True)
+    created_at: datetime.datetime
+    created_by_name: Optional[str]
+    sent_at: Optional[datetime.datetime]
+    completed_at: Optional[datetime.datetime]
+    scheduled_for: None = None
+
+    email_address: Optional[str] = Field(None, validation_alias="to")
+    subject: Optional[str] = None
+
+    phone_number: Optional[str] = Field(None, validation_alias="to")
+
+    line_1: Optional[str] = Field(None, validation_alias=AliasPath("personalisation", "address_line_1"))
+    line_2: Optional[str] = Field(None, validation_alias=AliasPath("personalisation", "address_line_2"))
+    line_3: Optional[str] = Field(None, validation_alias=AliasPath("personalisation", "address_line_3"))
+    line_4: Optional[str] = Field(None, validation_alias=AliasPath("personalisation", "address_line_4"))
+    line_5: Optional[str] = Field(None, validation_alias=AliasPath("personalisation", "address_line_5"))
+    line_6: Optional[str] = Field(None, validation_alias=AliasPath("personalisation", "address_line_6"))
+    postcode: Optional[str] = Field(None, validation_alias=AliasPath("personalisation", "postcode"))
+    postage: Optional[str] = None
+    estimated_delivery: Annotated[Optional[datetime.datetime], omit_if_not_letter] = Field(None)
+
+    _email_fields = {"email_address", "subject"}
+    _sms_fields = {"phone_number"}
+    _letter_fields = {
+        "line_1",
+        "line_2",
+        "line_3",
+        "line_4",
+        "line_5",
+        "line_6",
+        "postcode",
+        "postage",
+        "estimated_delivery",
+    }
+
+    @model_validator(mode="after")
+    def validate_fields_by_notification_type(self):
+        fields_to_clear = self._email_fields | self._sms_fields | self._letter_fields
+        if self.type == "email":
+            fields_to_clear -= self._email_fields
+        elif self.type == "sms":
+            fields_to_clear -= self._sms_fields
+        else:
+            fields_to_clear -= self._letter_fields
+
+        for field in fields_to_clear:
+            setattr(self, field, None)
+
+        return self
+
+    @model_serializer(mode="wrap")
+    def _serialize(self, handler: SerializerFunctionWrapHandler):
+        omit_fields = {
+            k
+            for k, v in self.model_fields.items()
+            for m in v.metadata
+            if isinstance(m, OmitOnCondition) and m.check_condition(self)
+        }
+
+        return {k: v for k, v in handler(self).items() if k not in omit_fields}
+
+
 class Notification(db.Model):
     __tablename__ = "notifications"
 
@@ -1457,6 +1564,7 @@ class Notification(db.Model):
     def personalisation(self, personalisation):
         self._personalisation = encryption.encrypt(personalisation or {})
 
+    @property
     def completed_at(self):
         if self.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
             return self.updated_at.strftime(DATETIME_FORMAT)
@@ -1557,6 +1665,10 @@ class Notification(db.Model):
         else:
             return None
 
+    @property
+    def created_by_name(self):
+        return self.get_created_by_name()
+
     def get_created_by_email_address(self):
         if self.created_by:
             return self.created_by.email_address
@@ -1604,7 +1716,7 @@ class Notification(db.Model):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "created_by_name": self.get_created_by_name(),
             "sent_at": get_dt_string_or_none(self.sent_at),
-            "completed_at": self.completed_at(),
+            "completed_at": self.completed_at,
             "scheduled_for": None,
             "postage": self.postage,
         }
@@ -1627,6 +1739,17 @@ class Notification(db.Model):
             ).earliest_delivery.strftime(DATETIME_FORMAT)
 
         return serialized
+
+    @property
+    def normalised_status(self):
+        return self.get_letter_status() if self.notification_type == LETTER_TYPE else self.status
+
+    @property
+    def estimated_delivery(self):
+        if self.notification_type != LETTER_TYPE:
+            return None
+
+        return get_letter_timings(self.created_at, postage=self.postage).earliest_delivery
 
 
 class NotificationHistory(db.Model):

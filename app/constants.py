@@ -127,8 +127,11 @@ SMS_TYPE = "sms"
 EMAIL_TYPE = "email"
 LETTER_TYPE = "letter"
 BROADCAST_TYPE = "broadcast"
+LITERAL_SMS_TYPE = Literal["sms"]
+LITERAL_EMAIL_TYPE = Literal["email"]
+LITERAL_LETTER_TYPE = Literal["letter"]
 TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, BROADCAST_TYPE]
-LITERAL_TEMPLATE_TYPES = Literal["sms", "email", "letter", "broadcast"]
+LITERAL_TEMPLATE_TYPES = Literal["sms", "email", "letter"]
 NOTIFICATION_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]  # not broadcast
 NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]  # duplicate that can probably be cleaned up
 

@@ -306,7 +306,7 @@ def register_v2_blueprints(application):
     from app.v2.templates.get_templates import v2_templates_blueprint
 
     v2_notification_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_notification_blueprint)
+    application.register_api(v2_notification_blueprint)
 
     v2_templates_blueprint.before_request(requires_auth)
     application.register_blueprint(v2_templates_blueprint)

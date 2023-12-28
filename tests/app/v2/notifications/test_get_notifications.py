@@ -55,7 +55,7 @@ def test_get_notification_by_id_returns_200(api_client_request, billable_units, 
         "body": sample_notification.template.content,
         "subject": None,
         "sent_at": sample_notification.sent_at,
-        "completed_at": sample_notification.completed_at(),
+        "completed_at": sample_notification.completed_at,
         "scheduled_for": None,
         "postage": None,
     }
@@ -102,7 +102,7 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         "body": "Hello Bob\nThis is an email from GOV.UK",
         "subject": "Bob",
         "sent_at": sample_notification.sent_at,
-        "completed_at": sample_notification.completed_at(),
+        "completed_at": sample_notification.completed_at,
         "scheduled_for": None,
         "postage": None,
     }

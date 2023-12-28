@@ -1,3 +1,4 @@
+import uuid
 from io import BytesIO
 
 from flask import current_app, jsonify, request, send_file, url_for
@@ -11,6 +12,8 @@ from app.constants import (
 )
 from app.dao import notifications_dao
 from app.letters.utils import get_letter_pdf_and_metadata
+from app.models import NotificationSerializer
+from app.openapi import CustomErrorBaseModel
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError, PDFNotReadyError
 from app.v2.notifications import v2_notification_blueprint
@@ -20,14 +23,22 @@ from app.v2.notifications.notification_schemas import (
 )
 
 
-@v2_notification_blueprint.route("/<notification_id>", methods=["GET"])
-def get_notification_by_id(notification_id):
-    _data = {"notification_id": notification_id}
-    validate(_data, notification_by_id)
+class GetNotificationByIdPath(CustomErrorBaseModel):
+    notification_id: uuid.UUID
+
+    override_errors = {("uuid_parsing", ("notification_id",)): "notification_id is not a valid UUID"}
+
+
+@v2_notification_blueprint.get("/<notification_id>", responses={"200": NotificationSerializer})
+def get_notification_by_id(path: GetNotificationByIdPath):
     notification = notifications_dao.get_notification_with_personalisation(
-        authenticated_service.id, notification_id, key_type=None
+        authenticated_service.id, path.notification_id, key_type=None
     )
-    return jsonify(notification.serialize()), 200
+    return (
+        NotificationSerializer.model_validate(notification).model_dump_json(),
+        200,
+        {"content-type": "application/json"},
+    )
 
 
 @v2_notification_blueprint.route("/<notification_id>/pdf", methods=["GET"])
