@@ -19,7 +19,6 @@ from app.v2.errors import BadRequestError, PDFNotReadyError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
     get_notifications_request,
-    notification_by_id,
 )
 
 
@@ -41,11 +40,24 @@ def get_notification_by_id(path: GetNotificationByIdPath):
     )
 
 
-@v2_notification_blueprint.route("/<notification_id>/pdf", methods=["GET"])
-def get_pdf_for_notification(notification_id):
-    _data = {"notification_id": notification_id}
-    validate(_data, notification_by_id)
-    notification = notifications_dao.get_notification_by_id(notification_id, authenticated_service.id, _raise=True)
+@v2_notification_blueprint.get(
+    "/<notification_id>/pdf",
+    responses={
+        "200": {
+            "description": "The raw PDF for a letter notification",
+            "content": {
+                "application/pdf": {
+                    "schema": {
+                        "type": "string",
+                        "format": "binary",
+                    }
+                }
+            },
+        }
+    },
+)
+def get_pdf_for_notification(path: GetNotificationByIdPath):
+    notification = notifications_dao.get_notification_by_id(path.notification_id, authenticated_service.id, _raise=True)
 
     if notification.notification_type != LETTER_TYPE:
         raise BadRequestError(message="Notification is not a letter")
