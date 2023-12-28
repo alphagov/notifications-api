@@ -2,6 +2,114 @@
 import enum
 from typing import Literal
 
+
+class NotificationStatus(str, enum.Enum):
+    CANCELLED = "cancelled"
+    CREATED = "created"
+    SENDING = "sending"
+    SENT = "sent"
+    DELIVERED = "delivered"
+    PENDING = "pending"
+    FAILED = "failed"
+    TECHNICAL_FAILURE = "technical-failure"
+    TEMPORARY_FAILURE = "temporary-failure"
+    PERMANENT_FAILURE = "permanent-failure"
+    PENDING_VIRUS_CHECK = "pending-virus-check"
+    VALIDATION_FAILED = "validation-failed"
+    VIRUS_SCAN_FAILED = "virus-scan-failed"
+    RETURNED_LETTER = "returned-letter"
+    ACCEPTED = "accepted"
+    RECEIVED = "received"
+
+    @property
+    @classmethod
+    def failed(cls):
+        return (
+            cls.TECHNICAL_FAILURE,
+            cls.TEMPORARY_FAILURE,
+            cls.PERMANENT_FAILURE,
+            cls.VALIDATION_FAILED,
+            cls.VIRUS_SCAN_FAILED,
+            cls.RETURNED_LETTER,
+        )
+
+    @property
+    @classmethod
+    def completed(cls):
+        return (
+            cls.SENT,
+            cls.DELIVERED,
+            cls.FAILED,
+            cls.TECHNICAL_FAILURE,
+            cls.TEMPORARY_FAILURE,
+            cls.PERMANENT_FAILURE,
+            cls.RETURNED_LETTER,
+            cls.CANCELLED,
+        )
+
+    @property
+    @classmethod
+    def success(cls):
+        return (
+            cls.SENT,
+            cls.DELIVERED,
+        )
+
+    @property
+    @classmethod
+    def billable(cls):
+        return (
+            cls.SENDING,
+            cls.SENT,
+            cls.DELIVERED,
+            cls.PENDING,
+            cls.FAILED,
+            cls.TEMPORARY_FAILURE,
+            cls.PERMANENT_FAILURE,
+            cls.RETURNED_LETTER,
+        )
+
+    @property
+    @classmethod
+    def billable_sms(cls):
+        return (
+            cls.SENDING,
+            cls.SENT,  # internationally
+            cls.DELIVERED,
+            cls.PENDING,
+            cls.TEMPORARY_FAILURE,
+            cls.PERMANENT_FAILURE,
+        )
+
+    @property
+    @classmethod
+    def billable_international(cls):
+        return (
+            cls.SENDING,
+            cls.DELIVERED,
+            cls.RETURNED_LETTER,
+        )
+
+    @property
+    @classmethod
+    def billable_letters(cls):
+        return (
+            cls.SENDING,
+            cls.DELIVERED,
+            cls.RETURNED_LETTER,
+        )
+
+    @property
+    @classmethod
+    def sent_emails(cls):
+        return (
+            cls.SENDING,
+            cls.DELIVERED,
+            cls.TEMPORARY_FAILURE,
+            cls.PERMANENT_FAILURE,
+        )
+
+
 NOTIFICATION_CANCELLED = "cancelled"
 NOTIFICATION_CREATED = "created"
 NOTIFICATION_SENDING = "sending"

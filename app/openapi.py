@@ -1,17 +1,23 @@
-from typing import ClassVar, Literal, Union
+from typing import Callable, ClassVar, Literal, Union
 
 from pydantic import BaseModel, Field, ValidationError
 
 
 class NotifyValidationError(Exception):
-    def __init__(self, override_message=None, original_error=None, *args, **kwargs):
+    def __init__(self, override_message=None, override_context=None, original_error=None, *args, **kwargs):
         self.override_message = override_message
+        self.override_context = override_context
         self.original_error = original_error
         super().__init__(*args, **kwargs)
 
     def serialize(self):
         if self.override_message:
-            return {"errors": [{"error": "ValidationError", "message": self.override_message}], "status_code": 400}
+            return {
+                "errors": [
+                    {"error": "ValidationError", "message": self.override_message.format(**self.override_context)}
+                ],
+                "status_code": 400,
+            }
 
         from flask import current_app
 
@@ -35,10 +41,22 @@ class CustomErrorBaseModel(BaseModel):
         except ValidationError as e:
             for error in e.errors():
                 if override := self.override_errors.get((error["type"], error["loc"])):
-                    raise NotifyValidationError(override_message=override, original_error=e) from e
+                    raise NotifyValidationError(
+                        override_message=override,
+                        override_context={"input": error["input"], "loc": error["loc"]},
+                        original_error=e,
+                    ) from e
             raise NotifyValidationError(original_error=e) from e
 
 
 class UnauthorizedResponse(BaseModel):
     result: Literal["error"] = Field()
     message: Union[dict, str] = Field()
+
+
+class OmitOnCondition:
+    def __init__(self, check_condition: Callable):
+        self.check_condition = check_condition
+
+
+omit_if_none = OmitOnCondition(lambda val: val is None)

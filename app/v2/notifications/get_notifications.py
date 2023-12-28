@@ -1,25 +1,26 @@
 import uuid
 from io import BytesIO
+from typing import Annotated
 
 from flask import current_app, jsonify, request, send_file, url_for
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_serializer
+from pydantic_core.core_schema import SerializerFunctionWrapHandler
 
 from app import api_user, authenticated_service
 from app.constants import (
     LETTER_TYPE,
+    LITERAL_TEMPLATE_TYPES,
     NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VIRUS_SCAN_FAILED,
+    NotificationStatus,
 )
 from app.dao import notifications_dao
 from app.letters.utils import get_letter_pdf_and_metadata
 from app.models import NotificationSerializer
-from app.openapi import CustomErrorBaseModel
-from app.schema_validation import validate
+from app.openapi import CustomErrorBaseModel, omit_if_none
 from app.v2.errors import BadRequestError, PDFNotReadyError
 from app.v2.notifications import v2_notification_blueprint
-from app.v2.notifications.notification_schemas import (
-    get_notifications_request,
-)
 
 
 class GetNotificationByIdPath(CustomErrorBaseModel):
@@ -79,50 +80,78 @@ def get_pdf_for_notification(path: GetNotificationByIdPath):
     return send_file(path_or_file=BytesIO(pdf_data), mimetype="application/pdf")
 
 
-@v2_notification_blueprint.route("", methods=["GET"])
-def get_notifications():
-    _data = request.args.to_dict(flat=False)
+class PaginationLinks(BaseModel):
+    next: Annotated[str, omit_if_none] = Field(None)
+    current: str
 
-    # flat=False makes everything a list, but we only ever allow one value for "older_than"
-    if "older_than" in _data:
-        _data["older_than"] = _data["older_than"][0]
+    @model_serializer(mode="wrap")
+    def _serialize(self, handler: SerializerFunctionWrapHandler):
+        omit_fields = {k for k, v in self.model_fields.items() for m in v.metadata if m is omit_if_none}
 
-    # and client reference
-    if "reference" in _data:
-        _data["reference"] = _data["reference"][0]
+        return {k: v for k, v in handler(self).items() if k not in omit_fields or v is not None}
 
-    if "include_jobs" in _data:
-        _data["include_jobs"] = _data["include_jobs"][0]
 
-    data = validate(_data, get_notifications_request)
+class ListNotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
+    notifications: list[NotificationSerializer]
+    links: PaginationLinks
+
+
+class ListNotificationQuery(CustomErrorBaseModel):
+    template_type: LITERAL_TEMPLATE_TYPES = Field(None)
+    status: list[NotificationStatus] = Field(None)
+    reference: str = Field(None)
+    older_than: uuid.UUID = Field(None)
+    include_jobs: str = Field(None)  # stringly typed so any non-empty is truthy
+
+    override_errors = {
+        ("enum", ("status", 0)): (
+            "status {input} is not one of [cancelled, created, sending, "
+            "sent, delivered, pending, failed, technical-failure, temporary-failure, permanent-failure, "
+            "pending-virus-check, validation-failed, virus-scan-failed, returned-letter, accepted, received]"
+        ),
+        ("literal_error", ("template_type",)): "template_type {input} is not one of [sms, email, letter]",
+        ("uuid_parsing", ("older_than",)): "older_than is not a valid UUID",
+    }
+
+    @field_serializer("status")
+    def stringify_statuses(self, val):
+        if val:
+            return [v.value for v in val]
+        return None
+
+
+@v2_notification_blueprint.get("", responses={"200": ListNotificationResponse})
+def get_notifications(query: ListNotificationQuery):
     paginated_notifications = notifications_dao.get_notifications_for_service(
         str(authenticated_service.id),
-        filter_dict=data,
+        filter_dict=request.args,  # fixme: shouldn't need this with proper query args parsing
         key_type=api_user.key_type,
         personalisation=True,
-        older_than=data.get("older_than"),
-        client_reference=data.get("reference"),
+        older_than=query.older_than,
+        client_reference=query.reference,
         page_size=current_app.config.get("API_PAGE_SIZE"),
-        include_jobs=data.get("include_jobs"),
+        include_jobs=query.include_jobs,
         count_pages=False,
     )
 
     def _build_links(notifications):
         _links = {
-            "current": url_for(".get_notifications", _external=True, **data),
+            "current": url_for(".get_notifications", _external=True, **query.model_dump()),
         }
 
         if len(notifications):
-            next_query_params = dict(data, older_than=notifications[-1].id)
+            next_query_params = dict(request.args, older_than=notifications[-1].id)
             _links["next"] = url_for(".get_notifications", _external=True, **next_query_params)
 
         return _links
 
     return (
         jsonify(
-            notifications=[notification.serialize() for notification in paginated_notifications.items],
-            links=_build_links(paginated_notifications.items),
+            ListNotificationResponse(
+                notifications=paginated_notifications.items, links=_build_links(paginated_notifications.items)
+            ).model_dump()
         ),
         200,
     )

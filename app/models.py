@@ -2,7 +2,7 @@ import datetime
 import enum
 import uuid
 from abc import abstractmethod
-from typing import Annotated, Callable, Optional, Union
+from typing import Annotated, Optional, Union
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -76,6 +76,7 @@ from app.constants import (
 )
 from app.hashing import check_hash, hashpw
 from app.history_meta import Versioned
+from app.openapi import OmitOnCondition
 from app.utils import (
     DATETIME_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
@@ -1413,11 +1414,6 @@ class NotificationEmbeddedTemplateSerializer(BaseModel):
     uri: str
 
 
-class OmitOnCondition:
-    def __init__(self, check_condition: Callable):
-        self.check_condition = check_condition
-
-
 omit_if_not_letter = OmitOnCondition(lambda self: self.type != "letter")
 
 
@@ -1428,7 +1424,7 @@ class NotificationSerializer(BaseModel):
 
     id: uuid.UUID
     type: LITERAL_TEMPLATE_TYPES = Field(validation_alias="notification_type")
-    reference: Optional[str]
+    reference: Optional[str] = Field(validation_alias="client_reference")
     status: str = Field(validation_alias="normalised_status")
     body: str = Field(validation_alias="content")
     template: NotificationEmbeddedTemplateSerializer
