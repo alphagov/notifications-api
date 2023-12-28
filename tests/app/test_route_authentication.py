@@ -4,6 +4,10 @@ def test_all_routes_have_authentication(client):
     before_req_funcs = set(x for x in client.application.before_request_funcs if x is not None)
 
     blueprint_names = set(client.application.blueprints.keys())
+
+    # Our OpenAPI docs are ... open. They don't have a before_request function at all.
+    blueprint_names.remove("openapi")
+
     assert blueprint_names == before_req_funcs
 
     routes_blueprint_names = set([x.split(".")[0] for x in client.application.view_functions.keys()])
@@ -13,4 +17,8 @@ def test_all_routes_have_authentication(client):
 
     # The metrics route is not protected by auth as it's available to be scraped by Prometheus
     routes_blueprint_names.remove("metrics")
+
+    # Our OpenAPI docs are ... open. They don't have a before_request function at all.
+    routes_blueprint_names.remove("openapi")
+
     assert sorted(blueprint_names) == sorted(routes_blueprint_names)

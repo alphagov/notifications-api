@@ -37,6 +37,7 @@ from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.letter.dvla import DVLAClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.openapi import NotifyValidationError
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -336,6 +337,16 @@ def init_app(app):
         response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
         return response
+
+    @app.errorhandler(NotifyValidationError)
+    def notify_error_handler(error: NotifyValidationError):
+        # We override pydantic's native validation errors with our custom one so that we can return a 400 instead of
+        # a 422, which is what flask-openapi3 returns. We don't have this behaviour on Notify and so 400 is more
+        # consistent with what we would expect.
+        if error.override_message:
+            return jsonify(error.serialize()), 400
+
+        return error.original_error.json(), 400, {"content-type": "application/json"}
 
     @app.errorhandler(Exception)
     def exception(error):
