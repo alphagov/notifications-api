@@ -93,4 +93,5 @@ def _process_for_status(notification_status, client_name, provider_reference, de
 
     if notification_status != NOTIFICATION_PENDING:
         check_and_queue_callback_task(notification)
-        statsd_client.incr(f"international-sms.{notification_status}.{notification.phone_prefix}")
+        if notification.international:
+            statsd_client.incr(f"international-sms.{notification_status}.{notification.phone_prefix}")
