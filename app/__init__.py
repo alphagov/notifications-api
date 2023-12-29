@@ -290,7 +290,6 @@ def register_blueprint(application):
 
 def register_v2_blueprints(application):
     from app.authentication.auth import requires_auth
-    from app.v2.broadcast.post_broadcast import v2_broadcast_blueprint
     from app.v2.inbound_sms.get_inbound_sms import v2_inbound_sms_blueprint
     from app.v2.notifications import (  # noqa
         get_notifications,
@@ -315,9 +314,6 @@ def register_v2_blueprints(application):
 
     v2_inbound_sms_blueprint.before_request(requires_auth)
     application.register_blueprint(v2_inbound_sms_blueprint)
-
-    v2_broadcast_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_broadcast_blueprint)
 
 
 def init_app(app):
