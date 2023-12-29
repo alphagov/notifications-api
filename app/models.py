@@ -1406,7 +1406,7 @@ class NotificationAllTimeView(db.Model):
     document_download_count = db.Column(db.Integer)
 
 
-class NotificationEmbeddedTemplateSerializer(BaseModel):
+class NotificationPartialTemplateSerializer(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -1427,7 +1427,7 @@ class NotificationSerializer(BaseModel):
     reference: Optional[str] = Field(validation_alias="client_reference")
     status: str = Field(validation_alias="normalised_status")
     body: str = Field(validation_alias="content")
-    template: NotificationEmbeddedTemplateSerializer
+    template: NotificationPartialTemplateSerializer
     personalisation: dict = Field(exclude=True)
     created_at: datetime.datetime
     created_by_name: Optional[str]
