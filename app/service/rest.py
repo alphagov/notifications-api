@@ -28,7 +28,6 @@ from app.dao.api_key_dao import (
     get_unsigned_secret,
     save_model_api_key,
 )
-from app.dao.broadcast_service_dao import set_broadcast_service_type
 from app.dao.dao_utils import dao_rollback, transaction
 from app.dao.date_util import get_financial_year
 from app.dao.fact_notification_status_dao import (
@@ -129,9 +128,6 @@ from app.service.send_notification import (
 )
 from app.service.send_pdf_letter_schema import send_pdf_letter_request
 from app.service.sender import send_notification_to_service_users
-from app.service.service_broadcast_settings_schema import (
-    service_broadcast_settings_schema,
-)
 from app.service.service_contact_list_schema import (
     create_service_contact_list_schema,
 )
@@ -1102,28 +1098,3 @@ def create_contact_list(service_id):
     save_service_contact_list(list_to_save)
 
     return jsonify(list_to_save.serialize()), 201
-
-
-@service_blueprint.route("/<uuid:service_id>/set-as-broadcast-service", methods=["POST"])
-def set_as_broadcast_service(service_id):
-    """
-    This route does the following
-    - adds a service broadcast settings to define which channel broadcasts should go out on
-    - removes all current service permissions and adds the broadcast service permission
-    - sets the services `count_as_live` to false
-    - adds the service to the broadcast organisation
-    - puts the service into training mode or live mode
-    - removes all permissions from current users and invited users
-    """
-    data = validate(request.get_json(), service_broadcast_settings_schema)
-    service = dao_fetch_service_by_id(service_id)
-
-    set_broadcast_service_type(
-        service,
-        service_mode=data["service_mode"],
-        broadcast_channel=data["broadcast_channel"],
-        provider_restriction=data["provider_restriction"],
-    )
-
-    data = service_schema.dump(service)
-    return jsonify(data=data)
