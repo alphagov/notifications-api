@@ -133,7 +133,6 @@ def register_blueprint(application):
         requires_no_auth,
     )
     from app.billing.rest import billing_blueprint
-    from app.broadcast_message.rest import broadcast_message_blueprint
     from app.complaint.complaint_rest import complaint_blueprint
     from app.email_branding.rest import email_branding_blueprint
     from app.events.rest import events as events_blueprint
@@ -270,9 +269,6 @@ def register_blueprint(application):
 
     upload_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(upload_blueprint)
-
-    broadcast_message_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(broadcast_message_blueprint)
 
     govuk_alerts_blueprint.before_request(requires_govuk_alerts_auth)
     application.register_blueprint(govuk_alerts_blueprint)
