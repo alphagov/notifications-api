@@ -84,7 +84,6 @@ class Config(object):
 
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = "notify-admin"
-    GOVUK_ALERTS_CLIENT_ID = "govuk-alerts"
     FUNCTIONAL_TESTS_CLIENT_ID = "notify-functional-tests"
 
     INTERNAL_CLIENT_API_KEYS = json.loads(os.environ.get("INTERNAL_CLIENT_API_KEYS", "{}"))
@@ -466,7 +465,6 @@ class Development(Config):
 
     INTERNAL_CLIENT_API_KEYS = {
         Config.ADMIN_CLIENT_ID: ["dev-notify-secret-key"],
-        Config.GOVUK_ALERTS_CLIENT_ID: ["govuk-alerts-secret-key"],
         Config.FUNCTIONAL_TESTS_CLIENT_ID: ["functional-tests-secret-key"],
     }
 
