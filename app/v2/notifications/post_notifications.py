@@ -30,6 +30,7 @@ from app.constants import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    LITERAL_POSTAGE_TYPES,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
@@ -59,6 +60,7 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
+from app.openapi import CustomErrorBaseModel
 from app.schema_validation import validate
 from app.utils import DATETIME_FORMAT
 from app.v2.errors import BadRequestError
@@ -71,7 +73,6 @@ from app.v2.notifications.create_response import (
 from app.v2.notifications.notification_schemas import (
     post_email_request,
     post_letter_request,
-    post_precompiled_letter_request,
     post_sms_request,
     send_a_file_validation,
 )
@@ -83,13 +84,21 @@ POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
 )
 
 
-@v2_notification_blueprint.route("/{}".format(LETTER_TYPE), methods=["POST"])
-def post_precompiled_letter_notification():
-    request_json = get_valid_json()
-    if "content" not in (request_json or {}):
-        return post_notification(LETTER_TYPE)
+class PostNotificationSerializer(CustomErrorBaseModel):
+    pass
 
-    form = validate(request_json, post_precompiled_letter_request)
+
+class PostLetterNotificationBody(CustomErrorBaseModel):
+    reference: str
+    content: str = None
+    postage: LITERAL_POSTAGE_TYPES = None
+    personalisation: dict = None
+
+
+@v2_notification_blueprint.post("/{}".format(LETTER_TYPE), responses={"201": PostNotificationSerializer})
+def post_precompiled_letter_notification(body: PostLetterNotificationBody):
+    if body.content is None:
+        return post_notification(LETTER_TYPE)
 
     # Check permission to send letters
     check_service_has_permission(LETTER_TYPE, authenticated_service.permissions)
@@ -100,10 +109,10 @@ def post_precompiled_letter_notification():
 
     # For precompiled letters the to field will be set to Provided as PDF until the validation passes,
     # then the address of the letter will be set as the to field
-    form["personalisation"] = {"address_line_1": "Provided as PDF"}
+    body.personalisation = {"address_line_1": "Provided as PDF"}
 
     notification = process_letter_notification(
-        letter_data=form,
+        letter_data=body,
         api_key=api_user,
         service=authenticated_service,
         template=template,
