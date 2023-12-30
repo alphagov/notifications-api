@@ -83,3 +83,43 @@ COPY --chown=notify:notify Makefile requirements.txt requirements_for_test.txt .
 RUN make bootstrap
 
 COPY --chown=notify:notify . .
+
+##### Concourse Test Image ##############################################################
+FROM test as concourse_tests
+
+USER root
+
+ENV POSTGRES_VERSION=15 \
+    POSTGRES_REPO_KEY=B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+
+RUN \
+    apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gnupg \
+        lsb-release
+
+# Installation of postgres is based on https://github.com/docker-library/postgres/blob/0d0485cb02e526f5a240b7740b46c35404aaf13f/9.6/Dockerfile
+
+# Add the gpg key for postgresql package repository
+RUN set -x \
+    && export GNUPGHOME="$(mktemp -d)" \
+    && gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$POSTGRES_REPO_KEY" \
+    && gpg --batch --export "$POSTGRES_REPO_KEY" > /etc/apt/trusted.gpg.d/postgres.gpg \
+    && command -v gpgconf > /dev/null && gpgconf --kill all \
+    &&rm -rf "$GNUPGHOME" \
+    && apt-key list
+
+# Install postgres
+RUN \
+    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main $POSTGRES_VERSION" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        postgresql-$POSTGRES_VERSION \
+    && rm -rf /var/lib/apt/lists/* /tmp/*
+
+RUN \
+    service postgresql start \
+    && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\"" \
+    && su - postgres -c "psql -c \"create database notification_api;\"" 
+
+ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/notification_api
