@@ -42,6 +42,10 @@ run-flask: ## Run flask
 run-flask-with-docker: ## Run flask
 	./scripts/run_locally_with_docker.sh api-local
 
+.PHONY: run-local-db-with-docker
+run-local-db-with-docker: ##
+	./scripts/run_local_db_with_docker.sh api-local
+
 .PHONY: run-gunicorn-with-docker
 run-gunicorn-with-docker: ## Run gunicorn
 	./scripts/run_locally_with_docker.sh api
