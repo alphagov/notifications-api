@@ -49,15 +49,28 @@ notify-pass credentials/mmg
 
 ### Postgres
 
-Install [Postgres.app](http://postgresapp.com/).
+Postgres is built in the CONCOURSE_TESTS as an extra layer derived from the TEST layer.
+This is built to allow the tests to run using the API PRODUCTION layer.
 
-The API (on Notify) works with PostgreSQL 15. After installation, open the Postgres app, open the sidebar, and update or replace the default server with a compatible version.
-
-**Note:** you may need to add the following directory to your PATH in order to bootstrap the app.
+#### How to build and run tests locally:
 
 ```
-export PATH=${PATH}:/Applications/Postgres.app/Contents/Versions/15/bin/
+1. Build the image running:
+docker build -f docker/Dockerfile --target concourse_tests  -t notifications-api .
+
+2. Run the container:
+make run-local-db-with-docker
+
+3. Exec into the container:
+docker exec -it 0f7f2e4718f9 /bin/bash (change container ID)
+
+4. Once inside the container, run:
+service postgresql start
+make bootstrap
+make test
 ```
+Note: There is a file called "version.py.dist" that is used for "healthcheck.py". As it stands, this file is unusable and the local build will fail. You must, either rename it to "version.py" or simply create a local file with that name and copy the contents to it.
+
 
 ### Redis
 
