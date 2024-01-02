@@ -55,20 +55,11 @@ This is built to allow the tests to run using the API PRODUCTION layer.
 #### How to build and run tests locally:
 
 ```
-1. Build the image running:
-docker build -f docker/Dockerfile --target concourse_tests  -t notifications-api .
-
-2. Run the container:
-make run-local-db-with-docker
-
-3. Exec into the container:
-docker exec -it 0f7f2e4718f9 /bin/bash (change container ID)
-
-4. Once inside the container, run:
-service postgresql start
-make bootstrap
-make test
+1. run the make command
+    make run-local-tests-with-docker
 ```
+The step above will build the image, run the container, start postgresql and run the tests.
+
 Note: There is a file called "version.py.dist" that is used for "healthcheck.py". As it stands, this file is unusable and the local build will fail. You must, either rename it to "version.py" or simply create a local file with that name and copy the contents to it.
 
 
