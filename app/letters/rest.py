@@ -2,12 +2,15 @@ from flask import Blueprint, jsonify, request
 
 from app.celery.tasks import process_returned_letters_list
 from app.config import QueueNames
+from app.dao.letter_rate_dao import dao_get_current_letter_rates
 from app.letters.letter_schemas import letter_references
 from app.schema_validation import validate
 from app.v2.errors import register_errors
 
 letter_job = Blueprint("letter-job", __name__)
+letter_rates_blueprint = Blueprint("letter_rates", __name__, url_prefix="/letter-rates")
 register_errors(letter_job)
+register_errors(letter_rates_blueprint)
 
 # too many references will make SQS error (as the task can only be 256kb)
 MAX_REFERENCES_PER_TASK = 5000
@@ -25,3 +28,8 @@ def create_process_returned_letters_job():
         )
 
     return jsonify(references=references), 200
+
+
+@letter_rates_blueprint.route("/", methods=["GET"])
+def get_letter_rates():
+    return jsonify([rate.serialize() for rate in dao_get_current_letter_rates()])
