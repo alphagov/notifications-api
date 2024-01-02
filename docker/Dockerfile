@@ -120,6 +120,6 @@ RUN \
 RUN \
     service postgresql start \
     && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\"" \
-    && su - postgres -c "psql -c \"create database notification_api;\"" 
+    && su - postgres -c "psql -c \"create database notification_api;\""
 
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/notification_api
