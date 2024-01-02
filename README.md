@@ -56,7 +56,7 @@ This is built to allow the tests to run using the API PRODUCTION layer.
 
 ```
 1. run the make command
-    make run-local-tests-with-docker
+    `make run-local-tests-with-docker`
 ```
 The step above will build the image, run the container, start postgresql and run the tests.
 
