@@ -42,9 +42,13 @@ run-flask: ## Run flask
 run-flask-with-docker: ## Run flask
 	./scripts/run_locally_with_docker.sh api-local
 
-.PHONY: run-local-db-with-docker
-run-local-db-with-docker: ##
-	./scripts/run_local_db_with_docker.sh api-local
+.PHONY: run-local-tests-with-docker
+run-local-tests-with-docker:
+	docker build -f docker/Dockerfile --target concourse_tests -t notifications-api .
+	./scripts/run_locally_with_docker.sh api-local
+	docker exec -it notifications_api /bin/bash -c "service postgresql start"
+	docker exec -it notifications_api make test
+
 
 .PHONY: run-gunicorn-with-docker
 run-gunicorn-with-docker: ## Run gunicorn
