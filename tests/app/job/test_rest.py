@@ -85,6 +85,7 @@ def test_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_let
         "app.job.rest.can_letter_job_be_cancelled", return_value=(True, None)
     )
     mock_dao_cancel_letter_job = mocker.patch("app.job.rest.dao_cancel_letter_job", return_value=1)
+    mock_update_redis = mocker.patch("app.job.rest.adjust_daily_service_limits_for_cancelled_letters")
 
     response = admin_request.post(
         "job.cancel_letter_job",
@@ -95,6 +96,7 @@ def test_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_let
     mock_get_job.assert_called_once_with(job.service_id, str(job.id))
     mock_can_letter_job_be_cancelled.assert_called_once_with(job)
     mock_dao_cancel_letter_job.assert_called_once_with(job)
+    mock_update_redis.assert_called_once_with(job.service_id, 1)
 
     assert response == 1
 
@@ -113,6 +115,7 @@ def test_cancel_letter_job_does_not_call_cancel_if_can_letter_job_be_cancelled_r
         "app.job.rest.can_letter_job_be_cancelled", return_value=(False, error_message)
     )
     mock_dao_cancel_letter_job = mocker.patch("app.job.rest.dao_cancel_letter_job")
+    mock_update_redis = mocker.patch("app.job.rest.adjust_daily_service_limits_for_cancelled_letters")
 
     response = admin_request.post(
         "job.cancel_letter_job", service_id=job.service_id, job_id=job.id, _expected_status=400
@@ -120,6 +123,7 @@ def test_cancel_letter_job_does_not_call_cancel_if_can_letter_job_be_cancelled_r
 
     mock_get_job.assert_called_once_with(job.service_id, str(job.id))
     mock_can_letter_job_be_cancelled.assert_called_once_with(job)
+    assert not mock_update_redis.called
     assert mock_dao_cancel_letter_job.call_count == 0
 
     assert response["message"] == "Sorry, it's too late, letters have already been sent."

@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest.mock import call
 
 import boto3
 import dateutil
@@ -16,6 +17,7 @@ from app.constants import (
 from app.letters.utils import (
     LetterPDFNotFound,
     ScanErrorType,
+    adjust_daily_service_limits_for_cancelled_letters,
     find_letter_pdf_in_s3,
     generate_letter_pdf_filename,
     get_billable_units_for_letter_page_count,
@@ -28,6 +30,7 @@ from app.letters.utils import (
     upload_letter_pdf,
 )
 from tests.app.db import create_notification
+from tests.conftest import set_config
 
 FROZEN_DATE_TIME = "2018-03-14 17:00:00"
 
@@ -412,3 +415,70 @@ def test_letter_print_day_returns_formatted_date_if_letter_printed_before_1730_y
 def test_get_billable_units_for_letter_page_count(number_of_pages, expected_billable_units):
     result = get_billable_units_for_letter_page_count(number_of_pages)
     assert result == expected_billable_units
+
+
+def test_adjust_daily_service_limits_for_cancelled_letters_when_redis_is_disabled(notify_api, mocker, fake_uuid):
+    # With Redis disabled, we should not attempt to even "get" the cache key
+    mock_redis = mocker.patch("app.letters.utils.redis_store.get")
+
+    adjust_daily_service_limits_for_cancelled_letters(fake_uuid, 5)
+
+    assert not mock_redis.called
+
+
+@freeze_time("2024-01-01 16:30:00")
+def test_adjust_daily_service_limits_for_cancelled_letters_when_cache_keys_do_not_exist(notify_api, mocker, fake_uuid):
+    mock_redis_get = mocker.patch("app.letters.utils.redis_store.get", return_value=None)
+    mock_redis_decrby = mocker.patch("app.letters.utils.redis_store.decrby")
+
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        adjust_daily_service_limits_for_cancelled_letters(fake_uuid, 5)
+
+        assert mock_redis_get.call_args_list == [
+            call(f"{fake_uuid}-letter-2024-01-01-count"),
+            call(f"{fake_uuid}-2024-01-01-count"),
+        ]
+        assert not mock_redis_decrby.called
+
+
+@freeze_time("2024-01-01 16:30:00")
+def test_adjust_daily_service_limits_for_cancelled_letters_will_not_update_redis_with_negative_values(
+    notify_api, mocker, fake_uuid
+):
+    mock_redis_get = mocker.patch("app.letters.utils.redis_store.get", side_effect=[b"5", b"6"])
+    mock_redis_decrby = mocker.patch("app.letters.utils.redis_store.decrby")
+
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        adjust_daily_service_limits_for_cancelled_letters(fake_uuid, 7)
+
+        assert mock_redis_get.call_args_list == [
+            call(f"{fake_uuid}-letter-2024-01-01-count"),
+            call(f"{fake_uuid}-2024-01-01-count"),
+        ]
+        assert not mock_redis_decrby.called
+
+
+@pytest.mark.parametrize(
+    "redis_values",
+    [
+        [b"20", b"100"],
+        [b"5", b"5"],
+    ],
+)
+@freeze_time("2024-01-01 16:30:00")
+def test_adjust_daily_service_limits_for_cancelled_letters_updates_redis(notify_api, mocker, fake_uuid, redis_values):
+    mock_redis_get = mocker.patch("app.letters.utils.redis_store.get", side_effect=redis_values)
+    mock_redis_decrby = mocker.patch("app.letters.utils.redis_store.decrby")
+
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        adjust_daily_service_limits_for_cancelled_letters(fake_uuid, 5)
+
+        assert mock_redis_get.call_args_list == [
+            call(f"{fake_uuid}-letter-2024-01-01-count"),
+            call(f"{fake_uuid}-2024-01-01-count"),
+        ]
+
+        assert mock_redis_decrby.call_args_list == [
+            call(f"{fake_uuid}-letter-2024-01-01-count", 5),
+            call(f"{fake_uuid}-2024-01-01-count", 5),
+        ]

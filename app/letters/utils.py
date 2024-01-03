@@ -6,13 +6,16 @@ from enum import Enum
 
 import boto3
 from flask import current_app
+from notifications_utils.clients.redis import daily_limit_cache_key
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.pdf import pdf_page_count
 from notifications_utils.s3 import s3upload
 from notifications_utils.timezones import convert_utc_to_bst
 
+from app import redis_store
 from app.constants import (
     KEY_TYPE_TEST,
+    LETTER_TYPE,
     NOTIFICATION_VALIDATION_FAILED,
     RESOLVE_POSTAGE_FOR_FILE_NAME,
     SECOND_CLASS,
@@ -238,3 +241,27 @@ def get_billable_units_for_letter_page_count(page_count):
     pages_per_sheet = 2
     billable_units = math.ceil(page_count / pages_per_sheet)
     return billable_units
+
+
+def adjust_daily_service_limits_for_cancelled_letters(service_id, no_of_cancelled_letters):
+    """
+    Updates the Redis values for the daily letters sent and total number of notifications sent
+    by a service. These values should be decreased if letters are cancelled.
+
+    Before updating the value, we check that the key exists and that we would not be changing its
+    value to a negative number.
+    """
+
+    if not current_app.config["REDIS_ENABLED"]:
+        return
+
+    letters_cache_key = daily_limit_cache_key(service_id, notification_type=LETTER_TYPE)
+    all_notifications_cache_key = daily_limit_cache_key(service_id)
+
+    if (cached_letters_sent := redis_store.get(letters_cache_key)) is not None:
+        if (int(cached_letters_sent) - no_of_cancelled_letters) >= 0:
+            redis_store.decrby(letters_cache_key, no_of_cancelled_letters)
+
+    if (cached_notifications_sent := redis_store.get(all_notifications_cache_key)) is not None:
+        if (int(cached_notifications_sent) - no_of_cancelled_letters) >= 0:
+            redis_store.decrby(all_notifications_cache_key, no_of_cancelled_letters)

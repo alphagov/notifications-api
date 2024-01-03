@@ -32,6 +32,7 @@ from app.dao.notifications_dao import (
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.errors import InvalidRequest, register_errors
+from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters
 from app.schemas import (
     job_schema,
     notification_with_template_schema,
@@ -71,8 +72,9 @@ def cancel_letter_job(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
     can_we_cancel, errors = can_letter_job_be_cancelled(job)
     if can_we_cancel:
-        data = dao_cancel_letter_job(job)
-        return jsonify(data), 200
+        number_of_cancelled_letters = dao_cancel_letter_job(job)
+        adjust_daily_service_limits_for_cancelled_letters(service_id, number_of_cancelled_letters)
+        return jsonify(number_of_cancelled_letters), 200
     else:
         return jsonify(message=errors), 400
 
