@@ -1861,6 +1861,14 @@ class LetterRate(db.Model):
     crown = db.Column(db.Boolean, nullable=False)
     post_class = db.Column(db.String, nullable=False)
 
+    def serialize(self):
+        return {
+            "sheet_count": self.sheet_count,
+            "start_date": self.start_date.isoformat(),
+            "rate": self.rate,
+            "post_class": self.post_class,
+        }
+
 
 class ServiceEmailReplyTo(db.Model):
     __tablename__ = "service_email_reply_to"

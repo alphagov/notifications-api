@@ -143,7 +143,7 @@ def register_blueprint(application):
     from app.letter_branding.letter_branding_rest import (
         letter_branding_blueprint,
     )
-    from app.letters.rest import letter_job
+    from app.letters.rest import letter_job, letter_rates_blueprint
     from app.notifications.notifications_letter_callback import (
         letter_callback_blueprint,
     )
@@ -237,6 +237,9 @@ def register_blueprint(application):
 
     letter_job.before_request(requires_admin_auth)
     application.register_blueprint(letter_job)
+
+    letter_rates_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(letter_rates_blueprint)
 
     letter_callback_blueprint.before_request(requires_no_auth)
     application.register_blueprint(letter_callback_blueprint)
