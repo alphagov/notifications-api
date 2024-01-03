@@ -3,7 +3,7 @@ import uuid
 
 import jwt
 import pytest
-from flask import current_app, g, request
+from flask import g, request
 from notifications_python_client.authentication import create_jwt_token
 
 from app import db
@@ -24,7 +24,6 @@ from app.dao.api_key_dao import (
 from app.dao.services_dao import dao_fetch_service_by_id
 from tests import (
     create_admin_authorization_header,
-    create_internal_authorization_header,
     create_service_authorization_header,
 )
 from tests.conftest import set_config_values
@@ -75,13 +74,6 @@ def test_requires_auth_should_allow_valid_token_for_request(client, sample_api_k
 def test_requires_admin_auth_should_allow_valid_token_for_request(client):
     header = create_admin_authorization_header()
     response = client.get("/service", headers=[header])
-    assert response.status_code == 200
-
-
-def test_requires_govuk_alerts_auth_should_allow_valid_token_for_request(client):
-    jwt_client_id = current_app.config["GOVUK_ALERTS_CLIENT_ID"]
-    header = create_internal_authorization_header(jwt_client_id)
-    response = client.get("/govuk-alerts", headers=[header])
     assert response.status_code == 200
 
 

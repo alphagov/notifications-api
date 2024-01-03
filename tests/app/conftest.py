@@ -12,7 +12,6 @@ from sqlalchemy.orm.session import make_transient
 from app import db
 from app.clients.sms.firetext import FiretextClient
 from app.constants import (
-    BROADCAST_TYPE,
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -22,16 +21,10 @@ from app.constants import (
     SMS_TYPE,
 )
 from app.dao.api_key_dao import save_model_api_key
-from app.dao.broadcast_service_dao import (
-    insert_or_update_service_broadcast_settings,
-)
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
-from app.dao.organisation_dao import (
-    dao_add_service_to_organisation,
-    dao_create_organisation,
-)
+from app.dao.organisation_dao import dao_create_organisation
 from app.dao.services_dao import dao_add_user_to_service, dao_create_service
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import create_secret_code, create_user_code
@@ -162,60 +155,6 @@ def sample_service(sample_user):
 def sample_service_with_email_branding(sample_service):
     sample_service.email_branding = create_email_branding(id=uuid.uuid4())
     return sample_service
-
-
-@pytest.fixture(scope="function")
-def sample_broadcast_service(broadcast_organisation, sample_user):
-    service_name = "Sample broadcast service"
-
-    data = {
-        "name": service_name,
-        "email_message_limit": 1000,
-        "sms_message_limit": 1000,
-        "letter_message_limit": 1000,
-        "restricted": False,
-        "created_by": sample_user,
-        "crown": True,
-        "count_as_live": False,
-    }
-    service = Service.query.filter_by(name=service_name).first()
-    if not service:
-        service = Service(**data)
-        dao_create_service(service, sample_user, service_permissions=[BROADCAST_TYPE])
-        insert_or_update_service_broadcast_settings(service, channel="severe")
-        dao_add_service_to_organisation(service, current_app.config["BROADCAST_ORGANISATION_ID"])
-    else:
-        if sample_user not in service.users:
-            dao_add_user_to_service(service, sample_user)
-
-    return service
-
-
-@pytest.fixture(scope="function")
-def sample_broadcast_service_2(broadcast_organisation, sample_user):
-    service_name = "Sample broadcast service 2"
-
-    data = {
-        "name": service_name,
-        "email_message_limit": 1000,
-        "sms_message_limit": 1000,
-        "letter_message_limit": 1000,
-        "restricted": False,
-        "created_by": sample_user,
-        "crown": True,
-        "count_as_live": False,
-    }
-    service = Service.query.filter_by(name=service_name).first()
-    if not service:
-        service = Service(**data)
-        dao_create_service(service, sample_user, service_permissions=[BROADCAST_TYPE])
-        insert_or_update_service_broadcast_settings(service, channel="severe")
-        dao_add_service_to_organisation(service, current_app.config["BROADCAST_ORGANISATION_ID"])
-    else:
-        if sample_user not in service.users:
-            dao_add_user_to_service(service, sample_user)
-
-    return service
 
 
 @pytest.fixture(scope="function", name="sample_service_full_permissions")
@@ -677,19 +616,6 @@ def invitation_email_template(notify_service):
 
 
 @pytest.fixture(scope="function")
-def broadcast_invitation_email_template(notify_service):
-    content = ("((user_name)) is invited to broadcast Notify by ((service_name)) ((url)) to complete registration",)
-    return create_custom_template(
-        service=notify_service,
-        user=notify_service.users[0],
-        template_config_name="BROADCAST_INVITATION_EMAIL_TEMPLATE_ID",
-        content=content,
-        subject="Invitation to ((service_name))",
-        template_type="email",
-    )
-
-
-@pytest.fixture(scope="function")
 def org_invite_email_template(notify_service):
     return create_custom_template(
         service=notify_service,
@@ -1016,16 +942,6 @@ def sample_inbound_numbers(sample_service):
 def sample_organisation(notify_db_session):
     org = Organisation(name="sample organisation")
     dao_create_organisation(org)
-    return org
-
-
-@pytest.fixture
-def broadcast_organisation(notify_db_session):
-    org = Organisation.query.get(current_app.config["BROADCAST_ORGANISATION_ID"])
-    if not org:
-        org = Organisation(id=current_app.config["BROADCAST_ORGANISATION_ID"], name="broadcast organisation")
-        dao_create_organisation(org)
-
     return org
 
 

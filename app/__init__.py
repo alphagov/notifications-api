@@ -129,16 +129,13 @@ def register_blueprint(application):
         requires_admin_auth,
         requires_auth,
         requires_functional_test_auth,
-        requires_govuk_alerts_auth,
         requires_no_auth,
     )
     from app.billing.rest import billing_blueprint
-    from app.broadcast_message.rest import broadcast_message_blueprint
     from app.complaint.complaint_rest import complaint_blueprint
     from app.email_branding.rest import email_branding_blueprint
     from app.events.rest import events as events_blueprint
     from app.functional_tests import test_blueprint
-    from app.govuk_alerts.rest import govuk_alerts_blueprint
     from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
     from app.job.rest import job_blueprint
@@ -271,12 +268,6 @@ def register_blueprint(application):
     upload_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(upload_blueprint)
 
-    broadcast_message_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(broadcast_message_blueprint)
-
-    govuk_alerts_blueprint.before_request(requires_govuk_alerts_auth)
-    application.register_blueprint(govuk_alerts_blueprint)
-
     platform_admin_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(platform_admin_blueprint, url_prefix="/platform-admin")
 
@@ -290,7 +281,6 @@ def register_blueprint(application):
 
 def register_v2_blueprints(application):
     from app.authentication.auth import requires_auth
-    from app.v2.broadcast.post_broadcast import v2_broadcast_blueprint
     from app.v2.inbound_sms.get_inbound_sms import v2_inbound_sms_blueprint
     from app.v2.notifications import (  # noqa
         get_notifications,
@@ -315,9 +305,6 @@ def register_v2_blueprints(application):
 
     v2_inbound_sms_blueprint.before_request(requires_auth)
     application.register_blueprint(v2_inbound_sms_blueprint)
-
-    v2_broadcast_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_broadcast_blueprint)
 
 
 def init_app(app):
