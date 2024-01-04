@@ -355,26 +355,27 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     # Two sets of notifications are sent:
     # 1.request invite notifications to the service manager(s)
     # 2.receipt for request invite notification to the user that initiated the invite request.
-    # We are assuming the first result will be a request invite notification and the last result will
-    # be a receipt for request invite notification
 
-    notification = Notification.query.all()
+    notifications = Notification.query.all()
+    manager_notification = [n for n in notifications if n.personalisation["name"] == service_manager_1.name][0]
+    user_notification = [n for n in notifications if n.personalisation["name"] == user_requesting_invite.name][0]
+
     mocked.call_count = 3
+    assert len(notifications) == 3
+
     # Request invite notification
-    assert len(notification[0].personalisation.keys()) == 7
-    assert len(notification) == 3
-    assert notification[0].personalisation["name"] == service_manager_1.name
-    assert notification[0].personalisation["requester_name"] == user_requesting_invite.name
-    assert notification[0].personalisation["service_name"] == sample_service.name
-    assert notification[0].personalisation["reason_given"] == expected_reason_given
-    assert notification[0].personalisation["reason"] == expected_reason
+    assert len(manager_notification.personalisation.keys()) == 7
+    assert manager_notification.personalisation["requester_name"] == user_requesting_invite.name
+    assert manager_notification.personalisation["service_name"] == sample_service.name
+    assert manager_notification.personalisation["reason_given"] == expected_reason_given
+    assert manager_notification.personalisation["reason"] == expected_reason
     assert (
-        notification[0].personalisation["url"]
+        manager_notification.personalisation["url"]
         == f"{invite_link_host}/services/{sample_service.id}/users/invite/{user_requesting_invite.id}"
     )
 
     # Receipt for request invite notification
-    assert notification[-1].personalisation == {
+    assert user_notification.personalisation == {
         "name": user_requesting_invite.name,
         "service name": "Sample service",
         "service admin names": [
