@@ -49,19 +49,13 @@ notify-pass credentials/mmg
 
 ### Postgres
 
-Postgres is built in the CONCOURSE_TESTS as an extra layer derived from the TEST layer.
-This is built to allow the tests to run using the API PRODUCTION layer.
+This app requires Postgres to run.
 
-#### How to build and run tests locally:
+If you are using [notifications-local](https://github.com/alphagov/notifications-local), the correct Postgres version will be provided automatically by the docker-compose file.
 
-```
-1. run the make command
-    `make run-local-tests-with-docker`
-```
-The step above will build the image, run the container, start postgresql and run the tests.
+If you are running this app manually, you will need to manage Postgres yourself. Install [Postgres.app](http://postgresapp.com/). Check the docker-compose file above to find the correct Postgres version to use.
 
-Note: There is a file called "version.py.dist" that is used for "healthcheck.py". As it stands, this file is unusable and the local build will fail. You must, either rename it to "version.py" or simply create a local file with that name and copy the contents to it.
-
+When running our test suite, Postgres is baked into the container via the `concourse_tests` step of `docker/Dockerfile`.
 
 ### Redis
 
