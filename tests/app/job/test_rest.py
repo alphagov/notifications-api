@@ -96,7 +96,7 @@ def test_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_let
     mock_get_job.assert_called_once_with(job.service_id, str(job.id))
     mock_can_letter_job_be_cancelled.assert_called_once_with(job)
     mock_dao_cancel_letter_job.assert_called_once_with(job)
-    mock_update_redis.assert_called_once_with(job.service_id, 1)
+    mock_update_redis.assert_called_once_with(job.service_id, 1, datetime(2019, 6, 13, 13, 0))
 
     assert response == 1
 

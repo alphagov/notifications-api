@@ -243,16 +243,22 @@ def get_billable_units_for_letter_page_count(page_count):
     return billable_units
 
 
-def adjust_daily_service_limits_for_cancelled_letters(service_id, no_of_cancelled_letters):
+def adjust_daily_service_limits_for_cancelled_letters(service_id, no_of_cancelled_letters, letters_created_at):
     """
     Updates the Redis values for the daily letters sent and total number of notifications sent
     by a service. These values should be decreased if letters are cancelled.
 
     Before updating the value, we check that the key exists and that we would not be changing its
     value to a negative number.
+
+    We only want to update today's cached value, so if the letters were created yesterday we return
+    early.
     """
 
     if not current_app.config["REDIS_ENABLED"]:
+        return
+
+    if letters_created_at.date() != datetime.today().date():
         return
 
     letters_cache_key = daily_limit_cache_key(service_id, notification_type=LETTER_TYPE)

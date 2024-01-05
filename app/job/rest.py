@@ -73,7 +73,7 @@ def cancel_letter_job(service_id, job_id):
     can_we_cancel, errors = can_letter_job_be_cancelled(job)
     if can_we_cancel:
         number_of_cancelled_letters = dao_cancel_letter_job(job)
-        adjust_daily_service_limits_for_cancelled_letters(service_id, number_of_cancelled_letters)
+        adjust_daily_service_limits_for_cancelled_letters(service_id, number_of_cancelled_letters, job.created_at)
         return jsonify(number_of_cancelled_letters), 200
     else:
         return jsonify(message=errors), 400
