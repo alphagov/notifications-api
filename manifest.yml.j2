@@ -82,7 +82,22 @@
   'notify-delivery-worker-save-api-notifications': {'disk_quota': '4G'},
 } -%}
 
-{%- set app = app_vars[CF_APP] -%}
+{# extremely awkward syntax here because jinja has no inline way to merge dictionaries %}
+{%- set app = app_vars[CF_APP] if CF_APP in app_vars else app_vars[CF_APP.removesuffix('-ecs-fixup')] -%}
+{%- if CF_APP not in app_vars -%}
+  {%- set _ = app.update({
+    'instances': {
+      'preview': 0,
+      'staging': 0,
+      'production': 0
+    },
+  }) -%}
+  {%- set _ = app.setdefault('additional_env_vars', {}) -%}
+  {%- set _ = app['additional_env_vars'].update({
+    'NOTIFICATION_QUEUE_PREFIX': NOTIFICATION_QUEUE_PREFIX + '-ecs',
+  }) -%}
+{%- endif -%}
+
 {%- set instance_count = app.get('instances', {}).get(environment) -%}
 
 ---
