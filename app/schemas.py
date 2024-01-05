@@ -229,6 +229,14 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     custom_email_sender_name = fields.String(allow_none=True)
     # this can only be set via custom_email_sender_name or name
     email_sender_local_part = fields.String(dump_only=True)
+    service_callback_api = fields.Method("service_delivery_status_callback_api")
+
+    def service_delivery_status_callback_api(self, service):
+        return [
+            callback.id
+            for callback in service.service_callback_api
+            if callback.callback_type == app.constants.DELIVERY_STATUS_CALLBACK_TYPE
+        ]
 
     def _get_allowed_broadcast_provider(self, service):
         return service.allowed_broadcast_provider
@@ -324,6 +332,14 @@ class DetailedServiceSchema(BaseSchema):
     name = fields.String()
     custom_email_sender_name = fields.String(required=False)
     email_sender_local_part = fields.String()
+    service_callback_api = fields.Method("service_delivery_status_callback_api")
+
+    def service_delivery_status_callback_api(self, service):
+        return [
+            callback.id
+            for callback in service.service_callback_api
+            if callback.callback_type == app.constants.DELIVERY_STATUS_CALLBACK_TYPE
+        ]
 
     class Meta(BaseSchema.Meta):
         model = models.Service

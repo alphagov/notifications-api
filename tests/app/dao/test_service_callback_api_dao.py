@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import encryption
+from app.constants import COMPLAINT_CALLBACK_TYPE, DELIVERY_STATUS_CALLBACK_TYPE
 from app.dao.service_callback_api_dao import (
     get_service_callback_api,
     get_service_delivery_status_callback_api_for_service,
@@ -146,22 +147,45 @@ def test_update_service_callback_api(sample_service):
 
 
 def test_get_service_callback_api(sample_service):
-    service_callback_api = ServiceCallbackApi(
+    service_delivery_callback_api = ServiceCallbackApi(
         service_id=sample_service.id,
-        url="https://some_service/callback_endpoint",
-        bearer_token="some_unique_string",
+        url="https://some_service/delivery_callback_endpoint",
+        bearer_token="delivery_unique_string",
         updated_by_id=sample_service.users[0].id,
+        callback_type=DELIVERY_STATUS_CALLBACK_TYPE,
     )
-    save_service_callback_api(service_callback_api)
+    save_service_callback_api(service_delivery_callback_api)
 
-    callback_api = get_service_callback_api(service_callback_api.id, sample_service.id)
-    assert callback_api.id is not None
-    assert callback_api.service_id == sample_service.id
-    assert callback_api.updated_by_id == sample_service.users[0].id
-    assert callback_api.url == "https://some_service/callback_endpoint"
-    assert callback_api.bearer_token == "some_unique_string"
-    assert callback_api._bearer_token != "some_unique_string"
-    assert callback_api.updated_at is None
+    service_complaint_callback_api = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/complaint_callback_endpoint",
+        bearer_token="complaint_unique_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type=COMPLAINT_CALLBACK_TYPE,
+    )
+    save_service_callback_api(service_complaint_callback_api)
+
+    delivery_callback_api = get_service_callback_api(
+        service_delivery_callback_api.id, sample_service.id, DELIVERY_STATUS_CALLBACK_TYPE
+    )
+    assert delivery_callback_api.id is not None
+    assert delivery_callback_api.service_id == sample_service.id
+    assert delivery_callback_api.updated_by_id == sample_service.users[0].id
+    assert delivery_callback_api.url == "https://some_service/delivery_callback_endpoint"
+    assert delivery_callback_api.bearer_token == "delivery_unique_string"
+    assert delivery_callback_api._bearer_token != "delivery_unique_string"
+    assert delivery_callback_api.updated_at is None
+
+    complaint_callback_api = get_service_callback_api(
+        service_complaint_callback_api.id, sample_service.id, COMPLAINT_CALLBACK_TYPE
+    )
+    assert complaint_callback_api.id is not None
+    assert complaint_callback_api.service_id == sample_service.id
+    assert complaint_callback_api.updated_by_id == sample_service.users[0].id
+    assert complaint_callback_api.url == "https://some_service/complaint_callback_endpoint"
+    assert complaint_callback_api.bearer_token == "complaint_unique_string"
+    assert complaint_callback_api._bearer_token != "complaint_unique_string"
+    assert complaint_callback_api.updated_at is None
 
 
 def test_get_service_delivery_status_callback_api_for_service(sample_service):
