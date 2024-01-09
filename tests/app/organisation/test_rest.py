@@ -17,7 +17,7 @@ from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
 )
-from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
+from app.dao.services_dao import dao_add_user_to_service, dao_archive_service, dao_fetch_service_by_id
 from app.models import AnnualBilling, Organisation
 from tests.app.db import (
     create_annual_billing,
@@ -26,6 +26,7 @@ from tests.app.db import (
     create_ft_billing,
     create_letter_branding,
     create_organisation,
+    create_permissions,
     create_service,
     create_template,
     create_user,
@@ -788,6 +789,27 @@ def test_rest_get_organisation_services_inactive_services_at_end(admin_request, 
     assert response[0]["name"] == service.name
     assert response[1]["name"] == inactive_service.name
     assert response[2]["name"] == inactive_service_1.name
+
+
+def test_get_organisation_services_counts_users_with_manage_service_permission(admin_request, sample_organisation):
+    service = create_service()
+    service.users = []
+    dao_add_service_to_organisation(service, sample_organisation.id)
+
+    for permissions in (
+        [],
+        ["manage_settings"],
+        ["manage_settings", "manage_templates"],
+    ):
+        user = create_user()
+        permissions = create_permissions(user, service, *permissions)
+        dao_add_user_to_service(service, user, permissions=permissions)
+
+    response = admin_request.get(
+        "organisation.get_organisation_services", organisation_id=str(sample_organisation.id), _expected_status=200
+    )
+
+    assert response[0]["count_of_users_with_manage_service_permission"] == 2
 
 
 def test_add_user_to_organisation_returns_added_user(admin_request, sample_organisation, sample_user):

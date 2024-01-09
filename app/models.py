@@ -650,6 +650,9 @@ class Service(db.Model, Versioned):
             "name": self.name,
             "active": self.active,
             "restricted": self.restricted,
+            "count_of_users_with_manage_service_permission": len(
+                [user for user in self.users if "manage_settings" in user.get_permissions(self.id)]
+            ),
         }
 
     def get_available_broadcast_providers(self):
