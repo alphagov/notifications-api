@@ -85,7 +85,35 @@ RUN make bootstrap
 COPY --chown=notify:notify . .
 
 ##### Concourse Test Image ##############################################################
-FROM test as concourse_tests
+FROM production as concourse_tests
+
+USER root
+RUN echo "Install OS dependencies for test build" && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      sudo \
+      make \
+      git && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/*
+RUN usermod -aG sudo notify
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+USER notify
+
+# Make sure the app/ directory is there so that "make bootstrap" can create app/version.py
+RUN mkdir -p app
+
+# Copying to overwrite is faster than RUN chown notify:notify ...
+COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
+
+# Install dev/test requirements
+COPY --chown=notify:notify Makefile requirements.txt requirements_for_test.txt ./
+
+ENV FLASK_APP=application.py
+ENV NOTIFY_ENVIRONMENT='development'
+ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/notification_api
+
+RUN pip3 install -r requirements_for_test.txt
 
 USER root
 
@@ -121,5 +149,3 @@ RUN \
     service postgresql start \
     && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\"" \
     && su - postgres -c "psql -c \"create database notification_api;\""
-
-ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/notification_api
