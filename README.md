@@ -55,7 +55,7 @@ If you are using [notifications-local](https://github.com/alphagov/notifications
 
 If you are running this app manually, you will need to manage Postgres yourself. Install [Postgres.app](http://postgresapp.com/). Check the docker-compose file above to find the correct Postgres version to use.
 
-When running our test suite, Postgres is baked into the container via the `concourse_tests` step of `docker/Dockerfile`.
+When our unit tests are run in Concourse, Postgres is based into the container via the concourse_tests step of docker/Dockerfile.
 
 ### Redis
 
