@@ -110,8 +110,9 @@ COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 COPY --chown=notify:notify Makefile requirements.txt requirements_for_test.txt ./
 COPY --chown=notify:notify . .
 
+ENV PORT=6011
 ENV FLASK_APP=application.py
-ENV NOTIFY_ENVIRONMENT='development'
+ENV NOTIFY_ENVIRONMENT='test'
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/notification_api
 
 RUN pip3 install -r requirements_for_test.txt
