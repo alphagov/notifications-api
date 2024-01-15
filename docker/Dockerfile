@@ -108,6 +108,7 @@ COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
 COPY --chown=notify:notify Makefile requirements.txt requirements_for_test.txt ./
+COPY --chown=notify:notify . .
 
 ENV FLASK_APP=application.py
 ENV NOTIFY_ENVIRONMENT='development'
