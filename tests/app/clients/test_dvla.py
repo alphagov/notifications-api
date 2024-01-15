@@ -980,4 +980,4 @@ class TestDVLAApiClientRestrictedCiphers:
                     verify=ca_temp_path,
                 )
 
-        assert "sslv3 alert handshake failure" in str(e.value)
+        assert "alert handshake failure" in str(e.value)
