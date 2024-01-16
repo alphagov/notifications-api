@@ -3151,7 +3151,9 @@ def test_cancel_notification_for_service_raises_invalid_request_when_notificatio
 def test_cancel_notification_for_service_raises_invalid_request_when_notification_is_not_a_letter(
     admin_request,
     sample_notification,
+    mocker,
 ):
+    mock_adjust_redis = mocker.patch("app.service.rest.adjust_daily_service_limits_for_cancelled_letters")
     response = admin_request.post(
         "service.cancel_notification_for_service",
         service_id=sample_notification.service_id,
@@ -3160,6 +3162,7 @@ def test_cancel_notification_for_service_raises_invalid_request_when_notificatio
     )
     assert response["message"] == "Notification cannot be cancelled - only letters can be cancelled"
     assert response["result"] == "error"
+    assert not mock_adjust_redis.called
 
 
 @pytest.mark.parametrize(
@@ -3183,8 +3186,10 @@ def test_cancel_notification_for_service_raises_invalid_request_when_notificatio
 def test_cancel_notification_for_service_raises_invalid_request_when_letter_is_in_wrong_state_to_be_cancelled(
     admin_request,
     sample_letter_notification,
+    mocker,
     notification_status,
 ):
+    mock_adjust_redis = mocker.patch("app.service.rest.adjust_daily_service_limits_for_cancelled_letters")
     sample_letter_notification.status = notification_status
     sample_letter_notification.created_at = datetime.now()
 
@@ -3202,6 +3207,7 @@ def test_cancel_notification_for_service_raises_invalid_request_when_letter_is_i
             f"Letter status: {notification_status}, created_at: 2018-07-07 12:00:00"
         )
     assert response["result"] == "error"
+    assert not mock_adjust_redis.called
 
 
 @pytest.mark.parametrize("notification_status", ["created", "pending-virus-check"])
@@ -3209,8 +3215,10 @@ def test_cancel_notification_for_service_raises_invalid_request_when_letter_is_i
 def test_cancel_notification_for_service_updates_letter_if_letter_is_in_cancellable_state(
     admin_request,
     sample_letter_notification,
+    mocker,
     notification_status,
 ):
+    mock_adjust_redis = mocker.patch("app.service.rest.adjust_daily_service_limits_for_cancelled_letters")
     sample_letter_notification.status = notification_status
     sample_letter_notification.created_at = datetime.now()
 
@@ -3220,13 +3228,18 @@ def test_cancel_notification_for_service_updates_letter_if_letter_is_in_cancella
         notification_id=sample_letter_notification.id,
     )
     assert response["status"] == "cancelled"
+    mock_adjust_redis.assert_called_once_with(
+        sample_letter_notification.service_id, 1, sample_letter_notification.created_at
+    )
 
 
 @freeze_time("2017-12-12 17:30:00")
 def test_cancel_notification_for_service_raises_error_if_its_too_late_to_cancel(
     admin_request,
     sample_letter_notification,
+    mocker,
 ):
+    mock_adjust_redis = mocker.patch("app.service.rest.adjust_daily_service_limits_for_cancelled_letters")
     sample_letter_notification.created_at = datetime(2017, 12, 11, 17, 0)
 
     response = admin_request.post(
@@ -3237,6 +3250,7 @@ def test_cancel_notification_for_service_raises_error_if_its_too_late_to_cancel(
     )
     assert response["message"] == "It’s too late to cancel this letter. Printing started on 11 December at 5.30pm"
     assert response["result"] == "error"
+    assert not mock_adjust_redis.called
 
 
 @pytest.mark.parametrize(
@@ -3251,8 +3265,10 @@ def test_cancel_notification_for_service_raises_error_if_its_too_late_to_cancel(
 def test_cancel_notification_for_service_updates_letter_if_still_time_to_cancel(
     admin_request,
     sample_letter_notification,
+    mocker,
     created_at,
 ):
+    mock_adjust_redis = mocker.patch("app.service.rest.adjust_daily_service_limits_for_cancelled_letters")
     sample_letter_notification.created_at = created_at
 
     response = admin_request.post(
@@ -3261,6 +3277,9 @@ def test_cancel_notification_for_service_updates_letter_if_still_time_to_cancel(
         notification_id=sample_letter_notification.id,
     )
     assert response["status"] == "cancelled"
+    mock_adjust_redis.assert_called_once_with(
+        sample_letter_notification.service_id, 1, sample_letter_notification.created_at
+    )
 
 
 def test_get_monthly_notification_data_by_service(sample_service, admin_request):

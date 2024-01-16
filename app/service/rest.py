@@ -100,7 +100,7 @@ from app.dao.services_dao import (
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
-from app.letters.utils import letter_print_day
+from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters, letter_print_day
 from app.models import (
     EmailBranding,
     LetterBranding,
@@ -532,6 +532,7 @@ def cancel_notification_for_service(service_id, notification_id):
         notification_id,
         NOTIFICATION_CANCELLED,
     )
+    adjust_daily_service_limits_for_cancelled_letters(service_id, 1, notification.created_at)
 
     return jsonify(notification_with_template_schema.dump(updated_notification)), 200
 
