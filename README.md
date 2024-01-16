@@ -49,13 +49,15 @@ notify-pass credentials/mmg
 
 ### Postgres
 
-This app requires Postgres to run.
+Install [Postgres.app](http://postgresapp.com/).
 
-If you are using [notifications-local](https://github.com/alphagov/notifications-local), the correct Postgres version will be provided automatically by the docker-compose file.
+The API (on Notify) works with PostgreSQL 15. After installation, open the Postgres app, open the sidebar, and update or replace the default server with a compatible version.
 
-If you are running this app manually, you will need to manage Postgres yourself. Install [Postgres.app](http://postgresapp.com/). Check the docker-compose file above to find the correct Postgres version to use.
+**Note:** you may need to add the following directory to your PATH in order to bootstrap the app.
 
-When our unit tests are run in Concourse, Postgres is based into the container via the concourse_tests step of docker/Dockerfile.
+```
+export PATH=${PATH}:/Applications/Postgres.app/Contents/Versions/15/bin/
+```
 
 ### Redis
 
