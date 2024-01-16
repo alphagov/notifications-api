@@ -45,7 +45,6 @@ cachetools==5.2.0
 celery[sqs]==5.2.7
     # via
     #   -r requirements.in
-    #   celery
     #   sentry-sdk
 certifi==2023.7.22
     # via
@@ -111,11 +110,11 @@ gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6
 govuk-bank-holidays==0.11
     # via notifications-utils
 greenlet==3.0.3
-    # via eventlet
-gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via
-    #   -r requirements.in
-    #   gunicorn
+    #   eventlet
+    #   sqlalchemy
+gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
+    # via -r requirements.in
 idna==3.4
     # via
     #   jsonschema
@@ -140,9 +139,7 @@ jmespath==1.0.1
 jsonpointer==2.3
     # via jsonschema
 jsonschema[format]==4.16.0
-    # via
-    #   -r requirements.in
-    #   jsonschema
+    # via -r requirements.in
 kombu[sqs]==5.2.4
     # via celery
 lxml==4.9.3
@@ -166,7 +163,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==8.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@74.4.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@74.5.0
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -234,9 +231,7 @@ s3transfer==0.6.0
 segno==1.5.2
     # via notifications-utils
 sentry-sdk[celery,flask,sqlalchemy]==1.38.0
-    # via
-    #   -r requirements.in
-    #   sentry-sdk
+    # via -r requirements.in
 six==1.16.0
     # via
     #   awscli-cwlogs
