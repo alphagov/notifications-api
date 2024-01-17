@@ -346,7 +346,7 @@ class DVLAClient:
         last_line = address_lines[-1]
 
         # The first line has already been used as the recipient, so we include everything other than that.
-        unstructured_address = dict(zip(address_line_keys, address_lines[:-1]))
+        unstructured_address = dict(zip(address_line_keys, address_lines[:-1], strict=False))
 
         unstructured_address[last_line_key] = last_line
 
@@ -364,7 +364,7 @@ class DVLAClient:
         # at all, which would break. As the address could simply be: recipient, BFPO 1234, BF1 1AA.
         recipient = address_lines[0]
 
-        bfpo_address = dict(zip(address_line_keys, address_lines))
+        bfpo_address = dict(zip(address_line_keys, address_lines, strict=False))
 
         if address.postcode:
             bfpo_address["postcode"] = address.postcode
