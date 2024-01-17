@@ -107,14 +107,10 @@ RUN mkdir -p app
 COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
-COPY --chown=notify:notify Makefile requirements.txt requirements_for_test.txt ./
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 COPY --chown=notify:notify . .
 
-ENV PORT=6011
-ENV FLASK_APP=application.py
-ENV NOTIFY_ENVIRONMENT='test'
-ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/notification_api
+ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
 
 RUN pip3 install -r requirements_for_test.txt
 
@@ -150,5 +146,4 @@ RUN \
 
 RUN \
     service postgresql start \
-    && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\"" \
-    && su - postgres -c "psql -c \"create database notification_api;\""
+    && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\""
