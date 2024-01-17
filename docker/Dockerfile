@@ -108,6 +108,7 @@ COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
 COPY --chown=notify:notify Makefile requirements.txt requirements_for_test.txt ./
+COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 COPY --chown=notify:notify . .
 
 ENV PORT=6011
