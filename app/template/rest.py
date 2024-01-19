@@ -3,6 +3,7 @@ from io import BytesIO
 
 import botocore
 from flask import Blueprint, current_app, jsonify, request
+from flask.ctx import has_request_context
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
 from notifications_utils.template import (
@@ -339,14 +340,14 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
 
 def _get_png_preview_or_overlaid_pdf(url, data, notification_id, json=True):
+    headers = {"Authorization": "Token {}".format(current_app.config["TEMPLATE_PREVIEW_API_KEY"])}
+    if has_request_context() and hasattr(request, "get_onwards_request_headers"):
+        headers.update(request.get_onwards_request_headers())
+
     if json:
-        resp = requests_post(
-            url, json=data, headers={"Authorization": "Token {}".format(current_app.config["TEMPLATE_PREVIEW_API_KEY"])}
-        )
+        resp = requests_post(url, json=data, headers=headers)
     else:
-        resp = requests_post(
-            url, data=data, headers={"Authorization": "Token {}".format(current_app.config["TEMPLATE_PREVIEW_API_KEY"])}
-        )
+        resp = requests_post(url, data=data, headers=headers)
 
     if resp.status_code != 200:
         raise InvalidRequest(

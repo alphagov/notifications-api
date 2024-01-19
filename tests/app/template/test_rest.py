@@ -1253,6 +1253,7 @@ def test_preview_letter_template_by_id_valid_file_type(
     notify_api,
     sample_letter_notification,
     admin_request,
+    mock_onwards_request_headers,
     file_type,
 ):
     sample_letter_notification.created_at = datetime.utcnow()
@@ -1269,7 +1270,10 @@ def test_preview_letter_template_by_id_valid_file_type(
             mock_post = request_mock.post(
                 "http://localhost/notifications-template-preview/preview.{}".format(file_type),
                 content=content,
-                headers={"X-pdf-page-count": "1"},
+                headers={
+                    "X-pdf-page-count": "1",
+                    "some-onwards": "request-headers",
+                },
                 status_code=200,
             )
 
@@ -1298,7 +1302,11 @@ def test_preview_letter_template_by_id_valid_file_type(
 
 @freeze_time("2012-12-12")
 def test_preview_letter_template_by_id_shows_template_version_used_by_notification(
-    notify_api, sample_letter_notification, sample_letter_template, admin_request
+    notify_api,
+    sample_letter_notification,
+    sample_letter_template,
+    mock_onwards_request_headers,
+    admin_request,
 ):
     sample_letter_notification.created_at = datetime.utcnow()
     assert sample_letter_notification.template_version == 1
@@ -1323,7 +1331,10 @@ def test_preview_letter_template_by_id_shows_template_version_used_by_notificati
             mock_post = request_mock.post(
                 "http://localhost/notifications-template-preview/preview.png",
                 content=content,
-                headers={"X-pdf-page-count": "1"},
+                headers={
+                    "X-pdf-page-count": "1",
+                    "some-onwards": "request-headers",
+                },
                 status_code=200,
             )
 
@@ -1340,7 +1351,11 @@ def test_preview_letter_template_by_id_shows_template_version_used_by_notificati
 
 
 def test_preview_letter_template_by_id_template_preview_500(
-    notify_api, client, admin_request, sample_letter_notification
+    notify_api,
+    client,
+    admin_request,
+    sample_letter_notification,
+    mock_onwards_request_headers,
 ):
     with set_config_values(
         notify_api,
@@ -1357,7 +1372,10 @@ def test_preview_letter_template_by_id_template_preview_500(
             mock_post = request_mock.post(
                 "http://localhost/notifications-template-preview/preview.pdf",
                 content=content,
-                headers={"X-pdf-page-count": "1"},
+                headers={
+                    "X-pdf-page-count": "1",
+                    "some-onwards": "request-headers",
+                },
                 status_code=404,
             )
 
@@ -1475,6 +1493,7 @@ def test_preview_letter_template_precompiled_for_png_shows_overlay_on_pages_with
     admin_request,
     sample_service,
     mocker,
+    mock_onwards_request_headers,
     requested_page,
     message,
     expected_post_url,
@@ -1511,7 +1530,10 @@ def test_preview_letter_template_precompiled_for_png_shows_overlay_on_pages_with
             mock_post = request_mock.post(
                 "http://localhost/notifications-template-preview/{}".format(expected_post_url),
                 content=expected_returned_content,
-                headers={"X-pdf-page-count": "4"},
+                headers={
+                    "X-pdf-page-count": "4",
+                    "some-onwards": "request-headers",
+                },
                 status_code=200,
             )
 
@@ -1543,6 +1565,7 @@ def test_preview_letter_template_precompiled_for_pdf_shows_overlay_on_all_pages_
     admin_request,
     sample_service,
     mocker,
+    mock_onwards_request_headers,
     invalid_pages,
 ):
     template = create_template(
@@ -1577,7 +1600,10 @@ def test_preview_letter_template_precompiled_for_pdf_shows_overlay_on_all_pages_
             mock_post = request_mock.post(
                 "http://localhost/notifications-template-preview/precompiled/overlay.pdf",
                 content=expected_returned_content,
-                headers={"X-pdf-page-count": "4"},
+                headers={
+                    "X-pdf-page-count": "4",
+                    "some-onwards": "request-headers",
+                },
                 status_code=200,
             )
 
@@ -1646,7 +1672,12 @@ def test_preview_letter_template_precompiled_png_file_type_hide_notify_tag_only_
 
 
 def test_preview_letter_template_precompiled_png_template_preview_500_error(
-    notify_api, client, admin_request, sample_service, mocker
+    notify_api,
+    client,
+    admin_request,
+    sample_service,
+    mocker,
+    mock_onwards_request_headers,
 ):
     template = create_template(
         sample_service,
@@ -1679,7 +1710,10 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
             mock_post = request_mock.post(
                 "http://localhost/notifications-template-preview/precompiled-preview.png",
                 content=png_content,
-                headers={"X-pdf-page-count": "1"},
+                headers={
+                    "X-pdf-page-count": "1",
+                    "some-onwards": "request-headers",
+                },
                 status_code=500,
             )
 
@@ -1696,7 +1730,12 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
 
 
 def test_preview_letter_template_precompiled_png_template_preview_400_error(
-    notify_api, client, admin_request, sample_service, mocker
+    notify_api,
+    client,
+    admin_request,
+    sample_service,
+    mocker,
+    mock_onwards_request_headers,
 ):
     template = create_template(
         sample_service,
@@ -1729,7 +1768,10 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
             mock_post = request_mock.post(
                 "http://localhost/notifications-template-preview/precompiled-preview.png",
                 content=png_content,
-                headers={"X-pdf-page-count": "1"},
+                headers={
+                    "X-pdf-page-count": "1",
+                    "some-onwards": "request-headers",
+                },
                 status_code=404,
             )
 
@@ -1746,7 +1788,12 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
 
 
 def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
-    notify_api, client, admin_request, sample_service, mocker
+    notify_api,
+    client,
+    admin_request,
+    sample_service,
+    mocker,
+    mock_onwards_request_headers,
 ):
     template = create_template(
         sample_service,
@@ -1780,7 +1827,10 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
             request_mock.post(
                 "http://localhost/notifications-template-preview/precompiled-preview.png",
                 content=png_content,
-                headers={"X-pdf-page-count": "1"},
+                headers={
+                    "X-pdf-page-count": "1",
+                    "some-onwards": "request-headers",
+                },
                 status_code=404,
             )
 
