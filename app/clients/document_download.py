@@ -1,7 +1,8 @@
 from typing import Optional
 
 import requests
-from flask import current_app
+from flask import current_app, request
+from flask.ctx import has_request_context
 
 
 class DocumentDownloadError(Exception):
@@ -59,11 +60,13 @@ class DocumentDownloadClient:
             if filename:
                 data["filename"] = filename
 
+            headers = {"Authorization": "Bearer {}".format(self.auth_token)}
+            if has_request_context() and hasattr(request, "get_onwards_request_headers"):
+                headers.update(request.get_onwards_request_headers())
+
             response = requests.post(
                 self._get_upload_url(service_id),
-                headers={
-                    "Authorization": "Bearer {}".format(self.auth_token),
-                },
+                headers=headers,
                 json=data,
             )
 

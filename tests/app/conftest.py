@@ -1110,5 +1110,12 @@ def api_client_request(client, notify_user):
     return ApiClientRequest
 
 
+@pytest.fixture(scope="function")
+def mock_onwards_request_headers(mocker):
+    mock_gorh = mocker.patch("notifications_utils.request_helper.NotifyRequest.get_onwards_request_headers")
+    mock_gorh.return_value = {"some-onwards": "request-headers"}
+    return mock_gorh
+
+
 def datetime_in_past(days=0, seconds=0):
     return datetime.now(tz=pytz.utc) - timedelta(days=days, seconds=seconds)

@@ -36,13 +36,14 @@ def test_get_upload_url_for_simulated_email(document_download):
     )
 
 
-def test_upload_document(document_download):
+def test_upload_document(document_download, mock_onwards_request_headers):
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
             json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
             request_headers={
                 "Authorization": "Bearer test-key",
+                "some-onwards": "request-headers",
             },
             status_code=201,
         )
@@ -53,13 +54,18 @@ def test_upload_document(document_download):
 
 
 @pytest.mark.parametrize("confirmation_email", [None, "dev@test.notify"])
-def test_upload_document_confirm_email(document_download, confirmation_email):
+def test_upload_document_confirm_email(
+    document_download,
+    mock_onwards_request_headers,
+    confirmation_email,
+):
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
             json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
             request_headers={
                 "Authorization": "Bearer test-key",
+                "some-onwards": "request-headers",
             },
             status_code=201,
         )
@@ -77,12 +83,19 @@ def test_upload_document_confirm_email(document_download, confirmation_email):
 
 
 @pytest.mark.parametrize("retention_period", [None, "1 week", "5 weeks"])
-def test_upload_document_retention_period(document_download, retention_period):
+def test_upload_document_retention_period(
+    document_download,
+    mock_onwards_request_headers,
+    retention_period,
+):
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
             json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
-            request_headers={"Authorization": "Bearer test-key"},
+            request_headers={
+                "Authorization": "Bearer test-key",
+                "some-onwards": "request-headers",
+            },
             status_code=201,
         )
 
@@ -98,7 +111,7 @@ def test_upload_document_retention_period(document_download, retention_period):
         assert "retention_period" not in request_json
 
 
-def test_should_raise_400s_as_DocumentDownloadErrors(document_download):
+def test_should_raise_400s_as_DocumentDownloadErrors(document_download, mock_onwards_request_headers):
     with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
@@ -112,7 +125,7 @@ def test_should_raise_400s_as_DocumentDownloadErrors(document_download):
     assert excinfo.value.status_code == 400
 
 
-def test_should_raise_non_400_statuses_as_exceptions(document_download):
+def test_should_raise_non_400_statuses_as_exceptions(document_download, mock_onwards_request_headers):
     with pytest.raises(Exception) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
@@ -126,7 +139,10 @@ def test_should_raise_non_400_statuses_as_exceptions(document_download):
     assert str(excinfo.value) == 'Unhandled document download error: {"error": "Auth Error Of Some Kind"}'
 
 
-def test_should_raise_exceptions_without_http_response_bodies_as_exceptions(document_download):
+def test_should_raise_exceptions_without_http_response_bodies_as_exceptions(
+    document_download,
+    mock_onwards_request_headers,
+):
     with pytest.raises(Exception) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents", exc=requests.exceptions.ConnectTimeout
