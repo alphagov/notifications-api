@@ -57,6 +57,19 @@
       'production': 1
     },
   },
+  'notify-delivery-worker-ecs-fixup': {
+    'disk_quota': '10G',
+    'memory': '4G',
+    'additional_env_vars': {
+      'NOTIFICATION_QUEUE_PREFIX': NOTIFICATION_QUEUE_PREFIX + '-ecs',
+      'CELERYD_PREFETCH_MULTIPLIER': 1,
+    },
+    'instances': {
+      'preview': 0,
+      'staging': 0,
+      'production': 0
+    },
+  },
   'notify-delivery-worker-jobs': {'memory': '2G'},
   'notify-delivery-worker-research': {'disk_quota': '10G'},
   'notify-delivery-worker-sender': {'disk_quota': '4G', 'memory': '4G'},
