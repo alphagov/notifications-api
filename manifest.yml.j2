@@ -61,7 +61,7 @@
     'disk_quota': '10G',
     'memory': '4G',
     'additional_env_vars': {
-      'NOTIFICATION_QUEUE_PREFIX': NOTIFICATION_QUEUE_PREFIX + '-ecs',
+      'NOTIFICATION_QUEUE_PREFIX': ('production-' if environment == 'production' else (NOTIFICATION_QUEUE_PREFIX + '-ecs')),
       'CELERYD_PREFETCH_MULTIPLIER': 1,
     },
     'instances': {
