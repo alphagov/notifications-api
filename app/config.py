@@ -118,6 +118,9 @@ class Config(object):
     DEBUG = False
     NOTIFY_LOG_PATH = os.getenv("NOTIFY_LOG_PATH")
 
+    NOTIFY_RUNTIME_PLATFORM = os.getenv("NOTIFY_RUNTIME_PLATFORM", "paas")
+    NOTIFY_REQUEST_LOG_LEVEL = os.getenv("NOTIFY_REQUEST_LOG_LEVEL", "INFO")
+
     # Cronitor
     CRONITOR_ENABLED = False
     CRONITOR_KEYS = json.loads(os.environ.get("CRONITOR_KEYS", "{}"))
