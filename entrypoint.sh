@@ -12,12 +12,12 @@ else
 fi
 
 # Define a common command prefix
-WORKER_CMD="celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=$CONCURRENCY"
+WORKER_CMD="celery -A run_celery.notify_celery worker --logfile=/dev/null --concurrency=$CONCURRENCY"
 COMMON_CMD="$WORKER_CMD -Q"
 
 if [ "$1" == "worker" ]
 then
-  exec $WORKER_CMD 2> /dev/null
+  exec $WORKER_CMD
 
 elif [ "$1" == "api" ]
 then
@@ -33,60 +33,60 @@ then
 
 elif [ "$1" == "api-worker-retry-tasks" ]
 then
-  exec $COMMON_CMD retry-tasks 2> /dev/null
+  exec $COMMON_CMD retry-tasks
 
 elif [ "$1" == "api-worker-letters" ]
 then
-  exec $COMMON_CMD create-letters-pdf-tasks,letter-tasks 2> /dev/null
+  exec $COMMON_CMD create-letters-pdf-tasks,letter-tasks
 
 elif [ "$1" == "api-worker-jobs" ]
 then
-  exec $COMMON_CMD database-tasks,job-tasks 2> /dev/null
+  exec $COMMON_CMD database-tasks,job-tasks
 
 elif [ "$1" == "api-worker-research" ]
 then
-  exec $COMMON_CMD research-mode-tasks 2> /dev/null
+  exec $COMMON_CMD research-mode-tasks
 
 elif [ "$1" == "api-worker-sender" ]
 then
-  exec $COMMON_CMD send-sms-tasks,send-email-tasks 2> /dev/null
+  exec $COMMON_CMD send-sms-tasks,send-email-tasks
 
 elif [ "$1" == "api-worker-sender-letters" ]
 then
-  exec $COMMON_CMD send-letter-tasks 2> /dev/null
+  exec $COMMON_CMD send-letter-tasks
 
 elif [ "$1" == "api-worker-periodic" ]
 then
-  exec $COMMON_CMD periodic-tasks 2> /dev/null
+  exec $COMMON_CMD periodic-tasks
 
 elif [ "$1" == "api-worker-reporting" ]
 then
-  exec $COMMON_CMD reporting-tasks 2> /dev/null
+  exec $COMMON_CMD reporting-tasks
 
 # Only consume the notify-internal-tasks queue on this app so that Notify messages are processed as a priority
 elif [ "$1" == "api-worker-internal" ]
 then
-  exec $COMMON_CMD notify-internal-tasks 2> /dev/null
+  exec $COMMON_CMD notify-internal-tasks
 
 elif [ "$1" == "api-worker-broadcasts" ]
 then
-  exec $COMMON_CMD broadcast-tasks 2> /dev/null
+  exec $COMMON_CMD broadcast-tasks
 
 elif [ "$1" == "api-worker-receipts" ]
 then
-  exec $COMMON_CMD ses-callbacks,sms-callbacks 2> /dev/null
+  exec $COMMON_CMD ses-callbacks,sms-callbacks
 
 elif [ "$1" == "api-worker-service-callbacks" ]
 then
-  exec $COMMON_CMD service-callbacks,service-callbacks-retry 2> /dev/null
+  exec $COMMON_CMD service-callbacks,service-callbacks-retry
 
 elif [ "$1" == "api-worker-save-api-notifications" ]
 then
-  exec $COMMON_CMD save-api-email-tasks,save-api-sms-tasks 2> /dev/null
+  exec $COMMON_CMD save-api-email-tasks,save-api-sms-tasks
 
 elif [ "$1" == "celery-beat" ]
 then
-  exec celery -A run_celery.notify_celery beat --loglevel=INFO 2> /dev/null
+  exec celery -A run_celery.notify_celery beat --loglevel=INFO
 
 else
   echo -e "'\033[31m'FATAL: missing argument'\033[0m'" && exit 1
