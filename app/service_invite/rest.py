@@ -179,7 +179,7 @@ def send_service_invite_request(
                 notification_type=template.template_type,
                 api_key_id=None,
                 key_type=KEY_TYPE_NORMAL,
-                reply_to_text=notify_service.get_default_reply_to_email_address(),
+                reply_to_text=user_requesting_invite.email_address,
             )
             send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
             number_of_notifications_generated += 1

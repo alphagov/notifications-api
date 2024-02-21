@@ -373,6 +373,7 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
         manager_notification.personalisation["url"]
         == f"{invite_link_host}/services/{sample_service.id}/users/invite/{user_requesting_invite.id}"
     )
+    assert manager_notification.reply_to_text == user_requesting_invite.email_address
 
     # Receipt for request invite notification
     assert user_notification.personalisation == {
@@ -384,6 +385,7 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
             service_manager_3.name,
         ],
     }
+    assert user_notification.reply_to_text == "notify@gov.uk"
 
 
 def test_request_invite_to_service_email_is_not_sent_if_requester_is_already_part_of_service(
