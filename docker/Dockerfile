@@ -92,6 +92,8 @@ RUN echo "Install OS dependencies for test build" && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
       sudo \
+      libcurl4-openssl-dev \
+      libssl-dev \
       make \
       git && \
     apt-get -y clean && \
