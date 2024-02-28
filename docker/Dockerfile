@@ -47,6 +47,7 @@ ENV PATH="/opt/venv/bin:${PATH}"
 
 COPY --chown=notify:notify app app
 COPY --chown=notify:notify migrations migrations
+COPY --chown=notify:notify templates templates
 COPY --chown=notify:notify run_celery.py gunicorn_config.py application.py entrypoint.sh ./
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 
