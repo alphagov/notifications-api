@@ -7,10 +7,6 @@ Create Date: 2020-12-04 15:06:22.544803
 """
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm.session import Session
-
-from app.models import BroadcastMessage
 
 revision = "0336_broadcast_msg_content_2"
 down_revision = "0335_broadcast_msg_content"
@@ -19,7 +15,7 @@ down_revision = "0335_broadcast_msg_content"
 def upgrade():
     conn = op.get_bind()
 
-    results = conn.execute(
+    conn.execute(
         sa.text(
             """
         UPDATE

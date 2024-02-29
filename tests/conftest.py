@@ -152,11 +152,8 @@ def notify_db_session(_notify_db, sms_providers):
             "organisation_types",
             "service_permission_types",
             "auth_type",
-            "broadcast_status_type",
             "invite_status_type",
             "service_callback_type",
-            "broadcast_channel_types",
-            "broadcast_provider_types",
             "default_annual_allowance",
         ]:
             _notify_db.engine.execute(tbl.delete())

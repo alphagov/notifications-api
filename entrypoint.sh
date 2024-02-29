@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #Cater for specific concurrency level
-if [ "$1" == "api-worker-periodic" ] || [ "$1" == "api-worker-broadcasts" ]
+if [ "$1" == "api-worker-periodic" ]
 then
   CONCURRENCY=2
 elif [ "$1" == "api-worker-sender-letters" ]
@@ -67,10 +67,6 @@ then
 elif [ "$1" == "api-worker-internal" ]
 then
   exec $COMMON_CMD notify-internal-tasks
-
-elif [ "$1" == "api-worker-broadcasts" ]
-then
-  exec $COMMON_CMD broadcast-tasks
 
 elif [ "$1" == "api-worker-receipts" ]
 then
