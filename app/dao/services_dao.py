@@ -197,8 +197,11 @@ def dao_fetch_live_services_data():
     return results
 
 
-def dao_fetch_service_by_id(service_id, only_active=False):
-    query = Service.query.filter_by(id=service_id).options(joinedload("users"))
+def dao_fetch_service_by_id(service_id, only_active=False, with_users=True):
+    query = Service.query.filter_by(id=service_id)
+
+    if with_users:
+        query = query.options(joinedload("users"))
 
     if only_active:
         query = query.filter(Service.active)
