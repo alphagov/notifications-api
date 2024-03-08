@@ -11,7 +11,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from requests import HTTPError, RequestException, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from app import create_random_identifier, create_uuid, encryption, notify_celery
+from app import create_random_identifier, create_uuid, notify_celery, signing
 from app.aws import s3
 from app.celery import letters_pdf_tasks, provider_tasks
 from app.config import QueueNames
@@ -118,7 +118,7 @@ def get_recipient_csv_and_template_and_sender_id(job):
 
 def process_row(row, template, job, service, sender_id=None):
     template_type = template.template_type
-    encrypted = encryption.encrypt(
+    encoded = signing.encode(
         {
             "template": str(template.id),
             "template_version": job.template_version,
@@ -144,7 +144,7 @@ def process_row(row, template, job, service, sender_id=None):
         (
             str(service.id),
             notification_id,
-            encrypted,
+            encoded,
         ),
         task_kwargs,
         queue=QueueNames.DATABASE,
@@ -178,8 +178,8 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
 
 
 @notify_celery.task(bind=True, name="save-sms", max_retries=5, default_retry_delay=300)
-def save_sms(self, service_id, notification_id, encrypted_notification, sender_id=None):
-    notification = encryption.decrypt(encrypted_notification)
+def save_sms(self, service_id, notification_id, encoded_notification, sender_id=None):
+    notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_and_service_id(
         notification["template"],
@@ -231,8 +231,8 @@ def save_sms(self, service_id, notification_id, encrypted_notification, sender_i
 
 
 @notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
-def save_email(self, service_id, notification_id, encrypted_notification, sender_id=None):
-    notification = encryption.decrypt(encrypted_notification)
+def save_email(self, service_id, notification_id, encoded_notification, sender_id=None):
+    notification = signing.decode(encoded_notification)
 
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_and_service_id(
@@ -279,17 +279,17 @@ def save_email(self, service_id, notification_id, encrypted_notification, sender
 
 
 @notify_celery.task(bind=True, name="save-api-email", max_retries=5, default_retry_delay=300)
-def save_api_email(self, encrypted_notification):
-    save_api_email_or_sms(self, encrypted_notification)
+def save_api_email(self, encoded_notification):
+    save_api_email_or_sms(self, encoded_notification)
 
 
 @notify_celery.task(bind=True, name="save-api-sms", max_retries=5, default_retry_delay=300)
-def save_api_sms(self, encrypted_notification):
-    save_api_email_or_sms(self, encrypted_notification)
+def save_api_sms(self, encoded_notification):
+    save_api_email_or_sms(self, encoded_notification)
 
 
-def save_api_email_or_sms(self, encrypted_notification):
-    notification = encryption.decrypt(encrypted_notification)
+def save_api_email_or_sms(self, encoded_notification):
+    notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(notification["service_id"])
     provider_task = (
         provider_tasks.deliver_email if notification["notification_type"] == EMAIL_TYPE else provider_tasks.deliver_sms
@@ -334,9 +334,9 @@ def save_letter(
     self,
     service_id,
     notification_id,
-    encrypted_notification,
+    encoded_notification,
 ):
-    notification = encryption.decrypt(encrypted_notification)
+    notification = signing.decode(encoded_notification)
 
     postal_address = PostalAddress.from_personalisation(InsensitiveDict(notification["personalisation"]))
 

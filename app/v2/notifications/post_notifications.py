@@ -12,8 +12,8 @@ from app import (
     api_user,
     authenticated_service,
     document_download_client,
-    encryption,
     notify_celery,
+    signing,
 )
 from app.celery.letters_pdf_tasks import (
     get_pdf_for_templated_letter,
@@ -293,12 +293,12 @@ def save_email_or_sms_to_queue(
         "status": NOTIFICATION_CREATED,
         "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
     }
-    encrypted = encryption.encrypt(data)
+    encoded = signing.encode(data)
 
     if notification_type == EMAIL_TYPE:
-        save_api_email.apply_async([encrypted], queue=QueueNames.SAVE_API_EMAIL)
+        save_api_email.apply_async([encoded], queue=QueueNames.SAVE_API_EMAIL)
     elif notification_type == SMS_TYPE:
-        save_api_sms.apply_async([encrypted], queue=QueueNames.SAVE_API_SMS)
+        save_api_sms.apply_async([encoded], queue=QueueNames.SAVE_API_SMS)
 
     return Notification(**data)
 

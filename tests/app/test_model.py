@@ -2,7 +2,7 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
 
-from app import encryption
+from app import signing
 from app.constants import (
     EMAIL_TYPE,
     MOBILE_TYPE,
@@ -155,7 +155,7 @@ def test_notification_personalisation_getter_returns_empty_dict_from_None():
 
 def test_notification_personalisation_getter_always_returns_empty_dict():
     noti = Notification()
-    noti._personalisation = encryption.encrypt({})
+    noti._personalisation = signing.encode({})
     assert noti.personalisation == {}
 
 
@@ -164,7 +164,7 @@ def test_notification_personalisation_setter_always_sets_empty_dict(input_value)
     noti = Notification()
     noti.personalisation = input_value
 
-    assert noti._personalisation == encryption.encrypt({})
+    assert noti._personalisation == signing.encode({})
 
 
 def test_notification_subject_is_none_for_sms(sample_service):

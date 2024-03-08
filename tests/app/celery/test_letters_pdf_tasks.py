@@ -12,7 +12,7 @@ from freezegun import freeze_time
 from moto import mock_s3
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import encryption
+from app import signing
 from app.celery.letters_pdf_tasks import (
     _move_invalid_letter_and_update_status,
     check_time_to_collate_letters,
@@ -97,7 +97,7 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(ANY,), queue=QueueNames.SANITISE_LETTERS
     )
 
-    actual_data = encryption.decrypt(mock_celery.call_args.kwargs["args"][0])
+    actual_data = signing.decode(mock_celery.call_args.kwargs["args"][0])
     assert letter_data == actual_data
 
     mock_generate_letter_pdf_filename.assert_called_once_with(
@@ -116,7 +116,7 @@ def test_get_pdf_for_templated_letter_with_letter_attachment(mocker, sample_lett
     mocker.patch("app.celery.letters_pdf_tasks.generate_letter_pdf_filename", return_value="LETTER.PDF")
     get_pdf_for_templated_letter(sample_letter_notification.id)
 
-    actual_data = encryption.decrypt(mock_celery.call_args.kwargs["args"][0])
+    actual_data = signing.decode(mock_celery.call_args.kwargs["args"][0])
 
     assert actual_data["template"]["letter_attachment"] == attachment.serialize()
 
@@ -552,7 +552,7 @@ def test_process_sanitised_letter_with_valid_letter(
     sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
     sample_letter_notification.postage = postage
 
-    encrypted_data = encryption.encrypt(
+    encoded_data = signing.encode(
         {
             "page_count": 2,
             "message": None,
@@ -563,7 +563,7 @@ def test_process_sanitised_letter_with_valid_letter(
             "address": "A. User\nThe house on the corner",
         }
     )
-    process_sanitised_letter(encrypted_data)
+    process_sanitised_letter(encoded_data)
 
     assert sample_letter_notification.status == expected_status
     assert sample_letter_notification.billable_units == 1
@@ -610,7 +610,7 @@ def test_process_sanitised_letter_sets_postage_international(
     sample_letter_notification.billable_units = 1
     sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
 
-    encrypted_data = encryption.encrypt(
+    encoded_data = signing.encode(
         {
             "page_count": 2,
             "message": None,
@@ -621,7 +621,7 @@ def test_process_sanitised_letter_sets_postage_international(
             "address": address,
         }
     )
-    process_sanitised_letter(encrypted_data)
+    process_sanitised_letter(encoded_data)
 
     assert sample_letter_notification.status == "created"
     assert sample_letter_notification.billable_units == 1
@@ -658,7 +658,7 @@ def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification
     sample_letter_notification.billable_units = 1
     sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
 
-    encrypted_data = encryption.encrypt(
+    encoded_data = signing.encode(
         {
             "page_count": 2,
             "message": "content-outside-printable-area",
@@ -669,7 +669,7 @@ def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification
             "address": None,
         }
     )
-    process_sanitised_letter(encrypted_data)
+    process_sanitised_letter(encoded_data)
 
     assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
     assert sample_letter_notification.billable_units == 0
@@ -689,7 +689,7 @@ def test_process_sanitised_letter_when_letter_status_is_not_pending_virus_scan(
     mock_s3 = mocker.patch("app.celery.letters_pdf_tasks.s3")
     sample_letter_notification.status = NOTIFICATION_CREATED
 
-    encrypted_data = encryption.encrypt(
+    encoded_data = signing.encode(
         {
             "page_count": 2,
             "message": None,
@@ -700,7 +700,7 @@ def test_process_sanitised_letter_when_letter_status_is_not_pending_virus_scan(
             "address": None,
         }
     )
-    process_sanitised_letter(encrypted_data)
+    process_sanitised_letter(encoded_data)
 
     assert not mock_s3.called
 
@@ -712,7 +712,7 @@ def test_process_sanitised_letter_puts_letter_into_tech_failure_for_boto_errors(
     mocker.patch("app.celery.letters_pdf_tasks.s3.get_s3_object", side_effect=ClientError({}, "operation_name"))
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
 
-    encrypted_data = encryption.encrypt(
+    encoded_data = signing.encode(
         {
             "page_count": 2,
             "message": None,
@@ -725,7 +725,7 @@ def test_process_sanitised_letter_puts_letter_into_tech_failure_for_boto_errors(
     )
 
     with pytest.raises(NotificationTechnicalFailureException):
-        process_sanitised_letter(encrypted_data)
+        process_sanitised_letter(encoded_data)
 
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
@@ -738,7 +738,7 @@ def test_process_sanitised_letter_retries_if_there_is_an_exception(
     mock_celery_retry = mocker.patch("app.celery.letters_pdf_tasks.process_sanitised_letter.retry")
 
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
-    encrypted_data = encryption.encrypt(
+    encoded_data = signing.encode(
         {
             "page_count": 2,
             "message": None,
@@ -750,7 +750,7 @@ def test_process_sanitised_letter_retries_if_there_is_an_exception(
         }
     )
 
-    process_sanitised_letter(encrypted_data)
+    process_sanitised_letter(encoded_data)
 
     mock_celery_retry.assert_called_once_with(queue="retry-tasks")
 
@@ -763,7 +763,7 @@ def test_process_sanitised_letter_puts_letter_into_technical_failure_if_max_retr
     mocker.patch("app.celery.letters_pdf_tasks.process_sanitised_letter.retry", side_effect=MaxRetriesExceededError())
 
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
-    encrypted_data = encryption.encrypt(
+    encoded_data = signing.encode(
         {
             "page_count": 2,
             "message": None,
@@ -776,7 +776,7 @@ def test_process_sanitised_letter_puts_letter_into_technical_failure_if_max_retr
     )
 
     with pytest.raises(NotificationTechnicalFailureException):
-        process_sanitised_letter(encrypted_data)
+        process_sanitised_letter(encoded_data)
 
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 

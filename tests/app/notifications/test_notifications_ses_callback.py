@@ -79,7 +79,7 @@ def test_check_and_queue_callback_task(mocker, sample_notification):
     mock_send = mocker.patch("app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async")
 
     callback_api = create_service_callback_api(service=sample_notification.service)
-    mock_create.return_value = "encrypted_status_update"
+    mock_create.return_value = "encoded_status_update"
 
     check_and_queue_callback_task(sample_notification)
 
