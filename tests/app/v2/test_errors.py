@@ -54,7 +54,7 @@ def app_for_test():
             "too-short": "Mobile number is too long",
             "too-long": "Mobile number is too short",
             "invalid-country": "Country code not found - double check the mobile number you entered",
-            "invalid-uk": "This does not look like a UK mobile number - double check the mobile number you entered",
+            "invalid-uk": "This does not look like a UK mobile number – double check the mobile number you entered",
         }
         raise InvalidPhoneError(errors[error_id])
 
