@@ -1022,6 +1022,8 @@ class TemplateBase(db.Model):
 
         super().__init__(**kwargs)
 
+    # WARNING: if we add a new column here, we must add it to templates_dao.py dao_update_template_reply_to
+    # TODO: remove dao_update_template_reply_to and make `dao_update_template` just work
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
     template_type = db.Column(template_types, nullable=False)
