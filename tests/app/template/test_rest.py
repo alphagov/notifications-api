@@ -1087,6 +1087,32 @@ def test_update_template_reply_to(client, sample_letter_template):
     assert th.service_letter_contact_id == letter_contact.id
 
 
+def test_update_template_reply_to_does_not_overwrite_letter_attachment(admin_request, sample_letter_template):
+    letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
+
+    attachment = create_letter_attachment(created_by_id=sample_letter_template.created_by_id)
+    sample_letter_template.letter_attachment_id = attachment.id
+    dao_update_template(sample_letter_template)
+
+    data = {"reply_to": str(letter_contact.id)}
+
+    assert sample_letter_template.letter_attachment_id == attachment.id
+
+    admin_request.post(
+        "template.update_template",
+        service_id=sample_letter_template.service_id,
+        template_id=sample_letter_template.id,
+        _data=data,
+    )
+    previous = TemplateHistory.query.filter_by(id=sample_letter_template.id, version=2).one()
+    assert previous.letter_attachment_id == attachment.id
+    assert previous.service_letter_contact_id is None
+
+    latest = TemplateHistory.query.filter_by(id=sample_letter_template.id, version=3).one()
+    assert latest.service_letter_contact_id == letter_contact.id
+    assert latest.letter_attachment_id == attachment.id
+
+
 def test_update_template_reply_to_set_to_blank(client, notify_db_session):
     auth_header = create_admin_authorization_header()
     service = create_service(service_permissions=["letter"])

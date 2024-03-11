@@ -65,6 +65,10 @@ def dao_update_template_reply_to(template_id, reply_to):
             "process_type": template.process_type,
             "service_letter_contact_id": template.service_letter_contact_id,
             "broadcast_data": template.broadcast_data,
+            "letter_attachment_id": template.letter_attachment_id,
+            "letter_welsh_content": template.letter_welsh_content,
+            "letter_welsh_subject": template.letter_welsh_subject,
+            "letter_languages": template.letter_languages,
         }
     )
     db.session.add(history)
