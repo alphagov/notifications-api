@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from flask import current_app
 from sqlalchemy import Float, cast
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.expression import and_, asc, case, func
+from sqlalchemy.sql.expression import and_, asc, func
 
 from app import db
 from app.constants import (
@@ -118,9 +118,12 @@ def dao_fetch_live_services_data():
             Service.volume_sms.label("sms_volume_intent"),
             Service.volume_email.label("email_volume_intent"),
             Service.volume_letter.label("letter_volume_intent"),
-            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0)).filter(this_year_ft_billing.c.notification_type == "email").label("email_totals"),
-            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0)).filter(this_year_ft_billing.c.notification_type == "sms").label("sms_totals"),
-            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0)).filter(this_year_ft_billing.c.notification_type == "letter").label("letter_totals"),
+            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
+                .filter(this_year_ft_billing.c.notification_type == "email").label("email_totals"),
+            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
+                .filter(this_year_ft_billing.c.notification_type == "sms").label("sms_totals"),
+            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
+                .filter(this_year_ft_billing.c.notification_type == "letter").label("letter_totals"),
             AnnualBilling.free_sms_fragment_limit,
         )
         .join(Service.annual_billing)
