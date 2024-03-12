@@ -1,9 +1,9 @@
 from app.config import QueueNames
 
 
-def test_queue_names_set_in_paas_app_wrapper():
-    with open("scripts/paas_app_wrapper.sh", "r") as stream:
-        search = " -Q "
+def test_queue_names_set_entrypoint_wrapper():
+    with open("entrypoint.sh", "r") as stream:
+        search = "exec $COMMON_CMD"
 
         watched_queues = set()
         for line in stream.readlines():

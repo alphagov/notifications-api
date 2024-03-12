@@ -7,17 +7,6 @@ APP_VERSION_FILE = app/version.py
 GIT_BRANCH ?= $(shell git symbolic-ref --short HEAD 2> /dev/null || echo "detached")
 GIT_COMMIT ?= $(shell git rev-parse HEAD)
 
-CF_API ?= api.cloud.service.gov.uk
-CF_ORG ?= govuk-notify
-CF_SPACE ?= ${DEPLOY_ENV}
-CF_HOME ?= ${HOME}
-$(eval export CF_HOME)
-
-CF_MANIFEST_PATH ?= /tmp/manifest.yml
-
-
-NOTIFY_CREDENTIALS ?= ~/.notify-credentials
-
 VIRTUALENV_ROOT := $(shell [ -z $$VIRTUAL_ENV ] && echo $$(pwd)/venv || echo $$VIRTUAL_ENV)
 PYTHON_EXECUTABLE_PREFIX := $(shell test -d "$${VIRTUALENV_ROOT}" && echo "$${VIRTUALENV_ROOT}/bin/" || echo "")
 
@@ -138,89 +127,6 @@ production: ## Set environment to production
 	$(eval export DNS_NAME="notifications.service.gov.uk")
 	@true
 
-.PHONY: cf-login
-cf-login: ## Log in to Cloud Foundry
-	$(if ${CF_USERNAME},,$(error Must specify CF_USERNAME))
-	$(if ${CF_PASSWORD},,$(error Must specify CF_PASSWORD))
-	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
-	@echo "Logging in to Cloud Foundry on ${CF_API}"
-	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}" -o "${CF_ORG}" -s "${CF_SPACE}"
-
-.PHONY: generate-manifest
-generate-manifest:
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
-	$(if $(shell which gpg2), $(eval export GPG=gpg2), $(eval export GPG=gpg))
-	$(if ${GPG_PASSPHRASE_TXT}, $(eval export DECRYPT_CMD=echo -n $$$${GPG_PASSPHRASE_TXT} | ${GPG} --quiet --batch --passphrase-fd 0 --pinentry-mode loopback -d), $(eval export DECRYPT_CMD=${GPG} --quiet --batch -d))
-
-	@jinja2 --strict manifest.yml.j2 \
-	    -D environment=${CF_SPACE} \
-	    -D CF_APP=${CF_APP} \
-	    --format=yaml \
-	    <(${DECRYPT_CMD} ${NOTIFY_CREDENTIALS}/credentials/${CF_SPACE}/paas/environment-variables.gpg) 2>&1
-
-.PHONY: cf-deploy
-cf-deploy: ## Deploys the app to Cloud Foundry
-	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	cf target -o ${CF_ORG} -s ${CF_SPACE}
-	@cf app --guid ${CF_APP} || exit 1
-
-	# cancel any existing deploys to ensure we can apply manifest (if a deploy is in progress you'll see ScaleDisabledDuringDeployment)
-	cf cancel-deployment ${CF_APP} || true
-
-	# generate manifest (including secrets) and write it to CF_MANIFEST_PATH (in /tmp/)
-	make -s CF_APP=${CF_APP} generate-manifest > ${CF_MANIFEST_PATH}
-
-	$(if ${USE_DROPLETS},CF_APP=${CF_APP} CF_MANIFEST_PATH=${CF_MANIFEST_PATH} ./scripts/deploy.sh,CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --strategy=rolling -f ${CF_MANIFEST_PATH})
-	# delete old manifest file
-	rm ${CF_MANIFEST_PATH}
-
-.PHONY: cf-deploy-api-db-migration
-cf-deploy-api-db-migration:
-	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
-	cf target -o ${CF_ORG} -s ${CF_SPACE}
-	make -s CF_APP=notify-api-db-migration generate-manifest > ${CF_MANIFEST_PATH}
-
-	$(if ${USE_DROPLETS},CF_APP=notify-api-db-migration CF_MANIFEST_PATH=${CF_MANIFEST_PATH} ./scripts/deploy.sh,CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --no-route -f ${CF_MANIFEST_PATH})
-	rm ${CF_MANIFEST_PATH}
-
-	cf run-task notify-api-db-migration --command="flask db upgrade" --name api_db_migration
-
-.PHONY: cf-check-api-db-migration-task
-cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-migration task
-	@cf curl /v3/apps/`cf app --guid notify-api-db-migration`/tasks?order_by=-created_at | jq -r ".resources[0].state"
-
-.PHONY: cf-rollback
-cf-rollback: ## Rollbacks the app to the previous release
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	rm ${CF_MANIFEST_PATH}
-	cf cancel-deployment ${CF_APP}
-
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
-	@echo $(shell python3 scripts/check_if_new_migration.py)
-
-.PHONY: cf-deploy-failwhale
-cf-deploy-failwhale:
-	$(if ${CF_SPACE},,$(error Must target space, eg `make preview cf-deploy-failwhale`))
-	cd ./paas-failwhale; cf push notify-api-failwhale -f manifest.yml
-
-.PHONY: enable-failwhale
-enable-failwhale: ## Enable the failwhale app and disable api
-	$(if ${DNS_NAME},,$(error Must target space, eg `make preview enable-failwhale`))
-	# make sure failwhale is running first
-	cf start notify-api-failwhale
-
-	cf map-route notify-api-failwhale ${DNS_NAME} --hostname api
-	cf unmap-route notify-api ${DNS_NAME} --hostname api
-	@echo "Failwhale is enabled"
-
-.PHONY: disable-failwhale
-disable-failwhale: ## Disable the failwhale app and enable api
-	$(if ${DNS_NAME},,$(error Must target space, eg `make preview disable-failwhale`))
-
-	cf map-route notify-api ${DNS_NAME} --hostname api
-	cf unmap-route notify-api-failwhale ${DNS_NAME} --hostname api
-	cf stop notify-api-failwhale
-	@echo "Failwhale is disabled"
+	@echo $(shell API_HOST_NAME=https://api.${DNS_NAME} python3 scripts/check_if_new_migration.py)
