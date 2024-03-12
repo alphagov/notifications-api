@@ -14,10 +14,6 @@ async-timeout==4.0.3
     # via redis
 attrs==22.1.0
     # via jsonschema
-awscli==1.29.5
-    # via awscli-cwlogs
-awscli-cwlogs==1.4.6
-    # via -r requirements.in
 bcrypt==4.0.0
     # via flask-bcrypt
 beautifulsoup4==4.11.1
@@ -35,7 +31,6 @@ boto3==1.28.5
     #   notifications-utils
 botocore==1.31.5
     # via
-    #   awscli
     #   boto3
     #   s3transfer
 cachetools==5.2.0
@@ -70,14 +65,10 @@ click-plugins==1.1.1
     # via celery
 click-repl==0.2.0
     # via celery
-colorama==0.4.4
-    # via awscli
 dnspython==2.4.2
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-docutils==0.16
-    # via awscli
 eventlet==0.34.2
     # via gunicorn
 flask==3.0.0
@@ -181,8 +172,6 @@ prompt-toolkit==3.0.31
     # via click-repl
 psycopg2-binary==2.9.6
     # via -r requirements.in
-pyasn1==0.4.8
-    # via rsa
 pycparser==2.21
     # via cffi
 pycurl==7.44.1
@@ -198,7 +187,6 @@ pyrsistent==0.18.1
 python-dateutil==2.8.2
     # via
     #   arrow
-    #   awscli-cwlogs
     #   botocore
 python-json-logger==2.0.4
     # via notifications-utils
@@ -207,14 +195,11 @@ pytz==2022.4
     #   celery
     #   notifications-utils
 pyyaml==6.0.1
-    # via
-    #   awscli
-    #   notifications-utils
+    # via notifications-utils
 redis==4.5.4
     # via flask-redis
 requests==2.31.0
     # via
-    #   awscli-cwlogs
     #   govuk-bank-holidays
     #   notifications-python-client
     #   notifications-utils
@@ -222,19 +207,14 @@ rfc3339-validator==0.1.4
     # via jsonschema
 rfc3987==1.3.8
     # via jsonschema
-rsa==4.7.2
-    # via awscli
 s3transfer==0.6.0
-    # via
-    #   awscli
-    #   boto3
+    # via boto3
 segno==1.5.2
     # via notifications-utils
 sentry-sdk[celery,flask,sqlalchemy]==1.38.0
     # via -r requirements.in
 six==1.16.0
     # via
-    #   awscli-cwlogs
     #   click-repl
     #   eventlet
     #   flask-marshmallow
