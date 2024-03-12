@@ -117,12 +117,8 @@ def service_can_send_to_recipient(send_to, key_type, service, allow_guest_list_r
         raise BadRequestError(message=message)
 
 
-def service_has_permission(notify_type, permissions):
-    return notify_type in permissions
-
-
 def check_service_has_permission(notify_type, permissions):
-    if not service_has_permission(notify_type, permissions):
+    if not notify_type in permissions:
         raise BadRequestError(
             message="Service is not allowed to send {}".format(get_public_notify_type_text(notify_type, plural=True))
         )
