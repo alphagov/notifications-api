@@ -93,16 +93,16 @@ def dao_count_live_services():
 def dao_fetch_live_services_data():
     year_start_date, year_end_date = get_current_financial_year()
 
-
     this_year_ft_billing = FactBilling.query.filter(
         FactBilling.bst_date >= year_start_date,
         FactBilling.bst_date <= year_end_date,
     ).subquery()
 
-    most_recent_annual_billing = db.session.query(
-        AnnualBilling.service_id,
-        AnnualBilling.financial_year_start.label("year")
-    ).distinct(AnnualBilling.service_id).subquery()
+    most_recent_annual_billing = (
+        db.session.query(AnnualBilling.service_id, AnnualBilling.financial_year_start.label("year"))
+        .distinct(AnnualBilling.service_id)
+        .subquery()
+    )
 
     data = (
         db.session.query(
@@ -119,11 +119,14 @@ def dao_fetch_live_services_data():
             Service.volume_email.label("email_volume_intent"),
             Service.volume_letter.label("letter_volume_intent"),
             func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
-                .filter(this_year_ft_billing.c.notification_type == "email").label("email_totals"),
+            .filter(this_year_ft_billing.c.notification_type == "email")
+            .label("email_totals"),
             func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
-                .filter(this_year_ft_billing.c.notification_type == "sms").label("sms_totals"),
+            .filter(this_year_ft_billing.c.notification_type == "sms")
+            .label("sms_totals"),
             func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
-                .filter(this_year_ft_billing.c.notification_type == "letter").label("letter_totals"),
+            .filter(this_year_ft_billing.c.notification_type == "letter")
+            .label("letter_totals"),
             AnnualBilling.free_sms_fragment_limit,
         )
         .join(Service.annual_billing)
@@ -164,7 +167,6 @@ def dao_fetch_live_services_data():
     )
 
     return [row._asdict() for row in data]
-
 
 
 def dao_fetch_service_by_id(service_id, only_active=False):
