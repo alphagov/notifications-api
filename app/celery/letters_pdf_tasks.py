@@ -7,7 +7,7 @@ from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.postal_address import PostalAddress
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 
-from app import encryption, notify_celery
+from app import notify_celery, signing
 from app.aws import s3
 from app.celery.provider_tasks import deliver_letter
 from app.config import QueueNames, TaskNames
@@ -86,10 +86,10 @@ def get_pdf_for_templated_letter(self, notification_id):
             "key_type": notification.key_type,
         }
 
-        encrypted_data = encryption.encrypt(letter_data)
+        encoded_data = signing.encode(letter_data)
 
         notify_celery.send_task(
-            name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(encrypted_data,), queue=QueueNames.SANITISE_LETTERS
+            name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(encoded_data,), queue=QueueNames.SANITISE_LETTERS
         )
     except Exception as e:
         try:
@@ -279,7 +279,7 @@ def sanitise_letter(self, filename):
 
 @notify_celery.task(bind=True, name="process-sanitised-letter", max_retries=15, default_retry_delay=300)
 def process_sanitised_letter(self, sanitise_data):
-    letter_details = encryption.decrypt(sanitise_data)
+    letter_details = signing.decode(sanitise_data)
 
     filename = letter_details["filename"]
     notification_id = letter_details["notification_id"]

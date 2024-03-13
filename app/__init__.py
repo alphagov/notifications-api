@@ -21,8 +21,8 @@ from gds_metrics import GDSMetrics
 from gds_metrics.metrics import Gauge, Histogram
 from notifications_utils import logging, request_helper
 from notifications_utils.celery import NotifyCelery
-from notifications_utils.clients.encryption.encryption_client import Encryption
 from notifications_utils.clients.redis.redis_client import RedisClient
+from notifications_utils.clients.signing.signing_client import Signing
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from sqlalchemy import event
@@ -47,7 +47,7 @@ mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
 aws_ses_stub_client = AwsSesStubClient()
 dvla_client = DVLAClient()
-encryption = Encryption()
+signing = Signing()
 zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
@@ -100,7 +100,7 @@ def create_app(application):
     notification_provider_clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
 
     notify_celery.init_app(application)
-    encryption.init_app(application)
+    signing.init_app(application)
     redis_store.init_app(application)
     document_download_client.init_app(application)
 

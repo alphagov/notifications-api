@@ -331,5 +331,5 @@ PHONE_NUMBER_VALIDATION_ERROR_MAP = {
     "Mobile number is too long": "Too many digits",
     "Mobile number is too short": "Not enough digits",
     "Country code not found - double check the mobile number you entered": "Not a valid country prefix",
-    "This does not look like a UK mobile number - double check the mobile number you entered": "Not a UK mobile number",
+    "This does not look like a UK mobile number – double check the mobile number you entered": "Not a UK mobile number",
 }

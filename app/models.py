@@ -38,7 +38,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.schema import Sequence
 
-from app import db, encryption
+from app import db, signing
 from app.constants import (
     ALL_BROADCAST_PROVIDERS,
     BRANDING_ORG,
@@ -850,13 +850,13 @@ class ServiceInboundApi(db.Model, Versioned):
     @property
     def bearer_token(self):
         if self._bearer_token:
-            return encryption.decrypt(self._bearer_token)
+            return signing.decode(self._bearer_token)
         return None
 
     @bearer_token.setter
     def bearer_token(self, bearer_token):
         if bearer_token:
-            self._bearer_token = encryption.encrypt(str(bearer_token))
+            self._bearer_token = signing.encode(str(bearer_token))
 
     def serialize(self):
         return {
@@ -887,13 +887,13 @@ class ServiceCallbackApi(db.Model, Versioned):
     @property
     def bearer_token(self):
         if self._bearer_token:
-            return encryption.decrypt(self._bearer_token)
+            return signing.decode(self._bearer_token)
         return None
 
     @bearer_token.setter
     def bearer_token(self, bearer_token):
         if bearer_token:
-            self._bearer_token = encryption.encrypt(str(bearer_token))
+            self._bearer_token = signing.encode(str(bearer_token))
 
     def serialize(self):
         return {
@@ -934,13 +934,13 @@ class ApiKey(db.Model, Versioned):
     @property
     def secret(self):
         if self._secret:
-            return encryption.decrypt(self._secret)
+            return signing.decode(self._secret)
         return None
 
     @secret.setter
     def secret(self, secret):
         if secret:
-            self._secret = encryption.encrypt(str(secret))
+            self._secret = signing.encode(str(secret))
 
 
 class KeyTypes(db.Model):
@@ -1452,12 +1452,12 @@ class Notification(db.Model):
     @property
     def personalisation(self):
         if self._personalisation:
-            return encryption.decrypt(self._personalisation)
+            return signing.decode(self._personalisation)
         return {}
 
     @personalisation.setter
     def personalisation(self, personalisation):
-        self._personalisation = encryption.encrypt(personalisation or {})
+        self._personalisation = signing.encode(personalisation or {})
 
     def completed_at(self):
         if self.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
@@ -1823,11 +1823,11 @@ class InboundSms(db.Model):
 
     @property
     def content(self):
-        return encryption.decrypt(self._content)
+        return signing.decode(self._content)
 
     @content.setter
     def content(self, content):
-        self._content = encryption.encrypt(content)
+        self._content = signing.encode(content)
 
     def serialize(self):
         return {
@@ -2227,12 +2227,12 @@ class BroadcastMessage(db.Model):
     @property
     def personalisation(self):
         if self._personalisation:
-            return encryption.decrypt(self._personalisation)
+            return signing.decode(self._personalisation)
         return {}
 
     @personalisation.setter
     def personalisation(self, personalisation):
-        self._personalisation = encryption.encrypt(personalisation or {})
+        self._personalisation = signing.encode(personalisation or {})
 
     def serialize(self):
         return {
