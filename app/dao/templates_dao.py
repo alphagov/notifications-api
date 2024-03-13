@@ -37,39 +37,9 @@ def dao_update_template(template):
 
 @autocommit
 def dao_update_template_reply_to(template_id, reply_to):
-    Template.query.filter_by(id=template_id).update(
-        {
-            "service_letter_contact_id": reply_to,
-            "updated_at": datetime.utcnow(),
-            "version": Template.version + 1,
-        }
-    )
     template = Template.query.filter_by(id=template_id).one()
-
-    history = TemplateHistory(
-        **{
-            "id": template.id,
-            "name": template.name,
-            "template_type": template.template_type,
-            "created_at": template.created_at,
-            "updated_at": template.updated_at,
-            "content": template.content,
-            "service_id": template.service_id,
-            "subject": template.subject,
-            "postage": template.postage,
-            "created_by_id": template.created_by_id,
-            "version": template.version,
-            "archived": template.archived,
-            "process_type": template.process_type,
-            "service_letter_contact_id": template.service_letter_contact_id,
-            "broadcast_data": template.broadcast_data,
-            "letter_attachment_id": template.letter_attachment_id,
-            "letter_welsh_content": template.letter_welsh_content,
-            "letter_welsh_subject": template.letter_welsh_subject,
-            "letter_languages": template.letter_languages,
-        }
-    )
-    db.session.add(history)
+    template.service_letter_contact_id = reply_to
+    dao_update_template(template)
     return template
 
 
