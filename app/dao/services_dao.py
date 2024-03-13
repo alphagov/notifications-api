@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from flask import current_app
 from sqlalchemy import Float, cast
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.expression import and_, case, func, asc
+from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
 from app.constants import (
