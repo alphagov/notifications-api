@@ -28,7 +28,6 @@ from app.dao.templates_dao import (
     dao_get_template_versions,
     dao_redact_template,
     dao_update_template,
-    dao_update_template_reply_to,
     get_precompiled_letter_template,
 )
 from app.errors import InvalidRequest, register_errors
@@ -132,8 +131,9 @@ def update_template(service_id, template_id):
 
     if "reply_to" in data:
         check_service_letter_contact_id(service_id, data.get("reply_to"), fetched_template.template_type)
-        updated = dao_update_template_reply_to(template_id=template_id, reply_to=data.get("reply_to"))
-        return jsonify(data=template_schema.dump(updated)), 200
+        fetched_template.service_letter_contact_id = data.get("reply_to")
+        dao_update_template(fetched_template)
+        return jsonify(data=template_schema.dump(fetched_template)), 200
 
     current_data = dict(template_schema.dump(fetched_template).items())
     updated_template = dict(template_schema.dump(fetched_template).items())

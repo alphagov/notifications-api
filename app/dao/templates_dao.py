@@ -36,14 +36,6 @@ def dao_update_template(template):
 
 
 @autocommit
-def dao_update_template_reply_to(template_id, reply_to):
-    template = Template.query.filter_by(id=template_id).one()
-    template.service_letter_contact_id = reply_to
-    dao_update_template(template)
-    return template
-
-
-@autocommit
 def dao_redact_template(template, user_id):
     template.template_redacted.redact_personalisation = True
     template.template_redacted.updated_at = datetime.utcnow()
