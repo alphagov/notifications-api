@@ -34,7 +34,7 @@ from app.dao.templates_dao import (
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import get_letter_pdf_and_metadata
 from app.models import Template
-from app.notifications.validators import check_reply_to
+from app.notifications.validators import check_service_letter_contact_id
 from app.schema_validation import validate
 from app.schemas import (
     template_history_schema,
@@ -104,7 +104,7 @@ def create_template(service_id):
     ):
         raise InvalidRequest({"content": [QR_CODE_TOO_LONG]}, status_code=400)
 
-    check_reply_to(service_id, new_template.reply_to, new_template.template_type)
+    check_service_letter_contact_id(service_id, new_template.reply_to, new_template.template_type)
 
     dao_create_template(new_template)
 
@@ -131,7 +131,7 @@ def update_template(service_id, template_id):
         return redact_template(fetched_template, data)
 
     if "reply_to" in data:
-        check_reply_to(service_id, data.get("reply_to"), fetched_template.template_type)
+        check_service_letter_contact_id(service_id, data.get("reply_to"), fetched_template.template_type)
         updated = dao_update_template_reply_to(template_id=template_id, reply_to=data.get("reply_to"))
         return jsonify(data=template_schema.dump(updated)), 200
 
