@@ -118,28 +118,22 @@ def dao_fetch_live_services_data():
             Service.volume_sms.label("sms_volume_intent"),
             Service.volume_email.label("email_volume_intent"),
             Service.volume_letter.label("letter_volume_intent"),
-            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
-            .filter(this_year_ft_billing.c.notification_type == "email")
-            .label("email_totals"),
-            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
-            .filter(this_year_ft_billing.c.notification_type == "sms")
-            .label("sms_totals"),
-            func.sum(func.coalesce(this_year_ft_billing.c.notifications_sent, 0))
-            .filter(this_year_ft_billing.c.notification_type == "letter")
-            .label("letter_totals"),
+            func.sum(case([(FactBilling.notification_type == 'email', FactBilling.notifications_sent)], else_=0)).label("email_totals"),
+            func.sum(case([(FactBilling.notification_type == 'sms', FactBilling.notifications_sent)], else_=0)).label("sms_totals"),
+            func.sum(case([(FactBilling.notification_type == 'letter', FactBilling.notifications_sent)], else_=0)).label("letter_totals"),
             AnnualBilling.free_sms_fragment_limit,
         )
-        .join(Service.annual_billing)
-        .join(
-            most_recent_annual_billing,
-            and_(
-                Service.id == most_recent_annual_billing.c.service_id,
-                AnnualBilling.financial_year_start == most_recent_annual_billing.c.year,
-            ),
-        )
-        .outerjoin(Service.organisation)
-        .outerjoin(this_year_ft_billing, Service.id == this_year_ft_billing.c.service_id)
-        .outerjoin(User, Service.go_live_user_id == User.id)
+        .join(AnnualBilling, and_(
+            AnnualBilling.service_id == Service.id,
+            AnnualBilling.financial_year_start == db.session.query(func.max(AnnualBilling.financial_year_start)).filter(AnnualBilling.service_id == Service.id).as_scalar()
+        ))
+        .outerjoin(Organisation, Organisation.id == Service.organisation_id)
+        .outerjoin(User, User.id == Service.go_live_user_id)
+        .outerjoin(FactBilling, and_(
+            FactBilling.service_id == Service.id,
+            FactBilling.bst_date >= year_start_date,
+            FactBilling.bst_date <= year_end_date,
+        ))
         .filter(
             Service.count_as_live.is_(True),
             Service.active.is_(True),
@@ -151,8 +145,6 @@ def dao_fetch_live_services_data():
             Organisation.organisation_type,
             Service.name,
             Service.consent_to_research,
-            Service.count_as_live,
-            Service.go_live_user_id,
             User.name,
             User.email_address,
             User.mobile_number,
