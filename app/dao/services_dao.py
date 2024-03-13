@@ -93,6 +93,14 @@ def dao_count_live_services():
 def dao_fetch_live_services_data():
     year_start_date, year_end_date = get_current_financial_year()
 
+    most_recent_annual_billing = db.session.query(
+        AnnualBilling.service_id.label('service_id'),
+        AnnualBilling.free_sms_fragment_limit.label('free_sms_fragment_limit'),
+        AnnualBilling.financial_year_start.label('financial_year_start')
+    ).distinct(AnnualBilling.service_id).order_by(
+        AnnualBilling.service_id, AnnualBilling.financial_year_start.desc()
+    ).subquery()
+
     data = (
         db.session.query(
             Service.id.label("service_id"),
@@ -107,41 +115,38 @@ def dao_fetch_live_services_data():
             Service.volume_sms.label("sms_volume_intent"),
             Service.volume_email.label("email_volume_intent"),
             Service.volume_letter.label("letter_volume_intent"),
-            func.sum(case([(FactBilling.notification_type == "email", FactBilling.notifications_sent)], else_=0)).label(
-                "email_totals"
-            ),
-            func.sum(case([(FactBilling.notification_type == "sms", FactBilling.notifications_sent)], else_=0)).label(
-                "sms_totals"
-            ),
-            func.sum(
-                case([(FactBilling.notification_type == "letter", FactBilling.notifications_sent)], else_=0)
-            ).label("letter_totals"),
-            AnnualBilling.free_sms_fragment_limit,
+            func.sum(case(
+                [(FactBilling.notification_type == 'email', FactBilling.notifications_sent)],
+                else_=0
+            )).label("email_totals"),
+            func.sum(case(
+                [(FactBilling.notification_type == 'sms', FactBilling.notifications_sent)],
+                else_=0
+            )).label("sms_totals"),
+            func.sum(case(
+                [(FactBilling.notification_type == 'letter', FactBilling.notifications_sent)],
+                else_=0
+            )).label("letter_totals"),
+            most_recent_annual_billing.c.free_sms_fragment_limit
         )
         .join(
-            AnnualBilling,
-            and_(
-                AnnualBilling.service_id == Service.id,
-                AnnualBilling.financial_year_start
-                == db.session.query(func.max(AnnualBilling.financial_year_start))
-                .filter(AnnualBilling.service_id == Service.id)
-                .as_scalar(),
-            ),
+            most_recent_annual_billing,
+            Service.id == most_recent_annual_billing.c.service_id
         )
         .outerjoin(Organisation, Organisation.id == Service.organisation_id)
         .outerjoin(User, User.id == Service.go_live_user_id)
         .outerjoin(
-            FactBilling,
+            FactBilling, 
             and_(
                 FactBilling.service_id == Service.id,
                 FactBilling.bst_date >= year_start_date,
-                FactBilling.bst_date <= year_end_date,
-            ),
+                FactBilling.bst_date <= year_end_date
+            )
         )
         .filter(
             Service.count_as_live.is_(True),
             Service.active.is_(True),
-            Service.restricted.is_(False),
+            Service.restricted.is_(False)
         )
         .group_by(
             Service.id,
@@ -156,7 +161,7 @@ def dao_fetch_live_services_data():
             Service.volume_sms,
             Service.volume_email,
             Service.volume_letter,
-            AnnualBilling.free_sms_fragment_limit,
+            most_recent_annual_billing.c.free_sms_fragment_limit
         )
         .order_by(asc(Service.go_live_at))
         .all()
