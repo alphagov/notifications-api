@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from flask import current_app
 from sqlalchemy import Float, cast
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.expression import and_, asc, func
+from sqlalchemy.sql.expression import and_, case, func, asc
 
 from app import db
 from app.constants import (
@@ -93,17 +93,6 @@ def dao_count_live_services():
 def dao_fetch_live_services_data():
     year_start_date, year_end_date = get_current_financial_year()
 
-    this_year_ft_billing = FactBilling.query.filter(
-        FactBilling.bst_date >= year_start_date,
-        FactBilling.bst_date <= year_end_date,
-    ).subquery()
-
-    most_recent_annual_billing = (
-        db.session.query(AnnualBilling.service_id, AnnualBilling.financial_year_start.label("year"))
-        .distinct(AnnualBilling.service_id)
-        .subquery()
-    )
-
     data = (
         db.session.query(
             Service.id.label("service_id"),
@@ -118,22 +107,37 @@ def dao_fetch_live_services_data():
             Service.volume_sms.label("sms_volume_intent"),
             Service.volume_email.label("email_volume_intent"),
             Service.volume_letter.label("letter_volume_intent"),
-            func.sum(case([(FactBilling.notification_type == 'email', FactBilling.notifications_sent)], else_=0)).label("email_totals"),
-            func.sum(case([(FactBilling.notification_type == 'sms', FactBilling.notifications_sent)], else_=0)).label("sms_totals"),
-            func.sum(case([(FactBilling.notification_type == 'letter', FactBilling.notifications_sent)], else_=0)).label("letter_totals"),
+            func.sum(case([(FactBilling.notification_type == "email", FactBilling.notifications_sent)], else_=0)).label(
+                "email_totals"
+            ),
+            func.sum(case([(FactBilling.notification_type == "sms", FactBilling.notifications_sent)], else_=0)).label(
+                "sms_totals"
+            ),
+            func.sum(
+                case([(FactBilling.notification_type == "letter", FactBilling.notifications_sent)], else_=0)
+            ).label("letter_totals"),
             AnnualBilling.free_sms_fragment_limit,
         )
-        .join(AnnualBilling, and_(
-            AnnualBilling.service_id == Service.id,
-            AnnualBilling.financial_year_start == db.session.query(func.max(AnnualBilling.financial_year_start)).filter(AnnualBilling.service_id == Service.id).as_scalar()
-        ))
+        .join(
+            AnnualBilling,
+            and_(
+                AnnualBilling.service_id == Service.id,
+                AnnualBilling.financial_year_start
+                == db.session.query(func.max(AnnualBilling.financial_year_start))
+                .filter(AnnualBilling.service_id == Service.id)
+                .as_scalar(),
+            ),
+        )
         .outerjoin(Organisation, Organisation.id == Service.organisation_id)
         .outerjoin(User, User.id == Service.go_live_user_id)
-        .outerjoin(FactBilling, and_(
-            FactBilling.service_id == Service.id,
-            FactBilling.bst_date >= year_start_date,
-            FactBilling.bst_date <= year_end_date,
-        ))
+        .outerjoin(
+            FactBilling,
+            and_(
+                FactBilling.service_id == Service.id,
+                FactBilling.bst_date >= year_start_date,
+                FactBilling.bst_date <= year_end_date,
+            ),
+        )
         .filter(
             Service.count_as_live.is_(True),
             Service.active.is_(True),
