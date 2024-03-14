@@ -87,24 +87,19 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
-    last_date_from_notifications = (
-        db.session.query(functions.max(Notification.created_at))
-        .filter(
-            Notification.service_id == service_id,
-            Notification.template_id == template_id,
-            Notification.key_type != KEY_TYPE_TEST,
-        )
-        .scalar()
+    notification_query = db.session.query(functions.max(Notification.created_at).label("last_date")).filter(
+        Notification.service_id == service_id,
+        Notification.template_id == template_id,
+        Notification.key_type != KEY_TYPE_TEST,
     )
 
-    if last_date_from_notifications:
-        return last_date_from_notifications
+    fact_notification_status_query = db.session.query(
+        functions.max(FactNotificationStatus.bst_date).label("last_date")
+    ).filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
 
-    last_date = (
-        db.session.query(functions.max(FactNotificationStatus.bst_date))
-        .filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
-        .scalar()
-    )
+    # Combine the two queries with a UNION, getting the maximum date from the results
+    last_date_query = union(notification_query, fact_notification_status_query).alias("union_query")
+    last_date = db.session.query(functions.max(last_date_query.c.last_date)).scalar()
 
     return last_date
 
