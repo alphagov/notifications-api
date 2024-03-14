@@ -100,7 +100,9 @@ def dao_get_last_date_template_was_used(template_id, service_id):
     # Combine the two queries with a UNION, getting the maximum date from the results
     last_date_query = union(notification_query, fact_notification_status_query).alias("union_query")
     last_date = db.session.query(functions.max(last_date_query.c.last_date)).scalar()
-
+    
+    if isinstance(last_date, datetime.datetime):
+        return last_date.date()  # Converts datetime to date
     return last_date
 
 
