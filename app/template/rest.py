@@ -227,17 +227,25 @@ def get_template_versions(service_id, template_id):
 def _template_has_not_changed(current_data, updated_template):
     return all(
         current_data[key] == updated_template[key]
-        for key in (
-            "name",
-            "content",
-            "subject",
-            "archived",
-            "process_type",
-            "postage",
-            "letter_welsh_subject",
-            "letter_welsh_content",
-            "letter_languages",
-        )
+        for key in set((current_data | updated_template).keys()) - {
+            "broadcast_data",
+            "created_at",
+            "created_by",
+            "folder",
+            "hidden",
+            "id",
+            "is_precompiled_letter",
+            "letter_attachment",
+            "redact_personalisation",
+            "reply_to",
+            "reply_to_text",
+            "service",
+            "service_letter_contact",
+            "template_redacted",
+            "template_type",
+            "updated_at",
+            "version",
+        }
     )
 
 
