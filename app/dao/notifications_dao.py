@@ -87,21 +87,24 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
-    notification_query = db.session.query(Notification.created_at.label("date")).filter(
+    notification_query = db.session.query(Notification.created_at.label("date_time")).filter(
         Notification.service_id == service_id,
         Notification.template_id == template_id,
         Notification.key_type != KEY_TYPE_TEST,
     )
 
     fact_notification_status_query = db.session.query(
-        db.func.cast(FactNotificationStatus.bst_date, db.DateTime).label("date")
+        db.func.cast(FactNotificationStatus.bst_date, db.DateTime).label("date_time")
     ).filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
 
-    # Combine, order, and fetch the latest date
-    last_date_query = notification_query.union_all(fact_notification_status_query).order_by(db.desc("date")).limit(1)
+    # Combine the queries using UNION ALL, order them, and get the most recent date
+    last_date_query = (
+        notification_query.union_all(fact_notification_status_query).order_by(db.desc("date_time")).limit(1)
+    )
     last_date_result = last_date_query.scalar()
 
-    return last_date_result
+    # Return the date part only if the result is a datetime object
+    return last_date_result.date() if isinstance(last_date_result, datetime.datetime) else last_date_result
 
 
 @autocommit
