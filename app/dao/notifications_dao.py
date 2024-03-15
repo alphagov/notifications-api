@@ -14,7 +14,7 @@ from notifications_utils.recipients import (
     validate_and_format_email_address,
 )
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, literal, or_, union
+from sqlalchemy import and_, asc, column, desc, func, label, literal, or_, select, union, union_all
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
@@ -87,26 +87,42 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
-    last_date_from_notifications = (
-        db.session.query(functions.max(Notification.created_at))
+    # Subquery for the Notification table
+    notification_subquery = (
+        db.session.query(functions.max(Notification.created_at).label('max_date'))
         .filter(
             Notification.service_id == service_id,
             Notification.template_id == template_id,
             Notification.key_type != KEY_TYPE_TEST,
         )
-        .scalar()
+        .subquery()
     )
 
-    if last_date_from_notifications:
-        return last_date_from_notifications
+    # Subquery for the FactNotificationStatus table
+    fact_notification_status_subquery = (
+        db.session.query(functions.max(FactNotificationStatus.bst_date).label('max_date'))
+        .filter(
+            FactNotificationStatus.template_id == template_id,
+            FactNotificationStatus.key_type != KEY_TYPE_TEST,
+        )
+        .subquery()
+    )
 
+    # Union all to combine both dates and selecting the maximum date
     last_date = (
-        db.session.query(functions.max(FactNotificationStatus.bst_date))
-        .filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
+        db.session.query(functions.max(label('max_date', column('max_date'))))
+        .select_entity_from(
+            union_all(
+                select([notification_subquery.c.max_date]),
+                select([fact_notification_status_subquery.c.max_date])
+            )
+        )
         .scalar()
     )
 
     return last_date
+
+
 
 
 @autocommit
