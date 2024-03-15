@@ -88,7 +88,7 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 
 def dao_get_last_date_template_was_used(template_id, service_id):
     subquery_notification = (
-        db.session.query(Notification.created_at)
+        db.session.query(functions.max(Notification.created_at))
         .filter(
             Notification.service_id == service_id,
             Notification.template_id == template_id,
@@ -98,9 +98,7 @@ def dao_get_last_date_template_was_used(template_id, service_id):
     )
 
     last_date = (
-        db.session.query(
-            functions.coalesce(subquery_notification.c.created_at, functions.max(FactNotificationStatus.bst_date))
-        )
+        db.session.query(functions.coalesce(subquery_notification.c.max, functions.max(FactNotificationStatus.bst_date)))
         .filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
         .scalar()
     )
