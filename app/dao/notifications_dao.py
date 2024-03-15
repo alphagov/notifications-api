@@ -14,7 +14,7 @@ from notifications_utils.recipients import (
     validate_and_format_email_address,
 )
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import Date, and_, asc, desc, func, literal, or_, union
+from sqlalchemy import Date, and_, asc, cast, desc, func, literal, or_, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
@@ -90,17 +90,14 @@ def dao_get_last_date_template_was_used(template_id, service_id):
     last_date_result = (
         db.session.query(
             functions.coalesce(
-                functions.cast(functions.max(Notification.created_at), Date),
-                functions.cast(
-                    (
-                        db.session.query(functions.max(FactNotificationStatus.bst_date))
-                        .filter(
-                            FactNotificationStatus.template_id == template_id,
-                            FactNotificationStatus.key_type != KEY_TYPE_TEST,
-                        )
-                        .scalar_subquery()
-                    ),
-                    Date,
+                cast(functions.max(Notification.created_at), Date),
+                (
+                    db.session.query(cast(functions.max(FactNotificationStatus.bst_date), Date))
+                    .filter(
+                        FactNotificationStatus.template_id == template_id,
+                        FactNotificationStatus.key_type != KEY_TYPE_TEST,
+                    )
+                    .scalar_subquery()
                 ),
             )
         )
@@ -112,8 +109,7 @@ def dao_get_last_date_template_was_used(template_id, service_id):
         .scalar()
     )
 
-    # Ensure that last_date_result is a date object
-    return last_date_result.date() if isinstance(last_date_result, datetime) else last_date_result
+    return last_date_result if last_date_result is not None else None
 
 
 @autocommit
