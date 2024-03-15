@@ -94,14 +94,15 @@ def dao_get_last_date_template_was_used(template_id, service_id):
             Notification.template_id == template_id,
             Notification.key_type != KEY_TYPE_TEST,
         )
-        .scalar()
+        .subquery()
     )
 
-    if last_date_from_notifications:
-        return last_date_from_notifications
-
     last_date = (
-        db.session.query(functions.max(FactNotificationStatus.bst_date))
+        db.session.query(
+            functions.coalesce(
+                last_date_from_notifications.c.created_at, functions.max(FactNotificationStatus.bst_date)
+            )
+        )
         .filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
         .scalar()
     )
