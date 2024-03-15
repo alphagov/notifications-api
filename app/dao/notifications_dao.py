@@ -14,7 +14,7 @@ from notifications_utils.recipients import (
     validate_and_format_email_address,
 )
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, literal, or_, union
+from sqlalchemy import Date, and_, asc, cast, desc, func, literal, or_, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
@@ -87,7 +87,7 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
-    notification_query = db.session.query(db.func.date(Notification.created_at).label("date")).filter(
+    notification_query = db.session.query(cast(Notification.created_at, Date).label("date")).filter(
         Notification.service_id == service_id,
         Notification.template_id == template_id,
         Notification.key_type != KEY_TYPE_TEST,
