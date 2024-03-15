@@ -89,7 +89,7 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 def dao_get_last_date_template_was_used(template_id, service_id):
     # Subquery for the Notification table
     notification_subquery = (
-        db.session.query(functions.max(Notification.created_at).label('max_date'))
+        db.session.query(functions.max(Notification.created_at).label("max_date"))
         .filter(
             Notification.service_id == service_id,
             Notification.template_id == template_id,
@@ -100,7 +100,7 @@ def dao_get_last_date_template_was_used(template_id, service_id):
 
     # Subquery for the FactNotificationStatus table
     fact_notification_status_subquery = (
-        db.session.query(functions.max(FactNotificationStatus.bst_date).label('max_date'))
+        db.session.query(functions.max(FactNotificationStatus.bst_date).label("max_date"))
         .filter(
             FactNotificationStatus.template_id == template_id,
             FactNotificationStatus.key_type != KEY_TYPE_TEST,
@@ -110,19 +110,16 @@ def dao_get_last_date_template_was_used(template_id, service_id):
 
     # Union all to combine both dates and selecting the maximum date
     last_date = (
-        db.session.query(functions.max(label('max_date', column('max_date'))))
+        db.session.query(functions.max(label("max_date", column("max_date"))))
         .select_entity_from(
             union_all(
-                select([notification_subquery.c.max_date]),
-                select([fact_notification_status_subquery.c.max_date])
+                select([notification_subquery.c.max_date]), select([fact_notification_status_subquery.c.max_date])
             )
         )
         .scalar()
     )
 
     return last_date
-
-
 
 
 @autocommit
