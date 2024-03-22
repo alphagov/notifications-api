@@ -80,11 +80,12 @@ def validate_parent_folder(template_json):
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     # permissions needs to be placed here otherwise marshmallow will interfere with versioning
-    permissions = [p.permission for p in fetched_service.permissions]
+
     template_json = validate(request.get_json(), post_create_template_schema)
     folder = validate_parent_folder(template_json=template_json)
     new_template = Template.from_json(template_json, folder)
 
+    permissions = [p.permission for p in fetched_service.permissions]
     if not service_has_permission(new_template.template_type, permissions):
         message = "Creating {} templates is not allowed".format(get_public_notify_type_text(new_template.template_type))
         errors = {"template_type": [message]}
