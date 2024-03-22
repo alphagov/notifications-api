@@ -11,7 +11,7 @@ def test_dao_get_last_date_template_was_used_returns_bst_date_from_stats_table(s
     last_used_date = dao_get_last_date_template_was_used(
         template_id=sample_template.id, service_id=sample_template.service_id
     )
-    
+
     # Convert last_used_date to date if it's not None and is a datetime instance
     if last_used_date and isinstance(last_used_date, datetime):
         last_used_date = last_used_date.date()
