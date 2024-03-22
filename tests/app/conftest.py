@@ -895,6 +895,7 @@ def notify_service(notify_db_session, sample_user):
     service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
     if not service:
         service = Service(
+            id=current_app.config["NOTIFY_SERVICE_ID"],
             name="Notify Service",
             email_message_limit=1000,
             sms_message_limit=1000,
@@ -903,7 +904,7 @@ def notify_service(notify_db_session, sample_user):
             created_by=sample_user,
             prefix_sms=False,
         )
-        dao_create_service(service=service, service_id=current_app.config["NOTIFY_SERVICE_ID"], user=sample_user)
+        dao_create_service(service=service, user=sample_user)
 
         data = {
             "service": service,
