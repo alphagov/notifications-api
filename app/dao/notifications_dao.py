@@ -100,7 +100,7 @@ def dao_get_last_date_template_was_used(template_id, service_id):
 
     # Construct a query to get the latest 'bst_date' from the FactNotificationStatus table
     fact_notification_status_query = (
-        db.session.query(functions.max(FactNotificationStatus.bst_date).label("latest_date"))
+        db.session.query(functions.max(db.func.cast(FactNotificationStatus.bst_date, db.DateTime)).label("latest_date"))
         .filter(
             FactNotificationStatus.template_id == template_id,
             FactNotificationStatus.key_type != KEY_TYPE_TEST,
