@@ -34,6 +34,7 @@ from app.celery.scheduled_tasks import (
     generate_sms_delivery_stats,
     populate_annual_billing,
     replay_created_notifications,
+    run_populate_annual_billing,
     run_scheduled_jobs,
     switch_current_sms_provider_on_slow_delivery,
     weekly_dwp_report,
@@ -1236,3 +1237,12 @@ def test_populate_annual_billing_missing_services_only(mocker, sample_service):
     mock_set.reset_mock()
     populate_annual_billing(2023, False)
     assert mock_set.call_args_list == [mocker.call(sample_service, 2023)]
+
+
+@freeze_time("2022-03-01")
+def test_run_populate_annual_billing_uses_correct_year(mocker, notify_api):
+    populate_annual_billing = mocker.patch("app.celery.scheduled_tasks.populate_annual_billing")
+
+    run_populate_annual_billing()
+
+    populate_annual_billing.assert_called_once_with(year=2021, missing_services_only=True)
