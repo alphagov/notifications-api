@@ -151,10 +151,11 @@ def create_service(
             billing_reference=billing_reference,
             contact_link=contact_link,
         )
+        if service_id:
+            service.id = service_id
         dao_create_service(
             service,
             service.created_by,
-            service_id,
             service_permissions=service_permissions,
         )
 

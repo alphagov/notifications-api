@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app import create_uuid, db
+from app import db
 from app.dao.dao_utils import autocommit, version_class
 from app.models import ServiceInboundApi
 
@@ -8,7 +8,6 @@ from app.models import ServiceInboundApi
 @autocommit
 @version_class(ServiceInboundApi)
 def save_service_inbound_api(service_inbound_api):
-    service_inbound_api.id = create_uuid()
     service_inbound_api.created_at = datetime.utcnow()
     db.session.add(service_inbound_api)
 
