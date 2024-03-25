@@ -113,6 +113,9 @@ class SerialisedService(SerialisedModel):
     def high_volume(self):
         return self.id in current_app.config["HIGH_VOLUME_SERVICE"]
 
+    def has_permission(self, permission):
+        return permission in self.permissions
+
 
 class SerialisedAPIKey(SerialisedModel):
     ALLOWED_PROPERTIES = {

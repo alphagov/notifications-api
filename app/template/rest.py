@@ -34,7 +34,7 @@ from app.dao.templates_dao import (
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import get_letter_pdf_and_metadata
 from app.models import Template
-from app.notifications.validators import check_reply_to, service_has_permission
+from app.notifications.validators import check_reply_to
 from app.schema_validation import validate
 from app.schemas import (
     template_history_schema,
@@ -79,12 +79,11 @@ def validate_parent_folder(template_json):
 @template_blueprint.route("", methods=["POST"])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    permissions = [p.permission for p in fetched_service.permissions]
     template_json = validate(request.get_json(), post_create_template_schema)
     folder = validate_parent_folder(template_json=template_json)
     new_template = Template.from_json(template_json, folder)
 
-    if not service_has_permission(new_template.template_type, permissions):
+    if not fetched_service.has_permission(new_template.template_type):
         message = "Creating {} templates is not allowed".format(get_public_notify_type_text(new_template.template_type))
         errors = {"template_type": [message]}
         raise InvalidRequest(errors, 403)
@@ -116,9 +115,7 @@ def create_template(service_id):
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
-    if not service_has_permission(
-        fetched_template.template_type, [p.permission for p in fetched_template.service.permissions]
-    ):
+    if not fetched_template.service.has_permission(fetched_template.template_type):
         message = "Updating {} templates is not allowed".format(
             get_public_notify_type_text(fetched_template.template_type)
         )
