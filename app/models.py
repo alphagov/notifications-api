@@ -1438,6 +1438,15 @@ class Notification(db.Model):
 
     postage = db.Column(db.String, nullable=True)
 
+    unsubscribe_link = db.Column(db.String, nullable=True)
+
+    # unsubscribe_link value should be null for letters and sms
+    CheckConstraint(
+        "(notification_type != 'email' AND unsubscribe_link IS NULL) "
+        "OR (notification_type = 'email' AND unsubscribe_link IS NULL) "
+        "OR (notification_type = 'email' AND unsubscribe_link IS NOT NULL)"
+    )
+
     __table_args__ = (
         db.ForeignKeyConstraint(
             ["template_id", "template_version"],
