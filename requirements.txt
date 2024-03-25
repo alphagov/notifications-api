@@ -114,7 +114,9 @@ greenlet==3.0.3
     #   eventlet
     #   sqlalchemy
 gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   notifications-utils
 idna==3.4
     # via
     #   jsonschema
@@ -163,7 +165,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==8.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@75.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@cc2eb19f055290b21cbe0db3626069297b1388f1
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
