@@ -213,12 +213,22 @@ valid_post_email_json_with_optionals = {
     "template_id": str(uuid.uuid4()),
     "reference": "reference from caller",
     "personalisation": {"key": "value"},
+    "unsubscribe_link": "https://unsubscribelink.com/unsubscribe",
 }
 
 
 @pytest.mark.parametrize("input", [valid_post_email_json, valid_post_email_json_with_optionals])
 def test_post_email_schema_is_valid(input):
     assert validate(input, post_email_request_schema) == input
+
+
+def test_post_email_schema_invalid_unsubscribe_link():
+    input = valid_post_email_json_with_optionals
+    input["unsubscribe_link"] = "www.unsubscribe_link.com/unsubscribe"
+    with pytest.raises(ValidationError) as e:
+        validate(input, post_email_request_schema)
+    errors = json.loads(str(e.value)).get("errors")
+    assert {"error": "ValidationError", "message": "unsubscribe_link is not a valid https url"} in errors
 
 
 def test_post_email_schema_bad_uuid_and_missing_email_address():

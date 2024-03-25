@@ -33,6 +33,7 @@ from app.notifications.validators import (
     validate_address,
     validate_and_format_recipient,
     validate_template,
+    validate_unsubscribe_link,
 )
 from app.serialised_models import (
     SerialisedAPIKeyCollection,
@@ -700,3 +701,27 @@ def test_validate_address_international_bfpo_error(notify_db_session):
         validate_address(service, data)
 
     assert e.value.message == "The last line of a BFPO address must not be a country."
+
+
+@pytest.mark.parametrize(
+    "url, expected_result",
+    [
+        (None, None),
+        ("https://unsubscribelink.com/unsubscribe", "https://unsubscribelink.com/unsubscribe"),
+    ],
+)
+def test_validate_unsubscribe_link(url, expected_result):
+    assert validate_unsubscribe_link(url) == expected_result
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "www.https:/unsubscribelink.com",
+        "https:/unsubscribelink.com/unsubscribe",
+    ],
+)
+def test_test_validate_unsubscribe_link_raises_exception_for_invalid_url(url):
+    with pytest.raises(ValidationError) as e:
+        validate_unsubscribe_link(url)
+    assert e.value.message == "The unsubscribe_link provided is an invalid url"

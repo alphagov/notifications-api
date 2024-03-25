@@ -1,3 +1,4 @@
+import validators
 from flask import current_app
 from gds_metrics.metrics import Histogram
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
@@ -289,3 +290,12 @@ def check_template_can_contain_documents(template_type, personalisation):
 
 def remap_phone_number_validation_messages(error_message):
     return PHONE_NUMBER_VALIDATION_ERROR_MAP.get(error_message, error_message)
+
+
+def validate_unsubscribe_link(url):
+    if not url:
+        return None
+    if validators.url(url):
+        return url
+    else:
+        raise ValidationError(message="The unsubscribe_link provided is an invalid url")
