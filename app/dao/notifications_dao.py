@@ -90,24 +90,23 @@ def dao_get_last_date_template_was_used(template_id, service_id):
     # Construct a single query to fetch the latest date from both tables
     last_used_date = (
         db.session.query(
-            func.max(
-                db.case(
-                    [(Notification.service_id == service_id, Notification.created_at)],
-                    else_=FactNotificationStatus.bst_date.cast(db.DateTime),
-                )
+            db.func.coalesce(
+                db.func.max(Notification.created_at), db.func.max(FactNotificationStatus.bst_date.cast(db.DateTime))
             )
         )
-        .filter(
-            db.or_(
-                db.and_(
-                    Notification.template_id == template_id,
-                    Notification.service_id == service_id,
-                    Notification.key_type != KEY_TYPE_TEST,
-                ),
-                db.and_(
-                    FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST
-                ),
-            )
+        .outerjoin(
+            Notification,
+            db.and_(
+                Notification.template_id == template_id,
+                Notification.service_id == service_id,
+                Notification.key_type != KEY_TYPE_TEST,
+            ),
+        )
+        .outerjoin(
+            FactNotificationStatus,
+            db.and_(
+                FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST
+            ),
         )
         .scalar()
     )
