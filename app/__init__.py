@@ -167,6 +167,7 @@ def register_blueprint(application):
     from app.service_invite.rest import (
         service_invite as service_invite_blueprint,
     )
+    from app.sms.rest import sms_rate_blueprint
     from app.status.healthcheck import status as status_blueprint
     from app.template.rest import template_blueprint
     from app.template_folder.rest import template_folder_blueprint
@@ -276,6 +277,9 @@ def register_blueprint(application):
 
     letter_attachment_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(letter_attachment_blueprint)
+
+    sms_rate_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(sms_rate_blueprint)
 
     if _should_register_functional_testing_blueprint(application.config["NOTIFY_ENVIRONMENT"]):
         test_blueprint.before_request(requires_functional_test_auth)

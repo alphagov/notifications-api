@@ -1805,6 +1805,12 @@ class Rate(db.Model):
         the_string += " {}".format(self.valid_from)
         return the_string
 
+    def serialize(self):
+        return {
+            "rate": self.rate,
+            "valid_from": self.valid_from.isoformat(),
+        }
+
 
 class InboundSms(db.Model):
     __tablename__ = "inbound_sms"
