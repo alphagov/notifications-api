@@ -87,29 +87,32 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
-    # Query to get the latest 'created_at' from the Notification table
-    latest_notification_date = (
-        db.session.query(func.max(Notification.created_at))
+    # Construct a single query to fetch the latest date from both tables
+    last_used_date = (
+        db.session.query(
+            func.max(
+                db.case(
+                    [(Notification.service_id == service_id, Notification.created_at)],
+                    else_=FactNotificationStatus.bst_date.cast(db.DateTime),
+                )
+            )
+        )
         .filter(
-            Notification.template_id == template_id,
-            Notification.service_id == service_id,
-            Notification.key_type != KEY_TYPE_TEST,
+            db.or_(
+                db.and_(
+                    Notification.template_id == template_id,
+                    Notification.service_id == service_id,
+                    Notification.key_type != KEY_TYPE_TEST,
+                ),
+                db.and_(
+                    FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST
+                ),
+            )
         )
         .scalar()
     )
 
-    # Query to get the latest 'bst_date' from the FactNotificationStatus table
-    latest_fact_notification_status_date = (
-        db.session.query(func.max(FactNotificationStatus.bst_date))
-        .filter(
-            FactNotificationStatus.template_id == template_id,
-            FactNotificationStatus.key_type != KEY_TYPE_TEST,
-        )
-        .scalar()
-    )
-
-    # Determine the most recent date between the two
-    return max(filter(None, [latest_notification_date, latest_fact_notification_status_date]))
+    return last_used_date
 
 
 @autocommit
