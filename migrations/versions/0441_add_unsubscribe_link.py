@@ -16,11 +16,10 @@ down_revision = "0440_new_sms_allowance_n_rate"
 def upgrade():
     op.add_column("notifications", sa.Column("unsubscribe_link", sa.String(), nullable=True))
     op.create_check_constraint(
-        "ck_unsubscribe_link_is_null_for_letters_and_sms",
+        "ck_unsubscribe_link_is_null_if_notification_not_an_email",
         "notifications",
         """
         notification_type = 'email' OR unsubscribe_link is null
-
         """,
     )
 
