@@ -11,7 +11,6 @@ from app.dao.templates_dao import (
     dao_get_template_versions,
     dao_redact_template,
     dao_update_template,
-    dao_update_template_reply_to,
 )
 from app.models import Template, TemplateHistory, TemplateRedacted
 from tests.app.db import create_letter_contact, create_template
@@ -110,7 +109,8 @@ def test_dao_update_template_reply_to_none_to_some(sample_service, sample_user):
     assert created.reply_to is None
     assert created.service_letter_contact_id is None
 
-    dao_update_template_reply_to(template_id=template.id, reply_to=letter_contact.id)
+    created.service_letter_contact_id = letter_contact.id
+    dao_update_template(created)
 
     updated = Template.query.get(template.id)
     assert updated.reply_to == letter_contact.id
@@ -138,7 +138,8 @@ def test_dao_update_template_reply_to_some_to_some(sample_service, sample_user):
     template = Template(**data)
     dao_create_template(template)
     created = Template.query.get(template.id)
-    dao_update_template_reply_to(template_id=created.id, reply_to=letter_contact_2.id)
+    created.service_letter_contact_id = letter_contact_2.id
+    dao_update_template(created)
     updated = Template.query.get(template.id)
     assert updated.reply_to == letter_contact_2.id
     assert updated.version == 2
@@ -163,7 +164,10 @@ def test_dao_update_template_reply_to_some_to_none(sample_service, sample_user):
     template = Template(**data)
     dao_create_template(template)
     created = Template.query.get(template.id)
-    dao_update_template_reply_to(template_id=created.id, reply_to=None)
+
+    created.service_letter_contact_id = None
+    dao_update_template(created)
+
     updated = Template.query.get(template.id)
     assert updated.reply_to is None
     assert updated.version == 2
