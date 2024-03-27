@@ -14,7 +14,7 @@ from notifications_utils.recipients import (
     validate_and_format_email_address,
 )
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, literal, or_, union
+from sqlalchemy import and_, asc, cast, desc, func, literal, or_, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
@@ -87,26 +87,36 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
-    last_date_from_notifications = (
-        db.session.query(functions.max(Notification.created_at))
+    # Query to get the latest 'created_at' date from the Notification table
+    notification_query = (
+        db.session.query(Notification.created_at.label("latest_date"))
         .filter(
             Notification.service_id == service_id,
             Notification.template_id == template_id,
             Notification.key_type != KEY_TYPE_TEST,
         )
-        .scalar()
+        .order_by(Notification.created_at.desc())
+        .limit(1)
     )
 
-    if last_date_from_notifications:
-        return last_date_from_notifications
-
-    last_date = (
-        db.session.query(functions.max(FactNotificationStatus.bst_date))
-        .filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
-        .scalar()
+    # Query to get the latest 'bst_date' as a timestamp from the FactNotificationStatus table
+    fact_notification_status_query = (
+        db.session.query(cast(FactNotificationStatus.bst_date, db.DateTime).label("latest_date"))
+        .filter(
+            FactNotificationStatus.template_id == template_id,
+            FactNotificationStatus.key_type != KEY_TYPE_TEST,
+        )
+        .order_by(FactNotificationStatus.bst_date.desc())
+        .limit(1)
     )
 
-    return last_date
+    # Combine the two queries using UNION ALL
+    combined_query = notification_query.union_all(fact_notification_status_query)
+
+    # Select the maximum date from the combined results
+    final_query = db.session.query(func.max(combined_query.subquery().c.latest_date))
+
+    return final_query.scalar()
 
 
 @autocommit
