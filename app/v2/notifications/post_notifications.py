@@ -58,6 +58,7 @@ from app.notifications.validators import (
     validate_address,
     validate_and_format_recipient,
     validate_template,
+    validate_unsubscribe_link,
 )
 from app.schema_validation import validate
 from app.utils import DATETIME_FORMAT
@@ -142,6 +143,7 @@ def post_notification(notification_type):
     )
 
     reply_to = get_reply_to_text(notification_type, form, template)
+    unsubscribe_link = validate_unsubscribe_link(form.get("unsubscribe_link", None))
 
     if notification_type == LETTER_TYPE:
         notification = process_letter_notification(
@@ -161,6 +163,7 @@ def post_notification(notification_type):
             template_process_type=template.process_type,
             service=authenticated_service,
             reply_to_text=reply_to,
+            unsubscribe_link=unsubscribe_link,
         )
 
     return jsonify(notification), 201
@@ -174,6 +177,7 @@ def process_sms_or_email_notification(
     template_with_content,
     template_process_type,
     service,
+    unsubscribe_link,
     reply_to_text=None,
 ):
     notification_id = uuid.uuid4()
@@ -227,6 +231,7 @@ def process_sms_or_email_notification(
                 personalisation=personalisation,
                 document_download_count=document_download_count,
                 reply_to_text=reply_to_text,
+                unsubscribe_link=unsubscribe_link,
             )
             return resp
         except (botocore.exceptions.ClientError, botocore.parsers.ResponseParserError):
@@ -251,6 +256,7 @@ def process_sms_or_email_notification(
         simulated=simulated,
         reply_to_text=reply_to_text,
         document_download_count=document_download_count,
+        unsubscribe_link=unsubscribe_link,
     )
 
     if not simulated:
@@ -276,6 +282,7 @@ def save_email_or_sms_to_queue(
     personalisation,
     document_download_count,
     reply_to_text=None,
+    unsubscribe_link,
 ):
     data = {
         "id": notification_id,
@@ -292,6 +299,7 @@ def save_email_or_sms_to_queue(
         "document_download_count": document_download_count,
         "status": NOTIFICATION_CREATED,
         "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
+        "unsubscribe_link": unsubscribe_link,
     }
     encoded = signing.encode(data)
 

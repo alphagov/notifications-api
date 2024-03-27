@@ -1,0 +1,31 @@
+"""
+
+Revision ID: 0441_add_unsubscribe_link
+Revises: 0440_new_sms_allowance_n_rate
+Create Date: 2024-03-25 14:38:54.618674
+
+"""
+from alembic import op
+import sqlalchemy as sa
+
+
+revision = "0441_add_unsubscribe_link"
+down_revision = "0440_new_sms_allowance_n_rate"
+
+
+def upgrade():
+    op.add_column("notifications", sa.Column("unsubscribe_link", sa.String(), nullable=True))
+    op.create_check_constraint(
+        "ck_unsubscribe_link_is_null_for_letters_and_sms",
+        "notifications",
+        """
+        notification_type != 'email' AND unsubscribe_link IS NULL OR
+        notification_type = 'email' AND unsubscribe_link IS NULL OR
+        notification_type = 'email' AND unsubscribe_link IS NOT NULL
+
+        """,
+    )
+
+
+def downgrade():
+    op.drop_column("notifications", "unsubscribe_link")

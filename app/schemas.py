@@ -635,6 +635,7 @@ class NotificationWithTemplateSchema(BaseSchema):
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
     sent_at = FlexibleDateTime()
+    unsubscribe_link = fields.String()
 
     @pre_dump
     def add_api_key_name(self, in_data, **kwargs):
