@@ -19,9 +19,7 @@ def upgrade():
         "ck_unsubscribe_link_is_null_for_letters_and_sms",
         "notifications",
         """
-        notification_type != 'email' AND unsubscribe_link IS NULL OR
-        notification_type = 'email' AND unsubscribe_link IS NULL OR
-        notification_type = 'email' AND unsubscribe_link IS NOT NULL
+        notification_type = 'email' OR unsubscribe_link is null
 
         """,
     )
