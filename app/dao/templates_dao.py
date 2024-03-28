@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 from flask import current_app
@@ -14,7 +13,6 @@ from app.models import Template, TemplateHistory, TemplateRedacted
 @autocommit
 @version_class(VersionOptions(Template, history_class=TemplateHistory))
 def dao_create_template(template):
-    template.id = uuid.uuid4()  # must be set now so version history model can use same id
     template.archived = False
 
     redacted_dict = {

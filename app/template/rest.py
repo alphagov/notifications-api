@@ -79,7 +79,6 @@ def validate_parent_folder(template_json):
 @template_blueprint.route("", methods=["POST"])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    # permissions needs to be placed here otherwise marshmallow will interfere with versioning
     permissions = [p.permission for p in fetched_service.permissions]
     template_json = validate(request.get_json(), post_create_template_schema)
     folder = validate_parent_folder(template_json=template_json)
