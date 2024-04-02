@@ -117,6 +117,7 @@ def create_history(obj, history_cls=None):
         if prop.key not in obj_state.dict:
             getattr(obj, prop.key)
 
+        # Ensure the object has an ID before creating the corresponding history object
         if prop.key == "id" and obj.id is None:
             obj.id = uuid.uuid4()
 
