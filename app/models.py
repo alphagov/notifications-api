@@ -114,7 +114,7 @@ class User(db.Model):
     take_part_in_research = db.Column(db.Boolean, nullable=False, default=True)
 
     # either email auth or a mobile number must be provided
-    CheckConstraint("auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null")
+    __table_args__ = (CheckConstraint("auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null"),)
 
     services = db.relationship("Service", secondary="user_to_service", backref="users")
     organisations = db.relationship("Organisation", secondary="user_to_organisation", backref="users")
@@ -1438,6 +1438,8 @@ class Notification(db.Model):
 
     postage = db.Column(db.String, nullable=True)
 
+    unsubscribe_link = db.Column(db.String, nullable=True)
+
     __table_args__ = (
         db.ForeignKeyConstraint(
             ["template_id", "template_version"],
@@ -1447,6 +1449,11 @@ class Notification(db.Model):
         Index("ix_notifications_notification_type_composite", "notification_type", "status", "created_at"),
         Index("ix_notifications_service_created_at", "service_id", "created_at"),
         Index("ix_notifications_service_id_composite", "service_id", "notification_type", "status", "created_at"),
+        # unsubscribe_link value should be null for non-email notifications
+        CheckConstraint(
+            "notification_type = 'email' OR unsubscribe_link is null",
+            name="ck_unsubscribe_link_is_null_if_notification_not_an_email",
+        ),
     )
 
     @property
@@ -2179,6 +2186,7 @@ class BroadcastMessage(db.Model):
             ["template_id", "template_version"],
             ["templates_history.id", "templates_history.version"],
         ),
+        CheckConstraint("created_by_id is not null or created_by_api_key_id is not null"),
         {},
     )
 
@@ -2227,8 +2235,6 @@ class BroadcastMessage(db.Model):
     cap_event = db.Column(db.String(255), nullable=True)
 
     stubbed = db.Column(db.Boolean, nullable=False)
-
-    CheckConstraint("created_by_id is not null or created_by_api_key_id is not null")
 
     @property
     def personalisation(self):

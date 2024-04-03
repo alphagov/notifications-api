@@ -356,6 +356,29 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     assert notification_from_db.status == "created"
 
 
+@pytest.mark.parametrize(
+    "template_type, unsubscribe_link",
+    [
+        ("email", None),
+        ("email", "https://unsub.com"),
+        pytest.param("sms", "https://unsub.com", marks=pytest.mark.xfail(raises=IntegrityError)),
+    ],
+)
+def test_dao_create_notification_with_unsubscribe_link(
+    sample_template, sample_email_template, template_type, unsubscribe_link
+):
+    template_data = {"email": sample_email_template, "sms": sample_template}
+    notification_data = _notification_json(template_data[template_type])
+    notification_data["unsubscribe_link"] = unsubscribe_link
+    notification = Notification(**notification_data)
+
+    dao_create_notification(notification)
+
+    assert Notification.query.count() == 1
+    notification_from_db = Notification.query.all()[0]
+    assert notification_from_db.unsubscribe_link == unsubscribe_link
+
+
 def test_get_notification_with_personalisation_by_id(sample_template):
     notification = create_notification(template=sample_template, status="created")
     notification_from_db = get_notification_with_personalisation(
