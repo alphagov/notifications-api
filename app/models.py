@@ -1450,7 +1450,10 @@ class Notification(db.Model):
         Index("ix_notifications_service_created_at", "service_id", "created_at"),
         Index("ix_notifications_service_id_composite", "service_id", "notification_type", "status", "created_at"),
         # unsubscribe_link value should be null for non-email notifications
-        CheckConstraint("notification_type = 'email' OR unsubscribe_link is null"),
+        CheckConstraint(
+            "notification_type = 'email' OR unsubscribe_link is null",
+            name="ck_unsubscribe_link_is_null_if_notification_not_an_email",
+        ),
     )
 
     @property
