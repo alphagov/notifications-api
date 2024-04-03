@@ -1,4 +1,3 @@
-import uuid
 from datetime import date, datetime, timedelta
 
 from flask import current_app
@@ -254,7 +253,6 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 def dao_create_service(  # noqa: C901
     service,
     user,
-    service_id=None,
     service_permissions=None,
 ):
     if not user:
@@ -269,7 +267,6 @@ def dao_create_service(  # noqa: C901
 
     service.users.append(user)
     permission_dao.add_default_service_permissions_for_user(user, service)
-    service.id = service_id or uuid.uuid4()  # must be set now so version history model can use same id
     service.active = True
 
     for permission in service_permissions:

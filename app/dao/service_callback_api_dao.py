@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app import create_uuid, db
+from app import db
 from app.constants import COMPLAINT_CALLBACK_TYPE, DELIVERY_STATUS_CALLBACK_TYPE
 from app.dao.dao_utils import autocommit, version_class
 from app.models import ServiceCallbackApi
@@ -9,7 +9,6 @@ from app.models import ServiceCallbackApi
 @autocommit
 @version_class(ServiceCallbackApi)
 def save_service_callback_api(service_callback_api):
-    service_callback_api.id = create_uuid()
     service_callback_api.created_at = datetime.utcnow()
     db.session.add(service_callback_api)
 
