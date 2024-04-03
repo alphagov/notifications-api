@@ -13,7 +13,6 @@ from app.notifications.process_notifications import (
 from app.notifications.validators import (
     check_if_service_can_send_to_number,
     check_rate_limiting,
-    service_has_permission,
     validate_template,
 )
 from app.schemas import (
@@ -89,7 +88,7 @@ def send_notification(notification_type):
     )
 
     _service_allowed_to_send_to(notification_form, authenticated_service)
-    if not service_has_permission(notification_type, authenticated_service.permissions):
+    if not authenticated_service.has_permission(notification_type):
         raise InvalidRequest(
             {"service": ["Cannot send {}".format(get_public_notify_type_text(notification_type, plural=True))]},
             status_code=400,

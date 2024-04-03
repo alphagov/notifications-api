@@ -91,8 +91,7 @@ def post_precompiled_letter_notification():
 
     form = validate(request_json, post_precompiled_letter_request)
 
-    # Check permission to send letters
-    check_service_has_permission(LETTER_TYPE, authenticated_service.permissions)
+    check_service_has_permission(authenticated_service, LETTER_TYPE)
 
     check_rate_limiting(authenticated_service, api_user, notification_type=LETTER_TYPE)
 
@@ -129,7 +128,7 @@ def post_notification(notification_type):
         else:
             abort(404)
 
-    check_service_has_permission(notification_type, authenticated_service.permissions)
+    check_service_has_permission(authenticated_service, notification_type)
 
     check_rate_limiting(authenticated_service, api_user, notification_type=notification_type)
 
