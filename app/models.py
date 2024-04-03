@@ -2186,6 +2186,7 @@ class BroadcastMessage(db.Model):
             ["template_id", "template_version"],
             ["templates_history.id", "templates_history.version"],
         ),
+        CheckConstraint("created_by_id is not null or created_by_api_key_id is not null"),
         {},
     )
 
@@ -2234,8 +2235,6 @@ class BroadcastMessage(db.Model):
     cap_event = db.Column(db.String(255), nullable=True)
 
     stubbed = db.Column(db.Boolean, nullable=False)
-
-    __table_args__ = (CheckConstraint("created_by_id is not null or created_by_api_key_id is not null"),)
 
     @property
     def personalisation(self):
