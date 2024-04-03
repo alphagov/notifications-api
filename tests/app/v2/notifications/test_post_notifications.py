@@ -1044,8 +1044,9 @@ def test_post_email_notification_with_unsubscribe_link_returns_201(api_client_re
 
     assert validate(response_json, post_email_response) == response_json
     notification = Notification.query.first()
-    assert notification.unsubscribe_link == unsubscribe_link
     assert response_json["id"] == str(notification.id)
+
+    assert notification.unsubscribe_link == unsubscribe_link == response_json["content"]["unsubscribe_link"]
     assert mocked.called
 
 

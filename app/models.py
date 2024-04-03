@@ -1616,6 +1616,7 @@ class Notification(db.Model):
             "completed_at": self.completed_at(),
             "scheduled_for": None,
             "postage": self.postage,
+            "unsubscribe_link": self.unsubscribe_link,
         }
 
         if self.notification_type == LETTER_TYPE:
