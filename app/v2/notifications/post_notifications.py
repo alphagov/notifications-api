@@ -294,7 +294,7 @@ def save_email_or_sms_to_queue(
         "key_type": api_key.key_type,
         "client_reference": form.get("reference", None),
         "reply_to_text": reply_to_text,
-        "unsibscribe_link": unsubscribe_link,
+        "unsubscribe_link": unsubscribe_link,
         "document_download_count": document_download_count,
         "status": NOTIFICATION_CREATED,
         "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
@@ -489,7 +489,7 @@ def create_response_for_post_notification(
     notification_type,
     reply_to,
     template_with_content,
-    unsubscribe_link,
+    unsubscribe_link=None,
 ):
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
