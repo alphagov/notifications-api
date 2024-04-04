@@ -135,7 +135,7 @@ def update_template(service_id, template_id):
         dao_update_template(fetched_template)
         return jsonify(data=template_schema.dump(fetched_template)), 200
 
-    current_data = dict(template_schema.dump(fetched_template).items())
+    current_data = template_schema.dump(fetched_template)
     updated_template = current_data | data
 
     # Check if there is a change to make.
