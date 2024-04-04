@@ -116,7 +116,6 @@ class Config(object):
 
     # Logging
     DEBUG = False
-    NOTIFY_LOG_PATH = os.getenv("NOTIFY_LOG_PATH")
 
     NOTIFY_REQUEST_LOG_LEVEL = os.getenv("NOTIFY_REQUEST_LOG_LEVEL", "INFO")
 
@@ -476,7 +475,6 @@ class Development(Config):
     MMG_INBOUND_SMS_USERNAME = ["username"]
 
     NOTIFY_ENVIRONMENT = "development"
-    NOTIFY_LOG_PATH = "application.log"
     NOTIFY_EMAIL_DOMAIN = "notify.tools"
 
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", "postgresql://localhost/notification_api")
