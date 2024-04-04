@@ -128,12 +128,14 @@ Locally
 flask command purge_functional_test_data -u <functional tests user name prefix>
 ```
 
-On the server
+To execute in ecs, you [can use the ecs-exec.sh script](https://github.com/alphagov/notifications-aws/blob/a1e8075926dc8d2f6c0b2e8f48479fc309742b35/scripts/ecs-exec/ecs-exec.sh)
 ```
-cf run-task notify-api "flask command purge_functional_test_data -u <functional tests user name prefix>"
+./scripts/ecs-exec/ecs-exec.sh
+<select notify-api>
+flask command purge_functional_test_data -u <functional tests user name prefix>
 ```
 
-All commands and command options have a --help command if you need more information.
+All flask commands and command options have a --help command if you need more information.
 
 ## Further documentation
 
