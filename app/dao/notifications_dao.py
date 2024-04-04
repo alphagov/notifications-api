@@ -87,18 +87,22 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
-    last_date_from_notifications = (
-        db.session.query(functions.max(Notification.created_at))
-        .filter(
-            Notification.service_id == service_id,
-            Notification.template_id == template_id,
-            Notification.key_type != KEY_TYPE_TEST,
+    # first, just check if there are any rows present for this template in the notification table.
+    # we can use the ix_notifications_template_id. If there are rows, then lets check to find out exactly
+    # when the most recent created date was (also checking key type test too)
+    if db.session.query(Notification.query.filter(Notification.template_id == template_id).exists()).scalar():
+        last_date_from_notifications = (
+            db.session.query(functions.max(Notification.created_at))
+            .filter(
+                Notification.service_id == service_id,
+                Notification.template_id == template_id,
+                Notification.key_type != KEY_TYPE_TEST,
+            )
+            .scalar()
         )
-        .scalar()
-    )
 
-    if last_date_from_notifications:
-        return last_date_from_notifications
+        if last_date_from_notifications:
+            return last_date_from_notifications
 
     last_date = (
         db.session.query(functions.max(FactNotificationStatus.bst_date))
