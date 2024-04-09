@@ -202,6 +202,7 @@ post_email_request = {
         "personalisation": personalisation,
         "scheduled_for": {"type": ["string", "null"], "format": "datetime_within_next_day"},
         "email_reply_to_id": uuid,
+        "unsubscribe_link": {"type": "string", "format": "uri"},
     },
     "required": ["email_address", "template_id"],
     "additionalProperties": False,

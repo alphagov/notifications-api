@@ -160,6 +160,7 @@ def post_notification(notification_type):
             template_process_type=template.process_type,
             service=authenticated_service,
             reply_to_text=reply_to,
+            unsubscribe_link=form.get("unsubscribe_link", None),
         )
 
     return jsonify(notification), 201
@@ -174,6 +175,7 @@ def process_sms_or_email_notification(
     template_process_type,
     service,
     reply_to_text=None,
+    unsubscribe_link=None,
 ):
     notification_id = uuid.uuid4()
     form_send_to = form["email_address"] if notification_type == EMAIL_TYPE else form["phone_number"]
@@ -198,7 +200,7 @@ def process_sms_or_email_notification(
     # validate content length after url is replaced in personalisation.
     check_is_message_too_long(template_with_content)
 
-    resp = create_response_for_post_notification(
+    response = create_response_for_post_notification(
         notification_id=notification_id,
         client_reference=form.get("reference", None),
         template_id=template.id,
@@ -206,6 +208,7 @@ def process_sms_or_email_notification(
         service_id=service.id,
         notification_type=notification_type,
         reply_to=reply_to_text,
+        unsubscribe_link=unsubscribe_link,
         template_with_content=template_with_content,
     )
 
@@ -226,8 +229,9 @@ def process_sms_or_email_notification(
                 personalisation=personalisation,
                 document_download_count=document_download_count,
                 reply_to_text=reply_to_text,
+                unsubscribe_link=unsubscribe_link,
             )
-            return resp
+            return response
         except (botocore.exceptions.ClientError, botocore.parsers.ResponseParserError):
             # If SQS cannot put the task on the queue, it's probably because the notification body was too long and it
             # went over SQS's 256kb message limit. If the body is very large, it may exceed the HTTP max content length;
@@ -249,6 +253,7 @@ def process_sms_or_email_notification(
         client_reference=form.get("reference", None),
         simulated=simulated,
         reply_to_text=reply_to_text,
+        unsubscribe_link=unsubscribe_link,
         document_download_count=document_download_count,
     )
 
@@ -261,7 +266,7 @@ def process_sms_or_email_notification(
     else:
         current_app.logger.debug("POST simulated notification for id: %s", notification_id)
 
-    return resp
+    return response
 
 
 def save_email_or_sms_to_queue(
@@ -275,6 +280,7 @@ def save_email_or_sms_to_queue(
     personalisation,
     document_download_count,
     reply_to_text=None,
+    unsubscribe_link=None,
 ):
     data = {
         "id": notification_id,
@@ -288,6 +294,7 @@ def save_email_or_sms_to_queue(
         "key_type": api_key.key_type,
         "client_reference": form.get("reference", None),
         "reply_to_text": reply_to_text,
+        "unsubscribe_link": unsubscribe_link,
         "document_download_count": document_download_count,
         "status": NOTIFICATION_CREATED,
         "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
@@ -482,6 +489,7 @@ def create_response_for_post_notification(
     notification_type,
     reply_to,
     template_with_content,
+    unsubscribe_link=None,
 ):
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
@@ -493,13 +501,14 @@ def create_response_for_post_notification(
             create_post_email_response_from_notification,
             subject=template_with_content.subject,
             email_from=f"{authenticated_service.email_sender_local_part}@{current_app.config['NOTIFY_EMAIL_DOMAIN']}",
+            unsubscribe_link=unsubscribe_link,
         )
     elif notification_type == LETTER_TYPE:
         create_resp_partial = functools.partial(
             create_post_letter_response_from_notification,
             subject=template_with_content.subject,
         )
-    resp = create_resp_partial(
+    response = create_resp_partial(
         notification_id,
         client_reference,
         template_id,
@@ -508,4 +517,4 @@ def create_response_for_post_notification(
         url_root=request.url_root,
         content=template_with_content.content_with_placeholders_filled_in,
     )
-    return resp
+    return response

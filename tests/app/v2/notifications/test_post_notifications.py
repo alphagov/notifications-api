@@ -1026,6 +1026,30 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(
     assert "BadRequestError" in resp_json["errors"][0]["error"]
 
 
+def test_post_email_notification_with_unsubscribe_link_returns_201(api_client_request, sample_email_template, mocker):
+    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    unsubscribe_link = "https://www.someservice.com/unsubscribe?for=anne@example.com"
+    data = {
+        "email_address": sample_email_template.service.users[0].email_address,
+        "template_id": sample_email_template.id,
+        "unsubscribe_link": unsubscribe_link,
+    }
+
+    response_json = api_client_request.post(
+        sample_email_template.service_id,
+        "v2_notifications.post_notification",
+        notification_type="email",
+        _data=data,
+    )
+
+    assert validate(response_json, post_email_response) == response_json
+    notification = Notification.query.first()
+    assert response_json["id"] == str(notification.id)
+
+    assert notification.unsubscribe_link == unsubscribe_link == response_json["content"]["unsubscribe_link"]
+    assert mocked.called
+
+
 @pytest.mark.parametrize(
     "extra, expect_email_confirmation, expect_retention_period",
     (

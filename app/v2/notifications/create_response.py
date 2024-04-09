@@ -18,22 +18,28 @@ def create_post_email_response_from_notification(
     subject,
     email_from,
     url_root,
+    unsubscribe_link,
 ):
-    resp = __create_notification_response(
+    response = __create_notification_response(
         notification_id, client_reference, template_id, template_version, service_id, url_root
     )
-    resp["content"] = {"from_email": email_from, "body": content, "subject": subject}
-    return resp
+    response["content"] = {
+        "from_email": email_from,
+        "body": content,
+        "subject": subject,
+        "unsubscribe_link": unsubscribe_link,
+    }
+    return response
 
 
 def create_post_letter_response_from_notification(
     notification_id, client_reference, template_id, template_version, service_id, content, subject, url_root
 ):
-    resp = __create_notification_response(
+    response = __create_notification_response(
         notification_id, client_reference, template_id, template_version, service_id, url_root
     )
-    resp["content"] = {"body": content, "subject": subject}
-    return resp
+    response["content"] = {"body": content, "subject": subject}
+    return response
 
 
 def __create_notification_response(
