@@ -135,12 +135,11 @@ def update_template(service_id, template_id):
         dao_update_template(fetched_template)
         return jsonify(data=template_schema.dump(fetched_template)), 200
 
-    current_data = dict(template_schema.dump(fetched_template).items())
-    updated_template = dict(template_schema.dump(fetched_template).items())
-    updated_template.update(data)
+    current_data = template_schema.dump(fetched_template)
+    updated_template = current_data | data
 
     # Check if there is a change to make.
-    if _template_has_not_changed(current_data, updated_template):
+    if current_data == updated_template:
         return jsonify(data=updated_template), 200
 
     over_limit = _content_count_greater_than_limit(updated_template["content"], fetched_template.template_type)
@@ -218,23 +217,6 @@ def get_template_versions(service_id, template_id):
         dao_get_template_versions(service_id=service_id, template_id=template_id), many=True
     )
     return jsonify(data=data)
-
-
-def _template_has_not_changed(current_data, updated_template):
-    return all(
-        current_data[key] == updated_template[key]
-        for key in (
-            "name",
-            "content",
-            "subject",
-            "archived",
-            "process_type",
-            "postage",
-            "letter_welsh_subject",
-            "letter_welsh_content",
-            "letter_languages",
-        )
-    )
 
 
 def redact_template(template, data):
