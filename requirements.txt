@@ -69,7 +69,7 @@ dnspython==2.4.2
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-eventlet==0.34.2
+eventlet==0.35.2
     # via gunicorn
 flask==3.0.0
     # via
@@ -216,7 +216,6 @@ sentry-sdk[celery,flask,sqlalchemy]==1.38.0
 six==1.16.0
     # via
     #   click-repl
-    #   eventlet
     #   flask-marshmallow
     #   python-dateutil
     #   rfc3339-validator
