@@ -112,7 +112,13 @@ class AwsSesClient(EmailClient):
             raise AwsSesClientException(str(e)) from e
         else:
             elapsed_time = monotonic() - start_time
-            current_app.logger.info("AWS SES request finished in %s", elapsed_time)
+            current_app.logger.info(
+                "AWS SES request finished in %s",
+                elapsed_time,
+                extra={
+                    "elapsed_time": elapsed_time,
+                },
+            )
             self.statsd_client.timing("clients.ses.request-time", elapsed_time)
             self.statsd_client.incr("clients.ses.success")
             return response["MessageId"]
