@@ -7,6 +7,8 @@ elif [ "$1" == "api-worker-sender-letters" ] ; then
   CONCURRENCY=3
 elif [ "$1" == "api-worker-sender-letters" ] ; then
   CONCURRENCY=3
+elif [ "$1" == "api-worker-sender" ] ; then
+  CONCURRENCY=12
 else
   CONCURRENCY=4
 fi
