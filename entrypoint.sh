@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#Cater for specific concurrency level
-if [ "$1" == "api-worker-periodic" ] || [ "$1" == "api-worker-broadcasts" ]
-then
+# Cater for specific concurrency level
+if [ "$1" == "api-worker-periodic" ] || [ "$1" == "api-worker-broadcasts" ] ; then
   CONCURRENCY=2
-elif [ "$1" == "api-worker-sender-letters" ]
-then
+elif [ "$1" == "api-worker-sender-letters" ] ; then
+  CONCURRENCY=3
+elif [ "$1" == "api-worker-sender-letters" ] ; then
   CONCURRENCY=3
 else
   CONCURRENCY=4
