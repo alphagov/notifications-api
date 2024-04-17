@@ -5,6 +5,7 @@ Revises: 0233_updated_first_class_dates
 Create Date: 2018-09-28 14:43:26.100884
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

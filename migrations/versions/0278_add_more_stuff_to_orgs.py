@@ -5,6 +5,7 @@ Revises: 0277_consent_to_research_null
 Create Date: 2019-02-26 10:15:22.430340
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

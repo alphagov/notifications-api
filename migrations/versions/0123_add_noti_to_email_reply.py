@@ -5,6 +5,7 @@ Revises: 0122_add_service_letter_contact
 Create Date: 2017-09-27 09:42:39.412731
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

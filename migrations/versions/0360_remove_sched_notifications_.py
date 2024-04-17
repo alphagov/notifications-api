@@ -5,6 +5,7 @@ Revises: 0359_more_permissions
 Create Date: 2021-06-07 09:09:06.376862
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

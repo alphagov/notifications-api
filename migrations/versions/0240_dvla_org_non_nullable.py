@@ -5,6 +5,7 @@ Revises: 0239_add_edit_folder_permission
 Create Date: 2018-10-25 09:16:54.602182
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

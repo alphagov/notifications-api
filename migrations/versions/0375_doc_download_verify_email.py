@@ -5,6 +5,7 @@ Revises: 0374_email_branding_to_org
 Create Date: 2020-09-13 28:17:17.110495
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

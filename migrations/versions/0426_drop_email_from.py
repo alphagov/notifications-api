@@ -5,6 +5,7 @@ Revises: 0425_unique_service_name_2
 Create Date: 2023-09-29 18:47:48.703294
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 

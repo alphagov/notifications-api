@@ -5,6 +5,7 @@ Revises: 0238_add_validation_failed
 Create Date: 2018-09-03 11:24:58.773824
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

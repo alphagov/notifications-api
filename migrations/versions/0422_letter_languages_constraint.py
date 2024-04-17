@@ -5,6 +5,7 @@ Revises: 0421_bilingual_templates
 Create Date: 2023-09-07 14:00:28.925639
 
 """
+
 from alembic import op
 
 

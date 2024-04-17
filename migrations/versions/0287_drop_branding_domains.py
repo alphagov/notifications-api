@@ -5,6 +5,7 @@ Revises: 0286_add_unique_email_name
 Create Date: 2019-04-05 16:25:11.535816
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

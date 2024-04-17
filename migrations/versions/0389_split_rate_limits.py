@@ -5,6 +5,7 @@ Revises: 0388_populate_letter_branding
 Create Date: 2022-12-11 08:01:58.001061
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 0393_add_go_live_template
 Create Date: 2023-01-05 14:12:47.272639
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

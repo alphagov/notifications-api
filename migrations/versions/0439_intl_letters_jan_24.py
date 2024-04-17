@@ -5,6 +5,7 @@ Revises: 0438_request_invite_templates
 Create Date: 2024-01-02 12:39:29.779099
 
 """
+
 revision = "0439_intl_letters_jan_24"
 down_revision = "0438_request_invite_templates"
 

@@ -5,6 +5,7 @@ Revises: 0252_letter_branding_table
 Create Date: 2019-01-30 16:47:08.599448
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

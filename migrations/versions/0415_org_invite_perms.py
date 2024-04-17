@@ -5,6 +5,7 @@ Revises: 0414_org_user_permissions
 Create Date: 2023-06-14 07:38:10.479332
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 

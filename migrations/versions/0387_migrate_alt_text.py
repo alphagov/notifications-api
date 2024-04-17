@@ -5,6 +5,7 @@ Revises: 0386_email_branding_alt_text
 Create Date: 2022-11-21 19:05:49.047224
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

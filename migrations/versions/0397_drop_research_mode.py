@@ -5,6 +5,7 @@ Revises: 0396_make_research_mode_nullable
 Create Date: 2023-01-12 11:43:58.606291
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

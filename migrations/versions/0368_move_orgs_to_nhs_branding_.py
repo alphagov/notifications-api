@@ -5,6 +5,7 @@ Revises: 0367_add_reach
 Create Date: 2022-04-12 18:22:12.069016
 
 """
+
 from alembic import op
 
 revision = "0368_move_orgs_to_nhs_branding"

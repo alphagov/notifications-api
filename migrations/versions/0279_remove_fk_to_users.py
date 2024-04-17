@@ -5,6 +5,7 @@ Revises: 0278_add_more_stuff_to_orgs
 Create Date: 2019-03-06 16:49:28.674498
 
 """
+
 from alembic import op
 
 revision = "0279_remove_fk_to_users"

@@ -5,6 +5,7 @@ Revises: 0279_remove_fk_to_users
 Create Date: 2019-03-11 14:38:28.010082
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

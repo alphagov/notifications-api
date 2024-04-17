@@ -5,6 +5,7 @@ Revises: 0086_add_norm_to_notification
 Create Date: 2017-05-15 12:50:20.041950
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

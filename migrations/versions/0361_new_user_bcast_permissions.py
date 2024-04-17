@@ -5,6 +5,7 @@ Revises: 0360_remove_sched_notifications
 Create Date: 2021-06-30 11:42:32.780734
 
 """
+
 from alembic import op
 
 revision = "0361_new_user_bcast_permissions"

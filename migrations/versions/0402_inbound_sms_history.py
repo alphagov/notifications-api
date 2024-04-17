@@ -5,6 +5,7 @@ Revises: 0401_prefix_sms_non_null
 Create Date: 2023-01-19 17:32:56.494917
 
 """
+
 from alembic import op
 
 revision = "0402_inbound_sms_history"

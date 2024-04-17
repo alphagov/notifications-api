@@ -5,6 +5,7 @@ Revises: 0313_email_access_validated_at
 Create Date: 2020-01-31 10:35:44.524606
 
 """
+
 from alembic import op
 
 revision = "0314_populate_email_access"

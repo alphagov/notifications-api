@@ -5,6 +5,7 @@ Revises: 0347_add_dvla_volumes_template
 Create Date: 2021-02-18 15:25:30.667098
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

@@ -5,6 +5,7 @@ Revises: 0090_inbound_sms
 Create Date: 2017-05-31 11:43:55.744631
 
 """
+
 import uuid
 
 import sqlalchemy as sa

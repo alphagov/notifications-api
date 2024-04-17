@@ -5,6 +5,7 @@ Revises: 0140_sms_prefix_non_nullable
 Create Date: 2017-11-20 11:35:24.402021
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

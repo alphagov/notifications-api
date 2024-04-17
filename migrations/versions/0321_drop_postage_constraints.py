@@ -5,6 +5,7 @@ Revises: 0320_optimise_notifications
 Create Date: 2020-06-08 11:48:53.315768
 
 """
+
 import os
 
 from alembic import op

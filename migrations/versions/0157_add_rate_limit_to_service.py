@@ -5,6 +5,7 @@ Revises: 0156_set_temp_letter_contact
 Create Date: 2018-01-08 16:13:25.733336
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

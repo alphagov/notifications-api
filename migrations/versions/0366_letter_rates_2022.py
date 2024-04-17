@@ -5,6 +5,7 @@ Revises: 0365_add_nhs_branding
 Create Date: 2022-03-01 14:00:00
 
 """
+
 import itertools
 import uuid
 from datetime import datetime

@@ -5,6 +5,7 @@ Revises: 0328_international_letters_perm
 Create Date: 2020-09-07 16:00:27.545673
 
 """
+
 from alembic import op
 
 revision = "0329_purge_broadcast_data"

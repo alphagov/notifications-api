@@ -5,6 +5,7 @@ Revises: 0175_drop_job_statistics_table
 Create Date: 2018-03-12 16:54:30.663897
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

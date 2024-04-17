@@ -5,6 +5,7 @@ Revises: 0266_user_folder_perms_table
 Create Date: 2019-03-01 13:47:15.720238
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

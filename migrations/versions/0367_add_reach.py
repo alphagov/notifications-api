@@ -5,6 +5,7 @@ Revises: 0366_letter_rates_2022
 Create Date: 2022-03-24 16:00:00
 
 """
+
 import itertools
 import uuid
 from datetime import datetime

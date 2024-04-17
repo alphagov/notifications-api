@@ -5,6 +5,7 @@ Revises: 0406_1_april_2023_sms_rates
 Create Date: 2023-03-09 08:45:00.990562
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

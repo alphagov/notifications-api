@@ -5,6 +5,7 @@ Revises: 0205_service_callback_type
 Create Date: 2018-07-18 10:43:43.864835
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

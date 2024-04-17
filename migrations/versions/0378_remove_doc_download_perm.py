@@ -5,6 +5,7 @@ Revises: 0377_populate_org_brand_pools
 Create Date: 2022-10-12 11:55:28.906151
 
 """
+
 from alembic import op
 
 revision = "0378_remove_doc_download_perm"

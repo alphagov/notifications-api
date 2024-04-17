@@ -5,6 +5,7 @@ Revises: 0373_add_notifications_view
 Create Date: 2022-06-16 14:58:49.602967
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

@@ -5,6 +5,7 @@ Revises: 0229_new_letter_rates
 Create Date: 2018-09-19 11:42:52.229430
 
 """
+
 from alembic import op
 
 revision = "0230_noti_postage_constraint_1"

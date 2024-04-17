@@ -5,6 +5,7 @@ Revises: 0245_archived_flag_jobs
 Create Date: 2018-12-12 12:00:09.770775
 
 """
+
 from alembic import op
 
 revision = "0246_notifications_index"

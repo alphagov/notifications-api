@@ -5,6 +5,7 @@ Revises: 0314_populate_email_access
 Create Date: 2020-02-12 14:19:18.066425
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

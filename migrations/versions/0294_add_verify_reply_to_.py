@@ -5,6 +5,7 @@ Revises: 0293_drop_complaint_fk
 Create Date: 2019-05-22 16:58:52.929661
 
 """
+
 from datetime import datetime
 
 from alembic import op

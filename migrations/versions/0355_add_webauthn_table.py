@@ -5,6 +5,7 @@ Revises: 0354_government_channel
 Create Date: 2021-05-07 17:04:22.017137
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

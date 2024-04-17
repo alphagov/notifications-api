@@ -5,6 +5,7 @@ Revises: 0437_min_numeric_scl_aux_tbls
 Create Date: 2023-12-11 16:21:05.947886
 
 """
+
 import textwrap
 from alembic import op
 from flask import current_app

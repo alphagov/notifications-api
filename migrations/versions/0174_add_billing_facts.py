@@ -5,6 +5,7 @@ Revises: 0173_create_daily_sorted_letter
 Create Date: 2018-03-07 12:21:53.098887
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

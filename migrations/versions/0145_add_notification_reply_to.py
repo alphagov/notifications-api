@@ -5,6 +5,7 @@ Revises: 0144_template_service_letter
 Create Date: 2017-11-22 14:23:48.806781
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 0380_email_branding_cols
 Create Date: 2022-10-21 14:26:12.421574
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

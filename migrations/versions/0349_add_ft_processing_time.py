@@ -5,6 +5,7 @@ Revises: 0348_migrate_broadcast_settings
 Create Date: 2021-02-22 14:05:24.775338
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

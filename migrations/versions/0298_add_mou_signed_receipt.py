@@ -5,6 +5,7 @@ Revises: 0297_template_redacted_fix
 Create Date: 2019-05-22 16:58:52.929661
 
 """
+
 from alembic import op
 from flask import current_app
 

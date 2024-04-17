@@ -5,6 +5,7 @@ Revises: 0167_add_precomp_letter_svc_perm
 Create Date: 2018-02-21 14:05:04.448977
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

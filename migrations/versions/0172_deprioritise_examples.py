@@ -5,6 +5,7 @@ Revises: 0171_add_org_invite_template
 Create Date: 2018-02-28 17:09:56.619803
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

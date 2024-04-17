@@ -155,9 +155,9 @@ def _set_up_data_for_status_update(callback_api, notification):
         "notification_to": notification.to,
         "notification_status": notification.status,
         "notification_created_at": notification.created_at.strftime(DATETIME_FORMAT),
-        "notification_updated_at": notification.updated_at.strftime(DATETIME_FORMAT)
-        if notification.updated_at
-        else None,
+        "notification_updated_at": (
+            notification.updated_at.strftime(DATETIME_FORMAT) if notification.updated_at else None
+        ),
         "notification_sent_at": notification.sent_at.strftime(DATETIME_FORMAT) if notification.sent_at else None,
         "notification_type": notification.notification_type,
         "service_callback_api_url": callback_api.url,

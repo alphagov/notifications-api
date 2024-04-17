@@ -5,6 +5,7 @@ Revises: 0262_remove_edit_folders
 Create Date: 2019-02-15 14:38:13.823432
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 0316_int_letters_permission
 Create Date: 2019-05-13 10:44:51.867661
 
 """
+
 from alembic import op
 
 from app.constants import UPLOAD_LETTERS

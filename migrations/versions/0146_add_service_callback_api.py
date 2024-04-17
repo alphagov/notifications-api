@@ -5,6 +5,7 @@ Revises: 0145_add_notification_reply_to
 Create Date: 2017-11-28 15:13:48.730554
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

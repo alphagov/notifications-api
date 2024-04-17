@@ -5,6 +5,7 @@ Revises: 0285_default_org_branding
 Create Date: 2019-04-09 13:01:13.892249
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

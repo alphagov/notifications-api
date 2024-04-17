@@ -5,6 +5,7 @@ Revises: 0323_broadcast_message
 Create Date: 2020-07-08 12:20:20.700128
 
 """
+
 import itertools
 import uuid
 from datetime import datetime

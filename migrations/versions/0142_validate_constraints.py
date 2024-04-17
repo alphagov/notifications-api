@@ -5,6 +5,7 @@ Revises: 0141_remove_unused
 Create Date: 2017-11-15 14:39:13.657666
 
 """
+
 from alembic import op
 from sqlalchemy.dialects import postgresql
 

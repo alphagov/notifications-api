@@ -5,6 +5,7 @@ Revises: 0330_broadcast_invite_email
 Create Date: 2020-09-23 10:11:01.094412
 
 """
+
 import os
 
 import sqlalchemy as sa

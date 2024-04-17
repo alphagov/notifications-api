@@ -3,6 +3,7 @@
 Revises: 0218_another_letter_org
 Create Date: 2018-08-24 13:36:49.346156
  """
+
 from alembic import op
 
 from app.models import BRANDING_ORG

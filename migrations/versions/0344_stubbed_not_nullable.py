@@ -5,6 +5,7 @@ Revises: 0343_org_billing_details
 Create Date: 2021-02-08 18:10:15.533279
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

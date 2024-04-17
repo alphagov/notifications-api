@@ -5,6 +5,7 @@ Revises: 0207_set_callback_history_type
 Create Date: 2018-07-25 13:55:24.941794
 
 """
+
 from alembic import op
 
 revision = "84c3b6eb16b3"

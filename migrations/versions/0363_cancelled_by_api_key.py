@@ -3,6 +3,7 @@ Revision ID: 0363_cancelled_by_api_key
 Revises: 0362_broadcast_msg_event
 Create Date: 2022-02-09 14:05:27.750234
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

@@ -5,6 +5,7 @@ Revises: 0361_new_user_bcast_permissions
 Create Date: 2020-12-04 15:06:22.544803
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

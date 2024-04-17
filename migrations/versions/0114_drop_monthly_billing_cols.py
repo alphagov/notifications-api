@@ -5,6 +5,7 @@ Revises: 0113_job_created_by_nullable
 Create Date: 2017-07-27 13:36:37.304344
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

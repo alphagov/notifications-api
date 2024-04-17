@@ -5,6 +5,7 @@ Revises: 0163_add_new_org_model
 Create Date: 2018-02-09 17:58:34.617206
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

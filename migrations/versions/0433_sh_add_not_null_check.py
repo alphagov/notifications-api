@@ -5,6 +5,7 @@ Revises: 0432_s_add_not_null_check
 Create Date: 2023-11-15 22:27:23.511256
 
 """
+
 from alembic import op
 from sqlalchemy import column
 

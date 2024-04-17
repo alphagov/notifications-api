@@ -5,6 +5,7 @@ Revises: 0257_letter_branding_migration
 Create Date: 2019-02-12 11:52:53.139383
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

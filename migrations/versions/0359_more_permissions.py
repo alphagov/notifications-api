@@ -5,6 +5,7 @@ Revises: 0358_operator_channel
 Create Date: 2021-06-15 17:47:16.871071
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

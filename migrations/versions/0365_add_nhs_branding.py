@@ -5,6 +5,7 @@ Revises: 0364_drop_old_column
 Create Date: 2022-02-17 16:31:21.415065
 
 """
+
 import os
 
 from alembic import op

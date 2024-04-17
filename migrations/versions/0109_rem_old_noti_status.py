@@ -5,6 +5,7 @@ Revises: 0108_change_logo_not_nullable
 Create Date: 2017-07-10 14:25:15.712055
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

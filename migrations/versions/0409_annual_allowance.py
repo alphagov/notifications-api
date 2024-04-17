@@ -5,6 +5,7 @@ Revises: 0408_perm_ask_to_join_service
 Create Date: 2023-04-20 13:01:09.425646
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

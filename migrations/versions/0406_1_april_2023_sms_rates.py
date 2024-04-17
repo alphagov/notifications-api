@@ -5,6 +5,7 @@ Revises: 0405_template_formatting_flags
 Create Date: 2023-03-06 11:32:20.588364
 
 """
+
 import uuid
 
 from alembic import op

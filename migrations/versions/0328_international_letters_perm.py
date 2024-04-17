@@ -5,6 +5,7 @@ Revises: 0327_idx_notification_history
 Create Date: 2020-08-10 14:12:02.870838
 
 """
+
 from alembic import op
 from sqlalchemy import text
 

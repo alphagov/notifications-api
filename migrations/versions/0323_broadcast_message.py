@@ -5,6 +5,7 @@ Revises: 0322_broadcast_service_perm
 Create Date: 2020-07-02 11:59:38.734650
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

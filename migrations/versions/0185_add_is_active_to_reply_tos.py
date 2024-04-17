@@ -5,6 +5,7 @@ Revises: 0184_alter_primary_key_1
 Create Date: 2018-04-10 16:35:41.824981
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

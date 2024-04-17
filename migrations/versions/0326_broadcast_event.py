@@ -5,6 +5,7 @@ Revises: 0325_int_letter_rates_fix
 Create Date: 2020-07-24 12:40:35.809523
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

@@ -5,6 +5,7 @@ Revises: 0301_upload_letters_permission
 Create Date: 2019-08-06 09:43:57.993510
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

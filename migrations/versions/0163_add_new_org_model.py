@@ -5,6 +5,7 @@ Revises: 0162_remove_org
 Create Date: 2018-02-07 14:03:00.804849
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

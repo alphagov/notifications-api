@@ -5,6 +5,7 @@ Revises: 0384_add_nhs_to_letter_pools
 Create Date: 2022-11-18 11:46:27.954516
 
 """
+
 from alembic import op
 
 revision = "0385_letter_branding_pools"

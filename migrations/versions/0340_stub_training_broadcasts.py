@@ -5,6 +5,7 @@ Revises: 0339_service_billing_details
 Create Date: 2021-01-26 16:48:44.921065
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

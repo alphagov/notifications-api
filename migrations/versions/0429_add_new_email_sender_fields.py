@@ -5,6 +5,7 @@ Revises: 0428_letter_rates_errata
 Create Date: 2023-10-16 15:46:30.137552
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 

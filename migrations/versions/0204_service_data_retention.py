@@ -5,6 +5,7 @@ Revises: 0203_fix_old_incomplete_jobs
 Create Date: 2018-07-10 11:22:01.761829
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

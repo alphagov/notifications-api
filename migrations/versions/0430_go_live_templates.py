@@ -5,6 +5,7 @@ Revises: 0429_add_new_email_sender_fields
 Create Date: 2023-10-31 13:23:51.260909
 
 """
+
 import textwrap
 
 from alembic import op

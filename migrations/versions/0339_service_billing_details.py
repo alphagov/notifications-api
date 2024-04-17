@@ -5,6 +5,7 @@ Revises: 0338_add_notes_to_service
 Create Date: 2021-01-20 17:55:46.555460
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

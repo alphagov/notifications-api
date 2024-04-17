@@ -5,6 +5,7 @@ Revises: 0134_add_email_2fa_template
 Create Date: 2017-11-07 14:35:04.798561
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

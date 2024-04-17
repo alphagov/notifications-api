@@ -5,6 +5,7 @@ Revises: 0111_drop_old_service_flags
 Create Date: 2017-07-12 13:35:45.636618
 
 """
+
 from datetime import datetime
 
 import sqlalchemy as sa

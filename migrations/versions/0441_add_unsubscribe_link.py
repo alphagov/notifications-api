@@ -5,6 +5,7 @@ Revises: 0440_new_sms_allowance_n_rate
 Create Date: 2024-03-25 14:38:54.618674
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 

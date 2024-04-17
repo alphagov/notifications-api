@@ -5,6 +5,7 @@ Revises: 0121_nullable_logos
 Create Date: 2017-09-21 12:16:02.975120
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

@@ -5,6 +5,7 @@ Revises: 0097_notnull_inbound_provider
 Create Date: 2017-06-13 15:02:33.609656
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

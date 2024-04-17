@@ -5,6 +5,7 @@ Revises: 0376_email_branding_pools
 Create Date: 2022-09-16 17:11:24.118619
 
 """
+
 import textwrap
 
 from alembic import op

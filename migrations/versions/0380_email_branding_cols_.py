@@ -3,6 +3,7 @@ Revision ID: 0380_email_branding_cols
 Revises: 0379_update_archived_users
 Create Date: 2022-10-19 12:12:15.225244
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

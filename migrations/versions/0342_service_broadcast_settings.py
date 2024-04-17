@@ -5,6 +5,7 @@ Revises: 0341_new_letter_rates
 Create Date: 2021-01-28 21:30:23.102340
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

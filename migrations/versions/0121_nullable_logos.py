@@ -5,6 +5,7 @@ Revises: 0120_add_org_banner_branding
 Create Date: 2017-09-20 11:00:20.415523
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 
