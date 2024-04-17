@@ -106,7 +106,7 @@ gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61a
     # via
     #   -r requirements.in
     #   notifications-utils
-idna==3.4
+idna==3.7
     # via
     #   jsonschema
     #   requests
