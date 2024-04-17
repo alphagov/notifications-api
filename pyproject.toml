@@ -6,7 +6,7 @@ line-length = 120
 
 target-version = "py311"
 
-select = [
+lint.select = [
     "E",  # pycodestyle
     "W",  # pycodestyle
     "F",  # pyflakes
@@ -15,7 +15,7 @@ select = [
     "C90",  # mccabe cyclomatic complexity
     "G",  # flake8-logging-format
 ]
-ignore = []
+lint.ignore = []
 exclude = [
     "migrations/versions/",
     "venv*",
