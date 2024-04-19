@@ -184,6 +184,7 @@ UPLOAD_LETTERS = "upload_letters"
 INTERNATIONAL_LETTERS = "international_letters"
 EXTRA_EMAIL_FORMATTING = "extra_email_formatting"
 EXTRA_LETTER_FORMATTING = "extra_letter_formatting"
+SMS_TO_UK_LANDLINES = "sms_to_uk_landlines"
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
     SMS_TYPE,
@@ -200,6 +201,7 @@ SERVICE_PERMISSION_TYPES = [
     INTERNATIONAL_LETTERS,
     EXTRA_EMAIL_FORMATTING,
     EXTRA_LETTER_FORMATTING,
+    SMS_TO_UK_LANDLINES,
 ]
 
 # List of available permissions
