@@ -129,4 +129,4 @@ production: ## Set environment to production
 
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
-	@echo $(shell API_HOST_NAME=https://api.${DNS_NAME} python3 scripts/check_if_new_migration.py)
+	@echo $(shell python3 scripts/check_if_new_migration.py)
