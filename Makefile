@@ -109,24 +109,6 @@ clean:
 
 ## DEPLOYMENT
 
-.PHONY: preview
-preview: ## Set environment to preview
-	$(eval export DEPLOY_ENV=preview)
-	$(eval export DNS_NAME="notify.works")
-	@true
-
-.PHONY: staging
-staging: ## Set environment to staging
-	$(eval export DEPLOY_ENV=staging)
-	$(eval export DNS_NAME="staging-notify.works")
-	@true
-
-.PHONY: production
-production: ## Set environment to production
-	$(eval export DEPLOY_ENV=production)
-	$(eval export DNS_NAME="notifications.service.gov.uk")
-	@true
-
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
 	@echo $(shell python3 scripts/check_if_new_migration.py)
