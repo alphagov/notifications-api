@@ -206,6 +206,7 @@ def test_create_secret_code_never_repeats_consecutive_digits(mocker):
 @freeze_time("2018-07-07 12:00:00")
 def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
     sample_user.current_session_id = fake_uuid
+    sample_user.platform_admin = True
 
     # create 2 services for sample_user to be a member of (each with another active user)
     service_1 = create_service(service_name="Service 1")
@@ -241,6 +242,7 @@ def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
     assert sample_user.current_session_id == uuid.UUID("00000000-0000-0000-0000-000000000000")
     assert sample_user.state == "inactive"
     assert not sample_user.check_password("password")
+    assert not sample_user.platform_admin
 
 
 def test_user_can_be_archived_if_they_do_not_belong_to_any_services(sample_user):

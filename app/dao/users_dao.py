@@ -169,6 +169,7 @@ def dao_archive_user(user):
     user.email_address = get_archived_db_column_value(f"{user.id}@{current_app.config['NOTIFY_EMAIL_DOMAIN']}")
     user.mobile_number = None
     user.password = str(uuid.uuid4())
+    user.platform_admin = False
 
     # Changing the current_session_id signs the user out
     user.current_session_id = "00000000-0000-0000-0000-000000000000"
