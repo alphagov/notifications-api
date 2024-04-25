@@ -65,7 +65,7 @@ click-plugins==1.1.1
     # via celery
 click-repl==0.2.0
     # via celery
-dnspython==2.4.2
+dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
@@ -101,7 +101,9 @@ gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6
 govuk-bank-holidays==0.11
     # via notifications-utils
 greenlet==3.0.3
-    # via eventlet
+    # via
+    #   eventlet
+    #   sqlalchemy
 gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via
     #   -r requirements.in
