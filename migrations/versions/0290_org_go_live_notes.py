@@ -5,6 +5,7 @@ Revises: 0289_precompiled_for_all
 Create Date: 2019-05-13 14:55:10.291781
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

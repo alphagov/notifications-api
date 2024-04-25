@@ -3,6 +3,7 @@ Revision ID: 0227_postage_constraints
 Revises: 0226_service_postage
 Create Date: 2018-09-13 16:23:59.168877
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 84c3b6eb16b3
 Create Date: 2018-07-31 13:34:00.018447
 
 """
+
 from alembic import op
 
 revision = "0209_add_cancelled_status"

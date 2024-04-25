@@ -5,6 +5,7 @@ Revises: 0193_add_ft_billing_timestamps
 Create Date: 2018-05-22 14:34:27.852096
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

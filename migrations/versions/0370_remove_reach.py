@@ -5,6 +5,7 @@ Revises: 0369_update_sms_rates
 Create Date: 2022-04-27 16:00:00
 
 """
+
 import itertools
 import uuid
 from datetime import datetime

@@ -5,6 +5,7 @@ Revises: 0298_add_mou_signed_receipt
 Create Date: 2019-07-10 16:07:22.019759
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 0337_broadcast_msg_api
 Create Date: 2021-01-13 11:50:06.333369
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

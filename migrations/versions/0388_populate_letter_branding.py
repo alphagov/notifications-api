@@ -5,6 +5,7 @@ Revises: 0387_migrate_alt_text
 Create Date: 2022-11-24 14:04:41.456302
 
 """
+
 from alembic import op
 
 revision = "0388_populate_letter_branding"

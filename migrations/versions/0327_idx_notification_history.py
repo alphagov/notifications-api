@@ -5,6 +5,7 @@ Revises: 0326_broadcast_event
 Create Date: 2020-07-28 08:11:07.666708
 
 """
+
 import os
 
 from alembic import op

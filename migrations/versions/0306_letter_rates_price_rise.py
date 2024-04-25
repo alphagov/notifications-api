@@ -19,6 +19,7 @@ Revises: 0305_add_gp_org_type
 Create Date: 2019-09-25 15:43:09.388251
 
 """
+
 import itertools
 import uuid
 from datetime import datetime

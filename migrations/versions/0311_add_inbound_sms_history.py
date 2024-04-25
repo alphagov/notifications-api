@@ -5,6 +5,7 @@ Revises: 0310_returned_letters_table
 Create Date: 2019-12-20 15:38:53.358509
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

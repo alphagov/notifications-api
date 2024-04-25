@@ -5,6 +5,7 @@ Revises: 0418_readd_null_constraint
 Create Date: 2023-07-05 12:31:03.540011
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 

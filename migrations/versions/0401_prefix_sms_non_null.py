@@ -5,6 +5,7 @@ Revises: 0400_non_nullable_ids
 Create Date: 2023-01-19 16:56:49.635251
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

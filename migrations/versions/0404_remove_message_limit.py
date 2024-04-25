@@ -5,6 +5,7 @@ Revises: 0403_letter_rates_jan_2023
 Create Date: 2023-01-27 11:14:29.038116
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

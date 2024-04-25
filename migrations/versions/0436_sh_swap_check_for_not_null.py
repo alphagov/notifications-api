@@ -5,6 +5,7 @@ Revises: 0435_s_swap_check_for_not_null
 Create Date: 2023-11-15 22:27:23.511256
 
 """
+
 from alembic import op
 from sqlalchemy import column
 

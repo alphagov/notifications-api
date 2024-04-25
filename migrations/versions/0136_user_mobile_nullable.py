@@ -5,6 +5,7 @@ Revises: 0135_stats_template_usage
 Create Date: 2017-11-08 11:49:05.773974
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

@@ -5,6 +5,7 @@ Revises: 0422_letter_languages_constraint
 Create Date: 2023-09-14 14:00:28.925639
 
 """
+
 from alembic import op
 
 

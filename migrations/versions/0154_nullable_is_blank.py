@@ -5,6 +5,7 @@ Revises: 0153_add_is_letter_contact_blank
 Create Date: 2018-01-05 15:49:36.522210
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

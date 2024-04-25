@@ -5,6 +5,7 @@ Revises: 0424_n_history_created_at
 Create Date: 2023-09-01 10:10:19.011060
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 

@@ -5,6 +5,7 @@ Revises: 0137_notification_template_hist
 Create Date: 2017-11-06 15:44:59.471977
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

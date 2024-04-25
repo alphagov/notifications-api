@@ -5,6 +5,7 @@ Revises: 0368_move_orgs_to_nhs_branding
 Create Date: 2022-04-26 09:39:45.260951
 
 """
+
 import uuid
 
 from alembic import op

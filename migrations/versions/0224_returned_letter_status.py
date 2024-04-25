@@ -5,6 +5,7 @@ Revises: 0223_add_domain_constraint
 Create Date: 2018-08-21 14:44:04.203480
 
 """
+
 from alembic import op
 
 revision = "0224_returned_letter_status"

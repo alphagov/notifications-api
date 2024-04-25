@@ -5,6 +5,7 @@ Revises: 0146_add_service_callback_api
 Create Date: 2017-11-30 15:48:44.588438
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

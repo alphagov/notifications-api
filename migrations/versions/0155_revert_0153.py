@@ -5,6 +5,7 @@ Revises: 0154_nullable_is_blank
 Create Date: 2018-01-05 14:09:21.200102
 
 """
+
 from alembic import op
 
 revision = "0155_revert_0153"

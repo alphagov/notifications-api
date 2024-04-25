@@ -5,6 +5,7 @@ Revises: 0125_add_organisation_type
 Create Date: 2017-10-19 11:38:32.849573
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

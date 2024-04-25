@@ -5,6 +5,7 @@ Revises: 0391_add_go_live_columns
 Create Date: 2022-12-20 08:01:58.001061
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

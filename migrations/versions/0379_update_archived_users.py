@@ -5,6 +5,7 @@ Revises: 0378_remove_doc_download_perm
 Create Date: 2022-10-10 12:45:47.519550
 
 """
+
 import textwrap
 
 from alembic import op

@@ -5,6 +5,7 @@ Revises: 0177_add_virus_scan_statuses
 Create Date: 2018-03-14 16:15:01.886998
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

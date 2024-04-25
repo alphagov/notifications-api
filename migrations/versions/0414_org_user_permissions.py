@@ -5,6 +5,7 @@ Revises: 0413_ft_billing_letter_despatch
 Create Date: 2023-06-09 13:27:00.294865
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

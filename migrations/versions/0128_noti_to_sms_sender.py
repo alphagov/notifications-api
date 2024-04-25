@@ -5,6 +5,7 @@ Revises: 0127_remove_unique_constraint
 Create Date: 2017-10-26 15:17:00.752706
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

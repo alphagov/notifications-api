@@ -5,6 +5,7 @@ Revises: 0352_broadcast_provider_types
 Create Date: 2021-05-10 15:06:40.046786
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

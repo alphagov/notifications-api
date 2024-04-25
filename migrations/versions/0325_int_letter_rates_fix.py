@@ -5,6 +5,7 @@ Revises: 0324_int_letter_rates
 Create Date: 2020-07-15 10:09:17.218183
 
 """
+
 from datetime import datetime
 
 from alembic import op

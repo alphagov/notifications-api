@@ -5,6 +5,7 @@ Revises: 0394_letter_branding_cols
 Create Date: 2023-01-06 09:27:38.125105
 
 """
+
 from alembic import op
 
 revision = "0395_migrate_rate_limits"

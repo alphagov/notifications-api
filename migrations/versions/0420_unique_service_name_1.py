@@ -5,6 +5,7 @@ Revises: 0419_take_part_in_research
 Create Date: 2023-08-24 16:26:03.488048
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

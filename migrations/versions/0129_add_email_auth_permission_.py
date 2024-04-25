@@ -5,6 +5,7 @@ Revises: 0128_noti_to_sms_sender
 Create Date: 2017-10-26 14:33:41.336861
 
 """
+
 from alembic import op
 
 revision = "0129_add_email_auth_permission"

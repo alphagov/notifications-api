@@ -5,6 +5,7 @@ Revises: 0196_complaints_table
 Create Date: 2018-05-31 15:01:32.977620
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 0349_add_ft_processing_time
 Create Date: 2021-04-01 08:00:24.775338
 
 """
+
 import uuid
 
 from alembic import op

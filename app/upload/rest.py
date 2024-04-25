@@ -39,9 +39,11 @@ def get_paginated_uploads(service_id, limit_days, page):
             "id": upload.id,
             "original_file_name": upload.original_file_name,
             "notification_count": upload.notification_count,
-            "created_at": upload.scheduled_for.strftime("%Y-%m-%d %H:%M:%S")
-            if upload.scheduled_for
-            else upload.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": (
+                upload.scheduled_for.strftime("%Y-%m-%d %H:%M:%S")
+                if upload.scheduled_for
+                else upload.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            ),
             "upload_type": upload.upload_type,
             "template_type": upload.template_type,
             "recipient": upload.recipient,

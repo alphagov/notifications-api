@@ -1295,8 +1295,10 @@ def test_post_notifications_saves_email_or_sms_to_queue(client, notify_db_sessio
     ):
         template = create_template(service=service, content="((message))", template_type=notification_type)
         data = {"template_id": template.id, "personalisation": {"message": "Dear citizen, have a nice day"}}
-        data.update({"email_address": "joe.citizen@example.com"}) if notification_type == EMAIL_TYPE else data.update(
-            {"phone_number": "+447700900855"}
+        (
+            data.update({"email_address": "joe.citizen@example.com"})
+            if notification_type == EMAIL_TYPE
+            else data.update({"phone_number": "+447700900855"})
         )
 
         response = client.post(
@@ -1344,8 +1346,10 @@ def test_post_notifications_saves_email_or_sms_normally_if_saving_to_queue_fails
     ):
         template = create_template(service=service, content="((message))", template_type=notification_type)
         data = {"template_id": template.id, "personalisation": {"message": "Dear citizen, have a nice day"}}
-        data.update({"email_address": "joe.citizen@example.com"}) if notification_type == EMAIL_TYPE else data.update(
-            {"phone_number": "+447700900855"}
+        (
+            data.update({"email_address": "joe.citizen@example.com"})
+            if notification_type == EMAIL_TYPE
+            else data.update({"phone_number": "+447700900855"})
         )
 
         json_resp = api_client_request.post(
@@ -1380,8 +1384,10 @@ def test_post_notifications_doesnt_use_save_queue_for_test_notifications(
     ):
         template = create_template(service=service, content="((message))", template_type=notification_type)
         data = {"template_id": template.id, "personalisation": {"message": "Dear citizen, have a nice day"}}
-        data.update({"email_address": "joe.citizen@example.com"}) if notification_type == EMAIL_TYPE else data.update(
-            {"phone_number": "+447700900855"}
+        (
+            data.update({"email_address": "joe.citizen@example.com"})
+            if notification_type == EMAIL_TYPE
+            else data.update({"phone_number": "+447700900855"})
         )
 
         json_resp = api_client_request.post(

@@ -5,6 +5,7 @@ Revises: 0395_migrate_rate_limits
 Create Date: 2023-01-18 13:13:06.439154
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

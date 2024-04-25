@@ -5,6 +5,7 @@ Revises: 0306_letter_rates_price_rise
 Create Date: 2019-10-08 10:57:54.824807
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

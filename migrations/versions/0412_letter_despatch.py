@@ -5,6 +5,7 @@ Revises: 0411_contact_list_idx
 Create Date: 2023-05-22 15:41:45.251681
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

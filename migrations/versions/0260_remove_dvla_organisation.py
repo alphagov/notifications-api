@@ -5,6 +5,7 @@ Revises: 0259_remove_service_postage
 Create Date: 2019-02-12 17:39:02.517571
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

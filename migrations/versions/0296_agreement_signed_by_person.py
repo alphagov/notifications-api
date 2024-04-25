@@ -5,6 +5,7 @@ Revises: 0295_api_key_constraint
 Create Date: 2019-06-13 16:40:32.982607
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

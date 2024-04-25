@@ -5,6 +5,7 @@ Revises: 0126_add_annual_billing
 Create Date: 2017-10-17 16:47:37.826333
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

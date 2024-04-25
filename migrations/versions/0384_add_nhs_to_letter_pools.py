@@ -5,6 +5,7 @@ Revises: 0383_webauthn_cred_logged_in_at
 Create Date: 2022-11-17 13:59:56.978865
 
 """
+
 from alembic import op
 
 revision = "0384_add_nhs_to_letter_pools"

@@ -5,6 +5,7 @@ Revises: 0333_service_broadcast_provider
 Create Date: 2020-12-04 15:06:22.544803
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

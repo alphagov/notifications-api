@@ -5,6 +5,7 @@ Revises: 0300_migrate_org_types
 Create Date: 2019-08-05 10:49:27.467361
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

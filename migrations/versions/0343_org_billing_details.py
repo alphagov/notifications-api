@@ -5,6 +5,7 @@ Revises: 0342_service_broadcast_settings
 Create Date: 2021-02-01 14:40:14.809632
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

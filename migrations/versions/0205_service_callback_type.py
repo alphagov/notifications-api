@@ -5,6 +5,7 @@ Revises: 0204_service_data_retention
 Create Date: 2018-07-17 15:51:10.776698
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

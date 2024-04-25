@@ -5,6 +5,7 @@ Revises: 0423_notify_user_name
 Create Date: 2023-09-17 15:17:58.545277
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 

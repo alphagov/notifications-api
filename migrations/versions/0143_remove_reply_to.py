@@ -5,6 +5,7 @@ Revises: 0142_validate_constraint
 Create Date: 2017-11-21 10:42:25.045444
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

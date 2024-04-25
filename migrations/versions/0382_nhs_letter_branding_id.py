@@ -5,6 +5,7 @@ Revises: 0381_letter_branding_to_org
 Create Date: 2022-11-15 07:57:49.060820
 
 """
+
 import os
 
 from alembic import op

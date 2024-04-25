@@ -5,6 +5,7 @@ Revises: 0351_unique_key_annual_billing
 Create Date: 2021-05-05 15:07:22.146657
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

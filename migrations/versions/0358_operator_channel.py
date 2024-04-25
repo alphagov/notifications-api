@@ -5,6 +5,7 @@ Revises: 0357_validate_constraint
 Create Date: 2021-06-09 13:44:12.479191
 
 """
+
 from alembic import op
 
 revision = "0358_operator_channel"

@@ -5,6 +5,7 @@ Revises: 0185_add_is_active_to_reply_tos
 Create Date: 2018-04-27 16:35:41.824981
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

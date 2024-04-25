@@ -5,6 +5,7 @@ Revises: 0356_add_webautn_auth_type
 Create Date: 2021-05-13 14:15:25.259991
 
 """
+
 from alembic import op
 
 revision = "0357_validate_constraint"

@@ -5,6 +5,7 @@ Revises: 0319_contact_list_archived
 Create Date: 2020-03-26 11:16:12.389524
 
 """
+
 import os
 
 from alembic import op

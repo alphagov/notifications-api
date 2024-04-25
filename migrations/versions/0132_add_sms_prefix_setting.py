@@ -5,6 +5,7 @@ Revises: 0131_user_auth_types
 Create Date: 2017-11-03 11:07:40.537006
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

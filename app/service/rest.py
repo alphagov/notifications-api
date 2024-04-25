@@ -482,11 +482,13 @@ def get_all_notifications_for_service(service_id):
         jsonify(
             notifications=notifications,
             page_size=page_size,
-            links=get_prev_next_pagination_links(
-                page, len(next_page_of_pagination.items), ".get_all_notifications_for_service", **kwargs
-            )
-            if count_pages
-            else {},
+            links=(
+                get_prev_next_pagination_links(
+                    page, len(next_page_of_pagination.items), ".get_all_notifications_for_service", **kwargs
+                )
+                if count_pages
+                else {}
+            ),
         ),
         200,
     )

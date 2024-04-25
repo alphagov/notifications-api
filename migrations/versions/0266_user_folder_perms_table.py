@@ -5,6 +5,7 @@ Revises: 0265_add_confirm_edit_templates
 Create Date: 2019-02-26 17:00:13.247321
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

@@ -5,6 +5,7 @@ Revises: 0124_add_free_sms_fragment_limit
 Create Date: 2017-10-05 14:03:00.248005
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 0296_agreement_signed_by_person
 Create Date: 2019-06-25 17:02:14.350064
 
 """
+
 from alembic import op
 
 revision = "0297_template_redacted_fix"

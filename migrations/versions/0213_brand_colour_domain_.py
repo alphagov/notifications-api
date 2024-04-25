@@ -5,6 +5,7 @@ Revises: 0212_remove_caseworking
 Create Date: 2018-08-16 16:29:41.374944
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

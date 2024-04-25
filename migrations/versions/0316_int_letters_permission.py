@@ -5,6 +5,7 @@ Revises: 0315_document_download_count
 Create Date: 2020-09-13 28:17:17.110495
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

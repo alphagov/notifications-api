@@ -3,6 +3,7 @@
 Revises: 0215_email_brand_type
 Create Date: 2018-08-24 13:36:49.346156
  """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 0433_sh_add_not_null_check
 Create Date: 2023-11-15 22:27:23.511256
 
 """
+
 from alembic import op
 
 revision = "0434_validate_not_null_check"

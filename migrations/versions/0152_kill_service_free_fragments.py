@@ -5,6 +5,7 @@ Revises: 0151_refactor_letter_rates
 Create Date: 2017-12-01 16:49:51.178455
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

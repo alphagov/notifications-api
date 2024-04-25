@@ -5,6 +5,7 @@ Revises: 0355_add_webauthn_table
 Create Date: 2021-05-13 12:42:45.190269
 
 """
+
 from alembic import op
 
 revision = "0356_add_webautn_auth_type"

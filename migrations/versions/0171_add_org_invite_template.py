@@ -5,6 +5,7 @@ Revises: 0170_hidden_non_nullable
 Create Date: 2018-02-16 14:16:43.618062
 
 """
+
 from datetime import datetime
 
 from alembic import op

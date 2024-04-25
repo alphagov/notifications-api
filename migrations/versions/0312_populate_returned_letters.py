@@ -5,6 +5,7 @@ Revises: 0311_add_inbound_sms_history
 Create Date: 2019-12-09 12:13:49.432993
 
 """
+
 from alembic import op
 
 revision = "0312_populate_returned_letters"

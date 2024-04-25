@@ -5,6 +5,7 @@ Revises: 0412_letter_despatch
 Create Date: 2023-05-24 08:42:11.354797
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

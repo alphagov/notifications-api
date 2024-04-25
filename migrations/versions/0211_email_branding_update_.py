@@ -5,6 +5,7 @@ Revises: 0210_remove_monthly_billing
 Create Date: 2018-07-31 18:00:20.457755
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

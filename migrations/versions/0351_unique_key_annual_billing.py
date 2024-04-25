@@ -5,6 +5,7 @@ Revises: 0350_update_rates
 Create Date: 2021-04-12 09:02:45.098875
 
 """
+
 import os
 
 from alembic import op

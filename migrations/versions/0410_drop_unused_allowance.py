@@ -5,6 +5,7 @@ Revises: 0409_annual_allowance
 Create Date: 2023-04-26 07:52:19.822068
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 

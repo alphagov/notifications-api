@@ -5,6 +5,7 @@ Revises: 0161_email_branding
 Create Date: 2018-02-06 17:08:11.879844
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

@@ -5,6 +5,7 @@ Revises: 0417_remove_null_constraint
 Create Date: 2023-06-21 13:40:37.866124
 
 """
+
 from alembic import op
 
 

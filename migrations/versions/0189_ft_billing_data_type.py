@@ -5,6 +5,7 @@ Revises: 0188_add_ft_notification_status
 Create Date: 2018-05-10 14:57:52.589773
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

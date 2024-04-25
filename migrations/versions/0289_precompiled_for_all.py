@@ -5,6 +5,7 @@ Revises: 0288_add_go_live_user
 Create Date: 2019-05-13 10:44:51.867661
 
 """
+
 from alembic import op
 
 revision = "0289_precompiled_for_all"

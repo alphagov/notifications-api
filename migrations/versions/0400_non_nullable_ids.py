@@ -5,6 +5,7 @@ Revises: 0399_nullable_message_limit
 Create Date: 2023-01-19 16:13:38.601465
 
 """
+
 from alembic import op
 from sqlalchemy.dialects import postgresql
 

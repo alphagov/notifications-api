@@ -5,6 +5,7 @@ Revises: 0441_add_unsubscribe_link
 Create Date: 2024-04-05 16:50:27.631853
 
 """
+
 from alembic import op
 
 

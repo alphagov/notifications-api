@@ -5,6 +5,7 @@ Revises: 0065_users_current_session_id
 Create Date: 2017-03-02 10:32:28.984947
 
 """
+
 import uuid
 from datetime import datetime
 

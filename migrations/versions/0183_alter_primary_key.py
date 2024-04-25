@@ -5,6 +5,7 @@ Revises: 0182_add_upload_document_perm
 Create Date: 2018-03-25 21:23:32.403212
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

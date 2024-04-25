@@ -5,6 +5,7 @@ Revises: 0195_ft_notification_timestamps
 Create Date: 2018-05-31 14:31:36.649544
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

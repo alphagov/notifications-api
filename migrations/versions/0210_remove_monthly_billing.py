@@ -5,6 +5,7 @@ Revises: 0209_add_cancelled_status
 Create Date: 2018-07-31 16:43:00.568972
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

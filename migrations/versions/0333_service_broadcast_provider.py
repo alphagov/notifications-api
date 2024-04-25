@@ -5,6 +5,7 @@ Revises: 0332_broadcast_provider_msg
 Create Date: 2020-12-01 17:03:18.209780
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql

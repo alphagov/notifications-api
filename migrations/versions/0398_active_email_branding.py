@@ -5,6 +5,7 @@ Revises: 0397_drop_research_mode
 Create Date: 2023-01-12 16:45:46.505237
 
 """
+
 import sqlalchemy as sa
 from alembic import op
 

@@ -5,6 +5,7 @@ Revises: 0291_remove_unused_index
 Create Date: 2019-04-01 16:36:53.274394
 
 """
+
 from alembic import op
 from sqlalchemy.sql import text
 
