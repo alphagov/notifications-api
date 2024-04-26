@@ -384,6 +384,7 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
             service_manager_2.name,
             service_manager_3.name,
         ],
+        "request again url": f"{invite_link_host}/services/{sample_service.id}/join",
     }
     assert user_notification.reply_to_text == "notify@gov.uk"
 
