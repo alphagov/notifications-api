@@ -149,8 +149,6 @@ class Config(object):
     MAX_VERIFY_CODE_COUNT = 5
     MAX_FAILED_LOGIN_COUNT = 10
 
-    CHECK_PROXY_HEADER = False
-
     # these should always add up to 100%
     SMS_PROVIDER_RESTING_POINTS = {"mmg": 51, "firetext": 49}
 
@@ -399,8 +397,6 @@ class Config(object):
     MMG_INBOUND_SMS_AUTH = json.loads(os.environ.get("MMG_INBOUND_SMS_AUTH", "[]"))
     MMG_INBOUND_SMS_USERNAME = json.loads(os.environ.get("MMG_INBOUND_SMS_USERNAME", "[]"))
     LOW_INBOUND_SMS_NUMBER_THRESHOLD = 50
-    ROUTE_SECRET_KEY_1 = os.environ.get("ROUTE_SECRET_KEY_1", "")
-    ROUTE_SECRET_KEY_2 = os.environ.get("ROUTE_SECRET_KEY_2", "")
 
     HIGH_VOLUME_SERVICE = json.loads(os.environ.get("HIGH_VOLUME_SERVICE", "[]"))
 
@@ -552,7 +548,6 @@ class Preview(Config):
     S3_BUCKET_LETTER_SANITISE = "preview-letters-sanitise"
     FROM_NUMBER = "preview"
     API_RATE_LIMIT_ENABLED = True
-    CHECK_PROXY_HEADER = False
     DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
 
 
@@ -570,7 +565,6 @@ class Staging(Config):
     S3_BUCKET_LETTER_SANITISE = "staging-letters-sanitise"
     FROM_NUMBER = "stage"
     API_RATE_LIMIT_ENABLED = True
-    CHECK_PROXY_HEADER = False if os.environ.get("CHECK_PROXY_HEADER") == "0" else True
     DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
 
 
@@ -588,7 +582,6 @@ class Production(Config):
     S3_BUCKET_LETTER_SANITISE = "production-letters-sanitise"
     FROM_NUMBER = "GOVUK"
     API_RATE_LIMIT_ENABLED = True
-    CHECK_PROXY_HEADER = False if os.environ.get("CHECK_PROXY_HEADER") == "0" else True
     SES_STUB_URL = None
 
     CRONITOR_ENABLED = True

@@ -14,7 +14,6 @@ from notifications_python_client.errors import (
     TokenExpiredError,
     TokenIssuerError,
 )
-from notifications_utils import request_helper
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.serialised_models import SerialisedService
@@ -68,7 +67,6 @@ def requires_internal_auth(expected_client_id):
     if expected_client_id not in current_app.config.get("INTERNAL_CLIENT_API_KEYS"):
         raise TypeError("Unknown client_id for internal auth")
 
-    request_helper.check_proxy_header_before_request()
     auth_token = _get_auth_token(request)
     client_id = _get_token_issuer(auth_token)
 
@@ -85,8 +83,6 @@ def requires_internal_auth(expected_client_id):
 
 
 def requires_auth():
-    request_helper.check_proxy_header_before_request()
-
     auth_token = _get_auth_token(request)
     issuer = _get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
 
