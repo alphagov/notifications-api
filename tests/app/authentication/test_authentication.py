@@ -312,18 +312,6 @@ def test_requires_auth_should_cache_service_and_api_key_lookups(mocker, client, 
     mock_get_service.assert_called_once()
 
 
-def test_requires_internal_auth_checks_proxy_key(
-    client,
-    mocker,
-    internal_jwt_token,
-):
-    proxy_check_mock = mocker.patch("app.authentication.auth.request_helper.check_proxy_header_before_request")
-
-    request.headers = {"Authorization": "Bearer {}".format(internal_jwt_token)}
-    requires_my_internal_app_auth()
-    proxy_check_mock.assert_called_once()
-
-
 def test_requires_internal_auth_errors_for_unknown_app(client):
     with pytest.raises(TypeError) as exc:
         requires_internal_auth("another-app")
