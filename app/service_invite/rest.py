@@ -220,7 +220,7 @@ def send_receipt_after_sending_request_invite_letter(
         personalisation={
             "name": user_requesting_invite.name,
             "service name": service.name,
-            "service admin names": [user.name for user in recipients_of_invite_request],
+            "service admin names": [f"{user.name} – {user.email_address}" for user in recipients_of_invite_request],
             "request again url": request_again_url,
         },
         notification_type=template.template_type,
