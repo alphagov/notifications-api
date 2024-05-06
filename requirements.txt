@@ -101,7 +101,9 @@ gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6
 govuk-bank-holidays==0.11
     # via notifications-utils
 greenlet==3.0.3
-    # via eventlet
+    # via
+    #   eventlet
+    #   sqlalchemy
 gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via
     #   -r requirements.in
@@ -249,7 +251,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webcolors==1.12
     # via jsonschema
-werkzeug==3.0.1
+werkzeug==3.0.3
     # via flask
 
 # The following packages are considered to be unsafe in a requirements file:
