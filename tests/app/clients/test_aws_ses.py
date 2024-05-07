@@ -70,7 +70,7 @@ def test_send_email_handles_reply_to_address(notify_api, mocker, reply_to_addres
         )
 
     boto_mock.send_email.assert_called_once_with(
-        Source=ANY, Destination=ANY, Message=ANY, ReplyToAddresses=expected_value
+        FromEmailAddress=ANY, Destination=ANY, Content=ANY, ReplyToAddresses=expected_value
     )
 
 
@@ -89,9 +89,9 @@ def test_send_email_handles_punycode_to_address(notify_api, mocker):
         )
 
     boto_mock.send_email.assert_called_once_with(
-        Source=ANY,
+        FromEmailAddress=ANY,
         Destination={"ToAddresses": ["føøøø@xn--br-yiaaaaa.com"], "CcAddresses": [], "BccAddresses": []},
-        Message=ANY,
+        Content=ANY,
         ReplyToAddresses=ANY,
     )
 

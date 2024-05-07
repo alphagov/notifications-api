@@ -58,7 +58,7 @@ class AwsSesClient(EmailClient):
     """
 
     def init_app(self, region, statsd_client, *args, **kwargs):
-        self._client = boto3.client("ses", region_name=region)
+        self._client = boto3.client("sesv2", region_name=region)
         super(AwsSesClient, self).__init__(*args, **kwargs)
         self.statsd_client = statsd_client
 
@@ -85,17 +85,17 @@ class AwsSesClient(EmailClient):
 
         try:
             response = self._client.send_email(
-                Source=from_address,
+                FromEmailAddress=from_address,
                 Destination={
                     "ToAddresses": to_addresses,
                     "CcAddresses": [],
                     "BccAddresses": [],
                 },
-                Message={
-                    "Subject": {
-                        "Data": subject,
+                Content={
+                    "Simple": {
+                        "Subject": {"Data": subject},
+                        "Body": body,
                     },
-                    "Body": body,
                 },
                 ReplyToAddresses=reply_to_addresses,
             )
