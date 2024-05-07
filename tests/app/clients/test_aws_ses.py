@@ -61,8 +61,8 @@ def test_send_email_handles_reply_to_address(notify_api, mocker, reply_to_addres
 
     with notify_api.app_context():
         aws_ses_client.send_email(
-            source=Mock(),
-            to_addresses="to@address.com",
+            from_address=Mock(),
+            to_address="to@address.com",
             subject=Mock(),
             body=Mock(),
             html_body=Mock(),
@@ -80,7 +80,7 @@ def test_send_email_handles_punycode_to_address(notify_api, mocker):
 
     with notify_api.app_context():
         aws_ses_client.send_email(
-            Mock(), to_addresses="føøøø@bååååår.com", subject=Mock(), body=Mock(), html_body=Mock()
+            from_address=Mock(), to_address="føøøø@bååååår.com", subject=Mock(), body=Mock(), html_body=Mock()
         )
 
     boto_mock.send_email.assert_called_once_with(
@@ -102,8 +102,8 @@ def test_send_email_raises_invalid_parameter_value_error_as_EmailClientNonRetrya
 
     with pytest.raises(EmailClientNonRetryableException) as excinfo:
         aws_ses_client.send_email(
-            source=Mock(),
-            to_addresses="definitely@invalid_email.com",
+            from_address=Mock(),
+            to_address="definitely@invalid_email.com",
             subject=Mock(),
             body=Mock(),
             html_body=Mock(),
@@ -120,7 +120,7 @@ def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRat
 
     with pytest.raises(AwsSesClientThrottlingSendRateException):
         aws_ses_client.send_email(
-            source=Mock(), to_addresses="foo@bar.com", subject=Mock(), body=Mock(), html_body=Mock()
+            from_address=Mock(), to_address="foo@bar.com", subject=Mock(), body=Mock(), html_body=Mock()
         )
 
 
@@ -132,7 +132,7 @@ def test_send_email_does_not_raise_AwsSesClientThrottlingSendRateException_if_no
 
     with pytest.raises(AwsSesClientException):
         aws_ses_client.send_email(
-            source=Mock(), to_addresses="foo@bar.com", subject=Mock(), body=Mock(), html_body=Mock()
+            from_address=Mock(), to_address="foo@bar.com", subject=Mock(), body=Mock(), html_body=Mock()
         )
 
 
@@ -147,7 +147,7 @@ def test_send_email_raises_other_errs_as_AwsSesClientException(mocker):
 
     with pytest.raises(AwsSesClientException) as excinfo:
         aws_ses_client.send_email(
-            source=Mock(), to_addresses="foo@bar.com", subject=Mock(), body=Mock(), html_body=Mock()
+            from_address=Mock(), to_address="foo@bar.com", subject=Mock(), body=Mock(), html_body=Mock()
         )
 
     assert "some error message from amazon" in str(excinfo.value)
