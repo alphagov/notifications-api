@@ -65,17 +65,14 @@ class AwsSesClient(EmailClient):
     def name(self):
         return "ses"
 
-    def send_email(self, source, to_addresses, subject, body, html_body="", reply_to_address=None):
+    def send_email(self, source, to_addresses, subject, *, body, html_body, reply_to_address=None):
         try:
             if isinstance(to_addresses, str):
                 to_addresses = [to_addresses]
 
             reply_to_addresses = [reply_to_address] if reply_to_address else []
 
-            body = {"Text": {"Data": body}}
-
-            if html_body:
-                body.update({"Html": {"Data": html_body}})
+            body = {"Text": {"Data": body}, "Html": {"Data": html_body}}
 
             start_time = monotonic()
             response = self._client.send_email(
