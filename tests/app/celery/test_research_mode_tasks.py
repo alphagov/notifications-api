@@ -157,11 +157,11 @@ def test_create_fake_letter_response_file_calls_dvla_callback_on_development(not
 
 
 @freeze_time("2018-01-25 14:00:30")
-def test_create_fake_letter_response_file_does_not_call_dvla_callback_on_preview(notify_api, mocker):
+def test_create_fake_letter_response_file_does_not_call_dvla_callback_with_send_letters_disabled(notify_api, mocker):
     mocker.patch("app.celery.research_mode_tasks.file_exists", return_value=False)
     mocker.patch("app.celery.research_mode_tasks.s3upload")
 
-    with set_config_values(notify_api, {"NOTIFY_ENVIRONMENT": "preview"}):
+    with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": False}):
         with requests_mock.Mocker() as request_mock:
             create_fake_letter_response_file("random-ref")
 

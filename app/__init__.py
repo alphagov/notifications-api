@@ -67,11 +67,14 @@ CONCURRENT_REQUESTS = Gauge(
 
 
 def create_app(application):
-    from app.config import configs
+    from app.config import Config, configs
 
     notify_environment = os.environ["NOTIFY_ENVIRONMENT"]
 
-    application.config.from_object(configs[notify_environment])
+    if notify_environment in configs:
+        application.config.from_object(configs[notify_environment])
+    else:
+        application.config.from_object(Config)
 
     application.config["NOTIFY_APP_NAME"] = application.name
     application.config["SQLALCHEMY_ENGINE_OPTIONS"]["connect_args"]["application_name"] = os.environ.get(
@@ -118,10 +121,6 @@ def create_app(application):
     setup_sqlalchemy_events(application)
 
     return application
-
-
-def _should_register_functional_testing_blueprint(environment):
-    return environment in {"development", "test", "preview"}
 
 
 def register_blueprint(application):
@@ -281,7 +280,7 @@ def register_blueprint(application):
     sms_rate_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(sms_rate_blueprint)
 
-    if _should_register_functional_testing_blueprint(application.config["NOTIFY_ENVIRONMENT"]):
+    if application.config["REGISTER_FUNCTIONAL_TESTING_BLUEPRINT"]:
         test_blueprint.before_request(requires_functional_test_auth)
         application.register_blueprint(test_blueprint)
 

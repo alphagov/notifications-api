@@ -120,7 +120,7 @@ class Config(object):
     NOTIFY_REQUEST_LOG_LEVEL = os.getenv("NOTIFY_REQUEST_LOG_LEVEL", "INFO")
 
     # Cronitor
-    CRONITOR_ENABLED = False
+    CRONITOR_ENABLED = os.environ.get("CRONITOR_ENABLED", "0") == "1"
     CRONITOR_KEYS = json.loads(os.environ.get("CRONITOR_KEYS", "{}"))
 
     # Antivirus
@@ -130,7 +130,7 @@ class Config(object):
     # Default config values ###
     ###########################
 
-    NOTIFY_ENVIRONMENT = "development"
+    NOTIFY_ENVIRONMENT = os.environ.get("NOTIFY_ENVIRONMENT", "development")
     AWS_REGION = "eu-west-1"
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = "api"
@@ -435,6 +435,24 @@ class Config(object):
     # basic representation.
     ZENDESK_REPORTING = json.loads(os.environ.get("ZENDESK_REPORTING", "{}").encode().decode("unicode-escape"))
 
+    NOTIFY_EMAIL_DOMAIN = os.environ.get("NOTIFY_EMAIL_DOMAIN")
+    S3_BUCKET_CSV_UPLOAD = os.environ.get("S3_BUCKET_CSV_UPLOAD")
+    S3_BUCKET_CONTACT_LIST = os.environ.get("S3_BUCKET_CONTACT_LIST")
+    S3_BUCKET_TEST_LETTERS = os.environ.get("S3_BUCKET_TEST_LETTERS")
+    S3_BUCKET_DVLA_RESPONSE = os.environ.get("S3_BUCKET_DVLA_RESPONSE")
+    S3_BUCKET_LETTERS_PDF = os.environ.get("S3_BUCKET_LETTERS_PDF")
+    S3_BUCKET_LETTERS_SCAN = os.environ.get("S3_BUCKET_LETTERS_SCAN")
+    S3_BUCKET_INVALID_PDF = os.environ.get("S3_BUCKET_INVALID_PDF")
+    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = os.environ.get("S3_BUCKET_TRANSIENT_UPLOADED_LETTERS")
+    S3_BUCKET_LETTER_SANITISE = os.environ.get("S3_BUCKET_LETTER_SANITISE")
+    FROM_NUMBER = os.environ.get("FROM_NUMBER")
+    API_RATE_LIMIT_ENABLED = os.environ.get("API_RATE_LIMIT_ENABLED", "1") == "1"
+
+    SEND_LETTERS_ENABLED = os.environ.get("SEND_LETTERS_ENABLED", "0") == "1"
+    REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = os.environ.get("REGISTER_FUNCTIONAL_TESTING_BLUEPRINT", "0") == "1"
+    SEND_ZENDESK_ALERTS_ENABLED = os.environ.get("SEND_ZENDESK_ALERTS_ENABLED", "0") == "1"
+    CHECK_SLOW_TEXT_MESSAGE_DELIVERY = os.environ.get("CHECK_SLOW_TEXT_MESSAGE_DELIVERY", "0") == "1"
+
 
 ######################
 # Config overrides ###
@@ -485,6 +503,8 @@ class Development(Config):
 
     CBC_PROXY_ENABLED = False
 
+    REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = True
+
 
 class Test(Development):
     NOTIFY_EMAIL_DOMAIN = "test.notify.com"
@@ -533,61 +553,11 @@ class Test(Development):
 
     DVLA_API_BASE_URL = "https://test-dvla-api.com"
 
+    REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = True
 
-class Preview(Config):
-    NOTIFY_EMAIL_DOMAIN = "notify.works"
-    NOTIFY_ENVIRONMENT = "preview"
-    S3_BUCKET_CSV_UPLOAD = "preview-notifications-csv-upload"
-    S3_BUCKET_CONTACT_LIST = "preview-contact-list"
-    S3_BUCKET_TEST_LETTERS = "preview-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "notify.works-ftp"
-    S3_BUCKET_LETTERS_PDF = "preview-letters-pdf"
-    S3_BUCKET_LETTERS_SCAN = "preview-letters-scan"
-    S3_BUCKET_INVALID_PDF = "preview-letters-invalid-pdf"
-    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "preview-transient-uploaded-letters"
-    S3_BUCKET_LETTER_SANITISE = "preview-letters-sanitise"
-    FROM_NUMBER = "preview"
-    API_RATE_LIMIT_ENABLED = True
-    DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
+    SEND_LETTERS_ENABLED = True
 
-
-class Staging(Config):
-    NOTIFY_EMAIL_DOMAIN = "staging-notify.works"
-    NOTIFY_ENVIRONMENT = "staging"
-    S3_BUCKET_CSV_UPLOAD = "staging-notifications-csv-upload"
-    S3_BUCKET_CONTACT_LIST = "staging-contact-list"
-    S3_BUCKET_TEST_LETTERS = "staging-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "staging-notify.works-ftp"
-    S3_BUCKET_LETTERS_PDF = "staging-letters-pdf"
-    S3_BUCKET_LETTERS_SCAN = "staging-letters-scan"
-    S3_BUCKET_INVALID_PDF = "staging-letters-invalid-pdf"
-    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "staging-transient-uploaded-letters"
-    S3_BUCKET_LETTER_SANITISE = "staging-letters-sanitise"
-    FROM_NUMBER = "stage"
-    API_RATE_LIMIT_ENABLED = True
-    DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
-
-
-class Production(Config):
-    NOTIFY_EMAIL_DOMAIN = "notifications.service.gov.uk"
-    NOTIFY_ENVIRONMENT = "production"
-    S3_BUCKET_CSV_UPLOAD = "live-notifications-csv-upload"
-    S3_BUCKET_CONTACT_LIST = "production-contact-list"
-    S3_BUCKET_TEST_LETTERS = "production-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "notifications.service.gov.uk-ftp"
-    S3_BUCKET_LETTERS_PDF = "production-letters-pdf"
-    S3_BUCKET_LETTERS_SCAN = "production-letters-scan"
-    S3_BUCKET_INVALID_PDF = "production-letters-invalid-pdf"
-    S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "production-transient-uploaded-letters"
-    S3_BUCKET_LETTER_SANITISE = "production-letters-sanitise"
-    FROM_NUMBER = "GOVUK"
-    API_RATE_LIMIT_ENABLED = True
-    SES_STUB_URL = None
-
-    CRONITOR_ENABLED = True
-
-    DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://driver-vehicle-licensing.api.gov.uk")
-    DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS", "must-supply-tls-ciphers")
+    SEND_ZENDESK_ALERTS_ENABLED = True
 
 
 class CloudFoundryConfig(Config):
@@ -611,8 +581,5 @@ class Sandbox(CloudFoundryConfig):
 configs = {
     "development": Development,
     "test": Test,
-    "production": Production,
-    "staging": Staging,
-    "preview": Preview,
     "sandbox": Sandbox,
 }

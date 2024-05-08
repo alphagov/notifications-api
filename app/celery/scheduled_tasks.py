@@ -221,7 +221,7 @@ def generate_sms_delivery_stats():
 
         # For the 5-minute delivery interval, let's check the percentage of all text messages sent that were slow.
         # TODO: delete this when we have a way to raise these alerts from eg grafana, prometheus, something else.
-        if delivery_interval == 5 and current_app.is_prod:
+        if delivery_interval == 5 and current_app.should_check_slow_text_message_delivery:
             _check_slow_text_message_delivery_reports_and_raise_error_if_needed(providers_slow_delivery_reports)
 
 

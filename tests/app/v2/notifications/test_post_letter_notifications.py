@@ -227,9 +227,8 @@ def test_post_letter_notification_throws_error_for_bad_address(
     assert error_json["errors"] == [{"error": "ValidationError", "message": expected_error}]
 
 
-@pytest.mark.parametrize("env", ["staging", "production"])
 def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_delivered(
-    notify_api, api_client_request, sample_letter_template, mocker, env
+    notify_api, api_client_request, sample_letter_template, mocker
 ):
     data = {
         "template_id": str(sample_letter_template.id),
@@ -248,7 +247,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
         "app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async"
     )
 
-    with set_config_values(notify_api, {"NOTIFY_ENVIRONMENT": env}):
+    with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": True}):
         api_client_request.post(
             sample_letter_template.service_id,
             "v2_notifications.post_notification",
@@ -265,15 +264,8 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
     assert notification.updated_at is not None
 
 
-@pytest.mark.parametrize(
-    "env",
-    [
-        "development",
-        "preview",
-    ],
-)
 def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_sending_and_sends_fake_response_file(
-    notify_api, api_client_request, sample_letter_template, mocker, env
+    notify_api, api_client_request, sample_letter_template, mocker
 ):
     data = {
         "template_id": str(sample_letter_template.id),
@@ -291,7 +283,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
     fake_create_dvla_response_task = mocker.patch(
         "app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async"
     )
-    with set_config_values(notify_api, {"NOTIFY_ENVIRONMENT": env}):
+    with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": False}):
         api_client_request.post(
             sample_letter_template.service_id,
             "v2_notifications.post_notification",
