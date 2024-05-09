@@ -74,7 +74,7 @@ class AwsSesClient(EmailClient):
         subject: str,
         body: str,
         html_body: str,
-        reply_to_address: Optional[str] = None,
+        reply_to_address: Optional[str],
     ) -> str:
         try:
             reply_to_addresses = [reply_to_address] if reply_to_address else []
