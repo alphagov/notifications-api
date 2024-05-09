@@ -1,5 +1,5 @@
 from time import monotonic
-from typing import Optional
+from typing import Dict, List, Optional
 
 import boto3
 import botocore
@@ -75,6 +75,7 @@ class AwsSesClient(EmailClient):
         body: str,
         html_body: str,
         reply_to_address: Optional[str],
+        headers: List[Dict[str, str]],
     ) -> str:
         reply_to_addresses = [punycode_encode_email(reply_to_address)] if reply_to_address else []
         to_addresses = [punycode_encode_email(to_address)]
@@ -95,6 +96,7 @@ class AwsSesClient(EmailClient):
                     "Simple": {
                         "Subject": {"Data": subject},
                         "Body": body,
+                        "Headers": headers,
                     },
                 },
                 ReplyToAddresses=reply_to_addresses,

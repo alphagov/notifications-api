@@ -164,6 +164,7 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
         subject="Jo <em>some HTML</em>",
         body="Hello Jo\nThis is an email from GOV.\u200bUK with <em>some HTML</em>\n",
         html_body=ANY,
+        headers=[],
         reply_to_address=None,
     )
 
@@ -378,7 +379,13 @@ def test_send_email_should_use_service_reply_to_email(sample_service, sample_ema
     )
 
     app.aws_ses_client.send_email.assert_called_once_with(
-        from_address=ANY, to_address=ANY, subject=ANY, body=ANY, html_body=ANY, reply_to_address="foo@bar.com"
+        from_address=ANY,
+        to_address=ANY,
+        subject=ANY,
+        body=ANY,
+        html_body=ANY,
+        headers=[],
+        reply_to_address="foo@bar.com",
     )
 
 
@@ -394,7 +401,13 @@ def test_send_email_works_with_and_without_email_branding(request, service_fixtu
     )
 
     app.aws_ses_client.send_email.assert_called_once_with(
-        from_address=ANY, to_address=ANY, subject=ANY, body=ANY, html_body=ANY, reply_to_address="foo@bar.com"
+        from_address=ANY,
+        to_address=ANY,
+        subject=ANY,
+        body=ANY,
+        html_body=ANY,
+        headers=[],
+        reply_to_address="foo@bar.com",
     )
 
 
@@ -677,7 +690,13 @@ def test_send_email_to_provider_uses_reply_to_from_notification(sample_email_tem
     )
 
     app.aws_ses_client.send_email.assert_called_once_with(
-        from_address=ANY, to_address=ANY, subject=ANY, body=ANY, html_body=ANY, reply_to_address="test@test.com"
+        from_address=ANY,
+        to_address=ANY,
+        subject=ANY,
+        body=ANY,
+        html_body=ANY,
+        headers=[],
+        reply_to_address="test@test.com",
     )
 
 
@@ -693,6 +712,7 @@ def test_send_email_to_provider_uses_custom_email_sender_name_if_set(sample_emai
         subject=ANY,
         body=ANY,
         html_body=ANY,
+        headers=[],
         reply_to_address=ANY,
     )
 
@@ -723,6 +743,7 @@ def test_send_email_to_provider_should_user_normalised_to(mocker, client, sample
         subject=ANY,
         body=ANY,
         html_body=ANY,
+        headers=[],
         reply_to_address=notification.reply_to_text,
     )
 
@@ -786,6 +807,7 @@ def test_send_email_to_provider_should_return_template_if_found_in_redis(mocker,
         subject=ANY,
         body=ANY,
         html_body=ANY,
+        headers=[],
         reply_to_address=notification.reply_to_text,
     )
 
@@ -819,3 +841,20 @@ def test_get_html_email_options_add_email_branding_from_service(sample_service):
         "brand_text": branding.text,
         "brand_alt_text": branding.alt_text,
     }
+
+
+def test_send_email_to_provider_sends_unsubscribe_link(sample_email_template, mocker):
+    mocker.patch("app.aws_ses_client.send_email", return_value="reference")
+
+    db_notification = create_notification(template=sample_email_template, unsubscribe_link="https://example.com")
+
+    expected_headers = [
+        {"List-Unsubscribe": "<https://example.com>"},
+        {"List-Unsubscribe-Post": "List-Unsubscribe=One-Click"},
+    ]
+
+    send_to_providers.send_email_to_provider(
+        db_notification,
+    )
+    app.aws_ses_client.send_email.assert_called_once()
+    assert app.aws_ses_client.send_email.call_args[1]["headers"] == expected_headers
