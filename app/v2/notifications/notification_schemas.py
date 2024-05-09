@@ -4,7 +4,7 @@ from app.constants import (
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_TYPES,
 )
-from app.schema_validation.definitions import personalisation, uuid
+from app.schema_validation.definitions import https_url, personalisation, uuid
 
 template = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -202,7 +202,7 @@ post_email_request = {
         "personalisation": personalisation,
         "scheduled_for": {"type": ["string", "null"], "format": "datetime_within_next_day"},
         "email_reply_to_id": uuid,
-        "unsubscribe_link": {"type": "string", "format": "uri"},
+        "unsubscribe_link": https_url,
     },
     "required": ["email_address", "template_id"],
     "additionalProperties": False,
