@@ -76,16 +76,18 @@ class AwsSesClient(EmailClient):
         html_body: str,
         reply_to_address: Optional[str],
     ) -> str:
+        reply_to_addresses = [punycode_encode_email(reply_to_address)] if reply_to_address else []
+        to_addresses = [punycode_encode_email(to_address)]
+
+        body = {"Text": {"Data": body}, "Html": {"Data": html_body}}
+
+        start_time = monotonic()
+
         try:
-            reply_to_addresses = [reply_to_address] if reply_to_address else []
-
-            body = {"Text": {"Data": body}, "Html": {"Data": html_body}}
-
-            start_time = monotonic()
             response = self._client.send_email(
                 Source=from_address,
                 Destination={
-                    "ToAddresses": [punycode_encode_email(to_address)],
+                    "ToAddresses": to_addresses,
                     "CcAddresses": [],
                     "BccAddresses": [],
                 },
@@ -95,7 +97,7 @@ class AwsSesClient(EmailClient):
                     },
                     "Body": body,
                 },
-                ReplyToAddresses=[punycode_encode_email(addr) for addr in reply_to_addresses],
+                ReplyToAddresses=reply_to_addresses,
             )
         except botocore.exceptions.ClientError as e:
             self.statsd_client.incr("clients.ses.error")
