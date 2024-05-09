@@ -110,8 +110,8 @@ def _get_email_headers(notification: Notification) -> List[Dict[str, str]]:
 
     if notification.unsubscribe_link:
         headers += [
-            {"List-Unsubscribe": f"<{notification.unsubscribe_link}>"},
-            {"List-Unsubscribe-Post": "List-Unsubscribe=One-Click"},
+            {"Name": "List-Unsubscribe", "Value": f"<{notification.unsubscribe_link}>"},
+            {"Name": "List-Unsubscribe-Post", "Value": "List-Unsubscribe=One-Click"},
         ]
 
     return headers

@@ -849,8 +849,8 @@ def test_send_email_to_provider_sends_unsubscribe_link(sample_email_template, mo
     db_notification = create_notification(template=sample_email_template, unsubscribe_link="https://example.com")
 
     expected_headers = [
-        {"List-Unsubscribe": "<https://example.com>"},
-        {"List-Unsubscribe-Post": "List-Unsubscribe=One-Click"},
+        {"Name": "List-Unsubscribe", "Value": "<https://example.com>"},
+        {"Name": "List-Unsubscribe-Post", "Value": "List-Unsubscribe=One-Click"},
     ]
 
     send_to_providers.send_email_to_provider(
