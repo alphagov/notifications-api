@@ -134,9 +134,9 @@ def send_email_to_provider(notification):
             )
 
             reference = provider.send_email(
-                from_address,
-                notification.normalised_to,
-                plain_text_email.subject,
+                from_address=from_address,
+                to_address=notification.normalised_to,
+                subject=plain_text_email.subject,
                 body=str(plain_text_email),
                 html_body=str(html_email),
                 reply_to_address=notification.reply_to_text,

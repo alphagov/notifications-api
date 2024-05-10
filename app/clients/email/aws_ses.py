@@ -1,4 +1,5 @@
 from time import monotonic
+from typing import Optional
 
 import boto3
 import botocore
@@ -57,7 +58,7 @@ class AwsSesClient(EmailClient):
     """
 
     def init_app(self, region, statsd_client, *args, **kwargs):
-        self._client = boto3.client("ses", region_name=region)
+        self._client = boto3.client("sesv2", region_name=region)
         super(AwsSesClient, self).__init__(*args, **kwargs)
         self.statsd_client = statsd_client
 
@@ -65,33 +66,38 @@ class AwsSesClient(EmailClient):
     def name(self):
         return "ses"
 
-    def send_email(self, source, to_addresses, subject, body, html_body="", reply_to_address=None):
+    def send_email(
+        self,
+        *,
+        from_address: str,
+        to_address: str,
+        subject: str,
+        body: str,
+        html_body: str,
+        reply_to_address: Optional[str],
+    ) -> str:
+        reply_to_addresses = [punycode_encode_email(reply_to_address)] if reply_to_address else []
+        to_addresses = [punycode_encode_email(to_address)]
+
+        body = {"Text": {"Data": body}, "Html": {"Data": html_body}}
+
+        start_time = monotonic()
+
         try:
-            if isinstance(to_addresses, str):
-                to_addresses = [to_addresses]
-
-            reply_to_addresses = [reply_to_address] if reply_to_address else []
-
-            body = {"Text": {"Data": body}}
-
-            if html_body:
-                body.update({"Html": {"Data": html_body}})
-
-            start_time = monotonic()
             response = self._client.send_email(
-                Source=source,
+                FromEmailAddress=from_address,
                 Destination={
-                    "ToAddresses": [punycode_encode_email(addr) for addr in to_addresses],
+                    "ToAddresses": to_addresses,
                     "CcAddresses": [],
                     "BccAddresses": [],
                 },
-                Message={
-                    "Subject": {
-                        "Data": subject,
+                Content={
+                    "Simple": {
+                        "Subject": {"Data": subject},
+                        "Body": body,
                     },
-                    "Body": body,
                 },
-                ReplyToAddresses=[punycode_encode_email(addr) for addr in reply_to_addresses],
+                ReplyToAddresses=reply_to_addresses,
             )
         except botocore.exceptions.ClientError as e:
             self.statsd_client.incr("clients.ses.error")

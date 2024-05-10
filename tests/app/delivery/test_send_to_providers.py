@@ -159,9 +159,9 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     send_to_providers.send_email_to_provider(db_notification)
 
     app.aws_ses_client.send_email.assert_called_once_with(
-        '"Sample service" <sample.service@test.notify.com>',
-        "jo.smith@example.com",
-        "Jo <em>some HTML</em>",
+        from_address='"Sample service" <sample.service@test.notify.com>',
+        to_address="jo.smith@example.com",
+        subject="Jo <em>some HTML</em>",
         body="Hello Jo\nThis is an email from GOV.\u200bUK with <em>some HTML</em>\n",
         html_body=ANY,
         reply_to_address=None,
@@ -378,7 +378,7 @@ def test_send_email_should_use_service_reply_to_email(sample_service, sample_ema
     )
 
     app.aws_ses_client.send_email.assert_called_once_with(
-        ANY, ANY, ANY, body=ANY, html_body=ANY, reply_to_address="foo@bar.com"
+        from_address=ANY, to_address=ANY, subject=ANY, body=ANY, html_body=ANY, reply_to_address="foo@bar.com"
     )
 
 
@@ -394,7 +394,7 @@ def test_send_email_works_with_and_without_email_branding(request, service_fixtu
     )
 
     app.aws_ses_client.send_email.assert_called_once_with(
-        ANY, ANY, ANY, body=ANY, html_body=ANY, reply_to_address="foo@bar.com"
+        from_address=ANY, to_address=ANY, subject=ANY, body=ANY, html_body=ANY, reply_to_address="foo@bar.com"
     )
 
 
@@ -677,7 +677,7 @@ def test_send_email_to_provider_uses_reply_to_from_notification(sample_email_tem
     )
 
     app.aws_ses_client.send_email.assert_called_once_with(
-        ANY, ANY, ANY, body=ANY, html_body=ANY, reply_to_address="test@test.com"
+        from_address=ANY, to_address=ANY, subject=ANY, body=ANY, html_body=ANY, reply_to_address="test@test.com"
     )
 
 
@@ -688,9 +688,9 @@ def test_send_email_to_provider_uses_custom_email_sender_name_if_set(sample_emai
     send_to_providers.send_email_to_provider(sample_email_notification)
 
     app.aws_ses_client.send_email.assert_called_once_with(
-        '"Custom Sender Name" <custom.sender.name@test.notify.com>',
-        ANY,
-        ANY,
+        from_address='"Custom Sender Name" <custom.sender.name@test.notify.com>',
+        to_address=ANY,
+        subject=ANY,
         body=ANY,
         html_body=ANY,
         reply_to_address=ANY,
@@ -718,7 +718,12 @@ def test_send_email_to_provider_should_user_normalised_to(mocker, client, sample
 
     send_to_providers.send_email_to_provider(notification)
     send_mock.assert_called_once_with(
-        ANY, notification.normalised_to, ANY, body=ANY, html_body=ANY, reply_to_address=notification.reply_to_text
+        from_address=ANY,
+        to_address=notification.normalised_to,
+        subject=ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=notification.reply_to_text,
     )
 
 
@@ -776,7 +781,12 @@ def test_send_email_to_provider_should_return_template_if_found_in_redis(mocker,
     assert mock_get_template.called is False
     assert mock_get_service.called is False
     send_mock.assert_called_once_with(
-        ANY, notification.normalised_to, ANY, body=ANY, html_body=ANY, reply_to_address=notification.reply_to_text
+        from_address=ANY,
+        to_address=notification.normalised_to,
+        subject=ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=notification.reply_to_text,
     )
 
 
