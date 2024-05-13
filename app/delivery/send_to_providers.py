@@ -1,5 +1,6 @@
 import random
 from datetime import datetime, timedelta
+from typing import Dict, List
 from urllib import parse
 
 from cachetools import TTLCache, cached
@@ -33,6 +34,7 @@ from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
 )
 from app.exceptions import NotificationTechnicalFailureException
+from app.models import Notification
 from app.serialised_models import SerialisedService, SerialisedTemplate
 
 
@@ -103,6 +105,18 @@ def send_sms_to_provider(notification):
                 statsd_client.timing("sms.live-key.not-high-volume.total-time", delta_seconds)
 
 
+def _get_email_headers(notification: Notification) -> List[Dict[str, str]]:
+    headers = []
+
+    if notification.unsubscribe_link:
+        headers += [
+            {"Name": "List-Unsubscribe", "Value": f"<{notification.unsubscribe_link}>"},
+            {"Name": "List-Unsubscribe-Post", "Value": "List-Unsubscribe=One-Click"},
+        ]
+
+    return headers
+
+
 def send_email_to_provider(notification):
     service = SerialisedService.from_id(notification.service_id)
 
@@ -140,6 +154,7 @@ def send_email_to_provider(notification):
                 body=str(plain_text_email),
                 html_body=str(html_email),
                 reply_to_address=notification.reply_to_text,
+                headers=_get_email_headers(notification),
             )
             notification.reference = reference
             update_notification_to_sending(notification, provider)

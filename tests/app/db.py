@@ -257,6 +257,7 @@ def create_notification(
     created_by_id=None,
     postage=None,
     document_download_count=None,
+    unsubscribe_link=None,
 ):
     assert job or template
     if job:
@@ -312,6 +313,7 @@ def create_notification(
         "created_by_id": created_by_id,
         "postage": postage,
         "document_download_count": document_download_count,
+        "unsubscribe_link": unsubscribe_link,
     }
     notification = Notification(**data)
     dao_create_notification(notification)

@@ -66,6 +66,7 @@ def test_send_email_handles_reply_to_address(notify_api, mocker, reply_to_addres
             subject=Mock(),
             body=Mock(),
             html_body=Mock(),
+            headers=Mock(),
             reply_to_address=reply_to_address,
         )
 
@@ -86,6 +87,7 @@ def test_send_email_handles_punycode_to_address(notify_api, mocker):
             body=Mock(),
             html_body=Mock(),
             reply_to_address=None,
+            headers=Mock(),
         )
 
     boto_mock.send_email.assert_called_once_with(
@@ -93,6 +95,39 @@ def test_send_email_handles_punycode_to_address(notify_api, mocker):
         Destination={"ToAddresses": ["føøøø@xn--br-yiaaaaa.com"], "CcAddresses": [], "BccAddresses": []},
         Content=ANY,
         ReplyToAddresses=ANY,
+    )
+
+
+def test_send_email_sends_content_correctly(notify_api, mocker):
+    boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
+    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
+
+    mock_subject = Mock()
+    mock_body = Mock()
+    mock_html_body = Mock()
+    mock_headers = Mock()
+    with notify_api.app_context():
+        aws_ses_client.send_email(
+            from_address=Mock(),
+            to_address="foo@bar.com",
+            reply_to_address=None,
+            subject=mock_subject,
+            body=mock_body,
+            html_body=mock_html_body,
+            headers=mock_headers,
+        )
+
+    boto_mock.send_email.assert_called_once_with(
+        FromEmailAddress=ANY,
+        Destination=ANY,
+        ReplyToAddresses=ANY,
+        Content={
+            "Simple": {
+                "Subject": {"Data": mock_subject},
+                "Body": {"Text": {"Data": mock_body}, "Html": {"Data": mock_html_body}},
+                "Headers": mock_headers,
+            }
+        },
     )
 
 
@@ -113,6 +148,7 @@ def test_send_email_raises_invalid_parameter_value_error_as_EmailClientNonRetrya
             body=Mock(),
             html_body=Mock(),
             reply_to_address=None,
+            headers=Mock(),
         )
 
     assert "some error message from amazon" in str(excinfo.value)
@@ -132,6 +168,7 @@ def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRat
             body=Mock(),
             html_body=Mock(),
             reply_to_address=None,
+            headers=Mock(),
         )
 
 
@@ -149,6 +186,7 @@ def test_send_email_does_not_raise_AwsSesClientThrottlingSendRateException_if_no
             body=Mock(),
             html_body=Mock(),
             reply_to_address=None,
+            headers=Mock(),
         )
 
 
@@ -169,6 +207,7 @@ def test_send_email_raises_other_errs_as_AwsSesClientException(mocker):
             body=Mock(),
             html_body=Mock(),
             reply_to_address=None,
+            headers=Mock(),
         )
 
     assert "some error message from amazon" in str(excinfo.value)
