@@ -29,13 +29,13 @@ def upgrade():
         )
         # 3
         op.drop_index(
-            "ix_services_history_created_by_id",
+            "ix_services_history_created_by_id",  # can't remove index from model as this is based on services table
             table_name="services_history",
             postgresql_concurrently=True,
         )
         # 4
         op.drop_index(
-            "ix_services_history_organisation_id",
+            "ix_services_history_organisation_id",  # can't remove index from model as this is based on services table
             table_name="services_history",
             postgresql_concurrently=True,
         )

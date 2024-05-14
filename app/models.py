@@ -93,7 +93,7 @@ class User(db.Model):
     __tablename__ = "users"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = db.Column(db.String, nullable=False, index=True, unique=False)
+    name = db.Column(db.String, nullable=False, unique=False)
     email_address = db.Column(db.String(255), nullable=False, index=True, unique=True)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -1857,7 +1857,7 @@ class InboundSms(db.Model):
 class InboundSmsHistory(db.Model):
     __tablename__ = "inbound_sms_history"
     id = db.Column(UUID(as_uuid=True), primary_key=True)
-    created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)
+    created_at = db.Column(db.DateTime, unique=False, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False)
     service = db.relationship("Service")
     notify_number = db.Column(db.String, nullable=False)
@@ -1949,7 +1949,7 @@ class DailySortedLetter(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     billing_day = db.Column(db.Date, nullable=False, index=True)
-    file_name = db.Column(db.String, nullable=True, index=True)
+    file_name = db.Column(db.String, nullable=True)
     unsorted_count = db.Column(db.Integer, nullable=False, default=0)
     sorted_count = db.Column(db.Integer, nullable=False, default=0)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
