@@ -23,7 +23,7 @@ def upgrade():
         )
         # 7
         op.drop_index(
-            "ix_api_keys_history_created_by_id",
+            "ix_api_keys_history_created_by_id",  # can't remove index from model as this is based on api_keys table
             table_name="api_keys_history",
             postgresql_concurrently=True,
         )

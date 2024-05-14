@@ -107,7 +107,7 @@ class User(db.Model):
     state = db.Column(db.String, nullable=False, default="pending")
     platform_admin = db.Column(db.Boolean, nullable=False, default=False)
     current_session_id = db.Column(UUID(as_uuid=True), nullable=True)
-    auth_type = db.Column(db.String, db.ForeignKey("auth_type.name"), index=True, nullable=False, default=SMS_AUTH_TYPE)
+    auth_type = db.Column(db.String, db.ForeignKey("auth_type.name"), nullable=False, default=SMS_AUTH_TYPE)
     email_access_validated_at = db.Column(
         db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow
     )
@@ -922,7 +922,7 @@ class ApiKey(db.Model, Versioned):
     _secret = db.Column("secret", db.String(255), unique=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
     service = db.relationship("Service", backref="api_keys")
-    key_type = db.Column(db.String(255), db.ForeignKey("key_types.name"), index=True, nullable=False)
+    key_type = db.Column(db.String(255), db.ForeignKey("key_types.name"), nullable=False)
     expiry_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
