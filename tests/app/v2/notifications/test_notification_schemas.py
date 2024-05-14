@@ -251,13 +251,13 @@ def test_post_email_schema_invalid_email_address(email_address, err_msg):
 @pytest.mark.parametrize(
     "unsubscribe_link, err_msg",
     [
-        ("http://www.unsubscribe-me-please.com", "unsubscribe_link is not a valid https url"),
-        ("www.unsubscribe-me-please.com", "unsubscribe_link is not a valid https url"),
+        ("http://www.unsubscribe-me-please.com", "one_click_unsubscribe_url is not a valid https url"),
+        ("www.unsubscribe-me-please.com", "one_click_unsubscribe_url is not a valid https url"),
     ],
 )
 def test_post_email_schema_invalid_unsubscribe_link(unsubscribe_link, err_msg):
     j_son = valid_post_email_json_with_optionals
-    j_son["unsubscribe_link"] = unsubscribe_link
+    j_son["one_click_unsubscribe_url"] = unsubscribe_link
     with pytest.raises(ValidationError) as e:
         validate(j_son, post_email_request_schema)
 

@@ -160,7 +160,7 @@ def post_notification(notification_type):
             template_process_type=template.process_type,
             service=authenticated_service,
             reply_to_text=reply_to,
-            unsubscribe_link=form.get("unsubscribe_link", None),
+            unsubscribe_link=form.get("one_click_unsubscribe_url", None),
         )
 
     return jsonify(notification), 201

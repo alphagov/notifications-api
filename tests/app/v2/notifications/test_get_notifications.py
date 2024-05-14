@@ -58,7 +58,7 @@ def test_get_notification_by_id_returns_200(api_client_request, billable_units, 
         "completed_at": sample_notification.completed_at(),
         "scheduled_for": None,
         "postage": None,
-        "unsubscribe_link": None,
+        "one_click_unsubscribe_url": None,
     }
 
     assert json_response == expected_response
@@ -106,7 +106,7 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         "completed_at": sample_notification.completed_at(),
         "scheduled_for": None,
         "postage": None,
-        "unsubscribe_link": None,
+        "one_click_unsubscribe_url": None,
     }
 
     assert json_response == expected_response

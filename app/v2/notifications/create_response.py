@@ -27,7 +27,7 @@ def create_post_email_response_from_notification(
         "from_email": email_from,
         "body": content,
         "subject": subject,
-        "unsubscribe_link": unsubscribe_link,
+        "one_click_unsubscribe_url": unsubscribe_link,
     }
     return response
 
