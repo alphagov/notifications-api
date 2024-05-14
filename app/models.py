@@ -112,6 +112,7 @@ class User(db.Model):
         db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow
     )
     take_part_in_research = db.Column(db.Boolean, nullable=False, default=True)
+    receives_new_features_email = db.Column(db.Boolean, nullable=False, default=True)
 
     # either email auth or a mobile number must be provided
     __table_args__ = (CheckConstraint("auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null"),)
@@ -193,6 +194,7 @@ class User(db.Model):
             "can_use_webauthn": self.can_use_webauthn,
             "state": self.state,
             "take_part_in_research": self.take_part_in_research,
+            "receives_new_features_email": self.receives_new_features_email,
         }
 
     def serialize_for_users_list(self):
