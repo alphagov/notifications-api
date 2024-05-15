@@ -1032,7 +1032,7 @@ def test_post_email_notification_with_unsubscribe_link_returns_201(api_client_re
     data = {
         "email_address": sample_email_template.service.users[0].email_address,
         "template_id": sample_email_template.id,
-        "unsubscribe_link": unsubscribe_link,
+        "one_click_unsubscribe_url": unsubscribe_link,
     }
 
     response_json = api_client_request.post(
@@ -1046,7 +1046,7 @@ def test_post_email_notification_with_unsubscribe_link_returns_201(api_client_re
     notification = Notification.query.first()
     assert response_json["id"] == str(notification.id)
 
-    assert notification.unsubscribe_link == unsubscribe_link == response_json["content"]["unsubscribe_link"]
+    assert notification.unsubscribe_link == unsubscribe_link == response_json["content"]["one_click_unsubscribe_url"]
     assert mocked.called
 
 
