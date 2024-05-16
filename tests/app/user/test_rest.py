@@ -51,7 +51,7 @@ def test_get_user_list(admin_request, sample_service):
 
 def test_get_user(admin_request, sample_service, sample_organisation):
     """
-    Tests GET endpoint '/<user_id>' to retrieve a single service.
+    Tests GET endpoint '/<user_id>' to retrieve a single user.
     """
     sample_user = sample_service.users[0]
     sample_user.organisations = [sample_organisation]
@@ -60,17 +60,28 @@ def test_get_user(admin_request, sample_service, sample_organisation):
     expected_permissions = default_service_permissions
     fetched = json_resp["data"]
 
+    assert len(fetched) == 19
+
     assert fetched["id"] == str(sample_user.id)
     assert fetched["name"] == sample_user.name
-    assert fetched["mobile_number"] == sample_user.mobile_number
     assert fetched["email_address"] == sample_user.email_address
-    assert fetched["state"] == sample_user.state
     assert fetched["auth_type"] == SMS_AUTH_TYPE
-    assert fetched["permissions"].keys() == {str(sample_service.id)}
-    assert fetched["services"] == [str(sample_service.id)]
+    assert fetched["current_session_id"] is None
+    assert fetched["failed_login_count"] == 0
+    assert fetched["email_access_validated_at"]
+    assert fetched["logged_in_at"] is None
+    assert fetched["mobile_number"] == sample_user.mobile_number
     assert fetched["organisations"] == [str(sample_organisation.id)]
-    assert fetched["can_use_webauthn"] is False
+    assert fetched["password_changed_at"]
+    assert fetched["permissions"].keys() == {str(sample_service.id)}
     assert sorted(fetched["permissions"][str(sample_service.id)]) == sorted(expected_permissions)
+    assert fetched["organisation_permissions"] == {str(sample_organisation.id): []}
+    assert fetched["platform_admin"] is False
+    assert fetched["services"] == [str(sample_service.id)]
+    assert fetched["can_use_webauthn"] is False
+    assert fetched["state"] == sample_user.state
+    assert fetched["take_part_in_research"] is True
+    assert fetched["receives_new_features_email"] is True
 
 
 def test_get_user_doesnt_return_inactive_services_and_orgs(admin_request, sample_service, sample_organisation):
@@ -215,7 +226,13 @@ def test_cannot_create_user_with_empty_strings(admin_request, notify_db_session)
 
 @pytest.mark.parametrize(
     "user_attribute, user_value",
-    [("name", "New User"), ("email_address", "newuser@mail.com"), ("mobile_number", "+4407700900460")],
+    [
+        ("name", "New User"),
+        ("email_address", "newuser@mail.com"),
+        ("mobile_number", "+4407700900460"),
+        ("take_part_in_research", False),
+        ("receives_new_features_email", False),
+    ],
 )
 def test_post_user_attribute(admin_request, sample_user, user_attribute, user_value):
     assert getattr(sample_user, user_attribute) != user_value
