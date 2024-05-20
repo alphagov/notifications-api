@@ -4,11 +4,12 @@ ruff==0.3.7  # Also update `.pre-commit-config.yaml` if this changes
 
 flaky==3.7.0
 moto==4.0.11
-pytest==7.1.3
-pytest-env==0.6.2
-pytest-mock==3.9.0
-pytest-cov==4.0.0
-pytest-xdist==2.5.0
+pytest==7.2.0
+pytest-env==0.8.1
+pytest-mock==3.10.0
+pytest-xdist==3.0.2
+pytest-testmon==2.1.0
+pytest-watch==4.2.0
 freezegun==1.2.2
 requests-mock==1.10.0
 

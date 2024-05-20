@@ -494,7 +494,7 @@ def test_persist_letter_notification_finds_correct_postage(
     assert persisted_notification.postage == expected_postage
 
 
-def test_persist_notification_with_billable_units_stores_correct_info(mocker):
+def test_persist_notification_with_billable_units_stores_correct_info(notify_db_session, mocker):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type=LETTER_TYPE)
     mocker.patch("app.dao.templates_dao.dao_get_template_by_id", return_value=template)

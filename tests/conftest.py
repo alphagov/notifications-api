@@ -110,6 +110,11 @@ def _notify_db(notify_api, worker_id):
         },
     )
 
+    # now db is initialised, run cleanup on it to remove any artifacts from migrations (such as the notify service and
+    # templates). Otherwise the very first test executed by a worker will be running on a different db setup to
+    # other tests that run later.
+    _clean_database(db)
+
     with notify_api.app_context():
         yield db
 
@@ -138,8 +143,12 @@ def notify_db_session(_notify_db, sms_providers):
     """
     yield _notify_db.session
 
-    _notify_db.session.remove()
-    for tbl in reversed(_notify_db.metadata.sorted_tables):
+    _clean_database(_notify_db)
+
+
+def _clean_database(_db):
+    _db.session.remove()
+    for tbl in reversed(_db.metadata.sorted_tables):
         if tbl.name not in [
             "provider_details",
             "key_types",
@@ -159,8 +168,8 @@ def notify_db_session(_notify_db, sms_providers):
             "broadcast_provider_types",
             "default_annual_allowance",
         ]:
-            _notify_db.engine.execute(tbl.delete())
-    _notify_db.session.commit()
+            _db.engine.execute(tbl.delete())
+    _db.session.commit()
 
 
 @pytest.fixture
