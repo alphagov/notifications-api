@@ -93,6 +93,10 @@ test: ## Run tests
 	black --check .
 	pytest -n auto --maxfail=10
 
+.PHONY: watch-tests
+watch-tests: ## Watch tests and run on change
+	ptw --runner "pytest --testmon -n auto"
+
 .PHONY: freeze-requirements
 freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt
 	pip install --upgrade pip-tools

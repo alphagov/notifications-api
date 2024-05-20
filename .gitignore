@@ -49,6 +49,7 @@ htmlcov/
 coverage.xml
 test_results.xml
 *,cover
+.testmondata*
 
 # Translations
 *.mo
