@@ -67,7 +67,7 @@ from tests.app.db import (
     create_template,
     create_user,
 )
-from tests.conftest import set_config
+from tests.conftest import set_config, set_config_values
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_db_session, mocker):
@@ -159,19 +159,19 @@ def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
 
 
 @pytest.mark.parametrize(
-    "environment, expect_check_slow_delivery",
+    "slow_delivery_config_option, expect_check_slow_delivery",
     (
         (
-            "preview",
+            False,
             False,
         ),
         (
-            "production",
+            True,
             True,
         ),
     ),
 )
-def test_generate_sms_delivery_stats(environment, expect_check_slow_delivery, mocker, notify_api):
+def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_slow_delivery, mocker, notify_api):
     slow_delivery_reports = [
         SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.4, slow_notifications=40, total_notifications=100),
         SlowProviderDeliveryReport(provider="firetext", slow_ratio=0.8, slow_notifications=80, total_notifications=100),
@@ -185,7 +185,7 @@ def test_generate_sms_delivery_stats(environment, expect_check_slow_delivery, mo
         "app.celery.scheduled_tasks._check_slow_text_message_delivery_reports_and_raise_error_if_needed"
     )
 
-    with set_config(notify_api, "NOTIFY_ENVIRONMENT", environment):
+    with set_config(notify_api, "CHECK_SLOW_TEXT_MESSAGE_DELIVERY", slow_delivery_config_option):
         generate_sms_delivery_stats()
 
     calls = [
@@ -1133,30 +1133,30 @@ class TestWeeklyDWPReport:
         yield mocker.patch("app.celery.scheduled_tasks.zendesk_client.update_ticket")
 
     @pytest.fixture(scope="function")
-    def mock_prod_notify_api(self, mocker, notify_api):
-        with set_config(notify_api, "NOTIFY_ENVIRONMENT", "production"):
+    def mock_env_with_zendesk_alerts_enabled(self, mocker, notify_api):
+        with set_config(notify_api, "SEND_ZENDESK_ALERTS_ENABLED", True):
             yield notify_api
 
     @pytest.mark.parametrize(
-        "environment, should_run",
+        "environment, send_zendesk_alerts_enabled, should_run",
         (
-            ("test", True),
-            ("local", False),
-            ("preview", False),
-            ("staging", False),
-            ("production", True),
+            ("example-env-1", False, False),
+            ("example-env-2", True, True),
         ),
     )
-    def test_skips_non_prod_environments(
+    def test_skips_environments_with_zendesk_alerts_disabled(
         self,
         notify_api,
         notify_db_session,
         mock_zendesk_update_ticket,
         caplog,
         environment,
+        send_zendesk_alerts_enabled,
         should_run,
     ):
-        with set_config(notify_api, "NOTIFY_ENVIRONMENT", environment), caplog.at_level("INFO"):
+        with set_config_values(
+            notify_api, {"NOTIFY_ENVIRONMENT": environment, "SEND_ZENDESK_ALERTS_ENABLED": send_zendesk_alerts_enabled}
+        ):
             weekly_dwp_report()
 
         assert (f"Skipping DWP report run in {environment}" in caplog.messages) != should_run
@@ -1174,18 +1174,20 @@ class TestWeeklyDWPReport:
         ],
     )
     def test_requires_zendesk_reporting_config(
-        self, mock_prod_notify_api, notify_db_session, mock_zendesk_update_ticket, caplog, report_config
+        self, mock_env_with_zendesk_alerts_enabled, notify_db_session, mock_zendesk_update_ticket, caplog, report_config
     ):
-        with set_config(mock_prod_notify_api, "ZENDESK_REPORTING", report_config):
+        with set_config(mock_env_with_zendesk_alerts_enabled, "ZENDESK_REPORTING", report_config):
             weekly_dwp_report()
 
         assert "Skipping DWP report run - invalid configuration." in caplog.messages
         assert mock_zendesk_update_ticket.call_args_list == []
 
     @freeze_time("2022-01-01T09:00:00")
-    def test_successful_run(self, mocker, mock_prod_notify_api, notify_db_session, mock_zendesk_update_ticket):
+    def test_successful_run(
+        self, mocker, mock_env_with_zendesk_alerts_enabled, notify_db_session, mock_zendesk_update_ticket
+    ):
         with set_config(
-            mock_prod_notify_api,
+            mock_env_with_zendesk_alerts_enabled,
             "ZENDESK_REPORTING",
             {
                 "weekly-dwp-report": {
