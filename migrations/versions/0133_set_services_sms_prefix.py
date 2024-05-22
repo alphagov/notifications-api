@@ -16,8 +16,12 @@ from sqlalchemy.dialects import postgresql
 revision = "0133_set_services_sms_prefix"
 down_revision = "0132_add_sms_prefix_setting"
 
+notify_environment = os.environ["NOTIFY_ENVIRONMENT"]
+if notify_environment in config.configs:
+    config = config.configs[notify_environment]
+else:
+    config = config.Config()
 
-config = config.configs[os.environ["NOTIFY_ENVIRONMENT"]]
 default_sms_sender = config.FROM_NUMBER
 
 
