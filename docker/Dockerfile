@@ -150,3 +150,14 @@ RUN \
 RUN \
     service postgresql start \
     && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\""
+
+
+ENV NODE_VERSION=20.10.0
+ENV NVM_VERSION=0.39.7
+
+RUN \
+    echo "Installing NVM & Node" \
+    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash \
+    && source ~/.nvm/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && npm install -g squawk-cli

@@ -106,6 +106,9 @@ bump-utils:  # Bump notifications-utils package to latest version
 clean:
 	rm -rf node_modules cache target venv .coverage build tests/.cache ${CF_MANIFEST_PATH}
 
+.PHONY: squawk-pr-check
+squawk-pr-check:
+	./scripts/lint_sql_migrations_ci.sh
 
 ## DEPLOYMENT
 
