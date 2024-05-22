@@ -23,7 +23,7 @@ from notifications_utils.recipients import (
 )
 
 import app.constants
-from app import ma, models
+from app import db, ma, models
 from app.dao.permissions_dao import permission_dao
 from app.models import ServicePermission
 from app.notifications.validators import remap_phone_number_validation_messages
@@ -71,6 +71,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         include_relationships = True
         unknown = EXCLUDE
+        sqla_session = db.session
 
     def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
