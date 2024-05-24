@@ -1046,6 +1046,9 @@ class TemplateBase(db.Model):
         default=letter_languages_default,
     )
 
+    # TODO: migrate this to be nullable=False
+    has_unsubscribe_link = db.Column(db.Boolean, default=False)
+
     @declared_attr
     def service_id(cls):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
@@ -1092,6 +1095,8 @@ class TemplateBase(db.Model):
                 "(template_type != 'letter' AND letter_languages IS NULL) OR"
                 " (template_type = 'letter' AND letter_languages IS NOT NULL)"
             ),
+            # if template type is not email, then has_unsubscribe_link MUST be null
+            CheckConstraint("template_type = 'email' OR has_unsubscribe_link IS NULL"),
         )
 
     @property
