@@ -2568,7 +2568,6 @@ class UnsubscribeRequestReport(db.Model):
 
 class UnsubscribeRequest(db.Model):
     __tablename__ = "unsubscribe_request"
-
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # WIP:
@@ -2614,3 +2613,19 @@ class UnsubscribeRequest(db.Model):
         Index("ix_unsubscribe_request_notification_id", "notification_id"),
         Index("ix_unsubscribe_request_unsubscribe_request_report_id", "unsubscribe_request_report_id"),
     )
+
+
+class UnsubscribeRequestHistory(db.Model):
+    __tablename__ = "unsubscribe_request_history"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Ignoring a strict foreign key relationship here for now. Notifications are archived to the NotificationHistory
+    # table by a nightly job and I haven't investigated whether that might break a strict FK yet or if it would
+    # work smoothly. We can still have a relationship using an explicit join condition.
+    notification_id = db.Column(UUID(as_uuid=True), index=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    template_id = db.Column(UUID(as_uuid=True), nullable=False)
+    template_version = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+    processed_at = db.Column(db.DateTime)
+    unsubscribe_request_report_id = db.Column(UUID(as_uuid=True), index=True, nullable=True)
