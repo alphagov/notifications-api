@@ -34,8 +34,8 @@ def one_click_unsubscribe(notification_id, token):
     }
 
     # TODO
-    # Once the migration for the new unsubscribe request table has been effected, write a dao method needs to
-    # add new unsubscribe request:
+    # Once the migration for the new unsubscribe request table has been effected, the following lines of code can be
+    # used to add new unsubscribe request:
     # unsubscribe_request = UnsubscribeRequest(**unsubscribe_data)
 
     current_app.logger.debug("Received unsubscribe request for notification_id: %s", notification_id)
