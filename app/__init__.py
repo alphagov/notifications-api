@@ -153,6 +153,7 @@ def register_blueprint(application):
         receive_notifications_blueprint,
     )
     from app.notifications.rest import notifications as notifications_blueprint
+    from app.one_click_unsubscribe.rest import one_click_unsubscribe_blueprint
     from app.organisation.invite_rest import organisation_invite_blueprint
     from app.organisation.rest import organisation_blueprint
     from app.performance_dashboard.rest import performance_dashboard_blueprint
@@ -173,7 +174,6 @@ def register_blueprint(application):
     from app.template_statistics.rest import (
         template_statistics as template_statistics_blueprint,
     )
-    from app.one_click_unsubscribe.rest import one_click_unsubscribe_blueprint
     from app.upload.rest import upload_blueprint
     from app.user.rest import user_blueprint
     from app.webauthn.rest import webauthn_blueprint
