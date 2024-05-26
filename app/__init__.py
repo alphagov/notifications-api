@@ -173,6 +173,7 @@ def register_blueprint(application):
     from app.template_statistics.rest import (
         template_statistics as template_statistics_blueprint,
     )
+    from app.one_click_unsubscribe.rest import one_click_unsubscribe_blueprint
     from app.upload.rest import upload_blueprint
     from app.user.rest import user_blueprint
     from app.webauthn.rest import webauthn_blueprint
@@ -279,6 +280,9 @@ def register_blueprint(application):
 
     sms_rate_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(sms_rate_blueprint)
+
+    one_click_unsubscribe_blueprint.before_request(requires_no_auth)
+    application.register_blueprint(one_click_unsubscribe_blueprint)
 
     if application.config["REGISTER_FUNCTIONAL_TESTING_BLUEPRINT"]:
         test_blueprint.before_request(requires_functional_test_auth)
