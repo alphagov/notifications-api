@@ -4,6 +4,7 @@ from itertools import groupby
 from operator import attrgetter
 
 from botocore.exceptions import ClientError
+from dateutil.relativedelta import relativedelta
 from flask import current_app
 from notifications_utils.international_billing_rates import (
     INTERNATIONAL_BILLING_RATES,
@@ -109,7 +110,11 @@ def dao_get_last_date_template_was_used(template_id, service_id):
     ).scalar():
         last_date = (
             db.session.query(functions.max(FactNotificationStatus.bst_date))
-            .filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
+            .filter(
+                FactNotificationStatus.template_id == template_id,
+                FactNotificationStatus.key_type != KEY_TYPE_TEST,
+                FactNotificationStatus.bst_date > datetime.now() - relativedelta(years=1),
+            )
             .scalar()
         )
 
