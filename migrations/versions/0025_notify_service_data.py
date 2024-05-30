@@ -9,7 +9,7 @@ Create Date: 2016-06-01 14:17:01.963181
 import uuid
 
 # revision identifiers, used by Alembic.
-from datetime import datetime
+from datetime import UTC, datetime
 
 from alembic import op
 
@@ -29,18 +29,18 @@ def upgrade():
     user_insert = """INSERT INTO users (id, name, email_address, created_at, failed_login_count, _password, mobile_number, state, platform_admin)
                      VALUES ('{}', 'Notify service user', 'notify-service-user@digital.cabinet-office', '{}', 0,'{}', '+441234123412', 'active', False)
                   """
-    op.execute(user_insert.format(user_id, datetime.utcnow(), password))
+    op.execute(user_insert.format(user_id, datetime.now(UTC).replace(tzinfo=None), password))
     service_history_insert = """INSERT INTO services_history (id, name, created_at, active, message_limit, restricted, research_mode, email_from, created_by_id, reply_to_email_address, version)
                         VALUES ('{}', 'Notify service', '{}', True, 1000, False, False, 'notify@digital.cabinet-office.gov.uk',
                         '{}', 'notify@digital.cabinet-office.gov.uk', 1)
 
                      """
-    op.execute(service_history_insert.format(service_id, datetime.utcnow(), user_id))
+    op.execute(service_history_insert.format(service_id, datetime.now(UTC).replace(tzinfo=None), user_id))
     service_insert = """INSERT INTO services (id, name, created_at, active, message_limit, restricted, research_mode, email_from, created_by_id, reply_to_email_address, version)
                         VALUES ('{}', 'Notify service', '{}', True, 1000, False, False, 'notify@digital.cabinet-office.gov.uk',
                         '{}', 'notify@digital.cabinet-office.gov.uk', 1)
                     """
-    op.execute(service_insert.format(service_id, datetime.utcnow(), user_id))
+    op.execute(service_insert.format(service_id, datetime.now(UTC).replace(tzinfo=None), user_id))
     user_to_service_insert = """INSERT INTO user_to_service (user_id, service_id) VALUES ('{}', '{}')"""
     op.execute(user_to_service_insert.format(user_id, service_id))
 
@@ -61,7 +61,7 @@ def upgrade():
             uuid.uuid4(),
             "Notify email verification code",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             email_verification_content,
             service_id,
             "Confirm GOV.UK Notify registration",
@@ -73,7 +73,7 @@ def upgrade():
             "ece42649-22a8-4d06-b87f-d52d5d3f0a27",
             "Notify email verification code",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             email_verification_content,
             service_id,
             "Confirm GOV.UK Notify registration",
@@ -92,7 +92,7 @@ def upgrade():
             "4f46df42-f795-4cc4-83bb-65ca312f49cc",
             "Notify invitation email",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             invitation_content,
             service_id,
             invitation_subject,
@@ -104,7 +104,7 @@ def upgrade():
             "4f46df42-f795-4cc4-83bb-65ca312f49cc",
             "Notify invitation email",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             invitation_content,
             service_id,
             invitation_subject,
@@ -118,7 +118,7 @@ def upgrade():
             "36fb0730-6259-4da1-8a80-c8de22ad4246",
             "Notify SMS verify code",
             "sms",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             sms_code_content,
             service_id,
             None,
@@ -131,7 +131,7 @@ def upgrade():
             "36fb0730-6259-4da1-8a80-c8de22ad4246",
             "Notify SMS verify code",
             "sms",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             sms_code_content,
             service_id,
             None,
@@ -153,7 +153,7 @@ def upgrade():
             "474e9242-823b-4f99-813d-ed392e7f1201",
             "Notify password reset email",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             password_reset_content,
             service_id,
             "Reset your GOV.UK Notify password",
@@ -165,7 +165,7 @@ def upgrade():
             "474e9242-823b-4f99-813d-ed392e7f1201",
             "Notify password reset email",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             password_reset_content,
             service_id,
             "Reset your GOV.UK Notify password",

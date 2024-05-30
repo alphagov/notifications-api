@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
@@ -154,7 +154,7 @@ def update_letter_to_sending(notification):
     provider = get_provider_details_by_notification_type(LETTER_TYPE)[0]
 
     notification.status = NOTIFICATION_SENDING
-    notification.sent_at = datetime.utcnow()
+    notification.sent_at = datetime.now(UTC).replace(tzinfo=None)
     notification.sent_by = provider.identifier
 
     notifications_dao.dao_update_notification(notification)

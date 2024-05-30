@@ -1,5 +1,5 @@
-import datetime
 import uuid
+from datetime import UTC, datetime
 
 from flask import Blueprint, request
 
@@ -31,7 +31,7 @@ def create_functional_test_users():
             created = True
             user = User()
             user.id = uuid.uuid4()
-            user.created_at = datetime.datetime.utcnow()
+            user.created_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.add(user)
 
         user.name = user_info["name"]
@@ -40,7 +40,7 @@ def create_functional_test_users():
         user.auth_type = user_info["auth_type"]
         user.password = user_info["password"]
         user.state = user_info["state"]
-        user.email_access_validated_at = datetime.datetime.utcnow()
+        user.email_access_validated_at = datetime.now(UTC).replace(tzinfo=None)
         user.platform_admin = False
 
         permissions = [

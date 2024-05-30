@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
@@ -176,7 +176,7 @@ def test_get_most_recent_inbound_sms_for_service(
 def test_get_most_recent_inbound_sms_for_service_respects_data_retention(admin_request, sample_service):
     create_service_data_retention(sample_service, "sms", 5)
     for i in range(10):
-        created = datetime.utcnow() - timedelta(days=i)
+        created = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=i)
         create_inbound_sms(sample_service, user_number="44770090000{}".format(i), created_at=created)
 
     response = admin_request.get("inbound_sms.get_most_recent_inbound_sms_for_service", service_id=sample_service.id)
@@ -209,7 +209,7 @@ def test_get_most_recent_inbound_sms_for_service_respects_data_retention_if_olde
 def test_get_inbound_sms_for_service_respects_data_retention(admin_request, sample_service):
     create_service_data_retention(sample_service, "sms", 5)
     for i in range(10):
-        created = datetime.utcnow() - timedelta(days=i)
+        created = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=i)
         create_inbound_sms(sample_service, user_number="44770090000{}".format(i), created_at=created)
 
     response = admin_request.get("inbound_sms.get_most_recent_inbound_sms_for_service", service_id=sample_service.id)

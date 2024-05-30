@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from iso8601 import ParseError, iso8601
@@ -54,9 +54,9 @@ def validate_schema_date_with_hour(instance):
     if isinstance(instance, str):
         try:
             dt = iso8601.parse_date(instance).replace(tzinfo=None)
-            if dt < datetime.utcnow():
+            if dt < datetime.now(UTC).replace(tzinfo=None):
                 raise ValidationError("datetime can not be in the past")
-            if dt > datetime.utcnow() + timedelta(hours=24):
+            if dt > datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=24):
                 raise ValidationError("datetime can only be 24 hours in the future")
         except ParseError as e:
             raise ValidationError(

@@ -1,7 +1,7 @@
 import io
 import json
 import math
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 
 import boto3
@@ -222,7 +222,7 @@ def letter_print_day(created_at):
     bst_print_datetime = convert_utc_to_bst(created_at) + timedelta(hours=6, minutes=30)
     bst_print_date = bst_print_datetime.date()
 
-    current_bst_date = convert_utc_to_bst(datetime.utcnow()).date()
+    current_bst_date = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date()
 
     if bst_print_date >= current_bst_date:
         return "today"

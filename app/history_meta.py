@@ -15,8 +15,8 @@ session events.
 
 """
 
-import datetime
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import Column, Integer, Table, util
 from sqlalchemy.ext.declarative import declared_attr
@@ -149,10 +149,10 @@ def create_history(obj, history_cls=None):
 
     if not obj.version:
         obj.version = 1
-        obj.created_at = datetime.datetime.utcnow()
+        obj.created_at = datetime.now(UTC).replace(tzinfo=None)
     else:
         obj.version += 1
-        now = datetime.datetime.utcnow()
+        now = datetime.now(UTC).replace(tzinfo=None)
         obj.updated_at = now
         data["updated_at"] = now
 

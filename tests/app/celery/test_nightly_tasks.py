@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import ANY, call
 
 import pytest
@@ -65,7 +65,7 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db_session,
     """
     mocker.patch("app.celery.nightly_tasks.s3.remove_job_from_s3")
 
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    seven_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=7)
     just_under_seven_days = seven_days_ago + timedelta(seconds=1)
     eight_days_ago = seven_days_ago - timedelta(days=1)
     nine_days_ago = eight_days_ago - timedelta(days=1)
@@ -104,9 +104,9 @@ def test_will_remove_csv_files_for_jobs_older_than_retention_period(notify_db_se
     sms_template_service_2 = create_template(service=service_2)
     email_template_service_2 = create_template(service=service_2, template_type="email")
 
-    four_days_ago = datetime.utcnow() - timedelta(days=4)
-    eight_days_ago = datetime.utcnow() - timedelta(days=8)
-    thirty_one_days_ago = datetime.utcnow() - timedelta(days=31)
+    four_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=4)
+    eight_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8)
+    thirty_one_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=31)
 
     job1_to_delete = create_job(sms_template_service_1, created_at=four_days_ago)
     job2_to_delete = create_job(email_template_service_1, created_at=eight_days_ago)
@@ -138,7 +138,7 @@ def test_remove_csv_files_filters_by_type(mocker, sample_service):
     letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
     sms_template = create_template(service=sample_service, template_type=SMS_TYPE)
 
-    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    eight_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8)
 
     job_to_delete = create_job(template=letter_template, created_at=eight_days_ago)
     create_job(template=sms_template, created_at=eight_days_ago)
@@ -169,7 +169,7 @@ def test_delete_letter_notifications_older_than_retention_calls_child_task(notif
 
 
 def test_should_not_update_status_of_letter_notifications(client, sample_letter_template):
-    created_at = datetime.utcnow() - timedelta(days=5)
+    created_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=5)
     not1 = create_notification(template=sample_letter_template, status="sending", created_at=created_at)
     not2 = create_notification(template=sample_letter_template, status="created", created_at=created_at)
 
@@ -248,7 +248,7 @@ def test_dont_create_ticket_if_letter_notifications_not_still_sending(notify_api
 def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_no_letters_if_sent_a_day_ago(
     sample_letter_template,
 ):
-    today = datetime.utcnow()
+    today = datetime.now(UTC).replace(tzinfo=None)
     one_day_ago = today - timedelta(days=1)
     create_notification(template=sample_letter_template, status="sending", sent_at=one_day_ago)
 
@@ -347,7 +347,7 @@ def test_letter_raise_alert_if_no_ack_file_for_zip_does_not_raise_when_files_mat
     letter_raise_alert_if_no_ack_file_for_zip()
 
     yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # Datatime format on AWS
-    subfoldername = datetime.utcnow().strftime("%Y-%m-%d") + "/zips_sent"
+    subfoldername = datetime.now(UTC).replace(tzinfo=None).strftime("%Y-%m-%d") + "/zips_sent"
     assert mock_file_list.call_count == 2
     assert mock_file_list.call_args_list == [
         call(bucket_name=current_app.config["S3_BUCKET_LETTERS_PDF"], subfolder=subfoldername, suffix=".TXT"),

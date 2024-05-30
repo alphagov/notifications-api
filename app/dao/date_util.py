@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytz
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
@@ -27,7 +27,7 @@ def get_financial_year_dates(year):
 
 
 def get_current_financial_year():
-    now = datetime.utcnow()
+    now = datetime.now(UTC).replace(tzinfo=None)
     current_month = int(now.strftime("%-m"))
     current_year = int(now.strftime("%Y"))
     year = current_year if current_month > 3 else current_year - 1

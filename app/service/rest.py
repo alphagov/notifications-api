@@ -1,5 +1,5 @@
 import itertools
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.letter_timings import (
@@ -183,7 +183,7 @@ def get_services():
     include_from_test_key = request.args.get("include_from_test_key", "True") != "False"
 
     # If start and end date are not set, we are expecting today's stats.
-    today = str(datetime.utcnow().date())
+    today = str(datetime.now(UTC).replace(tzinfo=None).date())
 
     start_date = datetime.strptime(request.args.get("start_date", today), "%Y-%m-%d").date()
     end_date = datetime.strptime(request.args.get("end_date", today), "%Y-%m-%d").date()
@@ -599,7 +599,7 @@ def get_monthly_notification_stats(service_id):
     stats = fetch_notification_status_for_service_by_month(start_date, end_date, service_id)
     statistics.add_monthly_notification_status_stats(data, stats)
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC).replace(tzinfo=None)
     if end_date > now:
         todays_deltas = fetch_notification_status_for_service_for_day(convert_utc_to_bst(now), service_id=service_id)
         statistics.add_monthly_notification_status_stats(data, todays_deltas)
@@ -625,7 +625,7 @@ def get_service_statistics(service_id, today_only, limit_days=7):
 
 
 def get_detailed_services(start_date, end_date, only_active=False, include_from_test_key=True):
-    if start_date == datetime.utcnow().date():
+    if start_date == datetime.now(UTC).replace(tzinfo=None).date():
         stats = dao_fetch_todays_stats_for_all_services(
             include_from_test_key=include_from_test_key, only_active=only_active
         )
@@ -1094,7 +1094,7 @@ def delete_contact_list_by_id(service_id, contact_list_id):
 def create_contact_list(service_id):
     service_contact_list = validate(request.get_json(), create_service_contact_list_schema)
     service_contact_list["created_by_id"] = service_contact_list.pop("created_by")
-    service_contact_list["created_at"] = datetime.utcnow()
+    service_contact_list["created_at"] = datetime.now(UTC).replace(tzinfo=None)
     service_contact_list["service_id"] = str(service_id)
     list_to_save = ServiceContactList(**service_contact_list)
 

@@ -1,6 +1,6 @@
-import datetime
 import enum
 import uuid
+from datetime import UTC, datetime
 from typing import Union
 
 from flask import current_app, url_for
@@ -95,12 +95,16 @@ class User(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String, nullable=False, unique=False)
     email_address = db.Column(db.String(255), nullable=False, index=True, unique=True)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
+    updated_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None)
+    )
     _password = db.Column(db.String, index=False, unique=False, nullable=False)
     mobile_number = db.Column(db.String, index=False, unique=False, nullable=True)
     password_changed_at = db.Column(
-        db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
     )
     logged_in_at = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
@@ -109,7 +113,7 @@ class User(db.Model):
     current_session_id = db.Column(UUID(as_uuid=True), nullable=True)
     auth_type = db.Column(db.String, db.ForeignKey("auth_type.name"), nullable=False, default=SMS_AUTH_TYPE)
     email_access_validated_at = db.Column(
-        db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
     )
     take_part_in_research = db.Column(db.Boolean, nullable=False, default=True)
     receives_new_features_email = db.Column(db.Boolean, nullable=False, default=True)
@@ -249,9 +253,9 @@ class EmailBranding(db.Model):
     brand_type = db.Column(
         db.String(255), db.ForeignKey("branding_type.name"), index=True, nullable=False, default=BRANDING_ORG
     )
-    created_at = db.Column(db.DateTime, nullable=True, default=lambda: datetime.datetime.utcnow())
+    created_at = db.Column(db.DateTime, nullable=True, default=lambda: datetime.now(UTC).replace(tzinfo=None))
     created_by = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=lambda: datetime.datetime.utcnow())
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=lambda: datetime.now(UTC).replace(tzinfo=None))
     updated_by = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
     active = db.Column(db.Boolean, nullable=False, default=True)
@@ -297,9 +301,9 @@ class LetterBranding(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), unique=True, nullable=False)
     filename = db.Column(db.String(255), unique=True, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.now(UTC).replace(tzinfo=None))
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
     def serialize(self):
@@ -345,7 +349,7 @@ class OrganisationPermission(db.Model):
     __tablename__ = "organisation_permissions"
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
     organisation = db.relationship("Organisation", backref="permissions")
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
     permission = db.Column(
@@ -360,7 +364,9 @@ class OrganisationUserPermissions(db.Model):
     __tablename__ = "organisation_user_permissions"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True)
     organisation = db.relationship("Organisation")
 
@@ -381,8 +387,8 @@ class Organisation(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
     name = db.Column(db.String(255), nullable=False, unique=True, index=True)
     active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
     agreement_signed = db.Column(db.Boolean, nullable=True)
     agreement_signed_at = db.Column(db.DateTime, nullable=True)
     agreement_signed_by_id = db.Column(
@@ -524,8 +530,12 @@ class Service(db.Model, Versioned):
     _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
     _email_sender_local_part = db.Column("email_sender_local_part", db.String(255), nullable=False)
 
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
+    updated_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None)
+    )
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
     letter_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
     sms_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
@@ -697,8 +707,8 @@ class AnnualBilling(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
     financial_year_start = db.Column(db.Integer, nullable=False, default=True, unique=False)
     free_sms_fragment_limit = db.Column(db.Integer, nullable=False, index=False, unique=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
     UniqueConstraint("financial_year_start", "service_id", name="ix_annual_billing_service_id")
     service = db.relationship(Service, backref=db.backref("annual_billing", uselist=True))
 
@@ -736,8 +746,8 @@ class InboundNumber(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=True, index=True, nullable=True)
     service = db.relationship(Service, backref=db.backref("inbound_number", uselist=False))
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(UTC).replace(tzinfo=None), nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     def serialize(self):
         def serialize_service():
@@ -767,8 +777,8 @@ class ServiceSmsSender(db.Model):
         UUID(as_uuid=True), db.ForeignKey("inbound_numbers.id"), unique=True, index=True, nullable=True
     )
     inbound_number = db.relationship(InboundNumber, backref=db.backref("inbound_number", uselist=False))
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(UTC).replace(tzinfo=None), nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     def get_reply_to_text(self):
         return try_validate_and_format_phone_number(self.sms_sender)
@@ -795,7 +805,7 @@ class ServicePermission(db.Model):
     permission = db.Column(
         db.String(255), db.ForeignKey("service_permission_types.name"), index=True, primary_key=True, nullable=False
     )
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now(UTC).replace(tzinfo=None), nullable=False)
 
     service_permission_types = db.relationship(Service, backref=db.backref("permissions", cascade="all, delete-orphan"))
 
@@ -811,7 +821,7 @@ class ServiceGuestList(db.Model):
     service = db.relationship("Service", backref="guest_list")
     recipient_type = db.Column(guest_list_recipient_types, nullable=False)
     recipient = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now(UTC).replace(tzinfo=None))
 
     @classmethod
     def from_string(cls, service_id, recipient_type, recipient):
@@ -844,7 +854,7 @@ class ServiceInboundApi(db.Model, Versioned):
     service = db.relationship("Service", backref="inbound_api")
     url = db.Column(db.String(), nullable=False)
     _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now(UTC).replace(tzinfo=None), nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True)
     updated_by = db.relationship("User")
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
@@ -879,7 +889,7 @@ class ServiceCallbackApi(db.Model, Versioned):
     url = db.Column(db.String(), nullable=False)
     callback_type = db.Column(db.String(), db.ForeignKey("service_callback_type.name"), nullable=True)
     _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now(UTC).replace(tzinfo=None), nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True)
     updated_by = db.relationship("User")
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
@@ -924,8 +934,12 @@ class ApiKey(db.Model, Versioned):
     service = db.relationship("Service", backref="api_keys")
     key_type = db.Column(db.String(255), db.ForeignKey("key_types.name"), nullable=False)
     expiry_date = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
+    updated_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None)
+    )
     created_by = db.relationship("User")
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
@@ -1027,8 +1041,8 @@ class TemplateBase(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
     template_type = db.Column(template_types, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, onupdate=datetime.now(UTC).replace(tzinfo=None))
     content = db.Column(db.Text, nullable=False)
     archived = db.Column(db.Boolean, nullable=False, default=False)
     hidden = db.Column(db.Boolean, nullable=False, default=False)
@@ -1217,7 +1231,7 @@ class TemplateRedacted(db.Model):
 
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), primary_key=True, nullable=False)
     redact_personalisation = db.Column(db.Boolean, nullable=False, default=False)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True)
     updated_by = db.relationship("User")
 
@@ -1254,7 +1268,7 @@ class ProviderDetails(db.Model):
     notification_type = db.Column(notification_types, nullable=False)
     active = db.Column(db.Boolean, default=False, nullable=False)
     version = db.Column(db.Integer, default=1, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_by = db.relationship("User")
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
@@ -1270,7 +1284,7 @@ class ProviderDetailsHistory(db.Model):
     notification_type = db.Column(notification_types, nullable=False)
     active = db.Column(db.Boolean, nullable=False)
     version = db.Column(db.Integer, primary_key=True, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_by = db.relationship("User")
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
@@ -1301,8 +1315,12 @@ class Job(db.Model):
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), index=True, unique=False)
     template = db.relationship("Template", backref=db.backref("jobs", lazy="dynamic"))
     template_version = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
+    updated_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None)
+    )
     notification_count = db.Column(db.Integer, nullable=False)
     notifications_sent = db.Column(db.Integer, nullable=False, default=0)
     notifications_delivered = db.Column(db.Integer, nullable=False, default=0)
@@ -1332,7 +1350,9 @@ class VerifyCode(db.Model):
     )
     expiry_datetime = db.Column(db.DateTime, nullable=False)
     code_used = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
 
     @property
     def code(self):
@@ -1412,7 +1432,9 @@ class Notification(db.Model):
     created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
-    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None)
+    )
     status = db.Column(
         "notification_status",
         db.Text,
@@ -1658,7 +1680,9 @@ class NotificationHistory(db.Model):
     created_at = db.Column(db.DateTime, unique=False, nullable=False)
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
-    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None)
+    )
     status = db.Column(
         "notification_status",
         db.Text,
@@ -1732,7 +1756,9 @@ class InvitedUser(db.Model):
     from_user = db.relationship("User")
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False)
     service = db.relationship("Service")
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name="invited_users_status_types"), nullable=False, default=INVITE_PENDING
     )
@@ -1757,7 +1783,7 @@ class InvitedOrganisationUser(db.Model):
     organisation = db.relationship("Organisation")
 
     permissions = db.Column(db.String, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
 
     status = db.Column(db.String, db.ForeignKey("invite_status_type.name"), nullable=False, default=INVITE_PENDING)
 
@@ -1785,7 +1811,9 @@ class Permission(db.Model):
     permission = db.Column(
         db.Enum(*PERMISSION_LIST, name="permission_types"), index=False, unique=False, nullable=False
     )
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
 
     __table_args__ = (UniqueConstraint("service_id", "user_id", "permission", name="uix_service_user_permission"),)
 
@@ -1795,7 +1823,9 @@ class Event(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_type = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=datetime.now(UTC).replace(tzinfo=None)
+    )
     data = db.Column(JSON, nullable=False)
 
 
@@ -1824,7 +1854,7 @@ class InboundSms(db.Model):
     __tablename__ = "inbound_sms"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
     service = db.relationship("Service", backref="inbound_sms")
 
@@ -1897,8 +1927,8 @@ class ServiceEmailReplyTo(db.Model):
     email_address = db.Column(db.Text, nullable=False, index=False, unique=False)
     is_default = db.Column(db.Boolean, nullable=False, default=True)
     archived = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     def serialize(self):
         return {
@@ -1923,8 +1953,8 @@ class ServiceLetterContact(db.Model):
     contact_block = db.Column(db.Text, nullable=False, index=False, unique=False)
     is_default = db.Column(db.Boolean, nullable=False, default=True)
     archived = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     def serialize(self):
         return {
@@ -1952,7 +1982,7 @@ class DailySortedLetter(db.Model):
     file_name = db.Column(db.String, nullable=True)
     unsorted_count = db.Column(db.Integer, nullable=False, default=0)
     sorted_count = db.Column(db.Integer, nullable=False, default=0)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     __table_args__ = (UniqueConstraint("file_name", "billing_day", name="uix_file_name_billing_day"),)
 
@@ -1972,8 +2002,8 @@ class FactBillingLetterDespatch(db.Model):
     rate = db.Column(db.Numeric(), nullable=False, primary_key=True)
     billable_units = db.Column(db.Integer(), nullable=True, primary_key=True)
     notifications_sent = db.Column(db.Integer(), nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
 
 class FactBilling(db.Model):
@@ -1990,8 +2020,8 @@ class FactBilling(db.Model):
     postage = db.Column(db.String, nullable=False, primary_key=True)
     billable_units = db.Column(db.Integer(), nullable=True)
     notifications_sent = db.Column(db.Integer(), nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
 
 class FactNotificationStatus(db.Model):
@@ -2010,8 +2040,8 @@ class FactNotificationStatus(db.Model):
     key_type = db.Column(db.Text, primary_key=True, nullable=False)
     notification_status = db.Column(db.Text, primary_key=True, nullable=False)
     notification_count = db.Column(db.Integer(), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
 
 class FactProcessingTime(db.Model):
@@ -2020,8 +2050,8 @@ class FactProcessingTime(db.Model):
     bst_date = db.Column(db.Date, index=True, primary_key=True, nullable=False)
     messages_total = db.Column(db.Integer(), nullable=False)
     messages_within_10_secs = db.Column(db.Integer(), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
 
 class Complaint(db.Model):
@@ -2034,7 +2064,7 @@ class Complaint(db.Model):
     ses_feedback_id = db.Column(db.Text, nullable=True)
     complaint_type = db.Column(db.Text, nullable=True)
     complaint_date = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
 
     def serialize(self):
         return {
@@ -2059,8 +2089,8 @@ class ServiceDataRetention(db.Model):
     )
     notification_type = db.Column(notification_types, nullable=False)
     days_of_retention = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     __table_args__ = (UniqueConstraint("service_id", "notification_type", name="uix_service_data_retention"),)
 
@@ -2085,7 +2115,7 @@ class ReturnedLetter(db.Model):
     service = db.relationship(Service, backref=db.backref("returned_letters"))
     notification_id = db.Column(UUID(as_uuid=True), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
 
 class ServiceContactList(db.Model):
@@ -2100,12 +2130,12 @@ class ServiceContactList(db.Model):
     created_by = db.relationship("User")
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
     archived = db.Column(db.Boolean, nullable=False, default=False)
 
     @property
     def job_count(self):
-        today = datetime.datetime.utcnow().date()
+        today = datetime.now(UTC).replace(tzinfo=None).date()
         return (
             Job.query.filter(
                 Job.contact_list_id == self.id,
@@ -2214,10 +2244,10 @@ class BroadcastMessage(db.Model):
     finishes_at = db.Column(db.DateTime, nullable=True)  # isn't updated if user cancels
 
     # these times correspond to when
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
     approved_at = db.Column(db.DateTime, nullable=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
     approved_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
@@ -2305,7 +2335,7 @@ class BroadcastEvent(db.Model):
     broadcast_message = db.relationship("BroadcastMessage", backref="events")
 
     # this is used for <sent> in the cap xml
-    sent_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    sent_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
 
     # msgType. alert, cancel, or update. (other options in the spec are "ack" and "error")
     message_type = db.Column(db.String, nullable=False)
@@ -2406,8 +2436,8 @@ class BroadcastProviderMessage(db.Model):
 
     status = db.Column(db.String)
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     UniqueConstraint(broadcast_event_id, provider)
 
@@ -2447,8 +2477,8 @@ class ServiceBroadcastSettings(db.Model):
     service = db.relationship(Service, backref=db.backref("service_broadcast_settings", uselist=False))
     channel = db.Column(db.String(255), db.ForeignKey("broadcast_channel_types.name"), nullable=False)
     provider = db.Column(db.String, db.ForeignKey("broadcast_provider_types.name"), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
 
 class BroadcastChannelTypes(db.Model):
@@ -2488,7 +2518,7 @@ class ServiceBroadcastProviderRestriction(db.Model):
 
     provider = db.Column(db.String, nullable=False)
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
 
 
 class WebauthnCredential(db.Model):
@@ -2511,8 +2541,8 @@ class WebauthnCredential(db.Model):
     # base64 encoded CBOR. used for auditing. https://www.w3.org/TR/webauthn-2/#authenticatorattestationresponse
     registration_response = db.Column(db.String, nullable=False)
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.now(UTC).replace(tzinfo=None))
 
     logged_in_at = db.Column(db.DateTime, nullable=True)
 
@@ -2533,7 +2563,7 @@ class LetterAttachment(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(UTC).replace(tzinfo=None))
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
     archived_at = db.Column(db.DateTime, nullable=True)
     archived_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)

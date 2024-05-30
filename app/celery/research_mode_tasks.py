@@ -1,6 +1,6 @@
 import json
 import random
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from flask import current_app
 from notifications_utils.s3 import s3upload
@@ -104,7 +104,7 @@ def firetext_callback(notification_id, to):
 
 @notify_celery.task(bind=True, name="create-fake-letter-response-file", max_retries=5, default_retry_delay=300)
 def create_fake_letter_response_file(self, reference):
-    now = datetime.utcnow()
+    now = datetime.now(UTC).replace(tzinfo=None)
     dvla_response_data = f"{reference}|Sent|0|Sorted|{now.date().isoformat()}"
 
     # try and find a filename that hasn't been taken yet - from a random time within the last 30 seconds

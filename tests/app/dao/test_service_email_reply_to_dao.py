@@ -26,8 +26,8 @@ def test_dao_get_reply_to_by_service_id(notify_db_session):
 
     assert len(results) == 3
     assert default_reply_to == results[0]
-    assert another_reply_to == results[1]
-    assert second_reply_to == results[2]
+    assert second_reply_to == results[1]
+    assert another_reply_to == results[2]
 
 
 def test_dao_get_reply_to_by_service_id_does_not_return_archived_reply_tos(notify_db_session):

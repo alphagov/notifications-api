@@ -1,6 +1,6 @@
 import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
@@ -857,7 +857,11 @@ def test_get_organisation_services_usage(admin_request, notify_db_session, mocke
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2019)
     create_ft_billing(
-        bst_date=datetime.utcnow().date(), template=template, billable_unit=19, rate=0.060, notifications_sent=19
+        bst_date=datetime.now(UTC).replace(tzinfo=None).date(),
+        template=template,
+        billable_unit=19,
+        rate=0.060,
+        notifications_sent=19,
     )
     mocker.patch(
         "app.dao.fact_billing_dao.get_ft_billing_data_for_today_updated_at", return_value="2019-06-01T12:00:00+00:00"
@@ -892,7 +896,7 @@ def test_get_organisation_services_usage_limit_queries_executed(admin_request, n
         create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2019)
         for num_billing_days in range(random.randint(10, 25)):
             create_ft_billing(
-                bst_date=datetime.utcnow().date() - timedelta(days=num_billing_days),
+                bst_date=datetime.now(UTC).replace(tzinfo=None).date() - timedelta(days=num_billing_days),
                 template=template,
                 billable_unit=num_billing_days + 1,
                 rate=0.060,
@@ -920,7 +924,11 @@ def test_get_organisation_services_usage_sort_active_first(admin_request, notify
     dao_add_service_to_organisation(service=archived_service, organisation_id=org.id)
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2019)
     create_ft_billing(
-        bst_date=datetime.utcnow().date(), template=template, billable_unit=19, rate=0.060, notifications_sent=19
+        bst_date=datetime.now(UTC).replace(tzinfo=None).date(),
+        template=template,
+        billable_unit=19,
+        rate=0.060,
+        notifications_sent=19,
     )
     response = admin_request.get(
         "organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019}

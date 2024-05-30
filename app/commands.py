@@ -5,7 +5,7 @@ import logging
 import os
 import random
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from time import monotonic
 from unittest import mock
 
@@ -164,7 +164,7 @@ def backfill_notification_statuses():
 
     while len(result) > 0:
         db.session.execute(update)
-        print("commit {} updates at {}".format(LIMIT, datetime.utcnow()))
+        print("commit {} updates at {}".format(LIMIT, datetime.now(UTC).replace(tzinfo=None)))
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
@@ -181,7 +181,7 @@ def update_notification_international_flag():
 
     while len(result) > 0:
         db.session.execute(update)
-        print("commit 250000 updates at {}".format(datetime.utcnow()))
+        print("commit 250000 updates at {}".format(datetime.now(UTC).replace(tzinfo=None)))
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
@@ -191,7 +191,7 @@ def update_notification_international_flag():
     result_history = db.session.execute(subq_history).fetchall()
     while len(result_history) > 0:
         db.session.execute(update_history)
-        print("commit 250000 updates at {}".format(datetime.utcnow()))
+        print("commit 250000 updates at {}".format(datetime.now(UTC).replace(tzinfo=None)))
         db.session.commit()
         result_history = db.session.execute(subq_history).fetchall()
 
@@ -214,7 +214,7 @@ def fix_notification_statuses_not_in_sync():
 
     while len(result) > 0:
         db.session.execute(update)
-        print("Committed {} updates at {}".format(len(result), datetime.utcnow()))
+        print("Committed {} updates at {}".format(len(result), datetime.now(UTC).replace(tzinfo=None)))
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
@@ -226,7 +226,7 @@ def fix_notification_statuses_not_in_sync():
 
     while len(result) > 0:
         db.session.execute(update)
-        print("Committed {} updates at {}".format(len(result), datetime.utcnow()))
+        print("Committed {} updates at {}".format(len(result), datetime.now(UTC).replace(tzinfo=None)))
         db.session.commit()
         result = db.session.execute(subq_hist).fetchall()
 
@@ -371,7 +371,7 @@ def populate_notification_postage(start_date):
 
     total_updated = 0
 
-    while start_date < datetime.utcnow():
+    while start_date < datetime.now(UTC).replace(tzinfo=None):
         # process in ten day chunks
         end_date = start_date + timedelta(days=10)
 
@@ -383,9 +383,9 @@ def populate_notification_postage(start_date):
             created_at BETWEEN :start AND :end
             """
 
-        execution_start = datetime.utcnow()
+        execution_start = datetime.now(UTC).replace(tzinfo=None)
 
-        if end_date > datetime.utcnow() - timedelta(days=8):
+        if end_date > datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8):
             print("Updating notifications table as well")
             db.session.execute(sql.format("notifications"), {"start": start_date, "end": end_date})
 
@@ -394,7 +394,7 @@ def populate_notification_postage(start_date):
 
         current_app.logger.info(
             "notification postage took %sms. Migrated %s rows for %s to %s",
-            datetime.utcnow() - execution_start,
+            datetime.now(UTC).replace(tzinfo=None) - execution_start,
             result.rowcount,
             start_date,
             end_date,
@@ -418,7 +418,7 @@ def update_jobs_archived_flag(start_date, end_date):
     total_updated = 0
 
     while process_date < end_date:
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC).replace(tzinfo=None)
         sql = """update
                     jobs set archived = true
                 where
@@ -948,7 +948,10 @@ def generate_bulktest_data(user_id):
         for notification_type in ["email", "sms", "letter"]:
             with mock.patch("app.dao.notifications_dao._delete_letters_from_s3"):
                 move_notifications_to_notification_history(
-                    notification_type, service_id, datetime.utcnow() - timedelta(days=7), qry_limit=500_000
+                    notification_type,
+                    service_id,
+                    datetime.now(UTC).replace(tzinfo=None) - timedelta(days=7),
+                    qry_limit=500_000,
                 )
         pprint(f" -> Service {i} done.")
 

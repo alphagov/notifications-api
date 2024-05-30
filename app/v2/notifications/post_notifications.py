@@ -1,7 +1,7 @@
 import base64
 import functools
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import botocore
 from flask import abort, current_app, jsonify, request
@@ -297,7 +297,7 @@ def save_email_or_sms_to_queue(
         "unsubscribe_link": unsubscribe_link,
         "document_download_count": document_download_count,
         "status": NOTIFICATION_CREATED,
-        "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
+        "created_at": datetime.now(UTC).replace(tzinfo=None).strftime(DATETIME_FORMAT),
     }
     encoded = signing.encode(data)
 
@@ -387,7 +387,7 @@ def process_letter_notification(
         # mark test letter as delivered and do not create a fake response later
         else:
             status = NOTIFICATION_DELIVERED
-            updated_at = datetime.utcnow()
+            updated_at = datetime.now(UTC).replace(tzinfo=None)
 
     queue = QueueNames.CREATE_LETTERS_PDF if not test_key else QueueNames.RESEARCH_MODE
 

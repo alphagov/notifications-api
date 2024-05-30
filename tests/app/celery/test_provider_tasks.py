@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import boto3
 import pytest
@@ -218,8 +218,8 @@ def test_update_letter_to_sending(sample_letter_template):
     update_letter_to_sending(letter)
 
     assert letter.status == NOTIFICATION_SENDING
-    assert letter.sent_at == datetime.utcnow()
-    assert letter.updated_at == datetime.utcnow()
+    assert letter.sent_at == datetime.now(UTC).replace(tzinfo=None)
+    assert letter.updated_at == datetime.now(UTC).replace(tzinfo=None)
     assert letter.sent_by == "dvla"
 
 

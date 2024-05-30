@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
@@ -342,7 +342,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
 
 
 def test_get_service_by_id_returns_go_live_user_and_go_live_at(admin_request, sample_user):
-    now = datetime.utcnow()
+    now = datetime.now(UTC).replace(tzinfo=None)
     service = create_service(user=sample_user, go_live_user=sample_user, go_live_at=now)
     json_resp = admin_request.get("service.get_service_by_id", service_id=service.id)
     assert json_resp["data"]["go_live_user"] == str(sample_user.id)
@@ -1955,7 +1955,9 @@ def test_get_detailed_services_groups_by_service(notify_db_session):
     create_notification(service_1_template, status="delivered")
     create_notification(service_1_template, status="created")
 
-    data = get_detailed_services(start_date=datetime.utcnow().date(), end_date=datetime.utcnow().date())
+    data = get_detailed_services(
+        start_date=datetime.now(UTC).replace(tzinfo=None).date(), end_date=datetime.now(UTC).replace(tzinfo=None).date()
+    )
     data = sorted(data, key=lambda x: x["name"])
 
     assert len(data) == 2
@@ -1982,7 +1984,9 @@ def test_get_detailed_services_includes_services_with_no_notifications(notify_db
     service_1_template = create_template(service_1)
     create_notification(service_1_template)
 
-    data = get_detailed_services(start_date=datetime.utcnow().date(), end_date=datetime.utcnow().date())
+    data = get_detailed_services(
+        start_date=datetime.now(UTC).replace(tzinfo=None).date(), end_date=datetime.now(UTC).replace(tzinfo=None).date()
+    )
     data = sorted(data, key=lambda x: x["name"])
 
     assert len(data) == 2
@@ -2009,7 +2013,10 @@ def test_get_detailed_services_only_includes_todays_notifications(sample_templat
     create_notification(sample_template, created_at=datetime(2015, 10, 10, 23, 0))
 
     with freeze_time("2015-10-10T12:00:00"):
-        data = get_detailed_services(start_date=datetime.utcnow().date(), end_date=datetime.utcnow().date())
+        data = get_detailed_services(
+            start_date=datetime.now(UTC).replace(tzinfo=None).date(),
+            end_date=datetime.now(UTC).replace(tzinfo=None).date(),
+        )
         data = sorted(data, key=lambda x: x["id"])
 
     assert len(data) == 1
@@ -2026,25 +2033,25 @@ def test_get_detailed_services_for_date_range(sample_template, start_date_delta,
     from app.service.rest import get_detailed_services
 
     create_ft_notification_status(
-        bst_date=(datetime.utcnow() - timedelta(days=3)).date(),
+        bst_date=(datetime.now(UTC).replace(tzinfo=None) - timedelta(days=3)).date(),
         service=sample_template.service,
         notification_type="sms",
     )
     create_ft_notification_status(
-        bst_date=(datetime.utcnow() - timedelta(days=2)).date(),
+        bst_date=(datetime.now(UTC).replace(tzinfo=None) - timedelta(days=2)).date(),
         service=sample_template.service,
         notification_type="sms",
     )
     create_ft_notification_status(
-        bst_date=(datetime.utcnow() - timedelta(days=1)).date(),
+        bst_date=(datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)).date(),
         service=sample_template.service,
         notification_type="sms",
     )
 
-    create_notification(template=sample_template, created_at=datetime.utcnow(), status="delivered")
+    create_notification(template=sample_template, created_at=datetime.now(UTC).replace(tzinfo=None), status="delivered")
 
-    start_date = (datetime.utcnow() - timedelta(days=start_date_delta)).date()
-    end_date = (datetime.utcnow() - timedelta(days=end_date_delta)).date()
+    start_date = (datetime.now(UTC).replace(tzinfo=None) - timedelta(days=start_date_delta)).date()
+    end_date = (datetime.now(UTC).replace(tzinfo=None) - timedelta(days=end_date_delta)).date()
 
     data = get_detailed_services(
         only_active=False, include_from_test_key=True, start_date=start_date, end_date=end_date
@@ -3301,9 +3308,9 @@ def test_get_monthly_notification_data_by_service(sample_service, admin_request)
 
 @freeze_time("2019-12-11 13:30")
 def test_get_returned_letter_statistics(admin_request, sample_service):
-    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=3))
-    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=2))
-    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=1))
+    create_returned_letter(sample_service, reported_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=3))
+    create_returned_letter(sample_service, reported_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=2))
+    create_returned_letter(sample_service, reported_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1))
 
     response = admin_request.get("service.returned_letter_statistics", service_id=sample_service.id)
 
@@ -3316,8 +3323,8 @@ def test_get_returned_letter_statistics_with_old_returned_letters(
     admin_request,
     sample_service,
 ):
-    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=8))
-    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=800))
+    create_returned_letter(sample_service, reported_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8))
+    create_returned_letter(sample_service, reported_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=800))
 
     count_mock = mocker.patch(
         "app.service.rest.fetch_recent_returned_letter_count",
@@ -3350,9 +3357,9 @@ def test_get_returned_letter_statistics_with_no_returned_letters(
 
 @freeze_time("2019-12-11 13:30")
 def test_get_returned_letter_summary(admin_request, sample_service):
-    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=3))
-    create_returned_letter(sample_service, reported_at=datetime.utcnow())
-    create_returned_letter(sample_service, reported_at=datetime.utcnow())
+    create_returned_letter(sample_service, reported_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=3))
+    create_returned_letter(sample_service, reported_at=datetime.now(UTC).replace(tzinfo=None))
+    create_returned_letter(sample_service, reported_at=datetime.now(UTC).replace(tzinfo=None))
 
     response = admin_request.get("service.returned_letter_summary", service_id=sample_service.id)
 
@@ -3370,21 +3377,25 @@ def test_get_returned_letter(admin_request, sample_letter_template):
         status=NOTIFICATION_RETURNED_LETTER,
         job=job,
         job_row_number=2,
-        created_at=datetime.utcnow() - timedelta(days=1),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1),
         created_by_id=sample_letter_template.service.users[0].id,
     )
     create_returned_letter(
-        service=sample_letter_template.service, reported_at=datetime.utcnow(), notification_id=letter_from_job.id
+        service=sample_letter_template.service,
+        reported_at=datetime.now(UTC).replace(tzinfo=None),
+        notification_id=letter_from_job.id,
     )
 
     one_off_letter = create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_RETURNED_LETTER,
-        created_at=datetime.utcnow() - timedelta(days=2),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=2),
         created_by_id=sample_letter_template.service.users[0].id,
     )
     create_returned_letter(
-        service=sample_letter_template.service, reported_at=datetime.utcnow(), notification_id=one_off_letter.id
+        service=sample_letter_template.service,
+        reported_at=datetime.now(UTC).replace(tzinfo=None),
+        notification_id=one_off_letter.id,
     )
 
     api_key = create_api_key(service=sample_letter_template.service)
@@ -3392,11 +3403,13 @@ def test_get_returned_letter(admin_request, sample_letter_template):
         template=sample_letter_template,
         client_reference="api_letter",
         status=NOTIFICATION_RETURNED_LETTER,
-        created_at=datetime.utcnow() - timedelta(days=3),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=3),
         api_key=api_key,
     )
     create_returned_letter(
-        service=sample_letter_template.service, reported_at=datetime.utcnow(), notification_id=api_letter.id
+        service=sample_letter_template.service,
+        reported_at=datetime.now(UTC).replace(tzinfo=None),
+        notification_id=api_letter.id,
     )
 
     precompiled_template = create_template(
@@ -3406,20 +3419,24 @@ def test_get_returned_letter(admin_request, sample_letter_template):
         template=precompiled_template,
         api_key=api_key,
         client_reference="precompiled letter",
-        created_at=datetime.utcnow() - timedelta(days=4),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=4),
     )
     create_returned_letter(
-        service=sample_letter_template.service, reported_at=datetime.utcnow(), notification_id=precompiled_letter.id
+        service=sample_letter_template.service,
+        reported_at=datetime.now(UTC).replace(tzinfo=None),
+        notification_id=precompiled_letter.id,
     )
 
     uploaded_letter = create_notification_history(
         template=precompiled_template,
         client_reference="filename.pdf",
-        created_at=datetime.utcnow() - timedelta(days=5),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=5),
         created_by_id=sample_letter_template.service.users[0].id,
     )
     create_returned_letter(
-        service=sample_letter_template.service, reported_at=datetime.utcnow(), notification_id=uploaded_letter.id
+        service=sample_letter_template.service,
+        reported_at=datetime.now(UTC).replace(tzinfo=None),
+        notification_id=uploaded_letter.id,
     )
 
     not_included_in_results_template = create_template(
@@ -3429,7 +3446,9 @@ def test_get_returned_letter(admin_request, sample_letter_template):
         template=not_included_in_results_template, status=NOTIFICATION_RETURNED_LETTER
     )
     create_returned_letter(
-        service=not_included_in_results_template.service, reported_at=datetime.utcnow(), notification_id=letter_4.id
+        service=not_included_in_results_template.service,
+        reported_at=datetime.now(UTC).replace(tzinfo=None),
+        notification_id=letter_4.id,
     )
     response = admin_request.get(
         "service.get_returned_letters", service_id=sample_letter_template.service_id, reported_at="2019-12-11"

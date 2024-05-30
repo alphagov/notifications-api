@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from freezegun import freeze_time
@@ -24,7 +24,7 @@ from tests.app.db import (
 @freeze_time("2017-11-11 02:00")
 def test_get_template_usage_by_month_returns_correct_data(admin_request, sample_template):
     create_ft_notification_status(bst_date=date(2017, 4, 2), template=sample_template, count=3)
-    create_notification(sample_template, created_at=datetime.utcnow())
+    create_notification(sample_template, created_at=datetime.now(UTC).replace(tzinfo=None))
 
     resp_json = admin_request.get(
         "service.get_monthly_template_usage", service_id=sample_template.service_id, year=2017
@@ -55,7 +55,7 @@ def test_get_template_usage_by_month_returns_two_templates(admin_request, sample
     )
     create_ft_notification_status(bst_date=datetime(2017, 4, 1), template=template_one, count=1)
     create_ft_notification_status(bst_date=datetime(2017, 4, 1), template=sample_template, count=3)
-    create_notification(sample_template, created_at=datetime.utcnow())
+    create_notification(sample_template, created_at=datetime.now(UTC).replace(tzinfo=None))
 
     resp_json = admin_request.get(
         "service.get_monthly_template_usage", service_id=sample_template.service_id, year=2017

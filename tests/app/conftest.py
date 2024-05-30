@@ -1,7 +1,7 @@
 import json
 import textwrap
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytz
@@ -307,7 +307,7 @@ def sample_job(notify_db_session):
         "template_version": template.version,
         "original_file_name": "some.csv",
         "notification_count": 1,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(UTC).replace(tzinfo=None),
         "created_by": service.created_by,
         "job_status": "pending",
         "scheduled_for": None,
@@ -334,7 +334,7 @@ def sample_scheduled_job(sample_template_with_placeholders):
     return create_job(
         sample_template_with_placeholders,
         job_status="scheduled",
-        scheduled_for=(datetime.utcnow() + timedelta(minutes=60)).isoformat(),
+        scheduled_for=(datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=60)).isoformat(),
     )
 
 
@@ -349,7 +349,7 @@ def sample_letter_job(sample_letter_template):
         "template_version": sample_letter_template.version,
         "original_file_name": "some.csv",
         "notification_count": 1,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(UTC).replace(tzinfo=None),
         "created_by": service.created_by,
     }
     job = Job(**data)
@@ -380,7 +380,7 @@ def sample_notification_with_job(notify_db_session):
 
 @pytest.fixture(scope="function")
 def sample_notification(notify_db_session):
-    created_at = datetime.utcnow()
+    created_at = datetime.now(UTC).replace(tzinfo=None)
     service = create_service(check_if_service_exists=True)
     template = create_template(service=service)
 
@@ -440,7 +440,7 @@ def sample_letter_notification(sample_letter_template):
 
 @pytest.fixture(scope="function")
 def sample_email_notification(notify_db_session):
-    created_at = datetime.utcnow()
+    created_at = datetime.now(UTC).replace(tzinfo=None)
     service = create_service(check_if_service_exists=True)
     template = create_template(service, template_type=EMAIL_TYPE)
     job = create_job(template)
@@ -475,8 +475,8 @@ def sample_email_notification(notify_db_session):
 
 @pytest.fixture(scope="function")
 def sample_notification_history(notify_db_session, sample_template):
-    created_at = datetime.utcnow()
-    sent_at = datetime.utcnow()
+    created_at = datetime.now(UTC).replace(tzinfo=None)
+    sent_at = datetime.now(UTC).replace(tzinfo=None)
     notification_type = sample_template.template_type
     api_key = create_api_key(sample_template.service, key_type=KEY_TYPE_NORMAL)
 

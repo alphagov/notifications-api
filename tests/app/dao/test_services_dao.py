@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 import pytest
@@ -1212,8 +1212,8 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
         create_notification(template_2, normalised_to=normal_number, status="delivered")
         create_notification(template_2, normalised_to=normal_number_resembling_tv_number, status="delivered")
 
-    start_date = datetime.utcnow() - timedelta(days=1)
-    end_date = datetime.utcnow()
+    start_date = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
+    end_date = datetime.now(UTC).replace(tzinfo=None)
 
     result = dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=4)
     assert len(result) == 1
@@ -1246,8 +1246,8 @@ def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid)
         create_notification(template_2, status="permanent-failure", key_type="test")  # test key type is excluded
     create_notification(template_2, status="permanent-failure")  # below threshold is excluded
 
-    start_date = datetime.utcnow() - timedelta(days=1)
-    end_date = datetime.utcnow()
+    start_date = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
+    end_date = datetime.now(UTC).replace(tzinfo=None)
 
     result = dao_find_services_with_high_failure_rates(start_date, end_date, threshold=3)
     # assert len(result) == 3

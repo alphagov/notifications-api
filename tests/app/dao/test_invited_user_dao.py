@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.orm.exc import NoResultFound
@@ -136,7 +136,7 @@ def make_invitation(user, service, age=None, email_address="test@test.com"):
         from_user=user,
         service=service,
         status="pending",
-        created_at=datetime.utcnow() - (age or timedelta(hours=0)),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - (age or timedelta(hours=0)),
         permissions="manage_settings",
         folder_permissions=[str(uuid.uuid4())],
     )

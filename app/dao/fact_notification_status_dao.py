@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import Date, case, func
 from sqlalchemy.dialects.postgresql import insert
@@ -137,7 +137,7 @@ def fetch_notification_status_for_service_for_day(bst_day, service_id):
 
 def fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, by_template=False, limit_days=7):
     start_date = midnight_n_days_ago(limit_days)
-    now = datetime.utcnow()
+    now = datetime.now(UTC).replace(tzinfo=None)
     stats_for_7_days = db.session.query(
         FactNotificationStatus.notification_type.label("notification_type"),
         FactNotificationStatus.notification_status.label("status"),
@@ -204,8 +204,8 @@ def fetch_notification_status_totals_for_all_services(start_date, end_date):
             FactNotificationStatus.key_type,
         )
     )
-    today = get_london_midnight_in_utc(datetime.utcnow())
-    if start_date <= datetime.utcnow().date() <= end_date:
+    today = get_london_midnight_in_utc(datetime.now(UTC).replace(tzinfo=None))
+    if start_date <= datetime.now(UTC).replace(tzinfo=None).date() <= end_date:
         stats_for_today = (
             db.session.query(
                 Notification.notification_type.cast(db.Text).label("notification_type"),
@@ -285,8 +285,8 @@ def fetch_stats_for_all_services_by_date_range(start_date, end_date, include_fro
     if not include_from_test_key:
         stats = stats.filter(FactNotificationStatus.key_type != KEY_TYPE_TEST)
 
-    if start_date <= datetime.utcnow().date() <= end_date:
-        today = get_london_midnight_in_utc(datetime.utcnow())
+    if start_date <= datetime.now(UTC).replace(tzinfo=None).date() <= end_date:
+        today = get_london_midnight_in_utc(datetime.now(UTC).replace(tzinfo=None))
         subquery = (
             db.session.query(
                 Notification.notification_type.cast(db.Text).label("notification_type"),
@@ -375,8 +375,8 @@ def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
         )
     )
 
-    if start_date <= datetime.utcnow() <= end_date:
-        today = get_london_midnight_in_utc(datetime.utcnow())
+    if start_date <= datetime.now(UTC).replace(tzinfo=None) <= end_date:
+        today = get_london_midnight_in_utc(datetime.now(UTC).replace(tzinfo=None))
         month = get_london_month_from_utc_column(Notification.created_at)
 
         stats_for_today = (

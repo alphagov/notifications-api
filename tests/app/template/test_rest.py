@@ -3,7 +3,7 @@ import json
 import random
 import string
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import botocore
 import pytest
@@ -1282,7 +1282,7 @@ def test_preview_letter_template_by_id_valid_file_type(
     mock_onwards_request_headers,
     file_type,
 ):
-    sample_letter_notification.created_at = datetime.utcnow()
+    sample_letter_notification.created_at = datetime.now(UTC).replace(tzinfo=None)
     with set_config_values(
         notify_api,
         {
@@ -1334,7 +1334,7 @@ def test_preview_letter_template_by_id_shows_template_version_used_by_notificati
     mock_onwards_request_headers,
     admin_request,
 ):
-    sample_letter_notification.created_at = datetime.utcnow()
+    sample_letter_notification.created_at = datetime.now(UTC).replace(tzinfo=None)
     assert sample_letter_notification.template_version == 1
 
     # Create a new template history to check that our preview doesn't use the newest version

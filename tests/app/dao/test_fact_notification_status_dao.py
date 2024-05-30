@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest import mock
 from uuid import UUID
 
@@ -367,8 +367,8 @@ def test_fetch_monthly_template_usage_for_service(sample_service):
     create_ft_notification_status(bst_date=date(2018, 1, 1), service=sample_service, template=template_one, count=4)
 
     create_ft_notification_status(bst_date=date(2018, 3, 1), service=sample_service, template=template_three, count=5)
-    create_notification(template=template_three, created_at=datetime.utcnow() - timedelta(days=1))
-    create_notification(template=template_three, created_at=datetime.utcnow())
+    create_notification(template=template_three, created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1))
+    create_notification(template=template_three, created_at=datetime.now(UTC).replace(tzinfo=None))
     results = fetch_monthly_template_usage_for_service(datetime(2017, 4, 1), datetime(2018, 3, 31), sample_service.id)
 
     assert len(results) == 4
@@ -420,7 +420,7 @@ def test_fetch_monthly_template_usage_for_service_does_join_to_notifications_if_
     create_ft_notification_status(
         bst_date=date(2018, 3, 1), service=template_one.service, template=template_one, count=3
     )
-    create_notification(template=template_one, created_at=datetime.utcnow())
+    create_notification(template=template_one, created_at=datetime.now(UTC).replace(tzinfo=None))
     results = fetch_monthly_template_usage_for_service(
         datetime(2018, 1, 1), datetime(2018, 2, 20), template_one.service_id
     )
@@ -452,7 +452,7 @@ def test_fetch_monthly_template_usage_for_service_does_not_include_cancelled_sta
         notification_status="cancelled",
         count=15,
     )
-    create_notification(template=sample_template, created_at=datetime.utcnow(), status="cancelled")
+    create_notification(template=sample_template, created_at=datetime.now(UTC).replace(tzinfo=None), status="cancelled")
     results = fetch_monthly_template_usage_for_service(
         datetime(2018, 1, 1), datetime(2018, 3, 31), sample_template.service_id
     )
@@ -472,7 +472,7 @@ def test_fetch_monthly_template_usage_for_service_does_not_include_test_notifica
     )
     create_notification(
         template=sample_template,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC).replace(tzinfo=None),
         status="delivered",
         key_type="test",
     )
@@ -617,7 +617,7 @@ def test_get_total_notifications_for_date_range(sample_service):
     "created_at_utc,process_day,expected_count",
     [
         # Clocks change on the 27th of March 2022, so the query needs to look at the
-        # time range 00:00 - 23:00 (UTC) thereafter.
+        # time range 00:00 - 23:00 (UTC).replace(tzinfo=None) thereafter.
         ("2022-03-27T00:30", date(2022, 3, 27), 1),  # 27/03 00:30 GMT
         ("2022-03-27T22:30", date(2022, 3, 27), 1),  # 27/03 23:30 BST
         ("2022-03-27T23:30", date(2022, 3, 27), 0),  # 28/03 00:30 BST

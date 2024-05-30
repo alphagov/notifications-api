@@ -1,6 +1,6 @@
 import random
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -264,14 +264,14 @@ def create_notification(
         template = job.template
 
     if created_at is None:
-        created_at = datetime.utcnow()
+        created_at = datetime.now(UTC).replace(tzinfo=None)
 
     if to_field is None:
         to_field = "+447700900855" if template.template_type == SMS_TYPE else "test@example.com"
 
     if status not in ("created", "validation-failed", "virus-scan-failed", "pending-virus-check"):
-        sent_at = sent_at or datetime.utcnow()
-        updated_at = updated_at or datetime.utcnow()
+        sent_at = sent_at or datetime.now(UTC).replace(tzinfo=None)
+        updated_at = updated_at or datetime.now(UTC).replace(tzinfo=None)
 
     if not one_off and (job is None and api_key is None):
         # we did not specify in test - lets create it
@@ -347,11 +347,11 @@ def create_notification_history(
         template = job.template
 
     if created_at is None:
-        created_at = datetime.utcnow()
+        created_at = datetime.now(UTC).replace(tzinfo=None)
 
     if status != "created":
-        sent_at = sent_at or datetime.utcnow()
-        updated_at = updated_at or datetime.utcnow()
+        sent_at = sent_at or datetime.now(UTC).replace(tzinfo=None)
+        updated_at = updated_at or datetime.now(UTC).replace(tzinfo=None)
 
     if template.template_type == "letter" and postage is None:
         postage = "second"
@@ -410,7 +410,7 @@ def create_job(
         "template_version": template.version,
         "original_file_name": original_file_name,
         "notification_count": notification_count,
-        "created_at": created_at or datetime.utcnow(),
+        "created_at": created_at or datetime.now(UTC).replace(tzinfo=None),
         "created_by": template.created_by,
         "job_status": job_status,
         "scheduled_for": scheduled_for,
@@ -452,10 +452,10 @@ def create_inbound_sms(
 
     inbound = InboundSms(
         service=service,
-        created_at=created_at or datetime.utcnow(),
+        created_at=created_at or datetime.now(UTC).replace(tzinfo=None),
         notify_number=service.get_inbound_number(),
         user_number=user_number,
-        provider_date=provider_date or datetime.utcnow(),
+        provider_date=provider_date or datetime.now(UTC).replace(tzinfo=None),
         provider_reference=provider_reference or "foo",
         content=content,
         provider=provider,
@@ -773,7 +773,7 @@ def create_complaint(service=None, notification=None, created_at=None):
         service_id=service.id,
         ses_feedback_id=str(uuid.uuid4()),
         complaint_type="abuse",
-        complaint_date=datetime.utcnow(),
+        complaint_date=datetime.now(UTC).replace(tzinfo=None),
         created_at=created_at if created_at else datetime.now(),
     )
     db.session.add(complaint)
@@ -1121,9 +1121,9 @@ def create_returned_letter(service=None, reported_at=None, notification_id=None)
         service = create_service(service_name="a - with sms and letter")
     returned_letter = ReturnedLetter(
         service_id=service.id,
-        reported_at=reported_at or datetime.utcnow(),
+        reported_at=reported_at or datetime.now(UTC).replace(tzinfo=None),
         notification_id=notification_id or uuid.uuid4(),
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
     db.session.add(returned_letter)
@@ -1148,7 +1148,7 @@ def create_service_contact_list(
         row_count=row_count,
         template_type=template_type,
         created_by_id=created_by_id or service.users[0].id,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC).replace(tzinfo=None),
         archived=archived,
     )
     db.session.add(contact_list)
@@ -1216,13 +1216,13 @@ def create_broadcast_event(
     b_e = BroadcastEvent(
         service=broadcast_message.service,
         broadcast_message=broadcast_message,
-        sent_at=sent_at or datetime.utcnow(),
+        sent_at=sent_at or datetime.now(UTC).replace(tzinfo=None),
         message_type=message_type,
         transmitted_content=transmitted_content or {"body": "this is an emergency broadcast message"},
         transmitted_areas=transmitted_areas or broadcast_message.areas,
         transmitted_sender=transmitted_sender or "www.notifications.service.gov.uk",
         transmitted_starts_at=transmitted_starts_at,
-        transmitted_finishes_at=transmitted_finishes_at or datetime.utcnow() + timedelta(hours=24),
+        transmitted_finishes_at=transmitted_finishes_at or datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=24),
     )
     db.session.add(b_e)
     db.session.commit()

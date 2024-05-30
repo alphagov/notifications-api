@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from flask import current_app
 from sqlalchemy import Float, cast
@@ -239,7 +239,7 @@ def dao_archive_service(service_id):
 
     for api_key in service.api_keys:
         if not api_key.expiry_date:
-            api_key.expiry_date = datetime.utcnow()
+            api_key.expiry_date = datetime.now(UTC).replace(tzinfo=None)
 
 
 def dao_fetch_service_by_id_and_user(service_id, user_id):

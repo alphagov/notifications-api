@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
@@ -142,7 +142,7 @@ def test_adjust_provider_priority_sets_priority(
 
     _adjust_provider_priority(mmg_provider, 50)
 
-    assert mmg_provider.updated_at == datetime.utcnow()
+    assert mmg_provider.updated_at == datetime.now(UTC).replace(tzinfo=None)
     assert mmg_provider.created_by.id == notify_user.id
     assert mmg_provider.priority == 50
 

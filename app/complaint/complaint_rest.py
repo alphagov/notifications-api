@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import Blueprint, jsonify, request
 
@@ -36,7 +36,7 @@ def get_complaint_count():
         validate(request.args, complaint_count_request)
 
     # If start and end date are not set, we are expecting today's stats.
-    today = str(datetime.utcnow().date())
+    today = str(datetime.now(UTC).replace(tzinfo=None).date())
 
     start_date = datetime.strptime(request.args.get("start_date", today), "%Y-%m-%d").date()
     end_date = datetime.strptime(request.args.get("end_date", today), "%Y-%m-%d").date()

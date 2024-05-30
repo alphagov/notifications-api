@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -59,7 +59,7 @@ from app.v2.errors import TooManyRequestsError
 
 @notify_celery.task(name="process-job")
 def process_job(job_id, sender_id=None):
-    start = datetime.utcnow()
+    start = datetime.now(UTC).replace(tzinfo=None)
     job = dao_get_job_by_id(job_id)
     current_app.logger.info("Starting process-job task for job id %s with status: %s", job_id, job.job_status)
 
@@ -94,7 +94,7 @@ def process_job(job_id, sender_id=None):
 def job_complete(job, resumed=False, start=None):
     job.job_status = JOB_STATUS_FINISHED
 
-    finished = datetime.utcnow()
+    finished = datetime.now(UTC).replace(tzinfo=None)
     job.processing_finished = finished
     dao_update_job(job)
 
@@ -163,7 +163,7 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
 
     except TooManyRequestsError as e:
         job.job_status = "sending limits exceeded"
-        job.processing_finished = datetime.utcnow()
+        job.processing_finished = datetime.now(UTC).replace(tzinfo=None)
         dao_update_job(job)
         current_app.logger.info(
             "Job %s size %s error. Sending limits (%s: %s) exceeded.",
@@ -206,7 +206,7 @@ def save_sms(self, service_id, notification_id, encoded_notification, sender_id=
             notification_type=SMS_TYPE,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC).replace(tzinfo=None),
             job_id=notification.get("job", None),
             job_row_number=notification.get("row_number", None),
             notification_id=notification_id,
@@ -260,7 +260,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             notification_type=EMAIL_TYPE,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC).replace(tzinfo=None),
             job_id=notification.get("job", None),
             job_row_number=notification.get("row_number", None),
             notification_id=notification_id,
@@ -358,7 +358,7 @@ def save_letter(
             notification_type=LETTER_TYPE,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC).replace(tzinfo=None),
             job_id=notification["job"],
             job_row_number=notification["row_number"],
             notification_id=notification_id,
@@ -499,7 +499,8 @@ def update_letter_notification(filename: str, temporary_failures: list, update: 
         temporary_failures.append(update.reference)
 
     updated_count, _ = dao_update_notifications_by_reference(
-        references=[update.reference], update_dict={"status": status, "updated_at": datetime.utcnow()}
+        references=[update.reference],
+        update_dict={"status": status, "updated_at": datetime.now(UTC).replace(tzinfo=None)},
     )
     dao_record_letter_despatched_on(
         reference=update.reference, despatched_on=update.despatch_date, cost_threshold=update.cost_threshold
@@ -599,7 +600,7 @@ def process_incomplete_jobs(job_ids):
     # reset the processing start time so that the check_job_status scheduled task doesn't pick this job up again
     for job in jobs:
         job.job_status = JOB_STATUS_IN_PROGRESS
-        job.processing_started = datetime.utcnow()
+        job.processing_started = datetime.now(UTC).replace(tzinfo=None)
         dao_update_job(job)
 
     current_app.logger.info("Resuming job(s) %s", job_ids)

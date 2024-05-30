@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import case
@@ -27,7 +27,7 @@ def insert_update_processing_time(processing_time):
         set_={
             "messages_total": stmt.excluded.messages_total,
             "messages_within_10_secs": stmt.excluded.messages_within_10_secs,
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(UTC).replace(tzinfo=None),
         },
     )
     db.session.connection().execute(stmt)

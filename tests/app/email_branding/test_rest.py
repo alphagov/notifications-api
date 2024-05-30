@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 from freezegun import freeze_time
@@ -105,7 +105,7 @@ def test_post_create_email_branding(admin_request, notify_db_session):
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
     assert email_branding.created_by is None
-    assert email_branding.created_at == datetime.utcnow()
+    assert email_branding.created_at == datetime.now(UTC).replace(tzinfo=None)
 
 
 @freeze_time()
@@ -127,7 +127,7 @@ def test_post_create_email_branding_with_created_fields(admin_request, notify_db
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
     assert str(email_branding.created_by) == data["created_by"]
-    assert email_branding.created_at == datetime.utcnow()
+    assert email_branding.created_at == datetime.now(UTC).replace(tzinfo=None)
     assert email_branding.text is None
 
 

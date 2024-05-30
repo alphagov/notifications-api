@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from dateutil.parser import parse
@@ -544,10 +544,10 @@ class JobSchema(BaseSchema):
 
     @validates("scheduled_for")
     def validate_scheduled_for(self, value):
-        if value < datetime.utcnow():
+        if value < datetime.now(UTC).replace(tzinfo=None):
             raise ValidationError("Date cannot be in the past")
 
-        if value > datetime.utcnow() + timedelta(days=7):
+        if value > datetime.now(UTC).replace(tzinfo=None) + timedelta(days=7):
             raise ValidationError("Date cannot be more than 7 days in the future")
 
     class Meta(BaseSchema.Meta):

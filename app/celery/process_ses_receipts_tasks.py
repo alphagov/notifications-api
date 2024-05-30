@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import iso8601
 from celery.exceptions import Retry
@@ -40,7 +40,7 @@ def process_ses_results(self, response):
             notification = notifications_dao.dao_get_notification_or_history_by_reference(reference=reference)
         except NoResultFound:
             message_time = iso8601.parse_date(ses_message["mail"]["timestamp"]).replace(tzinfo=None)
-            if datetime.utcnow() - message_time < timedelta(minutes=5):
+            if datetime.now(UTC).replace(tzinfo=None) - message_time < timedelta(minutes=5):
                 current_app.logger.info(
                     "notification not found for reference: %s (update to %s). "
                     "Callback may have arrived before notification was persisted to the DB. Adding task to retry queue",
@@ -78,7 +78,9 @@ def process_ses_results(self, response):
 
         if notification.sent_at:
             statsd_client.timing_with_dates(
-                f"callback.ses.{notification_status}.elapsed-time", datetime.utcnow(), notification.sent_at
+                f"callback.ses.{notification_status}.elapsed-time",
+                datetime.now(UTC).replace(tzinfo=None),
+                notification.sent_at,
             )
 
         check_and_queue_callback_task(notification)

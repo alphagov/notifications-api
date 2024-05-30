@@ -1,5 +1,5 @@
-import datetime
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from flask import current_app
@@ -78,7 +78,7 @@ def test_update_organisation(notify_db_session):
         "crown": True,
         "organisation_type": "local",
         "agreement_signed": True,
-        "agreement_signed_at": datetime.datetime.utcnow(),
+        "agreement_signed_at": datetime.now(UTC).replace(tzinfo=None),
         "agreement_signed_by_id": user.id,
         "agreement_signed_version": 999.99,
         "letter_branding_id": letter_branding.id,

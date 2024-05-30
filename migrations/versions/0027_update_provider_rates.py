@@ -11,7 +11,7 @@ revision = "0027_update_provider_rates"
 down_revision = "0026_rename_notify_service"
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from alembic import op
@@ -24,13 +24,13 @@ def upgrade():
         (
             "INSERT INTO provider_rates (id, valid_from, rate, provider_id) VALUES ('{}', '{}', 1.8, "
             "(SELECT id FROM provider_details WHERE identifier = 'mmg'))"
-        ).format(uuid.uuid4(), datetime.utcnow())
+        ).format(uuid.uuid4(), datetime.now(UTC).replace(tzinfo=None))
     )
     op.execute(
         (
             "INSERT INTO provider_rates (id, valid_from, rate, provider_id) VALUES ('{}', '{}', 2.5, "
             "(SELECT id FROM provider_details WHERE identifier = 'firetext'))"
-        ).format(uuid.uuid4(), datetime.utcnow())
+        ).format(uuid.uuid4(), datetime.now(UTC).replace(tzinfo=None))
     )
     ### end Alembic commands ###
 

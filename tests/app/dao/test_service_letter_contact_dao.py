@@ -24,8 +24,8 @@ def test_dao_get_letter_contacts_by_service_id(notify_db_session):
 
     assert len(results) == 3
     assert default_letter_contact == results[0]
-    assert third_letter_contact == results[1]
-    assert second_letter_contact == results[2]
+    assert second_letter_contact == results[1]
+    assert third_letter_contact == results[2]
 
 
 def test_dao_get_letter_contacts_by_service_id_does_not_return_archived_contacts(notify_db_session):

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import boto3
 import pytest
@@ -36,7 +36,7 @@ def test_move_notifications_deletes_letters_from_s3(sample_letter_template, mock
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
 
-    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    eight_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8)
     create_notification(
         template=sample_letter_template,
         status="delivered",
@@ -64,7 +64,7 @@ def test_move_notifications_copes_if_letter_not_in_s3(sample_letter_template, mo
         CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
     )
 
-    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    eight_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8)
     create_notification(template=sample_letter_template, status="delivered", sent_at=eight_days_ago)
 
     move_notifications_to_notification_history("letter", sample_letter_template.service_id, datetime(2020, 1, 2))
@@ -74,16 +74,20 @@ def test_move_notifications_copes_if_letter_not_in_s3(sample_letter_template, mo
 
 def test_move_notifications_does_nothing_if_notification_history_row_already_exists(sample_email_template, mocker):
     notification = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=8), status="temporary-failure"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8),
+        status="temporary-failure",
     )
     create_notification_history(
         id=notification.id,
         template=sample_email_template,
-        created_at=datetime.utcnow() - timedelta(days=8),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8),
         status="delivered",
     )
 
-    move_notifications_to_notification_history("email", sample_email_template.service_id, datetime.utcnow(), 1)
+    move_notifications_to_notification_history(
+        "email", sample_email_template.service_id, datetime.now(UTC).replace(tzinfo=None), 1
+    )
 
     assert Notification.query.count() == 0
     history = NotificationHistory.query.all()
@@ -101,12 +105,12 @@ def test_move_notifications_deletes_letters_not_sent_and_in_final_state_from_tab
         template=letter_template,
         status=notification_status,
         reference="LETTER_REF",
-        created_at=datetime.utcnow() - timedelta(days=14),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=14),
     )
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 0
 
-    move_notifications_to_notification_history("letter", sample_service.id, datetime.utcnow())
+    move_notifications_to_notification_history("letter", sample_service.id, datetime.now(UTC).replace(tzinfo=None))
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 1
@@ -124,7 +128,7 @@ def test_move_notifications_deletes_letters_sent_and_in_final_state_from_table_a
     s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
 
     letter_template = create_template(service=sample_service, template_type="letter")
-    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    eight_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8)
     create_notification(
         template=letter_template,
         status=notification_status,
@@ -140,7 +144,7 @@ def test_move_notifications_deletes_letters_sent_and_in_final_state_from_table_a
     )
     s3.put_object(Bucket=bucket_name, Key=filename, Body=b"foo")
 
-    move_notifications_to_notification_history("letter", sample_service.id, datetime.utcnow())
+    move_notifications_to_notification_history("letter", sample_service.id, datetime.now(UTC).replace(tzinfo=None))
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 1
@@ -157,12 +161,12 @@ def test_move_notifications_does_not_delete_letters_not_yet_in_final_state(sampl
         template=letter_template,
         status=notification_status,
         reference="LETTER_REF",
-        created_at=datetime.utcnow() - timedelta(days=8),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8),
     )
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 0
 
-    move_notifications_to_notification_history("letter", sample_service.id, datetime.utcnow())
+    move_notifications_to_notification_history("letter", sample_service.id, datetime.now(UTC).replace(tzinfo=None))
 
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 0
@@ -261,46 +265,60 @@ def test_move_notifications_just_deletes_test_key_notifications(sample_template)
 def test_insert_notification_history_delete_notifications(sample_email_template):
     # should be deleted
     n1 = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=1, minutes=4), status="delivered"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1, minutes=4),
+        status="delivered",
     )
     n2 = create_notification(
         template=sample_email_template,
-        created_at=datetime.utcnow() - timedelta(days=1, minutes=20),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1, minutes=20),
         status="permanent-failure",
     )
     n3 = create_notification(
         template=sample_email_template,
-        created_at=datetime.utcnow() - timedelta(days=1, minutes=30),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1, minutes=30),
         status="temporary-failure",
     )
     n4 = create_notification(
         template=sample_email_template,
-        created_at=datetime.utcnow() - timedelta(days=1, minutes=59),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1, minutes=59),
         status="temporary-failure",
     )
     n5 = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=1, hours=1), status="sending"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1, hours=1),
+        status="sending",
     )
     n6 = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=1, minutes=61), status="pending"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1, minutes=61),
+        status="pending",
     )
     n7 = create_notification(
         template=sample_email_template,
-        created_at=datetime.utcnow() - timedelta(days=1, hours=1, seconds=1),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1, hours=1, seconds=1),
         status="validation-failed",
     )
     n8 = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=1, minutes=20), status="created"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1, minutes=20),
+        status="created",
     )
     # should NOT be deleted - wrong status
     n9 = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() - timedelta(hours=1), status="delivered"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=1),
+        status="delivered",
     )
     n10 = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() - timedelta(hours=1), status="technical-failure"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=1),
+        status="technical-failure",
     )
     n11 = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() - timedelta(hours=23, minutes=59), status="created"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=23, minutes=59),
+        status="created",
     )
 
     ids_to_move = sorted([n1.id, n2.id, n3.id, n4.id, n5.id, n6.id, n7.id, n8.id])
@@ -308,7 +326,7 @@ def test_insert_notification_history_delete_notifications(sample_email_template)
     del_count = insert_notification_history_delete_notifications(
         notification_type=sample_email_template.template_type,
         service_id=sample_email_template.service_id,
-        timestamp_to_delete_backwards_from=datetime.utcnow() - timedelta(days=1),
+        timestamp_to_delete_backwards_from=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1),
     )
     assert del_count == 8
     notifications = Notification.query.all()
@@ -321,19 +339,25 @@ def test_insert_notification_history_delete_notifications(sample_email_template)
 
 def test_insert_notification_history_delete_notifications_more_notifications_than_query_limit(sample_template):
     create_notification(
-        template=sample_template, created_at=datetime.utcnow() + timedelta(minutes=4), status="delivered"
+        template=sample_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=4),
+        status="delivered",
     )
     create_notification(
-        template=sample_template, created_at=datetime.utcnow() + timedelta(minutes=20), status="permanent-failure"
+        template=sample_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=20),
+        status="permanent-failure",
     )
     create_notification(
-        template=sample_template, created_at=datetime.utcnow() + timedelta(minutes=30), status="temporary-failure"
+        template=sample_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=30),
+        status="temporary-failure",
     )
 
     del_count = insert_notification_history_delete_notifications(
         notification_type=sample_template.template_type,
         service_id=sample_template.service_id,
-        timestamp_to_delete_backwards_from=datetime.utcnow() + timedelta(hours=1),
+        timestamp_to_delete_backwards_from=datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1),
         qry_limit=1,
     )
 
@@ -346,18 +370,22 @@ def test_insert_notification_history_delete_notifications_more_notifications_tha
 
 def test_insert_notification_history_delete_notifications_only_insert_delete_for_given_service(sample_email_template):
     notification_to_move = create_notification(
-        template=sample_email_template, created_at=datetime.utcnow() + timedelta(minutes=4), status="delivered"
+        template=sample_email_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=4),
+        status="delivered",
     )
     another_service = create_service(service_name="Another service")
     another_template = create_template(service=another_service, template_type="email")
     notification_to_stay = create_notification(
-        template=another_template, created_at=datetime.utcnow() + timedelta(minutes=4), status="delivered"
+        template=another_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=4),
+        status="delivered",
     )
 
     del_count = insert_notification_history_delete_notifications(
         notification_type=sample_email_template.template_type,
         service_id=sample_email_template.service_id,
-        timestamp_to_delete_backwards_from=datetime.utcnow() + timedelta(hours=1),
+        timestamp_to_delete_backwards_from=datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1),
     )
 
     assert del_count == 1
@@ -372,21 +400,27 @@ def test_insert_notification_history_delete_notifications_only_insert_delete_for
 def test_insert_notification_history_delete_notifications_insert_for_key_type(sample_template):
     create_notification(
         template=sample_template,
-        created_at=datetime.utcnow() - timedelta(hours=4),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=4),
         status="delivered",
         key_type="normal",
     )
     create_notification(
-        template=sample_template, created_at=datetime.utcnow() - timedelta(hours=4), status="delivered", key_type="team"
+        template=sample_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=4),
+        status="delivered",
+        key_type="team",
     )
     with_test_key = create_notification(
-        template=sample_template, created_at=datetime.utcnow() - timedelta(hours=4), status="delivered", key_type="test"
+        template=sample_template,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=4),
+        status="delivered",
+        key_type="test",
     )
 
     del_count = insert_notification_history_delete_notifications(
         notification_type=sample_template.template_type,
         service_id=sample_template.service_id,
-        timestamp_to_delete_backwards_from=datetime.utcnow(),
+        timestamp_to_delete_backwards_from=datetime.now(UTC).replace(tzinfo=None),
     )
 
     assert del_count == 2
@@ -412,13 +446,13 @@ def test_insert_notification_history_delete_notifications_can_handle_different_c
     """
     create_notification(
         template=sample_template,
-        created_at=datetime.utcnow() - timedelta(hours=4),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=4),
         status="delivered",
         key_type="normal",
     )
     create_notification(
         template=sample_template,
-        created_at=datetime.utcnow() - timedelta(hours=4),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=4),
         status="delivered",
         key_type="team",
     )
@@ -431,7 +465,7 @@ def test_insert_notification_history_delete_notifications_can_handle_different_c
         del_count = insert_notification_history_delete_notifications(
             notification_type=sample_template.template_type,
             service_id=sample_template.service_id,
-            timestamp_to_delete_backwards_from=datetime.utcnow(),
+            timestamp_to_delete_backwards_from=datetime.now(UTC).replace(tzinfo=None),
         )
 
         assert del_count == 2

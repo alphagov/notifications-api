@@ -1,7 +1,7 @@
 import json
 import uuid
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
@@ -138,7 +138,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(s
     notification = Notification.query.filter_by(id=db_notification.id).one()
 
     assert notification.status == "sending"
-    assert notification.sent_at <= datetime.utcnow()
+    assert notification.sent_at <= datetime.now(UTC).replace(tzinfo=None)
     assert notification.sent_by == "mmg"
     assert notification.billable_units == 1
     assert notification.personalisation == {"name": "Jo"}
@@ -173,7 +173,7 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
 
     notification = Notification.query.filter_by(id=db_notification.id).one()
     assert notification.status == "sending"
-    assert notification.sent_at <= datetime.utcnow()
+    assert notification.sent_at <= datetime.now(UTC).replace(tzinfo=None)
     assert notification.sent_by == "ses"
     assert notification.personalisation == {"name": "Jo"}
 
@@ -270,7 +270,7 @@ def test_should_call_send_sms_response_task_if_test_api_key(
     assert persisted_notification.to == sample_notification.to
     assert persisted_notification.template_id == sample_notification.template_id
     assert persisted_notification.status == "sending"
-    assert persisted_notification.sent_at <= datetime.utcnow()
+    assert persisted_notification.sent_at <= datetime.now(UTC).replace(tzinfo=None)
     assert persisted_notification.sent_by == "mmg"
     assert not persisted_notification.personalisation
 
@@ -351,8 +351,8 @@ def test_send_email_to_provider_should_call_response_task_if_test_key(sample_ser
     assert persisted_notification.to == "john@smith.com"
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.status == "sending"
-    assert persisted_notification.sent_at <= datetime.utcnow()
-    assert persisted_notification.created_at <= datetime.utcnow()
+    assert persisted_notification.sent_at <= datetime.now(UTC).replace(tzinfo=None)
+    assert persisted_notification.created_at <= datetime.now(UTC).replace(tzinfo=None)
     assert persisted_notification.sent_by == "ses"
     assert persisted_notification.reference == str(reference)
     assert persisted_notification.billable_units == 0

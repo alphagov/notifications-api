@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Dict, List
 from urllib import parse
 
@@ -92,7 +92,7 @@ def send_sms_to_provider(notification):
                 if notification.international:
                     statsd_client.incr(f"international-sms.{NOTIFICATION_SENT}.{notification.phone_prefix}")
 
-        delta_seconds = (datetime.utcnow() - created_at).total_seconds()
+        delta_seconds = (datetime.now(UTC).replace(tzinfo=None) - created_at).total_seconds()
         statsd_client.timing("sms.total-time", delta_seconds)
 
         if key_type == KEY_TYPE_TEST:
@@ -158,7 +158,7 @@ def send_email_to_provider(notification):
             )
             notification.reference = reference
             update_notification_to_sending(notification, provider)
-        delta_seconds = (datetime.utcnow() - created_at).total_seconds()
+        delta_seconds = (datetime.now(UTC).replace(tzinfo=None) - created_at).total_seconds()
 
         if key_type == KEY_TYPE_TEST:
             statsd_client.timing("email.test-key.total-time", delta_seconds)
@@ -171,7 +171,7 @@ def send_email_to_provider(notification):
 
 
 def update_notification_to_sending(notification, provider):
-    notification.sent_at = datetime.utcnow()
+    notification.sent_at = datetime.now(UTC).replace(tzinfo=None)
     notification.sent_by = provider.name
     if notification.status not in NOTIFICATION_STATUS_TYPES_COMPLETED:
         notification.status = NOTIFICATION_SENT if notification.international else NOTIFICATION_SENDING

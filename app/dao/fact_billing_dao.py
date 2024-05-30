@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Optional
 
 from flask import current_app
@@ -308,7 +308,7 @@ def fetch_usage_for_service_by_month(service_id, year):
     we also update the table on-the-fly if we need accurate data for this year.
     """
     _, year_end = get_financial_year_dates(year)
-    today = convert_utc_to_bst(datetime.utcnow()).date()
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date()
 
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
@@ -723,7 +723,7 @@ def update_ft_billing(billing_data: list, process_day: date):
         set_={
             "notifications_sent": stmt.excluded.notifications_sent,
             "billable_units": stmt.excluded.billable_units,
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(UTC).replace(tzinfo=None),
         },
     )
     db.session.connection().execute(stmt)
@@ -830,7 +830,7 @@ def update_ft_billing_letter_despatch(process_day: date):
             constraint="ft_billing_letter_despatch_pkey",
             set_={
                 "notifications_sent": stmt.excluded.notifications_sent,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
             },
         )
         db.session.execute(stmt)
@@ -928,7 +928,7 @@ def fetch_usage_for_organisation(organisation_id, year) -> tuple[Any, Optional[s
     for the current day.
     """
     year_start, year_end = get_financial_year_dates(year)
-    today = convert_utc_to_bst(datetime.utcnow()).date()
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date()
     services = dao_get_organisation_live_services_and_their_free_allowance(organisation_id, year)
     service_with_usage = {}
     # initialise results

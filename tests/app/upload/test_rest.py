@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from freezegun import freeze_time
 
@@ -45,22 +45,22 @@ def test_get_uploads(admin_request, sample_template):
         letter_template,
         sample_template.service,
         status="delivered",
-        created_at=datetime.utcnow() - timedelta(minutes=4),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=4),
     )
     upload_2 = create_job(
         template=sample_template,
-        processing_started=datetime.utcnow() - timedelta(minutes=3),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=3),
         job_status=JOB_STATUS_FINISHED,
     )
     create_uploaded_letter(
         letter_template,
         sample_template.service,
         status="delivered",
-        created_at=datetime.utcnow() - timedelta(minutes=2),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=2),
     )
     upload_4 = create_job(
         template=sample_template,
-        processing_started=datetime.utcnow() - timedelta(minutes=1),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1),
         job_status=JOB_STATUS_FINISHED,
     )
     upload_5 = create_job(
@@ -105,8 +105,8 @@ def test_get_uploads(admin_request, sample_template):
 
 
 def test_get_uploads_should_return_statistics(admin_request, sample_template):
-    now = datetime.utcnow()
-    earlier = datetime.utcnow() - timedelta(days=1)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    earlier = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
     job_1 = create_job(template=sample_template, job_status="pending")
     job_2 = create_job(sample_template, processing_started=earlier)
     for _ in range(3):
@@ -118,7 +118,10 @@ def test_get_uploads_should_return_statistics(admin_request, sample_template):
 
     letter_template = create_precompiled_template(sample_template.service)
     create_uploaded_letter(
-        letter_template, sample_template.service, status="delivered", created_at=datetime.utcnow() - timedelta(days=3)
+        letter_template,
+        sample_template.service,
+        status="delivered",
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=3),
     )
 
     resp_json = admin_request.get("upload.get_uploads_by_service", service_id=sample_template.service_id)["data"]
@@ -204,13 +207,13 @@ def test_get_uploaded_letters_by_print_date(admin_request, sample_template):
         letter_template,
         sample_template.service,
         status="delivered",
-        created_at=datetime.utcnow() - timedelta(minutes=1),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1),
     )
     letter_2 = create_uploaded_letter(
         letter_template,
         sample_template.service,
         status="delivered",
-        created_at=datetime.utcnow() - timedelta(minutes=2),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=2),
     )
 
     service_id = sample_template.service.id
@@ -240,7 +243,7 @@ def test_get_uploaded_letters_by_print_date_paginates(admin_request, sample_temp
             letter_template,
             sample_template.service,
             status="delivered",
-            created_at=datetime.utcnow() - timedelta(minutes=1),
+            created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1),
         )
 
     service_id = sample_template.service.id

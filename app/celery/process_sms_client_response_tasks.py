@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import current_app
 from notifications_utils.template import SMSMessageTemplate
@@ -74,7 +74,7 @@ def _process_for_status(notification_status, client_name, provider_reference, de
     if notification.sent_at:
         statsd_client.timing_with_dates(
             f"callback.{client_name.lower()}.{notification_status}.elapsed-time",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             notification.sent_at,
         )
 

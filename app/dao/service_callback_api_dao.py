@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app import db
 from app.constants import COMPLAINT_CALLBACK_TYPE, DELIVERY_STATUS_CALLBACK_TYPE
@@ -9,7 +9,7 @@ from app.models import ServiceCallbackApi
 @autocommit
 @version_class(ServiceCallbackApi)
 def save_service_callback_api(service_callback_api):
-    service_callback_api.created_at = datetime.utcnow()
+    service_callback_api.created_at = datetime.now(UTC).replace(tzinfo=None)
     db.session.add(service_callback_api)
 
 
@@ -21,7 +21,7 @@ def reset_service_callback_api(service_callback_api, updated_by_id, url=None, be
     if bearer_token:
         service_callback_api.bearer_token = bearer_token
     service_callback_api.updated_by_id = updated_by_id
-    service_callback_api.updated_at = datetime.utcnow()
+    service_callback_api.updated_at = datetime.now(UTC).replace(tzinfo=None)
 
     db.session.add(service_callback_api)
 

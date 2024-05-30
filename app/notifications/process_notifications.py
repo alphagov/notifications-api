@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import current_app
 from gds_metrics import Histogram
@@ -115,7 +115,7 @@ def persist_notification(
     document_download_count=None,
     updated_at=None,
 ):
-    notification_created_at = created_at or datetime.utcnow()
+    notification_created_at = created_at or datetime.now(UTC).replace(tzinfo=None)
     if not notification_id:
         notification_id = uuid.uuid4()
     notification = Notification(

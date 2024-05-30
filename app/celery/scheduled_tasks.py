@@ -1,7 +1,7 @@
 import csv
 import io
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import jinja2
 import sentry_sdk
@@ -100,10 +100,13 @@ def run_scheduled_jobs():
 @notify_celery.task(name="delete-verify-codes")
 def delete_verify_codes():
     try:
-        start = datetime.utcnow()
+        start = datetime.now(UTC).replace(tzinfo=None)
         deleted = delete_codes_older_created_more_than_a_day_ago()
         current_app.logger.info(
-            "Delete job started %s finished %s deleted %s verify codes", start, datetime.utcnow(), deleted
+            "Delete job started %s finished %s deleted %s verify codes",
+            start,
+            datetime.now(UTC).replace(tzinfo=None),
+            deleted,
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete verify codes")
@@ -113,11 +116,14 @@ def delete_verify_codes():
 @notify_celery.task(name="delete-invitations")
 def delete_invitations():
     try:
-        start = datetime.utcnow()
+        start = datetime.now(UTC).replace(tzinfo=None)
         deleted_invites = delete_invitations_created_more_than_two_days_ago()
         deleted_invites += delete_org_invitations_created_more_than_two_days_ago()
         current_app.logger.info(
-            "Delete job started %s finished %s deleted %s invitations", start, datetime.utcnow(), deleted_invites
+            "Delete job started %s finished %s deleted %s invitations",
+            start,
+            datetime.now(UTC).replace(tzinfo=None),
+            deleted_invites,
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete invitations")
@@ -244,8 +250,8 @@ def check_job_status():
         update the job_status to 'error'
         process the rows in the csv that are missing (in another task) just do the check here.
     """
-    thirty_minutes_ago = datetime.utcnow() - timedelta(minutes=30)
-    thirty_five_minutes_ago = datetime.utcnow() - timedelta(minutes=35)
+    thirty_minutes_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=30)
+    thirty_five_minutes_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=35)
 
     incomplete_in_progress_jobs = Job.query.filter(
         Job.job_status == JOB_STATUS_IN_PROGRESS,
@@ -399,8 +405,8 @@ def check_for_missing_rows_in_completed_jobs():
 
 @notify_celery.task(name="check-for-services-with-high-failure-rates-or-sending-to-tv-numbers")
 def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
-    start_date = datetime.utcnow() - timedelta(days=1)
-    end_date = datetime.utcnow()
+    start_date = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
+    end_date = datetime.now(UTC).replace(tzinfo=None)
     message = ""
 
     services_with_failures = dao_find_services_with_high_failure_rates(start_date=start_date, end_date=end_date)
@@ -464,7 +470,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
 @notify_celery.task(name="delete-old-records-from-events-table")
 @cronitor("delete-old-records-from-events-table")
 def delete_old_records_from_events_table():
-    delete_events_before = datetime.utcnow() - timedelta(weeks=52)
+    delete_events_before = datetime.now(UTC).replace(tzinfo=None) - timedelta(weeks=52)
     event_query = Event.query.filter(Event.created_at < delete_events_before)
 
     deleted_count = event_query.delete()
@@ -477,7 +483,7 @@ def delete_old_records_from_events_table():
 @notify_celery.task(name="zendesk-new-email-branding-report")
 def zendesk_new_email_branding_report():
     # make sure we convert to BST as in summer this'll run at 23:30 UTC
-    previous_weekday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
+    previous_weekday = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date() - timedelta(days=1)
 
     # If yesterday is a Saturday or Sunday, adjust back to the Friday
     if previous_weekday.isoweekday() in {6, 7}:
@@ -603,7 +609,7 @@ def weekly_dwp_report():
             body="Please find attached your weekly report.",
             attachments=attachments,
         ),
-        due_at=convert_utc_to_bst(datetime.utcnow() + timedelta(days=7, hours=3, minutes=10)),
+        due_at=convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None) + timedelta(days=7, hours=3, minutes=10)),
     )
 
 

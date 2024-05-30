@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import call
 
 import boto3
@@ -41,8 +41,8 @@ def _sample_precompiled_letter_notification(sample_letter_notification):
     sample_letter_notification.template.name = PRECOMPILED_TEMPLATE_NAME
     sample_letter_notification.reference = "foo"
     with freeze_time(FROZEN_DATE_TIME):
-        sample_letter_notification.created_at = datetime.utcnow()
-        sample_letter_notification.updated_at = datetime.utcnow()
+        sample_letter_notification.created_at = datetime.now(UTC).replace(tzinfo=None)
+        sample_letter_notification.updated_at = datetime.now(UTC).replace(tzinfo=None)
     return sample_letter_notification
 
 
@@ -214,7 +214,7 @@ def test_get_letter_pdf_gets_pdf_from_correct_bucket(
         sample_precompiled_letter_notification_using_test_key.key_type = KEY_TYPE_NORMAL
 
     bucket_name = current_app.config[bucket_config_name]
-    filename = datetime.utcnow().strftime(filename_format)
+    filename = datetime.now(UTC).replace(tzinfo=None).strftime(filename_format)
     conn = boto3.resource("s3", region_name="eu-west-1")
     conn.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
     s3 = boto3.client("s3", region_name="eu-west-1")
@@ -352,7 +352,10 @@ def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
     s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b"pdf_content")
 
     move_sanitised_letter_to_test_or_live_pdf_bucket(
-        filename=filename, is_test_letter=False, created_at=datetime.utcnow(), new_filename=filename
+        filename=filename,
+        is_test_letter=False,
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        new_filename=filename,
     )
 
     assert not [x for x in source_bucket.objects.all()]
@@ -377,7 +380,7 @@ def test_move_sanitised_letter_to_test_pdf_bucket(notify_api, mocker):
     s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b"pdf_content")
 
     move_sanitised_letter_to_test_or_live_pdf_bucket(
-        filename=filename, is_test_letter=True, created_at=datetime.utcnow(), new_filename=filename
+        filename=filename, is_test_letter=True, created_at=datetime.now(UTC).replace(tzinfo=None), new_filename=filename
     )
 
     assert not [x for x in source_bucket.objects.all()]

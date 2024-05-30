@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -101,7 +101,7 @@ def test_fetch_billing_data_for_today_includes_data_with_the_right_key_type(noti
     for key_type in ["normal", "test", "team"]:
         create_notification(template=template, status="delivered", key_type=key_type)
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 1
     assert results[0].notifications_sent == 2
@@ -116,7 +116,7 @@ def test_fetch_billing_data_for_day_only_calls_query_for_permission_type(notify_
     create_notification(template=email_template, status="delivered")
     create_notification(template=sms_template, status="delivered")
     create_notification(template=letter_template, status="delivered")
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(process_day=today.date(), check_permissions=True)
     assert len(results) == 1
 
@@ -130,7 +130,7 @@ def test_fetch_billing_data_for_day_only_calls_query_for_all_channels(notify_db_
     create_notification(template=email_template, status="delivered")
     create_notification(template=sms_template, status="delivered")
     create_notification(template=letter_template, status="delivered")
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(process_day=today.date(), check_permissions=False)
     assert len(results) == 3
 
@@ -159,7 +159,7 @@ def test_fetch_billing_data_for_day_is_grouped_by_template_and_notification_type
     create_notification(template=email_template, status="delivered")
     create_notification(template=sms_template, status="delivered")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 2
     assert results[0].notifications_sent == 1
@@ -174,7 +174,7 @@ def test_fetch_billing_data_for_day_is_grouped_by_service(notify_db_session):
     create_notification(template=email_template, status="delivered")
     create_notification(template=sms_template, status="delivered")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 2
     assert results[0].notifications_sent == 1
@@ -187,7 +187,7 @@ def test_fetch_billing_data_for_day_is_grouped_by_provider(notify_db_session):
     create_notification(template=template, status="delivered", sent_by="mmg")
     create_notification(template=template, status="delivered", sent_by="firetext")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 2
     assert results[0].notifications_sent == 1
@@ -200,7 +200,7 @@ def test_fetch_billing_data_for_day_is_grouped_by_rate_mulitplier(notify_db_sess
     create_notification(template=template, status="delivered", rate_multiplier=1)
     create_notification(template=template, status="delivered", rate_multiplier=2)
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 2
     assert results[0].notifications_sent == 1
@@ -216,7 +216,7 @@ def test_fetch_billing_data_for_day_is_grouped_by_international(notify_db_sessio
     create_notification(template=letter_template, status="delivered", international=True)
     create_notification(template=letter_template, status="delivered", international=False)
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 4
     assert all(result.notifications_sent == 1 for result in results)
@@ -234,7 +234,7 @@ def test_fetch_billing_data_for_day_is_grouped_by_notification_type(notify_db_se
     create_notification(template=email_template, status="delivered")
     create_notification(template=letter_template, status="delivered")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 3
     notification_types = [x.notification_type for x in results]
@@ -252,7 +252,7 @@ def test_fetch_billing_data_for_day_groups_by_postage(notify_db_session):
     create_notification(template=letter_template, status="delivered", postage="rest-of-world")
     create_notification(template=email_template, status="delivered")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 5
 
@@ -266,7 +266,7 @@ def test_fetch_billing_data_for_day_groups_by_sent_by(notify_db_session):
     create_notification(template=letter_template, status="delivered", postage="second", sent_by=None)
     create_notification(template=email_template, status="delivered")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 2
 
@@ -280,7 +280,7 @@ def test_fetch_billing_data_for_day_groups_by_page_count(notify_db_session):
     create_notification(template=letter_template, status="delivered", postage="second", billable_units=2)
     create_notification(template=email_template, status="delivered")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 3
 
@@ -292,7 +292,7 @@ def test_fetch_billing_data_for_day_sets_postage_for_emails_and_sms_to_none(noti
     create_notification(template=sms_template, status="delivered")
     create_notification(template=email_template, status="delivered")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 2
     assert results[0].postage == "none"
@@ -300,7 +300,7 @@ def test_fetch_billing_data_for_day_sets_postage_for_emails_and_sms_to_none(noti
 
 
 def test_fetch_billing_data_for_day_returns_empty_list(notify_db_session):
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(today.date())
     assert results == []
 
@@ -311,7 +311,7 @@ def test_fetch_billing_data_for_day_uses_correct_table(notify_db_session):
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
 
-    five_days_ago = datetime.utcnow() - timedelta(days=5)
+    five_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=5)
     create_notification(template=sms_template, status="delivered", created_at=five_days_ago)
     create_notification_history(template=email_template, status="delivered", created_at=five_days_ago)
 
@@ -331,7 +331,7 @@ def test_fetch_billing_data_for_day_returns_list_for_given_service(notify_db_ses
     create_notification(template=template, status="delivered")
     create_notification(template=template_2, status="delivered")
 
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(process_day=today.date(), service_ids=[service.id])
     assert len(results) == 1
     assert results[0].service_id == service.id
@@ -346,7 +346,7 @@ def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session
         create_notification(template=sms_template, status=status)
         create_notification(template=email_template, status=status)
         create_notification(template=letter_template, status=status)
-    today = convert_utc_to_bst(datetime.utcnow())
+    today = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
     results = fetch_billing_data_for_day(process_day=today.date(), service_ids=[service.id])
 
     sms_results = [x for x in results if x.notification_type == "sms"]
@@ -359,13 +359,13 @@ def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session
 
 
 def test_get_rates_for_billing(notify_db_session):
-    create_rate(start_date=datetime.utcnow(), value=12, notification_type="email")
-    create_rate(start_date=datetime.utcnow(), value=22, notification_type="sms")
-    create_rate(start_date=datetime.utcnow(), value=33, notification_type="email")
-    create_letter_rate(start_date=datetime.utcnow(), rate=0.66, post_class="first")
-    create_letter_rate(start_date=datetime.utcnow(), rate=0.33, post_class="second")
-    create_letter_rate(start_date=datetime.utcnow(), rate=0.84, post_class="europe")
-    create_letter_rate(start_date=datetime.utcnow(), rate=0.84, post_class="rest-of-world")
+    create_rate(start_date=datetime.now(UTC).replace(tzinfo=None), value=12, notification_type="email")
+    create_rate(start_date=datetime.now(UTC).replace(tzinfo=None), value=22, notification_type="sms")
+    create_rate(start_date=datetime.now(UTC).replace(tzinfo=None), value=33, notification_type="email")
+    create_letter_rate(start_date=datetime.now(UTC).replace(tzinfo=None), rate=0.66, post_class="first")
+    create_letter_rate(start_date=datetime.now(UTC).replace(tzinfo=None), rate=0.33, post_class="second")
+    create_letter_rate(start_date=datetime.now(UTC).replace(tzinfo=None), rate=0.84, post_class="europe")
+    create_letter_rate(start_date=datetime.now(UTC).replace(tzinfo=None), rate=0.84, post_class="rest-of-world")
     non_letter_rates, letter_rates = get_rates_for_billing()
 
     assert len(non_letter_rates) == 3
@@ -435,7 +435,7 @@ def test_get_rate_for_letters_when_page_count_is_zero(notify_db_session):
         notification_type="letter",
         crown=True,
         letter_page_count=0,
-        date=datetime.utcnow(),
+        date=datetime.now(UTC).replace(tzinfo=None),
     )
     assert letter_rate == 0
 
@@ -531,7 +531,9 @@ def test_fetch_usage_for_service_by_month_populates_ft_billing_for_today(notify_
     service = create_service()
     template = create_template(service=service, template_type="sms")
 
-    create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.158, notification_type="sms")
+    create_rate(
+        start_date=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1), value=0.158, notification_type="sms"
+    )
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=1000, financial_year_start=2018)
 
     for i in range(1, 32):

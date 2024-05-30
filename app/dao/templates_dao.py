@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import current_app
 from sqlalchemy import asc, desc
@@ -38,7 +38,7 @@ def dao_update_template(template):
 @autocommit
 def dao_redact_template(template, user_id):
     template.template_redacted.redact_personalisation = True
-    template.template_redacted.updated_at = datetime.utcnow()
+    template.template_redacted.updated_at = datetime.now(UTC).replace(tzinfo=None)
     template.template_redacted.updated_by_id = user_id
     db.session.add(template.template_redacted)
 

@@ -1,5 +1,5 @@
 import base64
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 from flask import json
@@ -234,7 +234,7 @@ def test_format_mmg_datetime(provider_date, expected_output):
 
 @freeze_time("2020-05-14 14:30:00")
 def test_format_mmg_datetime_returns_now_if_cannot_parse_date():
-    assert format_mmg_datetime("13-05-2020 08%3A37%3A43") == datetime.utcnow()
+    assert format_mmg_datetime("13-05-2020 08%3A37%3A43") == datetime.now(UTC).replace(tzinfo=None)
 
 
 def test_create_inbound_mmg_sms_object(sample_service_full_permissions):

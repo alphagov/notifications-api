@@ -7,7 +7,7 @@ Create Date: 2023-06-19 12:43:09.194732
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from alembic import op
 import sqlalchemy as sa
@@ -34,7 +34,7 @@ def upgrade():
                 "VALUES (:id, :created_at, :user_id, :organisation_id, :permission)"
             ),
             id=uuid.uuid4(),
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC).replace(tzinfo=None),
             organisation_id=organisation_id,
             user_id=user_id,
             permission="can_make_services_live",

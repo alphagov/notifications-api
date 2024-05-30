@@ -7,7 +7,7 @@ Create Date: 2017-05-10 16:06:04.070874
 """
 
 # revision identifiers, used by Alembic.
-from datetime import datetime
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from alembic import op
@@ -89,7 +89,7 @@ GOV.UK Notify team
             template_id,
             template_name,
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             template_content,
             current_app.config["NOTIFY_SERVICE_ID"],
             template_subject,
@@ -103,7 +103,7 @@ GOV.UK Notify team
             template_id,
             template_name,
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             template_content,
             current_app.config["NOTIFY_SERVICE_ID"],
             template_subject,
@@ -120,7 +120,7 @@ GOV.UK Notify team
 #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
 #         VALUES ('{}', '{}', '{}', '{}')
 #         ;
-#     """.format(template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
+#     """.format(template_id, False, datetime.now(UTC).replace(tzinfo=None), current_app.config['NOTIFY_USER_ID'])
 # )
 
 

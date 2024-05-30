@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
@@ -93,7 +93,7 @@ def test_get_contact_list_counts_jobs(
         create_job(
             template=sample_template,
             contact_list_id=contact_list_2.id,
-            created_at=datetime.utcnow() - timedelta(days=i),
+            created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=i),
         )
 
     response = admin_request.get("service.get_contact_list", service_id=contact_list_1.service_id)

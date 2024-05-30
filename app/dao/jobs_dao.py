@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from flask import current_app
 from notifications_utils.letter_timings import (
@@ -116,7 +116,9 @@ def dao_set_scheduled_jobs_to_pending():
     from completing until it commits.
     """
     jobs = (
-        Job.query.filter(Job.job_status == JOB_STATUS_SCHEDULED, Job.scheduled_for < datetime.utcnow())
+        Job.query.filter(
+            Job.job_status == JOB_STATUS_SCHEDULED, Job.scheduled_for < datetime.now(UTC).replace(tzinfo=None)
+        )
         .order_by(asc(Job.scheduled_for))
         .with_for_update()
         .all()
@@ -163,7 +165,7 @@ def dao_get_jobs_older_than_data_retention(notification_types):
         ServiceDataRetention.notification_type.in_(notification_types)
     ).all()
     jobs = []
-    today = datetime.utcnow().date()
+    today = datetime.now(UTC).replace(tzinfo=None).date()
     for f in flexible_data_retention:
         end_date = today - timedelta(days=f.days_of_retention)
 
@@ -202,7 +204,7 @@ def dao_get_jobs_older_than_data_retention(notification_types):
 @autocommit
 def dao_cancel_letter_job(job):
     number_of_notifications_cancelled = Notification.query.filter(Notification.job_id == job.id).update(
-        {"status": NOTIFICATION_CANCELLED, "updated_at": datetime.utcnow(), "billable_units": 0}
+        {"status": NOTIFICATION_CANCELLED, "updated_at": datetime.now(UTC).replace(tzinfo=None), "billable_units": 0}
     )
     job.job_status = JOB_STATUS_CANCELLED
     dao_update_job(job)
@@ -230,8 +232,8 @@ def can_letter_job_be_cancelled(job):
 def find_jobs_with_missing_rows():
     # Jobs can be a maximum of 100,000 rows. It typically takes 10 minutes to create all those notifications.
     # Using 20 minutes as a condition seems reasonable.
-    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=20)
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    ten_minutes_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=20)
+    yesterday = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
     jobs_with_rows_missing = (
         db.session.query(Job)
         .filter(

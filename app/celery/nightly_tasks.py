@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytz
 from flask import current_app
@@ -100,7 +100,7 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
 
     for f in flexible_data_retention:
         day_to_delete_backwards_from = get_london_midnight_in_utc(
-            convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=f.days_of_retention)
+            convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date() - timedelta(days=f.days_of_retention)
         )
 
         delete_notifications_for_service_and_type.apply_async(
@@ -112,7 +112,9 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
             },
         )
 
-    seven_days_ago = get_london_midnight_in_utc(convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7))
+    seven_days_ago = get_london_midnight_in_utc(
+        convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date() - timedelta(days=7)
+    )
     service_ids_with_data_retention = {x.service_id for x in flexible_data_retention}
 
     # get a list of all service ids that we'll need to delete for. Typically that might only be 5% of services.
@@ -149,14 +151,14 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
 
 @notify_celery.task(name="delete-notifications-for-service-and-type")
 def delete_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before):
-    start = datetime.utcnow()
+    start = datetime.now(UTC).replace(tzinfo=None)
     num_deleted = move_notifications_to_notification_history(
         notification_type,
         service_id,
         datetime_to_delete_before,
     )
     if num_deleted:
-        end = datetime.utcnow()
+        end = datetime.now(UTC).replace(tzinfo=None)
         current_app.logger.info(
             (
                 "delete-notifications-for-service-and-type: "
@@ -174,7 +176,9 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
 def timeout_notifications():
     notifications = ["dummy value so len() > 0"]
 
-    cutoff_time = datetime.utcnow() - timedelta(seconds=current_app.config.get("SENDING_NOTIFICATIONS_TIMEOUT_PERIOD"))
+    cutoff_time = datetime.now(UTC).replace(tzinfo=None) - timedelta(
+        seconds=current_app.config.get("SENDING_NOTIFICATIONS_TIMEOUT_PERIOD")
+    )
 
     while len(notifications) > 0:
         notifications = dao_timeout_notifications(cutoff_time)
@@ -192,11 +196,11 @@ def timeout_notifications():
 @cronitor("delete-inbound-sms")
 def delete_inbound_sms():
     try:
-        start = datetime.utcnow()
+        start = datetime.now(UTC).replace(tzinfo=None)
         deleted = delete_inbound_sms_older_than_retention()
         current_app.logger.info(
             "Delete inbound sms job started %(start)s finished %(now)s deleted %(deleted)s inbound sms notifications",
-            dict(start=start, now=datetime.utcnow(), deleted=deleted),
+            dict(start=start, now=datetime.now(UTC).replace(tzinfo=None), deleted=deleted),
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete inbound sms notifications")
@@ -234,7 +238,7 @@ def raise_alert_if_letter_notifications_still_sending():
 
 
 def get_letter_notifications_still_sending_when_they_shouldnt_be():
-    now = datetime.utcnow()
+    now = datetime.now(UTC).replace(tzinfo=None)
 
     # If it's a weekend day or a bank holiday, do nothing
     if not is_dvla_working_day(now):
@@ -257,7 +261,7 @@ def get_letter_notifications_still_sending_when_they_shouldnt_be():
 def letter_raise_alert_if_no_ack_file_for_zip():
     # get a list of zip files since yesterday
     zip_file_set = set()
-    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    today_str = datetime.now(UTC).replace(tzinfo=None).strftime("%Y-%m-%d")
     yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # AWS datetime format
 
     for key in s3.get_list_of_files_by_suffix(
@@ -286,7 +290,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
         "https://github.com/alphagov/notifications-manuals/wiki"
         "/Support-Runbook#letter-ack-file-does-not-contain-all-zip-files-sent\n\n"
         f"pdf bucket: {current_app.config['S3_BUCKET_LETTERS_PDF']}, "
-        f"subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent\n"
+        f"subfolder: {datetime.now(UTC).replace(tzinfo=None).strftime('%Y-%m-%d')}/zips_sent\n"
         f"ack bucket: {current_app.config['S3_BUCKET_DVLA_RESPONSE']}\n\n"
         f"Missing ack for zip files: {str(sorted(zip_file_set - ack_file_set))}"
     )
@@ -306,7 +310,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
             "Letter ack file does not contain all zip files sent.",
             extra=dict(
                 pdf_bucket=current_app.config["S3_BUCKET_LETTERS_PDF"],
-                subfolder=datetime.utcnow().strftime("%Y-%m-%d") + "/zips_sent",
+                subfolder=datetime.now(UTC).replace(tzinfo=None).strftime("%Y-%m-%d") + "/zips_sent",
                 ack_bucket=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
                 missing_ack_for_zip_files=str(sorted(zip_file_set - ack_file_set)),
             ),
@@ -322,7 +326,7 @@ def save_daily_notification_processing_time(bst_date=None):
     # bst_date is a string in the format of "YYYY-MM-DD"
     if bst_date is None:
         # if a date is not provided, we run against yesterdays data
-        bst_date = (datetime.utcnow() - timedelta(days=1)).date()
+        bst_date = (datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)).date()
     else:
         bst_date = datetime.strptime(bst_date, "%Y-%m-%d").date()
 

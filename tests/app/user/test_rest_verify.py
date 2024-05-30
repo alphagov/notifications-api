@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from flask import current_app, url_for
@@ -17,7 +17,7 @@ from tests import create_admin_authorization_header
 
 @freeze_time("2016-01-01T12:00:00")
 def test_user_verify_sms_code(client, sample_sms_code):
-    sample_sms_code.user.logged_in_at = datetime.utcnow() - timedelta(days=1)
+    sample_sms_code.user.logged_in_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
     assert not VerifyCode.query.first().code_used
     assert sample_sms_code.user.current_session_id is None
     data = json.dumps({"code_type": sample_sms_code.code_type, "code": sample_sms_code.txt_code})
@@ -29,8 +29,8 @@ def test_user_verify_sms_code(client, sample_sms_code):
     )
     assert resp.status_code == 204
     assert VerifyCode.query.first().code_used
-    assert sample_sms_code.user.logged_in_at == datetime.utcnow()
-    assert sample_sms_code.user.email_access_validated_at != datetime.utcnow()
+    assert sample_sms_code.user.logged_in_at == datetime.now(UTC).replace(tzinfo=None)
+    assert sample_sms_code.user.email_access_validated_at != datetime.now(UTC).replace(tzinfo=None)
     assert sample_sms_code.user.current_session_id is not None
 
 
@@ -112,7 +112,7 @@ def test_user_verify_code_expired_code_and_increments_failed_login_count(code_ty
 
 @freeze_time("2016-01-01 10:00:00.000000")
 def test_user_verify_password(client, sample_user):
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    yesterday = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
     sample_user.logged_in_at = yesterday
     data = json.dumps({"password": "password"})
     auth_header = create_admin_authorization_header()
@@ -257,8 +257,8 @@ def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, s
         verify_code = VerifyCode(
             code_type="sms",
             _code=12345,
-            created_at=datetime.utcnow() - timedelta(minutes=10),
-            expiry_datetime=datetime.utcnow() + timedelta(minutes=40),
+            created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=10),
+            expiry_datetime=datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=40),
             user=sample_user,
         )
         db.session.add(verify_code)
@@ -438,8 +438,8 @@ def test_send_email_code_returns_404_for_bad_input_data(admin_request):
 # we send sms_auth and webauthn_auth users email code to validate their email access
 @pytest.mark.parametrize("auth_type", USER_AUTH_TYPES)
 def test_user_verify_email_code(admin_request, sample_user, auth_type):
-    sample_user.logged_in_at = datetime.utcnow() - timedelta(days=1)
-    sample_user.email_access_validated_at = datetime.utcnow() - timedelta(days=1)
+    sample_user.logged_in_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
+    sample_user.email_access_validated_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
     sample_user.auth_type = auth_type
     magic_code = str(uuid.uuid4())
     verify_code = create_user_code(sample_user, magic_code, EMAIL_TYPE)
@@ -449,8 +449,8 @@ def test_user_verify_email_code(admin_request, sample_user, auth_type):
     admin_request.post("user.verify_user_code", user_id=sample_user.id, _data=data, _expected_status=204)
 
     assert verify_code.code_used
-    assert sample_user.logged_in_at == datetime.utcnow()
-    assert sample_user.email_access_validated_at == datetime.utcnow()
+    assert sample_user.logged_in_at == datetime.now(UTC).replace(tzinfo=None)
+    assert sample_user.email_access_validated_at == datetime.now(UTC).replace(tzinfo=None)
     assert sample_user.current_session_id is not None
 
 

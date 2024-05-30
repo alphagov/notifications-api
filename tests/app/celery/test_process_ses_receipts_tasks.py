@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 
 from freezegun import freeze_time
 
@@ -24,13 +24,17 @@ from tests.app.db import (
 
 
 def test_process_ses_results(sample_email_template):
-    create_notification(sample_email_template, reference="ref1", sent_at=datetime.utcnow(), status="sending")
+    create_notification(
+        sample_email_template, reference="ref1", sent_at=datetime.now(UTC).replace(tzinfo=None), status="sending"
+    )
 
     assert process_ses_results(response=ses_notification_callback(reference="ref1"))
 
 
 def test_process_ses_results_retry_called(sample_email_template, mocker):
-    create_notification(sample_email_template, reference="ref1", sent_at=datetime.utcnow(), status="sending")
+    create_notification(
+        sample_email_template, reference="ref1", sent_at=datetime.now(UTC).replace(tzinfo=None), status="sending"
+    )
 
     mocker.patch("app.dao.notifications_dao.dao_update_notifications_by_reference", side_effect=Exception("EXPECTED"))
     mocked = mocker.patch("app.celery.process_ses_receipts_tasks.process_ses_results.retry")
@@ -76,7 +80,7 @@ def test_ses_callback_should_update_notification_status(client, notify_db_sessio
         assert process_ses_results(ses_notification_callback(reference="ref"))
         assert get_notification_by_id(notification.id).status == "delivered"
         statsd_client.timing_with_dates.assert_any_call(
-            "callback.ses.delivered.elapsed-time", datetime.utcnow(), notification.sent_at
+            "callback.ses.delivered.elapsed-time", datetime.now(UTC).replace(tzinfo=None), notification.sent_at
         )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         updated_notification = Notification.query.get(notification.id)
@@ -202,7 +206,10 @@ def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email
     )
 
     notification = create_notification(
-        template=sample_email_template, reference="ref1", sent_at=datetime.utcnow(), status="sending"
+        template=sample_email_template,
+        reference="ref1",
+        sent_at=datetime.now(UTC).replace(tzinfo=None),
+        status="sending",
     )
     response = ses_complaint_callback()
     assert process_ses_results(response)

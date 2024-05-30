@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
@@ -55,7 +55,7 @@ def test_create_user(notify_db_session, phone_number):
     assert user_query.email_address == email
     assert user_query.id == user.id
     assert user_query.mobile_number == phone_number
-    assert user_query.email_access_validated_at == datetime.utcnow()
+    assert user_query.email_access_validated_at == datetime.now(UTC).replace(tzinfo=None)
     assert not user_query.platform_admin
 
 
@@ -134,8 +134,8 @@ def make_verify_code(user, age=None, expiry_age=None, code="12335", code_used=Fa
     verify_code = VerifyCode(
         code_type="sms",
         _code=code,
-        created_at=datetime.utcnow() - (age or timedelta(hours=0)),
-        expiry_datetime=datetime.utcnow() - (expiry_age or timedelta(0)),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - (age or timedelta(hours=0)),
+        expiry_datetime=datetime.now(UTC).replace(tzinfo=None) - (expiry_age or timedelta(0)),
         user=user,
         code_used=code_used,
     )
@@ -156,16 +156,16 @@ def test_update_user_attribute(client, sample_user, user_attribute, user_value):
 
 @freeze_time("2020-01-24T12:00:00")
 def test_update_user_password(notify_api, notify_db_session, sample_user):
-    sample_user.password_changed_at = datetime.utcnow() - timedelta(days=1)
+    sample_user.password_changed_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
     password = "newpassword"
     assert not sample_user.check_password(password)
     update_user_password(sample_user, password)
     assert sample_user.check_password(password)
-    assert sample_user.password_changed_at == datetime.utcnow()
+    assert sample_user.password_changed_at == datetime.now(UTC).replace(tzinfo=None)
 
 
 def test_count_user_verify_codes(sample_user):
-    with freeze_time(datetime.utcnow() + timedelta(hours=1)):
+    with freeze_time(datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1)):
         make_verify_code(sample_user, code_used=True)
         make_verify_code(sample_user, expiry_age=timedelta(hours=2))
         [make_verify_code(sample_user) for i in range(5)]

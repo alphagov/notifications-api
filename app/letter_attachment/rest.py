@@ -1,4 +1,4 @@
-import datetime
+from datetime import UTC, datetime
 
 from flask import Blueprint, jsonify, request
 
@@ -55,7 +55,7 @@ def archive_letter_attachment(letter_attachment_id):
     if not (template := letter_attachment.template):
         raise InvalidRequest("letter-attachment-already-archived", 400)
     template.letter_attachment = None
-    letter_attachment.archived_at = datetime.datetime.utcnow()
+    letter_attachment.archived_at = datetime.now(UTC).replace(tzinfo=None)
     letter_attachment.archived_by_id = data["archived_by"]
     dao_update_template(template)
 

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.dialects.postgresql import insert
 
@@ -31,7 +31,7 @@ def dao_create_or_update_daily_sorted_letter(new_daily_sorted_letter):
         set_={
             "unsorted_count": stmt.excluded.unsorted_count,
             "sorted_count": stmt.excluded.sorted_count,
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(UTC).replace(tzinfo=None),
         },
     )
     db.session.connection().execute(stmt)

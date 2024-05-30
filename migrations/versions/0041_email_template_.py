@@ -7,7 +7,7 @@ Create Date: 2016-07-07 16:02:06.241769
 """
 
 # revision identifiers, used by Alembic.
-from datetime import datetime
+from datetime import UTC, datetime
 
 revision = "0041_email_template"
 down_revision = "0040_adjust_mmg_provider_rate"
@@ -43,7 +43,7 @@ If you didn’t try to register for a GOV.UK Notify account recently, please let
             "0880fbb1-a0c6-46f0-9a8e-36c986381ceb",
             "Your GOV.UK Notify account",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             content,
             service_id,
             "Your GOV.UK Notify account",
@@ -55,7 +55,7 @@ If you didn’t try to register for a GOV.UK Notify account recently, please let
             "0880fbb1-a0c6-46f0-9a8e-36c986381ceb",
             "Your GOV.UK Notify account",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             content,
             service_id,
             "Your GOV.UK Notify account",
@@ -71,7 +71,7 @@ If you didn’t try to register for a GOV.UK Notify account recently, please let
 #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
 #         VALUES ('0880fbb1-a0c6-46f0-9a8e-36c986381ceb', '{}', '{}', '{}')
 #         ;
-#     """.format(False, datetime.utcnow(), user_id)
+#     """.format(False, datetime.now(UTC).replace(tzinfo=None), user_id)
 # )
 
 

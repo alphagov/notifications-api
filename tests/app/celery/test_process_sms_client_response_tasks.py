@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 from freezegun import freeze_time
@@ -121,13 +121,13 @@ def test_process_sms_client_response_records_statsd_metrics(sample_notification,
     mocker.patch("app.statsd_client.timing_with_dates")
 
     sample_notification.status = "sending"
-    sample_notification.sent_at = datetime.utcnow()
+    sample_notification.sent_at = datetime.now(UTC).replace(tzinfo=None)
 
     process_sms_client_response("0", str(sample_notification.id), "Firetext")
 
     statsd_client.incr.assert_any_call("callback.firetext.delivered")
     statsd_client.timing_with_dates.assert_any_call(
-        "callback.firetext.delivered.elapsed-time", datetime.utcnow(), sample_notification.sent_at
+        "callback.firetext.delivered.elapsed-time", datetime.now(UTC).replace(tzinfo=None), sample_notification.sent_at
     )
 
 

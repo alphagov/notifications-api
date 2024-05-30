@@ -7,7 +7,7 @@ Create Date: 2016-10-11 09:24:45.669018
 """
 
 # revision identifiers, used by Alembic.
-from datetime import datetime
+from datetime import UTC, datetime
 
 from alembic import op
 
@@ -37,12 +37,26 @@ def upgrade():
     template_name = "Confirm new email address"
     op.execute(
         template_history_insert.format(
-            template_id, template_name, "email", datetime.utcnow(), template_content, service_id, template_name, user_id
+            template_id,
+            template_name,
+            "email",
+            datetime.now(UTC).replace(tzinfo=None),
+            template_content,
+            service_id,
+            template_name,
+            user_id,
         )
     )
     op.execute(
         template_insert.format(
-            template_id, template_name, "email", datetime.utcnow(), template_content, service_id, template_name, user_id
+            template_id,
+            template_name,
+            "email",
+            datetime.now(UTC).replace(tzinfo=None),
+            template_content,
+            service_id,
+            template_name,
+            user_id,
         )
     )
 
@@ -54,7 +68,7 @@ def upgrade():
 #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
 #         VALUES ('{}', '{}', '{}', '{}')
 #         ;
-#     """.format(template_id, False, datetime.utcnow(), user_id)
+#     """.format(template_id, False, datetime.now(UTC).replace(tzinfo=None), user_id)
 # )
 
 

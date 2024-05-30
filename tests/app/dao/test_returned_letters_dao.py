@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from freezegun import freeze_time
 
@@ -145,7 +145,7 @@ def test_fetch_most_recent_returned_letter_for_service(sample_service):
 
 
 def test_get_returned_letter_summary(sample_service):
-    now = datetime.utcnow()
+    now = datetime.now(UTC).replace(tzinfo=None)
     create_returned_letter(sample_service, reported_at=now)
     create_returned_letter(sample_service, reported_at=now)
 
@@ -158,8 +158,8 @@ def test_get_returned_letter_summary(sample_service):
 
 
 def test_get_returned_letter_summary_orders_by_reported_at(sample_service):
-    now = datetime.utcnow()
-    last_month = datetime.utcnow() - timedelta(days=30)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    last_month = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=30)
     create_returned_letter(sample_service, reported_at=now)
     create_returned_letter(sample_service, reported_at=now)
     create_returned_letter(sample_service, reported_at=now)
@@ -184,7 +184,7 @@ def test_fetch_returned_letters_from_notifications_and_notification_history(samp
         template=sample_letter_template,
         client_reference="letter_1",
         status=NOTIFICATION_RETURNED_LETTER,
-        created_at=datetime.utcnow() - timedelta(days=1),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1),
     )
     returned_letter_1 = create_returned_letter(
         service=sample_letter_template.service, reported_at=today, notification_id=letter_1.id
@@ -193,7 +193,7 @@ def test_fetch_returned_letters_from_notifications_and_notification_history(samp
         template=sample_letter_template,
         client_reference="letter_2",
         status=NOTIFICATION_RETURNED_LETTER,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC).replace(tzinfo=None),
     )
     returned_letter_2 = create_returned_letter(
         service=sample_letter_template.service, reported_at=today, notification_id=letter_2.id
@@ -248,7 +248,7 @@ def test_fetch_returned_letters_with_jobs(sample_letter_job):
         status=NOTIFICATION_RETURNED_LETTER,
         job=sample_letter_job,
         job_row_number=20,
-        created_at=datetime.utcnow() - timedelta(minutes=1),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1),
     )
     returned_letter_1 = create_returned_letter(
         service=sample_letter_job.service, reported_at=today, notification_id=letter_1.id
@@ -280,7 +280,7 @@ def test_fetch_returned_letters_with_create_by_user(sample_letter_template):
         template=sample_letter_template,
         client_reference="letter_1",
         status=NOTIFICATION_RETURNED_LETTER,
-        created_at=datetime.utcnow() - timedelta(minutes=1),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1),
         created_by_id=sample_letter_template.service.users[0].id,
     )
     returned_letter_1 = create_returned_letter(

@@ -7,7 +7,7 @@ Create Date: 2017-03-02 10:32:28.984947
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 revision = "0066_add_dvla_provider"
 down_revision = "0065_users_current_session_id"
@@ -29,7 +29,7 @@ def upgrade():
     )
     op.execute(
         "INSERT INTO provider_rates (id, valid_from, rate, provider_id) VALUES ('{}', '{}', 1.0, '{}')".format(
-            uuid.uuid4(), datetime.utcnow(), provider_id
+            uuid.uuid4(), datetime.now(UTC).replace(tzinfo=None), provider_id
         )
     )
 

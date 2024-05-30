@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 import requests_mock
@@ -72,7 +72,7 @@ def test_send_complaint_to_service_posts_https_request_to_service_with_encoded_d
             "complaint_id": str(complaint.id),
             "reference": notification.client_reference,
             "to": notification.to,
-            "complaint_date": datetime.utcnow().strftime(DATETIME_FORMAT),
+            "complaint_date": datetime.now(UTC).replace(tzinfo=None).strftime(DATETIME_FORMAT),
         }
 
         assert request_mock.call_count == 1

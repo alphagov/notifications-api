@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from freezegun import freeze_time
 
@@ -7,9 +7,9 @@ from tests.app.db import create_letter_rate
 
 @freeze_time("2024-01-02T12:00:00")
 def test_letter_rates(admin_request, notify_db_session):
-    now = datetime.utcnow()
-    tomorrow = datetime.utcnow() + timedelta(days=1)
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    tomorrow = datetime.now(UTC).replace(tzinfo=None) + timedelta(days=1)
+    yesterday = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
 
     # Should be returned
     create_letter_rate(start_date=now, rate=0.66, post_class="first", sheet_count=1)

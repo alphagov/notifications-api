@@ -7,7 +7,7 @@ Create Date: 2017-11-10 21:42:59.715203
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from alembic import op
 
@@ -38,7 +38,7 @@ def upgrade():
          FROM services WHERE id NOT IN
         (select service_id from annual_billing)
     """.format(
-        current_year, default_limit, datetime.utcnow(), datetime.utcnow()
+        current_year, default_limit, datetime.now(UTC).replace(tzinfo=None), datetime.now(UTC).replace(tzinfo=None)
     )
     op.execute(insert_row_if_not_exist)
 

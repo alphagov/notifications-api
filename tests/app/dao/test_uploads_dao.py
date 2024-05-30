@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from freezegun import freeze_time
 
@@ -48,13 +48,13 @@ def test_get_uploads_for_service(sample_template):
     contact_list = create_service_contact_list()
     # Jobs created from contact lists should be filtered out
     create_job(sample_template, contact_list_id=contact_list.id)
-    job = create_job(sample_template, processing_started=datetime.utcnow())
+    job = create_job(sample_template, processing_started=datetime.now(UTC).replace(tzinfo=None))
     letter_template = create_uploaded_template(sample_template.service)
     letter = create_uploaded_letter(letter_template, sample_template.service)
 
     other_service = create_service(service_name="other service")
     other_template = create_template(service=other_service)
-    other_job = create_job(other_template, processing_started=datetime.utcnow())
+    other_job = create_job(other_template, processing_started=datetime.now(UTC).replace(tzinfo=None))
     other_letter_template = create_uploaded_template(other_service)
     create_uploaded_letter(other_letter_template, other_service)
 
@@ -159,8 +159,12 @@ def test_get_uploads_does_not_return_cancelled_jobs_or_letters(sample_template):
 def test_get_uploads_orders_by_created_at_desc(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
 
-    upload_1 = create_job(sample_template, processing_started=datetime.utcnow(), job_status=JOB_STATUS_IN_PROGRESS)
-    upload_2 = create_job(sample_template, processing_started=datetime.utcnow(), job_status=JOB_STATUS_IN_PROGRESS)
+    upload_1 = create_job(
+        sample_template, processing_started=datetime.now(UTC).replace(tzinfo=None), job_status=JOB_STATUS_IN_PROGRESS
+    )
+    upload_2 = create_job(
+        sample_template, processing_started=datetime.now(UTC).replace(tzinfo=None), job_status=JOB_STATUS_IN_PROGRESS
+    )
     create_uploaded_letter(letter_template, sample_template.service, status="delivered")
 
     results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
@@ -173,16 +177,16 @@ def test_get_uploads_orders_by_created_at_desc(sample_template):
 
 
 def test_get_uploads_orders_by_processing_started_desc(sample_template):
-    days_ago = datetime.utcnow() - timedelta(days=3)
+    days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=3)
     upload_1 = create_job(
         sample_template,
-        processing_started=datetime.utcnow() - timedelta(days=1),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1),
         created_at=days_ago,
         job_status=JOB_STATUS_IN_PROGRESS,
     )
     upload_2 = create_job(
         sample_template,
-        processing_started=datetime.utcnow() - timedelta(days=2),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=2),
         created_at=days_ago,
         job_status=JOB_STATUS_IN_PROGRESS,
     )
@@ -198,22 +202,24 @@ def test_get_uploads_orders_by_processing_started_desc(sample_template):
 def test_get_uploads_orders_by_processing_started_and_created_at_desc(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
 
-    days_ago = datetime.utcnow() - timedelta(days=4)
+    days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=4)
     create_uploaded_letter(letter_template, service=letter_template.service)
     upload_2 = create_job(
         sample_template,
-        processing_started=datetime.utcnow() - timedelta(days=1),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1),
         created_at=days_ago,
         job_status=JOB_STATUS_IN_PROGRESS,
     )
     upload_3 = create_job(
         sample_template,
-        processing_started=datetime.utcnow() - timedelta(days=2),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=2),
         created_at=days_ago,
         job_status=JOB_STATUS_IN_PROGRESS,
     )
     create_uploaded_letter(
-        letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=3)
+        letter_template,
+        service=letter_template.service,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=3),
     )
 
     results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
@@ -230,33 +236,39 @@ def test_get_uploads_only_gets_uploads_within_service_retention_period(sample_te
     letter_template = create_uploaded_template(sample_template.service)
     create_service_data_retention(sample_template.service, "sms", days_of_retention=3)
 
-    days_ago = datetime.utcnow() - timedelta(days=4)
+    days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=4)
     upload_1 = create_uploaded_letter(letter_template, service=letter_template.service)
     upload_2 = create_job(
         sample_template,
-        processing_started=datetime.utcnow() - timedelta(days=1),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1),
         created_at=days_ago,
         job_status=JOB_STATUS_IN_PROGRESS,
     )
     # older than custom retention for sms:
     create_job(
         sample_template,
-        processing_started=datetime.utcnow() - timedelta(days=5),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=5),
         created_at=days_ago,
         job_status=JOB_STATUS_IN_PROGRESS,
     )
     upload_3 = create_uploaded_letter(
-        letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=3)
+        letter_template,
+        service=letter_template.service,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=3),
     )
 
     # older than retention for sms but within letter retention:
     upload_4 = create_uploaded_letter(
-        letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=6)
+        letter_template,
+        service=letter_template.service,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=6),
     )
 
     # older than default retention for letters:
     create_uploaded_letter(
-        letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=8)
+        letter_template,
+        service=letter_template.service,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=8),
     )
 
     results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
@@ -286,22 +298,22 @@ def test_get_uploads_is_paginated(sample_template):
         letter_template,
         sample_template.service,
         status="delivered",
-        created_at=datetime.utcnow() - timedelta(minutes=3),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=3),
     )
     create_job(
         sample_template,
-        processing_started=datetime.utcnow() - timedelta(minutes=2),
+        processing_started=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=2),
         job_status=JOB_STATUS_IN_PROGRESS,
     )
     create_uploaded_letter(
         letter_template,
         sample_template.service,
         status="delivered",
-        created_at=datetime.utcnow() - timedelta(minutes=1),
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1),
     )
     create_job(
         sample_template,
-        processing_started=datetime.utcnow(),
+        processing_started=datetime.now(UTC).replace(tzinfo=None),
         job_status=JOB_STATUS_IN_PROGRESS,
     )
 
@@ -310,14 +322,18 @@ def test_get_uploads_is_paginated(sample_template):
     assert results.per_page == 1
     assert results.total == 3
     assert len(results.items) == 1
-    assert results.items[0].created_at == datetime.utcnow().replace(hour=17, minute=30, second=0, microsecond=0)
+    assert results.items[0].created_at == datetime.now(UTC).replace(tzinfo=None).replace(
+        hour=17, minute=30, second=0, microsecond=0
+    )
     assert results.items[0].notification_count == 2
     assert results.items[0].upload_type == "letter_day"
 
     results = dao_get_uploads_by_service_id(sample_template.service_id, page=2, page_size=1)
 
     assert len(results.items) == 1
-    assert results.items[0].created_at == datetime.utcnow().replace(hour=14, minute=0, second=0, microsecond=0)
+    assert results.items[0].created_at == datetime.now(UTC).replace(tzinfo=None).replace(
+        hour=14, minute=0, second=0, microsecond=0
+    )
     assert results.items[0].notification_count == 1
     assert results.items[0].upload_type == "job"
 
@@ -337,7 +353,7 @@ def test_get_uploaded_letters_by_print_date(sample_template):
             letter_template,
             sample_template.service,
             status="delivered",
-            created_at=datetime.utcnow().replace(day=1, hour=17, minute=29, second=59),
+            created_at=datetime.now(UTC).replace(tzinfo=None).replace(day=1, hour=17, minute=29, second=59),
         )
 
     # Letters from yesterday that rolled into today’s run
@@ -346,7 +362,7 @@ def test_get_uploaded_letters_by_print_date(sample_template):
             letter_template,
             sample_template.service,
             status="delivered",
-            created_at=datetime.utcnow().replace(day=1, hour=17, minute=30, second=0),
+            created_at=datetime.now(UTC).replace(tzinfo=None).replace(day=1, hour=17, minute=30, second=0),
         )
 
     # Letters that just made today’s run
@@ -355,7 +371,7 @@ def test_get_uploaded_letters_by_print_date(sample_template):
             letter_template,
             sample_template.service,
             status="delivered",
-            created_at=datetime.utcnow().replace(hour=17, minute=29, second=59),
+            created_at=datetime.now(UTC).replace(tzinfo=None).replace(hour=17, minute=29, second=59),
         )
 
     # Letters that just missed today’s run
@@ -364,12 +380,12 @@ def test_get_uploaded_letters_by_print_date(sample_template):
             letter_template,
             sample_template.service,
             status="delivered",
-            created_at=datetime.utcnow().replace(hour=17, minute=30, second=0),
+            created_at=datetime.now(UTC).replace(tzinfo=None).replace(hour=17, minute=30, second=0),
         )
 
     result = dao_get_uploaded_letters_by_print_date(
         sample_template.service_id,
-        datetime.utcnow(),
+        datetime.now(UTC).replace(tzinfo=None),
     )
     assert result.total == 60
     assert len(result.items) == 50
@@ -378,7 +394,7 @@ def test_get_uploaded_letters_by_print_date(sample_template):
 
     result = dao_get_uploaded_letters_by_print_date(
         sample_template.service_id,
-        datetime.utcnow(),
+        datetime.now(UTC).replace(tzinfo=None),
         page=10,
         page_size=2,
     )

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import desc, func
 from sqlalchemy.dialects.postgresql import insert
@@ -39,10 +39,10 @@ def insert_returned_letters(references):
         stmt = (
             insert(table)
             .values(
-                reported_at=datetime.utcnow().date(),
+                reported_at=datetime.now(UTC).replace(tzinfo=None).date(),
                 service_id=row.service_id,
                 notification_id=row.id,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC).replace(tzinfo=None),
             )
             .on_conflict_do_nothing(index_elements=[table.c.notification_id])
         )

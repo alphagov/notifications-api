@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, or_
 
@@ -19,14 +19,14 @@ def save_model_api_key(api_key):
 @version_class(ApiKey)
 def expire_api_key(service_id, api_key_id):
     api_key = ApiKey.query.filter_by(id=api_key_id, service_id=service_id).one()
-    api_key.expiry_date = datetime.utcnow()
+    api_key.expiry_date = datetime.now(UTC).replace(tzinfo=None)
     db.session.add(api_key)
 
 
 def get_model_api_keys(service_id, id=None):
     if id:
         return ApiKey.query.filter_by(id=id, service_id=service_id, expiry_date=None).one()
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    seven_days_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=7)
     return ApiKey.query.filter(
         or_(ApiKey.expiry_date == None, func.date(ApiKey.expiry_date) > seven_days_ago),  # noqa
         ApiKey.service_id == service_id,

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytz
 from flask import current_app
@@ -23,7 +23,7 @@ def create_nightly_billing(day_start=None):
     # day_start is a datetime.date() object. e.g.
     # up to 4 days of data counting back from day_start is consolidated
     if day_start is None:
-        day_start = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
+        day_start = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date() - timedelta(days=1)
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
         day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
@@ -47,7 +47,7 @@ def create_nightly_billing(day_start=None):
 @notify_celery.task(name="update-ft-billing-for-today")
 @cronitor("update-ft-billing-for-today")
 def update_ft_billing_for_today():
-    process_day = convert_utc_to_bst(datetime.utcnow()).date().isoformat()
+    process_day = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date().isoformat()
     create_or_update_ft_billing_for_day(process_day=process_day)
     redis_store.set(CacheKeys.FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT, datetime.now(tz=pytz.utc).isoformat())
 
@@ -57,9 +57,9 @@ def create_or_update_ft_billing_for_day(process_day: str):
     process_date = datetime.strptime(process_day, "%Y-%m-%d").date()
     current_app.logger.info("create-or-update-ft-billing-for-day task for %s: started", process_date)
 
-    start = datetime.utcnow()
+    start = datetime.now(UTC).replace(tzinfo=None)
     billing_data = fetch_billing_data_for_day(process_day=process_date)
-    end = datetime.utcnow()
+    end = datetime.now(UTC).replace(tzinfo=None)
 
     current_app.logger.info(
         "create-or-update-ft-billing-for-day task for %s: data fetched in %s seconds",
@@ -114,7 +114,7 @@ def create_nightly_notification_status():
         mean the aggregated results are temporarily incorrect.
     """
 
-    yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
+    yesterday = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)).date() - timedelta(days=1)
 
     for notification_type in [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]:
         days = 10 if notification_type == LETTER_TYPE else 4
@@ -139,10 +139,10 @@ def create_nightly_notification_status():
 def create_nightly_notification_status_for_service_and_day(process_day, service_id, notification_type):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
 
-    start = datetime.utcnow()
+    start = datetime.now(UTC).replace(tzinfo=None)
     update_fact_notification_status(process_day=process_day, notification_type=notification_type, service_id=service_id)
 
-    end = datetime.utcnow()
+    end = datetime.now(UTC).replace(tzinfo=None)
     current_app.logger.info(
         (
             "create-nightly-notification-status-for-service-and-day task update for "

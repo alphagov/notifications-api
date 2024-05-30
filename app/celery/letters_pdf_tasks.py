@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from datetime import time as dt_time
 
 from botocore.exceptions import ClientError as BotoClientError
@@ -162,7 +162,7 @@ def check_time_to_collate_letters():
     out whether it's running at 17:50 local time: if it is, then letter collation itself will be triggered and all
     letters submitted to Notify before 17:30 local time will be collated and sent over.
     """
-    datetime_local = convert_utc_to_bst(datetime.utcnow())
+    datetime_local = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None))
 
     if not (dt_time(17, 50) <= datetime_local.time() < dt_time(18, 50)):
         current_app.logger.info("Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window")
@@ -430,7 +430,11 @@ def update_letter_pdf_status(reference, status, billable_units, recipient_addres
             raw_address=recipient_address.replace(",", "\n"), allow_international_letters=True
         ).postage
         postage = postage if postage in INTERNATIONAL_POSTAGE_TYPES else None
-    update_dict = {"status": status, "billable_units": billable_units, "updated_at": datetime.utcnow()}
+    update_dict = {
+        "status": status,
+        "billable_units": billable_units,
+        "updated_at": datetime.now(UTC).replace(tzinfo=None),
+    }
     if postage:
         update_dict.update({"postage": postage, "international": True})
     if recipient_address:

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app import db
 from app.dao.dao_utils import autocommit
@@ -35,7 +35,7 @@ def dao_update_webauthn_credential_name(webauthn_credential, new_name):
 
 @autocommit
 def dao_update_webauthn_credential_logged_in_at(webauthn_credential):
-    webauthn_credential.logged_in_at = datetime.utcnow()
+    webauthn_credential.logged_in_at = datetime.now(UTC).replace(tzinfo=None)
     db.session.add(webauthn_credential)
     return webauthn_credential
 

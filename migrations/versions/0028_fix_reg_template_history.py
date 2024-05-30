@@ -7,7 +7,7 @@ Create Date: 2016-06-13 11:04:15.888017
 """
 
 # revision identifiers, used by Alembic.
-from datetime import datetime
+from datetime import UTC, datetime
 
 revision = "0028_fix_reg_template_history"
 down_revision = "0027_update_provider_rates"
@@ -36,7 +36,7 @@ def upgrade():
             "ece42649-22a8-4d06-b87f-d52d5d3f0a27",
             "Notify email verification code",
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             email_verification_content,
             service_id,
             "Confirm GOV.UK Notify registration",

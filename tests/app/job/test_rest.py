@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
@@ -197,7 +197,7 @@ def test_create_unscheduled_job_with_sender_id_in_metadata(client, sample_templa
 
 @freeze_time("2016-01-01 12:00:00.000000")
 def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
-    scheduled_date = (datetime.utcnow() + timedelta(hours=95, minutes=59)).isoformat()
+    scheduled_date = (datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=95, minutes=59)).isoformat()
     mocker.patch("app.celery.tasks.process_job.apply_async")
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
@@ -354,7 +354,7 @@ def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_not_create_scheduled_job_more_then_7_days_in_the_future(client, sample_template, mocker, fake_uuid):
-    scheduled_date = (datetime.utcnow() + timedelta(days=7, minutes=1)).isoformat()
+    scheduled_date = (datetime.now(UTC).replace(tzinfo=None) + timedelta(days=7, minutes=1)).isoformat()
     mocker.patch("app.celery.tasks.process_job.apply_async")
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
@@ -387,7 +387,7 @@ def test_should_not_create_scheduled_job_more_then_7_days_in_the_future(client, 
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_not_create_scheduled_job_in_the_past(client, sample_template, mocker, fake_uuid):
-    scheduled_date = (datetime.utcnow() - timedelta(minutes=1)).isoformat()
+    scheduled_date = (datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1)).isoformat()
     mocker.patch("app.celery.tasks.process_job.apply_async")
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
@@ -661,7 +661,10 @@ def test_get_job_by_id_should_return_summed_statistics(admin_request, sample_job
 
 def test_get_job_by_id_with_stats_for_old_job_where_notifications_have_been_purged(admin_request, sample_template):
     old_job = create_job(
-        sample_template, notification_count=10, created_at=datetime.utcnow() - timedelta(days=9), job_status="finished"
+        sample_template,
+        notification_count=10,
+        created_at=datetime.now(UTC).replace(tzinfo=None) - timedelta(days=9),
+        job_status="finished",
     )
 
     def __create_ft_status(job, status, count):
@@ -757,8 +760,8 @@ def test_get_jobs_by_contact_list(admin_request, sample_template):
 
 
 def test_get_jobs_should_return_statistics(admin_request, sample_template):
-    now = datetime.utcnow()
-    earlier = datetime.utcnow() - timedelta(days=1)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    earlier = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
     job_1 = create_job(sample_template, processing_started=earlier)
     job_2 = create_job(sample_template, processing_started=now)
     create_notification(job=job_1, status="created")
@@ -778,8 +781,8 @@ def test_get_jobs_should_return_statistics(admin_request, sample_template):
 
 
 def test_get_jobs_should_return_no_stats_if_no_rows_in_notifications(admin_request, sample_template):
-    now = datetime.utcnow()
-    earlier = datetime.utcnow() - timedelta(days=1)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    earlier = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
     job_1 = create_job(sample_template, created_at=earlier)
     job_2 = create_job(sample_template, created_at=now)
 

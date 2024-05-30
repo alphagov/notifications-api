@@ -10,7 +10,7 @@ Create Date: 2017-08-29 14:09:41.042061
 revision = "0117_international_sms_notify"
 down_revision = "0116_another_letter_org"
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from alembic import op
 
@@ -23,7 +23,7 @@ def upgrade():
         INSERT INTO service_permissions VALUES
         ('{}', 'international_sms', '{}')
     """.format(
-            NOTIFY_SERVICE_ID, datetime.utcnow()
+            NOTIFY_SERVICE_ID, datetime.now(UTC).replace(tzinfo=None)
         )
     )
 

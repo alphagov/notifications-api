@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytz
@@ -12,7 +12,7 @@ def single_s3_object_stub(key="foo", last_modified=None):
     return {
         "ETag": '"d41d8cd98f00b204e9800998ecf8427e"',
         "Key": key,
-        "LastModified": last_modified or datetime.utcnow(),
+        "LastModified": last_modified or datetime.now(UTC).replace(tzinfo=None),
     }
 
 

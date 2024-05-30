@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import asc, or_
 
@@ -14,10 +14,10 @@ def dao_get_current_letter_rates():
             #
             # So let’s just ignore non-crown for now
             LetterRate.crown.is_(True),
-            LetterRate.start_date <= datetime.utcnow(),
+            LetterRate.start_date <= datetime.now(UTC).replace(tzinfo=None),
             or_(
                 LetterRate.end_date.is_(None),
-                LetterRate.end_date > datetime.utcnow(),
+                LetterRate.end_date > datetime.now(UTC).replace(tzinfo=None),
             ),
         )
         .order_by(

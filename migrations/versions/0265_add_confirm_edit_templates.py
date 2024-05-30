@@ -6,7 +6,7 @@ Create Date: 2019-02-26 15:16:53.268135
 
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from alembic import op
 from flask import current_app
@@ -55,7 +55,7 @@ def upgrade():
             email_template_id,
             email_template_name,
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             email_template_content,
             current_app.config["NOTIFY_SERVICE_ID"],
             email_template_subject,
@@ -69,7 +69,7 @@ def upgrade():
             email_template_id,
             email_template_name,
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             email_template_content,
             current_app.config["NOTIFY_SERVICE_ID"],
             email_template_subject,
@@ -87,7 +87,7 @@ def upgrade():
             mobile_template_id,
             mobile_template_name,
             "sms",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             mobile_template_content,
             current_app.config["NOTIFY_SERVICE_ID"],
             None,
@@ -101,7 +101,7 @@ def upgrade():
             mobile_template_id,
             mobile_template_name,
             "sms",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             mobile_template_content,
             current_app.config["NOTIFY_SERVICE_ID"],
             None,
@@ -118,7 +118,7 @@ def upgrade():
 #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
 #         VALUES ('{}', '{}', '{}', '{}')
 #         ;
-#     """.format(email_template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
+#     """.format(email_template_id, False, datetime.now(UTC).replace(tzinfo=None), current_app.config['NOTIFY_USER_ID'])
 # )
 
 # op.execute(
@@ -126,7 +126,7 @@ def upgrade():
 #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
 #         VALUES ('{}', '{}', '{}', '{}')
 #         ;
-#     """.format(mobile_template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
+#     """.format(mobile_template_id, False, datetime.now(UTC).replace(tzinfo=None), current_app.config['NOTIFY_USER_ID'])
 # )
 
 

@@ -7,7 +7,7 @@ Create Date: 2021-02-15 15:36:34.654275
 """
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 from alembic import op
 from flask import current_app
@@ -54,7 +54,7 @@ def upgrade():
             email_template_id,
             email_template_name,
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             email_template_content,
             current_app.config["NOTIFY_SERVICE_ID"],
             email_template_subject,
@@ -68,7 +68,7 @@ def upgrade():
             email_template_id,
             email_template_name,
             "email",
-            datetime.utcnow(),
+            datetime.now(UTC).replace(tzinfo=None),
             email_template_content,
             current_app.config["NOTIFY_SERVICE_ID"],
             email_template_subject,

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from itertools import groupby
 from operator import attrgetter
 
@@ -201,7 +201,7 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
 
 @autocommit
 def dao_update_notification(notification):
-    notification.updated_at = datetime.utcnow()
+    notification.updated_at = datetime.now(UTC).replace(tzinfo=None)
     db.session.add(notification)
 
 
@@ -453,7 +453,7 @@ def dao_timeout_notifications(cutoff_time, limit=100000):
     Set email and SMS notifications (only) to "temporary-failure" status
     if they're still sending from before the specified cutoff_time.
     """
-    updated_at = datetime.utcnow()
+    updated_at = datetime.now(UTC).replace(tzinfo=None)
     current_statuses = [NOTIFICATION_SENDING, NOTIFICATION_PENDING]
     new_status = NOTIFICATION_TEMPORARY_FAILURE
 
@@ -523,7 +523,7 @@ def get_slow_text_message_delivery_reports_by_provider(
         'firetext': 0.12
     }
     """
-    created_since = datetime.utcnow() - timedelta(minutes=created_within_minutes)
+    created_since = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=created_within_minutes)
     delivery_time = timedelta(minutes=delivered_within_minutes)
     slow_notification_counts = (
         db.session.query(
@@ -535,7 +535,7 @@ def get_slow_text_message_delivery_reports_by_provider(
                         (Notification.updated_at - Notification.sent_at) >= delivery_time,
                     )
                 ],
-                else_=(datetime.utcnow() - Notification.sent_at) >= delivery_time,
+                else_=(datetime.now(UTC).replace(tzinfo=None) - Notification.sent_at) >= delivery_time,
             ).label("slow"),
             func.count().label("count"),
         )
@@ -705,7 +705,7 @@ def dao_get_last_notification_added_for_job_id(job_id):
 
 
 def notifications_not_yet_sent(should_be_sending_after_seconds, notification_type):
-    older_than_date = datetime.utcnow() - timedelta(seconds=should_be_sending_after_seconds)
+    older_than_date = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=should_be_sending_after_seconds)
 
     notifications = Notification.query.filter(
         Notification.created_at <= older_than_date,
@@ -766,7 +766,7 @@ def dao_get_letters_and_sheets_volume_by_postage(print_run_deadline_local):
 
 
 def dao_old_letters_with_created_status():
-    yesterday_bst = convert_utc_to_bst(datetime.utcnow()) - timedelta(days=1)
+    yesterday_bst = convert_utc_to_bst(datetime.now(UTC).replace(tzinfo=None)) - timedelta(days=1)
     last_processing_deadline = yesterday_bst.replace(hour=17, minute=30, second=0, microsecond=0)
 
     notifications = (
@@ -782,7 +782,7 @@ def dao_old_letters_with_created_status():
 
 
 def letters_missing_from_sending_bucket(seconds_to_subtract):
-    older_than_date = datetime.utcnow() - timedelta(seconds=seconds_to_subtract)
+    older_than_date = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=seconds_to_subtract)
     # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
     notifications = (
         Notification.query.filter(
@@ -801,7 +801,7 @@ def letters_missing_from_sending_bucket(seconds_to_subtract):
 
 
 def dao_precompiled_letters_still_pending_virus_check():
-    ten_minutes_ago = datetime.utcnow() - timedelta(seconds=600)
+    ten_minutes_ago = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=600)
 
     notifications = (
         Notification.query.filter(
@@ -814,7 +814,7 @@ def dao_precompiled_letters_still_pending_virus_check():
 
 
 def _duplicate_update_warning(notification, status):
-    time_diff = datetime.utcnow() - (notification.updated_at or notification.created_at)
+    time_diff = datetime.now(UTC).replace(tzinfo=None) - (notification.updated_at or notification.created_at)
     current_app.logger.info(
         "Duplicate callback received for service %(service_id)s. Notification ID %(notification_id)s with "
         "type %(type)s sent by %(sent_by)s. "

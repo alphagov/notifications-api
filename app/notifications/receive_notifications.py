@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import unquote
 
 import iso8601
@@ -127,7 +127,7 @@ def format_mmg_datetime(date):
         parsed_datetime = iso8601.parse_date(orig_date).replace(tzinfo=None)
         return parsed_datetime
     except iso8601.ParseError:
-        return datetime.utcnow()
+        return datetime.now(UTC).replace(tzinfo=None)
 
 
 def create_inbound_sms_object(service, content, from_number, provider_ref, date_received, provider_name):

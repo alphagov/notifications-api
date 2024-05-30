@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app import db
 from app.dao.dao_utils import autocommit
@@ -43,7 +43,7 @@ def insert_service_data_retention(service_id, notification_type, days_of_retenti
 def update_service_data_retention(service_data_retention_id, service_id, days_of_retention):
     updated_count = ServiceDataRetention.query.filter(
         ServiceDataRetention.id == service_data_retention_id, ServiceDataRetention.service_id == service_id
-    ).update({"days_of_retention": days_of_retention, "updated_at": datetime.utcnow()})
+    ).update({"days_of_retention": days_of_retention, "updated_at": datetime.now(UTC).replace(tzinfo=None)})
     return updated_count
 
 
