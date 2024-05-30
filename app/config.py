@@ -374,8 +374,6 @@ class Config(object):
     if os.getenv("CELERYD_PREFETCH_MULTIPLIER"):
         CELERY["worker_prefetch_multiplier"] = os.getenv("CELERYD_PREFETCH_MULTIPLIER")
 
-    FROM_NUMBER = "development"
-
     STATSD_HOST = os.getenv("STATSD_HOST")
     STATSD_PORT = 8125
     STATSD_ENABLED = bool(STATSD_HOST)
@@ -504,6 +502,8 @@ class Development(Config):
     CBC_PROXY_ENABLED = False
 
     REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = True
+
+    FROM_NUMBER = "development"
 
 
 class Test(Development):
