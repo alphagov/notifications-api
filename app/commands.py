@@ -584,26 +584,6 @@ def populate_organisation_agreement_details_from_file(file_name):
             db.session.commit()
 
 
-@notify_command(name="get-letter-details-from-zips-sent-file")
-@click.argument("file_paths", required=True, nargs=-1)
-@statsd(namespace="tasks")
-def get_letter_details_from_zips_sent_file(file_paths):
-    """Get notification details from letters listed in zips_sent file(s)
-
-    This takes one or more file paths for the zips_sent files in S3 as its parameters, for example:
-    get-letter-details-from-zips-sent-file '2019-04-01/zips_sent/filename_1' '2019-04-01/zips_sent/filename_2'
-    """
-
-    rows_from_file = []
-
-    for path in file_paths:
-        file_contents = s3.get_s3_file(bucket_name=current_app.config["S3_BUCKET_LETTERS_PDF"], file_location=path)
-        rows_from_file.extend(json.loads(file_contents))
-
-    notification_references = tuple(row[18:34] for row in rows_from_file)
-    get_letters_data_from_references(notification_references)
-
-
 @notify_command(name="get-notification-and-service-ids-for-letters-that-failed-to-print")
 @click.option(
     "-f",

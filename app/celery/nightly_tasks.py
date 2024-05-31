@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-import pytz
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
@@ -250,70 +249,6 @@ def get_letter_notifications_still_sending_when_they_shouldnt_be():
     )
 
     return q.count(), expected_sent_date
-
-
-@notify_celery.task(name="raise-alert-if-no-letter-ack-file")
-@cronitor("raise-alert-if-no-letter-ack-file")
-def letter_raise_alert_if_no_ack_file_for_zip():
-    # get a list of zip files since yesterday
-    zip_file_set = set()
-    today_str = datetime.utcnow().strftime("%Y-%m-%d")
-    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # AWS datetime format
-
-    for key in s3.get_list_of_files_by_suffix(
-        bucket_name=current_app.config["S3_BUCKET_LETTERS_PDF"], subfolder=today_str + "/zips_sent", suffix=".TXT"
-    ):
-        subname = key.split("/")[-1]  # strip subfolder in name
-        zip_file_set.add(subname.upper().replace(".ZIP.TXT", ""))
-
-    # get acknowledgement file
-    ack_file_set = set()
-
-    for key in s3.get_list_of_files_by_suffix(
-        bucket_name=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
-        subfolder="root/dispatch",
-        suffix=".ACK.txt",
-        last_modified=yesterday,
-    ):
-        ack_file_set.add(key.lstrip("root/dispatch").upper().replace(".ACK.TXT", ""))  # noqa
-
-    # strip empty element before comparison
-    ack_file_set.discard("")
-    zip_file_set.discard("")
-
-    message = (
-        "Letter ack file does not contain all zip files sent. See runbook at "
-        "https://github.com/alphagov/notifications-manuals/wiki"
-        "/Support-Runbook#letter-ack-file-does-not-contain-all-zip-files-sent\n\n"
-        f"pdf bucket: {current_app.config['S3_BUCKET_LETTERS_PDF']}, "
-        f"subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent\n"
-        f"ack bucket: {current_app.config['S3_BUCKET_DVLA_RESPONSE']}\n\n"
-        f"Missing ack for zip files: {str(sorted(zip_file_set - ack_file_set))}"
-    )
-
-    if len(zip_file_set - ack_file_set) > 0:
-        if current_app.should_send_zendesk_alerts:
-            ticket = NotifySupportTicket(
-                subject="Letter acknowledge error",
-                message=message,
-                ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-                notify_ticket_type=NotifyTicketType.TECHNICAL,
-                ticket_categories=["notify_letters"],
-            )
-            zendesk_client.send_ticket_to_zendesk(ticket)
-
-        current_app.logger.error(
-            "Letter ack file does not contain all zip files sent.",
-            extra=dict(
-                pdf_bucket=current_app.config["S3_BUCKET_LETTERS_PDF"],
-                subfolder=datetime.utcnow().strftime("%Y-%m-%d") + "/zips_sent",
-                ack_bucket=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
-                missing_ack_for_zip_files=str(sorted(zip_file_set - ack_file_set)),
-            ),
-        )
-
-    if len(ack_file_set - zip_file_set) > 0:
-        current_app.logger.info("letter ack contains zip that is not for today: %s", ack_file_set - zip_file_set)
 
 
 @notify_celery.task(name="save-daily-notification-processing-time")

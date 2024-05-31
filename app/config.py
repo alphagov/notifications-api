@@ -330,11 +330,6 @@ class Config(object):
                 "schedule": crontab(hour="16,17", minute=50),
                 "options": {"queue": QueueNames.PERIODIC},
             },
-            "raise-alert-if-no-letter-ack-file": {
-                "task": "raise-alert-if-no-letter-ack-file",
-                "schedule": crontab(hour=22, minute=45),
-                "options": {"queue": QueueNames.PERIODIC},
-            },
             "delete-old-records-from-events-table": {
                 "task": "delete-old-records-from-events-table",
                 "schedule": crontab(hour=3, minute=4),
