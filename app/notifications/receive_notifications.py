@@ -6,7 +6,7 @@ from flask import Blueprint, abort, current_app, jsonify, request
 from gds_metrics.metrics import Counter
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
-from app.celery import tasks
+from app.celery import service_callback_tasks
 from app.config import QueueNames
 from app.constants import INBOUND_SMS_TYPE
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
@@ -65,7 +65,9 @@ def receive_mmg_sms():
         provider_name="mmg",
     )
 
-    tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
+    service_callback_tasks.send_inbound_sms_to_service.apply_async(
+        [str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY
+    )
 
     current_app.logger.debug(
         "%s received inbound SMS with reference %s from MMG", service.id, inbound.provider_reference
@@ -102,7 +104,9 @@ def receive_firetext_sms():
 
     INBOUND_SMS_COUNTER.labels("firetext").inc()
 
-    tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
+    service_callback_tasks.send_inbound_sms_to_service.apply_async(
+        [str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY
+    )
     current_app.logger.debug(
         "%s received inbound SMS with reference %s from Firetext", service.id, inbound.provider_reference
     )
