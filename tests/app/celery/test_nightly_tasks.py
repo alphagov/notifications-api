@@ -201,9 +201,9 @@ def test_create_ticket_if_letter_notifications_still_sending(notify_api, mocker)
             "There are 1 letters in the 'sending' state from Monday 15 January. Resolve using "
             "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"
         ),
-        ticket_type="incident",
+        ticket_type="task",
         notify_ticket_type=NotifyTicketType.TECHNICAL,
-        ticket_categories=["notify_letters"],
+        notify_task_type="notify_task_letters_sending",
     )
     mock_send_ticket_to_zendesk.assert_called_once()
 

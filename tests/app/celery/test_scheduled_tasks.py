@@ -557,9 +557,9 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
         ANY,
         subject="[test] Letters still pending virus check",
         message=ANY,
-        ticket_type="incident",
+        ticket_type="task",
         notify_ticket_type=NotifyTicketType.TECHNICAL,
-        ticket_categories=["notify_letters"],
+        notify_task_type="notify_task_letters_pending_scan",
     )
     assert "2 precompiled letters have been pending-virus-check" in mock_create_ticket.call_args.kwargs["message"]
     assert f"{(str(notification_1.id), notification_1.reference)}" in mock_create_ticket.call_args.kwargs["message"]
@@ -596,9 +596,9 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
             "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-created."
         ),
         subject="[test] Letters still in 'created' status",
-        ticket_type="incident",
+        ticket_type="task",
         notify_ticket_type=NotifyTicketType.TECHNICAL,
-        ticket_categories=["notify_letters"],
+        notify_task_type="notify_task_letters_created_status",
     )
     mock_send_ticket_to_zendesk.assert_called_once()
 
@@ -632,9 +632,9 @@ def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_temp
             "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-created."
         ),
         subject="[test] Letters still in 'created' status",
-        ticket_type="incident",
+        ticket_type="task",
         notify_ticket_type=NotifyTicketType.TECHNICAL,
-        ticket_categories=["notify_letters"],
+        notify_task_type="notify_task_letters_created_status",
     )
     mock_send_ticket_to_zendesk.assert_called_once()
 
@@ -808,8 +808,9 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
         ANY,
         message=expected_message + zendesk_actions,
         subject="[test] High failure rates for sms spotted for services",
-        ticket_type="incident",
+        ticket_type="task",
         notify_ticket_type=NotifyTicketType.TECHNICAL,
+        notify_task_type="notify_task_high_failure",
     )
     mock_send_ticket_to_zendesk.assert_called_once()
 
@@ -865,12 +866,12 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
             },
             "group_id": 360000036529,
             "organization_id": 21891972,
-            "ticket_form_id": 1900000284794,
+            "ticket_form_id": 14226867890588,
             "priority": "normal",
             "tags": ["govuk_notify_support"],
             "type": "task",
             "custom_fields": [
-                {"id": "360022836500", "value": ["notify_no_ticket_category"]},
+                {"id": "14229641690396", "value": "notify_task_branding_review"},
                 {"id": "360022943959", "value": None},
                 {"id": "360022943979", "value": None},
                 {"id": "1900000745014", "value": None},
@@ -1052,7 +1053,7 @@ def test_check_for_low_available_inbound_sms_numbers_logs_zendesk_ticket_if_too_
             ),
             ticket_type=mock_ticket.TYPE_TASK,
             notify_ticket_type=NotifyTicketType.TECHNICAL,
-            ticket_categories=["notify_no_ticket_category"],
+            notify_task_type="notify_task_request_inbound_SMS",
         )
     ]
     assert mock_send_ticket.call_args_list == [mocker.call(mock_ticket.return_value)]
