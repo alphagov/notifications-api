@@ -292,6 +292,8 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             "templates",
             "updated_at",
             "users",
+            "unsubscribe_request_reports",
+            "unsubscribe_requests",
             "version",
             "_name",
             "_normalised_service_name",
@@ -416,7 +418,7 @@ class BaseTemplateSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.Template
-        exclude = ("service_id", "jobs", "service_letter_contact_id")
+        exclude = ("service_id", "jobs", "service_letter_contact_id", "unsubscribe_requests")
 
 
 class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
@@ -449,6 +451,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
             "created_at",
             "created_by",
             "created_by_id",
+            "has_unsubscribe_link",
             "hidden",
             "letter_attachment",
             "postage",
