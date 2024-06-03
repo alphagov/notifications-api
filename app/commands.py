@@ -1,3 +1,5 @@
+# ruff: noqa: T201
+
 import csv
 import functools
 import itertools

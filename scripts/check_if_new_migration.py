@@ -1,3 +1,5 @@
+# ruff: noqa: T201
+
 import os
 import sys
 from os.path import abspath, dirname
