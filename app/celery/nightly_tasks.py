@@ -219,9 +219,9 @@ def raise_alert_if_letter_notifications_still_sending():
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still sending",
                 email_ccs=current_app.config["DVLA_EMAIL_ADDRESSES"],
                 message=message,
-                ticket_type=NotifySupportTicket.TYPE_INCIDENT,
+                ticket_type=NotifySupportTicket.TYPE_TASK,
                 notify_ticket_type=NotifyTicketType.TECHNICAL,
-                ticket_categories=["notify_letters"],
+                notify_task_type="notify_task_letters_sending",
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
         else:
