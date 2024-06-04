@@ -74,56 +74,15 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT),
     }
 
-    try:
-        response = request(
-            method="POST",
-            url=inbound_api.url,
-            data=json.dumps(data),
-            headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(inbound_api.bearer_token)},
-            timeout=60,
-        )
-        current_app.logger.debug(
-            "send_inbound_sms_to_service sending %s to %s, response %s",
-            inbound_sms_id,
-            inbound_api.url,
-            response.status_code,
-        )
-        response.raise_for_status()
-    except RequestException as e:
-        current_app.logger.warning(
-            "send_inbound_sms_to_service failed for service_id: %s for inbound_sms_id: %s and url: %s. exception: %s",
-            service_id,
-            inbound_sms_id,
-            inbound_api.url,
-            e,
-        )
-        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
-            try:
-                self.retry(queue=QueueNames.RETRY)
-            except self.MaxRetriesExceededError:
-                current_app.logger.error(
-                    (
-                        "Retry: send_inbound_sms_to_service has retried the max number of times "
-                        "for service: %s and inbound_sms %s"
-                    ),
-                    service_id,
-                    inbound_sms_id,
-                )
-        else:
-            current_app.logger.warning(
-                (
-                    "send_inbound_sms_to_service is not being retried for service_id: %s "
-                    "for inbound_sms id: %s and url: %s. exception: %s"
-                ),
-                service_id,
-                inbound_sms_id,
-                inbound_api.url,
-                e,
-            )
+    _send_data_to_service_callback_api(
+        self, data, inbound_api.url, inbound_api.bearer_token, "send_inbound_sms_to_service", QueueNames.RETRY
+    )
 
 
-def _send_data_to_service_callback_api(self, data, service_callback_url, token, function_name):
-    notification_id = data["notification_id"] if "notification_id" in data else data["id"]
+def _send_data_to_service_callback_api(
+    self, data, service_callback_url, token, function_name, retry_queue=QueueNames.CALLBACKS_RETRY
+):
+    object_id = data["notification_id"] if "notification_id" in data else data["id"]
     try:
         response = request(
             method="POST",
@@ -135,34 +94,34 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
         current_app.logger.info(
             "%s sending %s to %s, response %s",
             function_name,
-            notification_id,
+            object_id,
             service_callback_url,
             response.status_code,
         )
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            "%s request failed for notification_id: %s and url: %s. exception: %s",
+            "%s request failed for id: %s and url: %s. exception: %s",
             function_name,
-            notification_id,
+            object_id,
             service_callback_url,
             e,
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500 or e.response.status_code == 429:
             try:
-                self.retry(queue=QueueNames.CALLBACKS_RETRY)
-            except self.MaxRetriesExceededError:
+                self.retry(queue=retry_queue)
+            except self.MaxRetriesExceededError as e:
                 current_app.logger.warning(
-                    "Retry: %s has retried the max num of times for callback url %s and notification_id: %s",
+                    "Retry: %s has retried the max num of times for callback url %s and id: %s",
                     function_name,
                     service_callback_url,
-                    notification_id,
+                    object_id,
                 )
         else:
             current_app.logger.warning(
-                "%s callback is not being retried for notification_id: %s and url: %s. exception: %s",
+                "%s callback is not being retried for id: %s and url: %s. exception: %s",
                 function_name,
-                notification_id,
+                object_id,
                 service_callback_url,
                 e,
             )
