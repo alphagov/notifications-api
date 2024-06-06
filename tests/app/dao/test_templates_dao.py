@@ -39,10 +39,10 @@ def test_create_template(sample_service, sample_user, template_type, subject):
     template = Template(**data)
     dao_create_template(template)
 
-    assert Template.query.count() == 1
-    assert len(dao_get_all_templates_for_service(sample_service.id)) == 1
-    assert dao_get_all_templates_for_service(sample_service.id)[0].name == "Sample Template"
-    assert dao_get_all_templates_for_service(sample_service.id)[0].process_type == "normal"
+    template = Template.query.one()
+    assert template.name == "Sample Template"
+    assert template.process_type == "normal"
+    assert template.has_unsubscribe_link is False
 
 
 def test_create_template_creates_redact_entry(sample_service):
