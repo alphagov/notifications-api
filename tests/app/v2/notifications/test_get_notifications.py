@@ -59,6 +59,9 @@ def test_get_notification_by_id_returns_200(api_client_request, billable_units, 
         "scheduled_for": None,
         "postage": None,
         "one_click_unsubscribe_url": None,
+        "is_cost_data_ready": True,
+        "cost_in_pounds": str(0.0227 * billable_units),
+        "cost_details": {"sms_fragments": billable_units, "rate_multiplier": 1, "rate": "0.0227"},
     }
 
     assert json_response == expected_response
@@ -107,6 +110,9 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         "scheduled_for": None,
         "postage": None,
         "one_click_unsubscribe_url": None,
+        "is_cost_data_ready": True,
+        "cost_in_pounds": "0.00",
+        "cost_details": {},
     }
 
     assert json_response == expected_response

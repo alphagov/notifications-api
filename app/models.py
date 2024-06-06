@@ -1642,6 +1642,57 @@ class Notification(db.Model):
 
         return serialized
 
+    def serialize_with_billing_info(self):
+        serialized = self.serialize()
+        serialized["cost_details"] = {}
+        serialized["cost_in_pounds"] = "0.00"
+        serialized["is_cost_data_ready"] = True
+
+        if self.notification_type == "sms":
+            return self._get_cost_info_for_sms(serialized)
+        elif self.notification_type == "letter":
+            return self._get_cost_info_for_letter(serialized)
+
+        return serialized
+
+    def _get_cost_info_for_sms(self, serialized):
+        serialized["cost_details"]["sms_fragments"] = self.billable_units
+        serialized["cost_details"]["rate_multiplier"] = self.rate_multiplier
+        sms_rate = self.get_sms_rate()
+        serialized["cost_details"]["rate"] = str(sms_rate)
+        serialized["cost_in_pounds"] = str(self.billable_units * self.rate_multiplier * sms_rate)
+
+        return serialized
+
+    def _get_cost_info_for_letter(self, serialized):
+        if self.status == "pending-virus-check":  # are there any other not-ready states?
+            serialized["is_cost_data_ready"] = False
+            serialized["cost_details"] = {}
+            serialized["cost_in_pounds"] = None
+        else:
+            serialized["cost_details"]["sheets_of_paper"] = self.billable_units
+            serialized["cost_details"]["postage"] = self.postage
+            serialized["cost_in_pounds"] = self.get_letter_cost()
+
+        return serialized
+
+    def get_sms_rate(self):
+        from app.dao.sms_rate_dao import dao_get_current_sms_rate
+
+        return dao_get_current_sms_rate().rate
+
+    def get_letter_cost(self):
+        from app.dao.letter_rate_dao import dao_get_current_letter_rates
+
+        rates = dao_get_current_letter_rates()
+        letter_rate = next(
+            (rate for rate in rates if rate.sheet_count == self.billable_units and rate.post_class == self.postage),
+            None,
+        )
+        if not letter_rate:
+            return "0.00"
+        return str(letter_rate.rate)
+
 
 class NotificationHistory(db.Model):
     __tablename__ = "notification_history"
