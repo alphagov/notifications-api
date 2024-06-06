@@ -1719,6 +1719,7 @@ class NotificationLetterDespatch(db.Model):
         "NotificationAllTimeView",
         primaryjoin="NotificationLetterDespatch.notification_id == foreign(NotificationAllTimeView.id)",
         uselist=False,
+        viewonly=True,
     )
 
 
@@ -2584,6 +2585,7 @@ class UnsubscribeRequest(db.Model):
         "NotificationAllTimeView",
         primaryjoin="UnsubscribeRequest.notification_id == foreign(NotificationAllTimeView.id)",
         uselist=False,
+        viewonly=True,
     )
 
     # this is denormalised but might still be useful to have as a separate column?
