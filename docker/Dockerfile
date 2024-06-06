@@ -119,6 +119,8 @@ ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
 
 RUN pip3 install -r requirements_for_test.txt
 
+RUN python -c "from notifications_utils.version_tools import copy_pyproject_toml; copy_pyproject_toml()"
+
 USER root
 
 ENV POSTGRES_VERSION=15 \
