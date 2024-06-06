@@ -2601,6 +2601,7 @@ class UnsubscribeRequest(db.Model):
         foreign_keys=[template_id],
         primaryjoin="Template.id == UnsubscribeRequest.template_id",
         backref=db.backref("unsubscribe_requests"),
+        viewonly=True,
     )
 
     email_address = db.Column(db.Text, nullable=False)
