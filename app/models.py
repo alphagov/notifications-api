@@ -1046,6 +1046,9 @@ class TemplateBase(db.Model):
         default=letter_languages_default,
     )
 
+    # TODO: migrate this to be nullable=False
+    has_unsubscribe_link = db.Column(db.Boolean, default=False)
+
     @declared_attr
     def service_id(cls):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
@@ -1092,6 +1095,8 @@ class TemplateBase(db.Model):
                 "(template_type != 'letter' AND letter_languages IS NULL) OR"
                 " (template_type = 'letter' AND letter_languages IS NOT NULL)"
             ),
+            # if template type is not email, then has_unsubscribe_link MUST be null
+            CheckConstraint("template_type = 'email' OR has_unsubscribe_link IS NULL"),
         )
 
     @property
@@ -2551,3 +2556,81 @@ class LetterAttachment(db.Model):
             "original_filename": self.original_filename,
             "page_count": self.page_count,
         }
+
+
+class UnsubscribeRequestReport(db.Model):
+    __tablename__ = "unsubscribe_request_report"
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    service = db.relationship(Service, backref=db.backref("unsubscribe_request_reports"))
+
+    earliest_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    latest_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    processed_by_service_at = db.Column(db.DateTime, nullable=True)
+    count = db.Column(db.BigInteger, nullable=False)
+
+
+class UnsubscribeRequest(db.Model):
+    __tablename__ = "unsubscribe_request"
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # WIP:
+    # Ignoring a strict foreign key relationship here for now. Notifications are archived to the NotificationHistory
+    # table by a nightly job and I haven't investigated whether that might break a strict FK yet or if it would
+    # work smoothly. We can still have a relationship using an explicit join condition.
+    notification_id = db.Column(UUID(as_uuid=True), index=True, nullable=False)
+    notification = db.relationship(
+        "NotificationAllTimeView",
+        primaryjoin="UnsubscribeRequest.notification_id == foreign(NotificationAllTimeView.id)",
+        uselist=False,
+    )
+
+    # this is denormalised but might still be useful to have as a separate column?
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    service = db.relationship(Service, backref=db.backref("unsubscribe_requests"))
+
+    template_id = db.Column(UUID(as_uuid=True), nullable=False)
+    template_version = db.Column(db.Integer, nullable=False)
+
+    template_history = db.relationship(TemplateHistory, backref=db.backref("unsubscribe_requests"))
+    template = db.relationship(
+        Template,
+        foreign_keys=[template_id],
+        primaryjoin="Template.id == UnsubscribeRequest.template_id",
+        backref=db.backref("unsubscribe_requests"),
+    )
+
+    email_address = db.Column(db.Text, nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    unsubscribe_request_report_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("unsubscribe_request_report.id"), index=True, nullable=True
+    )
+    unsubscribe_request_report = db.relationship(UnsubscribeRequestReport, backref=db.backref("unsubscribe_requests"))
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["template_id", "template_version"],
+            ["templates_history.id", "templates_history.version"],
+        ),
+        Index("ix_unsubscribe_request_notification_id", "notification_id"),
+        Index("ix_unsubscribe_request_unsubscribe_request_report_id", "unsubscribe_request_report_id"),
+    )
+
+
+class UnsubscribeRequestHistory(db.Model):
+    __tablename__ = "unsubscribe_request_history"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Ignoring a strict foreign key relationship here for now. Notifications are archived to the NotificationHistory
+    # table by a nightly job and I haven't investigated whether that might break a strict FK yet or if it would
+    # work smoothly. We can still have a relationship using an explicit join condition.
+    notification_id = db.Column(UUID(as_uuid=True), index=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    template_id = db.Column(UUID(as_uuid=True), nullable=False)
+    template_version = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+    processed_at = db.Column(db.DateTime)
+    unsubscribe_request_report_id = db.Column(UUID(as_uuid=True), index=True, nullable=True)
