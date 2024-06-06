@@ -1047,7 +1047,7 @@ class TemplateBase(db.Model):
     )
 
     # TODO: migrate this to be nullable=False
-    has_unsubscribe_link = db.Column(db.Boolean, default=False)
+    has_unsubscribe_link = db.Column(db.Boolean, default=False, nullable=False)
 
     @declared_attr
     def service_id(cls):
