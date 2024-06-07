@@ -27,3 +27,27 @@ def dao_get_current_letter_rates():
         )
         .all()
     )
+
+
+def dao_get_letter_rates_for_timestamp(a_datetime):
+    return (
+        LetterRate.query.filter(
+            # We have rows for crown and non-crown but
+            # - they should always be the same
+            # - we don’t show them separately anywhere
+            #
+            # So let’s just ignore non-crown for now
+            LetterRate.crown.is_(True),
+            LetterRate.start_date <= a_datetime,
+            or_(
+                LetterRate.end_date.is_(None),
+                LetterRate.end_date > a_datetime,
+            ),
+        )
+        .order_by(
+            asc(LetterRate.sheet_count),
+            asc(LetterRate.rate),
+            asc(LetterRate.post_class),
+        )
+        .all()
+    )

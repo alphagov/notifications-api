@@ -1677,14 +1677,14 @@ class Notification(db.Model):
         return serialized
 
     def get_sms_rate(self):
-        from app.dao.sms_rate_dao import dao_get_current_sms_rate
+        from app.dao.sms_rate_dao import dao_get_sms_rate_for_timestamp
 
-        return dao_get_current_sms_rate().rate
+        return dao_get_sms_rate_for_timestamp(self.created_at).rate
 
     def get_letter_cost(self):
-        from app.dao.letter_rate_dao import dao_get_current_letter_rates
+        from app.dao.letter_rate_dao import dao_get_letter_rates_for_timestamp
 
-        rates = dao_get_current_letter_rates()
+        rates = dao_get_letter_rates_for_timestamp(self.created_at)
         letter_rate = next(
             (rate for rate in rates if rate.sheet_count == self.billable_units and rate.post_class == self.postage),
             None,
