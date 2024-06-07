@@ -71,6 +71,21 @@ def test_try_send_sms_calls_firetext_correctly(mocker, mock_firetext_client):
     assert request_args["to"][0] == "447234567890"
     assert request_args["message"][0] == content
     assert request_args["reference"][0] == reference
+    assert "receipt" not in request_args
+
+
+def test_try_send_sms_calls_firetext_correctly_with_receipts(mocker, mock_firetext_client_with_receipts):
+    to = content = reference = "foo"
+    response_dict = {
+        "code": 0,
+    }
+
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post("https://example.com/firetext", json=response_dict, status_code=200)
+        mock_firetext_client_with_receipts.try_send_sms(to, content, reference, False, "bar")
+
+    request_args = parse_qs(request_mock.request_history[0].text)
+    assert request_args["receipt"][0] == "https://www.example.com/notifications/sms/firetext"
 
 
 def test_try_send_sms_calls_firetext_correctly_for_international(mocker, mock_firetext_client):

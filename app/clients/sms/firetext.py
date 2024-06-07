@@ -51,6 +51,7 @@ class FiretextClient(SmsClient):
         self.api_key = self.current_app.config.get("FIRETEXT_API_KEY")
         self.international_api_key = self.current_app.config.get("FIRETEXT_INTERNATIONAL_API_KEY")
         self.url = self.current_app.config.get("FIRETEXT_URL")
+        self.receipt_url = self.current_app.config.get("FIRETEXT_RECEIPT_URL")
 
     @property
     def name(self):
@@ -64,6 +65,9 @@ class FiretextClient(SmsClient):
             "message": content,
             "reference": reference,
         }
+
+        if self.receipt_url:
+            data["receipt"] = self.receipt_url
 
         try:
             response = request("POST", self.url, data=data, timeout=60)

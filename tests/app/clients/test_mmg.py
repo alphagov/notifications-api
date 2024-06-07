@@ -52,6 +52,18 @@ def test_try_send_sms_successful_returns_mmg_response(notify_api, mocker):
     assert response_json["Reference"] == 12345678
 
 
+def test_try_send_sms_successful_with_custom_receipts(notify_api, mock_mmg_client_with_receipts):
+    to = content = reference = "foo"
+    response_dict = {"Reference": 12345678}
+
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post("https://example.com/mmg", json=response_dict, status_code=200)
+        mock_mmg_client_with_receipts.try_send_sms(to, content, reference, False, "sender")
+
+    request_args = request_mock.request_history[0].json()
+    assert request_args["delurl"] == "https://www.example.com/notifications/sms/mmg"
+
+
 def test_try_send_sms_calls_mmg_correctly(notify_api, mocker):
     to = "+447234567890"
     content = "my message"
@@ -73,6 +85,7 @@ def test_try_send_sms_calls_mmg_correctly(notify_api, mocker):
     assert request_args["sender"] == "testing"
     assert request_args["cid"] == reference
     assert request_args["multi"] is True
+    assert "delurl" not in request_args
 
 
 def test_try_send_sms_raises_if_mmg_rejects(notify_api, mocker):
