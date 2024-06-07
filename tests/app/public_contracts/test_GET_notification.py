@@ -26,7 +26,7 @@ def _get_notification(client, notification, url):
 # v2
 
 
-def test_get_v2_sms_contract(client, sample_notification):
+def test_get_v2_sms_contract(client, sample_notification, sms_rate):
     response_json = return_json_from_response(
         _get_notification(client, sample_notification, f"/v2/notifications/{sample_notification.id}")
     )

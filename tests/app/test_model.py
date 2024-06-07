@@ -1,5 +1,3 @@
-from datetime import UTC, datetime, timedelta
-
 import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
@@ -24,9 +22,7 @@ from app.models import Notification, ServiceGuestList
 from tests.app.db import (
     create_inbound_number,
     create_letter_contact,
-    create_letter_rate,
     create_notification,
-    create_rate,
     create_reply_to_email,
     create_service,
     create_template,
@@ -227,8 +223,7 @@ def test_letter_notification_serializes_with_subject(client, sample_letter_templ
     assert res["subject"] == "Template subject"
 
 
-def test_notification_serialize_with_billing_info_for_sms(client, sample_template):
-    create_rate(start_date=datetime.now(UTC) - timedelta(days=1), value=0.0227, notification_type="sms")
+def test_notification_serialize_with_billing_info_for_sms(client, sample_template, sms_rate):
     notification = create_notification(sample_template, billable_units=2)
 
     response = notification.serialize_with_billing_info()
@@ -238,8 +233,7 @@ def test_notification_serialize_with_billing_info_for_sms(client, sample_templat
     assert response["cost_in_pounds"] == "0.0454"
 
 
-def test_notification_serialize_with_billing_info_for_letter(client, sample_letter_template):
-    create_letter_rate(start_date=datetime.now(UTC) - timedelta(days=1), rate=0.82, post_class="first", sheet_count=3)
+def test_notification_serialize_with_billing_info_for_letter(client, sample_letter_template, letter_rate):
     notification = create_notification(sample_letter_template, billable_units=3, postage="first")
 
     response = notification.serialize_with_billing_info()
@@ -249,8 +243,9 @@ def test_notification_serialize_with_billing_info_for_letter(client, sample_lett
     assert response["cost_in_pounds"] == "0.82"
 
 
-def test_notification_serialize_with_billing_info_for_letter_info_not_ready(client, sample_letter_template):
-    create_letter_rate(start_date=datetime.now(UTC) - timedelta(days=1), rate=0.82, post_class="first", sheet_count=3)
+def test_notification_serialize_with_billing_info_for_letter_info_not_ready(
+    client, sample_letter_template, letter_rate
+):
     notification = create_notification(
         sample_letter_template, billable_units=None, postage="first", status="pending-virus-check"
     )

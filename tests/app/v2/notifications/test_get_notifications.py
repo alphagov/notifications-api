@@ -9,7 +9,7 @@ from tests.app.db import create_notification, create_template
 
 
 @pytest.mark.parametrize("billable_units, provider", [(1, "mmg"), (0, "mmg"), (1, None)])
-def test_get_notification_by_id_returns_200(api_client_request, billable_units, provider, sample_template):
+def test_get_notification_by_id_returns_200(api_client_request, sample_template, sms_rate, billable_units, provider):
     sample_notification = create_notification(
         template=sample_template,
         billable_units=billable_units,
@@ -68,7 +68,7 @@ def test_get_notification_by_id_returns_200(api_client_request, billable_units, 
 
 
 def test_get_notification_by_id_with_placeholders_returns_200(
-    api_client_request, sample_email_template_with_placeholders
+    api_client_request, sample_email_template_with_placeholders, sms_rate
 ):
     sample_notification = create_notification(
         template=sample_email_template_with_placeholders, personalisation={"name": "Bob"}
@@ -139,6 +139,7 @@ def test_get_notification_by_id_returns_created_by_name_if_notification_created_
     api_client_request,
     sample_user,
     sample_template,
+    sms_rate,
 ):
     sms_notification = create_notification(template=sample_template)
     sms_notification.created_by_id = sample_user.id
@@ -217,7 +218,10 @@ def test_get_notification_adds_delivery_estimate_for_letters(
 
 @pytest.mark.parametrize("template_type", ["sms", "email"])
 def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(
-    api_client_request, sample_service, template_type
+    api_client_request,
+    sample_service,
+    sms_rate,
+    template_type,
 ):
     template = create_template(service=sample_service, template_type=template_type)
     mocked_notification = create_notification(template=template)
