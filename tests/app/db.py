@@ -505,7 +505,7 @@ def create_email_branding(
     return email_branding
 
 
-def create_rate(start_date, value, notification_type):
+def create_sms_rate(start_date, value, notification_type):
     rate = Rate(id=uuid.uuid4(), valid_from=start_date, rate=value, notification_type=notification_type)
     db.session.add(rate)
     db.session.commit()

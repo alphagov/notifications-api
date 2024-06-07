@@ -27,8 +27,8 @@ from tests.app.db import (
     create_letter_rate,
     create_notification,
     create_notification_history,
-    create_rate,
     create_service,
+    create_sms_rate,
     create_template,
 )
 
@@ -430,8 +430,8 @@ def test_get_rate_for_letter_latest_if_crown_is_none(notify_db_session):
 
 def test_get_rate_for_sms_and_email(notify_db_session):
     non_letter_rates = [
-        create_rate(datetime(2017, 12, 1), 0.15, SMS_TYPE),
-        create_rate(datetime(2017, 12, 1), 0, EMAIL_TYPE),
+        create_sms_rate(datetime(2017, 12, 1), 0.15, SMS_TYPE),
+        create_sms_rate(datetime(2017, 12, 1), 0, EMAIL_TYPE),
     ]
 
     rate = get_rate(non_letter_rates, [], SMS_TYPE, date(2018, 1, 1))

@@ -61,8 +61,8 @@ from tests.app.db import (
     create_letter_contact,
     create_letter_rate,
     create_notification,
-    create_rate,
     create_service,
+    create_sms_rate,
     create_template,
     create_user,
 )
@@ -983,7 +983,7 @@ def sample_organisation(notify_db_session):
 
 @pytest.fixture
 def sms_rate(notify_db_session):
-    return create_rate(start_date=datetime.now(UTC) - timedelta(days=1), value=0.0227, notification_type="sms")
+    return create_sms_rate(start_date=datetime.now(UTC) - timedelta(days=1), value=0.0227, notification_type="sms")
 
 
 @pytest.fixture
