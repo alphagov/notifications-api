@@ -1642,7 +1642,7 @@ class Notification(db.Model):
 
         return serialized
 
-    def serialize_with_billing_info(self):
+    def serialize_with_cost_info(self):
         serialized = self.serialize()
         serialized["cost_details"] = {}
         serialized["cost_in_pounds"] = "0.00"

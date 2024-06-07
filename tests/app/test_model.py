@@ -223,44 +223,42 @@ def test_letter_notification_serializes_with_subject(client, sample_letter_templ
     assert res["subject"] == "Template subject"
 
 
-def test_notification_serialize_with_billing_info_for_sms(client, sample_template, sms_rate):
+def test_notification_serialize_with_cost_info_for_sms(client, sample_template, sms_rate):
     notification = create_notification(sample_template, billable_units=2)
 
-    response = notification.serialize_with_billing_info()
+    response = notification.serialize_with_cost_info()
 
     assert response["is_cost_data_ready"] is True
     assert response["cost_details"] == {"sms_fragments": 2, "rate_multiplier": 1, "rate": "0.0227"}
     assert response["cost_in_pounds"] == "0.0454"
 
 
-def test_notification_serialize_with_billing_info_for_letter(client, sample_letter_template, letter_rate):
+def test_notification_serialize_with_cost_info_for_letter(client, sample_letter_template, letter_rate):
     notification = create_notification(sample_letter_template, billable_units=3, postage="first")
 
-    response = notification.serialize_with_billing_info()
+    response = notification.serialize_with_cost_info()
 
     assert response["is_cost_data_ready"] is True
     assert response["cost_details"] == {"sheets_of_paper": 3, "postage": "first"}
     assert response["cost_in_pounds"] == "0.82"
 
 
-def test_notification_serialize_with_billing_info_for_letter_info_not_ready(
-    client, sample_letter_template, letter_rate
-):
+def test_notification_serialize_with_cost_info_for_letter_info_not_ready(client, sample_letter_template, letter_rate):
     notification = create_notification(
         sample_letter_template, billable_units=None, postage="first", status="pending-virus-check"
     )
 
-    response = notification.serialize_with_billing_info()
+    response = notification.serialize_with_cost_info()
 
     assert response["is_cost_data_ready"] is False
     assert response["cost_details"] == {}
     assert response["cost_in_pounds"] is None
 
 
-def test_notification_serialize_with_billing_info_for_email(client, sample_email_template):
+def test_notification_serialize_with_cost_info_for_email(client, sample_email_template):
     notification = create_notification(sample_email_template, billable_units=0)
 
-    response = notification.serialize_with_billing_info()
+    response = notification.serialize_with_cost_info()
 
     assert response["cost_details"] == {}
     assert response["cost_in_pounds"] == "0.00"
