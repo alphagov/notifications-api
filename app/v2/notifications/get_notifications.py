@@ -98,7 +98,9 @@ def get_notifications():
 
     return (
         jsonify(
-            notifications=[notification.serialize() for notification in paginated_notifications.items],
+            notifications=[
+                notification.serialize_with_billing_info() for notification in paginated_notifications.items
+            ],
             links=_build_links(paginated_notifications.items),
         ),
         200,

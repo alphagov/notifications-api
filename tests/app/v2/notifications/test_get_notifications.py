@@ -118,7 +118,7 @@ def test_get_notification_by_id_with_placeholders_returns_200(
     assert json_response == expected_response
 
 
-def test_get_notification_by_reference_returns_200(api_client_request, sample_template):
+def test_get_notification_by_reference_returns_200(api_client_request, sample_template, sms_rate):
     sample_notification_with_reference = create_notification(
         template=sample_template, client_reference="some-client-reference"
     )
@@ -234,7 +234,9 @@ def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(
     assert "estimated_delivery" not in json_response
 
 
-def test_get_all_notifications_except_job_notifications_returns_200(api_client_request, sample_template, sample_job):
+def test_get_all_notifications_except_job_notifications_returns_200(
+    api_client_request, sample_template, sample_job, sms_rate
+):
     create_notification(template=sample_template, job=sample_job)  # should not return this job notification
     notifications = [create_notification(template=sample_template) for _ in range(2)]
     notification = notifications[-1]
@@ -257,7 +259,9 @@ def test_get_all_notifications_except_job_notifications_returns_200(api_client_r
     assert not json_response["notifications"][0]["scheduled_for"]
 
 
-def test_get_all_notifications_with_include_jobs_arg_returns_200(api_client_request, sample_template, sample_job):
+def test_get_all_notifications_with_include_jobs_arg_returns_200(
+    api_client_request, sample_template, sample_job, sms_rate
+):
     notifications = [
         create_notification(template=sample_template, job=sample_job),
         create_notification(template=sample_template),
@@ -333,7 +337,7 @@ def test_get_all_notifications_filter_by_template_type_invalid_template_type(api
     assert json_response["errors"][0]["message"] == "template_type orange is not one of [sms, email, letter]"
 
 
-def test_get_all_notifications_filter_by_single_status(api_client_request, sample_template):
+def test_get_all_notifications_filter_by_single_status(api_client_request, sample_template, sms_rate):
     notification = create_notification(template=sample_template, status="pending")
     create_notification(template=sample_template)
 
@@ -410,7 +414,7 @@ def test_get_all_notifications_filter_by_status_invalid_status(api_client_reques
     )
 
 
-def test_get_all_notifications_filter_by_multiple_statuses(api_client_request, sample_template):
+def test_get_all_notifications_filter_by_multiple_statuses(api_client_request, sample_template, sms_rate):
     notifications = [
         create_notification(template=sample_template, status=_status) for _status in ["created", "pending", "sending"]
     ]
@@ -431,7 +435,7 @@ def test_get_all_notifications_filter_by_multiple_statuses(api_client_request, s
     assert failed_notification.id not in returned_notification_ids
 
 
-def test_get_all_notifications_filter_by_failed_status(api_client_request, sample_template):
+def test_get_all_notifications_filter_by_failed_status(api_client_request, sample_template, sms_rate):
     created_notification = create_notification(template=sample_template, status="created")
     failed_notifications = [
         create_notification(template=sample_template, status=_status)
@@ -453,7 +457,7 @@ def test_get_all_notifications_filter_by_failed_status(api_client_request, sampl
     assert created_notification.id not in returned_notification_ids
 
 
-def test_get_all_notifications_filter_by_id(api_client_request, sample_template):
+def test_get_all_notifications_filter_by_id(api_client_request, sample_template, sms_rate):
     older_notification = create_notification(template=sample_template)
     newer_notification = create_notification(template=sample_template)
 
@@ -570,6 +574,23 @@ def test_get_all_notifications_renames_letter_statuses(
             pytest.fail()
 
 
+def test_get_all_notifications_returns_cost_information(api_client_request, sample_template, sms_rate):
+    notification = create_notification(template=sample_template)
+
+    json_response = api_client_request.get(notification.service_id, "v2_notifications.get_notifications")
+
+    assert json_response["links"]["current"].endswith("/v2/notifications")
+    assert "next" in json_response["links"].keys()
+    assert len(json_response["notifications"]) == 1
+
+    assert json_response["notifications"][0]["cost_in_pounds"] == "0.0227"
+    assert json_response["notifications"][0]["cost_details"] == {
+        "sms_fragments": 1,
+        "rate_multiplier": 1,
+        "rate": "0.0227",
+    }
+
+
 @pytest.mark.parametrize(
     "db_status,expected_status",
     [
@@ -580,7 +601,7 @@ def test_get_all_notifications_renames_letter_statuses(
         ("technical-failure", "technical-failure"),
     ],
 )
-def test_get_notifications_renames_letter_statuses(
+def test_get_notification_by_id_renames_letter_statuses(
     api_client_request, sample_letter_template, db_status, expected_status
 ):
     letter_noti = create_notification(
