@@ -1095,8 +1095,11 @@ class TemplateBase(db.Model):
                 "(template_type != 'letter' AND letter_languages IS NULL) OR"
                 " (template_type = 'letter' AND letter_languages IS NOT NULL)"
             ),
-            # if template type is not email, then has_unsubscribe_link MUST be null
-            CheckConstraint("template_type = 'email' OR has_unsubscribe_link IS NULL"),
+            # if template type is not email, then has_unsubscribe_link MUST be false
+            CheckConstraint(
+                "template_type = 'email' OR has_unsubscribe_link IS false",
+                name=f"ck_{cls.__tablename__}_non_email_has_unsubscribe_false",
+            ),
         )
 
     @property
