@@ -4,7 +4,7 @@ from urllib.parse import unquote
 import iso8601
 from flask import Blueprint, abort, current_app, jsonify, request
 from gds_metrics.metrics import Counter
-from notifications_utils.recipients import try_validate_and_format_phone_number
+from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
 from app.celery import tasks
 from app.config import QueueNames

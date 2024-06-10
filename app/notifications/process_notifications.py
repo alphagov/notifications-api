@@ -4,8 +4,10 @@ from datetime import datetime
 from flask import current_app
 from gds_metrics import Histogram
 from notifications_utils.clients import redis
-from notifications_utils.recipients import (
+from notifications_utils.recipient_validation.email_address import (
     format_email_address,
+)
+from notifications_utils.recipient_validation.phone_number import (
     get_international_phone_info,
     validate_and_format_phone_number,
 )

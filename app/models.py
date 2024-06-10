@@ -6,15 +6,14 @@ from typing import Union
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.letter_timings import get_letter_timings
-from notifications_utils.postal_address import (
-    address_lines_1_to_6_and_postcode_keys,
-)
-from notifications_utils.recipients import (
-    InvalidEmailError,
-    InvalidPhoneError,
+from notifications_utils.recipient_validation.email_address import validate_email_address
+from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
+from notifications_utils.recipient_validation.phone_number import (
     try_validate_and_format_phone_number,
-    validate_email_address,
     validate_phone_number,
+)
+from notifications_utils.recipient_validation.postal_address import (
+    address_lines_1_to_6_and_postcode_keys,
 )
 from notifications_utils.safe_string import make_string_safe_for_email_local_part
 from notifications_utils.template import (

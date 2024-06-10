@@ -9,11 +9,9 @@ from flask import current_app
 from notifications_utils.international_billing_rates import (
     INTERNATIONAL_BILLING_RATES,
 )
-from notifications_utils.recipients import (
-    InvalidEmailError,
-    try_validate_and_format_phone_number,
-    validate_and_format_email_address,
-)
+from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
+from notifications_utils.recipient_validation.errors import InvalidEmailError
+from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy import and_, asc, desc, func, literal, or_, union
 from sqlalchemy.dialects.postgresql import insert

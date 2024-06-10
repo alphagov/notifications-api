@@ -5,10 +5,8 @@ from collections import namedtuple
 import pytest
 from boto3.exceptions import Boto3Error
 from freezegun import freeze_time
-from notifications_utils.recipients import (
-    validate_and_format_email_address,
-    validate_and_format_phone_number,
-)
+from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
+from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.constants import LETTER_TYPE

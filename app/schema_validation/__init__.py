@@ -5,12 +5,9 @@ from uuid import UUID
 
 from iso8601 import ParseError, iso8601
 from jsonschema import Draft7Validator, FormatChecker, ValidationError
-from notifications_utils.recipients import (
-    InvalidEmailError,
-    InvalidPhoneError,
-    validate_email_address,
-    validate_phone_number,
-)
+from notifications_utils.recipient_validation.email_address import validate_email_address
+from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
+from notifications_utils.recipient_validation.phone_number import validate_phone_number
 
 from app.notifications.validators import remap_phone_number_validation_messages
 

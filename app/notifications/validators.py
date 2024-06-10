@@ -5,12 +5,12 @@ from notifications_utils.clients.redis import (
     daily_limit_cache_key,
     rate_limit_cache_key,
 )
-from notifications_utils.postal_address import PostalAddress
-from notifications_utils.recipients import (
+from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
+from notifications_utils.recipient_validation.phone_number import (
     get_international_phone_info,
-    validate_and_format_email_address,
     validate_and_format_phone_number,
 )
+from notifications_utils.recipient_validation.postal_address import PostalAddress
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import redis_store

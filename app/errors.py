@@ -1,7 +1,7 @@
 from flask import current_app, json, jsonify
 from jsonschema import ValidationError as JsonSchemaValidationError
 from marshmallow import ValidationError
-from notifications_utils.recipients import InvalidEmailError
+from notifications_utils.recipient_validation.errors import InvalidEmailError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 

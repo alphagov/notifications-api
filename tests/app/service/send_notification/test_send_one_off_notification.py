@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
-from notifications_utils.recipients import InvalidPhoneError
+from notifications_utils.recipient_validation.errors import InvalidPhoneError
 
 from app.constants import (
     EMAIL_TYPE,

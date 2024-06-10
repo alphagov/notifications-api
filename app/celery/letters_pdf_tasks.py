@@ -4,7 +4,7 @@ from datetime import time as dt_time
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
-from notifications_utils.postal_address import PostalAddress
+from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 
 from app import notify_celery, signing
