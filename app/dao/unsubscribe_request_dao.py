@@ -4,14 +4,7 @@ from app.models import UnsubscribeRequest
 
 
 @autocommit
-def create_unsubscribe_request_dao(notification):
-    unsubscribe_data = {  # noqa
-        "notification_id": notification.id,
-        "template_id": notification.template_id,
-        "template_version": notification.template_version,
-        "service_id": notification.service_id,
-        "email_address": notification.to,
-    }
+def create_unsubscribe_request_dao(unsubscribe_data):
     db.session.add(UnsubscribeRequest(**unsubscribe_data))
 
 
