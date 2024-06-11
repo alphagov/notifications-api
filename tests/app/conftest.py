@@ -989,7 +989,7 @@ def sms_rate(notify_db_session):
 @pytest.fixture
 def letter_rate(notify_db_session):
     return create_letter_rate(
-        start_date=datetime.now(UTC) - timedelta(days=1), rate=0.82, post_class="first", sheet_count=3
+        start_date=datetime.now(UTC) - timedelta(days=1), rate=0.54, post_class="second", sheet_count=1
     )
 
 

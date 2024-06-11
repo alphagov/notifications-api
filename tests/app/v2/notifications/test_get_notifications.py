@@ -5,7 +5,7 @@ from flask import url_for
 
 from app.utils import DATETIME_FORMAT
 from tests import create_service_authorization_header
-from tests.app.db import create_notification, create_template
+from tests.app.db import create_letter_rate, create_notification, create_template
 
 
 @pytest.mark.parametrize("billable_units, provider", [(1, "mmg"), (0, "mmg"), (1, None)])
@@ -203,7 +203,9 @@ def test_get_notification_adds_delivery_estimate_for_letters(
     postage,
     estimated_delivery,
 ):
-    sample_letter_notification.created_at = datetime.date(2000, created_at_month, 1)
+    create_letter_rate(start_date=datetime.datetime(2000, 1, 1), rate=0.82, post_class="first", sheet_count=1)
+    create_letter_rate(start_date=datetime.datetime(2000, 1, 1), rate=0.82, post_class="second", sheet_count=1)
+    sample_letter_notification.created_at = datetime.datetime(2000, created_at_month, 1)
     sample_letter_notification.postage = postage
 
     json_response = api_client_request.get(
@@ -380,7 +382,7 @@ def test_get_all_notifications_filter_by_single_status(api_client_request, sampl
     ),
 )
 def test_get_letter_notifications_filter_by_single_status(
-    api_client_request, sample_letter_template, internal_status, filter_status, expect_num_notifications
+    api_client_request, sample_letter_template, letter_rate, internal_status, filter_status, expect_num_notifications
 ):
     # the internal notification status `delivered` is mapped to `received` externally.
     notification = create_notification(template=sample_letter_template, status=internal_status)
@@ -559,6 +561,7 @@ def test_get_all_notifications_renames_letter_statuses(
     sample_letter_notification,
     sample_notification,
     sample_email_notification,
+    letter_rate,
 ):
     json_response = api_client_request.get(
         sample_letter_notification.service_id,
@@ -602,7 +605,7 @@ def test_get_all_notifications_returns_cost_information(api_client_request, samp
     ],
 )
 def test_get_notification_by_id_renames_letter_statuses(
-    api_client_request, sample_letter_template, db_status, expected_status
+    api_client_request, sample_letter_template, letter_rate, db_status, expected_status
 ):
     letter_noti = create_notification(
         sample_letter_template,

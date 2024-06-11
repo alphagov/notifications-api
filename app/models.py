@@ -1689,7 +1689,7 @@ class Notification(db.Model):
             (rate for rate in rates if rate.sheet_count == self.billable_units and rate.post_class == self.postage),
             None,
         )
-        if not letter_rate:
+        if self.billable_units == 0:
             return "0.00"
         return str(letter_rate.rate)
 

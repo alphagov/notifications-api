@@ -234,13 +234,13 @@ def test_notification_serialize_with_cost_info_for_sms(client, sample_template, 
 
 
 def test_notification_serialize_with_cost_info_for_letter(client, sample_letter_template, letter_rate):
-    notification = create_notification(sample_letter_template, billable_units=3, postage="first")
+    notification = create_notification(sample_letter_template, billable_units=1, postage="second")
 
     response = notification.serialize_with_cost_info()
 
     assert response["is_cost_data_ready"] is True
-    assert response["cost_details"] == {"sheets_of_paper": 3, "postage": "first"}
-    assert response["cost_in_pounds"] == "0.82"
+    assert response["cost_details"] == {"sheets_of_paper": 1, "postage": "second"}
+    assert response["cost_in_pounds"] == "0.54"
 
 
 def test_notification_serialize_with_cost_info_for_letter_info_not_ready(client, sample_letter_template, letter_rate):
