@@ -16,7 +16,7 @@ import requests
 import trustme
 from flask import current_app
 from moto import mock_ssm
-from notifications_utils.postal_address import PostalAddress
+from notifications_utils.recipient_validation.postal_address import PostalAddress
 from redis.exceptions import LockError
 
 from app.clients.letter.dvla import (

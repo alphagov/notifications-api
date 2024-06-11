@@ -6,7 +6,7 @@ from unittest.mock import ANY
 
 import pytest
 from flask import current_app
-from notifications_utils.recipients import validate_and_format_phone_number
+from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
 from requests import HTTPError
 
 import app

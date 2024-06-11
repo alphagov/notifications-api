@@ -4,10 +4,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from flask import Blueprint, abort, current_app, jsonify, request
-from notifications_utils.recipients import (
-    is_uk_phone_number,
-    use_numeric_sender,
-)
+from notifications_utils.recipient_validation.phone_number import is_uk_phone_number, use_numeric_sender
 from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames

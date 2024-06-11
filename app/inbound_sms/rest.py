@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from notifications_utils.recipients import try_validate_and_format_phone_number
+from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
 from app.dao.inbound_sms_dao import (
     dao_count_inbound_sms_for_service,
@@ -7,13 +7,9 @@ from app.dao.inbound_sms_dao import (
     dao_get_inbound_sms_for_service,
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service,
 )
-from app.dao.service_data_retention_dao import (
-    fetch_service_data_retention_by_notification_type,
-)
+from app.dao.service_data_retention_dao import fetch_service_data_retention_by_notification_type
 from app.errors import register_errors
-from app.inbound_sms.inbound_sms_schemas import (
-    get_inbound_sms_for_service_schema,
-)
+from app.inbound_sms.inbound_sms_schemas import get_inbound_sms_for_service_schema
 from app.schema_validation import validate
 
 inbound_sms = Blueprint("inbound_sms", __name__, url_prefix="/service/<uuid:service_id>/inbound-sms")

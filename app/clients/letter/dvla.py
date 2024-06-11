@@ -10,7 +10,7 @@ import boto3
 import jwt
 import requests
 from flask import current_app
-from notifications_utils.postal_address import PostalAddress
+from notifications_utils.recipient_validation.postal_address import PostalAddress
 from requests.adapters import HTTPAdapter
 from urllib3.util.ssl_ import create_urllib3_context
 

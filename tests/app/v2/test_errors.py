@@ -1,6 +1,6 @@
 import pytest
 from flask import url_for
-from notifications_utils.recipients import InvalidPhoneError
+from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from sqlalchemy.exc import DataError
 
 
