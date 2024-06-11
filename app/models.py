@@ -1658,7 +1658,7 @@ class Notification(db.Model):
     def _get_cost_info_for_sms(self, serialized):
         serialized["cost_details"]["sms_fragments"] = self.billable_units
         serialized["cost_details"]["rate_multiplier"] = self.rate_multiplier
-        sms_rate = self.get_sms_rate()
+        sms_rate = self._get_sms_rate()
         serialized["cost_details"]["rate"] = str(sms_rate)
         serialized["cost_in_pounds"] = str(self.billable_units * self.rate_multiplier * sms_rate)
 
@@ -1672,16 +1672,16 @@ class Notification(db.Model):
         else:
             serialized["cost_details"]["sheets_of_paper"] = self.billable_units
             serialized["cost_details"]["postage"] = self.postage
-            serialized["cost_in_pounds"] = self.get_letter_cost()
+            serialized["cost_in_pounds"] = self._get_letter_cost()
 
         return serialized
 
-    def get_sms_rate(self):
+    def _get_sms_rate(self):
         from app.dao.sms_rate_dao import dao_get_sms_rate_for_timestamp
 
         return dao_get_sms_rate_for_timestamp(self.created_at).rate
 
-    def get_letter_cost(self):
+    def _get_letter_cost(self):
         from app.dao.letter_rate_dao import dao_get_letter_rates_for_timestamp
 
         rates = dao_get_letter_rates_for_timestamp(self.created_at)
