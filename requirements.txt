@@ -203,7 +203,7 @@ pyyaml==6.0.1
     # via notifications-utils
 redis==4.5.4
     # via flask-redis
-requests==2.31.0
+requests==2.32.0
     # via
     #   govuk-bank-holidays
     #   notifications-python-client
