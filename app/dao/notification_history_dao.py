@@ -17,3 +17,7 @@ def delete_notification_history_between_two_datetimes(start: str, end: str):
     current_app.logger.info(
         "Finishing deleting %s rows of notification_history between %s and %s", num_rows_deleted, start, end
     )
+
+
+def get_notification_history_by_id(notification_history_id):
+    return NotificationHistory.query.filter_by(id=notification_history_id).one_or_none()

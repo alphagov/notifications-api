@@ -464,6 +464,7 @@ def sample_email_notification(notify_db_session):
         "billable_units": 0,
         "personalisation": None,
         "notification_type": template.template_type,
+        "unsubscribe_link": None,
         "api_key_id": None,
         "key_type": KEY_TYPE_NORMAL,
         "job_row_number": 1,
