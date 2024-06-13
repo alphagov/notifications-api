@@ -229,7 +229,7 @@ def test_notification_serialize_with_cost_info_for_sms(client, sample_template, 
     response = notification.serialize_with_cost_info()
 
     assert response["is_cost_data_ready"] is True
-    assert response["cost_details"] == {"sms_fragments": 2, "rate_multiplier": 1, "rate": "0.0227"}
+    assert response["cost_details"] == {"sms_fragments": 2, "rate_multiplier": 1.0, "rate": "0.0227"}
     assert response["cost_in_pounds"] == "0.0454"
 
 
