@@ -1665,16 +1665,21 @@ class Notification(db.Model):
         return serialized
 
     def _get_cost_info_for_letter(self, serialized):
-        if self.status == "pending-virus-check":  # are there any other not-ready states?
+        if not self._is_cost_info_ready_for_letter():
             serialized["is_cost_data_ready"] = False
             serialized["cost_details"] = {}
             serialized["cost_in_pounds"] = None
         else:
-            serialized["cost_details"]["sheets_of_paper"] = self.billable_units
+            serialized["cost_details"]["billable_sheets_of_paper"] = self.billable_units
             serialized["cost_details"]["postage"] = self.postage
             serialized["cost_in_pounds"] = self._get_letter_cost()
 
         return serialized
+
+    def _is_cost_info_ready_for_letter(self):
+        if self.status == "pending-virus-check" or (self.status == "created" and not self.billable_units):
+            return False
+        return True
 
     def _get_sms_rate(self):
         from app.dao.sms_rate_dao import dao_get_sms_rate_for_timestamp
