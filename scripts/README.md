@@ -1,0 +1,3 @@
+The scripts in this directory are used to populate prod like environments in the following fashion:
+
+- `cat $CSV_DOWNLOADED_FROM_BT | python process_sender_names.py`  - this script is run by hand. It takes a list of protected sender names that we get from BT and uses that list to populate a db table. A sanity check of the insert statement is needed before running. The table is used to check if a sender name our user wants to set is protected. If it's one of the protected ones, we don't set it, and we also raise an alert in a form of a Zendesk ticket (code for that is in admin repo). The script filters out all government and healthcare sender names as we want our service users to be able to use them.
