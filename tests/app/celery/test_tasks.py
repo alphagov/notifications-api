@@ -1438,7 +1438,7 @@ def test_process_incomplete_jobs_no_notifications_added(mocker, sample_template)
     assert mock_save_sms.call_count == 10  # There are 10 in the csv file
 
 
-def test_process_incomplete_jobs(mocker):
+def test_process_incomplete_jobs(mocker, sample_template):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
