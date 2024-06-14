@@ -136,6 +136,7 @@ def request_invite_to_service(service_id, user_to_invite_id):
     reason_for_request = request_json["reason"]
     invite_link_host = request_json["invite_link_host"]
     accept_invite_request_url = f"{invite_link_host}/services/{service.id}/users/invite/{user_requesting_invite.id}"
+    request_again_url = f"{invite_link_host}/services/{service.id}/join"
 
     if user_requesting_invite.services and service in user_requesting_invite.services:
         raise BadRequestError(400, "user-already-in-service")
@@ -148,6 +149,7 @@ def request_invite_to_service(service_id, user_to_invite_id):
         user_requesting_invite,
         service=service,
         recipients_of_invite_request=recipients_of_invite_request,
+        request_again_url=request_again_url,
     )
 
     return {}, 204
@@ -199,7 +201,13 @@ def send_service_invite_request(
         raise BadRequestError(400, "no-valid-service-managers-ids")
 
 
-def send_receipt_after_sending_request_invite_letter(user_requesting_invite, *, service, recipients_of_invite_request):
+def send_receipt_after_sending_request_invite_letter(
+    user_requesting_invite,
+    *,
+    service,
+    recipients_of_invite_request,
+    request_again_url,
+):
     template_id = current_app.config["RECEIPT_FOR_REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID"]
     template = dao_get_template_by_id(template_id)
     notify_service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
@@ -212,7 +220,8 @@ def send_receipt_after_sending_request_invite_letter(user_requesting_invite, *, 
         personalisation={
             "name": user_requesting_invite.name,
             "service name": service.name,
-            "service admin names": [user.name for user in recipients_of_invite_request],
+            "service admin names": [f"{user.name} – {user.email_address}" for user in recipients_of_invite_request],
+            "request again url": request_again_url,
         },
         notification_type=template.template_type,
         api_key_id=None,
