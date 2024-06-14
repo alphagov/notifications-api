@@ -1,4 +1,3 @@
-import json
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -8,7 +7,6 @@ from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
 from notifications_utils.timezones import convert_utc_to_bst
-from requests import HTTPError, RequestException, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import create_random_identifier, create_uuid, notify_celery, signing
@@ -33,7 +31,6 @@ from app.constants import (
 from app.dao.daily_sorted_letter_dao import (
     dao_create_or_update_daily_sorted_letter,
 )
-from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
 from app.dao.notifications_dao import (
     dao_get_last_notification_added_for_job_id,
@@ -44,7 +41,6 @@ from app.dao.notifications_dao import (
 )
 from app.dao.returned_letters_dao import insert_returned_letters
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
-from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import DVLAException
@@ -53,7 +49,6 @@ from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
-from app.utils import DATETIME_FORMAT
 from app.v2.errors import TooManyRequestsError
 
 
@@ -525,71 +520,6 @@ def check_billable_units(notification_update):
             notification.billable_units,
             notification_update.page_count,
         )
-
-
-@notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
-def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
-    inbound_api = get_service_inbound_api_for_service(service_id=service_id)
-    if not inbound_api:
-        # No API data has been set for this service
-        return
-
-    inbound_sms = dao_get_inbound_sms_by_id(service_id=service_id, inbound_id=inbound_sms_id)
-    data = {
-        "id": str(inbound_sms.id),
-        # TODO: should we be validating and formatting the phone number here?
-        "source_number": inbound_sms.user_number,
-        "destination_number": inbound_sms.notify_number,
-        "message": inbound_sms.content,
-        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT),
-    }
-
-    try:
-        response = request(
-            method="POST",
-            url=inbound_api.url,
-            data=json.dumps(data),
-            headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(inbound_api.bearer_token)},
-            timeout=60,
-        )
-        current_app.logger.debug(
-            "send_inbound_sms_to_service sending %s to %s, response %s",
-            inbound_sms_id,
-            inbound_api.url,
-            response.status_code,
-        )
-        response.raise_for_status()
-    except RequestException as e:
-        current_app.logger.warning(
-            "send_inbound_sms_to_service failed for service_id: %s for inbound_sms_id: %s and url: %s. exception: %s",
-            service_id,
-            inbound_sms_id,
-            inbound_api.url,
-            e,
-        )
-        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
-            try:
-                self.retry(queue=QueueNames.RETRY)
-            except self.MaxRetriesExceededError:
-                current_app.logger.error(
-                    (
-                        "Retry: send_inbound_sms_to_service has retried the max number of times "
-                        "for service: %s and inbound_sms %s"
-                    ),
-                    service_id,
-                    inbound_sms_id,
-                )
-        else:
-            current_app.logger.warning(
-                (
-                    "send_inbound_sms_to_service is not being retried for service_id: %s "
-                    "for inbound_sms id: %s and url: %s. exception: %s"
-                ),
-                service_id,
-                inbound_sms_id,
-                inbound_api.url,
-                e,
-            )
 
 
 @notify_celery.task(name="process-incomplete-jobs")

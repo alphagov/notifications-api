@@ -5,6 +5,8 @@ from requests import HTTPError, RequestException, request
 
 from app import notify_celery, signing
 from app.config import QueueNames
+from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
+from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.utils import DATETIME_FORMAT
 
 
@@ -55,8 +57,39 @@ def send_complaint_to_service(self, complaint_data):
     )
 
 
-def _send_data_to_service_callback_api(self, data, service_callback_url, token, function_name):
-    notification_id = data["notification_id"] if "notification_id" in data else data["id"]
+@notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
+def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
+    inbound_api = get_service_inbound_api_for_service(service_id=service_id)
+    if not inbound_api:
+        # No API data has been set for this service
+        return
+
+    inbound_sms = dao_get_inbound_sms_by_id(service_id=service_id, inbound_id=inbound_sms_id)
+    data = {
+        "id": str(inbound_sms.id),
+        # TODO: should we be validating and formatting the phone number here?
+        "source_number": inbound_sms.user_number,
+        "destination_number": inbound_sms.notify_number,
+        "message": inbound_sms.content,
+        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT),
+    }
+
+    _send_data_to_service_callback_api(
+        self,
+        data,
+        inbound_api.url,
+        inbound_api.bearer_token,
+        "send_inbound_sms_to_service",
+        QueueNames.RETRY,
+        service_id,
+    )
+
+
+def _send_data_to_service_callback_api(
+    self, data, service_callback_url, token, function_name, retry_queue=QueueNames.CALLBACKS_RETRY, service_id=None
+):
+    object_id = data["notification_id"] if "notification_id" in data else data["id"]
+    service_id = str(service_id) if service_id else "no-service-id"
     try:
         response = request(
             method="POST",
@@ -68,36 +101,40 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
         current_app.logger.info(
             "%s sending %s to %s, response %s",
             function_name,
-            notification_id,
+            object_id,
             service_callback_url,
             response.status_code,
+            extra={"service_id": service_id},
         )
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            "%s request failed for notification_id: %s and url: %s. exception: %s",
+            "%s request failed for id: %s and url: %s. exception: %s",
             function_name,
-            notification_id,
+            object_id,
             service_callback_url,
             e,
+            extra={"service_id": service_id},
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500 or e.response.status_code == 429:
             try:
-                self.retry(queue=QueueNames.CALLBACKS_RETRY)
-            except self.MaxRetriesExceededError:
-                current_app.logger.warning(
-                    "Retry: %s has retried the max num of times for callback url %s and notification_id: %s",
+                self.retry(queue=retry_queue)
+            except self.MaxRetriesExceededError as e:
+                current_app.logger.error(
+                    "Retry: %s has retried the max num of times for callback url %s and id: %s",
                     function_name,
                     service_callback_url,
-                    notification_id,
+                    object_id,
+                    extra={"service_id": service_id},
                 )
         else:
             current_app.logger.warning(
-                "%s callback is not being retried for notification_id: %s and url: %s. exception: %s",
+                "%s callback is not being retried for id: %s and url: %s. exception: %s",
                 function_name,
-                notification_id,
+                object_id,
                 service_callback_url,
                 e,
+                extra={"service_id": service_id},
             )
 
 
