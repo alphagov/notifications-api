@@ -4,12 +4,14 @@ from collections import namedtuple
 
 import pytest
 from boto3.exceptions import Boto3Error
+from flask import current_app
 from freezegun import freeze_time
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
+from notifications_utils.url_safe_token import generate_token
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.constants import LETTER_TYPE
+from app.constants import EMAIL_TYPE, LETTER_TYPE
 from app.models import Notification, NotificationHistory
 from app.notifications.process_notifications import (
     create_content_for_notification,
@@ -529,3 +531,60 @@ def test_persist_notification_for_international_letter(sample_letter_template, p
     persisted_notification = Notification.query.get(notification.id)
     assert persisted_notification.postage == postage
     assert persisted_notification.international
+
+
+@pytest.mark.parametrize(
+    "unsubscribe_link, template_has_unsubscribe_link",
+    [
+        ("https://please-unsubscribe-me.com/unsubscribe", True),
+        ("https://please-unsubscribe-me.com/unsubscribe", False),
+        (None, True),
+        (None, False),
+    ],
+)
+def test_persist_notification_template_has_unsubscribe_link(
+    sample_api_key,
+    sample_email_has_unsubscribe_link_true_job,
+    sample_email_has_unsubscribe_link_false_job,
+    unsubscribe_link,
+    template_has_unsubscribe_link,
+):
+    """
+    If an unsubscribe link is provided, no unsubscribe link will be generated and the provided
+    unsubscribe link is set on the notification.
+    An unsubscribe link will only be generated if no unsubscribe link has been provided
+    and template.has_unsubscribe_link is True
+    """
+    if template_has_unsubscribe_link:
+        job = sample_email_has_unsubscribe_link_true_job
+    else:
+        job = sample_email_has_unsubscribe_link_false_job
+
+    test_email_address = "foo@bar.com"
+    notification = persist_notification(
+        notification_id=uuid.uuid4(),
+        template_id=job.template.id,
+        template_version=job.template.version,
+        template_has_unsubscribe_link=job.template.has_unsubscribe_link,
+        recipient=test_email_address,
+        service=job.service,
+        personalisation=None,
+        notification_type=EMAIL_TYPE,
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=job.id,
+        unsubscribe_link=unsubscribe_link,
+    )
+
+    if template_has_unsubscribe_link and unsubscribe_link is None:
+        test_email_token = generate_token(
+            test_email_address, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
+        )
+        expected_unsubscribe_link = (
+            f"{current_app.config['API_HOST_NAME']}/unsubscribe/{notification.id}/{test_email_token}"
+        )
+    else:
+        expected_unsubscribe_link = unsubscribe_link
+
+    persisted_notification = Notification.query.all()[0]
+    assert persisted_notification.unsubscribe_link == expected_unsubscribe_link

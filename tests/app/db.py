@@ -195,6 +195,7 @@ def create_template(
     service,
     template_type=SMS_TYPE,
     template_name=None,
+    has_unsubscribe_link=False,
     subject="Template subject",
     content="Dear Sir/Madam, Hello. Yours Truly, The Government.",
     reply_to=None,
@@ -222,6 +223,8 @@ def create_template(
             data["service_letter_contact_id"] = contact_block_id
     if template_type != SMS_TYPE:
         data["subject"] = subject
+    if template_type == EMAIL_TYPE:
+        data["has_unsubscribe_link"] = has_unsubscribe_link
     template = Template(**data)
     dao_create_template(template)
 

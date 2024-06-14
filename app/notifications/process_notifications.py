@@ -16,6 +16,7 @@ from notifications_utils.template import (
     PlainTextEmailTemplate,
     SMSMessageTemplate,
 )
+from notifications_utils.url_safe_token import generate_token
 
 from app import redis_store
 from app.celery import provider_tasks
@@ -112,6 +113,7 @@ def persist_notification(
     status=NOTIFICATION_CREATED,
     reply_to_text=None,
     unsubscribe_link=None,
+    template_has_unsubscribe_link=False,
     billable_units=None,
     postage=None,
     document_download_count=None,
@@ -120,6 +122,9 @@ def persist_notification(
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
         notification_id = uuid.uuid4()
+
+    if template_has_unsubscribe_link and not unsubscribe_link:
+        unsubscribe_link = generate_unsubscribe_link(notification_id, recipient)
     notification = Notification(
         id=notification_id,
         template_id=template_id,
@@ -214,3 +219,9 @@ def simulated_recipient(to_address, notification_type):
         return to_address in formatted_simulated_numbers
     else:
         return to_address in current_app.config["SIMULATED_EMAIL_ADDRESSES"]
+
+
+def generate_unsubscribe_link(notification_id: str, email_address: str) -> str:
+    token = generate_token(email_address, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
+    notify_base_url = current_app.config["API_HOST_NAME"]
+    return f"{notify_base_url}/unsubscribe/{notification_id}/{token}"
