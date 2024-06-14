@@ -154,13 +154,7 @@ def test_send_inbound_sms_to_service_sends_callback_to_service(notify_api, sampl
 
     send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
     send_callback_mock.assert_called_once_with(
-        mock.ANY,
-        data,
-        "https://some.service.gov.uk/",
-        "something_unique",
-        "send_inbound_sms_to_service",
-        "retry-tasks",
-        sample_service.id,
+        mock.ANY, data, "https://some.service.gov.uk/", "something_unique", "send_inbound_sms_to_service", "retry-tasks"
     )
 
 
@@ -263,14 +257,3 @@ def test__send_data_to_service_callback_api_handles_data_with_notification_id_or
     with requests_mock.Mocker() as request_mock:
         request_mock.post(callback_url, json={}, status_code=200)
         _send_data_to_service_callback_api(mock.MagicMock(), data, callback_url, "my-token", "my_function_name")
-
-
-@pytest.mark.parametrize("service_id", ["string-service-id", uuid.uuid4()])
-def test__send_data_to_service_callback_api_handles_service_id(notify_db_session, mocker, service_id):
-    callback_url = "https://www.example.com/callback"
-
-    with requests_mock.Mocker() as request_mock:
-        request_mock.post(callback_url, json={}, status_code=200)
-        _send_data_to_service_callback_api(
-            mock.MagicMock(), {"id": "hello"}, callback_url, "my-token", "my_function_name", service_id=service_id
-        )

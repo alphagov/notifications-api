@@ -75,21 +75,14 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
     }
 
     _send_data_to_service_callback_api(
-        self,
-        data,
-        inbound_api.url,
-        inbound_api.bearer_token,
-        "send_inbound_sms_to_service",
-        QueueNames.RETRY,
-        service_id,
+        self, data, inbound_api.url, inbound_api.bearer_token, "send_inbound_sms_to_service", QueueNames.RETRY
     )
 
 
 def _send_data_to_service_callback_api(
-    self, data, service_callback_url, token, function_name, retry_queue=QueueNames.CALLBACKS_RETRY, service_id=None
+    self, data, service_callback_url, token, function_name, retry_queue=QueueNames.CALLBACKS_RETRY
 ):
     object_id = data["notification_id"] if "notification_id" in data else data["id"]
-    service_id = str(service_id) if service_id else "no-service-id"
     try:
         response = request(
             method="POST",
@@ -104,7 +97,6 @@ def _send_data_to_service_callback_api(
             object_id,
             service_callback_url,
             response.status_code,
-            extra={"service_id": service_id},
         )
         response.raise_for_status()
     except RequestException as e:
@@ -114,7 +106,6 @@ def _send_data_to_service_callback_api(
             object_id,
             service_callback_url,
             e,
-            extra={"service_id": service_id},
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500 or e.response.status_code == 429:
             try:
@@ -125,7 +116,6 @@ def _send_data_to_service_callback_api(
                     function_name,
                     service_callback_url,
                     object_id,
-                    extra={"service_id": service_id},
                 )
         else:
             current_app.logger.warning(
@@ -134,7 +124,6 @@ def _send_data_to_service_callback_api(
                 object_id,
                 service_callback_url,
                 e,
-                extra={"service_id": service_id},
             )
 
 
