@@ -1313,7 +1313,13 @@ def test_post_notifications_saves_email_or_sms_to_queue(client, notify_db_sessio
         assert json_resp["id"]
         assert json_resp["content"]["body"] == "Dear citizen, have a nice day"
         assert json_resp["template"]["id"] == str(template.id)
-        save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
+
+        if notification_type == "email":
+            save_task.assert_called_once_with(
+                [mock.ANY], template_has_unsubscribe_link=False, queue=f"save-api-{notification_type}-tasks"
+            )
+        else:
+            save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
         assert not mock_send_task.called
         assert len(Notification.query.all()) == 0
 
@@ -1362,7 +1368,14 @@ def test_post_notifications_saves_email_or_sms_normally_if_saving_to_queue_fails
         assert json_resp["id"]
         assert json_resp["content"]["body"] == "Dear citizen, have a nice day"
         assert json_resp["template"]["id"] == str(template.id)
-        save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
+
+        if notification_type == "email":
+            save_task.assert_called_once_with(
+                [mock.ANY], template_has_unsubscribe_link=False, queue=f"save-api-{notification_type}-tasks"
+            )
+        else:
+            save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
+
         mock_send_task.assert_called_once_with([json_resp["id"]], queue=f"send-{notification_type}-tasks")
         assert Notification.query.count() == 1
 
