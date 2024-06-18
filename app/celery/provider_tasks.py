@@ -53,8 +53,8 @@ def deliver_sms(self, notification_id):
                 self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError as e:
             message = (
-                f"RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for notification {notification_id}. "
-                "Notification has been updated to technical-failure"
+                f"RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for "
+                f"notification {notification_id}. Notification has been updated to technical-failure"
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message) from e

@@ -1007,9 +1007,9 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(
     )
 
     assert (
-        f"email_reply_to_id {archived_reply_to.id} does not exist in database for service id {sample_email_template.service_id}"
-        in resp_json["errors"][0]["message"]
-    )
+        f"email_reply_to_id {archived_reply_to.id} does not exist in database for service "
+        f"id {sample_email_template.service_id}"
+    ) in resp_json["errors"][0]["message"]
     assert "BadRequestError" in resp_json["errors"][0]["error"]
 
 

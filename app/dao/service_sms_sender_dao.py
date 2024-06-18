@@ -90,7 +90,8 @@ def _get_existing_default(service_id):
             return old_default[0]
         else:
             raise Exception(
-                f"There should only be one default sms sender for each service. Service {service_id} has {len(old_default)}"
+                f"There should only be one default sms sender for each service. "
+                f"Service {service_id} has {len(old_default)}"
             )
     return None
 

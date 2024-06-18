@@ -247,7 +247,10 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
         except botocore.exceptions.ClientError as e:
             raise InvalidRequest(
-                f"Error extracting requested page from PDF file for notification_id {notification_id} type {type(e)} {e}",
+                (
+                    f"Error extracting requested page from PDF file for notification_id {notification_id} "
+                    f"type {type(e)} {e}"
+                ),
                 status_code=500,
             ) from e
 
@@ -275,7 +278,10 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                     content = base64.b64encode(pdf_page).decode("utf-8")
             except PdfReadError as e:
                 raise InvalidRequest(
-                    f"Error extracting requested page from PDF file for notification_id {notification_id} type {type(e)} {e}",
+                    (
+                        f"Error extracting requested page from PDF file for notification_id {notification_id} "
+                        f"type {type(e)} {e}"
+                    ),
                     status_code=500,
                 ) from e
 

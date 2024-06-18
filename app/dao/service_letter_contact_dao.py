@@ -76,7 +76,8 @@ def _get_existing_default(service_id):
         return old_defaults[0]
 
     raise Exception(
-        f"There should only be one default letter contact for each service. Service {service_id} has {len(old_defaults)}"
+        f"There should only be one default letter contact for each service. "
+        f"Service {service_id} has {len(old_defaults)}"
     )
 
 

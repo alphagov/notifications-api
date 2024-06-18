@@ -461,9 +461,9 @@ def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_
             f"{str(sample_service.id)}-{api_key.key_type}", sample_service.rate_limit, 60
         )
         assert e.value.status_code == 429
-        assert (
-            e.value.message
-            == f"Exceeded rate limit for key type {key_type.upper()} of {sample_service.rate_limit} requests per {60} seconds"
+        assert e.value.message == (
+            f"Exceeded rate limit for key type {key_type.upper()} of {sample_service.rate_limit} "
+            f"requests per {60} seconds"
         )
         assert e.value.fields == []
 

@@ -1171,9 +1171,9 @@ def test_update_template_with_foreign_service_reply_to(client, sample_letter_tem
     assert resp.status_code == 400, resp.get_data(as_text=True)
     json_resp = json.loads(resp.get_data(as_text=True))
 
-    assert (
-        json_resp["message"]
-        == f"letter_contact_id {str(letter_contact.id)} does not exist in database for service id {str(sample_letter_template.service_id)}"
+    assert json_resp["message"] == (
+        f"letter_contact_id {str(letter_contact.id)} does not exist in database for service "
+        f"id {str(sample_letter_template.service_id)}"
     )
 
 
@@ -1872,7 +1872,7 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
                 _expected_status=500,
             )
 
-            assert (
-                request["message"]
-                == f"Error extracting requested page from PDF file for notification_id {notification.id} type {type(PdfReadError())} {error_message}"
+            assert request["message"] == (
+                f"Error extracting requested page from PDF file for notification_id {notification.id} "
+                f"type {type(PdfReadError())} {error_message}"
             )

@@ -407,7 +407,10 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
     services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(start_date=start_date, end_date=end_date)
 
     if services_with_failures:
-        message += f"{len(services_with_failures)} service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n"
+        message += (
+            f"{len(services_with_failures)} service(s) have had high permanent-failure rates "
+            f"for sms messages in last 24 hours:\n"
+        )
         for service in services_with_failures:
             service_dashboard = "{}/services/{}".format(
                 current_app.config["ADMIN_BASE_URL"],
@@ -422,7 +425,10 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         )
 
     elif services_sending_to_tv_numbers:
-        message += f"{len(services_sending_to_tv_numbers)} service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
+        message += (
+            f"{len(services_sending_to_tv_numbers)} service(s) have sent over 500 sms messages to "
+            f"tv numbers in last 24 hours:\n"
+        )
         for service in services_sending_to_tv_numbers:
             service_dashboard = "{}/services/{}".format(
                 current_app.config["ADMIN_BASE_URL"],
