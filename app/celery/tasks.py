@@ -7,7 +7,7 @@ from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import create_random_identifier, create_uuid, notify_celery, signing
 from app.aws import s3
@@ -271,58 +271,6 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         current_app.logger.debug("Email %s created at %s", saved_notification.id, saved_notification.created_at)
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
-
-
-@notify_celery.task(bind=True, name="save-api-email", max_retries=5, default_retry_delay=300)
-def save_api_email(self, encoded_notification):
-    save_api_email_or_sms(self, encoded_notification)
-
-
-@notify_celery.task(bind=True, name="save-api-sms", max_retries=5, default_retry_delay=300)
-def save_api_sms(self, encoded_notification):
-    save_api_email_or_sms(self, encoded_notification)
-
-
-def save_api_email_or_sms(self, encoded_notification):
-    notification = signing.decode(encoded_notification)
-    service = SerialisedService.from_id(notification["service_id"])
-    provider_task = (
-        provider_tasks.deliver_email if notification["notification_type"] == EMAIL_TYPE else provider_tasks.deliver_sms
-    )
-    try:
-        persist_notification(
-            notification_id=notification["id"],
-            template_id=notification["template_id"],
-            template_version=notification["template_version"],
-            recipient=notification["to"],
-            service=service,
-            personalisation=notification.get("personalisation"),
-            notification_type=notification["notification_type"],
-            client_reference=notification["client_reference"],
-            api_key_id=notification.get("api_key_id"),
-            key_type=KEY_TYPE_NORMAL,
-            created_at=notification["created_at"],
-            reply_to_text=notification["reply_to_text"],
-            status=notification["status"],
-            document_download_count=notification["document_download_count"],
-            unsubscribe_link=notification["unsubscribe_link"],
-        )
-
-        q = QueueNames.SEND_EMAIL if notification["notification_type"] == EMAIL_TYPE else QueueNames.SEND_SMS
-        provider_task.apply_async([notification["id"]], queue=q)
-        current_app.logger.debug(
-            "%s %s has been persisted and sent to delivery queue.",
-            notification["notification_type"],
-            notification["id"],
-        )
-    except IntegrityError:
-        current_app.logger.info("%s %s already exists.", notification["notification_type"], notification["id"])
-
-    except SQLAlchemyError:
-        try:
-            self.retry(queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
-            current_app.logger.error("Max retry failed Failed to persist notification %s", notification["id"])
 
 
 @notify_celery.task(bind=True, name="save-letter", max_retries=5, default_retry_delay=300)
