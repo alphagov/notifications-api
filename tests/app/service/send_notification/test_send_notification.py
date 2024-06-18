@@ -772,10 +772,7 @@ def test_should_error_if_notification_type_does_not_match_template_type(
     assert response.status_code == 400
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp["result"] == "error"
-    assert (
-        f"{template_type} template is not suitable for {notification_type} notification"
-        in json_resp["message"]
-    )
+    assert f"{template_type} template is not suitable for {notification_type} notification" in json_resp["message"]
 
 
 def test_create_template_raises_invalid_request_exception_with_missing_personalisation(

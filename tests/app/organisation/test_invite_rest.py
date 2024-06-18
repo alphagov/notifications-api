@@ -42,7 +42,7 @@ def test_create_invited_org_user(
         email_address=email_address,
         invited_by=str(sample_user.id),
         permissions=["can_make_services_live"],
-        **extra_args
+        **extra_args,
     )
 
     json_resp = admin_request.post(
@@ -95,9 +95,7 @@ def test_create_invited_user_invalid_email(admin_request, sample_organisation, s
 
 def test_get_all_invited_users_by_service(admin_request, sample_organisation, sample_user):
     for i in range(5):
-        create_invited_org_user(
-            sample_organisation, sample_user, email_address=f"invited_user_{i}@service.gov.uk"
-        )
+        create_invited_org_user(sample_organisation, sample_user, email_address=f"invited_user_{i}@service.gov.uk")
 
     json_resp = admin_request.get(
         "organisation_invite.get_invited_org_users_by_organisation", organisation_id=sample_organisation.id

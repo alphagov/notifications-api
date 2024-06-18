@@ -391,10 +391,7 @@ def test_move_invalid_letter_and_update_status_logs_error_and_sets_tech_failure_
         )
 
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
-    assert (
-        f"Error when moving letter with id {sample_letter_notification.id} to invalid PDF bucket"
-        in caplog.messages
-    )
+    assert f"Error when moving letter with id {sample_letter_notification.id} to invalid PDF bucket" in caplog.messages
 
 
 @pytest.mark.parametrize(

@@ -9,26 +9,26 @@ def test_queue_names_all_queues_correct():
     queues = QueueNames.all_queues()
     assert len(queues) == 19
     assert {
-            QueueNames.PERIODIC,
-            QueueNames.DATABASE,
-            QueueNames.SEND_SMS,
-            QueueNames.SEND_EMAIL,
-            QueueNames.SEND_LETTER,
-            QueueNames.RESEARCH_MODE,
-            QueueNames.REPORTING,
-            QueueNames.JOBS,
-            QueueNames.RETRY,
-            QueueNames.NOTIFY,
-            QueueNames.CREATE_LETTERS_PDF,
-            QueueNames.CALLBACKS,
-            QueueNames.CALLBACKS_RETRY,
-            QueueNames.LETTERS,
-            QueueNames.SES_CALLBACKS,
-            QueueNames.SMS_CALLBACKS,
-            QueueNames.SAVE_API_EMAIL,
-            QueueNames.SAVE_API_SMS,
-            QueueNames.BROADCASTS,
-        } == set(queues)
+        QueueNames.PERIODIC,
+        QueueNames.DATABASE,
+        QueueNames.SEND_SMS,
+        QueueNames.SEND_EMAIL,
+        QueueNames.SEND_LETTER,
+        QueueNames.RESEARCH_MODE,
+        QueueNames.REPORTING,
+        QueueNames.JOBS,
+        QueueNames.RETRY,
+        QueueNames.NOTIFY,
+        QueueNames.CREATE_LETTERS_PDF,
+        QueueNames.CALLBACKS,
+        QueueNames.CALLBACKS_RETRY,
+        QueueNames.LETTERS,
+        QueueNames.SES_CALLBACKS,
+        QueueNames.SMS_CALLBACKS,
+        QueueNames.SAVE_API_EMAIL,
+        QueueNames.SAVE_API_SMS,
+        QueueNames.BROADCASTS,
+    } == set(queues)
 
 
 def test_no_celery_beat_tasks_scheduled_over_midnight_between_timezones(notify_api):

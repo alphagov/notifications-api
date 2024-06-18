@@ -7,7 +7,6 @@ class EmailClientException(ClientException):
     """
 
 
-
 class EmailClientNonRetryableException(ClientException):
     """
     Represents an error returned from the email client API with a 4xx response code
@@ -17,7 +16,6 @@ class EmailClientNonRetryableException(ClientException):
     it will always fail however many calls to SES. Whereas a throttling error would not
     use this exception as it may succeed if we retry
     """
-
 
 
 class EmailClient(Client):

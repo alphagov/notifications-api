@@ -931,10 +931,7 @@ def test_post_notification_with_wrong_type_of_sender(
         _expected_status=400,
     )
 
-    assert (
-        f"Additional properties are not allowed ({form_label} was unexpected)"
-        in resp_json["errors"][0]["message"]
-    )
+    assert f"Additional properties are not allowed ({form_label} was unexpected)" in resp_json["errors"][0]["message"]
     assert "ValidationError" in resp_json["errors"][0]["error"]
 
 

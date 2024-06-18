@@ -1,4 +1,3 @@
-
 import requests
 from flask import current_app, request
 from flask.ctx import has_request_context

@@ -230,8 +230,7 @@ def test_check_billable_units_when_billable_units_does_not_match_page_count(
         check_billable_units(notification_update)
 
     assert (
-        f"Notification with id {notification.id} has 3 billable_units but DVLA says page count is 1"
-        in caplog.messages
+        f"Notification with id {notification.id} has 3 billable_units but DVLA says page count is 1" in caplog.messages
     )
 
 

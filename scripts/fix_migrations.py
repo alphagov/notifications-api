@@ -80,9 +80,7 @@ def main(migrations_path):
     elif len(branch_points) == 1 and len(heads) == 2:
         fix_branch_point(migrations, branch_points[0], heads)
     else:
-        print(
-            f"Found {[bp.revision for bp in branch_points]} branch points and {heads} heads, can't fix automatically"
-        )
+        print(f"Found {[bp.revision for bp in branch_points]} branch points and {heads} heads, can't fix automatically")
         sys.exit(1)
 
 

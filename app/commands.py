@@ -220,9 +220,7 @@ def fix_notification_statuses_not_in_sync():
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
-    subq_hist = (
-        f"SELECT id FROM notification_history WHERE cast (status as text) != notification_status LIMIT {MAX}"
-    )
+    subq_hist = f"SELECT id FROM notification_history WHERE cast (status as text) != notification_status LIMIT {MAX}"
     update = f"UPDATE notification_history SET notification_status = status WHERE id in ({subq_hist})"
     result = db.session.execute(subq_hist).fetchall()
 

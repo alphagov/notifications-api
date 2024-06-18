@@ -863,9 +863,7 @@ def test_get_organisation_services_usage(admin_request, notify_db_session, mocke
         "app.dao.fact_billing_dao.get_ft_billing_data_for_today_updated_at", return_value="2019-06-01T12:00:00+00:00"
     )
     with freeze_time("2019-06-01"):
-        response = admin_request.get(
-            "organisation.get_organisation_services_usage", organisation_id=org.id, year=2019
-        )
+        response = admin_request.get("organisation.get_organisation_services_usage", organisation_id=org.id, year=2019)
     assert len(response) == 2
     assert len(response["services"]) == 1
     service_usage = response["services"][0]
@@ -922,9 +920,7 @@ def test_get_organisation_services_usage_sort_active_first(admin_request, notify
     create_ft_billing(
         bst_date=datetime.utcnow().date(), template=template, billable_unit=19, rate=0.060, notifications_sent=19
     )
-    response = admin_request.get(
-        "organisation.get_organisation_services_usage", organisation_id=org.id, year=2019
-    )
+    response = admin_request.get("organisation.get_organisation_services_usage", organisation_id=org.id, year=2019)
     assert len(response) == 2
     assert len(response["services"]) == 2
     first_service = response["services"][0]

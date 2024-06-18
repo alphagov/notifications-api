@@ -35,9 +35,7 @@ def test_get_v2_sms_contract(client, sample_notification):
 
 def test_get_v2_email_contract(client, sample_email_notification):
     response_json = return_json_from_response(
-        _get_notification(
-            client, sample_email_notification, f"/v2/notifications/{sample_email_notification.id}"
-        )
+        _get_notification(client, sample_email_notification, f"/v2/notifications/{sample_email_notification.id}")
     )
     validate(response_json, get_notification_response)
 

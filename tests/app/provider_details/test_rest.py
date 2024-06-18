@@ -96,9 +96,7 @@ def test_should_not_be_able_to_update_disallowed_fields(client, restore_provider
 
 def test_get_provider_versions_contains_correct_fields(client, notify_db_session):
     provider = ProviderDetailsHistory.query.first()
-    response = client.get(
-        f"/provider-details/{provider.id}/versions", headers=[create_admin_authorization_header()]
-    )
+    response = client.get(f"/provider-details/{provider.id}/versions", headers=[create_admin_authorization_header()])
     json_resp = json.loads(response.get_data(as_text=True))["data"]
     allowed_keys = {
         "id",

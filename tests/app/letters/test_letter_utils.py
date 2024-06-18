@@ -88,10 +88,7 @@ def test_get_bucket_name_and_prefix_for_notification_valid_notification(sample_n
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
 
     assert bucket == current_app.config["S3_BUCKET_LETTERS_PDF"]
-    assert (
-        bucket_prefix
-        == f"{folder}/NOTIFY.{sample_notification.reference}".upper()
-    )
+    assert bucket_prefix == f"{folder}/NOTIFY.{sample_notification.reference}".upper()
 
 
 def test_get_bucket_name_and_prefix_for_notification_is_tomorrow_after_17_30(sample_notification):

@@ -2492,9 +2492,7 @@ def test_search_for_notification_by_to_field_returns_notifications_by_type(
 
 
 def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses(client, sample_service):
-    response = client.get(
-        f"/service/{sample_service.id}/email-reply-to", headers=[create_admin_authorization_header()]
-    )
+    response = client.get(f"/service/{sample_service.id}/email-reply-to", headers=[create_admin_authorization_header()])
 
     assert json.loads(response.get_data(as_text=True)) == []
     assert response.status_code == 200
@@ -2504,9 +2502,7 @@ def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db_s
     service = create_service()
     create_reply_to_email(service, "test@mail.com")
 
-    response = client.get(
-        f"/service/{service.id}/email-reply-to", headers=[create_admin_authorization_header()]
-    )
+    response = client.get(f"/service/{service.id}/email-reply-to", headers=[create_admin_authorization_header()])
     json_response = json.loads(response.get_data(as_text=True))
 
     assert len(json_response) == 1
@@ -2522,9 +2518,7 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
     reply_to_a = create_reply_to_email(service, "test_a@mail.com")
     reply_to_b = create_reply_to_email(service, "test_b@mail.com", False)
 
-    response = client.get(
-        f"/service/{service.id}/email-reply-to", headers=[create_admin_authorization_header()]
-    )
+    response = client.get(f"/service/{service.id}/email-reply-to", headers=[create_admin_authorization_header()])
     json_response = json.loads(response.get_data(as_text=True))
 
     assert len(json_response) == 2
@@ -2715,9 +2709,7 @@ def test_get_email_reply_to_address(client, notify_db_session):
 
 
 def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_service):
-    response = client.get(
-        f"/service/{sample_service.id}/letter-contact", headers=[create_admin_authorization_header()]
-    )
+    response = client.get(f"/service/{sample_service.id}/letter-contact", headers=[create_admin_authorization_header()])
 
     assert json.loads(response.get_data(as_text=True)) == []
     assert response.status_code == 200
@@ -2727,9 +2719,7 @@ def test_get_letter_contacts_with_one_letter_contact(client, notify_db_session):
     service = create_service()
     create_letter_contact(service, "Aberdeen, AB23 1XH")
 
-    response = client.get(
-        f"/service/{service.id}/letter-contact", headers=[create_admin_authorization_header()]
-    )
+    response = client.get(f"/service/{service.id}/letter-contact", headers=[create_admin_authorization_header()])
     json_response = json.loads(response.get_data(as_text=True))
 
     assert len(json_response) == 1
@@ -2745,9 +2735,7 @@ def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db_ses
     letter_contact_a = create_letter_contact(service, "Aberdeen, AB23 1XH")
     letter_contact_b = create_letter_contact(service, "London, E1 8QS", False)
 
-    response = client.get(
-        f"/service/{service.id}/letter-contact", headers=[create_admin_authorization_header()]
-    )
+    response = client.get(f"/service/{service.id}/letter-contact", headers=[create_admin_authorization_header()])
     json_response = json.loads(response.get_data(as_text=True))
 
     assert len(json_response) == 2

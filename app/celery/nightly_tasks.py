@@ -163,7 +163,10 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
                 "count deleted: %(num_deleted)s, duration: %(duration)s seconds"
             ),
             {
-                "service_id": service_id, "type": notification_type, "num_deleted": num_deleted, "duration": (end - start).seconds
+                "service_id": service_id,
+                "type": notification_type,
+                "num_deleted": num_deleted,
+                "duration": (end - start).seconds,
             },
         )
 

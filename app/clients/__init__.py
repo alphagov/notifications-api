@@ -4,12 +4,10 @@ class ClientException(Exception):
     """
 
 
-
 class Client:
     """
     Base client for sending notifications.
     """
-
 
 
 STATISTICS_REQUESTED = "requested"

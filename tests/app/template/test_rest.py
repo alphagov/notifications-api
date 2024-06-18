@@ -817,9 +817,9 @@ def test_create_400_for_over_limit_content(
     )
     assert response.status_code == 400
     json_resp = json.loads(response.get_data(as_text=True))
-    assert (f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}") in json_resp[
-        "message"
-    ]["content"]
+    assert (f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}") in json_resp["message"][
+        "content"
+    ]
 
 
 def test_update_400_for_over_limit_content(client, notify_api, sample_user, sample_template):
@@ -839,9 +839,9 @@ def test_update_400_for_over_limit_content(client, notify_api, sample_user, samp
     )
     assert resp.status_code == 400
     json_resp = json.loads(resp.get_data(as_text=True))
-    assert (f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}") in json_resp[
-        "message"
-    ]["content"]
+    assert (f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}") in json_resp["message"][
+        "content"
+    ]
 
 
 def test_should_return_all_template_versions_for_service_and_template_id(client, sample_template):
@@ -971,7 +971,10 @@ def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_u
 
     json_resp = admin_request.post("template.create_template", service_id=service.id, _data=data, _expected_status=400)
 
-    assert json_resp["message"] == f"letter_contact_id {str(letter_contact.id)} does not exist in database for service id {str(service.id)}"
+    assert (
+        json_resp["message"]
+        == f"letter_contact_id {str(letter_contact.id)} does not exist in database for service id {str(service.id)}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -1168,7 +1171,10 @@ def test_update_template_with_foreign_service_reply_to(client, sample_letter_tem
     assert resp.status_code == 400, resp.get_data(as_text=True)
     json_resp = json.loads(resp.get_data(as_text=True))
 
-    assert json_resp["message"] == f"letter_contact_id {str(letter_contact.id)} does not exist in database for service id {str(sample_letter_template.service_id)}"
+    assert (
+        json_resp["message"]
+        == f"letter_contact_id {str(letter_contact.id)} does not exist in database for service id {str(sample_letter_template.service_id)}"
+    )
 
 
 def test_update_redact_template(admin_request, sample_template):
@@ -1487,7 +1493,8 @@ def test_preview_letter_template_precompiled_s3_error(notify_api, client, admin_
             )
 
             assert (
-                request["message"] == f"Error extracting requested page from PDF file for notification_id {notification.id} type "
+                request["message"]
+                == f"Error extracting requested page from PDF file for notification_id {notification.id} type "
                 "<class 'botocore.exceptions.ClientError'> An error occurred (403) "
                 "when calling the GetObject operation: Unauthorized"
             )
@@ -1865,6 +1872,7 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
                 _expected_status=500,
             )
 
-            assert request[
-                "message"
-            ] == f"Error extracting requested page from PDF file for notification_id {notification.id} type {type(PdfReadError())} {error_message}"
+            assert (
+                request["message"]
+                == f"Error extracting requested page from PDF file for notification_id {notification.id} type {type(PdfReadError())} {error_message}"
+            )
