@@ -14,7 +14,7 @@ valid_post = [
         None,
         "Some subject",
         "Some content",
-        ('<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">' "Some content</p>"),
+        ('<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">Some content</p>'),
     ),
     (
         "Some subject",
@@ -46,7 +46,7 @@ valid_post = [
         valid_personalisation,
         "Message for Jo",
         "Some content",
-        ('<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">' "Some content</p>"),
+        ('<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">Some content</p>'),
     ),
 ]
 
