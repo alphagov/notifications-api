@@ -98,10 +98,6 @@ def send_sms_to_provider(notification):
             statsd_client.timing("sms.test-key.total-time", delta_seconds)
         else:
             statsd_client.timing("sms.live-key.total-time", delta_seconds)
-            if service.high_volume:
-                statsd_client.timing("sms.live-key.high-volume.total-time", delta_seconds)
-            else:
-                statsd_client.timing("sms.live-key.not-high-volume.total-time", delta_seconds)
 
 
 def _get_email_headers(notification: Notification) -> list[dict[str, str]]:
@@ -163,10 +159,6 @@ def send_email_to_provider(notification):
             statsd_client.timing("email.test-key.total-time", delta_seconds)
         else:
             statsd_client.timing("email.live-key.total-time", delta_seconds)
-            if service.high_volume:
-                statsd_client.timing("email.live-key.high-volume.total-time", delta_seconds)
-            else:
-                statsd_client.timing("email.live-key.not-high-volume.total-time", delta_seconds)
 
 
 def update_notification_to_sending(notification, provider):
