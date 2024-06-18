@@ -100,10 +100,12 @@ class _SpecifiedCiphersAdapter(HTTPAdapter):
 
     def init_poolmanager(self, *args, **kwargs):
         kwargs["ssl_context"] = create_urllib3_context(ciphers=self.ciphers)
+        kwargs["ssl_context"].load_default_certs()
         return super().init_poolmanager(*args, **kwargs)
 
     def proxy_manager_for(self, *args, **kwargs):
         kwargs["ssl_context"] = create_urllib3_context(ciphers=self.ciphers)
+        kwargs["ssl_context"].load_default_certs()
         return super().proxy_manager_for(*args, **kwargs)
 
 
