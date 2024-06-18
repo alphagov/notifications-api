@@ -331,8 +331,8 @@ def test_post_letter_notification_returns_400_for_empty_personalisation(
     )
 
     assert error_json["status_code"] == 400
-    assert all([e["error"] == "ValidationError" for e in error_json["errors"]])
-    assert set([e["message"] for e in error_json["errors"]]) == {
+    assert all(e["error"] == "ValidationError" for e in error_json["errors"])
+    assert {e["message"] for e in error_json["errors"]} == {
         "Address must be at least 3 lines",
     }
 

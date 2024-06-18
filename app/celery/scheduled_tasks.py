@@ -289,7 +289,7 @@ def replay_created_notifications():
                     "Sending %(num)s %(type)s notifications to the delivery queue because the "
                     "notification status was created."
                 ),
-                dict(num=len(notifications_to_resend), type=notification_type),
+                {"num": len(notifications_to_resend), "type": notification_type},
             )
 
         for n in notifications_to_resend:
@@ -306,7 +306,7 @@ def replay_created_notifications():
                 "Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 "
                 "and update notifications for the following notification ids:\n%(ids)s"
             ),
-            dict(num=len(letters), ids=[x.id for x in letters]),
+            {"num": len(letters), "ids": [x.id for x in letters]},
         )
         for letter in letters:
             get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
@@ -354,7 +354,7 @@ def check_if_letters_still_pending_virus_check():
             zendesk_client.send_ticket_to_zendesk(ticket)
             current_app.logger.error(
                 "Letters still pending virus check",
-                extra=dict(number_of_letters=len(letters), notification_ids=sorted(letter_ids)),
+                extra={"number_of_letters": len(letters), "notification_ids": sorted(letter_ids)},
             )
 
 
@@ -418,7 +418,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         current_app.logger.error(
             "%s services have had a high permanent-failure rate for text messages in the last 24 hours.",
             len(services_with_failures),
-            extra=dict(service_ids=[service.service_id for service in services_with_failures]),
+            extra={"service_ids": [service.service_id for service in services_with_failures]},
         )
 
     elif services_sending_to_tv_numbers:
@@ -433,11 +433,11 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         current_app.logger.error(
             "%s services have sent over 500 text messages to tv numbers in the last 24 hours.",
             len(services_sending_to_tv_numbers),
-            extra=dict(
-                service_ids_and_number_sent={
+            extra={
+                "service_ids_and_number_sent": {
                     service.service_id: service.notification_count for service in services_sending_to_tv_numbers
                 }
-            ),
+            },
         )
 
     if services_with_failures or services_sending_to_tv_numbers:

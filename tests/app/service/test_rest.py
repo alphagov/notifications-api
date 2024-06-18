@@ -776,7 +776,7 @@ def test_update_service_flags(client, sample_service):
     )
     result = resp.json
     assert resp.status_code == 200
-    assert set(result["data"]["permissions"]) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
+    assert set(result["data"]["permissions"]) == {LETTER_TYPE, INTERNATIONAL_SMS_TYPE}
 
 
 @pytest.mark.parametrize(
@@ -860,7 +860,7 @@ def test_update_service_flags_with_service_without_default_service_permissions(c
     result = resp.json
 
     assert resp.status_code == 200
-    assert set(result["data"]["permissions"]) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
+    assert set(result["data"]["permissions"]) == {LETTER_TYPE, INTERNATIONAL_SMS_TYPE}
 
 
 def test_update_service_flags_will_remove_service_permissions(client, notify_db_session):
@@ -883,7 +883,7 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db_
     assert INTERNATIONAL_SMS_TYPE not in result["data"]["permissions"]
 
     permissions = ServicePermission.query.filter_by(service_id=service.id).all()
-    assert set([p.permission for p in permissions]) == set([SMS_TYPE, EMAIL_TYPE])
+    assert {p.permission for p in permissions} == {SMS_TYPE, EMAIL_TYPE}
 
 
 def test_update_permissions_will_override_permission_flags(client, service_with_no_permissions):
@@ -899,7 +899,7 @@ def test_update_permissions_will_override_permission_flags(client, service_with_
     result = resp.json
 
     assert resp.status_code == 200
-    assert set(result["data"]["permissions"]) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
+    assert set(result["data"]["permissions"]) == {LETTER_TYPE, INTERNATIONAL_SMS_TYPE}
 
 
 def test_update_service_permissions_will_add_service_permissions(client, sample_service):
@@ -915,7 +915,7 @@ def test_update_service_permissions_will_add_service_permissions(client, sample_
     result = resp.json
 
     assert resp.status_code == 200
-    assert set(result["data"]["permissions"]) == set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE])
+    assert set(result["data"]["permissions"]) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE}
 
 
 @pytest.mark.parametrize(

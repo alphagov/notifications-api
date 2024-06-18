@@ -339,11 +339,11 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     recipients_of_invite_request = [service_manager_1.id, service_manager_2.id, service_manager_3.id]
     invite_link_host = current_app.config["ADMIN_BASE_URL"]
 
-    data = dict(
-        service_managers_ids=list(map(lambda x: str(x), recipients_of_invite_request)),
-        reason=reason,
-        invite_link_host=invite_link_host,
-    )
+    data = {
+        "service_managers_ids": [str(x) for x in recipients_of_invite_request],
+        "reason": reason,
+        "invite_link_host": invite_link_host,
+    }
     admin_request.post(
         "service_invite.request_invite_to_service",
         service_id=sample_service.id,
@@ -399,11 +399,11 @@ def test_request_invite_to_service_email_is_not_sent_if_requester_is_already_par
     service_managers = [service_manager_1]
     reason = "Lots of reasons"
     invite_link_host = current_app.config["ADMIN_BASE_URL"]
-    data = dict(
-        service_managers_ids=list(map(lambda x: str(x.id), service_managers)),
-        reason=reason,
-        invite_link_host=invite_link_host,
-    )
+    data = {
+        "service_managers_ids": [str(x.id) for x in service_managers],
+        "reason": reason,
+        "invite_link_host": invite_link_host,
+    }
 
     admin_request.post(
         "service_invite.request_invite_to_service",
@@ -429,11 +429,11 @@ def test_exception_is_raised_if_no_request_invite_to_service_email_is_sent(
     recipients_of_invite_request = [service_manager.id]
     reason = "Lots of reasons"
     invite_link_host = current_app.config["ADMIN_BASE_URL"]
-    data = dict(
-        service_managers_ids=list(map(lambda x: str(x), recipients_of_invite_request)),
-        reason=reason,
-        invite_link_host=invite_link_host,
-    )
+    data = {
+        "service_managers_ids": [str(x) for x in recipients_of_invite_request],
+        "reason": reason,
+        "invite_link_host": invite_link_host,
+    }
 
     admin_request.post(
         "service_invite.request_invite_to_service",

@@ -10,4 +10,4 @@ def test_insert_inbound_numbers_from_file(notify_db_session, notify_api, tmpdir)
 
     inbound_numbers = dao_get_available_inbound_numbers()
     assert len(inbound_numbers) == 3
-    assert set(x.number for x in inbound_numbers) == {"07700900373", "07700900473", "07700900375"}
+    assert {x.number for x in inbound_numbers} == {"07700900373", "07700900473", "07700900375"}

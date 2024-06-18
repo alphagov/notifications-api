@@ -69,7 +69,7 @@ def dao_get_organisation_by_email_address(email_address):
     email_address = email_address.lower().replace(".gsi.gov.uk", ".gov.uk")
 
     for domain in Domain.query.order_by(func.char_length(Domain.domain).desc()).all():
-        if email_address.endswith(f"@{domain.domain}") or email_address.endswith(f".{domain.domain}"):
+        if email_address.endswith((f"@{domain.domain}", f".{domain.domain}")):
             return Organisation.query.filter_by(id=domain.organisation_id).one()
 
     return None

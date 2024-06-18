@@ -1231,12 +1231,12 @@ def test_notify_org_users_of_request_to_go_live(
     }
 
     for call in mock_persist_notification.call_args_list:
-        assert call[1] == dict(
-            template_id=uuid.UUID("5c7cfc0f-c3f4-4bd6-9a84-5a144aad5425"),
-            template_version=1,
-            recipient=ANY,
-            service=notify_service,
-            personalisation={
+        assert call[1] == {
+            "template_id": uuid.UUID("5c7cfc0f-c3f4-4bd6-9a84-5a144aad5425"),
+            "template_version": 1,
+            "recipient": ANY,
+            "service": notify_service,
+            "personalisation": {
                 "service_name": "Sample service",
                 "requester_name": "Go live user",
                 "requester_email_address": "go-live-user@example.gov.uk",
@@ -1245,11 +1245,11 @@ def test_notify_org_users_of_request_to_go_live(
                 "organisation_name": "sample organisation",
                 "name": ANY,
             },
-            notification_type="email",
-            api_key_id=None,
-            key_type="normal",
-            reply_to_text="go-live-user@example.gov.uk",
-        )
+            "notification_type": "email",
+            "api_key_id": None,
+            "key_type": "normal",
+            "reply_to_text": "go-live-user@example.gov.uk",
+        }
 
     assert mock_send_notification_to_queue.call_args_list == [
         call(notification, queue="notify-internal-tasks") for notification in notifications
@@ -1336,17 +1336,17 @@ def test_notify_org_member_about_next_steps_of_go_live_request(
     assert mock_persist_notification.call_count == 1
     assert mock_persist_notification.call_args_list[0][1]["recipient"] == "first-org-user@example.gov.uk"
 
-    assert mock_persist_notification.call_args_list[0][1] == dict(
-        template_id=uuid.UUID("62f12a62-742b-4458-9336-741521b131c7"),
-        template_version=1,
-        recipient="first-org-user@example.gov.uk",
-        service=notify_service,
-        personalisation={"service_name": "test service", "body": "blah blah blah"},
-        notification_type="email",
-        api_key_id=None,
-        key_type="normal",
-        reply_to_text="notify@gov.uk",
-    )
+    assert mock_persist_notification.call_args_list[0][1] == {
+        "template_id": uuid.UUID("62f12a62-742b-4458-9336-741521b131c7"),
+        "template_version": 1,
+        "recipient": "first-org-user@example.gov.uk",
+        "service": notify_service,
+        "personalisation": {"service_name": "test service", "body": "blah blah blah"},
+        "notification_type": "email",
+        "api_key_id": None,
+        "key_type": "normal",
+        "reply_to_text": "notify@gov.uk",
+    }
 
     assert mock_send_notification_to_queue.call_args_list == [
         mocker.call(notification, queue="notify-internal-tasks") for notification in notifications
@@ -1405,17 +1405,17 @@ def test_notify_service_member_of_rejected_request_to_go_live(
     assert mock_persist_notification.call_count == 1
     assert mock_persist_notification.call_args_list[0][1]["recipient"] == "go-live-user@example.gov.uk"
 
-    assert mock_persist_notification.call_args_list[0][1] == dict(
-        template_id=uuid.UUID("507d0796-9e23-4ad7-b83b-5efbd9496866"),
-        template_version=1,
-        recipient="go-live-user@example.gov.uk",
-        service=notify_service,
-        personalisation={**personalisation, "reason": "^ line 1\n^ line 2"},
-        notification_type="email",
-        api_key_id=None,
-        key_type="normal",
-        reply_to_text="notify@gov.uk",
-    )
+    assert mock_persist_notification.call_args_list[0][1] == {
+        "template_id": uuid.UUID("507d0796-9e23-4ad7-b83b-5efbd9496866"),
+        "template_version": 1,
+        "recipient": "go-live-user@example.gov.uk",
+        "service": notify_service,
+        "personalisation": {**personalisation, "reason": "^ line 1\n^ line 2"},
+        "notification_type": "email",
+        "api_key_id": None,
+        "key_type": "normal",
+        "reply_to_text": "notify@gov.uk",
+    }
 
     assert mock_send_notification_to_queue.call_args_list == [
         mocker.call(notification, queue="notify-internal-tasks") for notification in notifications

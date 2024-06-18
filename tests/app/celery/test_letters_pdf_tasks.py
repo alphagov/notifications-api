@@ -570,9 +570,9 @@ def test_process_sanitised_letter_with_valid_letter(
     assert sample_letter_notification.to == "A. User\nThe house on the corner"
     assert sample_letter_notification.normalised_to == "a.userthehouseonthecorner"
 
-    assert not [x for x in scan_bucket.objects.all()]
-    assert not [x for x in template_preview_bucket.objects.all()]
-    assert len([x for x in destination_bucket.objects.all()]) == 1
+    assert not list(scan_bucket.objects.all())
+    assert not list(template_preview_bucket.objects.all())
+    assert len(list(destination_bucket.objects.all())) == 1
 
     file_contents = conn.Object(destination_bucket_name, destination_filename).get()["Body"].read().decode("utf-8")
     assert file_contents == "sanitised_pdf_content"
@@ -674,9 +674,9 @@ def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification
     assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
     assert sample_letter_notification.billable_units == 0
 
-    assert not [x for x in scan_bucket.objects.all()]
-    assert not [x for x in template_preview_bucket.objects.all()]
-    assert len([x for x in invalid_letter_bucket.objects.all()]) == 1
+    assert not list(scan_bucket.objects.all())
+    assert not list(template_preview_bucket.objects.all())
+    assert len(list(invalid_letter_bucket.objects.all())) == 1
 
     file_contents = conn.Object(invalid_letter_bucket_name, filename).get()["Body"].read().decode("utf-8")
     assert file_contents == "original_pdf_content"

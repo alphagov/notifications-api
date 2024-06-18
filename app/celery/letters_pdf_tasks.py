@@ -119,7 +119,7 @@ def update_billable_units_for_letter(self, notification_id, page_count):
 
         current_app.logger.info(
             "Letter notification id: %(id)s reference %(ref)s: billable units set to %(units)s",
-            dict(id=notification_id, ref=notification.reference, units=billable_units),
+            {"id": notification_id, "ref": notification.reference, "units": billable_units},
         )
 
 
@@ -132,7 +132,7 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
     dao_update_notification(notification)
     current_app.logger.info(
         "Validation failed: letter is too long %(page_count)s for letter with id: %(id)s",
-        dict(page_count=page_count, id=notification_id),
+        {"page_count": page_count, "id": notification_id},
     )
 
 

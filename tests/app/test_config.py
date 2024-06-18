@@ -8,8 +8,7 @@ def test_queue_names_all_queues_correct():
     # Need to ensure that all_queues() only returns queue names used in API
     queues = QueueNames.all_queues()
     assert len(queues) == 19
-    assert set(
-        [
+    assert {
             QueueNames.PERIODIC,
             QueueNames.DATABASE,
             QueueNames.SEND_SMS,
@@ -29,8 +28,7 @@ def test_queue_names_all_queues_correct():
             QueueNames.SAVE_API_EMAIL,
             QueueNames.SAVE_API_SMS,
             QueueNames.BROADCASTS,
-        ]
-    ) == set(queues)
+        } == set(queues)
 
 
 def test_no_celery_beat_tasks_scheduled_over_midnight_between_timezones(notify_api):

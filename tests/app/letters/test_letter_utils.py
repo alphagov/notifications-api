@@ -355,8 +355,8 @@ def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
         filename=filename, is_test_letter=False, created_at=datetime.utcnow(), new_filename=filename
     )
 
-    assert not [x for x in source_bucket.objects.all()]
-    assert len([x for x in target_bucket.objects.all()]) == 1
+    assert not list(source_bucket.objects.all())
+    assert len(list(target_bucket.objects.all())) == 1
 
 
 @mock_s3
@@ -380,8 +380,8 @@ def test_move_sanitised_letter_to_test_pdf_bucket(notify_api, mocker):
         filename=filename, is_test_letter=True, created_at=datetime.utcnow(), new_filename=filename
     )
 
-    assert not [x for x in source_bucket.objects.all()]
-    assert len([x for x in target_bucket.objects.all()]) == 1
+    assert not list(source_bucket.objects.all())
+    assert len(list(target_bucket.objects.all())) == 1
 
 
 @freeze_time("2017-07-07 20:00:00")

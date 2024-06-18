@@ -552,12 +552,12 @@ def test_fetch_monthly_notification_statuses_per_service(notify_db_session):
     assert len(results) == 6
     # column order: date, service_id, service_name, notifaction_type, count_sending, count_delivered,
     # count_technical_failure, count_temporary_failure, count_permanent_failure, count_sent
-    assert [x for x in results[0]] == [date(2019, 3, 1), service_two.id, "service two", "letter", 0, 0, 0, 0, 2, 0]
-    assert [x for x in results[1]] == [date(2019, 3, 1), service_one.id, "service one", "email", 5, 0, 3, 0, 0, 0]
-    assert [x for x in results[2]] == [date(2019, 3, 1), service_one.id, "service one", "letter", 0, 1, 0, 0, 0, 0]
-    assert [x for x in results[3]] == [date(2019, 3, 1), service_one.id, "service one", "sms", 0, 0, 0, 0, 0, 1]
-    assert [x for x in results[4]] == [date(2019, 4, 1), service_two.id, "service two", "letter", 0, 0, 0, 10, 0, 0]
-    assert [x for x in results[5]] == [date(2019, 4, 1), service_one.id, "service one", "letter", 0, 1, 0, 0, 0, 0]
+    assert list(results[0]) == [date(2019, 3, 1), service_two.id, "service two", "letter", 0, 0, 0, 0, 2, 0]
+    assert list(results[1]) == [date(2019, 3, 1), service_one.id, "service one", "email", 5, 0, 3, 0, 0, 0]
+    assert list(results[2]) == [date(2019, 3, 1), service_one.id, "service one", "letter", 0, 1, 0, 0, 0, 0]
+    assert list(results[3]) == [date(2019, 3, 1), service_one.id, "service one", "sms", 0, 0, 0, 0, 0, 1]
+    assert list(results[4]) == [date(2019, 4, 1), service_two.id, "service two", "letter", 0, 0, 0, 10, 0, 0]
+    assert list(results[5]) == [date(2019, 4, 1), service_one.id, "service one", "letter", 0, 1, 0, 0, 0, 0]
 
 
 @freeze_time("2019-04-10 14:00")

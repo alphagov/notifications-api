@@ -74,7 +74,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema):
 
     def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
-        super(BaseSchema, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @post_load
     def make_instance(self, data, **kwargs):
@@ -85,7 +85,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema):
         """
         if self.load_json:
             return data
-        return super(BaseSchema, self).make_instance(data)
+        return super().make_instance(data)
 
 
 class UserSchema(BaseSchema):
@@ -308,7 +308,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
                 raise ValidationError(f"Invalid Service Permission: '{p}'")
 
         if len(set(permissions)) != len(permissions):
-            duplicates = list(set([x for x in permissions if permissions.count(x) > 1]))
+            duplicates = list({x for x in permissions if permissions.count(x) > 1})
             raise ValidationError(f"Duplicate Service Permission: {duplicates}")
 
     @pre_load()
@@ -765,7 +765,7 @@ class NotificationsFilterSchema(ma.Schema):
     @pre_load
     def handle_multidict(self, in_data, **kwargs):
         if isinstance(in_data, dict) and hasattr(in_data, "getlist"):
-            out_data = dict([(k, in_data.get(k)) for k in in_data.keys()])
+            out_data = {k: in_data.get(k) for k in in_data.keys()}
             if "template_type" in in_data:
                 out_data["template_type"] = [{"template_type": x} for x in in_data.getlist("template_type")]
             if "status" in in_data:

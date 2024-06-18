@@ -58,7 +58,7 @@ def process_ses_results(self, response):
             current_app.logger.info(
                 "SES bounce for notification ID %s",
                 notification.id,
-                extra=dict(bounce_message=json.dumps(bounce_message)),
+                extra={"bounce_message": json.dumps(bounce_message)},
             )
         else:
             current_app.logger.info(

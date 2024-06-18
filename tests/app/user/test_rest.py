@@ -251,40 +251,40 @@ def test_post_user_attribute(admin_request, sample_user, user_attribute, user_va
         (
             "email_address",
             "newuser@mail.com",
-            dict(
-                api_key_id=None,
-                key_type="normal",
-                notification_type="email",
-                personalisation={
+            {
+                "api_key_id": None,
+                "key_type": "normal",
+                "notification_type": "email",
+                "personalisation": {
                     "name": "Test User",
                     "servicemanagername": "Service Manago",
                     "email address": "newuser@mail.com",
                 },
-                recipient="newuser@mail.com",
-                reply_to_text="notify@gov.uk",
-                service=mock.ANY,
-                template_id=uuid.UUID("c73f1d71-4049-46d5-a647-d013bdeca3f0"),
-                template_version=1,
-            ),
+                "recipient": "newuser@mail.com",
+                "reply_to_text": "notify@gov.uk",
+                "service": mock.ANY,
+                "template_id": uuid.UUID("c73f1d71-4049-46d5-a647-d013bdeca3f0"),
+                "template_version": 1,
+            },
         ),
         (
             "mobile_number",
             "+4407700900460",
-            dict(
-                api_key_id=None,
-                key_type="normal",
-                notification_type="sms",
-                personalisation={
+            {
+                "api_key_id": None,
+                "key_type": "normal",
+                "notification_type": "sms",
+                "personalisation": {
                     "name": "Test User",
                     "servicemanagername": "Service Manago",
                     "email address": "notify@digital.cabinet-office.gov.uk",
                 },
-                recipient="+4407700900460",
-                reply_to_text="testing",
-                service=mock.ANY,
-                template_id=uuid.UUID("8a31520f-4751-4789-8ea1-fe54496725eb"),
-                template_version=1,
-            ),
+                "recipient": "+4407700900460",
+                "reply_to_text": "testing",
+                "service": mock.ANY,
+                "template_id": uuid.UUID("8a31520f-4751-4789-8ea1-fe54496725eb"),
+                "template_version": 1,
+            },
         ),
     ],
 )

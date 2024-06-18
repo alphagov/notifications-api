@@ -38,7 +38,7 @@ def deliver_sms(self, notification_id):
         current_app.logger.info("Start sending SMS for notification id: %s", notification_id)
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
-            raise NoResultFound()
+            raise NoResultFound
         send_to_providers.send_sms_to_provider(notification)
     except Exception as e:
         if isinstance(e, SmsClientResponseException):
@@ -66,7 +66,7 @@ def deliver_email(self, notification_id):
         current_app.logger.info("Start sending email for notification id: %s", notification_id)
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
-            raise NoResultFound()
+            raise NoResultFound
         send_to_providers.send_email_to_provider(notification)
     except EmailClientNonRetryableException as e:
         current_app.logger.exception("Email notification %s failed: %s", notification_id, e)

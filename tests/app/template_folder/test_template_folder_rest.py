@@ -92,7 +92,7 @@ def test_get_folders_returns_users_with_permission_does_not_do_n_plus_1_sql_quer
     users_with_permission = resp["template_folders"][0]["users_with_permission"]
 
     assert len(users_with_permission) == 10
-    assert all([str(user.id) in users_with_permission for user in users])
+    assert all(str(user.id) in users_with_permission for user in users)
     assert len(query_recorder.queries) == 3
 
 

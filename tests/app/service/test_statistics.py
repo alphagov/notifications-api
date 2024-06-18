@@ -71,17 +71,11 @@ NewStatsRow = collections.namedtuple("row", ("notification_type", "status", "key
 def test_format_statistics(stats, email_counts, sms_counts, letter_counts):
     ret = format_statistics(stats)
 
-    assert ret["email"] == {
-        status: count for status, count in zip(["requested", "delivered", "failed"], email_counts, strict=True)
-    }
+    assert ret["email"] == dict(zip(["requested", "delivered", "failed"], email_counts, strict=True))
 
-    assert ret["sms"] == {
-        status: count for status, count in zip(["requested", "delivered", "failed"], sms_counts, strict=True)
-    }
+    assert ret["sms"] == dict(zip(["requested", "delivered", "failed"], sms_counts, strict=True))
 
-    assert ret["letter"] == {
-        status: count for status, count in zip(["requested", "delivered", "failed"], letter_counts, strict=True)
-    }
+    assert ret["letter"] == dict(zip(["requested", "delivered", "failed"], letter_counts, strict=True))
 
 
 def test_create_zeroed_stats_dicts():

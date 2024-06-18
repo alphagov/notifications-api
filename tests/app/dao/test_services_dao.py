@@ -1168,7 +1168,7 @@ def test_dao_allocating_inbound_number_shows_on_service(notify_db_session):
 
 def _assert_service_permissions(service_permissions, expected):
     assert len(service_permissions) == len(expected)
-    assert set(expected) == set(p.permission for p in service_permissions)
+    assert set(expected) == {p.permission for p in service_permissions}
 
 
 def create_email_sms_letter_template():

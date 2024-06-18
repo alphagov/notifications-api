@@ -704,7 +704,7 @@ def get_monthly_template_usage(service_id):
     try:
         start_date, end_date = get_financial_year(int(request.args.get("year", "NaN")))
         data = fetch_monthly_template_usage_for_service(start_date=start_date, end_date=end_date, service_id=service_id)
-        stats = list()
+        stats = []
         for i in data:
             stats.append(
                 {

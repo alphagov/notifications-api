@@ -46,12 +46,12 @@ def get_pdf_for_notification(notification_id):
         raise BadRequestError(message=f"PDF not available for letters in status {notification.status}")
 
     if notification.status == NOTIFICATION_PENDING_VIRUS_CHECK:
-        raise PDFNotReadyError()
+        raise PDFNotReadyError
 
     try:
         pdf_data, metadata = get_letter_pdf_and_metadata(notification)
     except Exception as e:
-        raise PDFNotReadyError() from e
+        raise PDFNotReadyError from e
 
     return send_file(path_or_file=BytesIO(pdf_data), mimetype="application/pdf")
 

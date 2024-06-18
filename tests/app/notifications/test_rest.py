@@ -160,7 +160,7 @@ def test_normal_api_key_returns_notifications_created_from_jobs_and_from_api(
 
     notifications = json.loads(response.get_data(as_text=True))["notifications"]
     assert len(notifications) == 2
-    assert set(x["id"] for x in notifications) == {str(sample_notification.id), str(api_notification.id)}
+    assert {x["id"] for x in notifications} == {str(sample_notification.id), str(api_notification.id)}
 
 
 @pytest.mark.parametrize("key_type", [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])
@@ -372,7 +372,7 @@ def test_filter_by_multiple_template_types(client, sample_template, sample_email
     assert response.status_code == 200
     notifications = json.loads(response.get_data(as_text=True))
     assert len(notifications["notifications"]) == 2
-    assert {"sms", "email"} == set(x["template"]["template_type"] for x in notifications["notifications"])
+    assert {"sms", "email"} == {x["template"]["template_type"] for x in notifications["notifications"]}
 
 
 def test_filter_by_status(client, sample_email_template):
@@ -400,7 +400,7 @@ def test_filter_by_multiple_statuses(client, sample_email_template):
     assert response.status_code == 200
     notifications = json.loads(response.get_data(as_text=True))
     assert len(notifications["notifications"]) == 2
-    assert {"delivered", "sending"} == set(x["status"] for x in notifications["notifications"])
+    assert {"delivered", "sending"} == {x["status"] for x in notifications["notifications"]}
 
 
 def test_filter_by_status_and_template_type(client, sample_template, sample_email_template):
