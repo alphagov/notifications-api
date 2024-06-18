@@ -16,6 +16,8 @@ itsdangerous==2.1.2
 jsonschema[format]==4.16.0
 marshmallow-sqlalchemy==0.28.1
 marshmallow==3.18.0
+# Requests pinned to 2.32.2 until https://github.com/psf/requests/issues/6730 is fixed. Once so, we can remove this pin
+requests==2.32.2
 psycopg2-binary==2.9.6
 PyJWT==2.5.0
 SQLAlchemy==1.4.41
