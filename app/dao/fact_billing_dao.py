@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
@@ -921,7 +921,7 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     )
 
 
-def fetch_usage_for_organisation(organisation_id, year) -> tuple[Any, Optional[str]]:
+def fetch_usage_for_organisation(organisation_id, year) -> tuple[Any, str | None]:
     """Calculate an organisation's usage of Notify (ie the usage of all services in that org)
 
     This queries cached data in ft_billing. We have an hourly task that runs to calculate usage and updates ft_billing

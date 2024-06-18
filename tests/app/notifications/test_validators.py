@@ -188,7 +188,7 @@ def test_check_template_is_for_notification_type_fails_when_template_type_does_n
     with pytest.raises(BadRequestError) as e:
         check_template_is_for_notification_type(notification_type=notification_type, template_type=template_type)
     assert e.value.status_code == 400
-    error_message = "{0} template is not suitable for {1} notification".format(template_type, notification_type)
+    error_message = f"{template_type} template is not suitable for {notification_type} notification"
     assert e.value.message == error_message
     assert e.value.fields == [{"template": error_message}]
 
@@ -458,12 +458,10 @@ def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_
             check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
 
         assert app.redis_store.exceeded_rate_limit.called_with(
-            "{}-{}".format(str(sample_service.id), api_key.key_type), sample_service.rate_limit, 60
+            f"{str(sample_service.id)}-{api_key.key_type}", sample_service.rate_limit, 60
         )
         assert e.value.status_code == 429
-        assert e.value.message == "Exceeded rate limit for key type {} of {} requests per {} seconds".format(
-            key_type.upper(), sample_service.rate_limit, 60
-        )
+        assert e.value.message == f"Exceeded rate limit for key type {key_type.upper()} of {sample_service.rate_limit} requests per {60} seconds"
         assert e.value.fields == []
 
 
@@ -478,7 +476,7 @@ def test_check_service_over_api_rate_limit_when_rate_limit_has_not_exceeded_limi
 
         check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
         assert app.redis_store.exceeded_rate_limit.called_with(
-            "{}-{}".format(str(sample_service.id), api_key.key_type), 3000, 60
+            f"{str(sample_service.id)}-{api_key.key_type}", 3000, 60
         )
 
 
@@ -557,18 +555,14 @@ def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_se
     with pytest.raises(BadRequestError) as e:
         check_service_email_reply_to_id(fake_uuid, reply_to_address.id, EMAIL_TYPE)
     assert e.value.status_code == 400
-    assert e.value.message == "email_reply_to_id {} does not exist in database for service id {}".format(
-        reply_to_address.id, fake_uuid
-    )
+    assert e.value.message == f"email_reply_to_id {reply_to_address.id} does not exist in database for service id {fake_uuid}"
 
 
 def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_service, fake_uuid):
     with pytest.raises(BadRequestError) as e:
         check_service_email_reply_to_id(sample_service.id, fake_uuid, EMAIL_TYPE)
     assert e.value.status_code == 400
-    assert e.value.message == "email_reply_to_id {} does not exist in database for service id {}".format(
-        fake_uuid, sample_service.id
-    )
+    assert e.value.message == f"email_reply_to_id {fake_uuid} does not exist in database for service id {sample_service.id}"
 
 
 @pytest.mark.parametrize("notification_type", ["sms", "email", "letter"])
@@ -586,18 +580,14 @@ def test_check_service_sms_sender_id_where_service_id_is_not_found(sample_servic
     with pytest.raises(BadRequestError) as e:
         check_service_sms_sender_id(fake_uuid, sms_sender.id, SMS_TYPE)
     assert e.value.status_code == 400
-    assert e.value.message == "sms_sender_id {} does not exist in database for service id {}".format(
-        sms_sender.id, fake_uuid
-    )
+    assert e.value.message == f"sms_sender_id {sms_sender.id} does not exist in database for service id {fake_uuid}"
 
 
 def test_check_service_sms_sender_id_where_sms_sender_is_not_found(sample_service, fake_uuid):
     with pytest.raises(BadRequestError) as e:
         check_service_sms_sender_id(sample_service.id, fake_uuid, SMS_TYPE)
     assert e.value.status_code == 400
-    assert e.value.message == "sms_sender_id {} does not exist in database for service id {}".format(
-        fake_uuid, sample_service.id
-    )
+    assert e.value.message == f"sms_sender_id {fake_uuid} does not exist in database for service id {sample_service.id}"
 
 
 def test_check_service_letter_contact_id_where_letter_contact_id_is_none():
@@ -614,18 +604,14 @@ def test_check_service_letter_contact_id_where_service_id_is_not_found(sample_se
     with pytest.raises(BadRequestError) as e:
         check_service_letter_contact_id(fake_uuid, letter_contact.id, LETTER_TYPE)
     assert e.value.status_code == 400
-    assert e.value.message == "letter_contact_id {} does not exist in database for service id {}".format(
-        letter_contact.id, fake_uuid
-    )
+    assert e.value.message == f"letter_contact_id {letter_contact.id} does not exist in database for service id {fake_uuid}"
 
 
 def test_check_service_letter_contact_id_where_letter_contact_is_not_found(sample_service, fake_uuid):
     with pytest.raises(BadRequestError) as e:
         check_service_letter_contact_id(sample_service.id, fake_uuid, LETTER_TYPE)
     assert e.value.status_code == 400
-    assert e.value.message == "letter_contact_id {} does not exist in database for service id {}".format(
-        fake_uuid, sample_service.id
-    )
+    assert e.value.message == f"letter_contact_id {fake_uuid} does not exist in database for service id {sample_service.id}"
 
 
 @pytest.mark.parametrize("notification_type", ["sms", "email", "letter"])

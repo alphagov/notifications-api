@@ -78,7 +78,7 @@ def dao_fetch_all_services(only_active=False):
 
 def get_services_by_partial_name(service_name):
     service_name = escape_special_characters(service_name)
-    return Service.query.filter(Service.name.ilike("%{}%".format(service_name))).all()
+    return Service.query.filter(Service.name.ilike(f"%{service_name}%")).all()
 
 
 def dao_count_live_services():

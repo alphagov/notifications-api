@@ -96,7 +96,7 @@ def check_rate_limiting(service, api_key, notification_type):
 
 def check_template_is_for_notification_type(notification_type, template_type):
     if notification_type != template_type:
-        message = "{0} template is not suitable for {1} notification".format(template_type, notification_type)
+        message = f"{template_type} template is not suitable for {notification_type} notification"
         raise BadRequestError(fields=[{"template": message}], message=message)
 
 
@@ -120,7 +120,7 @@ def service_can_send_to_recipient(send_to, key_type, service, allow_guest_list_r
 def check_service_has_permission(service, permission):
     if not service.has_permission(permission):
         raise BadRequestError(
-            message="Service is not allowed to send {}".format(get_public_notify_type_text(permission, plural=True))
+            message=f"Service is not allowed to send {get_public_notify_type_text(permission, plural=True)}"
         )
 
 
@@ -225,9 +225,7 @@ def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
         try:
             return dao_get_reply_to_by_id(reply_to_id=reply_to_id, service_id=service_id).email_address
         except NoResultFound as e:
-            message = "email_reply_to_id {} does not exist in database for service id {}".format(
-                reply_to_id, service_id
-            )
+            message = f"email_reply_to_id {reply_to_id} does not exist in database for service id {service_id}"
             raise BadRequestError(message=message) from e
 
 
@@ -236,7 +234,7 @@ def check_service_sms_sender_id(service_id, sms_sender_id, notification_type):
         try:
             return dao_get_service_sms_senders_by_id(service_id, sms_sender_id).sms_sender
         except NoResultFound as e:
-            message = "sms_sender_id {} does not exist in database for service id {}".format(sms_sender_id, service_id)
+            message = f"sms_sender_id {sms_sender_id} does not exist in database for service id {service_id}"
             raise BadRequestError(message=message) from e
 
 
@@ -245,9 +243,7 @@ def check_service_letter_contact_id(service_id, letter_contact_id, notification_
         try:
             return dao_get_letter_contact_by_id(service_id, letter_contact_id).contact_block
         except NoResultFound as e:
-            message = "letter_contact_id {} does not exist in database for service id {}".format(
-                letter_contact_id, service_id
-            )
+            message = f"letter_contact_id {letter_contact_id} does not exist in database for service id {service_id}"
             raise BadRequestError(message=message) from e
 
 

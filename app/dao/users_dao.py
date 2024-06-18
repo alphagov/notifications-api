@@ -111,7 +111,7 @@ def get_user_by_email(email):
 
 def get_users_by_partial_email(email):
     email = escape_special_characters(email)
-    return User.query.filter(User.email_address.ilike("%{}%".format(email))).all()
+    return User.query.filter(User.email_address.ilike(f"%{email}%")).all()
 
 
 def increment_failed_login_count(user):

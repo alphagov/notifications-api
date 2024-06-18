@@ -8,7 +8,7 @@ class DAOException(SQLAlchemyError):
     pass
 
 
-class DAOClass(object):
+class DAOClass:
     class Meta:
         model = None
 

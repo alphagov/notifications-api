@@ -6,7 +6,6 @@ class EmailClientException(ClientException):
     Base Exception for EmailClients
     """
 
-    pass
 
 
 class EmailClientNonRetryableException(ClientException):
@@ -19,7 +18,6 @@ class EmailClientNonRetryableException(ClientException):
     use this exception as it may succeed if we retry
     """
 
-    pass
 
 
 class EmailClient(Client):

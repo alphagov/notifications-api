@@ -70,7 +70,7 @@ class MMGClientResponseException(SmsClientResponseException):
         self.exception = exception
 
     def __str__(self):
-        return "Code {} text {} exception {}".format(self.status_code, self.text, str(self.exception))
+        return f"Code {self.status_code} text {self.text} exception {str(self.exception)}"
 
 
 class MMGClient(SmsClient):
@@ -99,7 +99,7 @@ class MMGClient(SmsClient):
                 "POST",
                 self.mmg_url,
                 data=json.dumps(data),
-                headers={"Content-Type": "application/json", "Authorization": "Basic {}".format(self.api_key)},
+                headers={"Content-Type": "application/json", "Authorization": f"Basic {self.api_key}"},
                 timeout=60,
             )
 

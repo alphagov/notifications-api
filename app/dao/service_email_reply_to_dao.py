@@ -79,9 +79,7 @@ def _get_existing_default(service_id):
             return old_default[0]
         else:
             raise Exception(
-                "There should only be one default reply to email for each service. Service {} has {}".format(
-                    service_id, len(old_default)
-                )
+                f"There should only be one default reply to email for each service. Service {service_id} has {len(old_default)}"
             )
     return None
 

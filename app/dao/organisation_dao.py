@@ -69,7 +69,7 @@ def dao_get_organisation_by_email_address(email_address):
     email_address = email_address.lower().replace(".gsi.gov.uk", ".gov.uk")
 
     for domain in Domain.query.order_by(func.char_length(Domain.domain).desc()).all():
-        if email_address.endswith("@{}".format(domain.domain)) or email_address.endswith(".{}".format(domain.domain)):
+        if email_address.endswith(f"@{domain.domain}") or email_address.endswith(f".{domain.domain}"):
             return Organisation.query.filter_by(id=domain.organisation_id).one()
 
     return None
@@ -78,7 +78,7 @@ def dao_get_organisation_by_email_address(email_address):
 def dao_get_organisations_by_partial_name(organisation_name):
     organisation_name = escape_special_characters(organisation_name)
     return (
-        Organisation.query.filter(Organisation.name.ilike("%{}%".format(organisation_name)))
+        Organisation.query.filter(Organisation.name.ilike(f"%{organisation_name}%"))
         .order_by(Organisation.name)
         .all()
     )

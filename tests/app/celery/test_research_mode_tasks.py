@@ -53,7 +53,7 @@ def test_make_firetext_callback(notify_api, rmock, phone_number):
 
     assert rmock.called
     assert rmock.request_history[0].url == endpoint
-    assert "mobile={}".format(phone_number) in rmock.request_history[0].text
+    assert f"mobile={phone_number}" in rmock.request_history[0].text
 
 
 def test_make_ses_callback(notify_api, mocker):

@@ -94,7 +94,7 @@ def invited_user_url(invited_user_id, invite_link_host=None):
     if invite_link_host is None:
         invite_link_host = current_app.config["ADMIN_BASE_URL"]
 
-    return "{0}/invitation/{1}".format(invite_link_host, token)
+    return f"{invite_link_host}/invitation/{token}"
 
 
 @service_invite.route("/invite/service/<uuid:invited_user_id>", methods=["GET"])

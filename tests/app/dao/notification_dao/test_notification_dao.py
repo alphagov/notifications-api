@@ -437,7 +437,7 @@ def test_save_notification_no_job_id(sample_template):
 
 
 def test_get_all_notifications_for_job(sample_job):
-    for _ in range(0, 5):
+    for _ in range(5):
         try:
             create_notification(template=sample_job.template, job=sample_job)
         except IntegrityError:
@@ -499,7 +499,7 @@ def test_should_limit_notifications_return_by_day_limit_plus_one(sample_template
 
     # create one notification a day between 1st and 9th
     for i in range(1, 11):
-        past_date = "2016-01-{0:02d}".format(i)
+        past_date = f"2016-01-{i:02d}"
         with freeze_time(past_date):
             create_notification(sample_template, created_at=datetime.utcnow(), status="failed")
 

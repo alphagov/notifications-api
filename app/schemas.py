@@ -182,7 +182,7 @@ class UserUpdateAttributeSchema(BaseSchema):
     def check_unknown_fields(self, data, original_data, **kwargs):
         for key in original_data:
             if key not in self.fields:
-                raise ValidationError("Unknown field name {}".format(key))
+                raise ValidationError(f"Unknown field name {key}")
 
 
 class UserUpdatePasswordSchema(BaseSchema):
@@ -193,7 +193,7 @@ class UserUpdatePasswordSchema(BaseSchema):
     def check_unknown_fields(self, data, original_data, **kwargs):
         for key in original_data:
             if key not in self.fields:
-                raise ValidationError("Unknown field name {}".format(key))
+                raise ValidationError(f"Unknown field name {key}")
 
 
 class ProviderDetailsSchema(BaseSchema):
@@ -305,11 +305,11 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
         permissions = [v.permission for v in value]
         for p in permissions:
             if p not in app.constants.SERVICE_PERMISSION_TYPES:
-                raise ValidationError("Invalid Service Permission: '{}'".format(p))
+                raise ValidationError(f"Invalid Service Permission: '{p}'")
 
         if len(set(permissions)) != len(permissions):
             duplicates = list(set([x for x in permissions if permissions.count(x) > 1]))
-            raise ValidationError("Duplicate Service Permission: {}".format(duplicates))
+            raise ValidationError(f"Duplicate Service Permission: {duplicates}")
 
     @pre_load()
     def format_for_data_model(self, in_data, **kwargs):

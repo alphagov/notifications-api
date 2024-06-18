@@ -131,7 +131,7 @@ def handle_sql_error(e, table_name):
         hasattr(e, "orig")
         and hasattr(e.orig, "pgerror")
         and e.orig.pgerror
-        and ('duplicate key value violates unique constraint "ix_{}_service_id"'.format(table_name) in e.orig.pgerror)
+        and (f'duplicate key value violates unique constraint "ix_{table_name}_service_id"' in e.orig.pgerror)
     ):
         return (
             jsonify(result="error", message={"name": ["You can only have one URL and bearer token for your service."]}),
@@ -142,8 +142,8 @@ def handle_sql_error(e, table_name):
         and hasattr(e.orig, "pgerror")
         and e.orig.pgerror
         and (
-            'insert or update on table "{0}" violates '
-            'foreign key constraint "{0}_service_id_fkey"'.format(table_name) in e.orig.pgerror
+            f'insert or update on table "{table_name}" violates '
+            f'foreign key constraint "{table_name}_service_id_fkey"' in e.orig.pgerror
         )
     ):
         return jsonify(result="error", message="No result found"), 404

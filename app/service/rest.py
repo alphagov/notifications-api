@@ -160,7 +160,7 @@ def handle_integrity_error(exc):
     Handle integrity errors caused by the unique constraint on ix_organisation_name
     """
     if any(
-        'duplicate key value violates unique constraint "{}"'.format(constraint) in str(exc)
+        f'duplicate key value violates unique constraint "{constraint}"' in str(exc)
         for constraint in {"services_name_key", "services_normalised_service_name_key"}
     ):
         duplicate_name = exc.params.get("name") or exc.params.get("normalised_service_name")
@@ -331,7 +331,7 @@ def get_api_keys(service_id, key_id=None):
         else:
             api_keys = get_model_api_keys(service_id=service_id)
     except NoResultFound as e:
-        error = "API key not found for id: {}".format(service_id)
+        error = f"API key not found for id: {service_id}"
         raise InvalidRequest(error, status_code=404) from e
 
     return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True)), 200
@@ -349,7 +349,7 @@ def add_user_to_service(service_id, user_id):
     user = get_user_by_id(user_id=user_id)
 
     if user in service.users:
-        error = "User id: {} already part of service id: {}".format(user_id, service_id)
+        error = f"User id: {user_id} already part of service id: {service_id}"
         raise InvalidRequest(error, status_code=400)
 
     data = request.get_json()
@@ -520,7 +520,7 @@ def cancel_notification_for_service(service_id, notification_id):
     elif not letter_can_be_cancelled(notification.status, notification.created_at):
         print_day = letter_print_day(notification.created_at)
         if too_late_to_cancel_letter(notification.created_at):
-            message = "It’s too late to cancel this letter. Printing started {} at 5.30pm".format(print_day)
+            message = f"It’s too late to cancel this letter. Printing started {print_day} at 5.30pm"
         elif notification.status == "cancelled":
             message = "This letter has already been cancelled."
         else:
@@ -676,7 +676,7 @@ def update_guest_list(service_id):
     except ValueError as e:
         current_app.logger.exception(e)
         dao_rollback()
-        msg = "{} is not a valid email address or phone number".format(str(e))
+        msg = f"{str(e)} is not a valid email address or phone number"
         raise InvalidRequest(msg, 400) from e
     else:
         dao_add_and_commit_guest_list_contacts(guest_list_objects)
@@ -867,7 +867,7 @@ def update_service_sms_sender(service_id, sms_sender_id):
 
     sms_sender_to_update = dao_get_service_sms_senders_by_id(service_id=service_id, service_sms_sender_id=sms_sender_id)
     if sms_sender_to_update.inbound_number_id and form["sms_sender"] != sms_sender_to_update.sms_sender:
-        raise InvalidRequest("You can not change the inbound number for service {}".format(service_id), status_code=400)
+        raise InvalidRequest(f"You can not change the inbound number for service {service_id}", status_code=400)
 
     new_sms_sender = dao_update_service_sms_sender(
         service_id=service_id,
@@ -950,9 +950,7 @@ def modify_service_data_retention(service_id, data_retention_id):
     )
     if update_count == 0:
         raise InvalidRequest(
-            message="The service data retention for id: {} was not found for service: {}".format(
-                data_retention_id, service_id
-            ),
+            message=f"The service data retention for id: {data_retention_id} was not found for service: {service_id}",
             status_code=404,
         )
 

@@ -14,7 +14,7 @@ valid_post = [
         None,
         "Some subject",
         "Some content",
-        ('<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">' "Some content" "</p>"),
+        ('<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">' "Some content</p>"),
     ),
     (
         "Some subject",
@@ -46,7 +46,7 @@ valid_post = [
         valid_personalisation,
         "Message for Jo",
         "Some content",
-        ('<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">' "Some content" "</p>"),
+        ('<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">' "Some content</p>"),
     ),
 ]
 
@@ -97,7 +97,7 @@ def test_email_and_letter_templates_not_rendered_into_content(
         sample_service,
         template_type=template_type,
         subject="Test",
-        content=("Hello\n" "\r\n" "\r\n" "\n" "# This is a heading\n" "\n" "Paragraph"),
+        content=("Hello\n\r\n\r\n\n# This is a heading\n\nParagraph"),
     )
 
     resp_json = api_client_request.post(
@@ -153,7 +153,7 @@ def test_post_template_returns_200_without_personalisation(api_client_request, s
 
 def test_post_template_returns_200_without_personalisation_and_missing_content_header(client, sample_template):
     response = client.post(
-        path="/v2/template/{}/preview".format(sample_template.id),
+        path=f"/v2/template/{sample_template.id}/preview",
         data=None,
         headers=[create_service_authorization_header(service_id=sample_template.service_id)],
     )
@@ -164,7 +164,7 @@ def test_post_template_returns_200_without_personalisation_as_valid_json_and_mis
     client, sample_template
 ):
     response = client.post(
-        path="/v2/template/{}/preview".format(sample_template.id),
+        path=f"/v2/template/{sample_template.id}/preview",
         data=json.dumps(None),
         headers=[create_service_authorization_header(service_id=sample_template.service_id)],
     )
@@ -173,7 +173,7 @@ def test_post_template_returns_200_without_personalisation_as_valid_json_and_mis
 
 def test_post_template_returns_200_with_valid_json_and_missing_content_header(client, sample_template):
     response = client.post(
-        path="/v2/template/{}/preview".format(sample_template.id),
+        path=f"/v2/template/{sample_template.id}/preview",
         data=json.dumps(valid_personalisation),
         headers=[create_service_authorization_header(service_id=sample_template.service_id)],
     )

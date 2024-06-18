@@ -289,7 +289,7 @@ def test_send_notification_to_queue(
     expected_task,
     mocker,
 ):
-    mocked = mocker.patch("app.celery.{}.apply_async".format(expected_task))
+    mocked = mocker.patch(f"app.celery.{expected_task}.apply_async")
     Notification = namedtuple("Notification", ["id", "key_type", "notification_type", "created_at"])
     notification = Notification(
         id=uuid.uuid4(),

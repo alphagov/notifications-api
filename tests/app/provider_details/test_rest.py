@@ -52,7 +52,7 @@ def test_should_be_able_to_update_priority(client, restore_provider_details):
     provider = ProviderDetails.query.first()
 
     update_resp = client.post(
-        "/provider-details/{}".format(provider.id),
+        f"/provider-details/{provider.id}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
         data=json.dumps({"priority": 5}),
     )
@@ -67,7 +67,7 @@ def test_should_be_able_to_update_status(client, restore_provider_details):
     provider = ProviderDetails.query.first()
 
     update_resp_1 = client.post(
-        "/provider-details/{}".format(provider.id),
+        f"/provider-details/{provider.id}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
         data=json.dumps({"active": False}),
     )
@@ -83,7 +83,7 @@ def test_should_not_be_able_to_update_disallowed_fields(client, restore_provider
     provider = ProviderDetails.query.first()
 
     resp = client.post(
-        "/provider-details/{}".format(provider.id),
+        f"/provider-details/{provider.id}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
         data=json.dumps({field: value}),
     )
@@ -97,7 +97,7 @@ def test_should_not_be_able_to_update_disallowed_fields(client, restore_provider
 def test_get_provider_versions_contains_correct_fields(client, notify_db_session):
     provider = ProviderDetailsHistory.query.first()
     response = client.get(
-        "/provider-details/{}/versions".format(provider.id), headers=[create_admin_authorization_header()]
+        f"/provider-details/{provider.id}/versions", headers=[create_admin_authorization_header()]
     )
     json_resp = json.loads(response.get_data(as_text=True))["data"]
     allowed_keys = {
@@ -119,7 +119,7 @@ def test_update_provider_should_store_user_id(client, restore_provider_details, 
     provider = ProviderDetails.query.first()
 
     update_resp_1 = client.post(
-        "/provider-details/{}".format(provider.id),
+        f"/provider-details/{provider.id}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
         data=json.dumps({"created_by": sample_user.id, "active": False}),
     )

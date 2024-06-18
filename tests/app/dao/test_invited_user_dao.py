@@ -82,8 +82,8 @@ def test_get_unknown_invited_user_returns_none(notify_db_session, sample_service
 
 def test_get_invited_users_for_service(notify_db_session, sample_service):
     invites = []
-    for i in range(0, 5):
-        email = "invited_user_{}@service.gov.uk".format(i)
+    for i in range(5):
+        email = f"invited_user_{i}@service.gov.uk"
 
         invited_user = create_invited_user(sample_service, to_email_address=email)
         invites.append(invited_user)

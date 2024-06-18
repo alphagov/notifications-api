@@ -19,7 +19,7 @@ def get_template_statistics_for_service_by_day(service_id):
     try:
         whole_days = int(whole_days)
     except ValueError as e:
-        error = "{} is not an integer".format(whole_days)
+        error = f"{whole_days} is not an integer"
         message = {"whole_days": [error]}
         raise InvalidRequest(message, status_code=400) from e
 

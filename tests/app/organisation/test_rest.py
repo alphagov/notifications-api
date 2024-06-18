@@ -864,7 +864,7 @@ def test_get_organisation_services_usage(admin_request, notify_db_session, mocke
     )
     with freeze_time("2019-06-01"):
         response = admin_request.get(
-            "organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019}
+            "organisation.get_organisation_services_usage", organisation_id=org.id, year=2019
         )
     assert len(response) == 2
     assert len(response["services"]) == 1
@@ -900,7 +900,7 @@ def test_get_organisation_services_usage_limit_queries_executed(admin_request, n
             )
 
     with QueryRecorder() as query_recorder:
-        admin_request.get("organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019})
+        admin_request.get("organisation.get_organisation_services_usage", organisation_id=org.id, year=2019)
 
     assert len(query_recorder.queries) == 5, (
         "The number of queries executed by this view has changed. The number of queries executed "
@@ -923,7 +923,7 @@ def test_get_organisation_services_usage_sort_active_first(admin_request, notify
         bst_date=datetime.utcnow().date(), template=template, billable_unit=19, rate=0.060, notifications_sent=19
     )
     response = admin_request.get(
-        "organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019}
+        "organisation.get_organisation_services_usage", organisation_id=org.id, year=2019
     )
     assert len(response) == 2
     assert len(response["services"]) == 2
@@ -939,7 +939,7 @@ def test_get_organisation_services_usage_sort_active_first(admin_request, notify
 
     dao_archive_service(service_id=archived_service.id)
     response_after_archive = admin_request.get(
-        "organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019}
+        "organisation.get_organisation_services_usage", organisation_id=org.id, year=2019
     )
     first_service = response_after_archive["services"][0]
     assert first_service["service_id"] == str(service.id)
@@ -955,7 +955,7 @@ def test_get_organisation_services_usage_returns_400_if_year_is_invalid(admin_re
     response = admin_request.get(
         "organisation.get_organisation_services_usage",
         organisation_id=uuid.uuid4(),
-        **{"year": "not-a-valid-year"},
+        year="not-a-valid-year",
         _expected_status=400,
     )
     assert response["message"] == "No valid year provided"

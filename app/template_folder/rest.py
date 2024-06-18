@@ -121,7 +121,7 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
         try:
             template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
         except NoResultFound as e:
-            msg = "No folder found with id {} for service {}".format(template_folder_id, service_id)
+            msg = f"No folder found with id {template_folder_id} for service {service_id}"
             raise InvalidRequest(msg, status_code=400) from e
         _validate_folder_move(target_template_folder, target_template_folder_id, template_folder, template_folder_id)
 
@@ -131,9 +131,7 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
         try:
             template = dao_get_template_by_id_and_service_id(template_id, service_id)
         except NoResultFound as e:
-            msg = "Could not move to folder: No template found with id {} for service {}".format(
-                template_id, service_id
-            )
+            msg = f"Could not move to folder: No template found with id {template_id} for service {service_id}"
             raise InvalidRequest(msg, status_code=400) from e
 
         if template.archived:

@@ -96,7 +96,7 @@ def test_create_invited_user_invalid_email(admin_request, sample_organisation, s
 def test_get_all_invited_users_by_service(admin_request, sample_organisation, sample_user):
     for i in range(5):
         create_invited_org_user(
-            sample_organisation, sample_user, email_address="invited_user_{}@service.gov.uk".format(i)
+            sample_organisation, sample_user, email_address=f"invited_user_{i}@service.gov.uk"
         )
 
     json_resp = admin_request.get(
@@ -205,7 +205,7 @@ def test_validate_invitation_token_for_expired_token_returns_400(client):
         token = generate_token(
             str(uuid.uuid4()), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
         )
-    url = "/invite/organisation/{}".format(token)
+    url = f"/invite/organisation/{token}"
     auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[("Content-Type", "application/json"), auth_header])
 
@@ -220,7 +220,7 @@ def test_validate_invitation_token_for_expired_token_returns_400(client):
 
 def test_validate_invitation_token_returns_400_when_invited_user_does_not_exist(client):
     token = generate_token(str(uuid.uuid4()), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
-    url = "/invite/organisation/{}".format(token)
+    url = f"/invite/organisation/{token}"
     auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[("Content-Type", "application/json"), auth_header])
 
@@ -235,7 +235,7 @@ def test_validate_invitation_token_returns_400_when_token_is_malformed(client):
         :-2
     ]
 
-    url = "/invite/organisation/{}".format(token)
+    url = f"/invite/organisation/{token}"
     auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[("Content-Type", "application/json"), auth_header])
 

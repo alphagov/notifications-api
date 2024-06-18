@@ -36,7 +36,7 @@ def get_folder_name(created_at):
     print_datetime = convert_utc_to_bst(created_at)
     if print_datetime.time() > LETTER_PROCESSING_DEADLINE:
         print_datetime += timedelta(days=1)
-    return "{}/".format(print_datetime.date())
+    return f"{print_datetime.date()}/"
 
 
 class LetterPDFNotFound(Exception):
@@ -228,7 +228,7 @@ def letter_print_day(created_at):
         return "today"
     else:
         print_date = bst_print_datetime.strftime("%d %B").lstrip("0")
-        return "on {}".format(print_date)
+        return f"on {print_date}"
 
 
 def get_page_count(pdf):

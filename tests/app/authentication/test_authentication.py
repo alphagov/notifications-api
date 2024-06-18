@@ -94,7 +94,7 @@ def test_get_auth_token_should_not_allow_request_with_incorrect_header(client):
 @pytest.mark.parametrize("scheme", ["bearer", "Bearer"])
 def test_get_auth_token_should_allow_valid_token(client, scheme):
     token = create_jwt_token(client_id="something", secret="secret")
-    request.headers = {"Authorization": "{} {}".format(scheme, token)}
+    request.headers = {"Authorization": f"{scheme} {token}"}
     assert _get_auth_token(request) == token
 
 
@@ -238,7 +238,7 @@ def test_requires_auth_should_not_allow_service_id_with_the_wrong_data_type(clie
         secret=service_jwt_secret,
     )
 
-    request.headers = {"Authorization": "Bearer {}".format(token)}
+    request.headers = {"Authorization": f"Bearer {token}"}
     with pytest.raises(AuthError) as exc:
         requires_auth()
     assert exc.value.short_message == "Invalid token: service id is not the right data type"
@@ -251,7 +251,7 @@ def test_requires_auth_returns_error_when_service_doesnt_exist(client, sample_ap
         client_id=str(sample_api_key.id),
     )
 
-    request.headers = {"Authorization": "Bearer {}".format(token)}
+    request.headers = {"Authorization": f"Bearer {token}"}
     with pytest.raises(AuthError) as exc:
         requires_auth()
     assert exc.value.short_message == "Invalid token: service not found"
@@ -264,7 +264,7 @@ def test_requires_auth_returns_error_when_service_inactive(
 ):
     sample_api_key.service.active = False
 
-    request.headers = {"Authorization": "Bearer {}".format(service_jwt_token)}
+    request.headers = {"Authorization": f"Bearer {service_jwt_token}"}
     with pytest.raises(AuthError) as exc:
         requires_auth()
     assert exc.value.short_message == "Invalid token: service is archived"
@@ -275,7 +275,7 @@ def test_requires_auth_should_assign_global_variables(
     sample_api_key,
     service_jwt_token,
 ):
-    request.headers = {"Authorization": "Bearer {}".format(service_jwt_token)}
+    request.headers = {"Authorization": f"Bearer {service_jwt_token}"}
     requires_auth()
     assert g.api_user.id == sample_api_key.id
     assert g.service_id == sample_api_key.service_id
@@ -288,7 +288,7 @@ def test_requires_auth_errors_if_service_has_no_api_keys(
     service_jwt_token,
 ):
     db.session.delete(sample_api_key)
-    request.headers = {"Authorization": "Bearer {}".format(service_jwt_token)}
+    request.headers = {"Authorization": f"Bearer {service_jwt_token}"}
     with pytest.raises(AuthError) as exc:
         requires_auth()
     assert exc.value.short_message == "Invalid token: service has no API keys"
@@ -319,7 +319,7 @@ def test_requires_internal_auth_errors_for_unknown_app(client):
 
 
 def test_requires_internal_auth_errors_for_api_app_mismatch(client, internal_jwt_token, service_jwt_token):
-    request.headers = {"Authorization": "Bearer {}".format(service_jwt_token)}
+    request.headers = {"Authorization": f"Bearer {service_jwt_token}"}
     with pytest.raises(AuthError) as exc:
         requires_my_internal_app_auth()
     assert exc.value.short_message == "Unauthorized: not allowed to perform this action"
@@ -329,6 +329,6 @@ def test_requires_internal_auth_sets_global_variables(
     client,
     internal_jwt_token,
 ):
-    request.headers = {"Authorization": "Bearer {}".format(internal_jwt_token)}
+    request.headers = {"Authorization": f"Bearer {internal_jwt_token}"}
     requires_my_internal_app_auth()
     assert g.service_id == "my-internal-app"

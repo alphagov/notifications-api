@@ -71,7 +71,7 @@ def create_test_db(database_uri):
         postgres_db_uri, echo=False, isolation_level="AUTOCOMMIT", client_encoding="utf8"
     )
     try:
-        result = postgres_db.execute(sqlalchemy.sql.text("CREATE DATABASE {}".format(db_uri_parts[-1])))
+        result = postgres_db.execute(sqlalchemy.sql.text(f"CREATE DATABASE {db_uri_parts[-1]}"))
         result.close()
     except sqlalchemy.exc.ProgrammingError:
         # database "test_notification_api_master" already exists
@@ -243,4 +243,4 @@ class Matcher:
         return self.key(other)
 
     def __repr__(self):
-        return "<Matcher: {}>".format(self.description)
+        return f"<Matcher: {self.description}>"

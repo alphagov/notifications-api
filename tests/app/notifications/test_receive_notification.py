@@ -29,7 +29,7 @@ def firetext_post(client, data, auth=True, password="testkey"):
     ]
 
     if auth:
-        auth_value = base64.b64encode("notify:{}".format(password).encode("utf-8")).decode("utf-8")
+        auth_value = base64.b64encode(f"notify:{password}".encode()).decode("utf-8")
         headers.append(("Authorization", "Basic " + auth_value))
 
     return client.post(path="/notifications/sms/receive/firetext", data=data, headers=headers)
@@ -41,7 +41,7 @@ def mmg_post(client, data, auth=True, password="testkey"):
     ]
 
     if auth:
-        auth_value = base64.b64encode("username:{}".format(password).encode("utf-8")).decode("utf-8")
+        auth_value = base64.b64encode(f"username:{password}".encode()).decode("utf-8")
         headers.append(("Authorization", "Basic " + auth_value))
 
     return client.post(path="/notifications/sms/receive/mmg", data=json.dumps(data), headers=headers)

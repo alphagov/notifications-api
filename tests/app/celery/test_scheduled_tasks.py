@@ -666,7 +666,7 @@ def test_check_for_missing_rows_in_completed_jobs_ignores_old_and_new_jobs(
         job_status=JOB_STATUS_FINISHED,
         processing_finished=datetime.utcnow() - offset,
     )
-    for i in range(0, 4):
+    for i in range(4):
         create_notification(job=job, job_row_number=i)
 
     check_for_missing_rows_in_completed_jobs()
@@ -688,7 +688,7 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template)
         job_status=JOB_STATUS_FINISHED,
         processing_finished=datetime.utcnow() - timedelta(minutes=20),
     )
-    for i in range(0, 4):
+    for i in range(4):
         create_notification(job=job, job_row_number=i)
 
     check_for_missing_rows_in_completed_jobs()
@@ -711,7 +711,7 @@ def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, sampl
         job_status=JOB_STATUS_FINISHED,
         processing_finished=datetime.utcnow() - timedelta(minutes=20),
     )
-    for i in range(0, 4):
+    for i in range(4):
         create_notification(job=job, job_row_number=i)
 
     check_for_missing_rows_in_completed_jobs()
@@ -739,7 +739,7 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(mocker, sample_
         job_status=JOB_STATUS_FINISHED,
         processing_finished=datetime.utcnow() - timedelta(minutes=20),
     )
-    for i in range(0, 4):
+    for i in range(4):
         create_notification(job=job, job_row_number=i)
 
     check_for_missing_rows_in_completed_jobs()

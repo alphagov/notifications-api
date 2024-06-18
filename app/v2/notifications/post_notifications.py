@@ -83,7 +83,7 @@ POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
 )
 
 
-@v2_notification_blueprint.route("/{}".format(LETTER_TYPE), methods=["POST"])
+@v2_notification_blueprint.route(f"/{LETTER_TYPE}", methods=["POST"])
 def post_precompiled_letter_notification():
     request_json = get_valid_json()
     if "content" not in (request_json or {}):

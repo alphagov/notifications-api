@@ -60,11 +60,11 @@ def test_post_letter_notification_returns_201(api_client_request, sample_letter_
     assert resp_json["reference"] == reference
     assert resp_json["content"]["subject"] == sample_letter_template.subject
     assert resp_json["content"]["body"] == sample_letter_template.content
-    assert "v2/notifications/{}".format(notification.id) in resp_json["uri"]
+    assert f"v2/notifications/{notification.id}" in resp_json["uri"]
     assert resp_json["template"]["id"] == str(sample_letter_template.id)
     assert resp_json["template"]["version"] == sample_letter_template.version
     assert (
-        "services/{}/templates/{}".format(sample_letter_template.service_id, sample_letter_template.id)
+        f"services/{sample_letter_template.service_id}/templates/{sample_letter_template.id}"
         in resp_json["template"]["uri"]
     )
     assert not resp_json["scheduled_for"]
@@ -146,7 +146,7 @@ def test_post_letter_notification_stores_country(api_client_request, notify_db_s
     assert notification.personalisation["address_line_2"] == "Kronprinzenpalais"
     assert notification.personalisation["address_line_5"] == "   deutschland   "
     # In the to field we store the whole address with the canonical country
-    assert notification.to == ("Kaiser Wilhelm II\n" "Kronprinzenpalais\n" "Germany")
+    assert notification.to == ("Kaiser Wilhelm II\nKronprinzenpalais\nGermany")
     assert notification.postage == "europe"
     assert notification.international
 

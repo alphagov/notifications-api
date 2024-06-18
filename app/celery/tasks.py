@@ -402,9 +402,7 @@ def update_letter_notifications_statuses(self, filename):
         update_letter_notification(filename, temporary_failures, update)
     if temporary_failures:
         # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
-        message = "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
-            filename=filename, failures=temporary_failures
-        )
+        message = f"DVLA response file: {filename} has failed letters with notification.reference {temporary_failures}"
         raise DVLAException(message)
     current_app.logger.info("update_letter_notifications_statuses has finished for filename %s", filename)
 
@@ -462,7 +460,7 @@ def process_updates_from_file(response_file, filename):
         try:
             reference, status, page_count, raw_cost_threshold, despatch_date = line.split("|")
         except ValueError as e:
-            raise DVLAException("DVLA response file: {} has an invalid format".format(filename)) from e
+            raise DVLAException(f"DVLA response file: {filename} has an invalid format") from e
 
         try:
             cost_threshold = LetterCostThreshold(raw_cost_threshold.lower())

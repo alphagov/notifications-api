@@ -1,4 +1,3 @@
-from typing import Optional
 
 from flask import current_app
 
@@ -17,7 +16,7 @@ def send_notification_to_organisation_users(
     organisation,
     template,
     reply_to_text,
-    with_permission: Optional[OrganisationUserPermissionTypes],
+    with_permission: OrganisationUserPermissionTypes | None,
     personalisation=None,
     include_user_fields=None
 ):

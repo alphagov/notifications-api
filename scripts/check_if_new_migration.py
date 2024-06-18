@@ -9,7 +9,7 @@ import requests
 
 def get_latest_db_migration_to_apply():
     project_dir = dirname(dirname(abspath(__file__)))  # Get the main project directory
-    migrations_dir = "{}/migrations/versions/".format(project_dir)
+    migrations_dir = f"{project_dir}/migrations/versions/"
     migration_files = [migration_file for migration_file in os.listdir(migrations_dir) if migration_file.endswith("py")]
     # sometimes there's a trailing underscore, if script was created with `flask db migrate --rev-id=...`
     latest_file = sorted(migration_files, reverse=True)[0].replace("_.py", "").replace(".py", "")

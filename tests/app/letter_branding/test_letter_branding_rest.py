@@ -19,7 +19,7 @@ def test_get_all_letter_brands(admin_request, notify_db_session):
         elif brand["id"] == str(test_branding.id):
             assert test_branding.serialize() == brand
         else:
-            raise AssertionError()
+            raise AssertionError
 
 
 def test_get_letter_branding_by_id(admin_request, notify_db_session):

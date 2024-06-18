@@ -30,8 +30,8 @@ def handle_integrity_error(exc):
     Handle integrity errors caused by the unique constraint
     """
     for col in {"name", "filename"}:
-        if "letter_branding_{}_key".format(col) in str(exc):
-            return jsonify(result="error", message={col: ["{} already in use".format(col.title())]}), 400
+        if f"letter_branding_{col}_key" in str(exc):
+            return jsonify(result="error", message={col: [f"{col.title()} already in use"]}), 400
     current_app.logger.exception(exc)
     return jsonify(result="error", message="Internal server error"), 500
 

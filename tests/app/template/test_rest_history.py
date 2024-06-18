@@ -99,7 +99,7 @@ def test_update_template_reply_to_updates_history(client, sample_letter_template
     dao_update_template(sample_letter_template)
 
     resp = client.get(
-        "/service/{}/template/{}/version/2".format(sample_letter_template.service_id, sample_letter_template.id),
+        f"/service/{sample_letter_template.service_id}/template/{sample_letter_template.id}/version/2",
         headers=[auth_header],
     )
     assert resp.status_code == 200

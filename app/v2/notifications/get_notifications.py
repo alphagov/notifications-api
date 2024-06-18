@@ -43,7 +43,7 @@ def get_pdf_for_notification(notification_id):
         raise BadRequestError(message="File did not pass the virus scan")
 
     if notification.status == NOTIFICATION_TECHNICAL_FAILURE:
-        raise BadRequestError(message="PDF not available for letters in status {}".format(notification.status))
+        raise BadRequestError(message=f"PDF not available for letters in status {notification.status}")
 
     if notification.status == NOTIFICATION_PENDING_VIRUS_CHECK:
         raise PDFNotReadyError()

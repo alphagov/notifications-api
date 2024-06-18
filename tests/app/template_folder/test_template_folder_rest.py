@@ -154,7 +154,7 @@ def test_create_template_folder_fails_if_missing_fields(admin_request, sample_se
 
     assert resp == {
         "status_code": 400,
-        "errors": [{"error": "ValidationError", "message": "{} is a required property".format(missing_field)}],
+        "errors": [{"error": "ValidationError", "message": f"{missing_field} is a required property"}],
     }
 
 
@@ -384,7 +384,7 @@ def test_move_to_folder_rejects_folder_from_other_service(admin_request, notify_
         _data={"templates": [], "folders": [str(f2.id)]},
         _expected_status=400,
     )
-    assert response["message"] == "No folder found with id {} for service {}".format(f2.id, s1.id)
+    assert response["message"] == f"No folder found with id {f2.id} for service {s1.id}"
 
 
 def test_move_to_folder_rejects_template_from_other_service(admin_request, notify_db_session):
@@ -400,9 +400,7 @@ def test_move_to_folder_rejects_template_from_other_service(admin_request, notif
         _data={"templates": [str(t2.id)], "folders": []},
         _expected_status=400,
     )
-    assert response["message"] == "Could not move to folder: No template found with id {} for service {}".format(
-        t2.id, s1.id
-    )
+    assert response["message"] == f"Could not move to folder: No template found with id {t2.id} for service {s1.id}"
 
 
 def test_move_to_folder_rejects_if_it_would_cause_folder_loop(admin_request, sample_service):

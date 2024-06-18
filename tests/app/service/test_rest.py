@@ -322,7 +322,7 @@ def test_get_service_by_id_and_user(client, sample_service, sample_user):
     sample_service.reply_to_email = "something@service.com"
     create_reply_to_email(service=sample_service, email_address="new@service.com")
     auth_header = create_admin_authorization_header()
-    resp = client.get("/service/{}?user_id={}".format(sample_service.id, sample_user.id), headers=[auth_header])
+    resp = client.get(f"/service/{sample_service.id}?user_id={sample_user.id}", headers=[auth_header])
     assert resp.status_code == 200
     json_resp = resp.json
     assert json_resp["data"]["name"] == sample_service.name
@@ -334,7 +334,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
         with notify_api.test_client() as client:
             service_id = str(uuid.uuid4())
             auth_header = create_admin_authorization_header()
-            resp = client.get("/service/{}?user_id={}".format(service_id, sample_user.id), headers=[auth_header])
+            resp = client.get(f"/service/{service_id}?user_id={sample_user.id}", headers=[auth_header])
             assert resp.status_code == 404
             json_resp = resp.json
             assert json_resp["result"] == "error"
@@ -426,7 +426,7 @@ def test_create_service_with_domain_sets_organisation(
     create_domain("cabinet-office.gov.uk", another_org.id)
     create_domain("cabinetoffice.gov.uk", another_org.id)
 
-    sample_user.email_address = "test@{}".format(domain)
+    sample_user.email_address = f"test@{domain}"
 
     data = {
         "name": "created service",
@@ -619,7 +619,7 @@ def test_should_not_create_service_with_duplicate_name(notify_api, sample_user, 
             resp = client.post("/service", data=json.dumps(data), headers=headers)
             json_resp = resp.json
             assert json_resp["result"] == "error"
-            assert "Duplicate service name '{}'".format(sample_service.name) in json_resp["message"]["name"]
+            assert f"Duplicate service name '{sample_service.name}'" in json_resp["message"]["name"]
 
 
 def test_create_service_should_throw_duplicate_key_constraint_for_existing_normalised_service_name(
@@ -644,7 +644,7 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_norma
             resp = client.post("/service", data=json.dumps(data), headers=headers)
             json_resp = resp.json
             assert json_resp["result"] == "error"
-            assert "Duplicate service name '{}'".format(service_name) in json_resp["message"]["name"]
+            assert f"Duplicate service name '{service_name}'" in json_resp["message"]["name"]
 
 
 @pytest.mark.parametrize("has_active_go_live_request", (True, False))
@@ -666,7 +666,7 @@ def test_update_service(client, notify_db_session, sample_service, has_active_go
     auth_header = create_admin_authorization_header()
 
     resp = client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -689,7 +689,7 @@ def test_cant_update_service_org_type_to_random_value(client, sample_service):
     auth_header = create_admin_authorization_header()
 
     resp = client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -703,7 +703,7 @@ def test_update_service_letter_branding(client, notify_db_session, sample_servic
     auth_header = create_admin_authorization_header()
 
     resp = client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -719,14 +719,14 @@ def test_update_service_remove_letter_branding(client, notify_db_session, sample
     auth_header = create_admin_authorization_header()
 
     client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
 
     data = {"letter_branding": None}
     resp = client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -760,7 +760,7 @@ def test_update_service_change_email_branding(admin_request, notify_db_session, 
 
 def test_update_service_flags(client, sample_service):
     auth_header = create_admin_authorization_header()
-    resp = client.get("/service/{}".format(sample_service.id), headers=[auth_header])
+    resp = client.get(f"/service/{sample_service.id}", headers=[auth_header])
     json_resp = resp.json
     assert resp.status_code == 200
     assert json_resp["data"]["name"] == sample_service.name
@@ -770,7 +770,7 @@ def test_update_service_flags(client, sample_service):
     auth_header = create_admin_authorization_header()
 
     resp = client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -853,7 +853,7 @@ def test_update_service_flags_with_service_without_default_service_permissions(c
     }
 
     resp = client.post(
-        "/service/{}".format(service_with_no_permissions.id),
+        f"/service/{service_with_no_permissions.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -873,7 +873,7 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db_
     data = {"permissions": [SMS_TYPE, EMAIL_TYPE]}
 
     resp = client.post(
-        "/service/{}".format(service.id),
+        f"/service/{service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -892,7 +892,7 @@ def test_update_permissions_will_override_permission_flags(client, service_with_
     data = {"permissions": [LETTER_TYPE, INTERNATIONAL_SMS_TYPE]}
 
     resp = client.post(
-        "/service/{}".format(service_with_no_permissions.id),
+        f"/service/{service_with_no_permissions.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -908,7 +908,7 @@ def test_update_service_permissions_will_add_service_permissions(client, sample_
     data = {"permissions": [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]}
 
     resp = client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -936,7 +936,7 @@ def test_add_service_permission_will_add_permission(client, service_with_no_perm
     data = {"permissions": [permission_to_add]}
 
     resp = client.post(
-        "/service/{}".format(service_with_no_permissions.id),
+        f"/service/{service_with_no_permissions.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -954,7 +954,7 @@ def test_update_permissions_with_an_invalid_permission_will_raise_error(client, 
     data = {"permissions": [EMAIL_TYPE, SMS_TYPE, invalid_permission]}
 
     resp = client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -962,7 +962,7 @@ def test_update_permissions_with_an_invalid_permission_will_raise_error(client, 
 
     assert resp.status_code == 400
     assert result["result"] == "error"
-    assert "Invalid Service Permission: '{}'".format(invalid_permission) in result["message"]["permissions"]
+    assert f"Invalid Service Permission: '{invalid_permission}'" in result["message"]["permissions"]
 
 
 def test_update_permissions_with_duplicate_permissions_will_raise_error(client, sample_service):
@@ -971,7 +971,7 @@ def test_update_permissions_with_duplicate_permissions_will_raise_error(client, 
     data = {"permissions": [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, LETTER_TYPE]}
 
     resp = client.post(
-        "/service/{}".format(sample_service.id),
+        f"/service/{sample_service.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -979,7 +979,7 @@ def test_update_permissions_with_duplicate_permissions_will_raise_error(client, 
 
     assert resp.status_code == 400
     assert result["result"] == "error"
-    assert "Duplicate Service Permission: ['{}']".format(LETTER_TYPE) in result["message"]["permissions"]
+    assert f"Duplicate Service Permission: ['{LETTER_TYPE}']" in result["message"]["permissions"]
 
 
 def test_should_not_update_service_with_duplicate_name(notify_api, notify_db_session, sample_user, sample_service):
@@ -992,14 +992,14 @@ def test_should_not_update_service_with_duplicate_name(notify_api, notify_db_ses
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}".format(sample_service.id),
+                f"/service/{sample_service.id}",
                 data=json.dumps(data),
                 headers=[("Content-Type", "application/json"), auth_header],
             )
             assert resp.status_code == 400
             json_resp = resp.json
             assert json_resp["result"] == "error"
-            assert "Duplicate service name '{}'".format(service_name) in json_resp["message"]["name"]
+            assert f"Duplicate service name '{service_name}'" in json_resp["message"]["name"]
 
 
 def test_should_not_update_service_with_duplicate_normalised_service_name(
@@ -1015,7 +1015,7 @@ def test_should_not_update_service_with_duplicate_normalised_service_name(
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}".format(sample_service.id),
+                f"/service/{sample_service.id}",
                 data=json.dumps(data),
                 headers=[("Content-Type", "application/json"), auth_header],
             )
@@ -1035,7 +1035,7 @@ def test_update_service_should_404_if_id_is_invalid(notify_api):
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}".format(missing_service_id),
+                f"/service/{missing_service_id}",
                 data=json.dumps(data),
                 headers=[("Content-Type", "application/json"), auth_header],
             )
@@ -1049,7 +1049,7 @@ def test_get_users_by_service(notify_api, sample_service):
             auth_header = create_admin_authorization_header()
 
             resp = client.get(
-                "/service/{}/users".format(sample_service.id),
+                f"/service/{sample_service.id}/users",
                 headers=[("Content-Type", "application/json"), auth_header],
             )
 
@@ -1068,7 +1068,7 @@ def test_get_users_for_service_returns_empty_list_if_no_users_associated_with_se
             auth_header = create_admin_authorization_header()
 
             response = client.get(
-                "/service/{}/users".format(sample_service.id),
+                f"/service/{sample_service.id}/users",
                 headers=[("Content-Type", "application/json"), auth_header],
             )
             result = json.loads(response.get_data(as_text=True))
@@ -1083,7 +1083,7 @@ def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_ap
             auth_header = create_admin_authorization_header()
 
             response = client.get(
-                "/service/{}/users".format(service_id), headers=[("Content-Type", "application/json"), auth_header]
+                f"/service/{service_id}/users", headers=[("Content-Type", "application/json"), auth_header]
             )
             assert response.status_code == 404
             result = json.loads(response.get_data(as_text=True))
@@ -1138,7 +1138,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(
             auth_header = create_admin_authorization_header()
 
             resp = client.get(
-                "/service/{}/users".format(sample_service.id),
+                f"/service/{sample_service.id}/users",
                 headers=[("Content-Type", "application/json"), auth_header],
             )
 
@@ -1174,7 +1174,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}/users/{}".format(sample_service.id, user_to_add.id),
+                f"/service/{sample_service.id}/users/{user_to_add.id}",
                 headers=[("Content-Type", "application/json"), auth_header],
                 data=json.dumps(data),
             )
@@ -1185,7 +1185,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(
             auth_header = create_admin_authorization_header()
 
             resp = client.get(
-                "/service/{}".format(sample_service.id),
+                f"/service/{sample_service.id}",
                 headers=[("Content-Type", "application/json"), auth_header],
             )
             assert resp.status_code == 200
@@ -1240,7 +1240,7 @@ def test_add_existing_user_to_another_service_with_send_permissions(
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}/users/{}".format(sample_service.id, user_to_add.id),
+                f"/service/{sample_service.id}/users/{user_to_add.id}",
                 headers=[("Content-Type", "application/json"), auth_header],
                 data=json.dumps(data),
             )
@@ -1287,7 +1287,7 @@ def test_add_existing_user_to_another_service_with_manage_permissions(
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}/users/{}".format(sample_service.id, user_to_add.id),
+                f"/service/{sample_service.id}/users/{user_to_add.id}",
                 headers=[("Content-Type", "application/json"), auth_header],
                 data=json.dumps(data),
             )
@@ -1334,7 +1334,7 @@ def test_add_existing_user_to_another_service_with_folder_permissions(
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}/users/{}".format(sample_service.id, user_to_add.id),
+                f"/service/{sample_service.id}/users/{user_to_add.id}",
                 headers=[("Content-Type", "application/json"), auth_header],
                 data=json.dumps(data),
             )
@@ -1367,7 +1367,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}/users/{}".format(sample_service.id, user_to_add.id),
+                f"/service/{sample_service.id}/users/{user_to_add.id}",
                 headers=[("Content-Type", "application/json"), auth_header],
                 data=json.dumps(data),
             )
@@ -1406,7 +1406,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api, notify
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}/users/{}".format(incorrect_id, user_to_add.id),
+                f"/service/{incorrect_id}/users/{user_to_add.id}",
                 headers=[("Content-Type", "application/json"), auth_header],
                 data=json.dumps(data),
             )
@@ -1428,13 +1428,13 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}/users/{}".format(sample_service.id, existing_user_id),
+                f"/service/{sample_service.id}/users/{existing_user_id}",
                 headers=[("Content-Type", "application/json"), auth_header],
                 data=json.dumps(data),
             )
 
             result = resp.json
-            expected_message = "User id: {} already part of service id: {}".format(existing_user_id, sample_service.id)
+            expected_message = f"User id: {existing_user_id} already part of service id: {sample_service.id}"
 
             assert resp.status_code == 400
             assert result["result"] == "error"
@@ -1450,7 +1450,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db_session, s
             auth_header = create_admin_authorization_header()
 
             resp = client.post(
-                "/service/{}/users/{}".format(sample_service.id, incorrect_id),
+                f"/service/{sample_service.id}/users/{incorrect_id}",
                 headers=[("Content-Type", "application/json"), auth_header],
                 data=json.dumps(data),
             )
@@ -1513,7 +1513,7 @@ def test_get_service_and_api_key_history(notify_api, sample_service, sample_api_
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_admin_authorization_header()
-            response = client.get(path="/service/{}/history".format(sample_service.id), headers=[auth_header])
+            response = client.get(path=f"/service/{sample_service.id}/history", headers=[auth_header])
             assert response.status_code == 200
 
             json_resp = json.loads(response.get_data(as_text=True))
@@ -1537,7 +1537,7 @@ def test_get_all_notifications_for_service_in_order(client, notify_db_session):
 
     auth_header = create_admin_authorization_header()
 
-    response = client.get(path="/service/{}/notifications".format(service_1.id), headers=[auth_header])
+    response = client.get(path=f"/service/{service_1.id}/notifications", headers=[auth_header])
 
     resp = json.loads(response.get_data(as_text=True))
     assert len(resp["notifications"]) == 3
@@ -1612,7 +1612,7 @@ def test_get_all_notifications_for_service_formatted_for_csv(client, sample_temp
     auth_header = create_admin_authorization_header()
 
     response = client.get(
-        path="/service/{}/notifications?format_for_csv=True".format(sample_template.service_id), headers=[auth_header]
+        path=f"/service/{sample_template.service_id}/notifications?format_for_csv=True", headers=[auth_header]
     )
 
     resp = json.loads(response.get_data(as_text=True))
@@ -1650,7 +1650,7 @@ def test_get_notification_for_service(client, notify_db_session):
 
     for notification in service_1_notifications:
         response = client.get(
-            path="/service/{}/notifications/{}".format(service_1.id, notification.id),
+            path=f"/service/{service_1.id}/notifications/{notification.id}",
             headers=[create_admin_authorization_header()],
         )
         resp = json.loads(response.get_data(as_text=True))
@@ -1658,7 +1658,7 @@ def test_get_notification_for_service(client, notify_db_session):
         assert response.status_code == 200
 
         service_2_response = client.get(
-            path="/service/{}/notifications/{}".format(service_2.id, notification.id),
+            path=f"/service/{service_2.id}/notifications/{notification.id}",
             headers=[create_admin_authorization_header()],
         )
         assert service_2_response.status_code == 404
@@ -1713,7 +1713,7 @@ def test_get_all_notifications_for_service_including_ones_made_by_jobs(
     auth_header = create_admin_authorization_header()
 
     response = client.get(
-        path="/service/{}/notifications?include_from_test_key={}".format(sample_service.id, include_from_test_key),
+        path=f"/service/{sample_service.id}/notifications?include_from_test_key={include_from_test_key}",
         headers=[auth_header],
     )
 
@@ -1863,7 +1863,7 @@ def test_get_detailed_service(sample_template, client, sample_service, today_onl
     with freeze_time("2000-01-02T12:00:00"):
         create_notification(template=sample_template, status="created")
         resp = client.get(
-            "/service/{}?detailed=True&today_only={}".format(sample_service.id, today_only),
+            f"/service/{sample_service.id}?detailed=True&today_only={today_only}",
             headers=[create_admin_authorization_header()],
         )
 
@@ -2180,7 +2180,7 @@ def test_update_service_calls_send_notification_as_service_becomes_live(notify_d
 
     auth_header = create_admin_authorization_header()
     resp = client.post(
-        "service/{}".format(restricted_service.id),
+        f"service/{restricted_service.id}",
         data=json.dumps(data),
         headers=[auth_header],
         content_type="application/json",
@@ -2207,7 +2207,7 @@ def test_update_service_does_not_call_send_notification_for_live_service(sample_
 
     auth_header = create_admin_authorization_header()
     resp = client.post(
-        "service/{}".format(sample_service.id),
+        f"service/{sample_service.id}",
         data=json.dumps(data),
         headers=[auth_header],
         content_type="application/json",
@@ -2224,7 +2224,7 @@ def test_update_service_does_not_call_send_notification_when_restricted_not_chan
 
     auth_header = create_admin_authorization_header()
     resp = client.post(
-        "service/{}".format(sample_service.id),
+        f"service/{sample_service.id}",
         data=json.dumps(data),
         headers=[auth_header],
         content_type="application/json",
@@ -2493,7 +2493,7 @@ def test_search_for_notification_by_to_field_returns_notifications_by_type(
 
 def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses(client, sample_service):
     response = client.get(
-        "/service/{}/email-reply-to".format(sample_service.id), headers=[create_admin_authorization_header()]
+        f"/service/{sample_service.id}/email-reply-to", headers=[create_admin_authorization_header()]
     )
 
     assert json.loads(response.get_data(as_text=True)) == []
@@ -2505,7 +2505,7 @@ def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db_s
     create_reply_to_email(service, "test@mail.com")
 
     response = client.get(
-        "/service/{}/email-reply-to".format(service.id), headers=[create_admin_authorization_header()]
+        f"/service/{service.id}/email-reply-to", headers=[create_admin_authorization_header()]
     )
     json_response = json.loads(response.get_data(as_text=True))
 
@@ -2523,7 +2523,7 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
     reply_to_b = create_reply_to_email(service, "test_b@mail.com", False)
 
     response = client.get(
-        "/service/{}/email-reply-to".format(service.id), headers=[create_admin_authorization_header()]
+        f"/service/{service.id}/email-reply-to", headers=[create_admin_authorization_header()]
     )
     json_response = json.loads(response.get_data(as_text=True))
 
@@ -2706,7 +2706,7 @@ def test_get_email_reply_to_address(client, notify_db_session):
     reply_to = create_reply_to_email(service, "test_a@mail.com")
 
     response = client.get(
-        "/service/{}/email-reply-to/{}".format(service.id, reply_to.id),
+        f"/service/{service.id}/email-reply-to/{reply_to.id}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
 
@@ -2716,7 +2716,7 @@ def test_get_email_reply_to_address(client, notify_db_session):
 
 def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_service):
     response = client.get(
-        "/service/{}/letter-contact".format(sample_service.id), headers=[create_admin_authorization_header()]
+        f"/service/{sample_service.id}/letter-contact", headers=[create_admin_authorization_header()]
     )
 
     assert json.loads(response.get_data(as_text=True)) == []
@@ -2728,7 +2728,7 @@ def test_get_letter_contacts_with_one_letter_contact(client, notify_db_session):
     create_letter_contact(service, "Aberdeen, AB23 1XH")
 
     response = client.get(
-        "/service/{}/letter-contact".format(service.id), headers=[create_admin_authorization_header()]
+        f"/service/{service.id}/letter-contact", headers=[create_admin_authorization_header()]
     )
     json_response = json.loads(response.get_data(as_text=True))
 
@@ -2746,7 +2746,7 @@ def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db_ses
     letter_contact_b = create_letter_contact(service, "London, E1 8QS", False)
 
     response = client.get(
-        "/service/{}/letter-contact".format(service.id), headers=[create_admin_authorization_header()]
+        f"/service/{service.id}/letter-contact", headers=[create_admin_authorization_header()]
     )
     json_response = json.loads(response.get_data(as_text=True))
 
@@ -2773,7 +2773,7 @@ def test_get_letter_contact_by_id(client, notify_db_session):
     letter_contact = create_letter_contact(service, "London, E1 8QS")
 
     response = client.get(
-        "/service/{}/letter-contact/{}".format(service.id, letter_contact.id),
+        f"/service/{service.id}/letter-contact/{letter_contact.id}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
 
@@ -2795,7 +2795,7 @@ def test_get_letter_contact_return_404_when_invalid_contact_id(client, notify_db
 def test_add_service_contact_block(client, sample_service):
     data = json.dumps({"contact_block": "London, E1 8QS", "is_default": True})
     response = client.post(
-        "/service/{}/letter-contact".format(sample_service.id),
+        f"/service/{sample_service.id}/letter-contact",
         data=data,
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2810,14 +2810,14 @@ def test_add_service_contact_block(client, sample_service):
 def test_add_service_letter_contact_can_add_multiple_addresses(client, sample_service):
     first = json.dumps({"contact_block": "London, E1 8QS", "is_default": True})
     client.post(
-        "/service/{}/letter-contact".format(sample_service.id),
+        f"/service/{sample_service.id}/letter-contact",
         data=first,
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
 
     second = json.dumps({"contact_block": "Aberdeen, AB23 1XH", "is_default": True})
     response = client.post(
-        "/service/{}/letter-contact".format(sample_service.id),
+        f"/service/{sample_service.id}/letter-contact",
         data=second,
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2834,7 +2834,7 @@ def test_add_service_letter_contact_can_add_multiple_addresses(client, sample_se
 def test_add_service_letter_contact_block_fine_if_no_default(client, sample_service):
     data = json.dumps({"contact_block": "London, E1 8QS", "is_default": False})
     response = client.post(
-        "/service/{}/letter-contact".format(sample_service.id),
+        f"/service/{sample_service.id}/letter-contact",
         data=data,
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2843,7 +2843,7 @@ def test_add_service_letter_contact_block_fine_if_no_default(client, sample_serv
 
 def test_add_service_letter_contact_block_404s_when_invalid_service_id(client, notify_db_session):
     response = client.post(
-        "/service/{}/letter-contact".format(uuid.uuid4()),
+        f"/service/{uuid.uuid4()}/letter-contact",
         data={},
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2858,7 +2858,7 @@ def test_update_service_letter_contact(client, sample_service):
     original_letter_contact = create_letter_contact(service=sample_service, contact_block="Aberdeen, AB23 1XH")
     data = json.dumps({"contact_block": "London, E1 8QS", "is_default": True})
     response = client.post(
-        "/service/{}/letter-contact/{}".format(sample_service.id, original_letter_contact.id),
+        f"/service/{sample_service.id}/letter-contact/{original_letter_contact.id}",
         data=data,
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2874,7 +2874,7 @@ def test_update_service_letter_contact_returns_200_when_no_default(client, sampl
     original_reply_to = create_letter_contact(service=sample_service, contact_block="Aberdeen, AB23 1XH")
     data = json.dumps({"contact_block": "London, E1 8QS", "is_default": False})
     response = client.post(
-        "/service/{}/letter-contact/{}".format(sample_service.id, original_reply_to.id),
+        f"/service/{sample_service.id}/letter-contact/{original_reply_to.id}",
         data=data,
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2883,7 +2883,7 @@ def test_update_service_letter_contact_returns_200_when_no_default(client, sampl
 
 def test_update_service_letter_contact_returns_404_when_invalid_service_id(client, notify_db_session):
     response = client.post(
-        "/service/{}/letter-contact/{}".format(uuid.uuid4(), uuid.uuid4()),
+        f"/service/{uuid.uuid4()}/letter-contact/{uuid.uuid4()}",
         data={},
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2930,7 +2930,7 @@ def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_sessi
         "is_default": False,
     }
     response = client.post(
-        "/service/{}/sms-sender".format(service.id),
+        f"/service/{service.id}/sms-sender",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2949,7 +2949,7 @@ def test_add_service_sms_sender_switches_default(client, notify_db_session):
         "is_default": True,
     }
     response = client.post(
-        "/service/{}/sms-sender".format(service.id),
+        f"/service/{service.id}/sms-sender",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2965,7 +2965,7 @@ def test_add_service_sms_sender_switches_default(client, notify_db_session):
 def test_add_service_sms_sender_return_404_when_service_does_not_exist(client):
     data = {"sms_sender": "12345", "is_default": False}
     response = client.post(
-        "/service/{}/sms-sender".format(uuid.uuid4()),
+        f"/service/{uuid.uuid4()}/sms-sender",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -2983,7 +2983,7 @@ def test_update_service_sms_sender(client, notify_db_session):
         "is_default": False,
     }
     response = client.post(
-        "/service/{}/sms-sender/{}".format(service.id, service_sms_sender.id),
+        f"/service/{service.id}/sms-sender/{service_sms_sender.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -3002,7 +3002,7 @@ def test_update_service_sms_sender_switches_default(client, notify_db_session):
         "is_default": True,
     }
     response = client.post(
-        "/service/{}/sms-sender/{}".format(service.id, service_sms_sender.id),
+        f"/service/{service.id}/sms-sender/{service_sms_sender.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -3023,7 +3023,7 @@ def test_update_service_sms_sender_does_not_allow_sender_update_for_inbound_numb
     )
     data = {"sms_sender": "second", "is_default": True, "inbound_number_id": str(inbound_number.id)}
     response = client.post(
-        "/service/{}/sms-sender/{}".format(service.id, service_sms_sender.id),
+        f"/service/{service.id}/sms-sender/{service_sms_sender.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -3033,7 +3033,7 @@ def test_update_service_sms_sender_does_not_allow_sender_update_for_inbound_numb
 def test_update_service_sms_sender_return_404_when_service_does_not_exist(client):
     data = {"sms_sender": "12345", "is_default": False}
     response = client.post(
-        "/service/{}/sms-sender/{}".format(uuid.uuid4(), uuid.uuid4()),
+        f"/service/{uuid.uuid4()}/sms-sender/{uuid.uuid4()}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
@@ -3073,7 +3073,7 @@ def test_delete_service_sms_sender_returns_400_if_archiving_inbound_number(admin
 def test_get_service_sms_sender_by_id(client, notify_db_session):
     service_sms_sender = create_service_sms_sender(service=create_service(), sms_sender="1235", is_default=False)
     response = client.get(
-        "/service/{}/sms-sender/{}".format(service_sms_sender.service_id, service_sms_sender.id),
+        f"/service/{service_sms_sender.service_id}/sms-sender/{service_sms_sender.id}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
     assert response.status_code == 200
@@ -3083,7 +3083,7 @@ def test_get_service_sms_sender_by_id(client, notify_db_session):
 def test_get_service_sms_sender_by_id_returns_404_when_service_does_not_exist(client, notify_db_session):
     service_sms_sender = create_service_sms_sender(service=create_service(), sms_sender="1235", is_default=False)
     response = client.get(
-        "/service/{}/sms-sender/{}".format(uuid.uuid4(), service_sms_sender.id),
+        f"/service/{uuid.uuid4()}/sms-sender/{service_sms_sender.id}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
     assert response.status_code == 404
@@ -3092,7 +3092,7 @@ def test_get_service_sms_sender_by_id_returns_404_when_service_does_not_exist(cl
 def test_get_service_sms_sender_by_id_returns_404_when_sms_sender_does_not_exist(client, notify_db_session):
     service = create_service()
     response = client.get(
-        "/service/{}/sms-sender/{}".format(service.id, uuid.uuid4()),
+        f"/service/{service.id}/sms-sender/{uuid.uuid4()}",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
     assert response.status_code == 404
@@ -3101,7 +3101,7 @@ def test_get_service_sms_sender_by_id_returns_404_when_sms_sender_does_not_exist
 def test_get_service_sms_senders_for_service(client, notify_db_session):
     service_sms_sender = create_service_sms_sender(service=create_service(), sms_sender="second", is_default=False)
     response = client.get(
-        "/service/{}/sms-sender".format(service_sms_sender.service_id),
+        f"/service/{service_sms_sender.service_id}/sms-sender",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
     assert response.status_code == 200
@@ -3115,7 +3115,7 @@ def test_get_service_sms_senders_for_service(client, notify_db_session):
 
 def test_get_service_sms_senders_for_service_returns_empty_list_when_service_does_not_exist(client):
     response = client.get(
-        "/service/{}/sms-sender".format(uuid.uuid4()),
+        f"/service/{uuid.uuid4()}/sms-sender",
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
     assert response.status_code == 200

@@ -230,7 +230,7 @@ def test_check_billable_units_when_billable_units_does_not_match_page_count(
         check_billable_units(notification_update)
 
     assert (
-        "Notification with id {} has 3 billable_units but DVLA says page count is 1".format(notification.id)
+        f"Notification with id {notification.id} has 3 billable_units but DVLA says page count is 1"
         in caplog.messages
     )
 
@@ -239,7 +239,7 @@ def test_check_billable_units_when_billable_units_does_not_match_page_count(
     "filename_date, billing_date", [("20170820230000", date(2017, 8, 21)), ("20170120230000", date(2017, 1, 20))]
 )
 def test_get_billing_date_in_bst_from_filename(filename_date, billing_date):
-    filename = "NOTIFY-{}-RSP.TXT".format(filename_date)
+    filename = f"NOTIFY-{filename_date}-RSP.TXT"
     result = get_billing_date_in_bst_from_filename(filename)
 
     assert result == billing_date
@@ -247,7 +247,7 @@ def test_get_billing_date_in_bst_from_filename(filename_date, billing_date):
 
 @freeze_time("2018-01-11 09:00:00")
 def test_persist_daily_sorted_letter_counts_saves_sorted_and_unsorted_values(client, notify_db_session):
-    letter_counts = defaultdict(int, **{"unsorted": 5, "sorted": 1})
+    letter_counts = defaultdict(int, unsorted=5, sorted=1)
     persist_daily_sorted_letter_counts(date.today(), "test.txt", letter_counts)
     day = dao_get_daily_sorted_letter_by_billing_day(date.today())
 
@@ -285,7 +285,7 @@ def test_record_daily_sorted_counts_raises_dvla_exception_with_unknown_sorted_st
     with pytest.raises(DVLAException) as e:
         record_daily_sorted_counts(filename=filename)
 
-    assert "DVLA response file: {} contains unknown Sorted status".format(filename) in e.value.message
+    assert f"DVLA response file: {filename} contains unknown Sorted status" in e.value.message
     assert "'mm'" in e.value.message
     assert "'invalid'" in e.value.message
 

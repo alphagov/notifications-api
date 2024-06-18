@@ -56,7 +56,7 @@ def test_get_notifications_request_invalid_statuses(invalid_statuses, valid_stat
     errors = json.loads(str(e.value)).get("errors")
     assert len(errors) == len(invalid_statuses)
     for index, value in enumerate(invalid_statuses):
-        assert errors[index]["message"] == "status {} {}".format(value, partial_error_status)
+        assert errors[index]["message"] == f"status {value} {partial_error_status}"
 
 
 @pytest.mark.parametrize(
@@ -79,7 +79,7 @@ def test_get_notifications_request_invalid_template_types(invalid_template_types
     errors = json.loads(str(e.value)).get("errors")
     assert len(errors) == len(invalid_template_types)
     for index, value in enumerate(invalid_template_types):
-        assert errors[index]["message"] == "template_type {} {}".format(value, partial_error_template_type)
+        assert errors[index]["message"] == f"template_type {value} {partial_error_template_type}"
 
 
 def test_get_notifications_request_invalid_statuses_and_template_types():
@@ -96,16 +96,14 @@ def test_get_notifications_request_invalid_statuses_and_template_types():
     error_messages = [error["message"] for error in errors]
     for invalid_status in ["elephant", "giraffe"]:
         assert (
-            "status {} is not one of [cancelled, created, sending, sent, delivered, "
+            f"status {invalid_status} is not one of [cancelled, created, sending, sent, delivered, "
             "pending, failed, technical-failure, temporary-failure, permanent-failure, "
-            "pending-virus-check, validation-failed, virus-scan-failed, returned-letter, accepted, received]".format(
-                invalid_status
-            )
+            "pending-virus-check, validation-failed, virus-scan-failed, returned-letter, accepted, received]"
             in error_messages
         )
 
     for invalid_template_type in ["orange", "avocado"]:
-        assert "template_type {} is not one of [sms, email, letter]".format(invalid_template_type) in error_messages
+        assert f"template_type {invalid_template_type} is not one of [sms, email, letter]" in error_messages
 
 
 valid_json = {"phone_number": "07515111111", "template_id": str(uuid.uuid4())}

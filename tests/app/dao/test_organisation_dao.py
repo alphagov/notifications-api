@@ -472,7 +472,7 @@ def test_get_organisation_by_email_address(domain, expected_org, notify_db_sessi
     create_domain("cabinet-office.gov.uk", another_org.id)
     create_domain("cabinetoffice.gov.uk", another_org.id)
 
-    found_org = dao_get_organisation_by_email_address("test@{}".format(domain))
+    found_org = dao_get_organisation_by_email_address(f"test@{domain}")
 
     if expected_org:
         assert found_org is org

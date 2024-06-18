@@ -27,7 +27,7 @@ def create_nightly_billing(day_start=None):
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
         day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
-    for i in range(0, 10):
+    for i in range(10):
         process_day = (day_start - timedelta(days=i)).isoformat()
 
         create_or_update_ft_billing_for_day.apply_async(kwargs={"process_day": process_day}, queue=QueueNames.REPORTING)

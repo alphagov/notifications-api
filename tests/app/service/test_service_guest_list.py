@@ -30,7 +30,7 @@ def test_get_guest_list_separates_emails_and_phones(client, sample_service):
     )
 
     response = client.get(
-        "service/{}/guest-list".format(sample_service.id), headers=[create_admin_authorization_header()]
+        f"service/{sample_service.id}/guest-list", headers=[create_admin_authorization_header()]
     )
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
@@ -39,7 +39,7 @@ def test_get_guest_list_separates_emails_and_phones(client, sample_service):
 
 
 def test_get_guest_list_404s_with_unknown_service_id(client):
-    path = "service/{}/guest-list".format(uuid.uuid4())
+    path = f"service/{uuid.uuid4()}/guest-list"
 
     response = client.get(path, headers=[create_admin_authorization_header()])
     assert response.status_code == 404
@@ -49,7 +49,7 @@ def test_get_guest_list_404s_with_unknown_service_id(client):
 
 
 def test_get_guest_list_returns_no_data(client, sample_service):
-    path = "service/{}/guest-list".format(sample_service.id)
+    path = f"service/{sample_service.id}/guest-list"
 
     response = client.get(path, headers=[create_admin_authorization_header()])
 
@@ -77,7 +77,7 @@ def test_update_guest_list_doesnt_remove_old_guest_list_if_error(client, sample_
     data = {"email_addresses": [""], "phone_numbers": ["07123456789"]}
 
     response = client.put(
-        "service/{}/guest-list".format(sample_service_guest_list.service_id),
+        f"service/{sample_service_guest_list.service_id}/guest-list",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
