@@ -2637,3 +2637,9 @@ class UnsubscribeRequestHistory(db.Model):
     created_at = db.Column(db.DateTime, nullable=False)
     processed_at = db.Column(db.DateTime)
     unsubscribe_request_report_id = db.Column(UUID(as_uuid=True), index=True, nullable=True)
+
+
+class ProtectedSenderId(db.Model):
+    __tablename__ = "protected_sender_ids"
+
+    sender_id = db.Column(db.String, primary_key=True, nullable=False)

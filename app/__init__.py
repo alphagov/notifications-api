@@ -159,6 +159,7 @@ def register_blueprint(application):
     from app.performance_dashboard.rest import performance_dashboard_blueprint
     from app.platform_admin.rest import platform_admin_blueprint
     from app.platform_stats.rest import platform_stats_blueprint
+    from app.protected_sender_id.rest import protected_sender_id_blueprint
     from app.provider_details.rest import (
         provider_details as provider_details_blueprint,
     )
@@ -262,6 +263,9 @@ def register_blueprint(application):
 
     platform_stats_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(platform_stats_blueprint, url_prefix="/platform-stats")
+
+    protected_sender_id_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(protected_sender_id_blueprint, url_prefix="/protected-sender-id")
 
     template_folder_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_folder_blueprint)
