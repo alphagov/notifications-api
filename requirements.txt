@@ -35,10 +35,8 @@ botocore==1.34.100
     # via
     #   boto3
     #   s3transfer
-cachetools==5.2.0
-    # via
-    #   -r requirements.in
-    #   notifications-utils
+cachetools==5.3.3
+    # via notifications-utils
 celery[sqs]==5.4.0
     # via
     #   -r requirements.in
@@ -100,12 +98,10 @@ fqdn==1.5.1
     # via jsonschema
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.in
-govuk-bank-holidays==0.11
+govuk-bank-holidays==0.14
     # via notifications-utils
 greenlet==3.0.3
-    # via
-    #   eventlet
-    #   sqlalchemy
+    # via eventlet
 gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via
     #   -r requirements.in
@@ -158,7 +154,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==8.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@78.1.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@79.0.0
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -195,9 +191,9 @@ python-dateutil==2.8.2
     #   arrow
     #   botocore
     #   celery
-python-json-logger==2.0.4
+python-json-logger==2.0.7
     # via notifications-utils
-pytz==2022.4
+pytz==2024.1
     # via notifications-utils
 pyyaml==6.0.1
     # via notifications-utils
@@ -236,7 +232,7 @@ sqlalchemy==1.4.41
     #   flask-sqlalchemy
     #   marshmallow-sqlalchemy
     #   sentry-sdk
-statsd==3.3.0
+statsd==4.0.1
     # via notifications-utils
 tzdata==2024.1
     # via celery
