@@ -11,6 +11,7 @@ from sqlalchemy.orm.session import make_transient
 
 from app import db
 from app.clients.sms.firetext import FiretextClient
+from app.clients.sms.mmg import MMGClient
 from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -553,16 +554,47 @@ def mmg_provider():
     return ProviderDetails.query.filter_by(identifier="mmg").one()
 
 
+def create_mock_firetext_config(mocker, additional_config=None):
+    config = {
+        "FIRETEXT_URL": "https://example.com/firetext",
+        "FIRETEXT_API_KEY": "foo",
+        "FIRETEXT_INTERNATIONAL_API_KEY": "international",
+        "FROM_NUMBER": "bar",
+    }
+    if additional_config:
+        config.update(additional_config)
+    return mocker.Mock(config=config)
+
+
+def create_mock_firetext_client(mocker, mock_config):
+    client = FiretextClient()
+    statsd_client = mocker.Mock()
+    client.init_app(mock_config, statsd_client)
+    return client
+
+
 @pytest.fixture(scope="function")
 def mock_firetext_client(mocker):
-    client = FiretextClient()
+    mock_config = create_mock_firetext_config(mocker)
+    return create_mock_firetext_client(mocker, mock_config)
+
+
+@pytest.fixture(scope="function")
+def mock_firetext_client_with_receipts(mocker):
+    additional_config = {"FIRETEXT_RECEIPT_URL": "https://www.example.com/notifications/sms/firetext"}
+    mock_config = create_mock_firetext_config(mocker, additional_config)
+    return create_mock_firetext_client(mocker, mock_config)
+
+
+@pytest.fixture(scope="function")
+def mock_mmg_client_with_receipts(mocker):
+    client = MMGClient()
     statsd_client = mocker.Mock()
     current_app = mocker.Mock(
         config={
-            "FIRETEXT_URL": "https://example.com/firetext",
-            "FIRETEXT_API_KEY": "foo",
-            "FIRETEXT_INTERNATIONAL_API_KEY": "international",
-            "FROM_NUMBER": "bar",
+            "MMG_URL": "https://example.com/mmg",
+            "MMG_API_KEY": "foo",
+            "MMG_RECEIPT_URL": "https://www.example.com/notifications/sms/mmg",
         }
     )
     client.init_app(current_app, statsd_client)

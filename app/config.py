@@ -98,9 +98,17 @@ class Config(object):
     # MMG API Key
     MMG_API_KEY = os.getenv("MMG_API_KEY")
 
+    # MMG Callback URL for delivery receipts
+    # If this is not set, MMG will send to the URL that they have set up in their system
+    MMG_RECEIPT_URL = os.getenv("MMG_RECEIPT_URL")
+
     # Firetext API Key
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     FIRETEXT_INTERNATIONAL_API_KEY = os.getenv("FIRETEXT_INTERNATIONAL_API_KEY", "placeholder")
+
+    # Firetext Callback URL for delivery receipts
+    # If this is not set, Firetext will send to the URL that is set in the Firetext dashboard
+    FIRETEXT_RECEIPT_URL = os.getenv("FIRETEXT_RECEIPT_URL")
 
     # Prefix to identify queues in SQS
     NOTIFICATION_QUEUE_PREFIX = os.getenv("NOTIFICATION_QUEUE_PREFIX")
