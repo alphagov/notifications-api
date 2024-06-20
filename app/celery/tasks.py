@@ -305,6 +305,7 @@ def save_api_email_or_sms(self, encoded_notification):
             reply_to_text=notification["reply_to_text"],
             status=notification["status"],
             document_download_count=notification["document_download_count"],
+            unsubscribe_link=notification["unsubscribe_link"],
         )
 
         q = QueueNames.SEND_EMAIL if notification["notification_type"] == EMAIL_TYPE else QueueNames.SEND_SMS
