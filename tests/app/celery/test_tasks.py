@@ -1586,6 +1586,7 @@ def test_save_api_email_or_sms(mocker, sample_service, notification_type):
     )
     mock_provider_task = mocker.patch(f"app.celery.provider_tasks.deliver_{notification_type}.apply_async")
     api_key = create_api_key(service=template.service)
+    unsubscribe_link = "https:please-unsubscribe-me.com/unsubscribe"
     data = {
         "id": str(uuid.uuid4()),
         "template_id": str(template.id),
@@ -1603,10 +1604,10 @@ def test_save_api_email_or_sms(mocker, sample_service, notification_type):
     }
 
     if notification_type == EMAIL_TYPE:
-        data.update({"to": "jane.citizen@example.com"})
+        data.update({"to": "jane.citizen@example.com", "unsubscribe_link": unsubscribe_link})
         expected_queue = QueueNames.SEND_EMAIL
     else:
-        data.update({"to": "+447700900855"})
+        data.update({"to": "+447700900855", "unsubscribe_link": None})
         expected_queue = QueueNames.SEND_SMS
 
     encoded = signing.encode(data)
@@ -1621,6 +1622,9 @@ def test_save_api_email_or_sms(mocker, sample_service, notification_type):
     assert str(notifications[0].id) == data["id"]
     assert notifications[0].created_at == datetime(2020, 3, 25, 14, 30)
     assert notifications[0].notification_type == notification_type
+
+    if notification_type == "email":
+        assert notifications[0].unsubscribe_link == unsubscribe_link
     mock_provider_task.assert_called_once_with([data["id"]], queue=expected_queue)
 
 
@@ -1641,6 +1645,7 @@ def test_save_api_email_dont_retry_if_notification_already_exists(sample_service
         "service_id": str(template.service_id),
         "personalisation": None,
         "notification_type": template.template_type,
+        "unsubscribe_link": None,
         "api_key_id": str(api_key.id),
         "key_type": api_key.key_type,
         "client_reference": "our email",
@@ -1780,6 +1785,7 @@ def test_save_api_tasks_use_cache(
                 "client_reference": "our email",
                 "reply_to_text": "our.email@gov.uk",
                 "document_download_count": 0,
+                "unsubscribe_link": None,
                 "status": NOTIFICATION_CREATED,
                 "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
             }
