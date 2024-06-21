@@ -56,8 +56,8 @@ def test_deactivating_service_changes_name_and_email(client, sample_service):
 
     archived_service = dao_fetch_service_by_id(sample_service.id)
 
-    assert archived_service.name == "_archived_2018-07-07_Sample service"
-    assert archived_service.email_sender_local_part == "archived20180707sample.service"
+    assert archived_service.name == "_archived_2018-07-07-12:00:00_Sample service"
+    assert archived_service.email_sender_local_part == "archived20180707120000sample.service"
 
 
 def test_deactivating_service_revokes_api_keys(archived_service):

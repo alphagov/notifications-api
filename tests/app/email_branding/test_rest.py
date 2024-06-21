@@ -472,7 +472,7 @@ def test_archive_email_branding_removes_branding_from_org_pools(admin_request, n
     assert len(dao_get_email_branding_pool_for_organisation(org_2.id)) == 1
 
 
-@freeze_time("2023-01-13")
+@freeze_time("2023-01-13 11:09:16")
 def test_archive_email_branding_archives_branding_and_changes_its_name(admin_request, notify_db_session):
     email_branding_1 = create_email_branding(name="branding 1")
 
@@ -484,4 +484,4 @@ def test_archive_email_branding_archives_branding_and_changes_its_name(admin_req
     )
 
     assert email_branding_1.active is False
-    assert email_branding_1.name == "_archived_2023-01-13_branding 1"
+    assert email_branding_1.name == "_archived_2023-01-13-11:09:16_branding 1"

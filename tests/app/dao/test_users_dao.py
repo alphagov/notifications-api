@@ -237,7 +237,7 @@ def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
     assert sample_user.organisations == []
     assert sample_user.auth_type == EMAIL_AUTH_TYPE
     assert sample_user.name == "Archived user"
-    assert sample_user.email_address == f"_archived_2018-07-07_{sample_user.id}@test.notify.com"
+    assert sample_user.email_address == f"_archived_2018-07-07-12:00:00_{sample_user.id}@test.notify.com"
     assert sample_user.mobile_number is None
     assert sample_user.current_session_id == uuid.UUID("00000000-0000-0000-0000-000000000000")
     assert sample_user.state == "inactive"
