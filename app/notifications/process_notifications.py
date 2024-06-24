@@ -16,7 +16,6 @@ from notifications_utils.template import (
     PlainTextEmailTemplate,
     SMSMessageTemplate,
 )
-from notifications_utils.url_safe_token import generate_token
 
 from app import redis_store
 from app.celery import provider_tasks
@@ -35,6 +34,7 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_by_id,
 )
 from app.models import Notification
+from app.utils import url_with_token
 from app.v2.errors import BadRequestError, QrCodeTooLongError
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
@@ -124,7 +124,10 @@ def persist_notification(
         notification_id = uuid.uuid4()
 
     if template_has_unsubscribe_link and not unsubscribe_link:
-        unsubscribe_link = generate_unsubscribe_link(notification_id, recipient)
+        base_url = current_app.config["API_HOST_NAME"]
+        url = f"/unsubscribe/{str(notification_id)}/"
+        unsubscribe_link = url_with_token(recipient, url=url, base_url=base_url)
+
     notification = Notification(
         id=notification_id,
         template_id=template_id,
@@ -219,9 +222,3 @@ def simulated_recipient(to_address, notification_type):
         return to_address in formatted_simulated_numbers
     else:
         return to_address in current_app.config["SIMULATED_EMAIL_ADDRESSES"]
-
-
-def generate_unsubscribe_link(notification_id: str, email_address: str) -> str:
-    token = generate_token(email_address, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
-    notify_base_url = current_app.config["API_HOST_NAME"]
-    return f"{notify_base_url}/unsubscribe/{notification_id}/{token}"

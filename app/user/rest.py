@@ -559,7 +559,7 @@ def get_organisations_and_services_for_user(user_id):
 def _create_reset_password_url(email, next_redirect, base_url=None):
     data = json.dumps({"email": email, "created_at": str(datetime.utcnow())})
     static_url_part = "/new-password/"
-    full_url = url_with_token(data, static_url_part, current_app.config, base_url=base_url)
+    full_url = url_with_token(data, static_url_part, base_url=base_url)
     if next_redirect:
         full_url += "?{}".format(urlencode({"next": next_redirect}))
     return full_url
@@ -568,19 +568,19 @@ def _create_reset_password_url(email, next_redirect, base_url=None):
 def _create_verification_url(user, base_url):
     data = json.dumps({"user_id": str(user.id), "email": user.email_address})
     url = "/verify-email/"
-    return url_with_token(data, url, current_app.config, base_url=base_url)
+    return url_with_token(data, url, base_url=base_url)
 
 
 def _create_confirmation_url(user, email_address):
     data = json.dumps({"user_id": str(user.id), "email": email_address})
     url = "/user-profile/email/confirm/"
-    return url_with_token(data, url, current_app.config)
+    return url_with_token(data, url)
 
 
 def _create_2fa_url(user, secret_code, next_redirect, email_auth_link_host):
     data = json.dumps({"user_id": str(user.id), "secret_code": secret_code})
     url = "/email-auth/"
-    full_url = url_with_token(data, url, current_app.config, base_url=email_auth_link_host)
+    full_url = url_with_token(data, url, base_url=email_auth_link_host)
     if next_redirect:
         full_url += "?{}".format(urlencode({"next": next_redirect}))
     return full_url
