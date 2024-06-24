@@ -19,6 +19,9 @@ case "$1" in
   migration)
     exec flask db upgrade
     ;;
+  functional-test-fixtures)
+    exec flask command functional-test-fixtures
+    ;;
   api-worker-retry-tasks)
     exec $COMMON_CMD retry-tasks
     ;;

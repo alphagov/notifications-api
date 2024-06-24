@@ -62,6 +62,7 @@ from app.dao.users_dao import (
     delete_user_verify_codes,
     get_user_by_email,
 )
+from app.functional_tests_fixtures import apply_fixtures
 from app.models import (
     Domain,
     EmailBranding,
@@ -767,6 +768,46 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
         dao_create_or_update_annual_billing_for_year(
             service_id=row.id, free_sms_fragment_limit=free_allowance[0], financial_year_start=int(year)
         )
+
+
+@notify_command(name="functional-test-fixtures")
+def functional_test_fixtures():
+    """
+    Apply fixtures for functional tests. Not intended for production use.
+
+    The command will create all the database rows required for the funcitonal tests in an idempotent
+    way and output an environment file the functional tests can use to execute against the environment.
+
+    The environment file can be outputed to a file or uploaded to AWS SSM. The file is intended for local
+    testing and ssm for the pipeline.
+
+    It expects the following config to be set:
+
+        NOTIFY_ENVIRONMENT
+        MMG_INBOUND_SMS_USERNAME
+        MMG_INBOUND_SMS_AUTH
+        SQLALCHEMY_DATABASE_URI
+        REDIS_URL
+        SECRET_KEY
+        INTERNAL_CLIENT_API_KEYS
+        ADMIN_BASE_URL
+        API_HOST_NAME
+        FROM_NUMBER
+
+    and the following environment variables:
+
+        REQUEST_BIN_API_TOKEN - request bin token to be used by functional tests
+
+        FUNCTIONAL_TEST_ENV_FILE - (optional) output file for the environment variables
+
+        SSM_UPLOAD_PATH - (optional) path to upload the environment variables to AWS SSM
+
+    """
+    if current_app.config["REGISTER_FUNCTIONAL_TESTING_BLUEPRINT"]:
+        apply_fixtures()
+    else:
+        print("Functional test fixtures are disabled. Set REGISTER_FUNCTIONAL_TESTING_BLUEPRINT to True in config.")
+        raise SystemExit(1)
 
 
 @click.option("-u", "--user-id", required=True)
