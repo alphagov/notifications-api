@@ -2,17 +2,17 @@ from datetime import datetime
 
 from app.dao.letter_rate_dao import dao_get_letter_rates_for_timestamp
 from app.dao.sms_rate_dao import dao_get_sms_rate_for_timestamp
-from tests.app.db import create_letter_rate, create_sms_rate
+from tests.app.db import create_letter_rate, create_rate
 
 
 def test_dao_get_sms_rate_for_timestamp(notify_db_session):
 
     # create a rate valid from 01.06
-    create_sms_rate(start_date=datetime(2024, 6, 1), value=0.0221, notification_type="sms")
+    create_rate(start_date=datetime(2024, 6, 1), value=0.0221, notification_type="sms")
     # create a rate valid from 02.06
-    expected_rate = create_sms_rate(start_date=datetime(2024, 6, 2), value=0.0227, notification_type="sms")
+    expected_rate = create_rate(start_date=datetime(2024, 6, 2), value=0.0227, notification_type="sms")
     # create a rate valid from 05.06
-    create_sms_rate(start_date=datetime(2024, 6, 5), value=0.03, notification_type="sms")
+    create_rate(start_date=datetime(2024, 6, 5), value=0.03, notification_type="sms")
 
     # look for rate valid on 04.06
     rate = dao_get_sms_rate_for_timestamp(datetime(2024, 6, 4))

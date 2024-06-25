@@ -32,9 +32,9 @@ from tests.app.db import (
     create_letter_rate,
     create_notification,
     create_notification_history,
+    create_rate,
     create_service,
     create_service_data_retention,
-    create_sms_rate,
     create_template,
     set_up_usage_data,
 )
@@ -359,9 +359,9 @@ def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session
 
 
 def test_get_rates_for_billing(notify_db_session):
-    create_sms_rate(start_date=datetime.utcnow(), value=12, notification_type="email")
-    create_sms_rate(start_date=datetime.utcnow(), value=22, notification_type="sms")
-    create_sms_rate(start_date=datetime.utcnow(), value=33, notification_type="email")
+    create_rate(start_date=datetime.utcnow(), value=12, notification_type="email")
+    create_rate(start_date=datetime.utcnow(), value=22, notification_type="sms")
+    create_rate(start_date=datetime.utcnow(), value=33, notification_type="email")
     create_letter_rate(start_date=datetime.utcnow(), rate=0.66, post_class="first")
     create_letter_rate(start_date=datetime.utcnow(), rate=0.33, post_class="second")
     create_letter_rate(start_date=datetime.utcnow(), rate=0.84, post_class="europe")
@@ -374,9 +374,9 @@ def test_get_rates_for_billing(notify_db_session):
 
 @freeze_time("2017-06-01 12:00")
 def test_get_rate(notify_db_session):
-    create_sms_rate(start_date=datetime(2017, 5, 30, 23, 0), value=1.2, notification_type="email")
-    create_sms_rate(start_date=datetime(2017, 5, 30, 23, 0), value=2.2, notification_type="sms")
-    create_sms_rate(start_date=datetime(2017, 5, 30, 23, 0), value=3.3, notification_type="email")
+    create_rate(start_date=datetime(2017, 5, 30, 23, 0), value=1.2, notification_type="email")
+    create_rate(start_date=datetime(2017, 5, 30, 23, 0), value=2.2, notification_type="sms")
+    create_rate(start_date=datetime(2017, 5, 30, 23, 0), value=3.3, notification_type="email")
     create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), rate=0.66, post_class="first")
     create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), rate=0.3, post_class="second")
 
@@ -531,7 +531,7 @@ def test_fetch_usage_for_service_by_month_populates_ft_billing_for_today(notify_
     service = create_service()
     template = create_template(service=service, template_type="sms")
 
-    create_sms_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.158, notification_type="sms")
+    create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.158, notification_type="sms")
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=1000, financial_year_start=2018)
 
     for i in range(1, 32):
