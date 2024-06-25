@@ -164,6 +164,6 @@ RUN \
     && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash \
     && source ~/.nvm/nvm.sh \
     && nvm install $NODE_VERSION \
-    && npm install -g squawk-cli
+    && npm install -g squawk-cli@1.1.0
 
 ENV PATH=/root/.nvm/versions/node/v${NODE_VERSION}/bin:$PATH
