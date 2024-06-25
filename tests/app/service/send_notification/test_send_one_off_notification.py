@@ -85,6 +85,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(persist_mock,
         reference=None,
         postage=None,
         client_reference=None,
+        template_has_unsubscribe_link=False,
     )
 
 
@@ -141,6 +142,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(persist_moc
         reference=None,
         postage=None,
         client_reference=None,
+        template_has_unsubscribe_link=False,
     )
 
 
@@ -188,6 +190,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         reference="this-is-random-in-real-life",
         postage="first",
         client_reference=None,
+        template_has_unsubscribe_link=False,
     )
 
 

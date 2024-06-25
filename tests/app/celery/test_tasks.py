@@ -1614,7 +1614,7 @@ def test_save_api_email_or_sms(mocker, sample_service, notification_type):
 
     assert len(Notification.query.all()) == 0
     if notification_type == EMAIL_TYPE:
-        save_api_email(encoded_notification=encoded)
+        save_api_email(encoded_notification=encoded, template_has_unsubscribe_link=False)
     else:
         save_api_sms(encoded_notification=encoded)
     notifications = Notification.query.all()
@@ -1666,14 +1666,14 @@ def test_save_api_email_dont_retry_if_notification_already_exists(sample_service
     assert len(Notification.query.all()) == 0
 
     if notification_type == EMAIL_TYPE:
-        save_api_email(encoded_notification=encoded)
+        save_api_email(encoded_notification=encoded, template_has_unsubscribe_link=False)
     else:
         save_api_sms(encoded_notification=encoded)
     notifications = Notification.query.all()
     assert len(notifications) == 1
     # call the task again with the same notification
     if notification_type == EMAIL_TYPE:
-        save_api_email(encoded_notification=encoded)
+        save_api_email(encoded_notification=encoded, template_has_unsubscribe_link=False)
     else:
         save_api_sms(encoded_notification=encoded)
     notifications = Notification.query.all()
@@ -1794,7 +1794,7 @@ def test_save_api_tasks_use_cache(
     assert len(Notification.query.all()) == 0
 
     for _ in range(3):
-        task_function(encoded_notification=create_encoded_notification())
+        task_function(encoded_notification=create_encoded_notification(), template_has_unsubscribe_link=False)
 
     assert service_dict_mock.call_args_list == [call(str(template.service_id))]
 

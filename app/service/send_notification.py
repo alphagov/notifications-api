@@ -92,6 +92,7 @@ def send_one_off_notification(service_id, post_data):
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
+        template_has_unsubscribe_link=template.has_unsubscribe_link,
         recipient=post_data["to"],
         service=service,
         personalisation=personalisation,

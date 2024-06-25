@@ -249,6 +249,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         saved_notification = persist_notification(
             template_id=notification["template"],
             template_version=notification["template_version"],
+            template_has_unsubscribe_link=template.has_unsubscribe_link,
             recipient=notification["to"],
             service=service,
             personalisation=notification.get("personalisation"),
@@ -274,26 +275,28 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
 
 
 @notify_celery.task(bind=True, name="save-api-email", max_retries=5, default_retry_delay=300)
-def save_api_email(self, encoded_notification):
-    save_api_email_or_sms(self, encoded_notification)
+def save_api_email(self, encoded_notification, template_has_unsubscribe_link):
+    save_api_email_or_sms(self, encoded_notification, template_has_unsubscribe_link)
 
 
 @notify_celery.task(bind=True, name="save-api-sms", max_retries=5, default_retry_delay=300)
-def save_api_sms(self, encoded_notification):
-    save_api_email_or_sms(self, encoded_notification)
+def save_api_sms(self, encoded_notification, template_has_unsubscribe_link=False):
+    save_api_email_or_sms(self, encoded_notification, template_has_unsubscribe_link)
 
 
-def save_api_email_or_sms(self, encoded_notification):
+def save_api_email_or_sms(self, encoded_notification, template_has_unsubscribe_link):
     notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(notification["service_id"])
     provider_task = (
         provider_tasks.deliver_email if notification["notification_type"] == EMAIL_TYPE else provider_tasks.deliver_sms
     )
+
     try:
         persist_notification(
             notification_id=notification["id"],
             template_id=notification["template_id"],
             template_version=notification["template_version"],
+            template_has_unsubscribe_link=template_has_unsubscribe_link,
             recipient=notification["to"],
             service=service,
             personalisation=notification.get("personalisation"),

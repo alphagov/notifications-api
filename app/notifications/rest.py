@@ -102,6 +102,7 @@ def send_notification(notification_type):
     notification_model = persist_notification(
         template_id=template.id,
         template_version=template.version,
+        template_has_unsubscribe_link=template.has_unsubscribe_link,
         postage=template.postage,
         recipient=request.get_json()["to"],
         service=authenticated_service,
