@@ -36,10 +36,10 @@ def test_get_notification_by_id_returns_200(api_client_request, billable_units, 
     }
 
     expected_response = {
-        "id": "{}".format(sample_notification.id),
+        "id": f"{sample_notification.id}",
         "reference": None,
         "email_address": None,
-        "phone_number": "{}".format(sample_notification.to),
+        "phone_number": f"{sample_notification.to}",
         "line_1": None,
         "line_2": None,
         "line_3": None,
@@ -47,8 +47,8 @@ def test_get_notification_by_id_returns_200(api_client_request, billable_units, 
         "line_5": None,
         "line_6": None,
         "postcode": None,
-        "type": "{}".format(sample_notification.notification_type),
-        "status": "{}".format(sample_notification.status),
+        "type": f"{sample_notification.notification_type}",
+        "status": f"{sample_notification.status}",
         "template": expected_template_response,
         "created_at": sample_notification.created_at.strftime(DATETIME_FORMAT),
         "created_by_name": None,
@@ -84,9 +84,9 @@ def test_get_notification_by_id_with_placeholders_returns_200(
     }
 
     expected_response = {
-        "id": "{}".format(sample_notification.id),
+        "id": f"{sample_notification.id}",
         "reference": None,
-        "email_address": "{}".format(sample_notification.to),
+        "email_address": f"{sample_notification.to}",
         "phone_number": None,
         "line_1": None,
         "line_2": None,
@@ -95,8 +95,8 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         "line_5": None,
         "line_6": None,
         "postcode": None,
-        "type": "{}".format(sample_notification.notification_type),
-        "status": "{}".format(sample_notification.status),
+        "type": f"{sample_notification.notification_type}",
+        "status": f"{sample_notification.status}",
         "template": expected_template_response,
         "created_at": sample_notification.created_at.strftime(DATETIME_FORMAT),
         "created_by_name": None,
@@ -451,7 +451,7 @@ def test_get_all_notifications_filter_by_id(api_client_request, sample_template)
         sample_template.service_id, "v2_notifications.get_notifications", older_than=newer_notification.id
     )
 
-    assert json_response["links"]["current"].endswith("/v2/notifications?older_than={}".format(newer_notification.id))
+    assert json_response["links"]["current"].endswith(f"/v2/notifications?older_than={newer_notification.id}")
     assert "next" in json_response["links"].keys()
     assert len(json_response["notifications"]) == 1
 
@@ -496,7 +496,7 @@ def test_get_all_notifications_filter_by_id_no_notifications_if_last_notificatio
         older_than=notification.id,
     )
 
-    assert json_response["links"]["current"].endswith("/v2/notifications?older_than={}".format(notification.id))
+    assert json_response["links"]["current"].endswith(f"/v2/notifications?older_than={notification.id}")
     assert "next" not in json_response["links"].keys()
     assert len(json_response["notifications"]) == 0
 
@@ -530,7 +530,7 @@ def test_get_all_notifications_filter_multiple_query_parameters(api_client_reque
         "/v2/notifications?",
         "template_type=email",
         "status=pending",
-        "older_than={}".format(newer_notification.id),
+        f"older_than={newer_notification.id}",
     ]:
         assert url_part in json_response["links"]["current"]
 

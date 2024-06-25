@@ -161,7 +161,7 @@ def test_get_most_recent_inbound_sms_for_service(
     admin_request, page_given, sample_service, expected_rows, has_next_link
 ):
     for i in range(60):
-        create_inbound_sms(service=sample_service, user_number="44770090000{}".format(i))
+        create_inbound_sms(service=sample_service, user_number=f"44770090000{i}")
 
     request_args = {"page": 2} if page_given else {}
     response = admin_request.get(
@@ -177,7 +177,7 @@ def test_get_most_recent_inbound_sms_for_service_respects_data_retention(admin_r
     create_service_data_retention(sample_service, "sms", 5)
     for i in range(10):
         created = datetime.utcnow() - timedelta(days=i)
-        create_inbound_sms(sample_service, user_number="44770090000{}".format(i), created_at=created)
+        create_inbound_sms(sample_service, user_number=f"44770090000{i}", created_at=created)
 
     response = admin_request.get("inbound_sms.get_most_recent_inbound_sms_for_service", service_id=sample_service.id)
 
@@ -210,7 +210,7 @@ def test_get_inbound_sms_for_service_respects_data_retention(admin_request, samp
     create_service_data_retention(sample_service, "sms", 5)
     for i in range(10):
         created = datetime.utcnow() - timedelta(days=i)
-        create_inbound_sms(sample_service, user_number="44770090000{}".format(i), created_at=created)
+        create_inbound_sms(sample_service, user_number=f"44770090000{i}", created_at=created)
 
     response = admin_request.get("inbound_sms.get_most_recent_inbound_sms_for_service", service_id=sample_service.id)
 

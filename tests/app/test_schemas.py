@@ -117,7 +117,7 @@ def test_user_update_schema_rejects_disallowed_attribute_keys(user_attribute):
     with pytest.raises(ValidationError) as excinfo:
         user_update_schema_load_json.load(update_dict)
 
-    assert excinfo.value.messages["_schema"][0] == "Unknown field name {}".format(user_attribute)
+    assert excinfo.value.messages["_schema"][0] == f"Unknown field name {user_attribute}"
 
 
 def test_provider_details_schema_returns_user_details(mocker, sample_user, restore_provider_details):

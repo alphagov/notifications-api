@@ -12,7 +12,7 @@ def _cronitor_url(key, command):
         parse.ParseResult(
             scheme="https",
             netloc="cronitor.link",
-            path="{}/{}".format(key, command),
+            path=f"{key}/{command}",
             params="",
             query=parse.urlencode({"host": "http://localhost:6011"}),
             fragment="",

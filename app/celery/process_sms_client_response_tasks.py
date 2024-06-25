@@ -69,7 +69,7 @@ def _process_for_status(notification_status, client_name, provider_reference, de
     if not notification:
         return
 
-    statsd_client.incr("callback.{}.{}".format(client_name.lower(), notification_status))
+    statsd_client.incr(f"callback.{client_name.lower()}.{notification_status}")
 
     if notification.sent_at:
         statsd_client.timing_with_dates(

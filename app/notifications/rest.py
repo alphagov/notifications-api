@@ -70,7 +70,7 @@ def get_all_notifications():
 @notifications.route("/notifications/<string:notification_type>", methods=["POST"])
 def send_notification(notification_type):
     if notification_type not in [SMS_TYPE, EMAIL_TYPE]:
-        msg = "{} notification type is not supported".format(notification_type)
+        msg = f"{notification_type} notification type is not supported"
         msg = msg + ", please use the latest version of the client" if notification_type == LETTER_TYPE else msg
         raise InvalidRequest(msg, 400)
 
@@ -90,7 +90,7 @@ def send_notification(notification_type):
     _service_allowed_to_send_to(notification_form, authenticated_service)
     if not authenticated_service.has_permission(notification_type):
         raise InvalidRequest(
-            {"service": ["Cannot send {}".format(get_public_notify_type_text(notification_type, plural=True))]},
+            {"service": [f"Cannot send {get_public_notify_type_text(notification_type, plural=True)}"]},
             status_code=400,
         )
 
@@ -158,7 +158,7 @@ def create_template_object_for_notification(template, personalisation):
         raise InvalidRequest(errors, status_code=400)
 
     if template_object.template_type == SMS_TYPE and template_object.is_message_too_long():
-        message = "Content has a character count greater than the limit of {}".format(SMS_CHAR_COUNT_LIMIT)
+        message = f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}"
         errors = {"content": [message]}
         raise InvalidRequest(errors, status_code=400)
     return template_object

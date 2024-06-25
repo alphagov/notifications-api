@@ -35,8 +35,8 @@ def test_get_template_by_id_returns_200(
     )
 
     expected_response = {
-        "id": "{}".format(template.id),
-        "type": "{}".format(template.template_type),
+        "id": f"{template.id}",
+        "type": f"{template.template_type}",
         "created_at": template.created_at.strftime(DATETIME_FORMAT),
         "updated_at": None,
         "version": template.version,

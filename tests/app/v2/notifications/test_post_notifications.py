@@ -62,13 +62,11 @@ def test_post_sms_notification_returns_201(api_client_request, sample_template_w
     assert resp_json["reference"] == reference
     assert resp_json["content"]["body"] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
     assert resp_json["content"]["from_number"] == current_app.config["FROM_NUMBER"]
-    assert "v2/notifications/{}".format(notification_id) in resp_json["uri"]
+    assert f"v2/notifications/{notification_id}" in resp_json["uri"]
     assert resp_json["template"]["id"] == str(sample_template_with_placeholders.id)
     assert resp_json["template"]["version"] == sample_template_with_placeholders.version
     assert (
-        "services/{}/templates/{}".format(
-            sample_template_with_placeholders.service_id, sample_template_with_placeholders.id
-        )
+        f"services/{sample_template_with_placeholders.service_id}/templates/{sample_template_with_placeholders.id}"
         in resp_json["template"]["uri"]
     )
     assert not resp_json["scheduled_for"]
@@ -360,7 +358,7 @@ def test_post_notification_returns_401_and_well_formed_auth_error(
     data = {key_send_to: send_to, "template_id": str(sample_template.id)}
 
     response = client.post(
-        path="/v2/notifications/{}".format(notification_type),
+        path=f"/v2/notifications/{notification_type}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json")],
     )
@@ -505,13 +503,11 @@ def test_post_email_notification_returns_201(
         sample_email_template_with_placeholders.service.email_sender_local_part,
         current_app.config["NOTIFY_EMAIL_DOMAIN"],
     )
-    assert "v2/notifications/{}".format(notification.id) in resp_json["uri"]
+    assert f"v2/notifications/{notification.id}" in resp_json["uri"]
     assert resp_json["template"]["id"] == str(sample_email_template_with_placeholders.id)
     assert resp_json["template"]["version"] == sample_email_template_with_placeholders.version
     assert (
-        "services/{}/templates/{}".format(
-            str(sample_email_template_with_placeholders.service_id), str(sample_email_template_with_placeholders.id)
-        )
+        f"services/{str(sample_email_template_with_placeholders.service_id)}/templates/{str(sample_email_template_with_placeholders.id)}"
         in resp_json["template"]["uri"]
     )
     assert not resp_json["scheduled_for"]
@@ -718,7 +714,7 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
 def test_should_not_persist_or_send_notification_if_simulated_recipient(
     api_client_request, recipient, notification_type, sample_email_template, sample_template, mocker
 ):
-    apply_async = mocker.patch("app.celery.provider_tasks.deliver_{}.apply_async".format(notification_type))
+    apply_async = mocker.patch(f"app.celery.provider_tasks.deliver_{notification_type}.apply_async")
 
     if notification_type == "sms":
         data = {"phone_number": recipient, "template_id": str(sample_template.id)}
@@ -805,9 +801,7 @@ def test_post_sms_notification_with_archived_reply_to_id_returns_400(api_client_
     )
 
     assert (
-        "sms_sender_id {} does not exist in database for service id {}".format(
-            archived_sender.id, sample_template.service_id
-        )
+        f"sms_sender_id {archived_sender.id} does not exist in database for service id {sample_template.service_id}"
         in resp_json["errors"][0]["message"]
     )
     assert "BadRequestError" in resp_json["errors"][0]["error"]
@@ -837,7 +831,7 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
 
     assert error_json["status_code"] == 400
     assert error_json["errors"] == [
-        {"error": "BadRequestError", "message": "Service is not allowed to send {}".format(expected_error)}
+        {"error": "BadRequestError", "message": f"Service is not allowed to send {expected_error}"}
     ]
 
 
@@ -937,10 +931,7 @@ def test_post_notification_with_wrong_type_of_sender(
         _expected_status=400,
     )
 
-    assert (
-        "Additional properties are not allowed ({} was unexpected)".format(form_label)
-        in resp_json["errors"][0]["message"]
-    )
+    assert f"Additional properties are not allowed ({form_label} was unexpected)" in resp_json["errors"][0]["message"]
     assert "ValidationError" in resp_json["errors"][0]["error"]
 
 
@@ -988,9 +979,7 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(
     )
 
     assert (
-        "email_reply_to_id {} does not exist in database for service id {}".format(
-            fake_uuid, sample_email_template.service_id
-        )
+        f"email_reply_to_id {fake_uuid} does not exist in database for service id {sample_email_template.service_id}"
         in resp_json["errors"][0]["message"]
     )
     assert "BadRequestError" in resp_json["errors"][0]["error"]
@@ -1018,11 +1007,9 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(
     )
 
     assert (
-        "email_reply_to_id {} does not exist in database for service id {}".format(
-            archived_reply_to.id, sample_email_template.service_id
-        )
-        in resp_json["errors"][0]["message"]
-    )
+        f"email_reply_to_id {archived_reply_to.id} does not exist in database for service "
+        f"id {sample_email_template.service_id}"
+    ) in resp_json["errors"][0]["message"]
     assert "BadRequestError" in resp_json["errors"][0]["error"]
 
 
@@ -1228,7 +1215,7 @@ def test_post_notification_when_payload_is_invalid_json_returns_400(
         "template_id": "dont-convert-to-json",
     }
     response = client.post(
-        path="/v2/notifications/{}".format(notification_type),
+        path=f"/v2/notifications/{notification_type}",
         data=payload_not_json,
         headers=[("Content-Type", content_type), auth_header],
     )
@@ -1244,7 +1231,7 @@ def test_post_notification_returns_201_when_content_type_is_missing_but_payload_
     client, sample_service, notification_type, mocker
 ):
     template = create_template(service=sample_service, template_type=notification_type)
-    mocker.patch("app.celery.provider_tasks.deliver_{}.apply_async".format(notification_type))
+    mocker.patch(f"app.celery.provider_tasks.deliver_{notification_type}.apply_async")
     auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     valid_json = {
@@ -1255,7 +1242,7 @@ def test_post_notification_returns_201_when_content_type_is_missing_but_payload_
     else:
         valid_json.update({"phone_number": "+447700900855"})
     response = client.post(
-        path="/v2/notifications/{}".format(notification_type),
+        path=f"/v2/notifications/{notification_type}",
         data=json.dumps(valid_json),
         headers=[auth_header],
     )

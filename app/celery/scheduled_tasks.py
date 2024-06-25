@@ -289,7 +289,7 @@ def replay_created_notifications():
                     "Sending %(num)s %(type)s notifications to the delivery queue because the "
                     "notification status was created."
                 ),
-                dict(num=len(notifications_to_resend), type=notification_type),
+                {"num": len(notifications_to_resend), "type": notification_type},
             )
 
         for n in notifications_to_resend:
@@ -306,7 +306,7 @@ def replay_created_notifications():
                 "Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 "
                 "and update notifications for the following notification ids:\n%(ids)s"
             ),
-            dict(num=len(letters), ids=[x.id for x in letters]),
+            {"num": len(letters), "ids": [x.id for x in letters]},
         )
         for letter in letters:
             get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
@@ -354,7 +354,7 @@ def check_if_letters_still_pending_virus_check():
             zendesk_client.send_ticket_to_zendesk(ticket)
             current_app.logger.error(
                 "Letters still pending virus check",
-                extra=dict(number_of_letters=len(letters), notification_ids=sorted(letter_ids)),
+                extra={"number_of_letters": len(letters), "notification_ids": sorted(letter_ids)},
             )
 
 
@@ -407,43 +407,43 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
     services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(start_date=start_date, end_date=end_date)
 
     if services_with_failures:
-        message += "{} service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n".format(
-            len(services_with_failures)
+        message += (
+            f"{len(services_with_failures)} service(s) have had high permanent-failure rates "
+            f"for sms messages in last 24 hours:\n"
         )
         for service in services_with_failures:
             service_dashboard = "{}/services/{}".format(
                 current_app.config["ADMIN_BASE_URL"],
                 str(service.service_id),
             )
-            message += "service: {} failure rate: {},\n".format(service_dashboard, service.permanent_failure_rate)
+            message += f"service: {service_dashboard} failure rate: {service.permanent_failure_rate},\n"
 
         current_app.logger.error(
             "%s services have had a high permanent-failure rate for text messages in the last 24 hours.",
             len(services_with_failures),
-            extra=dict(service_ids=[service.service_id for service in services_with_failures]),
+            extra={"service_ids": [service.service_id for service in services_with_failures]},
         )
 
     elif services_sending_to_tv_numbers:
-        message += "{} service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n".format(
-            len(services_sending_to_tv_numbers)
+        message += (
+            f"{len(services_sending_to_tv_numbers)} service(s) have sent over 500 sms messages to "
+            f"tv numbers in last 24 hours:\n"
         )
         for service in services_sending_to_tv_numbers:
             service_dashboard = "{}/services/{}".format(
                 current_app.config["ADMIN_BASE_URL"],
                 str(service.service_id),
             )
-            message += "service: {} count of sms to tv numbers: {},\n".format(
-                service_dashboard, service.notification_count
-            )
+            message += f"service: {service_dashboard} count of sms to tv numbers: {service.notification_count},\n"
 
         current_app.logger.error(
             "%s services have sent over 500 text messages to tv numbers in the last 24 hours.",
             len(services_sending_to_tv_numbers),
-            extra=dict(
-                service_ids_and_number_sent={
+            extra={
+                "service_ids_and_number_sent": {
                     service.service_id: service.notification_count for service in services_sending_to_tv_numbers
                 }
-            ),
+            },
         )
 
     if services_with_failures or services_sending_to_tv_numbers:

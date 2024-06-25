@@ -88,10 +88,7 @@ def test_get_bucket_name_and_prefix_for_notification_valid_notification(sample_n
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
 
     assert bucket == current_app.config["S3_BUCKET_LETTERS_PDF"]
-    assert (
-        bucket_prefix
-        == "{folder}/NOTIFY.{reference}".format(folder=folder, reference=sample_notification.reference).upper()
-    )
+    assert bucket_prefix == f"{folder}/NOTIFY.{sample_notification.reference}".upper()
 
 
 def test_get_bucket_name_and_prefix_for_notification_is_tomorrow_after_17_30(sample_notification):
@@ -130,7 +127,7 @@ def test_get_bucket_name_and_prefix_for_notification_precompiled_letter_using_te
     )
 
     assert bucket == current_app.config["S3_BUCKET_TEST_LETTERS"]
-    assert bucket_prefix == "NOTIFY.{}".format(sample_precompiled_letter_notification_using_test_key.reference).upper()
+    assert bucket_prefix == f"NOTIFY.{sample_precompiled_letter_notification_using_test_key.reference}".upper()
 
 
 @freeze_time(FROZEN_DATE_TIME)
@@ -140,7 +137,7 @@ def test_get_bucket_name_and_prefix_for_notification_templated_letter_using_test
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_letter_notification)
 
     assert bucket == current_app.config["S3_BUCKET_TEST_LETTERS"]
-    assert bucket_prefix == "NOTIFY.{}".format(sample_letter_notification.reference).upper()
+    assert bucket_prefix == f"NOTIFY.{sample_letter_notification.reference}".upper()
 
 
 @freeze_time(FROZEN_DATE_TIME)
@@ -149,7 +146,7 @@ def test_get_bucket_name_and_prefix_for_failed_validation(sample_precompiled_let
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_precompiled_letter_notification)
 
     assert bucket == current_app.config["S3_BUCKET_INVALID_PDF"]
-    assert bucket_prefix == "NOTIFY.{}".format(sample_precompiled_letter_notification.reference).upper()
+    assert bucket_prefix == f"NOTIFY.{sample_precompiled_letter_notification.reference}".upper()
 
 
 @freeze_time(FROZEN_DATE_TIME)
@@ -162,7 +159,7 @@ def test_get_bucket_name_and_prefix_for_test_noti_with_failed_validation(
     )
 
     assert bucket == current_app.config["S3_BUCKET_INVALID_PDF"]
-    assert bucket_prefix == "NOTIFY.{}".format(sample_precompiled_letter_notification_using_test_key.reference).upper()
+    assert bucket_prefix == f"NOTIFY.{sample_precompiled_letter_notification_using_test_key.reference}".upper()
 
 
 def test_get_bucket_name_and_prefix_for_notification_invalid_notification():
@@ -181,7 +178,7 @@ def test_generate_letter_pdf_filename_returns_correct_postage_for_filename(notif
     created_at = datetime(2017, 12, 4, 17, 29)
     filename = generate_letter_pdf_filename(reference="foo", created_at=created_at, postage=postage)
 
-    assert filename == "2017-12-04/NOTIFY.FOO.D.{}.C.20171204172900.PDF".format(expected_postage)
+    assert filename == f"2017-12-04/NOTIFY.FOO.D.{expected_postage}.C.20171204172900.PDF"
 
 
 def test_generate_letter_pdf_filename_returns_correct_filename_for_test_letters(notify_api, mocker):
@@ -355,8 +352,8 @@ def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
         filename=filename, is_test_letter=False, created_at=datetime.utcnow(), new_filename=filename
     )
 
-    assert not [x for x in source_bucket.objects.all()]
-    assert len([x for x in target_bucket.objects.all()]) == 1
+    assert not list(source_bucket.objects.all())
+    assert len(list(target_bucket.objects.all())) == 1
 
 
 @mock_s3
@@ -380,8 +377,8 @@ def test_move_sanitised_letter_to_test_pdf_bucket(notify_api, mocker):
         filename=filename, is_test_letter=True, created_at=datetime.utcnow(), new_filename=filename
     )
 
-    assert not [x for x in source_bucket.objects.all()]
-    assert len([x for x in target_bucket.objects.all()]) == 1
+    assert not list(source_bucket.objects.all())
+    assert len(list(target_bucket.objects.all())) == 1
 
 
 @freeze_time("2017-07-07 20:00:00")

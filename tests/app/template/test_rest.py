@@ -58,7 +58,7 @@ def test_should_create_a_new_template_for_a_service(client, sample_user, templat
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(service.id),
+        f"/service/{service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -103,7 +103,7 @@ def test_create_a_new_template_for_a_service_adds_folder_relationship(client, sa
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(sample_service.id),
+        f"/service/{sample_service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -132,7 +132,7 @@ def test_create_a_new_template_for_a_service_adds_postage_for_letters_only(
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(sample_service.id),
+        f"/service/{sample_service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -157,7 +157,7 @@ def test_create_template_should_return_400_if_folder_is_for_a_different_service(
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(sample_service.id),
+        f"/service/{sample_service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -178,7 +178,7 @@ def test_create_template_should_return_400_if_folder_does_not_exist(client, samp
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(sample_service.id),
+        f"/service/{sample_service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -198,7 +198,7 @@ def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_u
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(fake_uuid), headers=[("Content-Type", "application/json"), auth_header], data=data
+        f"/service/{fake_uuid}/template", headers=[("Content-Type", "application/json"), auth_header], data=data
     )
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 404
@@ -238,7 +238,7 @@ def test_should_raise_error_on_create_if_no_permission(
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(service.id),
+        f"/service/{service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -272,7 +272,7 @@ def test_should_be_error_on_update_if_no_permission(
     auth_header = create_admin_authorization_header()
 
     update_response = client.post(
-        "/service/{}/template/{}".format(template_without_permission.service_id, template_without_permission.id),
+        f"/service/{template_without_permission.service_id}/template/{template_without_permission.id}",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -290,7 +290,7 @@ def test_should_error_if_created_by_missing(client, sample_user, sample_service)
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(service_id),
+        f"/service/{service_id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -306,7 +306,7 @@ def test_should_be_error_if_service_does_not_exist_on_update(client, fake_uuid):
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template/{}".format(fake_uuid, fake_uuid),
+        f"/service/{fake_uuid}/template/{fake_uuid}",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -329,7 +329,7 @@ def test_must_have_a_subject_on_an_email_or_letter_template(client, sample_user,
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(sample_service.id),
+        f"/service/{sample_service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -350,7 +350,7 @@ def test_update_should_update_a_template(client, sample_user):
     auth_header = create_admin_authorization_header()
 
     update_response = client.post(
-        "/service/{}/template/{}".format(service.id, template.id),
+        f"/service/{service.id}/template/{template.id}",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -415,7 +415,7 @@ def test_update_template_language(client, sample_user, post_data):
     auth_header = create_admin_authorization_header()
 
     update_response = client.post(
-        "/service/{}/template/{}".format(service.id, template.id),
+        f"/service/{service.id}/template/{template.id}",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -442,7 +442,7 @@ def test_should_be_able_to_archive_template(client, sample_template):
     auth_header = create_admin_authorization_header()
 
     resp = client.post(
-        "/service/{}/template/{}".format(sample_template.service.id, sample_template.id),
+        f"/service/{sample_template.service.id}/template/{sample_template.id}",
         headers=[("Content-Type", "application/json"), auth_header],
         data=json_data,
     )
@@ -478,7 +478,7 @@ def test_get_precompiled_template_for_service(
     assert len(sample_service.templates) == 0
 
     response = client.get(
-        "/service/{}/template/precompiled".format(sample_service.id),
+        f"/service/{sample_service.id}/template/precompiled",
         headers=[create_admin_authorization_header()],
     )
     assert response.status_code == 200
@@ -501,7 +501,7 @@ def test_get_precompiled_template_for_service_when_service_has_existing_precompi
     assert len(sample_service.templates) == 1
 
     response = client.get(
-        "/service/{}/template/precompiled".format(sample_service.id),
+        f"/service/{sample_service.id}/template/precompiled",
         headers=[create_admin_authorization_header()],
     )
 
@@ -534,21 +534,21 @@ def test_should_be_able_to_get_all_templates_for_a_service(client, sample_user, 
     data_2 = json.dumps(data)
     auth_header = create_admin_authorization_header()
     client.post(
-        "/service/{}/template".format(sample_service.id),
+        f"/service/{sample_service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data_1,
     )
     auth_header = create_admin_authorization_header()
 
     client.post(
-        "/service/{}/template".format(sample_service.id),
+        f"/service/{sample_service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data_2,
     )
 
     auth_header = create_admin_authorization_header()
 
-    response = client.get("/service/{}/template".format(sample_service.id), headers=[auth_header])
+    response = client.get(f"/service/{sample_service.id}/template", headers=[auth_header])
 
     assert response.status_code == 200
     update_json_resp = json.loads(response.get_data(as_text=True))
@@ -675,7 +675,7 @@ def test_should_get_a_single_template(client, sample_user, sample_service, subje
     template = create_template(sample_service, template_type=template_type, subject=subject, content=content)
 
     response = client.get(
-        "/service/{}/template/{}".format(sample_service.id, template.id), headers=[create_admin_authorization_header()]
+        f"/service/{sample_service.id}/template/{template.id}", headers=[create_admin_authorization_header()]
     )
 
     data = json.loads(response.get_data(as_text=True))["data"]
@@ -766,7 +766,7 @@ def test_should_preview_a_single_template(
 def test_should_return_empty_array_if_no_templates_for_service(client, sample_service):
     auth_header = create_admin_authorization_header()
 
-    response = client.get("/service/{}/template".format(sample_service.id), headers=[auth_header])
+    response = client.get(f"/service/{sample_service.id}/template", headers=[auth_header])
 
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
@@ -776,7 +776,7 @@ def test_should_return_empty_array_if_no_templates_for_service(client, sample_se
 def test_should_return_404_if_no_templates_for_service_with_id(client, sample_service, fake_uuid):
     auth_header = create_admin_authorization_header()
 
-    response = client.get("/service/{}/template/{}".format(sample_service.id, fake_uuid), headers=[auth_header])
+    response = client.get(f"/service/{sample_service.id}/template/{fake_uuid}", headers=[auth_header])
 
     assert response.status_code == 404
     json_resp = json.loads(response.get_data(as_text=True))
@@ -811,15 +811,15 @@ def test_create_400_for_over_limit_content(
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/template".format(sample_service.id),
+        f"/service/{sample_service.id}/template",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
     assert response.status_code == 400
     json_resp = json.loads(response.get_data(as_text=True))
-    assert ("Content has a character count greater than the limit of {}").format(SMS_CHAR_COUNT_LIMIT) in json_resp[
-        "message"
-    ]["content"]
+    assert (f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}") in json_resp["message"][
+        "content"
+    ]
 
 
 def test_update_400_for_over_limit_content(client, notify_api, sample_user, sample_template):
@@ -833,15 +833,15 @@ def test_update_400_for_over_limit_content(client, notify_api, sample_user, samp
     )
     auth_header = create_admin_authorization_header()
     resp = client.post(
-        "/service/{}/template/{}".format(sample_template.service.id, sample_template.id),
+        f"/service/{sample_template.service.id}/template/{sample_template.id}",
         headers=[("Content-Type", "application/json"), auth_header],
         data=json_data,
     )
     assert resp.status_code == 400
     json_resp = json.loads(resp.get_data(as_text=True))
-    assert ("Content has a character count greater than the limit of {}").format(SMS_CHAR_COUNT_LIMIT) in json_resp[
-        "message"
-    ]["content"]
+    assert (f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}") in json_resp["message"][
+        "content"
+    ]
 
 
 def test_should_return_all_template_versions_for_service_and_template_id(client, sample_template):
@@ -855,7 +855,7 @@ def test_should_return_all_template_versions_for_service_and_template_id(client,
 
     auth_header = create_admin_authorization_header()
     resp = client.get(
-        "/service/{}/template/{}/versions".format(sample_template.service_id, sample_template.id),
+        f"/service/{sample_template.service_id}/template/{sample_template.id}/versions",
         headers=[("Content-Type", "application/json"), auth_header],
     )
     assert resp.status_code == 200
@@ -877,7 +877,7 @@ def test_update_does_not_create_new_version_when_there_is_no_change(client, samp
         "content": sample_template.content,
     }
     resp = client.post(
-        "/service/{}/template/{}".format(sample_template.service_id, sample_template.id),
+        f"/service/{sample_template.service_id}/template/{sample_template.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -891,7 +891,7 @@ def test_update_set_process_type_on_template(client, sample_template):
     auth_header = create_admin_authorization_header()
     data = {"process_type": "priority"}
     resp = client.post(
-        "/service/{}/template/{}".format(sample_template.service_id, sample_template.id),
+        f"/service/{sample_template.service_id}/template/{sample_template.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -971,8 +971,9 @@ def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_u
 
     json_resp = admin_request.post("template.create_template", service_id=service.id, _data=data, _expected_status=400)
 
-    assert json_resp["message"] == "letter_contact_id {} does not exist in database for service id {}".format(
-        str(letter_contact.id), str(service.id)
+    assert (
+        json_resp["message"]
+        == f"letter_contact_id {str(letter_contact.id)} does not exist in database for service id {str(service.id)}"
     )
 
 
@@ -1057,7 +1058,7 @@ def test_get_template_reply_to(client, sample_service, template_default, service
     reply_to_id = str(template_default_contact.id) if template_default else None
     template = create_template(service=sample_service, template_type="letter", reply_to=reply_to_id)
 
-    resp = client.get("/service/{}/template/{}".format(template.service_id, template.id), headers=[auth_header])
+    resp = client.get(f"/service/{template.service_id}/template/{template.id}", headers=[auth_header])
 
     assert resp.status_code == 200, resp.get_data(as_text=True)
     json_resp = json.loads(resp.get_data(as_text=True))
@@ -1075,7 +1076,7 @@ def test_update_template_reply_to(client, sample_letter_template):
     }
 
     resp = client.post(
-        "/service/{}/template/{}".format(sample_letter_template.service_id, sample_letter_template.id),
+        f"/service/{sample_letter_template.service_id}/template/{sample_letter_template.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -1125,7 +1126,7 @@ def test_update_template_reply_to_set_to_blank(client, notify_db_session):
     }
 
     resp = client.post(
-        "/service/{}/template/{}".format(template.service_id, template.id),
+        f"/service/{template.service_id}/template/{template.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -1162,7 +1163,7 @@ def test_update_template_with_foreign_service_reply_to(client, sample_letter_tem
     }
 
     resp = client.post(
-        "/service/{}/template/{}".format(sample_letter_template.service_id, sample_letter_template.id),
+        f"/service/{sample_letter_template.service_id}/template/{sample_letter_template.id}",
         data=json.dumps(data),
         headers=[("Content-Type", "application/json"), auth_header],
     )
@@ -1170,8 +1171,9 @@ def test_update_template_with_foreign_service_reply_to(client, sample_letter_tem
     assert resp.status_code == 400, resp.get_data(as_text=True)
     json_resp = json.loads(resp.get_data(as_text=True))
 
-    assert json_resp["message"] == "letter_contact_id {} does not exist in database for service id {}".format(
-        str(letter_contact.id), str(sample_letter_template.service_id)
+    assert json_resp["message"] == (
+        f"letter_contact_id {str(letter_contact.id)} does not exist in database for service "
+        f"id {str(sample_letter_template.service_id)}"
     )
 
 
@@ -1295,7 +1297,7 @@ def test_preview_letter_template_by_id_valid_file_type(
             content = b"\x00\x01"
 
             mock_post = request_mock.post(
-                "http://localhost/notifications-template-preview/preview.{}".format(file_type),
+                f"http://localhost/notifications-template-preview/preview.{file_type}",
                 content=content,
                 headers={
                     "X-pdf-page-count": "1",
@@ -1416,7 +1418,7 @@ def test_preview_letter_template_by_id_template_preview_500(
 
             assert mock_post.last_request.json()
             assert "Status code: 404" in resp["message"]
-            assert "Error generating preview letter for {}".format(sample_letter_notification.id) in resp["message"]
+            assert f"Error generating preview letter for {sample_letter_notification.id}" in resp["message"]
 
 
 def test_preview_letter_template_precompiled_pdf_file_type(notify_api, client, admin_request, sample_service, mocker):
@@ -1491,9 +1493,10 @@ def test_preview_letter_template_precompiled_s3_error(notify_api, client, admin_
             )
 
             assert (
-                request["message"] == "Error extracting requested page from PDF file for notification_id {} type "
+                request["message"]
+                == f"Error extracting requested page from PDF file for notification_id {notification.id} type "
                 "<class 'botocore.exceptions.ClientError'> An error occurred (403) "
-                "when calling the GetObject operation: Unauthorized".format(notification.id)
+                "when calling the GetObject operation: Unauthorized"
             )
 
 
@@ -1555,7 +1558,7 @@ def test_preview_letter_template_precompiled_for_png_shows_overlay_on_pages_with
             mocker.patch("app.template.rest.extract_page_from_pdf", return_value=pdf_content)
 
             mock_post = request_mock.post(
-                "http://localhost/notifications-template-preview/{}".format(expected_post_url),
+                f"http://localhost/notifications-template-preview/{expected_post_url}",
                 content=expected_returned_content,
                 headers={
                     "X-pdf-page-count": "4",
@@ -1869,8 +1872,7 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
                 _expected_status=500,
             )
 
-            assert request[
-                "message"
-            ] == "Error extracting requested page from PDF file for notification_id {} type " "{} {}".format(
-                notification.id, type(PdfReadError()), error_message
+            assert request["message"] == (
+                f"Error extracting requested page from PDF file for notification_id {notification.id} "
+                f"type {type(PdfReadError())} {error_message}"
             )

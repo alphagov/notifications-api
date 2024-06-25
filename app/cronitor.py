@@ -20,11 +20,11 @@ def cronitor(task_name):
                 return
 
             if command not in {"run", "complete", "fail"}:
-                raise ValueError("command {} not a valid cronitor command".format(command))
+                raise ValueError(f"command {command} not a valid cronitor command")
 
             try:
                 resp = requests.get(
-                    "https://cronitor.link/{}/{}".format(task_slug, command),
+                    f"https://cronitor.link/{task_slug}/{command}",
                     # cronitor limits msg to 1000 characters
                     params={
                         "host": current_app.config["API_HOST_NAME"],

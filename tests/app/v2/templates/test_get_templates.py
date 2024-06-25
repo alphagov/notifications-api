@@ -11,7 +11,7 @@ def test_get_all_templates_returns_200(api_client_request, sample_service):
         create_template(
             sample_service,
             template_type=tmp_type,
-            subject="subject_{}".format(name) if tmp_type == EMAIL_TYPE else "",
+            subject=f"subject_{name}" if tmp_type == EMAIL_TYPE else "",
             template_name=name,
         )
         for name, tmp_type in product(("A", "B", "C"), TEMPLATE_TYPES)
@@ -38,8 +38,8 @@ def test_get_all_templates_for_valid_type_returns_200(api_client_request, sample
         create_template(
             sample_service,
             template_type=tmp_type,
-            template_name="Template {}".format(i),
-            subject="subject_{}".format(i) if tmp_type == EMAIL_TYPE else "",
+            template_name=f"Template {i}",
+            subject=f"subject_{i}" if tmp_type == EMAIL_TYPE else "",
         )
         for i in range(3)
     ]

@@ -78,7 +78,7 @@ def dao_fetch_all_services(only_active=False):
 
 def get_services_by_partial_name(service_name):
     service_name = escape_special_characters(service_name)
-    return Service.query.filter(Service.name.ilike("%{}%".format(service_name))).all()
+    return Service.query.filter(Service.name.ilike(f"%{service_name}%")).all()
 
 
 def dao_count_live_services():
@@ -372,7 +372,7 @@ def delete_service_and_all_associated_db_objects(service):
     verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
     list(map(db.session.delete, verify_codes))
     db.session.commit()
-    users = [x for x in service.users]
+    users = list(service.users)
     for user in users:
         user.organisations = []
         service.users.remove(user)

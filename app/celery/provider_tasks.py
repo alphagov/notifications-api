@@ -38,7 +38,7 @@ def deliver_sms(self, notification_id):
         current_app.logger.info("Start sending SMS for notification id: %s", notification_id)
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
-            raise NoResultFound()
+            raise NoResultFound
         send_to_providers.send_sms_to_provider(notification)
     except Exception as e:
         if isinstance(e, SmsClientResponseException):
@@ -53,8 +53,8 @@ def deliver_sms(self, notification_id):
                 self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError as e:
             message = (
-                "RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for notification {}. "
-                "Notification has been updated to technical-failure".format(notification_id)
+                f"RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for "
+                f"notification {notification_id}. Notification has been updated to technical-failure"
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message) from e
@@ -66,7 +66,7 @@ def deliver_email(self, notification_id):
         current_app.logger.info("Start sending email for notification id: %s", notification_id)
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
-            raise NoResultFound()
+            raise NoResultFound
         send_to_providers.send_email_to_provider(notification)
     except EmailClientNonRetryableException as e:
         current_app.logger.exception("Email notification %s failed: %s", notification_id, e)
@@ -82,8 +82,8 @@ def deliver_email(self, notification_id):
         except self.MaxRetriesExceededError as e:
             message = (
                 "RETRY FAILED: Max retries reached. "
-                "The task send_email_to_provider failed for notification {}. "
-                "Notification has been updated to technical-failure".format(notification_id)
+                f"The task send_email_to_provider failed for notification {notification_id}. "
+                "Notification has been updated to technical-failure"
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message) from e

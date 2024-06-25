@@ -129,6 +129,6 @@ def test_send_pdf_letter_notification_creates_notification_and_moves_letter(
     assert result == {"id": str(notification.id)}
 
     s3_mock.assert_called_once_with(
-        "service-{}/{}.pdf".format(sample_service_full_permissions.id, file_id),
-        "2019-08-02/NOTIFY.{}.D.2.C.20190802110000.PDF".format(notification.reference),
+        f"service-{sample_service_full_permissions.id}/{file_id}.pdf",
+        f"2019-08-02/NOTIFY.{notification.reference}.D.2.C.20190802110000.PDF",
     )

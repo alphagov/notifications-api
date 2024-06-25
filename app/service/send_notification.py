@@ -39,7 +39,7 @@ from app.v2.errors import BadRequestError
 def validate_created_by(service, created_by_id):
     user = get_user_by_id(created_by_id)
     if service not in user.services:
-        message = 'Can’t create notification - {} is not part of the "{}" service'.format(user.name, service.name)
+        message = f'Can’t create notification - {user.name} is not part of the "{service.name}" service'
         raise BadRequestError(message=message)
 
 

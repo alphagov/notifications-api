@@ -3,15 +3,11 @@ class ClientException(Exception):
     Base Exceptions for sending notifications that fail
     """
 
-    pass
 
-
-class Client(object):
+class Client:
     """
     Base client for sending notifications.
     """
-
-    pass
 
 
 STATISTICS_REQUESTED = "requested"
@@ -19,7 +15,7 @@ STATISTICS_DELIVERED = "delivered"
 STATISTICS_FAILURE = "failure"
 
 
-class NotificationProviderClients(object):
+class NotificationProviderClients:
     sms_clients = {}
     email_clients = {}
 

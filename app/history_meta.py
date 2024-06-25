@@ -87,7 +87,7 @@ def _history_mapper(local_mapper):  # noqa (C901 too complex)
     local_mapper.add_property("version", local_mapper.local_table.c.version)
 
 
-class Versioned(object):
+class Versioned:
     @declared_attr
     def __mapper_cls__(cls):
         def map(cls, *arg, **kw):

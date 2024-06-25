@@ -1,5 +1,3 @@
-from typing import Optional
-
 import requests
 from flask import current_app, request
 from flask.ctx import has_request_context
@@ -41,9 +39,9 @@ class DocumentDownloadClient:
         service_id,
         file_contents,
         is_csv=None,
-        confirmation_email: Optional[str] = None,
-        retention_period: Optional[str] = None,
-        filename: Optional[str] = None,
+        confirmation_email: str | None = None,
+        retention_period: str | None = None,
+        filename: str | None = None,
     ):
         try:
             data = {
@@ -60,7 +58,7 @@ class DocumentDownloadClient:
             if filename:
                 data["filename"] = filename
 
-            headers = {"Authorization": "Bearer {}".format(self.auth_token)}
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
             if has_request_context() and hasattr(request, "get_onwards_request_headers"):
                 headers.update(request.get_onwards_request_headers())
 

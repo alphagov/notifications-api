@@ -1,7 +1,6 @@
 import datetime
 import enum
 import uuid
-from typing import Union
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -799,7 +798,7 @@ class ServicePermission(db.Model):
     service_permission_types = db.relationship(Service, backref=db.backref("permissions", cascade="all, delete-orphan"))
 
     def __repr__(self):
-        return "<{} has service permission: {}>".format(self.service_id, self.permission)
+        return f"<{self.service_id} has service permission: {self.permission}>"
 
 
 class ServiceGuestList(db.Model):
@@ -1113,7 +1112,7 @@ class TemplateBase(db.Model):
         elif value is None:
             pass
         else:
-            raise ValueError("Unable to set sender for {} template".format(self.template_type))
+            raise ValueError(f"Unable to set sender for {self.template_type} template")
 
     def get_reply_to_text(self):
         if self.template_type == LETTER_TYPE:
@@ -1478,7 +1477,7 @@ class Notification(db.Model):
         return None
 
     @staticmethod
-    def substitute_status(status_or_statuses: Union[str, list[str]]) -> list[str]:
+    def substitute_status(status_or_statuses: str | list[str]) -> list[str]:
         """
         static function that takes a status or list of statuses and substitutes our new failure types if it finds
         the deprecated one
@@ -1814,9 +1813,9 @@ class Rate(db.Model):
     notification_type = db.Column(notification_types, index=True, nullable=False)
 
     def __str__(self):
-        the_string = "{}".format(self.rate)
-        the_string += " {}".format(self.notification_type)
-        the_string += " {}".format(self.valid_from)
+        the_string = f"{self.rate}"
+        the_string += f" {self.notification_type}"
+        the_string += f" {self.valid_from}"
         return the_string
 
     def serialize(self):

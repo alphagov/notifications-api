@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Optional
 
 import pytz
 from flask import url_for
@@ -118,7 +117,7 @@ def midnight_n_days_ago(number_of_days):
 
 def escape_special_characters(string):
     for special_character in ("\\", "_", "%", "/"):
-        string = string.replace(special_character, r"\{}".format(special_character))
+        string = string.replace(special_character, rf"\{special_character}")
     return string
 
 
@@ -150,7 +149,7 @@ def format_sequential_number(sequential_number):
     return format(sequential_number, "x").zfill(8)
 
 
-def get_ft_billing_data_for_today_updated_at() -> Optional[str]:
+def get_ft_billing_data_for_today_updated_at() -> str | None:
     from app import redis_store
 
     if updated_at_utc_isoformat := redis_store.get(CacheKeys.FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT):

@@ -54,6 +54,6 @@ def validate_callback_data(data, fields, client_name):
     errors = []
     for f in fields:
         if not str(data.get(f, "")):
-            error = "{} callback failed: {} missing".format(client_name, f)
+            error = f"{client_name} callback failed: {f} missing"
             errors.append(error)
     return errors if len(errors) > 0 else None

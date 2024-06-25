@@ -15,20 +15,20 @@ from tests.app.db import create_api_key, create_template
 
 def test_archive_only_allows_post(client, notify_db_session):
     auth_header = create_admin_authorization_header()
-    response = client.get("/service/{}/archive".format(uuid.uuid4()), headers=[auth_header])
+    response = client.get(f"/service/{uuid.uuid4()}/archive", headers=[auth_header])
     assert response.status_code == 405
 
 
 def test_archive_service_errors_with_bad_service_id(client, notify_db_session):
     auth_header = create_admin_authorization_header()
-    response = client.post("/service/{}/archive".format(uuid.uuid4()), headers=[auth_header])
+    response = client.post(f"/service/{uuid.uuid4()}/archive", headers=[auth_header])
     assert response.status_code == 404
 
 
 def test_deactivating_inactive_service_does_nothing(client, sample_service):
     auth_header = create_admin_authorization_header()
     sample_service.active = False
-    response = client.post("/service/{}/archive".format(sample_service.id), headers=[auth_header])
+    response = client.post(f"/service/{sample_service.id}/archive", headers=[auth_header])
     assert response.status_code == 204
     assert sample_service.name == "Sample service"
 
@@ -43,7 +43,7 @@ def archived_service(client, notify_db_session, sample_service):
     notify_db_session.commit()
 
     auth_header = create_admin_authorization_header()
-    response = client.post("/service/{}/archive".format(sample_service.id), headers=[auth_header])
+    response = client.post(f"/service/{sample_service.id}/archive", headers=[auth_header])
     assert response.status_code == 204
     assert response.data == b""
     return sample_service
@@ -52,7 +52,7 @@ def archived_service(client, notify_db_session, sample_service):
 @freeze_time("2018-07-07 12:00:00")
 def test_deactivating_service_changes_name_and_email(client, sample_service):
     auth_header = create_admin_authorization_header()
-    client.post("/service/{}/archive".format(sample_service.id), headers=[auth_header])
+    client.post(f"/service/{sample_service.id}/archive", headers=[auth_header])
 
     archived_service = dao_fetch_service_by_id(sample_service.id)
 
@@ -95,7 +95,7 @@ def archived_service_with_deleted_stuff(client, sample_service):
 
     with freeze_time("2002-02-02"):
         auth_header = create_admin_authorization_header()
-        response = client.post("/service/{}/archive".format(sample_service.id), headers=[auth_header])
+        response = client.post(f"/service/{sample_service.id}/archive", headers=[auth_header])
 
     assert response.status_code == 204
     assert response.data == b""

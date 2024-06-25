@@ -138,7 +138,7 @@ def create_service(
             letter_message_limit=letter_message_limit,
             restricted=restricted,
             custom_email_sender_name=None,
-            created_by=user if user else create_user(email="{}@digital.cabinet-office.gov.uk".format(uuid.uuid4())),
+            created_by=user if user else create_user(email=f"{uuid.uuid4()}@digital.cabinet-office.gov.uk"),
             prefix_sms=prefix_sms,
             organisation_type=organisation_type,
             organisation=organisation,
@@ -206,7 +206,7 @@ def create_template(
     contact_block_id=None,
 ):
     data = {
-        "name": template_name or "{} Template Name".format(template_type),
+        "name": template_name or f"{template_type} Template Name",
         "template_type": template_type,
         "content": content,
         "service": service,
@@ -445,7 +445,7 @@ def create_inbound_sms(
     if not service.inbound_number:
         create_inbound_number(
             # create random inbound number
-            notify_number or "07{:09}".format(random.randint(0, 1e9 - 1)),
+            notify_number or f"07{random.randint(0, 1e9 - 1):09}",
             provider=provider,
             service_id=service.id,
         )
@@ -529,7 +529,7 @@ def create_letter_rate(start_date=None, end_date=None, crown=True, sheet_count=1
 def create_api_key(service, key_type=KEY_TYPE_NORMAL, key_name=None):
     id_ = uuid.uuid4()
 
-    name = key_name if key_name else "{} api key {}".format(key_type, id_)
+    name = key_name if key_name else f"{key_type} api key {id_}"
 
     api_key = ApiKey(
         service=service, name=name, created_by=service.created_by, key_type=key_type, id=id_, secret=uuid.uuid4()
@@ -938,7 +938,7 @@ def set_up_usage_data(start_date):
     )
 
     org_1 = create_organisation(
-        name="Org for {}".format(service_1_sms_and_letter.name),
+        name=f"Org for {service_1_sms_and_letter.name}",
         purchase_order_number="org1 purchase order number",
         billing_contact_names="org1 billing contact names",
         billing_contact_email_addresses="org1@billing.contact email@addresses.gov.uk",
@@ -979,7 +979,7 @@ def set_up_usage_data(start_date):
     service_with_emails = create_service(service_name="b - emails")
     email_template = create_template(service=service_with_emails, template_type="email")
     org_2 = create_organisation(
-        name="Org for {}".format(service_with_emails.name),
+        name=f"Org for {service_with_emails.name}",
     )
     dao_add_service_to_organisation(service=service_with_emails, organisation_id=org_2.id)
     create_annual_billing(service_id=service_with_emails.id, free_sms_fragment_limit=0, financial_year_start=year)
@@ -990,7 +990,7 @@ def set_up_usage_data(start_date):
     service_with_letters = create_service(service_name="c - letters only")
     letter_template_3 = create_template(service=service_with_letters, template_type="letter")
     org_for_service_with_letters = create_organisation(
-        name="Org for {}".format(service_with_letters.name),
+        name=f"Org for {service_with_letters.name}",
         purchase_order_number="org3 purchase order number",
         billing_contact_names="org3 billing contact names",
         billing_contact_email_addresses="org3@billing.contact email@addresses.gov.uk",

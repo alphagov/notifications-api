@@ -114,9 +114,7 @@ def create_fake_letter_response_file(self, reference):
             break
     else:
         raise ValueError(
-            "cant create fake letter response file for {} - too many files for that time already exist on s3".format(
-                reference
-            )
+            f"cant create fake letter response file for {reference} - too many files for that time already exist on s3"
         )
 
     s3upload(

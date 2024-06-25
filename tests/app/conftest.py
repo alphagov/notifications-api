@@ -74,7 +74,7 @@ def rmock():
 
 @pytest.fixture(scope="function")
 def service_factory(sample_user):
-    class ServiceFactory(object):
+    class ServiceFactory:
         def get(self, service_name, user=None, template_type=None):
             if not user:
                 user = sample_user
@@ -618,7 +618,7 @@ def email_2fa_code_template(notify_service):
         service=notify_service,
         user=notify_service.users[0],
         template_config_name="EMAIL_2FA_TEMPLATE_ID",
-        content=("Hi ((name))," "" "To sign in to GOV.​UK Notify please open this link:" "((url))"),
+        content=("Hi ((name)),To sign in to GOV.​UK Notify please open this link:((url))"),
         subject="Sign in to GOV.UK Notify",
         template_type="email",
     )
@@ -965,7 +965,7 @@ def sample_service_guest_list(notify_db_session):
 @pytest.fixture
 def sample_inbound_numbers(sample_service):
     service = create_service(service_name="sample service 2", check_if_service_exists=True)
-    inbound_numbers = list()
+    inbound_numbers = []
     inbound_numbers.append(create_inbound_number(number="1", provider="mmg"))
     inbound_numbers.append(create_inbound_number(number="2", provider="mmg", active=False, service_id=service.id))
     inbound_numbers.append(create_inbound_number(number="3", provider="firetext", service_id=sample_service.id))

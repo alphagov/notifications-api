@@ -535,7 +535,7 @@ def test_fetch_usage_for_service_by_month_populates_ft_billing_for_today(notify_
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=1000, financial_year_start=2018)
 
     for i in range(1, 32):
-        create_ft_billing(bst_date="2018-07-{}".format(i), template=template)
+        create_ft_billing(bst_date=f"2018-07-{i}", template=template)
 
     create_notification(template=template, status="delivered")
 

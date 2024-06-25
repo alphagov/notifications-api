@@ -64,12 +64,10 @@ def version_class(*version_options):
 
                 if tmp_session_objects == [] and version_option.must_write_history:
                     raise RuntimeError(
-                        (
-                            "Can't record history for {} "
-                            "(something in your code has casued the database to "
-                            "flush the session early so there's nothing to "
-                            "copy into the history table)"
-                        ).format(version_option.model_class.__name__)
+                        f"Can't record history for {version_option.model_class.__name__} "
+                        "(something in your code has casued the database to "
+                        "flush the session early so there's nothing to "
+                        "copy into the history table)"
                     )
 
                 session_objects += tmp_session_objects

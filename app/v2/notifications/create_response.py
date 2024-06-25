@@ -48,11 +48,11 @@ def __create_notification_response(
     return {
         "id": notification_id,
         "reference": client_reference,
-        "uri": "{}v2/notifications/{}".format(url_root, str(notification_id)),
+        "uri": f"{url_root}v2/notifications/{str(notification_id)}",
         "template": {
             "id": template_id,
             "version": template_version,
-            "uri": "{}services/{}/templates/{}".format(url_root, str(service_id), str(template_id)),
+            "uri": f"{url_root}services/{str(service_id)}/templates/{str(template_id)}",
         },
         "scheduled_for": None,
     }

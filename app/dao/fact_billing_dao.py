@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
@@ -701,19 +701,19 @@ def update_ft_billing(billing_data: list, process_day: date):
        http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#insert-on-conflict-upsert
     """
     billing_records_data = [
-        dict(
-            bst_date=billing_record.bst_date,
-            template_id=billing_record.template_id,
-            service_id=billing_record.service_id,
-            provider=billing_record.provider,
-            rate_multiplier=billing_record.rate_multiplier,
-            notification_type=billing_record.notification_type,
-            international=billing_record.international,
-            billable_units=billing_record.billable_units,
-            notifications_sent=billing_record.notifications_sent,
-            rate=billing_record.rate,
-            postage=billing_record.postage,
-        )
+        {
+            "bst_date": billing_record.bst_date,
+            "template_id": billing_record.template_id,
+            "service_id": billing_record.service_id,
+            "provider": billing_record.provider,
+            "rate_multiplier": billing_record.rate_multiplier,
+            "notification_type": billing_record.notification_type,
+            "international": billing_record.international,
+            "billable_units": billing_record.billable_units,
+            "notifications_sent": billing_record.notifications_sent,
+            "rate": billing_record.rate,
+            "postage": billing_record.postage,
+        }
         for billing_record in billing_records
     ]
     stmt = insert(table).values(billing_records_data)
@@ -781,12 +781,12 @@ def update_ft_billing_letter_despatch(process_day: date):
     )
     non_letter_rates, letter_rates = get_rates_for_billing()
     billing_records_data = [
-        dict(
-            bst_date=billing_datum.bst_date,
-            postage=billing_datum.postage,
-            billable_units=billing_datum.letter_page_count,
-            cost_threshold=billing_datum.cost_threshold,
-            rate=get_rate(
+        {
+            "bst_date": billing_datum.bst_date,
+            "postage": billing_datum.postage,
+            "billable_units": billing_datum.letter_page_count,
+            "cost_threshold": billing_datum.cost_threshold,
+            "rate": get_rate(
                 non_letter_rates=non_letter_rates,
                 letter_rates=letter_rates,
                 notification_type="letter",
@@ -795,8 +795,8 @@ def update_ft_billing_letter_despatch(process_day: date):
                 letter_page_count=billing_datum.letter_page_count,
                 post_class=billing_datum.postage,
             ),
-            notifications_sent=billing_datum.notifications_sent,
-        )
+            "notifications_sent": billing_datum.notifications_sent,
+        }
         for billing_datum in billing_data
     ]
 
@@ -921,7 +921,7 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     )
 
 
-def fetch_usage_for_organisation(organisation_id, year) -> tuple[Any, Optional[str]]:
+def fetch_usage_for_organisation(organisation_id, year) -> tuple[Any, str | None]:
     """Calculate an organisation's usage of Notify (ie the usage of all services in that org)
 
     This queries cached data in ft_billing. We have an hourly task that runs to calculate usage and updates ft_billing

@@ -52,12 +52,12 @@ def _handle_common_dvla_errors(custom_httperror_exc_handler: Callable[[requests.
     try:
         yield
     except (ConnectionError, requests.ConnectionError, requests.Timeout) as e:
-        raise DvlaRetryableException() from e
+        raise DvlaRetryableException from e
     except requests.HTTPError as e:
         custom_httperror_exc_handler(e)
 
         if e.response.status_code == 429:
-            raise DvlaThrottlingException() from e
+            raise DvlaThrottlingException from e
         elif e.response.status_code >= 500:
             raise DvlaRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e
         else:

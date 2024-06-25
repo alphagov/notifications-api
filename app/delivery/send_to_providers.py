@@ -1,6 +1,5 @@
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List
 from urllib import parse
 
 from cachetools import TTLCache, cached
@@ -105,7 +104,7 @@ def send_sms_to_provider(notification):
                 statsd_client.timing("sms.live-key.not-high-volume.total-time", delta_seconds)
 
 
-def _get_email_headers(notification: Notification) -> List[Dict[str, str]]:
+def _get_email_headers(notification: Notification) -> list[dict[str, str]]:
     headers = []
 
     if notification.unsubscribe_link:
@@ -189,7 +188,7 @@ def provider_to_use(notification_type, international=False):
 
     if not active_providers:
         current_app.logger.error("%s failed as no active providers", notification_type)
-        raise Exception("No active {} providers".format(notification_type))
+        raise Exception(f"No active {notification_type} providers")
 
     if len(active_providers) == 1:
         weights = [100]
@@ -249,7 +248,6 @@ def technical_failure(notification):
     notification.status = NOTIFICATION_TECHNICAL_FAILURE
     dao_update_notification(notification)
     raise NotificationTechnicalFailureException(
-        "Send {} for notification id {} to provider is not allowed: service {} is inactive".format(
-            notification.notification_type, notification.id, notification.service_id
-        )
+        f"Send {notification.notification_type} for notification id {notification.id} to provider "
+        f"is not allowed: service {notification.service_id} is inactive"
     )

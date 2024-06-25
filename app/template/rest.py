@@ -83,7 +83,7 @@ def create_template(service_id):
     new_template = Template.from_json(template_json, folder)
 
     if not fetched_service.has_permission(new_template.template_type):
-        message = "Creating {} templates is not allowed".format(get_public_notify_type_text(new_template.template_type))
+        message = f"Creating {get_public_notify_type_text(new_template.template_type)} templates is not allowed"
         errors = {"template_type": [message]}
         raise InvalidRequest(errors, 403)
 
@@ -94,7 +94,7 @@ def create_template(service_id):
 
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
     if over_limit:
-        message = "Content has a character count greater than the limit of {}".format(SMS_CHAR_COUNT_LIMIT)
+        message = f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}"
         errors = {"content": [message]}
         raise InvalidRequest(errors, status_code=400)
 
@@ -115,9 +115,7 @@ def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
     if not fetched_template.service.has_permission(fetched_template.template_type):
-        message = "Updating {} templates is not allowed".format(
-            get_public_notify_type_text(fetched_template.template_type)
-        )
+        message = f"Updating {get_public_notify_type_text(fetched_template.template_type)} templates is not allowed"
         errors = {"template_type": [message]}
 
         raise InvalidRequest(errors, 403)
@@ -144,7 +142,7 @@ def update_template(service_id, template_id):
 
     over_limit = _content_count_greater_than_limit(updated_template["content"], fetched_template.template_type)
     if over_limit:
-        message = "Content has a character count greater than the limit of {}".format(SMS_CHAR_COUNT_LIMIT)
+        message = f"Content has a character count greater than the limit of {SMS_CHAR_COUNT_LIMIT}"
         errors = {"content": [message]}
         raise InvalidRequest(errors, status_code=400)
 
@@ -249,8 +247,9 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
         except botocore.exceptions.ClientError as e:
             raise InvalidRequest(
-                "Error extracting requested page from PDF file for notification_id {} type {} {}".format(
-                    notification_id, type(e), e
+                (
+                    f"Error extracting requested page from PDF file for notification_id {notification_id} "
+                    f"type {type(e)} {e}"
                 ),
                 status_code=500,
             ) from e
@@ -261,8 +260,8 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         page_is_in_invalid_pages = page_number in metadata.get("invalid_pages", "[]")
 
         if content_outside_printable_area and (file_type == "pdf" or page_is_in_invalid_pages):
-            path = "/precompiled/overlay.{}".format(file_type)
-            query_string = "?page_number={}".format(page_number) if file_type == "png" else ""
+            path = f"/precompiled/overlay.{file_type}"
+            query_string = f"?page_number={page_number}" if file_type == "png" else ""
             content = pdf_file
         elif file_type == "png":
             query_string = "?hide_notify=true" if page_number == "1" else ""
@@ -279,8 +278,9 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                     content = base64.b64encode(pdf_page).decode("utf-8")
             except PdfReadError as e:
                 raise InvalidRequest(
-                    "Error extracting requested page from PDF file for notification_id {} type {} {}".format(
-                        notification_id, type(e), e
+                    (
+                        f"Error extracting requested page from PDF file for notification_id {notification_id} "
+                        f"type {type(e)} {e}"
                     ),
                     status_code=500,
                 ) from e
@@ -310,7 +310,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         }
 
         url = "{}/preview.{}{}".format(
-            current_app.config["TEMPLATE_PREVIEW_API_HOST"], file_type, "?page={}".format(page) if page else ""
+            current_app.config["TEMPLATE_PREVIEW_API_HOST"], file_type, f"?page={page}" if page else ""
         )
         response_content = _get_png_preview_or_overlaid_pdf(url, data, notification.id, json=True)
 
@@ -329,9 +329,7 @@ def _get_png_preview_or_overlaid_pdf(url, data, notification_id, json=True):
 
     if resp.status_code != 200:
         raise InvalidRequest(
-            "Error generating preview letter for {} Status code: {} {}".format(
-                notification_id, resp.status_code, resp.content
-            ),
+            f"Error generating preview letter for {notification_id} Status code: {resp.status_code} {resp.content}",
             status_code=500,
         )
 

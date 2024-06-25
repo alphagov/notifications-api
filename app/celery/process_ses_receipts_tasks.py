@@ -58,7 +58,7 @@ def process_ses_results(self, response):
             current_app.logger.info(
                 "SES bounce for notification ID %s",
                 notification.id,
-                extra=dict(bounce_message=json.dumps(bounce_message)),
+                extra={"bounce_message": json.dumps(bounce_message)},
             )
         else:
             current_app.logger.info(
@@ -74,7 +74,7 @@ def process_ses_results(self, response):
                 references=[reference], update_dict={"status": notification_status}
             )
 
-        statsd_client.incr("callback.ses.{}".format(notification_status))
+        statsd_client.incr(f"callback.ses.{notification_status}")
 
         if notification.sent_at:
             statsd_client.timing_with_dates(

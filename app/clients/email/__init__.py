@@ -6,8 +6,6 @@ class EmailClientException(ClientException):
     Base Exception for EmailClients
     """
 
-    pass
-
 
 class EmailClientNonRetryableException(ClientException):
     """
@@ -18,8 +16,6 @@ class EmailClientNonRetryableException(ClientException):
     it will always fail however many calls to SES. Whereas a throttling error would not
     use this exception as it may succeed if we retry
     """
-
-    pass
 
 
 class EmailClient(Client):

@@ -138,11 +138,11 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
             "%(num_service_ids_with_data_retention)s services with flexible data retention, "
             "%(num_service_ids_to_purge)s services without flexible data retention"
         ),
-        dict(
-            type=notification_type,
-            num_service_ids_with_data_retention=len(service_ids_with_data_retention),
-            num_service_ids_to_purge=len(service_ids_to_purge),
-        ),
+        {
+            "type": notification_type,
+            "num_service_ids_with_data_retention": len(service_ids_with_data_retention),
+            "num_service_ids_to_purge": len(service_ids_to_purge),
+        },
     )
 
 
@@ -162,9 +162,12 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
                 "service: %(service_id)s, notification_type: %(type)s, "
                 "count deleted: %(num_deleted)s, duration: %(duration)s seconds"
             ),
-            dict(
-                service_id=service_id, type=notification_type, num_deleted=num_deleted, duration=(end - start).seconds
-            ),
+            {
+                "service_id": service_id,
+                "type": notification_type,
+                "num_deleted": num_deleted,
+                "duration": (end - start).seconds,
+            },
         )
 
 
@@ -195,7 +198,7 @@ def delete_inbound_sms():
         deleted = delete_inbound_sms_older_than_retention()
         current_app.logger.info(
             "Delete inbound sms job started %(start)s finished %(now)s deleted %(deleted)s inbound sms notifications",
-            dict(start=start, now=datetime.utcnow(), deleted=deleted),
+            {"start": start, "now": datetime.utcnow(), "deleted": deleted},
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete inbound sms notifications")

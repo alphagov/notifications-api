@@ -106,7 +106,7 @@ def test_create_invited_user_invalid_email(client, sample_service, mocker, fake_
     auth_header = create_admin_authorization_header()
 
     response = client.post(
-        "/service/{}/invite".format(sample_service.id),
+        f"/service/{sample_service.id}/invite",
         headers=[("Content-Type", "application/json"), auth_header],
         data=data,
     )
@@ -119,13 +119,13 @@ def test_create_invited_user_invalid_email(client, sample_service, mocker, fake_
 
 def test_get_all_invited_users_by_service(client, notify_db_session, sample_service):
     invites = []
-    for i in range(0, 5):
-        email = "invited_user_{}@service.gov.uk".format(i)
+    for i in range(5):
+        email = f"invited_user_{i}@service.gov.uk"
         invited_user = create_invited_user(sample_service, to_email_address=email)
 
         invites.append(invited_user)
 
-    url = "/service/{}/invite".format(sample_service.id)
+    url = f"/service/{sample_service.id}/invite"
 
     auth_header = create_admin_authorization_header()
 
@@ -143,7 +143,7 @@ def test_get_all_invited_users_by_service(client, notify_db_session, sample_serv
 
 
 def test_get_invited_users_by_service_with_no_invites(client, notify_db_session, sample_service):
-    url = "/service/{}/invite".format(sample_service.id)
+    url = f"/service/{sample_service.id}/invite"
 
     auth_header = create_admin_authorization_header()
 
@@ -178,7 +178,7 @@ def test_get_invited_user_by_service_when_user_does_not_belong_to_the_service(
 
 def test_update_invited_user_set_status_to_cancelled(client, sample_invited_user):
     data = {"status": "cancelled"}
-    url = "/service/{0}/invite/{1}".format(sample_invited_user.service_id, sample_invited_user.id)
+    url = f"/service/{sample_invited_user.service_id}/invite/{sample_invited_user.id}"
     auth_header = create_admin_authorization_header()
     response = client.post(url, data=json.dumps(data), headers=[("Content-Type", "application/json"), auth_header])
 
@@ -189,7 +189,7 @@ def test_update_invited_user_set_status_to_cancelled(client, sample_invited_user
 
 def test_update_invited_user_for_wrong_service_returns_404(client, sample_invited_user, fake_uuid):
     data = {"status": "cancelled"}
-    url = "/service/{0}/invite/{1}".format(fake_uuid, sample_invited_user.id)
+    url = f"/service/{fake_uuid}/invite/{sample_invited_user.id}"
     auth_header = create_admin_authorization_header()
     response = client.post(url, data=json.dumps(data), headers=[("Content-Type", "application/json"), auth_header])
     assert response.status_code == 404
@@ -199,7 +199,7 @@ def test_update_invited_user_for_wrong_service_returns_404(client, sample_invite
 
 def test_update_invited_user_for_invalid_data_returns_400(client, sample_invited_user):
     data = {"status": "garbage"}
-    url = "/service/{0}/invite/{1}".format(sample_invited_user.service_id, sample_invited_user.id)
+    url = f"/service/{sample_invited_user.service_id}/invite/{sample_invited_user.id}"
     auth_header = create_admin_authorization_header()
     response = client.post(url, data=json.dumps(data), headers=[("Content-Type", "application/json"), auth_header])
     assert response.status_code == 400
@@ -236,7 +236,7 @@ def test_validate_invitation_token_for_expired_token_returns_400(client):
         token = generate_token(
             str(uuid.uuid4()), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
         )
-    url = "/invite/service/{}".format(token)
+    url = f"/invite/service/{token}"
     auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[("Content-Type", "application/json"), auth_header])
 
@@ -251,7 +251,7 @@ def test_validate_invitation_token_for_expired_token_returns_400(client):
 
 def test_validate_invitation_token_returns_400_when_invited_user_does_not_exist(client):
     token = generate_token(str(uuid.uuid4()), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
-    url = "/invite/service/{}".format(token)
+    url = f"/invite/service/{token}"
     auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[("Content-Type", "application/json"), auth_header])
 
@@ -266,7 +266,7 @@ def test_validate_invitation_token_returns_400_when_token_is_malformed(client):
         :-2
     ]
 
-    url = "/invite/service/{}".format(token)
+    url = f"/invite/service/{token}"
     auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[("Content-Type", "application/json"), auth_header])
 
@@ -339,11 +339,11 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     recipients_of_invite_request = [service_manager_1.id, service_manager_2.id, service_manager_3.id]
     invite_link_host = current_app.config["ADMIN_BASE_URL"]
 
-    data = dict(
-        service_managers_ids=list(map(lambda x: str(x), recipients_of_invite_request)),
-        reason=reason,
-        invite_link_host=invite_link_host,
-    )
+    data = {
+        "service_managers_ids": [str(x) for x in recipients_of_invite_request],
+        "reason": reason,
+        "invite_link_host": invite_link_host,
+    }
     admin_request.post(
         "service_invite.request_invite_to_service",
         service_id=sample_service.id,
@@ -399,11 +399,11 @@ def test_request_invite_to_service_email_is_not_sent_if_requester_is_already_par
     service_managers = [service_manager_1]
     reason = "Lots of reasons"
     invite_link_host = current_app.config["ADMIN_BASE_URL"]
-    data = dict(
-        service_managers_ids=list(map(lambda x: str(x.id), service_managers)),
-        reason=reason,
-        invite_link_host=invite_link_host,
-    )
+    data = {
+        "service_managers_ids": [str(x.id) for x in service_managers],
+        "reason": reason,
+        "invite_link_host": invite_link_host,
+    }
 
     admin_request.post(
         "service_invite.request_invite_to_service",
@@ -429,11 +429,11 @@ def test_exception_is_raised_if_no_request_invite_to_service_email_is_sent(
     recipients_of_invite_request = [service_manager.id]
     reason = "Lots of reasons"
     invite_link_host = current_app.config["ADMIN_BASE_URL"]
-    data = dict(
-        service_managers_ids=list(map(lambda x: str(x), recipients_of_invite_request)),
-        reason=reason,
-        invite_link_host=invite_link_host,
-    )
+    data = {
+        "service_managers_ids": [str(x) for x in recipients_of_invite_request],
+        "reason": reason,
+        "invite_link_host": invite_link_host,
+    }
 
     admin_request.post(
         "service_invite.request_invite_to_service",

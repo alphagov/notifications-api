@@ -122,14 +122,14 @@ def purge_functional_test_data(user_email_prefix):
 
     users, services, etc. Give an email prefix. Probably "notify-tests-preview".
     """
-    users = User.query.filter(User.email_address.like("{}%".format(user_email_prefix))).all()
+    users = User.query.filter(User.email_address.like(f"{user_email_prefix}%")).all()
     for usr in users:
         # Make sure the full email includes a uuid in it
         # Just in case someone decides to use a similar email address.
         try:
             uuid.UUID(usr.email_address.split("@")[0].split("+")[1])
         except ValueError:
-            print("Skipping {} as the user email doesn't contain a UUID.".format(usr.email_address))
+            print(f"Skipping {usr.email_address} as the user email doesn't contain a UUID.")
         else:
             services = dao_fetch_all_services_by_user(usr.id)
             if services:
@@ -160,13 +160,13 @@ def backfill_notification_statuses():
     `Notification._status_enum`
     """
     LIMIT = 250000
-    subq = "SELECT id FROM notification_history WHERE notification_status is NULL LIMIT {}".format(LIMIT)
-    update = "UPDATE notification_history SET notification_status = status WHERE id in ({})".format(subq)
+    subq = f"SELECT id FROM notification_history WHERE notification_status is NULL LIMIT {LIMIT}"
+    update = f"UPDATE notification_history SET notification_status = status WHERE id in ({subq})"
     result = db.session.execute(subq).fetchall()
 
     while len(result) > 0:
         db.session.execute(update)
-        print("commit {} updates at {}".format(LIMIT, datetime.utcnow()))
+        print(f"commit {LIMIT} updates at {datetime.utcnow()}")
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
@@ -178,22 +178,22 @@ def update_notification_international_flag():
     """
     # 250,000 rows takes 30 seconds to update.
     subq = "select id from notifications where international is null limit 250000"
-    update = "update notifications set international = False where id in ({})".format(subq)
+    update = f"update notifications set international = False where id in ({subq})"
     result = db.session.execute(subq).fetchall()
 
     while len(result) > 0:
         db.session.execute(update)
-        print("commit 250000 updates at {}".format(datetime.utcnow()))
+        print(f"commit 250000 updates at {datetime.utcnow()}")
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
     # Now update notification_history
     subq_history = "select id from notification_history where international is null limit 250000"
-    update_history = "update notification_history set international = False where id in ({})".format(subq_history)
+    update_history = f"update notification_history set international = False where id in ({subq_history})"
     result_history = db.session.execute(subq_history).fetchall()
     while len(result_history) > 0:
         db.session.execute(update_history)
-        print("commit 250000 updates at {}".format(datetime.utcnow()))
+        print(f"commit 250000 updates at {datetime.utcnow()}")
         db.session.commit()
         result_history = db.session.execute(subq_history).fetchall()
 
@@ -210,25 +210,23 @@ def fix_notification_statuses_not_in_sync():
     """
     MAX = 10000
 
-    subq = "SELECT id FROM notifications WHERE cast (status as text) != notification_status LIMIT {}".format(MAX)
-    update = "UPDATE notifications SET notification_status = status WHERE id in ({})".format(subq)
+    subq = f"SELECT id FROM notifications WHERE cast (status as text) != notification_status LIMIT {MAX}"
+    update = f"UPDATE notifications SET notification_status = status WHERE id in ({subq})"
     result = db.session.execute(subq).fetchall()
 
     while len(result) > 0:
         db.session.execute(update)
-        print("Committed {} updates at {}".format(len(result), datetime.utcnow()))
+        print(f"Committed {len(result)} updates at {datetime.utcnow()}")
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
-    subq_hist = (
-        "SELECT id FROM notification_history WHERE cast (status as text) != notification_status LIMIT {}".format(MAX)
-    )
-    update = "UPDATE notification_history SET notification_status = status WHERE id in ({})".format(subq_hist)
+    subq_hist = f"SELECT id FROM notification_history WHERE cast (status as text) != notification_status LIMIT {MAX}"
+    update = f"UPDATE notification_history SET notification_status = status WHERE id in ({subq_hist})"
     result = db.session.execute(subq_hist).fetchall()
 
     while len(result) > 0:
         db.session.execute(update)
-        print("Committed {} updates at {}".format(len(result), datetime.utcnow()))
+        print(f"Committed {len(result)} updates at {datetime.utcnow()}")
         db.session.commit()
         result = db.session.execute(subq_hist).fetchall()
 
@@ -242,7 +240,7 @@ def fix_notification_statuses_not_in_sync():
               one number per line. The number must have the format of 07... not 447....""",
 )
 def insert_inbound_numbers_from_file(file_name):
-    print("Inserting inbound numbers from {}".format(file_name))
+    print(f"Inserting inbound numbers from {file_name}")
     with open(file_name) as file:
         sql = "insert into inbound_numbers values('{}', '{}', 'mmg', null, True, now(), null);"
 
@@ -263,7 +261,7 @@ def insert_inbound_numbers_from_file(file_name):
     help="Notification id of the letter that needs the get_pdf_for_templated_letter task replayed",
 )
 def replay_create_pdf_for_templated_letter(notification_id):
-    print("Create task to get_pdf_for_templated_letter for notification: {}".format(notification_id))
+    print(f"Create task to get_pdf_for_templated_letter for notification: {notification_id}")
     get_pdf_for_templated_letter.apply_async([str(notification_id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
@@ -347,7 +345,7 @@ def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permi
             "invite_link_host": current_app.config["ADMIN_BASE_URL"],
         }
         with current_app.test_request_context(
-            path="/service/{}/invite/".format(service_id),
+            path=f"/service/{service_id}/invite/",
             method="POST",
             data=json.dumps(data),
             headers={"Content-Type": "application/json"},
@@ -355,10 +353,10 @@ def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permi
             try:
                 response = create_invited_user(service_id)
                 if response[1] != 201:
-                    print("*** ERROR occurred for email address: {}".format(email_address.strip()))
+                    print(f"*** ERROR occurred for email address: {email_address.strip()}")
                 print(response[0].get_data(as_text=True))
             except Exception as e:
-                print("*** ERROR occurred for email address: {}. \n{}".format(email_address.strip(), e))
+                print(f"*** ERROR occurred for email address: {email_address.strip()}. \n{e}")
 
     file.close()
 
@@ -455,10 +453,10 @@ def update_emails_to_remove_gsi(service_id):
                             AND u.email_address ilike ('%.gsi.gov.uk%')
     """
     results = db.session.execute(users_to_update, {"service_id": service_id})
-    print("Updating {} users.".format(results.rowcount))
+    print(f"Updating {results.rowcount} users.")
 
     for user in results:
-        print("User with id {} updated".format(user.user_id))
+        print(f"User with id {user.user_id} updated")
 
         update_stmt = """
         UPDATE users
@@ -501,7 +499,7 @@ def populate_organisations_from_file(file_name):  # noqa: C901
     # The expectation is that the organisation, organisation_to_service
     # and user_to_organisation will be cleared before running this command.
     # Ignoring duplicates allows us to run the command again with the same file or same file with new rows.
-    with open(file_name, "r") as f:
+    with open(file_name) as f:
 
         def boolean_or_none(field):
             if field == "1":
@@ -555,7 +553,7 @@ def populate_organisations_from_file(file_name):  # noqa: C901
     "-f",
     "--file_name",
     required=True,
-    help="CSV file containing id, agreement_signed_version, " "agreement_signed_on_behalf_of_name, agreement_signed_at",
+    help="CSV file containing id, agreement_signed_version, agreement_signed_on_behalf_of_name, agreement_signed_at",
 )
 def populate_organisation_agreement_details_from_file(file_name):
     """
@@ -594,7 +592,7 @@ def populate_organisation_agreement_details_from_file(file_name):
     help="""Full path of the file to upload, file should contain letter filenames, one per line""",
 )
 def get_notification_and_service_ids_for_letters_that_failed_to_print(file_name):
-    print("Getting service and notification ids for letter filenames list {}".format(file_name))
+    print(f"Getting service and notification ids for letter filenames list {file_name}")
     file = open(file_name)
     references = tuple([row[7:23] for row in file])
 
@@ -640,7 +638,7 @@ def populate_service_volume_intentions(file_name):
     # [2] Email:: volume intentions for service
     # [3] Letters:: volume intentions for service
 
-    with open(file_name, "r") as f:
+    with open(file_name) as f:
         for line in itertools.islice(f, 1, None):
             columns = line.split(",")
             print(columns)
@@ -660,7 +658,7 @@ def populate_go_live(file_name):
     import csv
 
     print("Populate go live user and date")
-    with open(file_name, "r") as f:
+    with open(file_name) as f:
         rows = csv.reader(
             f,
             quoting=csv.QUOTE_MINIMAL,
@@ -710,7 +708,7 @@ def fix_billable_units():
             prefix=notification.service.name,
             show_prefix=notification.service.prefix_sms,
         )
-        print("Updating notification: {} with {} billable_units".format(notification.id, template.fragment_count))
+        print(f"Updating notification: {notification.id} with {template.fragment_count} billable_units")
 
         Notification.query.filter(Notification.id == notification.id).update(
             {"billable_units": template.fragment_count}
@@ -765,7 +763,7 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
         """
         free_allowance_rows = db.session.execute(latest_annual_billing, {"service_id": row.id})
         free_allowance = [x[0] for x in free_allowance_rows]
-        print("create free limit of {} for service: {}".format(free_allowance[0], row.id))
+        print(f"create free limit of {free_allowance[0]} for service: {row.id}")
         dao_create_or_update_annual_billing_for_year(
             service_id=row.id, free_sms_fragment_limit=free_allowance[0], financial_year_start=int(year)
         )

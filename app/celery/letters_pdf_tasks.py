@@ -119,7 +119,7 @@ def update_billable_units_for_letter(self, notification_id, page_count):
 
         current_app.logger.info(
             "Letter notification id: %(id)s reference %(ref)s: billable units set to %(units)s",
-            dict(id=notification_id, ref=notification.reference, units=billable_units),
+            {"id": notification_id, "ref": notification.reference, "units": billable_units},
         )
 
 
@@ -132,7 +132,7 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
     dao_update_notification(notification)
     current_app.logger.info(
         "Validation failed: letter is too long %(page_count)s for letter with id: %(id)s",
-        dict(page_count=page_count, id=notification_id),
+        {"page_count": page_count, "id": notification_id},
     )
 
 
@@ -270,8 +270,8 @@ def sanitise_letter(self, filename):
         except self.MaxRetriesExceededError as e:
             message = (
                 "RETRY FAILED: Max retries reached. "
-                "The task sanitise_letter failed for notification {}. "
-                "Notification has been updated to technical-failure".format(notification.id)
+                f"The task sanitise_letter failed for notification {notification.id}. "
+                "Notification has been updated to technical-failure"
             )
             update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message) from e
@@ -362,8 +362,8 @@ def process_sanitised_letter(self, sanitise_data):
         except self.MaxRetriesExceededError as e:
             message = (
                 "RETRY FAILED: Max retries reached. "
-                "The task process_sanitised_letter failed for notification {}. "
-                "Notification has been updated to technical-failure".format(notification.id)
+                f"The task process_sanitised_letter failed for notification {notification.id}. "
+                "Notification has been updated to technical-failure"
             )
             update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message) from e
@@ -396,12 +396,10 @@ def process_virus_scan_failed(filename):
 
     if updated_count != 1:
         raise Exception(
-            "There should only be one letter notification for each reference. Found {} notifications".format(
-                updated_count
-            )
+            f"There should only be one letter notification for each reference. Found {updated_count} notifications"
         )
 
-    error = VirusScanError("notification id {} Virus scan failed: {}".format(notification.id, filename))
+    error = VirusScanError(f"notification id {notification.id} Virus scan failed: {filename}")
     raise error
 
 
@@ -414,12 +412,10 @@ def process_virus_scan_error(filename):
 
     if updated_count != 1:
         raise Exception(
-            "There should only be one letter notification for each reference. Found {} notifications".format(
-                updated_count
-            )
+            f"There should only be one letter notification for each reference. Found {updated_count} notifications"
         )
     current_app.logger.error("notification id %s Virus scan error: %s", notification.id, filename)
-    raise VirusScanError("notification id {} Virus scan error: {}".format(notification.id, filename))
+    raise VirusScanError(f"notification id {notification.id} Virus scan error: {filename}")
 
 
 def update_letter_pdf_status(reference, status, billable_units, recipient_address=None):

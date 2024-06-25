@@ -2,7 +2,7 @@ from app.config import QueueNames
 
 
 def test_queue_names_set_entrypoint_wrapper():
-    with open("entrypoint.sh", "r") as stream:
+    with open("entrypoint.sh") as stream:
         search = "exec $COMMON_CMD"
 
         watched_queues = set()

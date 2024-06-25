@@ -19,7 +19,7 @@ def test_process_returned_letters(status, references, admin_request, mocker):
     )
 
     if status != 200:
-        assert "{} does not match".format(references[0]) in response["errors"][0]["message"]
+        assert f"{references[0]} does not match" in response["errors"][0]["message"]
     else:
         mock_celery.assert_called_once_with(args=(references,), queue="database-tasks", compression="zlib")
 

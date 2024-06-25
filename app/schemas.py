@@ -74,7 +74,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema):
 
     def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
-        super(BaseSchema, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @post_load
     def make_instance(self, data, **kwargs):
@@ -85,7 +85,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema):
         """
         if self.load_json:
             return data
-        return super(BaseSchema, self).make_instance(data)
+        return super().make_instance(data)
 
 
 class UserSchema(BaseSchema):
@@ -182,7 +182,7 @@ class UserUpdateAttributeSchema(BaseSchema):
     def check_unknown_fields(self, data, original_data, **kwargs):
         for key in original_data:
             if key not in self.fields:
-                raise ValidationError("Unknown field name {}".format(key))
+                raise ValidationError(f"Unknown field name {key}")
 
 
 class UserUpdatePasswordSchema(BaseSchema):
@@ -193,7 +193,7 @@ class UserUpdatePasswordSchema(BaseSchema):
     def check_unknown_fields(self, data, original_data, **kwargs):
         for key in original_data:
             if key not in self.fields:
-                raise ValidationError("Unknown field name {}".format(key))
+                raise ValidationError(f"Unknown field name {key}")
 
 
 class ProviderDetailsSchema(BaseSchema):
@@ -305,11 +305,11 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
         permissions = [v.permission for v in value]
         for p in permissions:
             if p not in app.constants.SERVICE_PERMISSION_TYPES:
-                raise ValidationError("Invalid Service Permission: '{}'".format(p))
+                raise ValidationError(f"Invalid Service Permission: '{p}'")
 
         if len(set(permissions)) != len(permissions):
-            duplicates = list(set([x for x in permissions if permissions.count(x) > 1]))
-            raise ValidationError("Duplicate Service Permission: {}".format(duplicates))
+            duplicates = list({x for x in permissions if permissions.count(x) > 1})
+            raise ValidationError(f"Duplicate Service Permission: {duplicates}")
 
     @pre_load()
     def format_for_data_model(self, in_data, **kwargs):
@@ -765,7 +765,7 @@ class NotificationsFilterSchema(ma.Schema):
     @pre_load
     def handle_multidict(self, in_data, **kwargs):
         if isinstance(in_data, dict) and hasattr(in_data, "getlist"):
-            out_data = dict([(k, in_data.get(k)) for k in in_data.keys()])
+            out_data = {k: in_data.get(k) for k in in_data.keys()}
             if "template_type" in in_data:
                 out_data["template_type"] = [{"template_type": x} for x in in_data.getlist("template_type")]
             if "status" in in_data:

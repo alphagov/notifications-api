@@ -26,7 +26,7 @@ def test_get_notification_by_id(
         notification_to_get = sample_letter_notification
 
     auth_header = create_service_authorization_header(service_id=notification_to_get.service_id)
-    response = client.get("/notifications/{}".format(notification_to_get.id), headers=[auth_header])
+    response = client.get(f"/notifications/{notification_to_get.id}", headers=[auth_header])
 
     assert response.status_code == 200
     notification = json.loads(response.get_data(as_text=True))["data"]["notification"]
@@ -52,7 +52,7 @@ def test_get_notification_by_invalid_id(client, sample_notification, sample_emai
         notification_to_get = sample_notification
     auth_header = create_service_authorization_header(service_id=notification_to_get.service_id)
 
-    response = client.get("/notifications/{}".format(id), headers=[auth_header])
+    response = client.get(f"/notifications/{id}", headers=[auth_header])
 
     assert response.status_code == 405
 
@@ -60,7 +60,7 @@ def test_get_notification_by_invalid_id(client, sample_notification, sample_emai
 def test_get_notifications_empty_result(client, sample_api_key):
     auth_header = create_service_authorization_header(service_id=sample_api_key.service_id)
 
-    response = client.get(path="/notifications/{}".format(uuid.uuid4()), headers=[auth_header])
+    response = client.get(path=f"/notifications/{uuid.uuid4()}", headers=[auth_header])
 
     notification = json.loads(response.get_data(as_text=True))
     assert notification["result"] == "error"
@@ -92,7 +92,7 @@ def test_get_notification_from_different_api_key_works(
     save_model_api_key(api_key)
 
     response = client.get(
-        path="/notifications/{}".format(sample_notification.id), headers=_create_auth_header_from_key(api_key)
+        path=f"/notifications/{sample_notification.id}", headers=_create_auth_header_from_key(api_key)
     )
     assert response.status_code == 200
 
@@ -120,7 +120,7 @@ def test_get_notification_from_different_api_key_of_same_type_succeeds(client, s
     dao_update_notification(sample_notification)
 
     response = client.get(
-        path="/notifications/{}".format(sample_notification.id), headers=_create_auth_header_from_key(querying_api_key)
+        path=f"/notifications/{sample_notification.id}", headers=_create_auth_header_from_key(querying_api_key)
     )
 
     assert response.status_code == 200
@@ -160,7 +160,7 @@ def test_normal_api_key_returns_notifications_created_from_jobs_and_from_api(
 
     notifications = json.loads(response.get_data(as_text=True))["notifications"]
     assert len(notifications) == 2
-    assert set(x["id"] for x in notifications) == {str(sample_notification.id), str(api_notification.id)}
+    assert {x["id"] for x in notifications} == {str(sample_notification.id), str(api_notification.id)}
 
 
 @pytest.mark.parametrize("key_type", [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])
@@ -372,7 +372,7 @@ def test_filter_by_multiple_template_types(client, sample_template, sample_email
     assert response.status_code == 200
     notifications = json.loads(response.get_data(as_text=True))
     assert len(notifications["notifications"]) == 2
-    assert {"sms", "email"} == set(x["template"]["template_type"] for x in notifications["notifications"])
+    assert {"sms", "email"} == {x["template"]["template_type"] for x in notifications["notifications"]}
 
 
 def test_filter_by_status(client, sample_email_template):
@@ -400,7 +400,7 @@ def test_filter_by_multiple_statuses(client, sample_email_template):
     assert response.status_code == 200
     notifications = json.loads(response.get_data(as_text=True))
     assert len(notifications["notifications"]) == 2
-    assert {"delivered", "sending"} == set(x["status"] for x in notifications["notifications"])
+    assert {"delivered", "sending"} == {x["status"] for x in notifications["notifications"]}
 
 
 def test_filter_by_status_and_template_type(client, sample_template, sample_email_template):
@@ -424,7 +424,7 @@ def test_get_notification_by_id_returns_merged_template_content(client, sample_t
 
     auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
 
-    response = client.get("/notifications/{}".format(sample_notification.id), headers=[auth_header])
+    response = client.get(f"/notifications/{sample_notification.id}", headers=[auth_header])
 
     notification = json.loads(response.get_data(as_text=True))["data"]["notification"]
     assert response.status_code == 200
@@ -441,7 +441,7 @@ def test_get_notification_by_id_returns_merged_template_content_for_email(
     )
     auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
 
-    response = client.get("/notifications/{}".format(sample_notification.id), headers=[auth_header])
+    response = client.get(f"/notifications/{sample_notification.id}", headers=[auth_header])
 
     notification = json.loads(response.get_data(as_text=True))["data"]["notification"]
     assert response.status_code == 200
@@ -497,4 +497,4 @@ def test_get_notification_selects_correct_template_for_personalisation(client, n
 
 def _create_auth_header_from_key(api_key):
     token = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
-    return [("Authorization", "Bearer {}".format(token))]
+    return [("Authorization", f"Bearer {token}")]

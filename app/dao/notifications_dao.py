@@ -627,8 +627,8 @@ def dao_get_notifications_by_recipient_or_reference(
     filters = [
         Notification.service_id == service_id,
         or_(
-            Notification.normalised_to.like("%{}%".format(normalised)),
-            Notification.client_reference.ilike("%{}%".format(search_term)),
+            Notification.normalised_to.like(f"%{normalised}%"),
+            Notification.client_reference.ilike(f"%{search_term}%"),
         ),
         Notification.key_type != KEY_TYPE_TEST,
     ]
@@ -818,15 +818,15 @@ def _duplicate_update_warning(notification, status):
         "type %(type)s sent by %(sent_by)s. "
         "New status was %(new_status)s, current status is %(current_status)s. "
         "This happened %(time_diff)s after being first set.",
-        dict(
-            service_id=notification.service_id,
-            notification_id=notification.id,
-            type=notification.notification_type,
-            sent_by=notification.sent_by,
-            new_status=status,
-            current_status=notification.status,
-            time_diff=time_diff,
-        ),
+        {
+            "service_id": notification.service_id,
+            "notification_id": notification.id,
+            "type": notification.notification_type,
+            "sent_by": notification.sent_by,
+            "new_status": status,
+            "current_status": notification.status,
+            "time_diff": time_diff,
+        },
     )
 
 

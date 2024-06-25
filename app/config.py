@@ -6,7 +6,7 @@ from celery.schedules import crontab
 from kombu import Exchange, Queue
 
 
-class QueueNames(object):
+class QueueNames:
     PERIODIC = "periodic-tasks"
     DATABASE = "database-tasks"
     SEND_SMS = "send-sms-tasks"
@@ -64,7 +64,7 @@ class BroadcastProvider:
     PROVIDERS = [EE, VODAFONE, THREE, O2]
 
 
-class TaskNames(object):
+class TaskNames:
     PROCESS_INCOMPLETE_JOBS = "process-incomplete-jobs"
     ZIP_AND_SEND_LETTER_PDFS = "zip-and-send-letter-pdfs"
     SCAN_FILE = "scan-file"
@@ -74,7 +74,7 @@ class TaskNames(object):
     RECREATE_PDF_FOR_PRECOMPILED_LETTER = "recreate-pdf-for-precompiled-letter"
 
 
-class Config(object):
+class Config:
     # URL of admin app
     ADMIN_BASE_URL = os.getenv("ADMIN_BASE_URL", "http://localhost:6012")
 
@@ -411,8 +411,6 @@ class Config(object):
     MMG_URL = os.environ.get("MMG_URL", "https://api.mmg.co.uk/jsonv2a/api.php")
     FIRETEXT_URL = os.environ.get("FIRETEXT_URL", "https://www.firetext.co.uk/api/sendsms/json")
     SES_STUB_URL = os.environ.get("SES_STUB_URL")
-
-    AWS_REGION = "eu-west-1"
 
     CBC_PROXY_ENABLED = True
     CBC_PROXY_AWS_ACCESS_KEY_ID = os.environ.get("CBC_PROXY_AWS_ACCESS_KEY_ID", "")

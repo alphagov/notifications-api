@@ -365,7 +365,7 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
 )
 def test_process_row_sends_letter_task(template_type, expected_function, mocker):
     mocker.patch("app.celery.tasks.create_uuid", return_value="noti_uuid")
-    task_mock = mocker.patch("app.celery.tasks.{}.apply_async".format(expected_function))
+    task_mock = mocker.patch(f"app.celery.tasks.{expected_function}.apply_async")
     signing_mock = mocker.patch("app.celery.tasks.signing.encode")
     template = Mock(id="template_id", template_type=template_type)
     job = Mock(id="job_id", template_version="temp_vers")
@@ -941,7 +941,7 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
                 "addressline6": "Wubble",
                 "postcode": "SE1 2SA",
             },
-            ("Foo\n" "Bar\n" "Baz\n" "Wibble\n" "Wobble\n" "Wubble\n" "SE1 2SA"),
+            ("Foo\nBar\nBaz\nWibble\nWobble\nWubble\nSE1 2SA"),
             ("foobarbazwibblewobblewubblese12sa"),
             None,
         ),
@@ -954,7 +954,7 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
                 "addressline4": "Bar",
                 "addressline6": "se12sa",
             },
-            ("Foo\n" "Bar\n" "SE1 2SA"),
+            ("Foo\nBar\nSE1 2SA"),
             ("foobarse12sa"),
             "ab1234",
         ),
@@ -1100,7 +1100,7 @@ def test_save_letter_saves_letter_to_database_right_reply_to(mocker, notify_db_s
 
     notification_db = Notification.query.one()
     assert notification_db.id == notification_id
-    assert notification_db.to == ("Foo\n" "Bar\n" "Baz\n" "Wibble\n" "Wobble\n" "Wubble\n" "SE1 3WS")
+    assert notification_db.to == ("Foo\nBar\nBaz\nWibble\nWobble\nWubble\nSE1 3WS")
     assert notification_db.job_id == job.id
     assert notification_db.template_id == job.template.id
     assert notification_db.template_version == job.template.version

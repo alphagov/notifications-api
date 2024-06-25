@@ -172,6 +172,6 @@ def __format_message(e):
     path = get_path(e)
     message = get_error_message(e)
     if path:
-        return "{} {}".format(path, message)
+        return f"{path} {message}"
     else:
-        return "{}".format(message)
+        return f"{message}"

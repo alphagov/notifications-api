@@ -27,7 +27,7 @@ def create_nightly_billing(day_start=None):
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
         day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
-    for i in range(0, 10):
+    for i in range(10):
         process_day = (day_start - timedelta(days=i)).isoformat()
 
         create_or_update_ft_billing_for_day.apply_async(kwargs={"process_day": process_day}, queue=QueueNames.REPORTING)
@@ -84,7 +84,7 @@ def create_or_update_ft_billing_letter_despatch_for_day(process_day: str):
     current_app.logger.info(
         "create-or-update-ft-billing-letter-despatch-for-day task for %(date)s: task complete. "
         "%(deleted)s old row(s) deleted, and %(created)s row(s) created.",
-        dict(date=process_date, deleted=deleted, created=created),
+        {"date": process_date, "deleted": deleted, "created": created},
     )
 
 
@@ -148,5 +148,5 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
             "create-nightly-notification-status-for-service-and-day task update for "
             "%(service_id)s, %(type)s for %(date)s: updated in %(duration)s seconds"
         ),
-        dict(service_id=service_id, type=notification_type, date=process_day, duration=(end - start).seconds),
+        {"service_id": service_id, "type": notification_type, "date": process_day, "duration": (end - start).seconds},
     )
