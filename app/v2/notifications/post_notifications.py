@@ -299,12 +299,10 @@ def save_email_or_sms_to_queue(
         "status": NOTIFICATION_CREATED,
         "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
     }
-    encoded = signing.encode(data)
+    encoded = signing.encode(data | {"template_has_unsubscribe_link": template.has_unsubscribe_link})
 
     if notification_type == EMAIL_TYPE:
-        save_api_email.apply_async(
-            [encoded], template_has_unsubscribe_link=template.has_unsubscribe_link, queue=QueueNames.SAVE_API_EMAIL
-        )
+        save_api_email.apply_async([encoded], queue=QueueNames.SAVE_API_EMAIL)
     elif notification_type == SMS_TYPE:
         save_api_sms.apply_async([encoded], queue=QueueNames.SAVE_API_SMS)
 

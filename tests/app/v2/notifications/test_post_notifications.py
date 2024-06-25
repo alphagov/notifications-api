@@ -1315,9 +1315,7 @@ def test_post_notifications_saves_email_or_sms_to_queue(client, notify_db_sessio
         assert json_resp["template"]["id"] == str(template.id)
 
         if notification_type == "email":
-            save_task.assert_called_once_with(
-                [mock.ANY], template_has_unsubscribe_link=False, queue=f"save-api-{notification_type}-tasks"
-            )
+            save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
         else:
             save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
         assert not mock_send_task.called
@@ -1370,9 +1368,7 @@ def test_post_notifications_saves_email_or_sms_normally_if_saving_to_queue_fails
         assert json_resp["template"]["id"] == str(template.id)
 
         if notification_type == "email":
-            save_task.assert_called_once_with(
-                [mock.ANY], template_has_unsubscribe_link=False, queue=f"save-api-{notification_type}-tasks"
-            )
+            save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
         else:
             save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
 

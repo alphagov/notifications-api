@@ -357,46 +357,6 @@ def sample_letter_job(sample_letter_template):
     return job
 
 
-@pytest.fixture
-def sample_email_has_unsubscribe_link_true_job(notify_db_session):
-    service = create_service(service_name="AOne Sample Service", check_if_service_exists=False)
-    template = create_template(service=service, template_type=EMAIL_TYPE, has_unsubscribe_link=True)
-    data = {
-        "id": uuid.uuid4(),
-        "service_id": service.id,
-        "service": service,
-        "template_id": template.id,
-        "template_version": template.version,
-        "original_file_name": "some.csv",
-        "notification_count": 1,
-        "created_at": datetime.utcnow(),
-        "created_by": service.created_by,
-    }
-    job = Job(**data)
-    dao_create_job(job)
-    return job
-
-
-@pytest.fixture
-def sample_email_has_unsubscribe_link_false_job(notify_db_session):
-    service = create_service(service_name="Another Sample Service", check_if_service_exists=False)
-    template = create_template(service=service, template_type=EMAIL_TYPE, has_unsubscribe_link=False)
-    data = {
-        "id": uuid.uuid4(),
-        "service_id": service.id,
-        "service": service,
-        "template_id": template.id,
-        "template_version": template.version,
-        "original_file_name": "some.csv",
-        "notification_count": 1,
-        "created_at": datetime.utcnow(),
-        "created_by": service.created_by,
-    }
-    job = Job(**data)
-    dao_create_job(job)
-    return job
-
-
 @pytest.fixture(scope="function")
 def sample_notification_with_job(notify_db_session):
     service = create_service(check_if_service_exists=True)

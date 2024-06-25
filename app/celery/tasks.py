@@ -280,16 +280,16 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
 
 
 @notify_celery.task(bind=True, name="save-api-email", max_retries=5, default_retry_delay=300)
-def save_api_email(self, encoded_notification, template_has_unsubscribe_link):
-    save_api_email_or_sms(self, encoded_notification, template_has_unsubscribe_link)
+def save_api_email(self, encoded_notification):
+    save_api_email_or_sms(self, encoded_notification)
 
 
 @notify_celery.task(bind=True, name="save-api-sms", max_retries=5, default_retry_delay=300)
-def save_api_sms(self, encoded_notification, template_has_unsubscribe_link=False):
-    save_api_email_or_sms(self, encoded_notification, template_has_unsubscribe_link)
+def save_api_sms(self, encoded_notification):
+    save_api_email_or_sms(self, encoded_notification)
 
 
-def save_api_email_or_sms(self, encoded_notification, template_has_unsubscribe_link):
+def save_api_email_or_sms(self, encoded_notification):
     notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(notification["service_id"])
     provider_task = (
@@ -301,7 +301,7 @@ def save_api_email_or_sms(self, encoded_notification, template_has_unsubscribe_l
             notification_id=notification["id"],
             template_id=notification["template_id"],
             template_version=notification["template_version"],
-            template_has_unsubscribe_link=template_has_unsubscribe_link,
+            template_has_unsubscribe_link=notification["template_has_unsubscribe_link"],
             recipient=notification["to"],
             service=service,
             personalisation=notification.get("personalisation"),

@@ -1733,11 +1733,11 @@ def test_save_api_email_or_sms(mocker, sample_service, notification_type):
         data.update({"to": "+447700900855"})
         expected_queue = QueueNames.SEND_SMS
 
-    encoded = signing.encode(data)
+    encoded = signing.encode(data | {"template_has_unsubscribe_link": False})
 
     assert len(Notification.query.all()) == 0
     if notification_type == EMAIL_TYPE:
-        save_api_email(encoded_notification=encoded, template_has_unsubscribe_link=False)
+        save_api_email(encoded_notification=encoded)
     else:
         save_api_sms(encoded_notification=encoded)
     notifications = Notification.query.all()
@@ -1781,18 +1781,18 @@ def test_save_api_email_dont_retry_if_notification_already_exists(sample_service
         data.update({"to": "+447700900855"})
         expected_queue = QueueNames.SEND_SMS
 
-    encoded = signing.encode(data)
+    encoded = signing.encode(data | {"template_has_unsubscribe_link": False})
     assert len(Notification.query.all()) == 0
 
     if notification_type == EMAIL_TYPE:
-        save_api_email(encoded_notification=encoded, template_has_unsubscribe_link=False)
+        save_api_email(encoded_notification=encoded)
     else:
         save_api_sms(encoded_notification=encoded)
     notifications = Notification.query.all()
     assert len(notifications) == 1
     # call the task again with the same notification
     if notification_type == EMAIL_TYPE:
-        save_api_email(encoded_notification=encoded, template_has_unsubscribe_link=False)
+        save_api_email(encoded_notification=encoded)
     else:
         save_api_sms(encoded_notification=encoded)
     notifications = Notification.query.all()
@@ -1906,13 +1906,14 @@ def test_save_api_tasks_use_cache(
                 "document_download_count": 0,
                 "status": NOTIFICATION_CREATED,
                 "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
+                "template_has_unsubscribe_link": False,
             }
         )
 
     assert len(Notification.query.all()) == 0
 
     for _ in range(3):
-        task_function(encoded_notification=create_encoded_notification(), template_has_unsubscribe_link=False)
+        task_function(encoded_notification=create_encoded_notification())
 
     assert service_dict_mock.call_args_list == [call(str(template.service_id))]
 
