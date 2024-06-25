@@ -1687,6 +1687,9 @@ class Notification(db.Model):
         return dao_get_sms_rate_for_timestamp(self.created_at).rate
 
     def _get_letter_cost(self):
+        if self.billable_units == 0:
+            return "0.00"
+
         from app.dao.letter_rate_dao import dao_get_letter_rates_for_timestamp
 
         rates = dao_get_letter_rates_for_timestamp(self.created_at)
@@ -1694,8 +1697,7 @@ class Notification(db.Model):
             (rate for rate in rates if rate.sheet_count == self.billable_units and rate.post_class == self.postage),
             None,
         )
-        if self.billable_units == 0:
-            return "0.00"
+
         return str(letter_rate.rate)
 
 
