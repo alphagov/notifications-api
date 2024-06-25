@@ -19,7 +19,7 @@ for line in reader:
             # Sender_ids are comma seperated in the spreadsheet so split them
             new_sender_ids = line[column_for_sender_id].lower().split(",")
             # Do the split/join dance to remove whitespace
-            new_sender_ids = map(lambda x: "".join(x.split()), new_sender_ids)
+            new_sender_ids = ("".join(x.split()) for x in new_sender_ids)
             # Sometimes there are trailing commas remove them
             new_sender_ids = filter(lambda x: x != "", new_sender_ids)
             sender_ids = sender_ids + list(new_sender_ids)
