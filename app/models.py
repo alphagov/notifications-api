@@ -1649,13 +1649,13 @@ class Notification(db.Model):
         serialized["is_cost_data_ready"] = True
 
         if self.notification_type == "sms":
-            return self._get_cost_info_for_sms(serialized)
+            return self._add_cost_info_for_sms(serialized)
         elif self.notification_type == "letter":
-            return self._get_cost_info_for_letter(serialized)
+            return self._add_cost_info_for_letter(serialized)
 
         return serialized
 
-    def _get_cost_info_for_sms(self, serialized):
+    def _add_cost_info_for_sms(self, serialized):
         serialized["cost_details"]["sms_fragments"] = self.billable_units
         serialized["cost_details"]["rate_multiplier"] = self.rate_multiplier
         sms_rate = self._get_sms_rate()
@@ -1664,7 +1664,7 @@ class Notification(db.Model):
 
         return serialized
 
-    def _get_cost_info_for_letter(self, serialized):
+    def _add_cost_info_for_letter(self, serialized):
         if not self._is_cost_info_ready_for_letter():
             serialized["is_cost_data_ready"] = False
             serialized["cost_details"] = {}
