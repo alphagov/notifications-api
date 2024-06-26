@@ -257,7 +257,9 @@ def test_notification_serialize_with_cost_info_for_letter_info_not_ready(
     assert response["cost_in_pounds"] is None
 
 
-@pytest.mark.parametrize("status", ["validation-failed", "permanent-failure", "technical-failure", "cancelled"])
+@pytest.mark.parametrize(
+    "status", ["validation-failed", "permanent-failure", "technical-failure", "cancelled", "virus-scan-failed"]
+)
 def test_notification_serialize_with_with_cost_info_for_letter_that_wasnt_sent(
     client, sample_letter_template, letter_rate, status
 ):
