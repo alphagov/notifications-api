@@ -133,8 +133,8 @@ def email_address_is_nhs(email_address):
 
 
 def get_archived_db_column_value(column):
-    date = datetime.utcnow().strftime("%Y-%m-%d")
-    return f"_archived_{date}_{column}"
+    date_time = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%S")
+    return f"_archived_{date_time}_{column}"
 
 
 def get_dt_string_or_none(val):
