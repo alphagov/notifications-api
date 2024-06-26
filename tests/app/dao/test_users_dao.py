@@ -7,7 +7,8 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
-from app.constants import EMAIL_AUTH_TYPE
+from app.constants import EMAIL_AUTH_TYPE, OrganisationUserPermissionTypes
+from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.dao.service_user_dao import (
     dao_get_service_user,
     dao_update_service_user,
@@ -28,7 +29,7 @@ from app.dao.users_dao import (
     user_can_be_archived,
 )
 from app.errors import InvalidRequest
-from app.models import User, VerifyCode
+from app.models import OrganisationUserPermissions, User, VerifyCode
 from tests.app.db import (
     create_permissions,
     create_service,
@@ -221,8 +222,21 @@ def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
     create_permissions(sample_user, service_2, "view_activity")
     create_permissions(service_2_user, service_2, "manage_settings")
 
-    # make sample_user an org member
+    # make sample_user an org member with permissions
     sample_organisation.users = [sample_user]
+    new_permissions = [
+        OrganisationUserPermissions(
+            user=sample_user,
+            organisation=sample_organisation,
+            permission=OrganisationUserPermissionTypes.can_make_services_live.value,
+        )
+    ]
+    organisation_user_permissions_dao.set_user_organisation_permission(
+        sample_user,
+        sample_organisation,
+        new_permissions,
+        _commit=True,
+    )
 
     # give sample_user folder permissions for a service_1 folder
     folder = create_template_folder(service_1)
@@ -243,6 +257,7 @@ def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
     assert sample_user.state == "inactive"
     assert not sample_user.check_password("password")
     assert not sample_user.platform_admin
+    assert sample_user.get_organisation_permissions() == {}
 
 
 def test_user_can_be_archived_if_they_do_not_belong_to_any_services(sample_user):
