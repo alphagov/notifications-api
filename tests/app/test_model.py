@@ -233,8 +233,9 @@ def test_notification_serialize_with_cost_info_for_sms(client, sample_template, 
     assert response["cost_in_pounds"] == "0.0454"
 
 
-def test_notification_serialize_with_cost_info_for_letter(client, sample_letter_template, letter_rate):
-    notification = create_notification(sample_letter_template, billable_units=1, postage="second")
+@pytest.mark.parametrize("status", ["created", "sending", "delivered", "returned-letter"])
+def test_notification_serialize_with_cost_info_for_letter(client, sample_letter_template, letter_rate, status):
+    notification = create_notification(sample_letter_template, billable_units=1, postage="second", status=status)
 
     response = notification.serialize_with_cost_info()
 
