@@ -1656,7 +1656,7 @@ class Notification(db.Model):
         return serialized
 
     def _add_cost_info_for_sms(self, serialized):
-        serialized["cost_details"]["sms_fragments"] = self.billable_units
+        serialized["cost_details"]["billable_sms_fragments"] = self.billable_units
         serialized["cost_details"]["rate_multiplier"] = self.rate_multiplier
         sms_rate = self._get_sms_rate()
         serialized["cost_details"]["rate"] = str(sms_rate)
