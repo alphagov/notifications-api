@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 from app import db
 from app.constants import EMAIL_AUTH_TYPE
 from app.dao.dao_utils import autocommit
+from app.dao.organisation_dao import dao_remove_user_from_organisation
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import dao_get_service_users_by_user_id
 from app.errors import InvalidRequest
@@ -162,7 +163,8 @@ def dao_archive_user(user):
     for service_user in service_users:
         db.session.delete(service_user)
 
-    user.organisations = []
+    for organisation in user.organisations:
+        dao_remove_user_from_organisation(user=user, organisation=organisation)
 
     user.auth_type = EMAIL_AUTH_TYPE
     user.name = "Archived user"
