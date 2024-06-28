@@ -51,12 +51,14 @@ from app.constants import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_RETURNED_LETTER,
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
     NOTIFICATION_STATUS_LETTER_RECEIVED,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
     NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_STATUS_TYPES_LETTERS_NEVER_SENT,
     NOTIFICATION_TYPE,
     ORGANISATION_PERMISSION_TYPES,
     PERMISSION_LIST,
@@ -1674,6 +1676,11 @@ class Notification(db.Model):
             serialized["is_cost_data_ready"] = False
             serialized["cost_details"] = {}
             serialized["cost_in_pounds"] = None
+        # we don't bill users for letters that were not sent
+        elif self._letter_was_never_sent():
+            serialized["cost_details"]["billable_sheets_of_paper"] = 0
+            serialized["cost_details"]["postage"] = self.postage
+            serialized["cost_in_pounds"] = "0.00"
         else:
             serialized["cost_details"]["billable_sheets_of_paper"] = self.billable_units
             serialized["cost_details"]["postage"] = self.postage
@@ -1682,14 +1689,21 @@ class Notification(db.Model):
         return serialized
 
     def _is_cost_info_ready_for_sms(self):
-        if self.status == "created" and not self.billable_units:
+        if self.status == NOTIFICATION_CREATED and not self.billable_units:
             return False
         return True
 
     def _is_cost_info_ready_for_letter(self):
-        if self.status == "pending-virus-check" or (self.status == "created" and not self.billable_units):
+        if self.status == NOTIFICATION_PENDING_VIRUS_CHECK or (
+            self.status == NOTIFICATION_CREATED and not self.billable_units
+        ):
             return False
         return True
+
+    def _letter_was_never_sent(self):
+        if self.status in NOTIFICATION_STATUS_TYPES_LETTERS_NEVER_SENT:
+            return True
+        return False
 
     def _get_sms_rate(self):
         from app.dao.sms_rate_dao import dao_get_sms_rate_for_timestamp

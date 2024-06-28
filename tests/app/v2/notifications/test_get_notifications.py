@@ -59,9 +59,11 @@ def test_get_notification_by_id_returns_200(api_client_request, sample_template,
         "scheduled_for": None,
         "postage": None,
         "one_click_unsubscribe_url": None,
-        "is_cost_data_ready": True,
-        "cost_in_pounds": str(0.0227 * billable_units),
-        "cost_details": {"billable_sms_fragments": billable_units, "rate_multiplier": 1, "rate": "0.0227"},
+        "is_cost_data_ready": True if billable_units else False,
+        "cost_in_pounds": str(0.0227 * billable_units) if billable_units else None,
+        "cost_details": (
+            {"billable_sms_fragments": billable_units, "rate_multiplier": 1, "rate": "0.0227"} if billable_units else {}
+        ),
     }
 
     assert json_response == expected_response
