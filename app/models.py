@@ -1656,11 +1656,16 @@ class Notification(db.Model):
         return serialized
 
     def _add_cost_info_for_sms(self, serialized):
-        serialized["cost_details"]["billable_sms_fragments"] = self.billable_units
-        serialized["cost_details"]["rate_multiplier"] = self.rate_multiplier
-        sms_rate = self._get_sms_rate()
-        serialized["cost_details"]["rate"] = str(sms_rate)
-        serialized["cost_in_pounds"] = str(self.billable_units * self.rate_multiplier * sms_rate)
+        if not self._is_cost_info_ready_for_sms():
+            serialized["is_cost_data_ready"] = False
+            serialized["cost_details"] = {}
+            serialized["cost_in_pounds"] = None
+        else:
+            serialized["cost_details"]["billable_sms_fragments"] = self.billable_units
+            serialized["cost_details"]["rate_multiplier"] = self.rate_multiplier
+            sms_rate = self._get_sms_rate()
+            serialized["cost_details"]["rate"] = str(sms_rate)
+            serialized["cost_in_pounds"] = str(self.billable_units * self.rate_multiplier * sms_rate)
 
         return serialized
 
@@ -1675,6 +1680,11 @@ class Notification(db.Model):
             serialized["cost_in_pounds"] = self._get_letter_cost()
 
         return serialized
+
+    def _is_cost_info_ready_for_sms(self):
+        if self.status == "created" and not self.billable_units:
+            return False
+        return True
 
     def _is_cost_info_ready_for_letter(self):
         if self.status == "pending-virus-check" or (self.status == "created" and not self.billable_units):

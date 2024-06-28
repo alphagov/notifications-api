@@ -244,8 +244,18 @@ def test_notification_serialize_with_cost_info_for_letter(client, sample_letter_
     assert response["cost_in_pounds"] == "0.54"
 
 
+def test_notification_serialize_with_cost_info_for_sms_when_data_not_ready(client, sample_template, letter_rate):
+    notification = create_notification(sample_template, billable_units=None, postage="first", status="created")
+
+    response = notification.serialize_with_cost_info()
+
+    assert response["is_cost_data_ready"] is False
+    assert response["cost_details"] == {}
+    assert response["cost_in_pounds"] is None
+
+
 @pytest.mark.parametrize("status", ["created", "pending-virus-check"])
-def test_notification_serialize_with_cost_info_for_letter_info_not_ready(
+def test_notification_serialize_with_cost_info_for_letter_when_data_not_ready(
     client, sample_letter_template, letter_rate, status
 ):
     notification = create_notification(sample_letter_template, billable_units=None, postage="first", status=status)
