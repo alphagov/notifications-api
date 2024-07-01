@@ -14,6 +14,8 @@ async-timeout==4.0.3
     # via redis
 attrs==22.1.0
     # via jsonschema
+awscrt==0.20.9
+    # via botocore
 bcrypt==4.0.0
     # via flask-bcrypt
 beautifulsoup4==4.11.1
@@ -25,13 +27,13 @@ blinker==1.6.2
     #   flask
     #   gds-metrics
     #   sentry-sdk
-boto3==1.34.100
+boto3[crt]==1.34.100
     # via
     #   -r requirements.in
     #   celery
     #   kombu
     #   notifications-utils
-botocore==1.34.100
+botocore[crt]==1.34.100
     # via
     #   boto3
     #   s3transfer
@@ -154,7 +156,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==8.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@79.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@80.0.1
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
