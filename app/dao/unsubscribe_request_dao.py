@@ -15,13 +15,22 @@ def get_unsubscribe_request_by_notification_id_dao(notification_id):
 
 
 def get_count_of_unprocessed_requests(notification_id):
-    return (
-        db.session.query(UnsubscribeRequest.id.label("unsubscribe_request_id"))
+    return len(
+        db.session.query(
+            UnsubscribeRequest.id.label("unsubscribe_request_id"),
+            UnsubscribeRequestReport.processed_by_service_at.label(
+                "unsubscribe_request_report_processed_by_service_at"
+            ),
+        )
         .select_from(UnsubscribeRequest)
         .join(
             UnsubscribeRequestReport,
             UnsubscribeRequestReport.id
             == UnsubscribeRequest.unsubscribe_request_report_id,
+        )
+        .filter(
+            UnsubscribeRequestReport.processed_by_service_at == True,
+            UnsubscribeRequest.notification_id == notification_id,
         )
     )
 
