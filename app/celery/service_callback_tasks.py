@@ -75,13 +75,11 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
     }
 
     _send_data_to_service_callback_api(
-        self, data, inbound_api.url, inbound_api.bearer_token, "send_inbound_sms_to_service", QueueNames.RETRY
+        self, data, inbound_api.url, inbound_api.bearer_token, "send_inbound_sms_to_service"
     )
 
 
-def _send_data_to_service_callback_api(
-    self, data, service_callback_url, token, function_name, retry_queue=QueueNames.CALLBACKS_RETRY
-):
+def _send_data_to_service_callback_api(self, data, service_callback_url, token, function_name):
     object_id = data["notification_id"] if "notification_id" in data else data["id"]
     try:
         response = request(
@@ -109,7 +107,7 @@ def _send_data_to_service_callback_api(
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500 or e.response.status_code == 429:
             try:
-                self.retry(queue=retry_queue)
+                self.retry(queue=QueueNames.CALLBACKS_RETRY)
             except self.MaxRetriesExceededError as e:
                 current_app.logger.error(
                     "Retry: %s has retried the max num of times for callback url %s and id: %s",
