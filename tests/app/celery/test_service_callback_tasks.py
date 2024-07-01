@@ -154,7 +154,7 @@ def test_send_inbound_sms_to_service_sends_callback_to_service(notify_api, sampl
 
     send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
     send_callback_mock.assert_called_once_with(
-        mock.ANY, data, "https://some.service.gov.uk/", "something_unique", "send_inbound_sms_to_service", "retry-tasks"
+        mock.ANY, data, "https://some.service.gov.uk/", "something_unique", "send_inbound_sms_to_service"
     )
 
 
