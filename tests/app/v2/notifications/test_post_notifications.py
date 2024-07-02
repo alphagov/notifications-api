@@ -1,8 +1,6 @@
 import uuid
-from unittest import mock
 from unittest.mock import call
 
-import botocore
 import pytest
 from flask import current_app, json
 
@@ -30,7 +28,6 @@ from tests.app.db import (
     create_service_with_inbound_number,
     create_template,
 )
-from tests.conftest import set_config_values
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -1264,160 +1261,3 @@ def test_post_email_notification_when_data_is_empty_returns_400(api_client_reque
         assert error_msg == "phone_number is a required property"
     else:
         assert error_msg == "email_address is a required property"
-
-
-@pytest.mark.parametrize("notification_type", ("email", "sms"))
-def test_post_notifications_saves_email_or_sms_to_queue(client, notify_db_session, mocker, notification_type):
-    save_task = mocker.patch(f"app.celery.tasks.save_api_{notification_type}.apply_async")
-    mock_send_task = mocker.patch(f"app.celery.provider_tasks.deliver_{notification_type}.apply_async")
-
-    service = create_service(
-        service_name="high volume service",
-    )
-    with set_config_values(
-        current_app,
-        {
-            "HIGH_VOLUME_SERVICE": [str(service.id)],
-        },
-    ):
-        template = create_template(service=service, content="((message))", template_type=notification_type)
-        data = {"template_id": template.id, "personalisation": {"message": "Dear citizen, have a nice day"}}
-        (
-            data.update({"email_address": "joe.citizen@example.com"})
-            if notification_type == EMAIL_TYPE
-            else data.update({"phone_number": "+447700900855"})
-        )
-
-        response = client.post(
-            path=f"/v2/notifications/{notification_type}",
-            data=json.dumps(data),
-            headers=[("Content-Type", "application/json"), create_service_authorization_header(service_id=service.id)],
-        )
-
-        json_resp = response.get_json()
-
-        assert response.status_code == 201
-        assert json_resp["id"]
-        assert json_resp["content"]["body"] == "Dear citizen, have a nice day"
-        assert json_resp["template"]["id"] == str(template.id)
-        save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
-        assert not mock_send_task.called
-        assert len(Notification.query.all()) == 0
-
-
-@pytest.mark.parametrize(
-    "exception",
-    [
-        botocore.exceptions.ClientError({"some": "json"}, "some opname"),
-        botocore.parsers.ResponseParserError("exceeded max HTTP body length"),
-    ],
-)
-@pytest.mark.parametrize("notification_type", ("email", "sms"))
-def test_post_notifications_saves_email_or_sms_normally_if_saving_to_queue_fails(
-    api_client_request, notify_db_session, mocker, notification_type, exception
-):
-    save_task = mocker.patch(
-        f"app.celery.tasks.save_api_{notification_type}.apply_async",
-        side_effect=exception,
-    )
-    mock_send_task = mocker.patch(f"app.celery.provider_tasks.deliver_{notification_type}.apply_async")
-
-    service = create_service(
-        service_name="high volume service",
-    )
-    with set_config_values(
-        current_app,
-        {
-            "HIGH_VOLUME_SERVICE": [str(service.id)],
-        },
-    ):
-        template = create_template(service=service, content="((message))", template_type=notification_type)
-        data = {"template_id": template.id, "personalisation": {"message": "Dear citizen, have a nice day"}}
-        (
-            data.update({"email_address": "joe.citizen@example.com"})
-            if notification_type == EMAIL_TYPE
-            else data.update({"phone_number": "+447700900855"})
-        )
-
-        json_resp = api_client_request.post(
-            service.id,
-            "v2_notifications.post_notification",
-            notification_type=notification_type,
-            _data=data,
-        )
-
-        assert json_resp["id"]
-        assert json_resp["content"]["body"] == "Dear citizen, have a nice day"
-        assert json_resp["template"]["id"] == str(template.id)
-        save_task.assert_called_once_with([mock.ANY], queue=f"save-api-{notification_type}-tasks")
-        mock_send_task.assert_called_once_with([json_resp["id"]], queue=f"send-{notification_type}-tasks")
-        assert Notification.query.count() == 1
-
-
-@pytest.mark.parametrize("notification_type", ("email", "sms"))
-def test_post_notifications_doesnt_use_save_queue_for_test_notifications(
-    api_client_request, notify_db_session, mocker, notification_type
-):
-    save_task = mocker.patch(f"app.celery.tasks.save_api_{notification_type}.apply_async")
-    mock_send_task = mocker.patch(f"app.celery.provider_tasks.deliver_{notification_type}.apply_async")
-    service = create_service(
-        service_name="high volume service",
-    )
-    with set_config_values(
-        current_app,
-        {
-            "HIGH_VOLUME_SERVICE": [str(service.id)],
-        },
-    ):
-        template = create_template(service=service, content="((message))", template_type=notification_type)
-        data = {"template_id": template.id, "personalisation": {"message": "Dear citizen, have a nice day"}}
-        (
-            data.update({"email_address": "joe.citizen@example.com"})
-            if notification_type == EMAIL_TYPE
-            else data.update({"phone_number": "+447700900855"})
-        )
-
-        json_resp = api_client_request.post(
-            service.id,
-            "v2_notifications.post_notification",
-            _api_key_type="test",
-            notification_type=notification_type,
-            _data=data,
-        )
-
-        assert json_resp["id"]
-        assert json_resp["content"]["body"] == "Dear citizen, have a nice day"
-        assert json_resp["template"]["id"] == str(template.id)
-        assert mock_send_task.called
-        assert not save_task.called
-        assert len(Notification.query.all()) == 1
-
-
-def test_post_notification_does_not_use_save_queue_for_letters(api_client_request, sample_letter_template, mocker):
-    mock_save = mocker.patch("app.v2.notifications.post_notifications.save_email_or_sms_to_queue")
-    mock_create_pdf_task = mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
-
-    with set_config_values(
-        current_app,
-        {
-            "HIGH_VOLUME_SERVICE": [str(sample_letter_template.service_id)],
-        },
-    ):
-        data = {
-            "template_id": str(sample_letter_template.id),
-            "personalisation": {
-                "address_line_1": "Her Royal Highness Queen Elizabeth II",
-                "address_line_2": "Buckingham Palace",
-                "address_line_3": "London",
-                "postcode": "SW1 1AA",
-            },
-        }
-        json_resp = api_client_request.post(
-            sample_letter_template.service_id,
-            "v2_notifications.post_notification",
-            notification_type="letter",
-            _data=data,
-        )
-
-        assert not mock_save.called
-        mock_create_pdf_task.assert_called_once_with([str(json_resp["id"])], queue="create-letters-pdf-tasks")

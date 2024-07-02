@@ -399,8 +399,6 @@ class Config:
     MMG_INBOUND_SMS_USERNAME = json.loads(os.environ.get("MMG_INBOUND_SMS_USERNAME", "[]"))
     LOW_INBOUND_SMS_NUMBER_THRESHOLD = 50
 
-    HIGH_VOLUME_SERVICE = json.loads(os.environ.get("HIGH_VOLUME_SERVICE", "[]"))
-
     TEMPLATE_PREVIEW_API_HOST = os.environ.get("TEMPLATE_PREVIEW_API_HOST", "http://localhost:6013")
     TEMPLATE_PREVIEW_API_KEY = os.environ.get("TEMPLATE_PREVIEW_API_KEY", "my-secret-key")
 
@@ -512,13 +510,6 @@ class Test(Development):
     FROM_NUMBER = "testing"
     NOTIFY_ENVIRONMENT = "test"
     TESTING = True
-
-    HIGH_VOLUME_SERVICE = [
-        "941b6f9a-50d7-4742-8d50-f365ca74bf27",
-        "63f95b86-2d19-4497-b8b2-ccf25457df4e",
-        "7e5950cb-9954-41f5-8376-962b8c8555cf",
-        "10d1b9c9-0072-4fa9-ae1c-595e333841da",
-    ]
 
     S3_BUCKET_CSV_UPLOAD = "test-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "test-contact-list"
