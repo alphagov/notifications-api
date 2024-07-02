@@ -25,8 +25,6 @@ def test_queue_names_all_queues_correct():
         QueueNames.LETTERS,
         QueueNames.SES_CALLBACKS,
         QueueNames.SMS_CALLBACKS,
-        QueueNames.SAVE_API_EMAIL,
-        QueueNames.SAVE_API_SMS,
         QueueNames.BROADCASTS,
     } == set(queues)
 

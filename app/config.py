@@ -25,8 +25,6 @@ class QueueNames:
     SMS_CALLBACKS = "sms-callbacks"
     ANTIVIRUS = "antivirus-tasks"
     SANITISE_LETTERS = "sanitise-letter-tasks"
-    SAVE_API_EMAIL = "save-api-email-tasks"
-    SAVE_API_SMS = "save-api-sms-tasks"
     BROADCASTS = "broadcast-tasks"
     GOVUK_ALERTS = "govuk-alerts"
 
@@ -49,8 +47,6 @@ class QueueNames:
             QueueNames.LETTERS,
             QueueNames.SES_CALLBACKS,
             QueueNames.SMS_CALLBACKS,
-            QueueNames.SAVE_API_EMAIL,
-            QueueNames.SAVE_API_SMS,
             QueueNames.BROADCASTS,
         ]
 
