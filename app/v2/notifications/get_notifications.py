@@ -27,7 +27,7 @@ def get_notification_by_id(notification_id):
     notification = notifications_dao.get_notification_with_personalisation(
         authenticated_service.id, notification_id, key_type=None
     )
-    return jsonify(notification.serialize_with_cost_info()), 200
+    return jsonify(notification.serialize_with_cost_data()), 200
 
 
 @v2_notification_blueprint.route("/<notification_id>/pdf", methods=["GET"])
@@ -98,7 +98,7 @@ def get_notifications():
 
     return (
         jsonify(
-            notifications=[notification.serialize_with_cost_info() for notification in paginated_notifications.items],
+            notifications=[notification.serialize_with_cost_data() for notification in paginated_notifications.items],
             links=_build_links(paginated_notifications.items),
         ),
         200,

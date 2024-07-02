@@ -223,31 +223,35 @@ def test_letter_notification_serializes_with_subject(client, sample_letter_templ
     assert res["subject"] == "Template subject"
 
 
-def test_notification_serialize_with_cost_info_for_sms(client, sample_template, sms_rate):
+def test_notification_serialize_with_cost_data_for_sms(client, sample_template, sms_rate):
     notification = create_notification(sample_template, billable_units=2)
 
-    response = notification.serialize_with_cost_info()
+    response = notification.serialize_with_cost_data()
 
     assert response["is_cost_data_ready"] is True
-    assert response["cost_details"] == {"billable_sms_fragments": 2, "rate_multiplier": 1.0, "rate": "0.0227"}
+    assert response["cost_details"] == {
+        "billable_sms_fragments": 2,
+        "international_rate_multiplier": 1.0,
+        "rate": "0.0227",
+    }
     assert response["cost_in_pounds"] == "0.0454"
 
 
 @pytest.mark.parametrize("status", ["created", "sending", "delivered", "returned-letter"])
-def test_notification_serialize_with_cost_info_for_letter(client, sample_letter_template, letter_rate, status):
+def test_notification_serialize_with_cost_data_for_letter(client, sample_letter_template, letter_rate, status):
     notification = create_notification(sample_letter_template, billable_units=1, postage="second", status=status)
 
-    response = notification.serialize_with_cost_info()
+    response = notification.serialize_with_cost_data()
 
     assert response["is_cost_data_ready"] is True
     assert response["cost_details"] == {"billable_sheets_of_paper": 1, "postage": "second"}
     assert response["cost_in_pounds"] == "0.54"
 
 
-def test_notification_serialize_with_cost_info_for_sms_when_data_not_ready(client, sample_template, letter_rate):
+def test_notification_serialize_with_cost_data_for_sms_when_data_not_ready(client, sample_template, letter_rate):
     notification = create_notification(sample_template, billable_units=None, postage="first", status="created")
 
-    response = notification.serialize_with_cost_info()
+    response = notification.serialize_with_cost_data()
 
     assert response["is_cost_data_ready"] is False
     assert response["cost_details"] == {}
@@ -255,12 +259,12 @@ def test_notification_serialize_with_cost_info_for_sms_when_data_not_ready(clien
 
 
 @pytest.mark.parametrize("status", ["created", "pending-virus-check"])
-def test_notification_serialize_with_cost_info_for_letter_when_data_not_ready(
+def test_notification_serialize_with_cost_data_for_letter_when_data_not_ready(
     client, sample_letter_template, letter_rate, status
 ):
     notification = create_notification(sample_letter_template, billable_units=None, postage="first", status=status)
 
-    response = notification.serialize_with_cost_info()
+    response = notification.serialize_with_cost_data()
 
     assert response["is_cost_data_ready"] is False
     assert response["cost_details"] == {}
@@ -268,22 +272,22 @@ def test_notification_serialize_with_cost_info_for_letter_when_data_not_ready(
 
 
 @pytest.mark.parametrize("status", ["validation-failed", "technical-failure", "cancelled", "virus-scan-failed"])
-def test_notification_serialize_with_with_cost_info_for_letter_that_wasnt_sent(
+def test_notification_serialize_with_with_cost_data_for_letter_that_wasnt_sent(
     client, sample_letter_template, letter_rate, status
 ):
     notification = create_notification(sample_letter_template, billable_units=1, postage="first", status=status)
 
-    response = notification.serialize_with_cost_info()
+    response = notification.serialize_with_cost_data()
 
     assert response["is_cost_data_ready"] is True
     assert response["cost_details"] == {"billable_sheets_of_paper": 0, "postage": "first"}
     assert response["cost_in_pounds"] == "0.00"
 
 
-def test_notification_serialize_with_cost_info_for_email(client, sample_email_template):
+def test_notification_serialize_with_cost_data_for_email(client, sample_email_template):
     notification = create_notification(sample_email_template, billable_units=0)
 
-    response = notification.serialize_with_cost_info()
+    response = notification.serialize_with_cost_data()
 
     assert response["cost_details"] == {}
     assert response["cost_in_pounds"] == "0.00"

@@ -1644,35 +1644,35 @@ class Notification(db.Model):
 
         return serialized
 
-    def serialize_with_cost_info(self):
+    def serialize_with_cost_data(self):
         serialized = self.serialize()
         serialized["cost_details"] = {}
         serialized["cost_in_pounds"] = "0.00"
         serialized["is_cost_data_ready"] = True
 
         if self.notification_type == "sms":
-            return self._add_cost_info_for_sms(serialized)
+            return self._add_cost_data_for_sms(serialized)
         elif self.notification_type == "letter":
-            return self._add_cost_info_for_letter(serialized)
+            return self._add_cost_data_for_letter(serialized)
 
         return serialized
 
-    def _add_cost_info_for_sms(self, serialized):
-        if not self._is_cost_info_ready_for_sms():
+    def _add_cost_data_for_sms(self, serialized):
+        if not self._is_cost_data_ready_for_sms():
             serialized["is_cost_data_ready"] = False
             serialized["cost_details"] = {}
             serialized["cost_in_pounds"] = None
         else:
             serialized["cost_details"]["billable_sms_fragments"] = self.billable_units
-            serialized["cost_details"]["rate_multiplier"] = self.rate_multiplier
+            serialized["cost_details"]["international_rate_multiplier"] = self.rate_multiplier
             sms_rate = self._get_sms_rate()
             serialized["cost_details"]["rate"] = str(sms_rate)
             serialized["cost_in_pounds"] = str(self.billable_units * self.rate_multiplier * sms_rate)
 
         return serialized
 
-    def _add_cost_info_for_letter(self, serialized):
-        if not self._is_cost_info_ready_for_letter():
+    def _add_cost_data_for_letter(self, serialized):
+        if not self._is_cost_data_ready_for_letter():
             serialized["is_cost_data_ready"] = False
             serialized["cost_details"] = {}
             serialized["cost_in_pounds"] = None
@@ -1688,12 +1688,12 @@ class Notification(db.Model):
 
         return serialized
 
-    def _is_cost_info_ready_for_sms(self):
+    def _is_cost_data_ready_for_sms(self):
         if self.status == NOTIFICATION_CREATED and not self.billable_units:
             return False
         return True
 
-    def _is_cost_info_ready_for_letter(self):
+    def _is_cost_data_ready_for_letter(self):
         if self.status == NOTIFICATION_PENDING_VIRUS_CHECK or (
             self.status == NOTIFICATION_CREATED and not self.billable_units
         ):
