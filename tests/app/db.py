@@ -282,6 +282,9 @@ def create_notification(
     if template.template_type == "letter" and postage is None:
         postage = "second"
 
+    if template.template_type == "sms" and rate_multiplier is None:
+        rate_multiplier = 1
+
     data = {
         "id": uuid.uuid4(),
         "to": to_field,
