@@ -1,13 +1,15 @@
 from datetime import datetime, timedelta
+from urllib.parse import urljoin
 
 import pytz
-from flask import url_for
+from flask import current_app, url_for
 from notifications_utils.template import (
     HTMLEmailTemplate,
     LetterPrintTemplate,
     SMSMessageTemplate,
 )
 from notifications_utils.timezones import convert_bst_to_utc
+from notifications_utils.url_safe_token import generate_token
 from sqlalchemy import func
 
 from app.constants import (
@@ -49,12 +51,10 @@ def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **k
     return links
 
 
-def url_with_token(data, url, config, base_url=None):
-    from notifications_utils.url_safe_token import generate_token
-
-    token = generate_token(data, config["SECRET_KEY"], config["DANGEROUS_SALT"])
-    base_url = (base_url or config["ADMIN_BASE_URL"]) + url
-    return base_url + token
+def url_with_token(data, url, base_url=None):
+    token = generate_token(data, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
+    base_url = (base_url or current_app.config["ADMIN_BASE_URL"]) + url
+    return urljoin(base_url, token)
 
 
 def get_template_instance(template, values):

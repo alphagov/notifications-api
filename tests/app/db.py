@@ -195,6 +195,7 @@ def create_template(
     service,
     template_type=SMS_TYPE,
     template_name=None,
+    has_unsubscribe_link=False,
     subject="Template subject",
     content="Dear Sir/Madam, Hello. Yours Truly, The Government.",
     reply_to=None,
@@ -208,6 +209,7 @@ def create_template(
     data = {
         "name": template_name or f"{template_type} Template Name",
         "template_type": template_type,
+        "has_unsubscribe_link": has_unsubscribe_link,
         "content": content,
         "service": service,
         "created_by": service.created_by,
