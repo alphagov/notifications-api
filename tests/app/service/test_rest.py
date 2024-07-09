@@ -30,7 +30,7 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
 )
 from app.dao.templates_dao import dao_redact_template
-from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao
+from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao, create_unsubscribe_request_reports_dao
 from app.dao.users_dao import save_model_user
 from app.models import (
     AnnualBilling,
@@ -42,7 +42,8 @@ from app.models import (
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
-    User, UnsubscribeRequestReport,
+    UnsubscribeRequestReport,
+    User,
 )
 from tests import create_admin_authorization_header
 from tests.app.db import (

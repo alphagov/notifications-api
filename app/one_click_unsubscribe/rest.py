@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Blueprint, current_app, jsonify
 from itsdangerous import BadData
@@ -8,7 +8,11 @@ from notifications_utils.url_safe_token import check_token
 from app.dao.notification_history_dao import get_notification_history_by_id
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao
+from app.dao.unsubscribe_request_dao import (
+    create_unsubscribe_request_dao,
+    get_unbatched_unsubscribe_requests_dao,
+    get_unsubscribe_request_reports_dao,
+)
 from app.errors import InvalidRequest, register_errors
 
 one_click_unsubscribe_blueprint = Blueprint("one_click_unsubscribe", __name__)
