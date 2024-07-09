@@ -1062,6 +1062,30 @@ def get_returned_letters(service_id):
     return jsonify(sorted(json_results, key=lambda i: i["created_at"], reverse=True))
 
 
+@service_blueprint.route("/<uuid:service_id>/unsubscribe-request-reports-summary", methods=["GET"])
+def get_unsubscribe_request_reports_summary(service_id):
+    """
+    This returns a summary reports for both batched and un-batched unsubscribe requests.
+
+    In the case of un-batched unsubscribe requests:
+    is_batched_result has a value of None.
+    The latest earliest_timestamp value is datetime.utcnow()
+    The earliest_timestamp value is either:
+        i. 3 seconds + the latest_timestamp of the last existing unsubscribe_request_report
+        ii. or the service created_at date if it is the first set of unsubscribe requests received by the service.
+
+    parameter: uuid service_id
+
+    return: reports_summary = {
+                                "batched_reports_summaries": [],
+                                "unbatched_report_summary": {}
+                              }
+
+    """
+    reports_summary = create_unsubscribe_request_reports_summary(service_id)
+    return jsonify(reports_summary)
+
+
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])
 def get_contact_list(service_id):
     contact_lists = dao_get_contact_lists(service_id)
