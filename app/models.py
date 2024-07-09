@@ -1647,7 +1647,7 @@ class Notification(db.Model):
     def serialize_with_cost_data(self):
         serialized = self.serialize()
         serialized["cost_details"] = {}
-        serialized["cost_in_pounds"] = "0.00"
+        serialized["cost_in_pounds"] = 0.00
         serialized["is_cost_data_ready"] = True
 
         if self.notification_type == "sms":
@@ -1666,8 +1666,8 @@ class Notification(db.Model):
             serialized["cost_details"]["billable_sms_fragments"] = self.billable_units
             serialized["cost_details"]["international_rate_multiplier"] = self.rate_multiplier
             sms_rate = self._get_sms_rate()
-            serialized["cost_details"]["rate"] = str(sms_rate)
-            serialized["cost_in_pounds"] = str(self.billable_units * self.rate_multiplier * sms_rate)
+            serialized["cost_details"]["rate"] = sms_rate
+            serialized["cost_in_pounds"] = self.billable_units * self.rate_multiplier * sms_rate
 
         return serialized
 
@@ -1680,7 +1680,7 @@ class Notification(db.Model):
         elif self._letter_was_never_sent():
             serialized["cost_details"]["billable_sheets_of_paper"] = 0
             serialized["cost_details"]["postage"] = self.postage
-            serialized["cost_in_pounds"] = "0.00"
+            serialized["cost_in_pounds"] = 0.00
         else:
             serialized["cost_details"]["billable_sheets_of_paper"] = self.billable_units
             serialized["cost_details"]["postage"] = self.postage
@@ -1722,29 +1722,31 @@ class Notification(db.Model):
 
     def _get_letter_cost(self):
         if self.billable_units == 0:
-            return "0.00"
+            return 0.00
 
         created_at_date = self.created_at.date()
 
         if rate := redis_store.get(
             f"letter-rate-for-date-{created_at_date}-sheets-{self.billable_units}-postage-{self.postage}"
         ):
-            return str(rate)
+            return rate
 
         from app.dao.letter_rate_dao import dao_get_letter_rates_for_timestamp
 
         rates = dao_get_letter_rates_for_timestamp(created_at_date)
-        letter_rate = next(
-            (rate for rate in rates if rate.sheet_count == self.billable_units and rate.post_class == self.postage),
-            None,
+        letter_rate = float(
+            next(
+                (rate for rate in rates if rate.sheet_count == self.billable_units and rate.post_class == self.postage),
+                None,
+            ).rate
         )
         redis_store.set(
             f"letter-rate-for-date-{created_at_date}-sheets-{self.billable_units}-postage-{self.postage}",
-            letter_rate.rate,
+            letter_rate,
             ex=86400,
         )
 
-        return str(letter_rate.rate)
+        return letter_rate
 
 
 class NotificationHistory(db.Model):

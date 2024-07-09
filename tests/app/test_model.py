@@ -1,5 +1,4 @@
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from unittest.mock import call
 
 import pytest
@@ -237,9 +236,9 @@ def test_notification_serialize_with_cost_data_for_sms(client, sample_template, 
     assert response["cost_details"] == {
         "billable_sms_fragments": 2,
         "international_rate_multiplier": 1.0,
-        "rate": "0.0227",
+        "rate": 0.0227,
     }
-    assert response["cost_in_pounds"] == "0.0454"
+    assert response["cost_in_pounds"] == 0.0454
 
 
 @pytest.mark.parametrize("status", ["created", "sending", "delivered", "returned-letter"])
@@ -250,7 +249,7 @@ def test_notification_serialize_with_cost_data_for_letter(client, sample_letter_
 
     assert response["is_cost_data_ready"] is True
     assert response["cost_details"] == {"billable_sheets_of_paper": 1, "postage": "second"}
-    assert response["cost_in_pounds"] == "0.54"
+    assert response["cost_in_pounds"] == 0.54
 
 
 def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client, mocker, sample_template, sms_rate):
@@ -319,8 +318,8 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
         call(f"letter-rate-for-date-{datetime.now().date()}-sheets-2-postage-first"),
     ]
     assert mock_redis_set.call_args_list == [
-        call("letter-rate-for-date-2024-07-09-sheets-1-postage-second", Decimal("0.54"), ex=86400),
-        call("letter-rate-for-date-2024-07-09-sheets-2-postage-first", Decimal("0.85"), ex=86400),
+        call("letter-rate-for-date-2024-07-09-sheets-1-postage-second", 0.54, ex=86400),
+        call("letter-rate-for-date-2024-07-09-sheets-2-postage-first", 0.85, ex=86400),
     ]
 
     # but we only get each rate once from db
@@ -363,7 +362,7 @@ def test_notification_serialize_with_with_cost_data_for_letter_that_wasnt_sent(
 
     assert response["is_cost_data_ready"] is True
     assert response["cost_details"] == {"billable_sheets_of_paper": 0, "postage": "first"}
-    assert response["cost_in_pounds"] == "0.00"
+    assert response["cost_in_pounds"] == 0.00
 
 
 def test_notification_serialize_with_cost_data_for_email(client, sample_email_template):
@@ -372,7 +371,7 @@ def test_notification_serialize_with_cost_data_for_email(client, sample_email_te
     response = notification.serialize_with_cost_data()
 
     assert response["cost_details"] == {}
-    assert response["cost_in_pounds"] == "0.00"
+    assert response["cost_in_pounds"] == 0.00
 
 
 def test_notification_references_template_history(client, sample_template):

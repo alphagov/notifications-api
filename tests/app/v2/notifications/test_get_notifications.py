@@ -60,9 +60,9 @@ def test_get_notification_by_id_returns_200(api_client_request, sample_template,
         "postage": None,
         "one_click_unsubscribe_url": None,
         "is_cost_data_ready": True if billable_units else False,
-        "cost_in_pounds": str(0.0227 * billable_units) if billable_units else None,
+        "cost_in_pounds": 0.0227 * billable_units if billable_units else None,
         "cost_details": (
-            {"billable_sms_fragments": billable_units, "international_rate_multiplier": 1, "rate": "0.0227"}
+            {"billable_sms_fragments": billable_units, "international_rate_multiplier": 1, "rate": 0.0227}
             if billable_units
             else {}
         ),
@@ -115,7 +115,7 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         "postage": None,
         "one_click_unsubscribe_url": None,
         "is_cost_data_ready": True,
-        "cost_in_pounds": "0.00",
+        "cost_in_pounds": 0.00,
         "cost_details": {},
     }
 
@@ -590,11 +590,11 @@ def test_get_all_notifications_returns_cost_datarmation(api_client_request, samp
     assert "next" in json_response["links"].keys()
     assert len(json_response["notifications"]) == 1
 
-    assert json_response["notifications"][0]["cost_in_pounds"] == "0.0227"
+    assert json_response["notifications"][0]["cost_in_pounds"] == 0.0227
     assert json_response["notifications"][0]["cost_details"] == {
         "billable_sms_fragments": 1,
         "international_rate_multiplier": 1,
-        "rate": "0.0227",
+        "rate": 0.0227,
     }
 
 
