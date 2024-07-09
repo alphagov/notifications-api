@@ -1,3 +1,6 @@
+from datetime import datetime
+from unittest.mock import call
+
 import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
@@ -235,6 +238,36 @@ def test_notification_serialize_with_cost_data_for_sms(client, sample_template, 
         "rate": "0.0227",
     }
     assert response["cost_in_pounds"] == "0.0454"
+
+
+def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client, mocker, sample_template, sms_rate):
+    notification_1 = create_notification(sample_template, billable_units=2)
+    notification_2 = create_notification(sample_template, billable_units=1)
+
+    mock_sms_rate = mocker.patch("app.dao.sms_rate_dao.dao_get_sms_rate_for_timestamp", return_value=sms_rate)
+    mock_redis_get = mocker.patch(
+        "app.RedisClient.get",
+        side_effect=[None, 0.0227],
+    )
+    mock_redis_set = mocker.patch(
+        "app.RedisClient.set",
+    )
+
+    # we serialize twice
+    notification_1.serialize_with_cost_data()
+    notification_2.serialize_with_cost_data()
+
+    # redis is called
+    assert mock_redis_get.call_args_list == [
+        call(f"sms-rate-for-{datetime.now().date()}"),
+        call(f"sms-rate-for-{datetime.now().date()}"),
+    ]
+    assert mock_redis_set.call_args_list == [call(f"sms-rate-for-{datetime.now().date()}", 0.0227, ex=86400)]
+
+    # but we only get rate once
+    assert mock_sms_rate.call_args_list == [
+        call(datetime.now().date()),
+    ]
 
 
 @pytest.mark.parametrize("status", ["created", "sending", "delivered", "returned-letter"])

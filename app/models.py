@@ -36,7 +36,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.schema import Sequence
 
-from app import db, signing
+from app import db, redis_store, signing
 from app.constants import (
     ALL_BROADCAST_PROVIDERS,
     BRANDING_ORG,
@@ -1706,9 +1706,19 @@ class Notification(db.Model):
         return False
 
     def _get_sms_rate(self):
+
+        created_at_date = self.created_at.date()
+
+        if rate := redis_store.get(f"sms-rate-for-{created_at_date}"):
+            return rate
+
         from app.dao.sms_rate_dao import dao_get_sms_rate_for_timestamp
 
-        return dao_get_sms_rate_for_timestamp(self.created_at).rate
+        rate = dao_get_sms_rate_for_timestamp(created_at_date).rate
+
+        redis_store.set(f"sms-rate-for-{created_at_date}", rate, ex=86400)
+
+        return rate
 
     def _get_letter_cost(self):
         if self.billable_units == 0:
