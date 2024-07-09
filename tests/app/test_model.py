@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from unittest.mock import call
 
 import pytest
@@ -25,6 +26,7 @@ from app.models import Notification, ServiceGuestList
 from tests.app.db import (
     create_inbound_number,
     create_letter_contact,
+    create_letter_rate,
     create_notification,
     create_reply_to_email,
     create_service,
@@ -240,11 +242,22 @@ def test_notification_serialize_with_cost_data_for_sms(client, sample_template, 
     assert response["cost_in_pounds"] == "0.0454"
 
 
+@pytest.mark.parametrize("status", ["created", "sending", "delivered", "returned-letter"])
+def test_notification_serialize_with_cost_data_for_letter(client, sample_letter_template, letter_rate, status):
+    notification = create_notification(sample_letter_template, billable_units=1, postage="second", status=status)
+
+    response = notification.serialize_with_cost_data()
+
+    assert response["is_cost_data_ready"] is True
+    assert response["cost_details"] == {"billable_sheets_of_paper": 1, "postage": "second"}
+    assert response["cost_in_pounds"] == "0.54"
+
+
 def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client, mocker, sample_template, sms_rate):
     notification_1 = create_notification(sample_template, billable_units=2)
     notification_2 = create_notification(sample_template, billable_units=1)
 
-    mock_sms_rate = mocker.patch("app.dao.sms_rate_dao.dao_get_sms_rate_for_timestamp", return_value=sms_rate)
+    mock_get_sms_rate = mocker.patch("app.dao.sms_rate_dao.dao_get_sms_rate_for_timestamp", return_value=sms_rate)
     mock_redis_get = mocker.patch(
         "app.RedisClient.get",
         side_effect=[None, 0.0227],
@@ -265,20 +278,56 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client
     assert mock_redis_set.call_args_list == [call(f"sms-rate-for-{datetime.now().date()}", 0.0227, ex=86400)]
 
     # but we only get rate once
-    assert mock_sms_rate.call_args_list == [
+    assert mock_get_sms_rate.call_args_list == [
         call(datetime.now().date()),
     ]
 
 
-@pytest.mark.parametrize("status", ["created", "sending", "delivered", "returned-letter"])
-def test_notification_serialize_with_cost_data_for_letter(client, sample_letter_template, letter_rate, status):
-    notification = create_notification(sample_letter_template, billable_units=1, postage="second", status=status)
+def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
+    client, mocker, sample_letter_template, letter_rate, notify_db_session
+):
+    # letter rate for 2 sheets of paper
+    other_rate = create_letter_rate(
+        start_date=datetime.now(UTC) - timedelta(days=1), rate=0.85, post_class="first", sheet_count=2
+    )
+    # two letters that are 1 sheet of paper each 2nd class, and one letter that is two sheets long 1st class
+    notification_1 = create_notification(sample_letter_template, billable_units=1, postage="second")
+    notification_2 = create_notification(sample_letter_template, billable_units=1, postage="second")
+    notification_3 = create_notification(sample_letter_template, billable_units=2, postage="first")
 
-    response = notification.serialize_with_cost_data()
+    mock_get_letter_rates = mocker.patch(
+        "app.dao.letter_rate_dao.dao_get_letter_rates_for_timestamp",
+        side_effect=[[letter_rate, other_rate], [letter_rate, other_rate]],
+    )
+    mock_redis_get = mocker.patch(
+        "app.RedisClient.get",
+        side_effect=[None, 0.54, None],
+    )
+    mock_redis_set = mocker.patch(
+        "app.RedisClient.set",
+    )
 
-    assert response["is_cost_data_ready"] is True
-    assert response["cost_details"] == {"billable_sheets_of_paper": 1, "postage": "second"}
-    assert response["cost_in_pounds"] == "0.54"
+    # we serialize three times - two times for one rate, and once for the other rate
+    notification_1.serialize_with_cost_data()
+    notification_2.serialize_with_cost_data()
+    notification_3.serialize_with_cost_data()
+
+    # redis is called
+    assert mock_redis_get.call_args_list == [
+        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-1-postage-second"),
+        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-1-postage-second"),
+        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-2-postage-first"),
+    ]
+    assert mock_redis_set.call_args_list == [
+        call("letter-rate-for-date-2024-07-09-sheets-1-postage-second", Decimal("0.54"), ex=86400),
+        call("letter-rate-for-date-2024-07-09-sheets-2-postage-first", Decimal("0.85"), ex=86400),
+    ]
+
+    # but we only get each rate once from db
+    assert mock_get_letter_rates.call_args_list == [
+        call(datetime.now().date()),
+        call(datetime.now().date()),
+    ]
 
 
 def test_notification_serialize_with_cost_data_for_sms_when_data_not_ready(client, sample_template, letter_rate):

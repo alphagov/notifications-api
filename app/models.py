@@ -1724,12 +1724,24 @@ class Notification(db.Model):
         if self.billable_units == 0:
             return "0.00"
 
+        created_at_date = self.created_at.date()
+
+        if rate := redis_store.get(
+            f"letter-rate-for-date-{created_at_date}-sheets-{self.billable_units}-postage-{self.postage}"
+        ):
+            return str(rate)
+
         from app.dao.letter_rate_dao import dao_get_letter_rates_for_timestamp
 
-        rates = dao_get_letter_rates_for_timestamp(self.created_at)
+        rates = dao_get_letter_rates_for_timestamp(created_at_date)
         letter_rate = next(
             (rate for rate in rates if rate.sheet_count == self.billable_units and rate.post_class == self.postage),
             None,
+        )
+        redis_store.set(
+            f"letter-rate-for-date-{created_at_date}-sheets-{self.billable_units}-postage-{self.postage}",
+            letter_rate.rate,
+            ex=86400,
         )
 
         return str(letter_rate.rate)
