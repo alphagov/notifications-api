@@ -90,7 +90,7 @@ def _create_existing_unsubscribe_request_reports_summary(unsubscribe_request_rep
     report_summaries = []
     for report in unsubscribe_request_reports:
         report_summary = {
-            "report_id": str(report.id),
+            "batch_id": str(report.id),
             "count": report.count,
             "earliest_timestamp": report.earliest_timestamp,
             "latest_timestamp": report.latest_timestamp,
@@ -106,7 +106,7 @@ def _create_unbatched_unsubscribe_request_report_summary(
 ) -> dict:
     count = len(unbatched_unsubscribe_requests)
     report_summary = {
-        "report_id": str(uuid.uuid4()),
+        "batch_id": str(uuid.uuid4()),
         "count": count,
         "earliest_timestamp": earliest_timestamp,
         "latest_timestamp": datetime.utcnow(),

@@ -3527,7 +3527,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
 
     expected_report_summary = {"batched_reports_summaries": []}
     expected_unbatched_unsubscribe_request_summary = {
-        "report_id": "3c3a1cc8-d228-48bb-ab57-43f81bbbadb3",
+        "batch_id": "3c3a1cc8-d228-48bb-ab57-43f81bbbadb3",
         "count": 2,
         "earliest_timestamp": sample_service.created_at.strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
         "latest_timestamp": (datetime.utcnow()).strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
@@ -3602,7 +3602,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     expected_report_summary = {}
     expected_existing_unsubscribe_request_reports_summary = [
         {
-            "report_id": str(report.id),
+            "batch_id": str(report.id),
             "count": report.count,
             "earliest_timestamp": report.earliest_timestamp.strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
             "latest_timestamp": report.latest_timestamp.strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
@@ -3612,7 +3612,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         for report in [unsubscribe_request_report_2, unsubscribe_request_report_1]
     ]
     expected_unbatched_unsubscribe_request_summary = {
-        "report_id": "3c3a1cc8-d228-48bb-ab57-43f81bbbadb3",
+        "batch_id": "3c3a1cc8-d228-48bb-ab57-43f81bbbadb3",
         "count": 2,
         "earliest_timestamp": (unsubscribe_request_report_2.latest_timestamp + timedelta(seconds=3)).strftime(
             "%a, %d %b %Y %H:%M:%S"
