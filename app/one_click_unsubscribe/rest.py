@@ -1,9 +1,13 @@
+import uuid
+from datetime import datetime
+
 from flask import Blueprint, current_app, jsonify
 from itsdangerous import BadData
 from notifications_utils.url_safe_token import check_token
 
 from app.dao.notification_history_dao import get_notification_history_by_id
 from app.dao.notifications_dao import get_notification_by_id
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao
 from app.errors import InvalidRequest, register_errors
 
@@ -52,3 +56,57 @@ def get_unsubscribe_request_data(notification, email_address):
         "service_id": notification.service_id,
         "email_address": email_address,
     }
+
+
+def create_unsubscribe_request_reports_summary(service_id):
+    reports_summary = {"batched_reports_summaries": [], "unbatched_report_summary": {}}
+    existing_unsubscribe_reports_summaries = []
+    # Check for existing unsubscribe reports and create their summaries
+    if unsubscribe_request_reports := get_unsubscribe_request_reports_dao(service_id):
+        existing_unsubscribe_reports_summaries = _create_existing_unsubscribe_request_reports_summary(
+            unsubscribe_request_reports,
+        )
+        reports_summary["batched_reports_summaries"] = existing_unsubscribe_reports_summaries
+    # Check for unsubscribe requests and create a summary for them
+    if unbatched_unsubscribe_requests := get_unbatched_unsubscribe_requests_dao(service_id):
+        if existing_unsubscribe_reports_summaries:
+            earliest_timestamp = existing_unsubscribe_reports_summaries[0]["latest_timestamp"] + timedelta(seconds=3)
+        else:
+            service = dao_fetch_service_by_id(service_id)
+            earliest_timestamp = service.created_at
+
+        unbatched_unsubscribe_requests_report_summary = _create_unbatched_unsubscribe_request_report_summary(
+            unbatched_unsubscribe_requests, earliest_timestamp
+        )
+        reports_summary["unbatched_report_summary"] = unbatched_unsubscribe_requests_report_summary
+    return reports_summary
+
+
+def _create_existing_unsubscribe_request_reports_summary(unsubscribe_request_reports: list) -> list:
+    report_summaries = []
+    for report in unsubscribe_request_reports:
+        report_summary = {
+            "report_id": str(report.id),
+            "count": report.count,
+            "earliest_timestamp": report.earliest_timestamp,
+            "latest_timestamp": report.latest_timestamp,
+            "processed_by_service_at": report.processed_by_service_at,
+            "is_a_batched_report": True,
+        }
+        report_summaries.append(report_summary)
+    return report_summaries
+
+
+def _create_unbatched_unsubscribe_request_report_summary(
+    unbatched_unsubscribe_requests: list, earliest_timestamp: str = None
+) -> dict:
+    count = len(unbatched_unsubscribe_requests)
+    report_summary = {
+        "report_id": str(uuid.uuid4()),
+        "count": count,
+        "earliest_timestamp": earliest_timestamp,
+        "latest_timestamp": datetime.utcnow(),
+        "processed_by_service_at": None,
+        "is_a_batched_report": False,
+    }
+    return report_summary

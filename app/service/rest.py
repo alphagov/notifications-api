@@ -112,6 +112,7 @@ from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
 )
+from app.one_click_unsubscribe.rest import create_unsubscribe_request_reports_summary
 from app.schema_validation import validate
 from app.schemas import (
     api_key_schema,

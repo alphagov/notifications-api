@@ -30,6 +30,7 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
 )
 from app.dao.templates_dao import dao_redact_template
+from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao
 from app.dao.users_dao import save_model_user
 from app.models import (
     AnnualBilling,
@@ -41,7 +42,7 @@ from app.models import (
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
-    User,
+    User, UnsubscribeRequestReport,
 )
 from tests import create_admin_authorization_header
 from tests.app.db import (
@@ -3484,6 +3485,152 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert not response[4]["original_file_name"]
     assert not response[4]["job_row_number"]
     assert response[4]["uploaded_letter_file_name"] == "filename.pdf"
+
+
+def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests(admin_request, sample_service, mocker):
+    """
+    Test case covers when the initial unsubscribe requests have been received and have no yet been batched.
+    """
+    template_1 = create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+    )
+    notification_1 = create_notification(
+        template=template_1,
+    )
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_1.id,
+            "template_id": notification_1.template_id,
+            "template_version": notification_1.template_version,
+            "service_id": notification_1.service_id,
+            "email_address": notification_1.to,
+            "created_at": datetime.utcnow() + timedelta(days=-2),
+        }
+    )
+    template_2 = create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+    )
+    notification_2 = create_notification(template=template_2)
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_2.id,
+            "template_id": notification_2.template_id,
+            "template_version": notification_2.template_version,
+            "service_id": notification_2.service_id,
+            "email_address": notification_2.to,
+            "created_at": datetime.utcnow() + timedelta(days=-1),
+        }
+    )
+
+    expected_report_summary = {"batched_reports_summaries": []}
+    expected_unbatched_unsubscribe_request_summary = {
+        "report_id": "3c3a1cc8-d228-48bb-ab57-43f81bbbadb3",
+        "count": 2,
+        "earliest_timestamp": sample_service.created_at.strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
+        "latest_timestamp": (datetime.utcnow()).strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
+        "processed_by_service_at": None,
+        "is_a_batched_report": False,
+    }
+    expected_report_summary["unbatched_report_summary"] = expected_unbatched_unsubscribe_request_summary
+
+    mocker.patch(
+        "app.one_click_unsubscribe.rest._create_unbatched_unsubscribe_request_report_summary",
+        return_value=expected_unbatched_unsubscribe_request_summary,
+    )
+    response = admin_request.get("service.get_unsubscribe_request_reports_summary", service_id=sample_service.id)
+
+    assert response == expected_report_summary
+
+
+def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, mocker):
+    # Create 2 unbatched unsubscribe requests
+    template_1 = create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+    )
+    notification_1 = create_notification(template=template_1)
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_1.id,
+            "template_id": notification_1.template_id,
+            "template_version": notification_1.template_version,
+            "service_id": notification_1.service_id,
+            "email_address": notification_1.to,
+            "created_at": datetime.utcnow() + timedelta(days=-2),
+        }
+    )
+    template_2 = create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+    )
+    notification_2 = create_notification(template=template_2)
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_2.id,
+            "template_id": notification_2.template_id,
+            "template_version": notification_2.template_version,
+            "service_id": notification_2.service_id,
+            "email_address": notification_2.to,
+            "created_at": datetime.utcnow() + timedelta(days=-1),
+        }
+    )
+
+    # Create 2 unsubscribe_request_reports
+    unsubscribe_request_report_1 = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=141,
+        earliest_timestamp=datetime.utcnow() + timedelta(days=-8),
+        latest_timestamp=datetime.utcnow() + timedelta(days=-7),
+        processed_by_service_at=datetime.utcnow() + timedelta(days=-6),
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report_1)
+
+    unsubscribe_request_report_2 = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=242,
+        earliest_timestamp=datetime.utcnow() + timedelta(days=-5),
+        latest_timestamp=datetime.utcnow() + timedelta(days=-4),
+        processed_by_service_at=datetime.utcnow() + timedelta(days=-3),
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report_2)
+
+    expected_report_summary = {}
+    expected_existing_unsubscribe_request_reports_summary = [
+        {
+            "report_id": str(report.id),
+            "count": report.count,
+            "earliest_timestamp": report.earliest_timestamp.strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
+            "latest_timestamp": report.latest_timestamp.strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
+            "processed_by_service_at": report.processed_by_service_at.strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
+            "is_a_batched_report": True,
+        }
+        for report in [unsubscribe_request_report_2, unsubscribe_request_report_1]
+    ]
+    expected_unbatched_unsubscribe_request_summary = {
+        "report_id": "3c3a1cc8-d228-48bb-ab57-43f81bbbadb3",
+        "count": 2,
+        "earliest_timestamp": (unsubscribe_request_report_2.latest_timestamp + timedelta(seconds=3)).strftime(
+            "%a, %d %b %Y %H:%M:%S"
+        )
+        + " GMT",
+        "latest_timestamp": datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S") + " GMT",
+        "processed_by_service_at": None,
+        "is_a_batched_report": False,
+    }
+    expected_report_summary["batched_reports_summaries"] = expected_existing_unsubscribe_request_reports_summary
+    expected_report_summary["unbatched_report_summary"] = expected_unbatched_unsubscribe_request_summary
+    mocker.patch(
+        "app.one_click_unsubscribe.rest._create_unbatched_unsubscribe_request_report_summary",
+        return_value=expected_unbatched_unsubscribe_request_summary,
+    )
+
+    response = admin_request.get("service.get_unsubscribe_request_reports_summary", service_id=sample_service.id)
+
+    assert response == expected_report_summary
 
 
 @pytest.mark.parametrize(
