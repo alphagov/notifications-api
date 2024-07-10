@@ -253,13 +253,13 @@ def test_notification_serialize_with_cost_data_for_letter(client, sample_letter_
 
 
 def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client, mocker, sample_template, sms_rate):
-    notification_1 = create_notification(sample_template, billable_units=2)
-    notification_2 = create_notification(sample_template, billable_units=1)
+    notification_1 = create_notification(sample_template, billable_units=1)
+    notification_2 = create_notification(sample_template, billable_units=2)
 
     mock_get_sms_rate = mocker.patch("app.dao.sms_rate_dao.dao_get_sms_rate_for_timestamp", return_value=sms_rate)
     mock_redis_get = mocker.patch(
         "app.RedisClient.get",
-        side_effect=[None, 0.0227],
+        side_effect=[None, b"0.0227"],
     )
     mock_redis_set = mocker.patch(
         "app.RedisClient.set",
@@ -267,7 +267,7 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client
 
     # we serialize twice
     notification_1.serialize_with_cost_data()
-    notification_2.serialize_with_cost_data()
+    response = notification_2.serialize_with_cost_data()
 
     # redis is called
     assert mock_redis_get.call_args_list == [
@@ -280,6 +280,14 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client
     assert mock_get_sms_rate.call_args_list == [
         call(datetime.now().date()),
     ]
+
+    # check that response returned from cache looks right
+    assert response["cost_details"] == {
+        "billable_sms_fragments": 2,
+        "international_rate_multiplier": 1.0,
+        "rate": 0.0227,
+    }
+    assert response["cost_in_pounds"] == 0.0454
 
 
 def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
@@ -300,7 +308,7 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
     )
     mock_redis_get = mocker.patch(
         "app.RedisClient.get",
-        side_effect=[None, 0.54, None],
+        side_effect=[None, b"0.54", None],
     )
     mock_redis_set = mocker.patch(
         "app.RedisClient.set",
@@ -308,7 +316,7 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
 
     # we serialize three times - two times for one rate, and once for the other rate
     notification_1.serialize_with_cost_data()
-    notification_2.serialize_with_cost_data()
+    response = notification_2.serialize_with_cost_data()
     notification_3.serialize_with_cost_data()
 
     # redis is called
@@ -327,6 +335,9 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
         call(datetime.now().date()),
         call(datetime.now().date()),
     ]
+
+    # check that response returned from cache looks right
+    assert response["cost_in_pounds"] == 0.54
 
 
 def test_notification_serialize_with_cost_data_for_sms_when_data_not_ready(client, sample_template, letter_rate):

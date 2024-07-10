@@ -1710,7 +1710,7 @@ class Notification(db.Model):
         created_at_date = self.created_at.date()
 
         if rate := redis_store.get(f"sms-rate-for-{created_at_date}"):
-            return rate
+            return float(rate)
 
         from app.dao.sms_rate_dao import dao_get_sms_rate_for_timestamp
 
@@ -1729,7 +1729,7 @@ class Notification(db.Model):
         if rate := redis_store.get(
             f"letter-rate-for-date-{created_at_date}-sheets-{self.billable_units}-postage-{self.postage}"
         ):
-            return rate
+            return float(rate)
 
         from app.dao.letter_rate_dao import dao_get_letter_rates_for_timestamp
 
