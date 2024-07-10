@@ -318,8 +318,8 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
         call(f"letter-rate-for-date-{datetime.now().date()}-sheets-2-postage-first"),
     ]
     assert mock_redis_set.call_args_list == [
-        call("letter-rate-for-date-2024-07-09-sheets-1-postage-second", 0.54, ex=86400),
-        call("letter-rate-for-date-2024-07-09-sheets-2-postage-first", 0.85, ex=86400),
+        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-1-postage-second", 0.54, ex=86400),
+        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-2-postage-first", 0.85, ex=86400),
     ]
 
     # but we only get each rate once from db
