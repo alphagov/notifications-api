@@ -36,7 +36,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.schema import Sequence
 
-from app import db, signing
+from app import db, redis_store, signing
 from app.constants import (
     ALL_BROADCAST_PROVIDERS,
     BRANDING_ORG,
@@ -51,12 +51,14 @@ from app.constants import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_RETURNED_LETTER,
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
     NOTIFICATION_STATUS_LETTER_RECEIVED,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
     NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_STATUS_TYPES_LETTERS_NEVER_SENT,
     NOTIFICATION_TYPE,
     ORGANISATION_PERMISSION_TYPES,
     PERMISSION_LIST,
@@ -1641,6 +1643,110 @@ class Notification(db.Model):
             ).earliest_delivery.strftime(DATETIME_FORMAT)
 
         return serialized
+
+    def serialize_with_cost_data(self):
+        serialized = self.serialize()
+        serialized["cost_details"] = {}
+        serialized["cost_in_pounds"] = 0.00
+        serialized["is_cost_data_ready"] = True
+
+        if self.notification_type == "sms":
+            return self._add_cost_data_for_sms(serialized)
+        elif self.notification_type == "letter":
+            return self._add_cost_data_for_letter(serialized)
+
+        return serialized
+
+    def _add_cost_data_for_sms(self, serialized):
+        if not self._is_cost_data_ready_for_sms():
+            serialized["is_cost_data_ready"] = False
+            serialized["cost_details"] = {}
+            serialized["cost_in_pounds"] = None
+        else:
+            serialized["cost_details"]["billable_sms_fragments"] = self.billable_units
+            serialized["cost_details"]["international_rate_multiplier"] = self.rate_multiplier
+            sms_rate = self._get_sms_rate()
+            serialized["cost_details"]["rate"] = sms_rate
+            serialized["cost_in_pounds"] = self.billable_units * self.rate_multiplier * sms_rate
+
+        return serialized
+
+    def _add_cost_data_for_letter(self, serialized):
+        if not self._is_cost_data_ready_for_letter():
+            serialized["is_cost_data_ready"] = False
+            serialized["cost_details"] = {}
+            serialized["cost_in_pounds"] = None
+        # we don't bill users for letters that were not sent
+        elif self._letter_was_never_sent():
+            serialized["cost_details"]["billable_sheets_of_paper"] = 0
+            serialized["cost_details"]["postage"] = self.postage
+            serialized["cost_in_pounds"] = 0.00
+        else:
+            serialized["cost_details"]["billable_sheets_of_paper"] = self.billable_units
+            serialized["cost_details"]["postage"] = self.postage
+            serialized["cost_in_pounds"] = self._get_letter_cost()
+
+        return serialized
+
+    def _is_cost_data_ready_for_sms(self):
+        if self.status == NOTIFICATION_CREATED and not self.billable_units:
+            return False
+        return True
+
+    def _is_cost_data_ready_for_letter(self):
+        if self.status == NOTIFICATION_PENDING_VIRUS_CHECK or (
+            self.status == NOTIFICATION_CREATED and not self.billable_units
+        ):
+            return False
+        return True
+
+    def _letter_was_never_sent(self):
+        if self.status in NOTIFICATION_STATUS_TYPES_LETTERS_NEVER_SENT:
+            return True
+        return False
+
+    def _get_sms_rate(self):
+
+        created_at_date = self.created_at.date()
+
+        if rate := redis_store.get(f"sms-rate-for-{created_at_date}"):
+            return rate
+
+        from app.dao.sms_rate_dao import dao_get_sms_rate_for_timestamp
+
+        rate = dao_get_sms_rate_for_timestamp(created_at_date).rate
+
+        redis_store.set(f"sms-rate-for-{created_at_date}", rate, ex=86400)
+
+        return rate
+
+    def _get_letter_cost(self):
+        if self.billable_units == 0:
+            return 0.00
+
+        created_at_date = self.created_at.date()
+
+        if rate := redis_store.get(
+            f"letter-rate-for-date-{created_at_date}-sheets-{self.billable_units}-postage-{self.postage}"
+        ):
+            return rate
+
+        from app.dao.letter_rate_dao import dao_get_letter_rates_for_timestamp
+
+        rates = dao_get_letter_rates_for_timestamp(created_at_date)
+        letter_rate = float(
+            next(
+                (rate for rate in rates if rate.sheet_count == self.billable_units and rate.post_class == self.postage),
+                None,
+            ).rate
+        )
+        redis_store.set(
+            f"letter-rate-for-date-{created_at_date}-sheets-{self.billable_units}-postage-{self.postage}",
+            letter_rate,
+            ex=86400,
+        )
+
+        return letter_rate
 
 
 class NotificationHistory(db.Model):
