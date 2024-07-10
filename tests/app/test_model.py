@@ -236,7 +236,7 @@ def test_notification_serialize_with_cost_data_for_sms(client, sample_template, 
     assert response["cost_details"] == {
         "billable_sms_fragments": 2,
         "international_rate_multiplier": 1.0,
-        "rate": 0.0227,
+        "sms_rate": 0.0227,
     }
     assert response["cost_in_pounds"] == 0.0454
 
@@ -285,7 +285,7 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client
     assert response["cost_details"] == {
         "billable_sms_fragments": 2,
         "international_rate_multiplier": 1.0,
-        "rate": 0.0227,
+        "sms_rate": 0.0227,
     }
     assert response["cost_in_pounds"] == 0.0454
 

@@ -1666,7 +1666,7 @@ class Notification(db.Model):
             serialized["cost_details"]["billable_sms_fragments"] = self.billable_units
             serialized["cost_details"]["international_rate_multiplier"] = self.rate_multiplier
             sms_rate = self._get_sms_rate()
-            serialized["cost_details"]["rate"] = sms_rate
+            serialized["cost_details"]["sms_rate"] = sms_rate
             serialized["cost_in_pounds"] = self.billable_units * self.rate_multiplier * sms_rate
 
         return serialized
