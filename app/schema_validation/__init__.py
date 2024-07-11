@@ -27,7 +27,6 @@ def validate_schema_phone_number(instance):
         except InvalidPhoneError as e:
             legacy_message = e.get_legacy_v2_api_error_message()
             raise ValidationError(legacy_message) from None
-            # raise e
     return True
 
 
