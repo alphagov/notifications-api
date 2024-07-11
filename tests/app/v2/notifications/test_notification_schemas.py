@@ -120,6 +120,11 @@ def test_post_sms_schema_is_valid(input):
     assert validate(input, post_sms_request_schema) == input
 
 
+def test_post_sms_schema_is_valid_for_landline_if_service_can_send_to_landlines():
+    sms_data = {"phone_number": "0117 496 0860", "template_id": str(uuid.uuid4())}
+    assert validate(sms_data, post_sms_request_schema) == sms_data
+
+
 @pytest.mark.parametrize(
     "template_id",
     [
