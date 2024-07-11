@@ -3533,6 +3533,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
         "latest_timestamp": (datetime.utcnow()).strftime(date_format) + " GMT",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
+        "status": "Not downloaded",
     }
     expected_reports_summary = [expected_unbatched_unsubscribe_request_summary]
 

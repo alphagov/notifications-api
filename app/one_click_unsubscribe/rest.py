@@ -99,6 +99,7 @@ def _create_batched_unsubscribe_request_reports_summary(unsubscribe_request_repo
             "latest_timestamp": report.latest_timestamp,
             "processed_by_service_at": report.processed_by_service_at,
             "is_a_batched_report": True,
+            "status": "Completed" if report.processed_by_service_at else "Downloaded",
         }
         report_summaries.append(report_summary)
     return report_summaries
@@ -115,5 +116,6 @@ def _create_unbatched_unsubscribe_request_report_summary(
         "latest_timestamp": datetime.utcnow(),
         "processed_by_service_at": None,
         "is_a_batched_report": False,
+        "status": "Not downloaded",
     }
     return report_summary
