@@ -34,6 +34,7 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_by_id,
 )
 from app.models import Notification
+from app.utils import url_with_token
 from app.v2.errors import BadRequestError, QrCodeTooLongError
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
@@ -112,6 +113,7 @@ def persist_notification(
     status=NOTIFICATION_CREATED,
     reply_to_text=None,
     unsubscribe_link=None,
+    template_has_unsubscribe_link=False,
     billable_units=None,
     postage=None,
     document_download_count=None,
@@ -120,6 +122,12 @@ def persist_notification(
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
         notification_id = uuid.uuid4()
+
+    if template_has_unsubscribe_link and not unsubscribe_link:
+        base_url = current_app.config["API_HOST_NAME"]
+        url = f"/unsubscribe/{str(notification_id)}/"
+        unsubscribe_link = url_with_token(recipient, url=url, base_url=base_url)
+
     notification = Notification(
         id=notification_id,
         template_id=template_id,

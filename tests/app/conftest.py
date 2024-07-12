@@ -228,6 +228,7 @@ def sample_email_template(sample_user):
     data = {
         "name": "Email Template Name",
         "template_type": EMAIL_TYPE,
+        "has_unsubscribe_link": False,
         "content": "This is a template",
         "service": service,
         "created_by": sample_user,

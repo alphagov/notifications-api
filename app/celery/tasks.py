@@ -249,6 +249,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         saved_notification = persist_notification(
             template_id=notification["template"],
             template_version=notification["template_version"],
+            template_has_unsubscribe_link=template.has_unsubscribe_link,
             recipient=notification["to"],
             service=service,
             personalisation=notification.get("personalisation"),
