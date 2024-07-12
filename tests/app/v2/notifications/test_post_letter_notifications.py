@@ -668,13 +668,13 @@ def test_post_precompiled_letter_notification_if_s3_upload_fails_notification_is
     assert Notification.query.count() == 0
 
 
-def test_post_letter_notification_throws_error_for_invalid_postage(api_client_request, mocker):
+def test_post_letter_notification_throws_error_for_invalid_postage(api_client_request):
     sample_service = create_service(service_permissions=["letter"])
-    data = {"reference": "letter-reference", "content": "bGV0dGVyLWNvbnRlbnQ=", "postage": "space unicorn"}
+    data = {"reference": "letter-reference", "content": "bGV0dGVyLWNvbnRlbnQ=", "postage": "europe"}
     resp_json = api_client_request.post(
         sample_service.id, "v2_notifications.post_precompiled_letter_notification", _data=data, _expected_status=400
     )
-    assert resp_json["errors"][0]["message"] == "postage invalid. It must be first, second, europe or rest-of-world."
+    assert resp_json["errors"][0]["message"] == "postage invalid. It must be either first or second."
 
     assert not Notification.query.first()
 

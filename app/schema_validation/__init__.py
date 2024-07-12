@@ -40,6 +40,20 @@ def validate_schema_email_address(instance):
 
 @format_checker.checks("postage", raises=ValidationError)
 def validate_schema_postage(instance):
+    """
+    For validating postage on templates and user requests, where postage can only be `first` or `second`
+    """
+    if isinstance(instance, str):
+        if instance not in ["first", "second"]:
+            raise ValidationError("invalid. It must be either first or second.")
+    return True
+
+
+@format_checker.checks("postage_including_international", raises=ValidationError)
+def validate_schema_postage_including_international(instance):
+    """
+    For validating postage sent by admin when sending a precompiled letter, where postage can include international
+    """
     if isinstance(instance, str):
         if instance not in ["first", "second", "europe", "rest-of-world"]:
             raise ValidationError("invalid. It must be first, second, europe or rest-of-world.")

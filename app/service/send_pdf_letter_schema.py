@@ -4,7 +4,7 @@ send_pdf_letter_request = {
     "type": "object",
     "title": "Send an uploaded pdf letter",
     "properties": {
-        "postage": {"type": "string", "format": "postage"},
+        "postage": {"type": "string", "format": "postage_including_international"},
         "filename": {"type": "string"},
         "created_by": {"type": "string"},
         "file_id": {"type": "string"},
