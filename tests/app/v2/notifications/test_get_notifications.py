@@ -62,7 +62,7 @@ def test_get_notification_by_id_returns_200(api_client_request, sample_template,
         "is_cost_data_ready": True if billable_units else False,
         "cost_in_pounds": 0.0227 * billable_units if billable_units else None,
         "cost_details": (
-            {"billable_sms_fragments": billable_units, "international_rate_multiplier": 1, "rate": 0.0227}
+            {"billable_sms_fragments": billable_units, "international_rate_multiplier": 1, "sms_rate": 0.0227}
             if billable_units
             else {}
         ),
@@ -594,7 +594,7 @@ def test_get_all_notifications_returns_cost_datarmation(api_client_request, samp
     assert json_response["notifications"][0]["cost_details"] == {
         "billable_sms_fragments": 1,
         "international_rate_multiplier": 1,
-        "rate": 0.0227,
+        "sms_rate": 0.0227,
     }
 
 

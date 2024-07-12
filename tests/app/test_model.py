@@ -236,7 +236,7 @@ def test_notification_serialize_with_cost_data_for_sms(client, sample_template, 
     assert response["cost_details"] == {
         "billable_sms_fragments": 2,
         "international_rate_multiplier": 1.0,
-        "rate": 0.0227,
+        "sms_rate": 0.0227,
     }
     assert response["cost_in_pounds"] == 0.0454
 
@@ -252,6 +252,7 @@ def test_notification_serialize_with_cost_data_for_letter(client, sample_letter_
     assert response["cost_in_pounds"] == 0.54
 
 
+@freeze_time("2024-07-10 12:11:04.000000")
 def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client, mocker, sample_template, sms_rate):
     notification_1 = create_notification(sample_template, billable_units=1)
     notification_2 = create_notification(sample_template, billable_units=2)
@@ -271,10 +272,10 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client
 
     # redis is called
     assert mock_redis_get.call_args_list == [
-        call(f"sms-rate-for-{datetime.now().date()}"),
-        call(f"sms-rate-for-{datetime.now().date()}"),
+        call("sms-rate-for-2024-07-10"),
+        call("sms-rate-for-2024-07-10"),
     ]
-    assert mock_redis_set.call_args_list == [call(f"sms-rate-for-{datetime.now().date()}", 0.0227, ex=86400)]
+    assert mock_redis_set.call_args_list == [call("sms-rate-for-2024-07-10", 0.0227, ex=86400)]
 
     # but we only get rate once
     assert mock_get_sms_rate.call_args_list == [
@@ -285,11 +286,12 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client
     assert response["cost_details"] == {
         "billable_sms_fragments": 2,
         "international_rate_multiplier": 1.0,
-        "rate": 0.0227,
+        "sms_rate": 0.0227,
     }
     assert response["cost_in_pounds"] == 0.0454
 
 
+@freeze_time("2024-07-10 12:11:04.000000")
 def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
     client, mocker, sample_letter_template, letter_rate, notify_db_session
 ):
@@ -321,13 +323,13 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
 
     # redis is called
     assert mock_redis_get.call_args_list == [
-        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-1-postage-second"),
-        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-1-postage-second"),
-        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-2-postage-first"),
+        call("letter-rate-for-date-2024-07-10-sheets-1-postage-second"),
+        call("letter-rate-for-date-2024-07-10-sheets-1-postage-second"),
+        call("letter-rate-for-date-2024-07-10-sheets-2-postage-first"),
     ]
     assert mock_redis_set.call_args_list == [
-        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-1-postage-second", 0.54, ex=86400),
-        call(f"letter-rate-for-date-{datetime.now().date()}-sheets-2-postage-first", 0.85, ex=86400),
+        call("letter-rate-for-date-2024-07-10-sheets-1-postage-second", 0.54, ex=86400),
+        call("letter-rate-for-date-2024-07-10-sheets-2-postage-first", 0.85, ex=86400),
     ]
 
     # but we only get each rate once from db
