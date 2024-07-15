@@ -23,9 +23,11 @@ def get_unsubscribe_request_reports_dao(service_id):
 
 
 def get_unbatched_unsubscribe_requests_dao(service_id):
-    return UnsubscribeRequest.query.\
-        filter_by(service_id=service_id, unsubscribe_request_report_id=None).\
-        order_by(UnsubscribeRequest.created_at.desc()).all()
+    return (
+        UnsubscribeRequest.query.filter_by(service_id=service_id, unsubscribe_request_report_id=None)
+        .order_by(UnsubscribeRequest.created_at.desc())
+        .all()
+    )
 
 
 @autocommit

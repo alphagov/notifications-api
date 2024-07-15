@@ -3498,7 +3498,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
         template_type=EMAIL_TYPE,
     )
     notification_1 = create_notification(
-        template=template_1,
+        template=template_1, created_at=(datetime.utcnow() + timedelta(days=-2)).strftime(date_format) + " GMT"
     )
     create_unsubscribe_request_dao(
         {  # noqa
@@ -3507,14 +3507,16 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
             "template_version": notification_1.template_version,
             "service_id": notification_1.service_id,
             "email_address": notification_1.to,
-            "created_at": (datetime.utcnow() + timedelta(days=-2)).strftime(date_format) + " GMT",
+            "created_at": notification_1.created_at,
         }
     )
     template_2 = create_template(
         sample_service,
         template_type=EMAIL_TYPE,
     )
-    notification_2 = create_notification(template=template_2)
+    notification_2 = create_notification(
+        template=template_2, created_at=(datetime.utcnow() + timedelta(days=-1)).strftime(date_format) + " GMT"
+    )
     create_unsubscribe_request_dao(
         {  # noqa
             "notification_id": notification_2.id,
@@ -3522,14 +3524,14 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
             "template_version": notification_2.template_version,
             "service_id": notification_2.service_id,
             "email_address": notification_2.to,
-            "created_at": (datetime.utcnow() + timedelta(days=-1)).strftime(date_format) + " GMT",
+            "created_at": notification_2.created_at,
         }
     )
 
     expected_unbatched_unsubscribe_request_summary = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": sample_service.created_at.strftime(date_format) + " GMT",
+        "earliest_timestamp": notification_2.created_at.strftime(date_format) + " GMT",
         "latest_timestamp": (datetime.utcnow()).strftime(date_format) + " GMT",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
@@ -3539,7 +3541,6 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
     response = admin_request.get("service.get_unsubscribe_request_reports_summary", service_id=sample_service.id)
 
     assert response == expected_reports_summary
-    assert response[0]["earliest_timestamp"] == sample_service.created_at.strftime(date_format) + " GMT"
 
 
 def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, mocker):
@@ -3622,7 +3623,6 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     ] + expected_batched_unsubscribe_request_reports_summary
 
     response = admin_request.get("service.get_unsubscribe_request_reports_summary", service_id=sample_service.id)
-
     assert datetime.strptime(response[0]["earliest_timestamp"], date_format) == datetime.strptime(
         response[1]["latest_timestamp"], date_format
     )

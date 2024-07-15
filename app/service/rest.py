@@ -1074,7 +1074,7 @@ def get_unsubscribe_request_reports_summary(service_id):
     The earliest_timestamp value is either:
         i. the latest_timestamp of the last existing unsubscribe_request_report
         or
-        ii. the service created_at date if it is the first set of unsubscribe requests received by the service.
+        ii. the date of the earliest unsubscribe request in the report.
 
     parameter: uuid service_id
 

@@ -6,7 +6,6 @@ from notifications_utils.url_safe_token import check_token
 
 from app.dao.notification_history_dao import get_notification_history_by_id
 from app.dao.notifications_dao import get_notification_by_id
-from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.unsubscribe_request_dao import (
     create_unsubscribe_request_dao,
     get_unbatched_unsubscribe_requests_dao,
@@ -76,13 +75,12 @@ def create_unsubscribe_request_reports_summary(service_id):
         if batched_unsubscribe_reports_summary:
             earliest_timestamp = batched_unsubscribe_reports_summary[0]["latest_timestamp"]
         else:
-            service = dao_fetch_service_by_id(service_id)
-            earliest_timestamp = service.created_at
+
+            earliest_timestamp = unbatched_unsubscribe_requests[0].created_at
 
         unbatched_unsubscribe_report_summary.append(
             _create_unbatched_unsubscribe_request_report_summary(unbatched_unsubscribe_requests, earliest_timestamp)
         )
-
     reports_summary = unbatched_unsubscribe_report_summary + batched_unsubscribe_reports_summary
 
     return reports_summary
