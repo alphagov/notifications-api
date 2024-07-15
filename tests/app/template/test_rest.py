@@ -1003,7 +1003,7 @@ def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_u
             [
                 {
                     "error": "ValidationError",
-                    "message": "postage invalid. It must be first, second, europe or rest-of-world.",
+                    "message": "postage invalid. It must be either first or second.",
                 },
             ],
         ),
