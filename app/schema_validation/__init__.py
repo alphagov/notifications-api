@@ -24,11 +24,10 @@ def validate_schema_phone_number(instance):
 
     if isinstance(instance, str):
         try:
-            breakpoint()
-            phonenumber = PhoneNumber(instance, allow_international=True)
-            phonenumber.validate_phone_number(instance)
+            PhoneNumber(instance, allow_international=True)
         except InvalidPhoneError as e:
             legacy_message = e.get_legacy_v2_api_error_message()
+            breakpoint()
             raise ValidationError(legacy_message) from None
     return True
 
