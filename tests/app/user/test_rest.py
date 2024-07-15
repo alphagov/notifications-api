@@ -30,25 +30,6 @@ from tests.app.db import (
 )
 
 
-def test_get_user_list(admin_request, sample_service):
-    """
-    Tests GET endpoint '/' to retrieve entire user list.
-    """
-    json_resp = admin_request.get("user.get_user")
-
-    # it may have the notify user in the DB still :weary:
-    assert len(json_resp["data"]) >= 1
-    sample_user = sample_service.users[0]
-    expected_permissions = default_service_permissions
-    fetched = next(x for x in json_resp["data"] if x["id"] == str(sample_user.id))
-
-    assert sample_user.name == fetched["name"]
-    assert sample_user.mobile_number == fetched["mobile_number"]
-    assert sample_user.email_address == fetched["email_address"]
-    assert sample_user.state == fetched["state"]
-    assert sorted(expected_permissions) == sorted(fetched["permissions"][str(sample_service.id)])
-
-
 def test_get_user(admin_request, sample_service, sample_organisation):
     """
     Tests GET endpoint '/<user_id>' to retrieve a single user.

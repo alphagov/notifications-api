@@ -100,10 +100,8 @@ def count_user_verify_codes(user):
     return query.count()
 
 
-def get_user_by_id(user_id=None):
-    if user_id:
-        return User.query.filter_by(id=user_id).one()
-    return User.query.filter_by().all()
+def get_user_by_id(user_id):
+    return User.query.filter_by(id=user_id).one()
 
 
 def get_user_by_email(email):

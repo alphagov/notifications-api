@@ -431,8 +431,7 @@ def send_already_registered_email(user_id):
 
 
 @user_blueprint.route("/<uuid:user_id>", methods=["GET"])
-@user_blueprint.route("", methods=["GET"])
-def get_user(user_id=None):
+def get_user(user_id):
     users = get_user_by_id(user_id=user_id)
     result = [x.serialize() for x in users] if isinstance(users, list) else users.serialize()
     return jsonify(data=result)
