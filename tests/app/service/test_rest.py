@@ -3527,20 +3527,15 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
     )
 
     expected_unbatched_unsubscribe_request_summary = {
-        "batch_id": "3c3a1cc8-d228-48bb-ab57-43f81bbbadb3",
+        "batch_id": None,
         "count": 2,
         "earliest_timestamp": sample_service.created_at.strftime(date_format) + " GMT",
         "latest_timestamp": (datetime.utcnow()).strftime(date_format) + " GMT",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
-        "status": "Not downloaded",
     }
     expected_reports_summary = [expected_unbatched_unsubscribe_request_summary]
 
-    mocker.patch(
-        "app.one_click_unsubscribe.rest.uuid.uuid4",
-        return_value=uuid.UUID("3c3a1cc8-d228-48bb-ab57-43f81bbbadb3"),
-    )
     response = admin_request.get("service.get_unsubscribe_request_reports_summary", service_id=sample_service.id)
 
     assert response == expected_reports_summary
@@ -3614,7 +3609,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         for report in [unsubscribe_request_report_2, unsubscribe_request_report_1]
     ]
     expected_unbatched_unsubscribe_request_summary = {
-        "batch_id": "3c3a1cc8-d228-48bb-ab57-43f81bbbadb3",
+        "batch_id": None,
         "count": 2,
         "earliest_timestamp": unsubscribe_request_report_2.latest_timestamp.strftime(date_format),
         "latest_timestamp": datetime.utcnow().strftime(date_format),
@@ -3625,11 +3620,6 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     expected_reports_summary = [
         expected_unbatched_unsubscribe_request_summary
     ] + expected_batched_unsubscribe_request_reports_summary
-
-    mocker.patch(
-        "app.one_click_unsubscribe.rest.uuid.uuid4",
-        return_value=uuid.UUID("3c3a1cc8-d228-48bb-ab57-43f81bbbadb3"),
-    )
 
     response = admin_request.get("service.get_unsubscribe_request_reports_summary", service_id=sample_service.id)
 
