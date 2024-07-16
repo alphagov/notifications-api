@@ -206,7 +206,7 @@ def test_post_sms_request_schema_invalid_phone_number_and_missing_template():
         validate(j, post_sms_request_schema)
     errors = json.loads(str(e.value)).get("errors")
     assert len(errors) == 2
-    assert {"error": "ValidationError", "message": "phone_number Not a UK mobile number"} in errors
+    assert {"error": "ValidationError", "message": "phone_number Number is not valid – double check the phone number you entered"} in errors
     assert {"error": "ValidationError", "message": "template_id is a required property"} in errors
 
 
