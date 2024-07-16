@@ -112,6 +112,7 @@ from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
 )
+from app.one_click_unsubscribe.rest import create_unsubscribe_request_reports_summary
 from app.schema_validation import validate
 from app.schemas import (
     api_key_schema,
@@ -1060,6 +1061,28 @@ def get_returned_letters(service_id):
     ]
 
     return jsonify(sorted(json_results, key=lambda i: i["created_at"], reverse=True))
+
+
+@service_blueprint.route("/<uuid:service_id>/unsubscribe-request-reports-summary", methods=["GET"])
+def get_unsubscribe_request_reports_summary(service_id):
+    """
+    This returns report summaries for both batched and un-batched unsubscribe requests.
+
+    In the case of un-batched unsubscribe requests:
+    is_a_batched_result has a value of False.
+    The latest earliest_timestamp value is the date the user views the summary
+    The earliest_timestamp value is either:
+        i. the latest_timestamp of the last existing unsubscribe_request_report
+        or
+        ii. the date of the earliest unsubscribe request in the report.
+
+    parameter: uuid service_id
+
+    return: reports_summary = []
+
+    """
+    reports_summary = create_unsubscribe_request_reports_summary(service_id)
+    return jsonify(reports_summary)
 
 
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])
