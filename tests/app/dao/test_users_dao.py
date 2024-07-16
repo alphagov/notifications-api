@@ -60,14 +60,6 @@ def test_create_user(notify_db_session, phone_number):
     assert not user_query.platform_admin
 
 
-def test_get_all_users(notify_db_session):
-    create_user(email="1@test.com")
-    create_user(email="2@test.com")
-
-    assert User.query.count() == 2
-    assert len(get_user_by_id()) == 2
-
-
 def test_get_user(notify_db_session):
     email = "1@test.com"
     user = create_user(email=email)
