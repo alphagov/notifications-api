@@ -180,7 +180,7 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
 @pytest.mark.parametrize(
     "invalid_phone_number, err_msg",
     [
-        ("08515111111", "Number is not valid – double check the phone number you entered"),
+        ("08515111111", "phone_number Number is not valid – double check the phone number you entered"),
         ("07515111*11", "phone_number Must not contain letters or symbols"),
         ("notaphoneumber", "phone_number Must not contain letters or symbols"),
         (7700900001, "phone_number 7700900001 is not of type string"),
