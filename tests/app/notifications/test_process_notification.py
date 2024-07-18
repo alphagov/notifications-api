@@ -385,15 +385,15 @@ def test_persist_notification_with_international_info_stores_correct_info(
     assert persisted_notification.rate_multiplier == expected_units
 
 @pytest.mark.parametrize(
-    "recipient, send_to_landline, expected_prefix, expected_units",
+    "recipient, expected_recipient_normalised, send_to_landline, expected_prefix, expected_units",
     [
-        ("020 7709 1001", True, "44", 1),  # UK
-        ("+442077091002", True, "44", 1),  # UK
-        ("020 7709 1000", True, "44", 1),  # UK
+        ("020 7709 1001", "442077091001", True, "44", 1),  # UK
+        ("+442077091002", "442077091002", True, "44", 1),  # UK
+        ("020 7709 1000", "442077091000", True, "44", 1),  # UK
     ],
 )
 def test_persist_notification_with_send_to_landline_stores_correct_info(
-        sample_job, sample_api_key, mocker, recipient, send_to_landline, expected_prefix, expected_units
+        sample_job, sample_api_key, mocker, recipient, expected_recipient_normalised, send_to_landline, expected_prefix, expected_units
 ):
     persist_notification(
         template_id=sample_job.template.id,
@@ -411,6 +411,7 @@ def test_persist_notification_with_send_to_landline_stores_correct_info(
     )
     persisted_notification = Notification.query.all()[0]
     assert persisted_notification.phone_prefix == expected_prefix
+    assert persisted_notification.normalised_to == expected_recipient_normalised
 
 def test_persist_notification_with_international_info_does_not_store_for_email(sample_job, sample_api_key, mocker):
     persist_notification(
