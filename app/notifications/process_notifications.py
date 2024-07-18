@@ -8,6 +8,7 @@ from notifications_utils.recipient_validation.email_address import (
     format_email_address,
 )
 from notifications_utils.recipient_validation.phone_number import (
+    PhoneNumber,
     get_international_phone_info,
     validate_and_format_phone_number,
 )
@@ -118,6 +119,7 @@ def persist_notification(
     postage=None,
     document_download_count=None,
     updated_at=None,
+    send_to_landline=None,
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -153,8 +155,13 @@ def persist_notification(
     )
 
     if notification_type == SMS_TYPE:
-        formatted_recipient = validate_and_format_phone_number(recipient, international=True)
-        recipient_info = get_international_phone_info(formatted_recipient)
+        if send_to_landline:
+            phonenumber = PhoneNumber(recipient, allow_international=True)
+            formatted_recipient = phonenumber.get_normalised_format()
+            recipient_info = phonenumber.get_international_phone_info()
+        else:
+            formatted_recipient = validate_and_format_phone_number(recipient, international=True)
+            recipient_info = get_international_phone_info(formatted_recipient)
         notification.normalised_to = formatted_recipient
         notification.international = recipient_info.international
         notification.phone_prefix = recipient_info.country_prefix
