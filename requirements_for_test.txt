@@ -2,6 +2,6 @@
 -r requirements_for_test_common.txt
 
 flaky==3.7.0
-moto==4.0.11
+moto==5.0.11
 pytest-httpserver==1.0.8
 trustme==0.9.0
