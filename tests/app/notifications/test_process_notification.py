@@ -410,7 +410,7 @@ def test_persist_notification_with_send_to_landline_stores_correct_info(
         send_to_landline=send_to_landline
     )
     persisted_notification = Notification.query.all()[0]
-    assert persisted_notification.phone_prefix == "44"
+    assert persisted_notification.phone_prefix == expected_prefix
 
 def test_persist_notification_with_international_info_does_not_store_for_email(sample_job, sample_api_key, mocker):
     persist_notification(
