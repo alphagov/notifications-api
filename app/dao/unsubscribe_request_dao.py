@@ -1,8 +1,9 @@
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_
 
 from app import db
 from app.dao.dao_utils import autocommit
-from app.models import UnsubscribeRequest, Service, UnsubscribeRequestReport
+from app.models import UnsubscribeRequest, UnsubscribeRequestReport
+from app.utils import midnight_n_days_ago
 
 
 @autocommit
@@ -15,37 +16,33 @@ def get_unsubscribe_request_by_notification_id_dao(notification_id):
 
 
 def get_unsubscribe_requests_statistics_dao(service_id):
-    unprocessed_batched_unsubscribe_requests_count = (
-        db.session.query(UnsubscribeRequest)
-        .join(UnsubscribeRequestReport, UnsubscribeRequestReport.id == UnsubscribeRequest.unsubscribe_request_report_id)
-        .filter(UnsubscribeRequestReport.processed_by_service_at.is_(None), service_id == service_id)
-        .count()
-    )
-
-    unprocessed_unbatched_unsubscribe_requests = (
+    """
+    This method returns statistics for only unprocessed unsubscribe requests received
+    in the last 7 days
+    """
+    return (
         db.session.query(
-            func.count(UnsubscribeRequest.id).label("count"),
-            UnsubscribeRequest.unsubscribe_request_report_id,
+            func.count(UnsubscribeRequest.service_id).label("unprocessed_unsubscribe_requests_count"),
+            UnsubscribeRequest.service_id,
             func.max(UnsubscribeRequest.created_at).label("datetime_of_latest_unsubscribe_request"),
         )
-        .filter(UnsubscribeRequest.unsubscribe_request_report_id.is_(None), service_id == service_id)
-        .group_by(UnsubscribeRequest.unsubscribe_request_report_id)
-        .order_by(desc(UnsubscribeRequest.unsubscribe_request_report_id))
-        .one()
+        .select_from(UnsubscribeRequest)
+        .join(
+            UnsubscribeRequestReport,
+            UnsubscribeRequestReport.id == UnsubscribeRequest.unsubscribe_request_report_id,
+            isouter=True,
+        )
+        .filter(
+            or_(
+                UnsubscribeRequest.unsubscribe_request_report_id.is_(None),
+                UnsubscribeRequestReport.processed_by_service_at.is_(None),
+            ),
+            service_id == service_id,
+            UnsubscribeRequest.created_at >= midnight_n_days_ago(7),
+        )
+        .group_by(UnsubscribeRequest.service_id)
+        .one_or_none()
     )
-
-    unprocessed_unsubscribe_requests_count = (
-        unprocessed_batched_unsubscribe_requests_count + unprocessed_unbatched_unsubscribe_requests["count"]
-    )
-
-    latest_unsubscribe_request_received_at = unprocessed_unbatched_unsubscribe_requests[
-        "datetime_of_latest_unsubscribe_request"
-    ]
-
-    return {
-        "count_of_pending_unsubscribe_requests": unprocessed_unsubscribe_requests_count,
-        "datetime_of_latest_unsubscribe_request": latest_unsubscribe_request_received_at,
-    }
 
 
 def get_unsubscribe_request_reports_dao(service_id):
