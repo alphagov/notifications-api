@@ -3639,6 +3639,17 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     assert response[2]["processed_by_service_at"] == expected_reports_summary[2]["processed_by_service_at"] + "GMT"
 
 
+def test_get_unsubscribe_requests_statistics(admin_request, sample_service, mocker):
+    test_data = {
+        "count_of_pending_unsubscribe_requests": 250,
+        "datetime_of_latest_unsubscribe_request": "2024-07-14 09:36:17",
+    }
+    mocker.patch("app.service.rest.get_unsubscribe_requests_statistics_dao", return_value=test_data)
+    response = admin_request.get("service.get_unsubscribe_requests_statistics", service_id=sample_service.id)
+    assert response["count_of_pending_unsubscribe_requests"] == test_data["count_of_pending_unsubscribe_requests"]
+    assert response["datetime_of_latest_unsubscribe_request"] == test_data["datetime_of_latest_unsubscribe_request"]
+
+
 @pytest.mark.parametrize(
     "new_custom_email_sender_name, expected_email_sender_local_part",
     [
