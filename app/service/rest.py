@@ -98,6 +98,7 @@ from app.dao.services_dao import (
     get_services_by_partial_name,
 )
 from app.dao.templates_dao import dao_get_template_by_id
+from app.dao.unsubscribe_request_dao import get_unsubscribe_requests_statistics_dao
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters, letter_print_day
@@ -1083,6 +1084,12 @@ def get_unsubscribe_request_reports_summary(service_id):
     """
     reports_summary = create_unsubscribe_request_reports_summary(service_id)
     return jsonify(reports_summary)
+
+
+@service_blueprint.route("/<uuid:service_id>/unsubscribe-request-statistics", methods=["GET"])
+def get_unsubscribe_requests_statistics(service_id):
+    unsubscribe_statistics = get_unsubscribe_requests_statistics_dao(service_id)
+    return jsonify(unsubscribe_statistics), 200
 
 
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])
