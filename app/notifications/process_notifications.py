@@ -29,6 +29,7 @@ from app.constants import (
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     SMS_TYPE,
+    SMS_TO_UK_LANDLINES,
 )
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -152,10 +153,9 @@ def persist_notification(
         document_download_count=document_download_count,
         updated_at=updated_at,
     )
-    sms_to_landlines = False
     # sms_to_landlines = service.has_permission(SMS_TO_UK_LANDLINES)
     if notification_type == SMS_TYPE:
-        if sms_to_landlines:
+        if service.has_permission(SMS_TO_UK_LANDLINES):
             phonenumber = PhoneNumber(recipient, allow_international=True)
             formatted_recipient = phonenumber.get_normalised_format()
             recipient_info = phonenumber.get_international_phone_info()
