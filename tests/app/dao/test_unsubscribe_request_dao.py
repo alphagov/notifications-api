@@ -2,7 +2,7 @@ from app.constants import EMAIL_TYPE
 from app.dao.unsubscribe_request_dao import (
     create_unsubscribe_request_dao,
     create_unsubscribe_request_reports_dao,
-    get_latest_unsubscribe_request_dao,
+    get_latest_unsubscribe_request_date_dao,
     get_unsubscribe_request_by_notification_id_dao,
     get_unsubscribe_requests_statistics_dao,
 )
@@ -124,8 +124,8 @@ def test_get_unsubscribe_requests_statistics_dao(sample_service):
         "datetime_of_latest_unsubscribe_request": unsubscribe_requests[0].created_at,
     }
 
-    assert result["unprocessed_unsubscribe_requests_count"] == expected_result["unprocessed_unsubscribe_requests_count"]
-    assert result["datetime_of_latest_unsubscribe_request"] == expected_result["datetime_of_latest_unsubscribe_request"]
+    assert result.unprocessed_unsubscribe_requests_count == expected_result["unprocessed_unsubscribe_requests_count"]
+    assert result.datetime_of_latest_unsubscribe_request == expected_result["datetime_of_latest_unsubscribe_request"]
 
 
 def test_get_unsubscribe_requests_statistics_dao_returns_none_when_there_are_no_unsubscribe_requests(
@@ -171,8 +171,8 @@ def test_get_unsubscribe_requests_statistics_dao_adheres_to_7_days_limit(sample_
         "datetime_of_latest_unsubscribe_request": unsubscribe_requests[0].created_at,
     }
 
-    assert result["unprocessed_unsubscribe_requests_count"] == expected_result["unprocessed_unsubscribe_requests_count"]
-    assert result["datetime_of_latest_unsubscribe_request"] == expected_result["datetime_of_latest_unsubscribe_request"]
+    assert result.unprocessed_unsubscribe_requests_count == expected_result["unprocessed_unsubscribe_requests_count"]
+    assert result.datetime_of_latest_unsubscribe_request == expected_result["datetime_of_latest_unsubscribe_request"]
 
 
 def test_get_latest_unsubscribe_request_dao(sample_service):
@@ -204,11 +204,10 @@ def test_get_latest_unsubscribe_request_dao(sample_service):
         }
     )
     unsubscribe_requests = UnsubscribeRequest.query.order_by(UnsubscribeRequest.created_at.desc()).all()
-    result = get_latest_unsubscribe_request_dao(sample_service.id)
-    assert result.id == unsubscribe_requests[0].id
-    assert result.created_at == unsubscribe_requests[0].created_at
+    result = get_latest_unsubscribe_request_date_dao(sample_service.id)
+    assert result.datetime_of_latest_unsubscribe_request == unsubscribe_requests[0].created_at
 
 
 def test_get_latest_unsubscribe_request_dao_if_no_unsubscribe_request_exists(sample_service):
-    result = get_latest_unsubscribe_request_dao(sample_service.id)
+    result = get_latest_unsubscribe_request_date_dao(sample_service.id)
     assert result is None

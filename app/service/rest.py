@@ -98,7 +98,10 @@ from app.dao.services_dao import (
     get_services_by_partial_name,
 )
 from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.unsubscribe_request_dao import get_unsubscribe_requests_statistics_dao
+from app.dao.unsubscribe_request_dao import (
+    get_latest_unsubscribe_request_date_dao,
+    get_unsubscribe_requests_statistics_dao,
+)
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters, letter_print_day
@@ -1088,8 +1091,19 @@ def get_unsubscribe_request_reports_summary(service_id):
 
 @service_blueprint.route("/<uuid:service_id>/unsubscribe-request-statistics", methods=["GET"])
 def get_unsubscribe_requests_statistics(service_id):
-    unsubscribe_statistics = get_unsubscribe_requests_statistics_dao(service_id)
-    return jsonify(unsubscribe_statistics), 200
+    data = {}
+    if unsubscribe_statistics := get_unsubscribe_requests_statistics_dao(service_id):
+        data = {
+            "unprocessed_unsubscribe_requests_count": unsubscribe_statistics.unprocessed_unsubscribe_requests_count,
+            "datetime_of_latest_unsubscribe_request": unsubscribe_statistics.datetime_of_latest_unsubscribe_request,
+        }
+    elif latest_unsubscribe_request := get_latest_unsubscribe_request_date_dao(service_id):
+        data = {
+            "unprocessed_unsubscribe_requests_count": 0,
+            "datetime_of_latest_unsubscribe_request": latest_unsubscribe_request.datetime_of_latest_unsubscribe_request,
+        }
+
+    return jsonify(data), 200
 
 
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])
