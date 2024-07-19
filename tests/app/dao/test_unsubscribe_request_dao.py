@@ -2,6 +2,7 @@ from app.constants import EMAIL_TYPE
 from app.dao.unsubscribe_request_dao import (
     create_unsubscribe_request_dao,
     create_unsubscribe_request_reports_dao,
+    get_latest_unsubscribe_request_dao,
     get_unsubscribe_request_by_notification_id_dao,
     get_unsubscribe_requests_statistics_dao,
 )
@@ -172,3 +173,42 @@ def test_get_unsubscribe_requests_statistics_dao_adheres_to_7_days_limit(sample_
 
     assert result["unprocessed_unsubscribe_requests_count"] == expected_result["unprocessed_unsubscribe_requests_count"]
     assert result["datetime_of_latest_unsubscribe_request"] == expected_result["datetime_of_latest_unsubscribe_request"]
+
+
+def test_get_latest_unsubscribe_request_dao(sample_service):
+    template = create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+    )
+    notification_1 = create_notification(template=template)
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_1.id,
+            "template_id": notification_1.template_id,
+            "template_version": notification_1.template_version,
+            "service_id": notification_1.service_id,
+            "email_address": notification_1.to,
+            "created_at": midnight_n_days_ago(3),
+        }
+    )
+
+    notification_2 = create_notification(template=template)
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_2.id,
+            "template_id": notification_2.template_id,
+            "template_version": notification_2.template_version,
+            "service_id": notification_2.service_id,
+            "email_address": notification_2.to,
+            "created_at": midnight_n_days_ago(5),
+        }
+    )
+    unsubscribe_requests = UnsubscribeRequest.query.order_by(UnsubscribeRequest.created_at.desc()).all()
+    result = get_latest_unsubscribe_request_dao(sample_service.id)
+    assert result.id == unsubscribe_requests[0].id
+    assert result.created_at == unsubscribe_requests[0].created_at
+
+
+def test_get_latest_unsubscribe_request_dao_if_no_unsubscribe_request_exists(sample_service):
+    result = get_latest_unsubscribe_request_dao(sample_service.id)
+    assert result is None

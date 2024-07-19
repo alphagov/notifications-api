@@ -45,6 +45,19 @@ def get_unsubscribe_requests_statistics_dao(service_id):
     )
 
 
+def get_latest_unsubscribe_request_dao(service_id):
+    return (
+        db.session.query(
+            UnsubscribeRequest,
+        )
+        .filter(
+            UnsubscribeRequest.service_id == service_id,
+        )
+        .order_by(desc(UnsubscribeRequest.created_at))
+        .first()
+    )
+
+
 def get_unsubscribe_request_reports_dao(service_id):
     return (
         UnsubscribeRequestReport.query.filter_by(service_id=service_id)
