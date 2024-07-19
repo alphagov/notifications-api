@@ -23,7 +23,7 @@ def get_unsubscribe_requests_statistics_dao(service_id):
     return (
         db.session.query(
             func.count(UnsubscribeRequest.service_id).label("unprocessed_unsubscribe_requests_count"),
-            UnsubscribeRequest.service_id,
+            UnsubscribeRequest.service_id.label("service_id"),
             func.max(UnsubscribeRequest.created_at).label("datetime_of_latest_unsubscribe_request"),
         )
         .select_from(UnsubscribeRequest)
@@ -45,10 +45,10 @@ def get_unsubscribe_requests_statistics_dao(service_id):
     )
 
 
-def get_latest_unsubscribe_request_dao(service_id):
+def get_latest_unsubscribe_request_date_dao(service_id):
     return (
         db.session.query(
-            UnsubscribeRequest,
+            UnsubscribeRequest.created_at.label("datetime_of_latest_unsubscribe_request"),
         )
         .filter(
             UnsubscribeRequest.service_id == service_id,
