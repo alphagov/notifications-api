@@ -386,11 +386,11 @@ def test_persist_notification_with_international_info_stores_correct_info(
 
 
 @pytest.mark.parametrize(
-    "recipient, expected_recipient_normalised, send_to_landline, expected_prefix, expected_units",
+    "recipient, expected_recipient_normalised, expected_prefix, expected_units",
     [
-        ("020 7709 1001", "442077091001", True, "44", 1),  # UK
-        ("+442077091002", "442077091002", True, "44", 1),  # UK
-        ("020 7709 1000", "442077091000", True, "44", 1),  # UK
+        ("020 7709 1001", "442077091001", "44", 1),  # UK
+        ("+442077091002", "442077091002", "44", 1),  # UK
+        ("020 7709 1000", "442077091000", "44", 1),  # UK
     ],
 )
 def test_persist_notification_with_send_to_landline_stores_correct_info(
@@ -399,7 +399,6 @@ def test_persist_notification_with_send_to_landline_stores_correct_info(
     mocker,
     recipient,
     expected_recipient_normalised,
-    send_to_landline,
     expected_prefix,
     expected_units,
 ):
@@ -415,7 +414,6 @@ def test_persist_notification_with_send_to_landline_stores_correct_info(
         job_id=sample_job.id,
         job_row_number=10,
         client_reference="ref from client",
-        send_to_landline=send_to_landline,
     )
     persisted_notification = Notification.query.all()[0]
     assert persisted_notification.phone_prefix == expected_prefix
