@@ -37,7 +37,7 @@ def get_unsubscribe_requests_statistics_dao(service_id):
                 UnsubscribeRequest.unsubscribe_request_report_id.is_(None),
                 UnsubscribeRequestReport.processed_by_service_at.is_(None),
             ),
-            service_id == service_id,
+            UnsubscribeRequest.service_id == service_id,
             UnsubscribeRequest.created_at >= midnight_n_days_ago(7),
         )
         .group_by(UnsubscribeRequest.service_id)

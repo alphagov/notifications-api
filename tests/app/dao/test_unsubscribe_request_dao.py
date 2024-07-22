@@ -9,7 +9,7 @@ from app.dao.unsubscribe_request_dao import (
 from app.models import UnsubscribeRequest, UnsubscribeRequestReport
 from app.one_click_unsubscribe.rest import get_unsubscribe_request_data
 from app.utils import midnight_n_days_ago
-from tests.app.db import create_notification, create_template
+from tests.app.db import create_notification, create_service, create_template
 
 
 def test_create_unsubscribe_request_dao(sample_email_notification):
@@ -88,6 +88,23 @@ def test_get_unsubscribe_requests_statistics_dao(sample_service):
             "service_id": notification_4.service_id,
             "email_address": notification_4.to,
             "created_at": midnight_n_days_ago(6),
+        }
+    )
+
+    other_service_template = create_template(
+        create_service(service_name="Other service"),
+        template_type=EMAIL_TYPE,
+    )
+    notification_6 = create_notification(template=other_service_template)
+    # This request should not be counted because it’s from a different service
+    create_unsubscribe_request_dao(
+        {
+            "notification_id": notification_6.id,
+            "template_id": notification_6.template_id,
+            "template_version": notification_6.template_version,
+            "service_id": notification_6.service_id,
+            "email_address": notification_6.to,
+            "created_at": midnight_n_days_ago(1),
         }
     )
 
