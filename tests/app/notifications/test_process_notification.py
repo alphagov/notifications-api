@@ -376,7 +376,6 @@ def test_persist_notification_with_international_info_stores_correct_info(
         key_type=sample_api_key.key_type,
         job_id=sample_job.id,
         job_row_number=10,
-        client_reference="ref from client",
     )
     persisted_notification = Notification.query.all()[0]
 
