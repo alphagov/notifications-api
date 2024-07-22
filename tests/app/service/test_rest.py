@@ -1,5 +1,6 @@
 import json
 import uuid
+from collections import namedtuple
 from datetime import date, datetime, timedelta
 from unittest.mock import ANY
 
@@ -3637,6 +3638,42 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     assert response[0]["processed_by_service_at"] == expected_reports_summary[0]["processed_by_service_at"]
     assert response[1]["processed_by_service_at"] == expected_reports_summary[1]["processed_by_service_at"] + "GMT"
     assert response[2]["processed_by_service_at"] == expected_reports_summary[2]["processed_by_service_at"] + "GMT"
+
+
+def test_get_unsubscribe_requests_statistics(admin_request, sample_service, mocker):
+    MockUnsubscribeRequest = namedtuple(
+        "MockUnsubscribeRequest",
+        ["unprocessed_unsubscribe_requests_count", "service_id", "datetime_of_latest_unsubscribe_request"],
+    )
+    test_data = MockUnsubscribeRequest(0, "2fed1b45-66e1-4682-a389-85d0d50a916f", "Thu, 18 Jul 2024 15:32:28 GMT")
+
+    mocker.patch("app.service.rest.get_unsubscribe_requests_statistics_dao", return_value=test_data)
+    response = admin_request.get("service.get_unsubscribe_requests_statistics", service_id=sample_service.id)
+    assert response["unprocessed_unsubscribe_requests_count"] == test_data.unprocessed_unsubscribe_requests_count
+    assert response["datetime_of_latest_unsubscribe_request"] == test_data.datetime_of_latest_unsubscribe_request
+
+
+def test_get_unsubscribe_requests_statistics_for_unsubscribe_requests_older_than_7_days(
+    admin_request, sample_service, mocker
+):
+    MockUnsubscribeRequest = namedtuple(
+        "MockUnsubscribeRequest",
+        ["unprocessed_unsubscribe_requests_count", "service_id", "datetime_of_latest_unsubscribe_request"],
+    )
+    test_data = MockUnsubscribeRequest(0, "2fed1b45-66e1-4682-a389-85d0d50a916f", "Thu, 18 Jul 2024 15:32:28 GMT")
+
+    mocker.patch("app.service.rest.get_unsubscribe_requests_statistics_dao", return_value=None)
+    mocker.patch("app.service.rest.get_latest_unsubscribe_request_date_dao", return_value=test_data)
+    response = admin_request.get("service.get_unsubscribe_requests_statistics", service_id=sample_service.id)
+    assert response["unprocessed_unsubscribe_requests_count"] == 0
+    assert response["datetime_of_latest_unsubscribe_request"] == test_data.datetime_of_latest_unsubscribe_request
+
+
+def test_get_unsubscribe_requests_statistics_for_no_unsubscribe_requests(admin_request, sample_service, mocker):
+    mocker.patch("app.service.rest.get_unsubscribe_requests_statistics_dao", return_value=None)
+    mocker.patch("app.service.rest.get_latest_unsubscribe_request_date_dao", return_value=None)
+    response = admin_request.get("service.get_unsubscribe_requests_statistics", service_id=sample_service.id)
+    assert response == {}
 
 
 @pytest.mark.parametrize(
