@@ -430,7 +430,7 @@ def test_persist_notification_with_send_to_landline_stores_correct_info(
         ("020 7709 1000", "442077091000", "44", 1),  # UK
     ],
 )
-def test_persist_notification_without_send_to_landline_does_not_store(
+def test_persist_notification_without_send_to_landline_raises_invalidphoneerror(
     sample_job,
     sample_api_key,
     mocker,
