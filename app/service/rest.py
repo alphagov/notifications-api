@@ -1094,12 +1094,12 @@ def get_unsubscribe_requests_statistics(service_id):
     data = {}
     if unsubscribe_statistics := get_unsubscribe_requests_statistics_dao(service_id):
         data = {
-            "unprocessed_unsubscribe_requests_count": unsubscribe_statistics.unprocessed_unsubscribe_requests_count,
+            "unsubscribe_requests_count": unsubscribe_statistics.unprocessed_unsubscribe_requests_count,
             "datetime_of_latest_unsubscribe_request": unsubscribe_statistics.datetime_of_latest_unsubscribe_request,
         }
     elif latest_unsubscribe_request := get_latest_unsubscribe_request_date_dao(service_id):
         data = {
-            "unprocessed_unsubscribe_requests_count": 0,
+            "unsubscribe_requests_count": 0,
             "datetime_of_latest_unsubscribe_request": latest_unsubscribe_request.datetime_of_latest_unsubscribe_request,
         }
 

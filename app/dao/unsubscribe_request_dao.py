@@ -1,4 +1,4 @@
-from sqlalchemy import desc, func, or_
+from sqlalchemy import desc, func
 
 from app import db
 from app.dao.dao_utils import autocommit
@@ -17,26 +17,17 @@ def get_unsubscribe_request_by_notification_id_dao(notification_id):
 
 def get_unsubscribe_requests_statistics_dao(service_id):
     """
-    This method returns statistics for only unprocessed unsubscribe requests received
+    This method returns statistics for only unsubscribe requests received
     in the last 7 days
     """
     return (
         db.session.query(
-            func.count(UnsubscribeRequest.service_id).label("unprocessed_unsubscribe_requests_count"),
+            func.count(UnsubscribeRequest.service_id).label("unsubscribe_requests_count"),
             UnsubscribeRequest.service_id.label("service_id"),
             func.max(UnsubscribeRequest.created_at).label("datetime_of_latest_unsubscribe_request"),
         )
         .select_from(UnsubscribeRequest)
-        .join(
-            UnsubscribeRequestReport,
-            UnsubscribeRequestReport.id == UnsubscribeRequest.unsubscribe_request_report_id,
-            isouter=True,
-        )
         .filter(
-            or_(
-                UnsubscribeRequest.unsubscribe_request_report_id.is_(None),
-                UnsubscribeRequestReport.processed_by_service_at.is_(None),
-            ),
             UnsubscribeRequest.service_id == service_id,
             UnsubscribeRequest.created_at >= midnight_n_days_ago(7),
         )

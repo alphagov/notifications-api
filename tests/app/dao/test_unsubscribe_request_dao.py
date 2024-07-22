@@ -91,6 +91,19 @@ def test_get_unsubscribe_requests_statistics_dao(sample_service):
         }
     )
 
+    notification_5 = create_notification(template=template_2)
+    # This request should not be counted because it’s more than 7 days ago
+    create_unsubscribe_request_dao(
+        {
+            "notification_id": notification_5.id,
+            "template_id": notification_5.template_id,
+            "template_version": notification_5.template_version,
+            "service_id": notification_5.service_id,
+            "email_address": notification_5.to,
+            "created_at": midnight_n_days_ago(8),
+        }
+    )
+
     other_service_template = create_template(
         create_service(service_name="Other service"),
         template_type=EMAIL_TYPE,
@@ -137,11 +150,11 @@ def test_get_unsubscribe_requests_statistics_dao(sample_service):
 
     result = get_unsubscribe_requests_statistics_dao(sample_service.id)
     expected_result = {
-        "unprocessed_unsubscribe_requests_count": 3,
+        "unsubscribe_requests_count": 4,
         "datetime_of_latest_unsubscribe_request": unsubscribe_requests[0].created_at,
     }
 
-    assert result.unprocessed_unsubscribe_requests_count == expected_result["unprocessed_unsubscribe_requests_count"]
+    assert result.unsubscribe_requests_count == expected_result["unsubscribe_requests_count"]
     assert result.datetime_of_latest_unsubscribe_request == expected_result["datetime_of_latest_unsubscribe_request"]
 
 
@@ -184,11 +197,11 @@ def test_get_unsubscribe_requests_statistics_dao_adheres_to_7_days_limit(sample_
     unsubscribe_requests = UnsubscribeRequest.query.order_by(UnsubscribeRequest.created_at.desc()).all()
     result = get_unsubscribe_requests_statistics_dao(sample_service.id)
     expected_result = {
-        "unprocessed_unsubscribe_requests_count": 1,
+        "unsubscribe_requests_count": 1,
         "datetime_of_latest_unsubscribe_request": unsubscribe_requests[0].created_at,
     }
 
-    assert result.unprocessed_unsubscribe_requests_count == expected_result["unprocessed_unsubscribe_requests_count"]
+    assert result.unsubscribe_requests_count == expected_result["unsubscribe_requests_count"]
     assert result.datetime_of_latest_unsubscribe_request == expected_result["datetime_of_latest_unsubscribe_request"]
 
 
