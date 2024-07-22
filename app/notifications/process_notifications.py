@@ -28,8 +28,8 @@ from app.constants import (
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
-    SMS_TYPE,
     SMS_TO_UK_LANDLINES,
+    SMS_TYPE,
 )
 from app.dao.notifications_dao import (
     dao_create_notification,
