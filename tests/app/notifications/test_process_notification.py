@@ -453,10 +453,6 @@ def test_persist_notification_without_send_to_landline_does_not_store(
             job_row_number=10,
             client_reference="ref from client",
         )
-    # persisted_notification = Notification.query.all()[0]
-    # assert persisted_notification.phone_prefix == expected_prefix
-    # assert persisted_notification.normalised_to == expected_recipient_normalised
-    # assert persisted_notification.rate_multiplier == expected_units
 
 
 def test_persist_notification_with_international_info_does_not_store_for_email(sample_job, sample_api_key, mocker):
