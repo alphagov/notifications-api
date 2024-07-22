@@ -25,14 +25,7 @@ def test_create_unsubscribe_request_dao(sample_email_notification):
 
 
 def test_get_unsubscribe_requests_statistics_dao(sample_service):
-    """
-    This test creates 2 un-batched unprocessed unsubscribe requests, 1 batched  unprocessed unsubscribe request
-    and 1 batched processed unsubscribe requests.
 
-     The test cases covered are
-     i.The batched unprocessed unsubscribe request is included in the count_of_pending_unsubscribe_requests
-     ii.The right datetime_of_latest_unsubscribe_request is returned.
-    """
     # Create 2 un-batched unsubscribe requests
     template_1 = create_template(
         sample_service,
