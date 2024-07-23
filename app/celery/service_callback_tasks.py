@@ -109,7 +109,7 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
             try:
                 self.retry(queue=QueueNames.CALLBACKS_RETRY)
             except self.MaxRetriesExceededError as e:
-                current_app.logger.error(
+                current_app.logger.warning(
                     "Retry: %s has retried the max num of times for callback url %s and id: %s",
                     function_name,
                     service_callback_url,
