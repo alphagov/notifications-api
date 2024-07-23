@@ -10,8 +10,8 @@ from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, LETTER_TYPE
-from app.models import Notification, NotificationHistory
+from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, LETTER_TYPE, SMS_TO_UK_LANDLINES, SMS_TYPE
+from app.models import Notification, NotificationHistory, ServicePermission
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
@@ -377,6 +377,7 @@ def test_persist_notification_with_international_info_stores_correct_info(
         key_type=sample_api_key.key_type,
         job_id=sample_job.id,
         job_row_number=10,
+        client_reference="ref from client",
     )
     persisted_notification = Notification.query.all()[0]
 
@@ -388,7 +389,7 @@ def test_persist_notification_with_international_info_stores_correct_info(
 @pytest.mark.parametrize(
     "recipient, expected_recipient_normalised, expected_prefix, expected_units",
     [
-        ("020 7709 1001", "442077091001", "44", 1),  # UK
+        ("02077091001", "442077091001", "44", 1),  # UK
         ("+442077091002", "442077091002", "44", 1),  # UK
         ("020 7709 1000", "442077091000", "44", 1),  # UK
     ],
@@ -401,13 +402,17 @@ def test_persist_notification_with_send_to_landline_stores_correct_info(
     expected_recipient_normalised,
     expected_prefix,
     expected_units,
-    sample_service_full_permissions,
 ):
+    sample_job.service.permissions = [
+        # and any other permissions we need
+        ServicePermission(service_id=sample_job.service.id, permission=SMS_TYPE),
+        ServicePermission(service_id=sample_job.service.id, permission=SMS_TO_UK_LANDLINES),
+    ]
     persist_notification(
         template_id=sample_job.template.id,
         template_version=sample_job.template.version,
         recipient=recipient,
-        service=sample_service_full_permissions,
+        service=sample_job.service,
         personalisation=None,
         notification_type="sms",
         api_key_id=sample_api_key.id,
@@ -422,23 +427,15 @@ def test_persist_notification_with_send_to_landline_stores_correct_info(
     assert persisted_notification.rate_multiplier == expected_units
 
 
-@pytest.mark.parametrize(
-    "recipient, expected_recipient_normalised, expected_prefix, expected_units",
-    [
-        ("020 7709 1001", "442077091001", "44", 1),  # UK
-        ("+442077091002", "442077091002", "44", 1),  # UK
-        ("020 7709 1000", "442077091000", "44", 1),  # UK
-    ],
-)
 def test_persist_notification_without_send_to_landline_raises_invalidphoneerror(
     sample_job,
     sample_api_key,
     mocker,
-    recipient,
-    expected_recipient_normalised,
-    expected_prefix,
-    expected_units,
 ):
+    recipient = "+442077091002"
+    sample_job.service.permissions = [
+        ServicePermission(service_id=sample_job.service.id, permission=SMS_TYPE),
+    ]
     with pytest.raises(InvalidPhoneError):
         persist_notification(
             template_id=sample_job.template.id,

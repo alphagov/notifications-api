@@ -153,7 +153,6 @@ def persist_notification(
         document_download_count=document_download_count,
         updated_at=updated_at,
     )
-    # sms_to_landlines = service.has_permission(SMS_TO_UK_LANDLINES)
     if notification_type == SMS_TYPE:
         if service.has_permission(SMS_TO_UK_LANDLINES):
             phonenumber = PhoneNumber(recipient, allow_international=True)
