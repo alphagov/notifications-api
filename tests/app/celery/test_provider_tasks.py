@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
 from freezegun import freeze_time
-from moto import mock_s3
+from moto import mock_aws
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 
 import app
@@ -223,7 +223,7 @@ def test_update_letter_to_sending(sample_letter_template):
     assert letter.sent_by == "dvla"
 
 
-@mock_s3
+@mock_aws
 @freeze_time("2020-02-17 16:00:00")
 def test_deliver_letter(
     mocker,
@@ -262,7 +262,7 @@ def test_deliver_letter(
     assert letter.sent_by == "dvla"
 
 
-@mock_s3
+@mock_aws
 @freeze_time("2020-02-17 16:00:00")
 def test_deliver_letter_when_file_is_not_in_S3_logs_an_error(mocker, sample_letter_template, sample_organisation):
     mock_send_letter = mocker.patch("app.celery.provider_tasks.dvla_client.send_letter")
@@ -299,7 +299,7 @@ def test_deliver_letter_when_file_is_not_in_S3_logs_an_error(mocker, sample_lett
     assert letter.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
-@mock_s3
+@mock_aws
 @freeze_time("2020-02-17 16:00:00")
 @pytest.mark.parametrize(
     "exception_type, error_class",
@@ -351,7 +351,7 @@ def test_deliver_letter_retries_when_there_is_a_retryable_exception(
         assert f"RETRY: Letter notification {letter.id} was rate limited by DVLA" in caplog.messages
 
 
-@mock_s3
+@mock_aws
 @freeze_time("2020-02-17 16:00:00")
 def test_deliver_letter_logs_a_warning_when_the_print_request_is_duplicate(
     mocker, sample_letter_template, sample_organisation, caplog
@@ -428,7 +428,7 @@ def test_deliver_letter_logs_an_error_when_letter_not_created(mocker, sample_let
     assert f"deliver_letter task called for notification {letter.id} in status sending" in caplog.messages
 
 
-@mock_s3
+@mock_aws
 @freeze_time("2020-02-17 16:00:00")
 @pytest.mark.parametrize("exception_class", [DvlaNonRetryableException(), Exception()])
 def test_deliver_letter_when_there_is_a_non_retryable_error(
@@ -468,7 +468,7 @@ def test_deliver_letter_when_there_is_a_non_retryable_error(
     assert letter.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
-@mock_s3
+@mock_aws
 @freeze_time("2020-02-17 16:00:00")
 def test_deliver_letter_when_max_retries_are_reached(mocker, sample_letter_template, sample_organisation):
     mocker.patch("app.celery.provider_tasks.dvla_client.send_letter", side_effect=DvlaRetryableException())

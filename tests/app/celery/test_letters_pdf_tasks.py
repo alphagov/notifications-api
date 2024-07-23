@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
 from freezegun import freeze_time
-from moto import mock_s3
+from moto import mock_aws
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import signing
@@ -465,7 +465,7 @@ def test_sanitise_letter_puts_letter_into_technical_failure_if_max_retries_excee
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
-@mock_s3
+@mock_aws
 @pytest.mark.parametrize(
     "key_type, destination_bucket, expected_status, postage, destination_filename",
     [
@@ -575,7 +575,7 @@ def test_process_sanitised_letter_with_valid_letter(
     assert file_contents == "sanitised_pdf_content"
 
 
-@mock_s3
+@mock_aws
 @pytest.mark.parametrize(
     "address, expected_postage, expected_international",
     [
@@ -627,7 +627,7 @@ def test_process_sanitised_letter_sets_postage_international(
     assert sample_letter_notification.international == expected_international
 
 
-@mock_s3
+@mock_aws
 @pytest.mark.parametrize("key_type", [KEY_TYPE_NORMAL, KEY_TYPE_TEST])
 def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification, key_type):
     filename = f"NOTIFY.{sample_letter_notification.reference}"

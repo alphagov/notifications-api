@@ -13,7 +13,8 @@ def unsubscribe_url_post(client, notification_id, token):
     return client.post(path=f"/unsubscribe/{notification_id}/{token}")
 
 
-def test_valid_one_click_unsubscribe_url(client, sample_email_notification):
+def test_valid_one_click_unsubscribe_url(mocker, client, sample_email_notification):
+    mock_redis = mocker.patch("app.one_click_unsubscribe.rest.redis_store.delete")
     token = generate_token(
         sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
     )
@@ -28,6 +29,7 @@ def test_valid_one_click_unsubscribe_url(client, sample_email_notification):
     assert created_unsubscribe_request.template_version == sample_email_notification.template_version
     assert created_unsubscribe_request.service_id == sample_email_notification.service_id
     assert created_unsubscribe_request.email_address == sample_email_notification.to
+    mock_redis.assert_called_once_with(f"service-{sample_email_notification.service.id}-unsubscribe-request-statistics")
 
 
 def test_unsubscribe_request_object_refers_to_correct_template_version_after_template_updated(client, sample_service):
