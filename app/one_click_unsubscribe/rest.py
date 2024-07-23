@@ -4,6 +4,7 @@ from flask import Blueprint, current_app, jsonify
 from itsdangerous import BadData
 from notifications_utils.url_safe_token import check_token
 
+from app import redis_store
 from app.dao.notification_history_dao import get_notification_history_by_id
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.unsubscribe_request_dao import (
@@ -44,6 +45,7 @@ def one_click_unsubscribe(notification_id, token):
         raise InvalidRequest(errors, status_code=404)
 
     create_unsubscribe_request_dao(unsubscribe_data)
+    redis_store.delete(f"service-{unsubscribe_data['service_id']}-unsubscribe-request-statistics")
 
     current_app.logger.debug("Received unsubscribe request for notification_id: %s", notification_id)
 
