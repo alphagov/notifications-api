@@ -15,7 +15,7 @@ import pytz
 import requests
 import trustme
 from flask import current_app
-from moto import mock_ssm
+from moto import mock_aws
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from redis.exceptions import LockError
 
@@ -33,7 +33,7 @@ from app.clients.letter.dvla import (
 
 @pytest.fixture
 def ssm():
-    with mock_ssm():
+    with mock_aws():
         ssm_client = boto3.client("ssm", "eu-west-1")
         ssm_client.put_parameter(
             Name="/notify/api/dvla_username",
@@ -119,9 +119,18 @@ def test_set_ssm_creds(dvla_client, ssm):
     dvla_client.dvla_password.set("some new password")
     dvla_client.dvla_api_key.set("some new api key")
 
-    assert ssm.get_parameter(Name="/notify/api/dvla_username")["Parameter"]["Value"] == "some new username"
-    assert ssm.get_parameter(Name="/notify/api/dvla_password")["Parameter"]["Value"] == "some new password"
-    assert ssm.get_parameter(Name="/notify/api/dvla_api_key")["Parameter"]["Value"] == "some new api key"
+    assert (
+        ssm.get_parameter(Name="/notify/api/dvla_username", WithDecryption=True)["Parameter"]["Value"]
+        == "some new username"
+    )
+    assert (
+        ssm.get_parameter(Name="/notify/api/dvla_password", WithDecryption=True)["Parameter"]["Value"]
+        == "some new password"
+    )
+    assert (
+        ssm.get_parameter(Name="/notify/api/dvla_api_key", WithDecryption=True)["Parameter"]["Value"]
+        == "some new api key"
+    )
 
 
 def test_jwt_token_returns_jwt_if_set_and_not_expired_yet(dvla_client, rmock):

@@ -6,7 +6,7 @@ import dateutil
 import pytest
 from flask import current_app
 from freezegun import freeze_time
-from moto import mock_s3
+from moto import mock_aws
 
 from app.constants import (
     KEY_TYPE_NORMAL,
@@ -52,7 +52,7 @@ def _sample_precompiled_letter_notification_using_test_key(sample_precompiled_le
     return sample_precompiled_letter_notification
 
 
-@mock_s3
+@mock_aws
 def test_find_letter_pdf_in_s3_returns_object(sample_notification):
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
@@ -64,7 +64,7 @@ def test_find_letter_pdf_in_s3_returns_object(sample_notification):
     assert find_letter_pdf_in_s3(sample_notification).key == f"{prefix}-and-then-some"
 
 
-@mock_s3
+@mock_aws
 def test_find_letter_pdf_in_s3_raises_if_not_found(sample_notification):
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")
@@ -195,7 +195,7 @@ def test_generate_letter_pdf_filename_returns_tomorrows_filename(notify_api, moc
     assert filename == "2017-12-05/NOTIFY.FOO.D.2.C.20171204173100.PDF"
 
 
-@mock_s3
+@mock_aws
 @pytest.mark.parametrize(
     "bucket_config_name,filename_format",
     [
@@ -272,7 +272,7 @@ def test_upload_letter_pdf_uses_postage_from_notification(sample_letter_template
     )
 
 
-@mock_s3
+@mock_aws
 @freeze_time(FROZEN_DATE_TIME)
 def test_move_failed_pdf_error(notify_api):
     filename = "test.pdf"
@@ -290,7 +290,7 @@ def test_move_failed_pdf_error(notify_api):
     assert filename not in [o.key for o in bucket.objects.all()]
 
 
-@mock_s3
+@mock_aws
 @freeze_time(FROZEN_DATE_TIME)
 def test_move_failed_pdf_scan_failed(notify_api):
     filename = "test.pdf"
@@ -331,7 +331,7 @@ def test_get_folder_name_in_british_summer_time(notify_api, timestamp, expected_
     assert folder_name == expected_folder_name
 
 
-@mock_s3
+@mock_aws
 def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
     filename = "my_letter.pdf"
     source_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
@@ -356,7 +356,7 @@ def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
     assert len(list(target_bucket.objects.all())) == 1
 
 
-@mock_s3
+@mock_aws
 def test_move_sanitised_letter_to_test_pdf_bucket(notify_api, mocker):
     filename = "my_letter.pdf"
     source_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
