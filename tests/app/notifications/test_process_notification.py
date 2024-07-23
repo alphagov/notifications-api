@@ -6,6 +6,7 @@ import pytest
 from boto3.exceptions import Boto3Error
 from freezegun import freeze_time
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
+from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -376,7 +377,6 @@ def test_persist_notification_with_international_info_stores_correct_info(
         key_type=sample_api_key.key_type,
         job_id=sample_job.id,
         job_row_number=10,
-        client_reference="ref from client",
     )
     persisted_notification = Notification.query.all()[0]
 
@@ -385,7 +385,78 @@ def test_persist_notification_with_international_info_stores_correct_info(
     assert persisted_notification.rate_multiplier == expected_units
 
 
+@pytest.mark.parametrize(
+    "recipient, expected_recipient_normalised, expected_prefix, expected_units",
+    [
+        ("020 7709 1001", "442077091001", "44", 1),  # UK
+        ("+442077091002", "442077091002", "44", 1),  # UK
+        ("020 7709 1000", "442077091000", "44", 1),  # UK
+    ],
+)
+def test_persist_notification_with_send_to_landline_stores_correct_info(
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+    expected_recipient_normalised,
+    expected_prefix,
+    expected_units,
+    sample_service_full_permissions,
+):
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient=recipient,
+        service=sample_service_full_permissions,
+        personalisation=None,
+        notification_type="sms",
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+        job_row_number=10,
+        client_reference="ref from client",
+    )
+    persisted_notification = Notification.query.all()[0]
+    assert persisted_notification.phone_prefix == expected_prefix
+    assert persisted_notification.normalised_to == expected_recipient_normalised
+    assert persisted_notification.rate_multiplier == expected_units
+
+
+@pytest.mark.parametrize(
+    "recipient, expected_recipient_normalised, expected_prefix, expected_units",
+    [
+        ("020 7709 1001", "442077091001", "44", 1),  # UK
+        ("+442077091002", "442077091002", "44", 1),  # UK
+        ("020 7709 1000", "442077091000", "44", 1),  # UK
+    ],
+)
+def test_persist_notification_without_send_to_landline_raises_invalidphoneerror(
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+    expected_recipient_normalised,
+    expected_prefix,
+    expected_units,
+):
+    with pytest.raises(InvalidPhoneError):
+        persist_notification(
+            template_id=sample_job.template.id,
+            template_version=sample_job.template.version,
+            recipient=recipient,
+            service=sample_job.service,
+            personalisation=None,
+            notification_type="sms",
+            api_key_id=sample_api_key.id,
+            key_type=sample_api_key.key_type,
+            job_id=sample_job.id,
+            job_row_number=10,
+            client_reference="ref from client",
+        )
+
+
 def test_persist_notification_with_international_info_does_not_store_for_email(sample_job, sample_api_key, mocker):
+
     persist_notification(
         template_id=sample_job.template.id,
         template_version=sample_job.template.version,
