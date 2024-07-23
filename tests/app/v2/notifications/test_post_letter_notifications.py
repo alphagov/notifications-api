@@ -209,6 +209,16 @@ def test_post_letter_notification_international_sets_rest_of_world(api_client_re
             },
             "Last line of address must be a real UK postcode or another country",
         ),
+        (
+            [LETTER_TYPE],
+            {
+                "address_line_1": "No fixed abode",
+                "address_line_2": "Buckingham Palace",
+                "postcode": "SW1A 1AA",
+                "name": "Unknown",
+            },
+            "Must be a real address",
+        ),
     ),
 )
 def test_post_letter_notification_throws_error_for_bad_address(

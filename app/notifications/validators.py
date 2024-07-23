@@ -265,6 +265,8 @@ def validate_address(service, letter_data):
         raise ValidationError(
             message="Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / , < >"
         )
+    if address.has_no_fixed_abode_address:
+        raise ValidationError(message="Must be a real address")
     if address.international:
         return address.postage
     else:
