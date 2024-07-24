@@ -269,6 +269,7 @@ class DVLAClient:
         service_id: str,
         organisation_id: str,
         pdf_file: bytes,
+        callback_url: str | None,
     ):
         """
         Sends a letter to the DVLA for printing
@@ -297,13 +298,14 @@ class DVLAClient:
                     service_id=service_id,
                     organisation_id=organisation_id,
                     pdf_file=pdf_file,
+                    callback_url=callback_url,
                 ),
             )
             response.raise_for_status()
             return response.json()
 
     def _format_create_print_job_json(
-        self, *, notification_id, reference, address, postage, service_id, organisation_id, pdf_file
+        self, *, notification_id, reference, address, postage, service_id, organisation_id, pdf_file, callback_url
     ):
         # We shouldn't need to pass the postage in, as the address has a postage field. However, at this point we've
         # recorded the postage on the notification so we should respect that rather than introduce any possible
@@ -328,6 +330,9 @@ class DVLAClient:
                 {"key": "serviceIdentifier", "value": service_id},
             ],
         }
+
+        if callback_url:
+            json_payload["callback"] = {"target": callback_url, "retry": {"enabled": True, "maxRetryWindow": 3600}}
 
         # `despatchMethod` should not be added for second class letters
         if postage == FIRST_CLASS:

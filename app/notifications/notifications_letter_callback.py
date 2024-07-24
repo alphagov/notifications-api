@@ -2,7 +2,9 @@ import json
 from functools import wraps
 
 from flask import Blueprint, current_app, jsonify, request
+from itsdangerous import BadSignature
 
+from app import signing
 from app.celery.tasks import (
     record_daily_sorted_counts,
     update_letter_notifications_statuses,
@@ -59,3 +61,15 @@ def process_letter_response():
             record_daily_sorted_counts.apply_async([filename], queue=QueueNames.NOTIFY)
 
     return jsonify(result="success", message="DVLA callback succeeded"), 200
+
+
+@letter_callback_blueprint.route("/notifications/letter/status", methods=["POST"])
+def process_letter_callback():
+    token = request.args.get("token", "")
+
+    try:
+        notification_id = signing.decode(token)
+    except BadSignature:
+        current_app.logger.info("Letter callback with invalid token of %s received", token)
+
+    current_app.logger.info("Letter callback for notification id %s received", notification_id)
