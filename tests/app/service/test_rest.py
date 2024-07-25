@@ -3676,6 +3676,29 @@ def test_get_unsubscribe_requests_statistics_for_no_unsubscribe_requests(admin_r
     assert response == {}
 
 
+@freeze_time("2024-07-17")
+def test_process_unsubscribe_request_report(admin_request, sample_service):
+    unsubscribe_request_report = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=242,
+        earliest_timestamp=datetime.utcnow() + timedelta(days=-5),
+        latest_timestamp=datetime.utcnow() + timedelta(days=-4),
+        processed_by_service_at=None,
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report)
+    admin_request.post("service.process_unsubscribe_request_report",
+                       service_id=sample_service.id,
+                       batch_id=unsubscribe_request_report.id,
+                       _expected_status=204,
+                       _data=None,
+                       )
+    updated_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(id=unsubscribe_request_report.id)\
+        .one()
+    assert updated_unsubscribe_request_report.id == unsubscribe_request_report.id
+    assert updated_unsubscribe_request_report.processed_by_service_at == datetime.utcnow()
+
+
 @pytest.mark.parametrize(
     "new_custom_email_sender_name, expected_email_sender_local_part",
     [

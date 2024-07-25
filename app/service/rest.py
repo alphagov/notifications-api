@@ -1106,6 +1106,19 @@ def get_unsubscribe_requests_statistics(service_id):
     return jsonify(data), 200
 
 
+@service_blueprint.route("/<uuid:service_id>/process-unsubscribe-request-report/<uuid:batch_id>", methods=["POST"])
+def process_unsubscribe_request_report(service_id, batch_id):
+    """
+    This endpoint processes unsubscribe_request_reports by updating the processed_by_service_at
+    field
+    """
+    report = get_unsubscribe_request_reports_by_id_dao(batch_id)
+    report.processed_by_service_at = datetime.utcnow()
+    update_unsubscribe_request_report_dao(report)
+
+    return "", 204
+
+
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])
 def get_contact_list(service_id):
     contact_lists = dao_get_contact_lists(service_id)
