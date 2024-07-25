@@ -455,9 +455,9 @@ def test_format_create_print_job_json_adds_callback_key_if_url_provided(dvla_cli
         callback_url="https://www.example.com?token=1234",
     )
 
-    assert formatted_json["callback"] == {
+    assert formatted_json["callbackParams"] == {
         "target": "https://www.example.com?token=1234",
-        "retry": {"enabled": True, "maxRetryWindow": 3600},
+        "retryParams": {"enabled": True, "maxRetryWindow": 10800},
     }
 
 
@@ -571,9 +571,9 @@ def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
             {"key": "organisationIdentifier", "value": "org_id"},
             {"key": "serviceIdentifier", "value": "service_id"},
         ],
-        "callback": {
+        "callbackParams": {
             "target": "https://www.example.com?token=1234",
-            "retry": {"enabled": True, "maxRetryWindow": 3600},
+            "retryParams": {"enabled": True, "maxRetryWindow": 10800},
         },
     }
 
