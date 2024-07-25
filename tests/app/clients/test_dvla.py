@@ -423,6 +423,7 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
         service_id="my_service_id",
         organisation_id="my_organisation_id",
         pdf_file=b"pdf_content",
+        callback_url=None,
     )
 
     assert formatted_json == {
@@ -442,6 +443,24 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
     }
 
 
+def test_format_create_print_job_json_adds_callback_key_if_url_provided(dvla_client):
+    formatted_json = dvla_client._format_create_print_job_json(
+        notification_id="my_notification_id",
+        reference="ABCDEFGHIJKL",
+        address=PostalAddress("A. User\nThe road\nCity\nSW1 1AA"),
+        postage="second",
+        service_id="my_service_id",
+        organisation_id="my_organisation_id",
+        pdf_file=b"pdf_content",
+        callback_url="https://www.example.com?token=1234",
+    )
+
+    assert formatted_json["callback"] == {
+        "target": "https://www.example.com?token=1234",
+        "retry": {"enabled": True, "maxRetryWindow": 3600},
+    }
+
+
 def test_format_create_print_job_json_adds_despatchMethod_key_for_first_class_post(dvla_client):
     formatted_json = dvla_client._format_create_print_job_json(
         notification_id="my_notification_id",
@@ -451,6 +470,7 @@ def test_format_create_print_job_json_adds_despatchMethod_key_for_first_class_po
         service_id="my_service_id",
         organisation_id="my_organisation_id",
         pdf_file=b"pdf_content",
+        callback_url=None,
     )
 
     assert formatted_json["standardParams"]["despatchMethod"] == "FIRST"
@@ -491,6 +511,7 @@ def test_format_create_print_job_json_formats_address_lines(dvla_client, address
         service_id="my_service_id",
         organisation_id="my_organisation_id",
         pdf_file=b"pdf_content",
+        callback_url=None,
     )
 
     assert formatted_json["standardParams"]["recipientName"] == recipient
@@ -509,6 +530,7 @@ def test_format_create_print_job_json_formats_international_address_lines(dvla_c
         service_id="my_service_id",
         organisation_id="my_organisation_id",
         pdf_file=b"pdf_content",
+        callback_url=None,
     )
 
     assert formatted_json["standardParams"]["recipientName"] == "The user"
@@ -530,6 +552,7 @@ def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
         service_id="service_id",
         organisation_id="org_id",
         pdf_file=b"pdf",
+        callback_url="https://www.example.com?token=1234",
     )
 
     assert response == {"id": "noti_id"}
@@ -548,6 +571,10 @@ def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
             {"key": "organisationIdentifier", "value": "org_id"},
             {"key": "serviceIdentifier", "value": "service_id"},
         ],
+        "callback": {
+            "target": "https://www.example.com?token=1234",
+            "retry": {"enabled": True, "maxRetryWindow": 3600},
+        },
     }
 
     request_headers = print_mock.last_request.headers
@@ -576,6 +603,7 @@ def test_send_international_letter(dvla_client, dvla_authenticate, postage, desp
         service_id="service_id",
         organisation_id="org_id",
         pdf_file=b"pdf",
+        callback_url=None,
     )
 
     assert response == {"id": "noti_id"}
@@ -613,6 +641,7 @@ def test_send_bfpo_letter(dvla_client, dvla_authenticate, rmock):
         service_id="service_id",
         organisation_id="org_id",
         pdf_file=b"pdf",
+        callback_url=None,
     )
 
     assert response == {"id": "noti_id"}
@@ -665,6 +694,7 @@ def test_send_letter_when_bad_request_error_is_raised(dvla_authenticate, dvla_cl
             service_id="s_id",
             organisation_id="org_id",
             pdf_file=b"pdf",
+            callback_url=None,
         )
 
     assert "Job type field must not be empty." in str(exc.value)
@@ -696,6 +726,7 @@ def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, r
             service_id="s_id",
             organisation_id="org_id",
             pdf_file=b"pdf",
+            callback_url=None,
         )
 
     # make sure we clear down the api key
@@ -732,6 +763,7 @@ def test_send_letter_when_conflict_error_is_raised(dvla_authenticate, dvla_clien
             service_id="s_id",
             organisation_id="org_id",
             pdf_file=b"pdf",
+            callback_url=None,
         )
 
     assert "The supplied identifier 1 conflicts with another print job" in str(exc.value)
@@ -761,6 +793,7 @@ def test_send_letter_when_throttling_error_is_raised(dvla_authenticate, dvla_cli
             service_id="s_id",
             organisation_id="org_id",
             pdf_file=b"pdf",
+            callback_url=None,
         )
 
 
@@ -777,6 +810,7 @@ def test_send_letter_when_5xx_status_code_is_returned(dvla_authenticate, dvla_cl
             service_id="s_id",
             organisation_id="org_id",
             pdf_file=b"pdf",
+            callback_url=None,
         )
     assert str(exc.value) == f"Received 500 from {url}"
 
@@ -796,6 +830,7 @@ def test_send_letter_when_connection_error_is_returned(dvla_authenticate, dvla_c
             service_id="s_id",
             organisation_id="org_id",
             pdf_file=b"pdf",
+            callback_url=None,
         )
 
 
@@ -814,6 +849,7 @@ def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_cl
             service_id="s_id",
             organisation_id="org_id",
             pdf_file=b"pdf",
+            callback_url=None,
         )
 
 

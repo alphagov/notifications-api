@@ -1,11 +1,12 @@
 from datetime import datetime
+from uuid import UUID
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import dvla_client, notify_celery
+from app import dvla_client, notify_celery, signing
 from app.clients.email import EmailClientNonRetryableException
 from app.clients.email.aws_ses import AwsSesClientThrottlingSendRateException
 from app.clients.letter.dvla import (
@@ -125,6 +126,7 @@ def deliver_letter(self, notification_id):
             service_id=str(notification.service_id),
             organisation_id=str(notification.service.organisation_id),
             pdf_file=file_bytes,
+            callback_url=_get_callback_url(notification_id),
         )
         update_letter_to_sending(notification)
     except DvlaRetryableException as e:
@@ -158,3 +160,12 @@ def update_letter_to_sending(notification):
     notification.sent_by = provider.identifier
 
     notifications_dao.dao_update_notification(notification)
+
+
+def _get_callback_url(notification_id: UUID) -> str | None:
+    if current_app.config["LETTER_DELIVERY_CALLBACKS_ENABLED"]:
+        signed_notification_id = signing.encode(str(notification_id))
+
+        return f"{current_app.config['API_HOST_NAME']}/notifications/letter/status?token={signed_notification_id}"
+
+    return None
