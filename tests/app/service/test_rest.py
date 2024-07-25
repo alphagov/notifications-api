@@ -3739,6 +3739,40 @@ def test_process_unsubscribe_request_report_raises_error_for_invalid_batch_id(ad
     )
 
 
+def test_create_unsubscribe_request_report(sample_service, admin_request, mocker):
+    date_format = "%Y-%m-%d %H:%M:%S"
+    test_id = "2802262c-b6ac-4254-93c3-a83ae7180d96"
+    summary_data = {
+        "batch_id": None,
+        "count": 2,
+        "earliest_timestamp": "2024-07-03 13:30:00",
+        "latest_timestamp": "2024-07-09 21:13:11",
+        "processed_by_service_at": None,
+        "is_a_batched_report": False,
+    }
+    mocker.patch("app.service.rest.uuid.uuid4", return_value=test_id)
+    mock_assign_unbatched_requests = mocker.patch(
+        "app.service.rest.assign_unbatched_unsubscribe_requests_to_report_dao"
+    )
+    response = admin_request.post(
+        "service.create_unsubscribe_request_report", service_id=sample_service.id, _data=summary_data,
+        _expected_status=201
+    )
+    created_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(id=test_id).one()
+    assert response == {"report_id": str(created_unsubscribe_request_report.id)}
+    assert summary_data["count"] == created_unsubscribe_request_report.count
+    assert summary_data["earliest_timestamp"] == created_unsubscribe_request_report.earliest_timestamp.strftime(
+        date_format
+    )
+    assert summary_data["latest_timestamp"] == created_unsubscribe_request_report.latest_timestamp.strftime(date_format)
+    assert summary_data["processed_by_service_at"] == created_unsubscribe_request_report.processed_by_service_at
+    mock_assign_unbatched_requests.assert_called_once_with(
+        report_id=created_unsubscribe_request_report.id,
+        service_id=created_unsubscribe_request_report.service_id,
+        latest_timestamp=created_unsubscribe_request_report.latest_timestamp,
+    )
+
+
 @pytest.mark.parametrize(
     "new_custom_email_sender_name, expected_email_sender_local_part",
     [
