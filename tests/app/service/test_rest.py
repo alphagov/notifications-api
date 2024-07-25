@@ -3687,16 +3687,29 @@ def test_process_unsubscribe_request_report(admin_request, sample_service):
         service_id=sample_service.id,
     )
     create_unsubscribe_request_reports_dao(unsubscribe_request_report)
-    admin_request.post("service.process_unsubscribe_request_report",
-                       service_id=sample_service.id,
-                       batch_id=unsubscribe_request_report.id,
-                       _expected_status=204,
-                       _data=None,
-                       )
-    updated_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(id=unsubscribe_request_report.id)\
-        .one()
+    admin_request.post(
+        "service.process_unsubscribe_request_report",
+        service_id=sample_service.id,
+        batch_id=unsubscribe_request_report.id,
+        _expected_status=204,
+        _data=None,
+    )
+    updated_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(
+        id=unsubscribe_request_report.id
+    ).one()
     assert updated_unsubscribe_request_report.id == unsubscribe_request_report.id
     assert updated_unsubscribe_request_report.processed_by_service_at == datetime.utcnow()
+
+
+def test_process_unsubscribe_request_report_raises_error_for_invalid_batch_id(admin_request, sample_service):
+    random_batch_id = "258de158-07d3-457b-8eec-3e0e3bdab3bf"
+    admin_request.post(
+        "service.process_unsubscribe_request_report",
+        service_id=sample_service.id,
+        batch_id=random_batch_id,
+        _expected_status=400,
+        _data=None,
+    )
 
 
 @pytest.mark.parametrize(

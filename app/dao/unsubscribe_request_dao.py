@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import desc, func
 
 from app import db
@@ -57,6 +59,10 @@ def get_unsubscribe_request_reports_dao(service_id):
     )
 
 
+def get_unsubscribe_request_report_by_id_dao(batch_id):
+    return UnsubscribeRequestReport.query.filter_by(id=batch_id).one_or_none()
+
+
 def get_unbatched_unsubscribe_requests_dao(service_id):
     return (
         UnsubscribeRequest.query.filter_by(service_id=service_id, unsubscribe_request_report_id=None)
@@ -68,3 +74,9 @@ def get_unbatched_unsubscribe_requests_dao(service_id):
 @autocommit
 def create_unsubscribe_request_reports_dao(unsubscribe_request_report):
     db.session.add(unsubscribe_request_report)
+
+
+@autocommit
+def update_unsubscribe_request_report_processed_by_date_dao(report):
+    report.processed_by_service_at = datetime.utcnow()
+    db.session.add(report)
