@@ -332,7 +332,10 @@ class DVLAClient:
         }
 
         if callback_url:
-            json_payload["callback"] = {"target": callback_url, "retry": {"enabled": True, "maxRetryWindow": 3600}}
+            json_payload["callbackParams"] = {
+                "target": callback_url,
+                "retryParams": {"enabled": True, "maxRetryWindow": 10800},
+            }
 
         # `despatchMethod` should not be added for second class letters
         if postage == FIRST_CLASS:
