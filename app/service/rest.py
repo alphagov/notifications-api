@@ -1169,6 +1169,31 @@ def create_unsubscribe_request_report(service_id):
         )
 
 
+@service_blueprint.route("/<uuid:service_id>/unsubscribe-request-report/<uuid:batch_id>", methods=["GET"])
+def get_unsubscribe_request_report_for_download(service_id, batch_id):
+    report = get_unsubscribe_request_reports_by_id_dao(batch_id)
+    data = {
+        "batch_id": report.id,
+        "earliest_timestamp": report.earliest_timestamp,
+        "latest_timestamp": report.latest_timestamp,
+        "unsubscribe_requests": sorted(
+            [
+                {
+                    "email_address": unsubscribe_request.email_address,
+                    "template_name": unsubscribe_request.template.name,
+                    "sent_at": unsubscribe_request.notification.sent_at,
+                }
+                for unsubscribe_request in report.unsubscribe_requests
+            ],
+            key=lambda row: row["sent_at"],
+            reverse=True,
+        ),
+    }
+    return jsonify(data), 200
+
+
+
+
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])
 def get_contact_list(service_id):
     contact_lists = dao_get_contact_lists(service_id)

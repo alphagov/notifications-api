@@ -31,7 +31,8 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
 )
 from app.dao.templates_dao import dao_redact_template
-from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao, create_unsubscribe_request_reports_dao
+from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao, create_unsubscribe_request_reports_dao, \
+    assign_unbatched_unsubscribe_requests_to_report_dao
 from app.dao.users_dao import save_model_user
 from app.models import (
     AnnualBilling,
@@ -44,8 +45,9 @@ from app.models import (
     ServicePermission,
     ServiceSmsSender,
     UnsubscribeRequestReport,
-    User,
+    User, UnsubscribeRequest,
 )
+from app.utils import midnight_n_days_ago
 from tests import create_admin_authorization_header
 from tests.app.db import (
     create_annual_billing,
@@ -3778,6 +3780,100 @@ def test_create_unsubscribe_request_report_raises_error_for_no_summary_data(samp
     response = admin_request.post(
         "service.create_unsubscribe_request_report", service_id=sample_service.id, _data=None,
         _expected_status=400
+    )
+
+
+def test_get_unsubscribe_request_report_for_download(admin_request, sample_service, mocker):
+    # Create 3 un-batched unsubscribe requests
+    template_1 = create_template(sample_service, template_type=EMAIL_TYPE, template_name="First Template")
+    notification_1 = create_notification(template=template_1, sent_at=midnight_n_days_ago(1))
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_1.id,
+            "template_id": notification_1.template_id,
+            "template_version": notification_1.template_version,
+            "service_id": notification_1.service_id,
+            "email_address": notification_1.to,
+            "created_at": midnight_n_days_ago(0),
+        }
+    )
+
+    notification_2 = create_notification(template=template_1, sent_at=midnight_n_days_ago(3))
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_2.id,
+            "template_id": notification_2.template_id,
+            "template_version": notification_2.template_version,
+            "service_id": notification_2.service_id,
+            "email_address": notification_2.to,
+            "created_at": midnight_n_days_ago(2),
+        }
+    )
+
+    template_2 = create_template(sample_service, template_type=EMAIL_TYPE, template_name="Second Template")
+    notification_3 = create_notification(template=template_2, sent_at=midnight_n_days_ago(5))
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_3.id,
+            "template_id": notification_3.template_id,
+            "template_version": notification_3.template_version,
+            "service_id": notification_3.service_id,
+            "email_address": notification_3.to,
+            "created_at": midnight_n_days_ago(4),
+        }
+    )
+
+    # Create unsubscribe_request_report
+    unsubscribe_request_report = UnsubscribeRequestReport(
+        id="7536fd15-3d9c-494b-9053-0fd9822bcae6",
+        count=141,
+        earliest_timestamp=midnight_n_days_ago(4),
+        latest_timestamp=midnight_n_days_ago(0),
+        service_id=sample_service.id,
+    )
+
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report)
+
+    # batch the unsubscribe_requests
+    assign_unbatched_unsubscribe_requests_to_report_dao(
+        report_id=unsubscribe_request_report.id,
+        service_id=unsubscribe_request_report.service_id,
+        latest_timestamp=unsubscribe_request_report.latest_timestamp,
+    )
+
+    response = admin_request.get(
+        "service.get_unsubscribe_request_report_for_download",
+        service_id=sample_service.id,
+        batch_id=unsubscribe_request_report.id,
+    )
+    unsubscribe_requests = sorted(
+        UnsubscribeRequest.query.filter_by(service_id=sample_service.id).all(),
+        key=lambda row: row.notification.sent_at,
+        reverse=True,
+    )
+    date_format = "%a, %d %b %Y %H:%M:%S"
+    assert response["batch_id"] == str(unsubscribe_request_report.id)
+    assert (
+        response["earliest_timestamp"] == unsubscribe_request_report.earliest_timestamp.strftime(date_format) + " GMT"
+    )
+    assert response["latest_timestamp"] == unsubscribe_request_report.latest_timestamp.strftime(date_format) + " GMT"
+    assert response["unsubscribe_requests"][0]["email_address"] == unsubscribe_requests[0].email_address
+    assert response["unsubscribe_requests"][0]["template_name"] == unsubscribe_requests[0].template.name
+    assert (
+        response["unsubscribe_requests"][0]["sent_at"]
+        == unsubscribe_requests[0].notification.sent_at.strftime(date_format) + " GMT"
+    )
+    assert response["unsubscribe_requests"][1]["email_address"] == unsubscribe_requests[1].email_address
+    assert response["unsubscribe_requests"][1]["template_name"] == unsubscribe_requests[1].template.name
+    assert (
+        response["unsubscribe_requests"][1]["sent_at"]
+        == unsubscribe_requests[1].notification.sent_at.strftime(date_format) + " GMT"
+    )
+    assert response["unsubscribe_requests"][2]["email_address"] == unsubscribe_requests[2].email_address
+    assert response["unsubscribe_requests"][2]["template_name"] == unsubscribe_requests[2].template.name
+    assert (
+        response["unsubscribe_requests"][2]["sent_at"]
+        == unsubscribe_requests[2].notification.sent_at.strftime(date_format) + " GMT"
     )
 
 
