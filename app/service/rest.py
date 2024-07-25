@@ -106,6 +106,10 @@ from app.dao.unsubscribe_request_dao import (
     update_unsubscribe_request_report_processed_by_date_dao,
     get_unsubscribe_requests_statistics_dao, create_unsubscribe_request_reports_dao,
     assign_unbatched_unsubscribe_requests_to_report_dao,
+    create_unsubscribe_request_reports_dao,
+    get_latest_unsubscribe_request_date_dao,
+    get_unsubscribe_request_reports_by_id_dao,
+    get_unsubscribe_requests_statistics_dao,
 )
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
@@ -115,7 +119,8 @@ from app.models import (
     LetterBranding,
     Permission,
     Service,
-    ServiceContactList, UnsubscribeRequestReport,
+    ServiceContactList,
+    UnsubscribeRequestReport,
 )
 from app.notifications.process_notifications import (
     persist_notification,
@@ -1164,34 +1169,37 @@ def create_unsubscribe_request_report(service_id):
         )
     else:
         raise InvalidRequest(
-            message=f"summary data needed to create an unsubscribe request report is missing",
+            message="summary data needed to create an unsubscribe request report is missing",
             status_code=400,
         )
 
 
 @service_blueprint.route("/<uuid:service_id>/unsubscribe-request-report/<uuid:batch_id>", methods=["GET"])
 def get_unsubscribe_request_report_for_download(service_id, batch_id):
-    report = get_unsubscribe_request_reports_by_id_dao(batch_id)
-    data = {
-        "batch_id": report.id,
-        "earliest_timestamp": report.earliest_timestamp,
-        "latest_timestamp": report.latest_timestamp,
-        "unsubscribe_requests": sorted(
-            [
-                {
-                    "email_address": unsubscribe_request.email_address,
-                    "template_name": unsubscribe_request.template.name,
-                    "sent_at": unsubscribe_request.notification.sent_at,
-                }
-                for unsubscribe_request in report.unsubscribe_requests
-            ],
-            key=lambda row: row["sent_at"],
-            reverse=True,
-        ),
-    }
-    return jsonify(data), 200
-
-
+    if report := get_unsubscribe_request_reports_by_id_dao(batch_id):
+        data = {
+            "batch_id": report.id,
+            "earliest_timestamp": report.earliest_timestamp,
+            "latest_timestamp": report.latest_timestamp,
+            "unsubscribe_requests": sorted(
+                [
+                    {
+                        "email_address": unsubscribe_request.email_address,
+                        "template_name": unsubscribe_request.template.name,
+                        "template_sent_at": unsubscribe_request.notification.sent_at,
+                    }
+                    for get_unsubscribe_request_report_for_download_dao(unsubscribe_request.id) in report.unsubscribe_requests
+                ],
+                key=lambda row: row["template_sent_at"],
+                reverse=True,
+            ),
+        }
+        return jsonify(data), 200
+    else:
+        raise InvalidRequest(
+            message=f"No report available for {batch_id}",
+            status_code=400,
+        )
 
 
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])

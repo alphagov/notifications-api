@@ -1,11 +1,10 @@
 from datetime import datetime
 
 from sqlalchemy import desc, func
-from sqlalchemy.sql.operators import is_
 
 from app import db
 from app.dao.dao_utils import autocommit
-from app.models import UnsubscribeRequest, UnsubscribeRequestReport
+from app.models import UnsubscribeRequest, UnsubscribeRequestReport, Notification, NotificationHistory, Template, Job
 from app.utils import midnight_n_days_ago
 
 
@@ -64,6 +63,32 @@ def get_unsubscribe_request_report_by_id_dao(batch_id):
     return UnsubscribeRequestReport.query.filter_by(id=batch_id).one_or_none()
 
 
+def get_unsubscribe_request_report_for_download_dao(service_id, batch_id):
+    results = []
+    for table in [Notification, NotificationHistory]:
+        query = (
+            db.session.query(
+                UnsubscribeRequest.notification_id,
+                UnsubscribeRequest.email_address,
+                Template.name.label("template_name"),
+                table.template_id,
+                Job.original_file_name,
+                table.sent_at.label("template_sent_at")
+            )
+            .outerjoin(Job, table.job_id == Job.id)
+            .filter(
+                UnsubscribeRequest.service_id == service_id,
+                UnsubscribeRequest.unsubscribe_request_report_id == batch_id,
+                UnsubscribeRequest.notification_id == table.id,
+                table.template_id == Template.id,
+            )
+            .order_by(desc(Template.name), desc(Job.original_file_name), desc(table.sent_at))
+        )
+        results = results + query.all()
+    results = sorted(results, key=lambda i: i.created_at, reverse=True)
+    return results
+
+
 def get_unbatched_unsubscribe_requests_dao(service_id):
     return (
         UnsubscribeRequest.query.filter_by(service_id=service_id, unsubscribe_request_report_id=None)
@@ -99,4 +124,3 @@ def assign_unbatched_unsubscribe_requests_to_report_dao(report_id, service_id, e
     for unsubscribe_request in unbatched_unsubscribe_requests:
         unsubscribe_request.unsubscribe_request_report_id = report_id
         db.session.add(unsubscribe_request)
-

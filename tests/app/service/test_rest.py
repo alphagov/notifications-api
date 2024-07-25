@@ -31,8 +31,11 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
 )
 from app.dao.templates_dao import dao_redact_template
-from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao, create_unsubscribe_request_reports_dao, \
-    assign_unbatched_unsubscribe_requests_to_report_dao
+from app.dao.unsubscribe_request_dao import (
+    assign_unbatched_unsubscribe_requests_to_report_dao,
+    create_unsubscribe_request_dao,
+    create_unsubscribe_request_reports_dao,
+)
 from app.dao.users_dao import save_model_user
 from app.models import (
     AnnualBilling,
@@ -44,8 +47,9 @@ from app.models import (
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
+    UnsubscribeRequest,
     UnsubscribeRequestReport,
-    User, UnsubscribeRequest,
+    User,
 )
 from app.utils import midnight_n_days_ago
 from tests import create_admin_authorization_header
@@ -3757,8 +3761,10 @@ def test_create_unsubscribe_request_report(sample_service, admin_request, mocker
         "app.service.rest.assign_unbatched_unsubscribe_requests_to_report_dao"
     )
     response = admin_request.post(
-        "service.create_unsubscribe_request_report", service_id=sample_service.id, _data=summary_data,
-        _expected_status=201
+        "service.create_unsubscribe_request_report",
+        service_id=sample_service.id,
+        _data=summary_data,
+        _expected_status=201,
     )
     created_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(id=test_id).one()
     assert response == {"report_id": str(created_unsubscribe_request_report.id)}
@@ -3777,13 +3783,12 @@ def test_create_unsubscribe_request_report(sample_service, admin_request, mocker
 
 
 def test_create_unsubscribe_request_report_raises_error_for_no_summary_data(sample_service, admin_request, mocker):
-    response = admin_request.post(
-        "service.create_unsubscribe_request_report", service_id=sample_service.id, _data=None,
-        _expected_status=400
+    admin_request.post(
+        "service.create_unsubscribe_request_report", service_id=sample_service.id, _data=None, _expected_status=400
     )
 
 
-def test_get_unsubscribe_request_report_for_download(admin_request, sample_service, mocker):
+def test_get_unsubscribe_request_report_for_download(admin_request, sample_service):
     # Create 3 un-batched unsubscribe requests
     template_1 = create_template(sample_service, template_type=EMAIL_TYPE, template_name="First Template")
     notification_1 = create_notification(template=template_1, sent_at=midnight_n_days_ago(1))
@@ -3838,6 +3843,7 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
     assign_unbatched_unsubscribe_requests_to_report_dao(
         report_id=unsubscribe_request_report.id,
         service_id=unsubscribe_request_report.service_id,
+        earliest_timestamp=unsubscribe_request_report.earliest_timestamp,
         latest_timestamp=unsubscribe_request_report.latest_timestamp,
     )
 
@@ -3860,19 +3866,19 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
     assert response["unsubscribe_requests"][0]["email_address"] == unsubscribe_requests[0].email_address
     assert response["unsubscribe_requests"][0]["template_name"] == unsubscribe_requests[0].template.name
     assert (
-        response["unsubscribe_requests"][0]["sent_at"]
+        response["unsubscribe_requests"][0]["template_sent_at"]
         == unsubscribe_requests[0].notification.sent_at.strftime(date_format) + " GMT"
     )
     assert response["unsubscribe_requests"][1]["email_address"] == unsubscribe_requests[1].email_address
     assert response["unsubscribe_requests"][1]["template_name"] == unsubscribe_requests[1].template.name
     assert (
-        response["unsubscribe_requests"][1]["sent_at"]
+        response["unsubscribe_requests"][1]["template_sent_at"]
         == unsubscribe_requests[1].notification.sent_at.strftime(date_format) + " GMT"
     )
     assert response["unsubscribe_requests"][2]["email_address"] == unsubscribe_requests[2].email_address
     assert response["unsubscribe_requests"][2]["template_name"] == unsubscribe_requests[2].template.name
     assert (
-        response["unsubscribe_requests"][2]["sent_at"]
+        response["unsubscribe_requests"][2]["template_sent_at"]
         == unsubscribe_requests[2].notification.sent_at.strftime(date_format) + " GMT"
     )
 

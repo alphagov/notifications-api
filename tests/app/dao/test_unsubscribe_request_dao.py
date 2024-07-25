@@ -1,10 +1,11 @@
 from app.constants import EMAIL_TYPE
 from app.dao.unsubscribe_request_dao import (
+    assign_unbatched_unsubscribe_requests_to_report_dao,
     create_unsubscribe_request_dao,
     create_unsubscribe_request_reports_dao,
     get_latest_unsubscribe_request_date_dao,
     get_unsubscribe_request_by_notification_id_dao,
-    get_unsubscribe_requests_statistics_dao, assign_unbatched_unsubscribe_requests_to_report_dao,
+    get_unsubscribe_requests_statistics_dao,
 )
 from app.models import UnsubscribeRequest, UnsubscribeRequestReport
 from app.one_click_unsubscribe.rest import get_unsubscribe_request_data
