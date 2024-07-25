@@ -71,5 +71,7 @@ def process_letter_callback():
         notification_id = signing.decode(token)
     except BadSignature:
         current_app.logger.info("Letter callback with invalid token of %s received", token)
+    else:
+        current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
-    current_app.logger.info("Letter callback for notification id %s received", notification_id)
+    return jsonify(result="success"), 200
