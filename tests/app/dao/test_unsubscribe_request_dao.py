@@ -4,7 +4,7 @@ from app.dao.unsubscribe_request_dao import (
     create_unsubscribe_request_reports_dao,
     get_latest_unsubscribe_request_date_dao,
     get_unsubscribe_request_by_notification_id_dao,
-    get_unsubscribe_requests_statistics_dao,
+    get_unsubscribe_requests_statistics_dao, assign_unbatched_unsubscribe_requests_to_report_dao,
 )
 from app.models import UnsubscribeRequest, UnsubscribeRequestReport
 from app.one_click_unsubscribe.rest import get_unsubscribe_request_data
@@ -234,3 +234,55 @@ def test_get_latest_unsubscribe_request_dao(sample_service):
 def test_get_latest_unsubscribe_request_dao_if_no_unsubscribe_request_exists(sample_service):
     result = get_latest_unsubscribe_request_date_dao(sample_service.id)
     assert result is None
+
+
+def test_assign_unbatched_unsubscribe_requests_to_report_dao(sample_service):
+    template = create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+    )
+    notification_1 = create_notification(template=template)
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_1.id,
+            "template_id": notification_1.template_id,
+            "template_version": notification_1.template_version,
+            "service_id": notification_1.service_id,
+            "email_address": notification_1.to,
+            "created_at": midnight_n_days_ago(0),
+        }
+    )
+    notification_2 = create_notification(template=template)
+    create_unsubscribe_request_dao(
+        {  # noqa
+            "notification_id": notification_2.id,
+            "template_id": notification_2.template_id,
+            "template_version": notification_2.template_version,
+            "service_id": notification_2.service_id,
+            "email_address": notification_2.to,
+            "created_at": midnight_n_days_ago(2),
+        }
+    )
+
+    unsubscribe_request_report = UnsubscribeRequestReport(
+        id="7536fd15-3d9c-494b-9053-0fd9822bcae6",
+        count=141,
+        earliest_timestamp=midnight_n_days_ago(4),
+        latest_timestamp=midnight_n_days_ago(0),
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report)
+
+    assign_unbatched_unsubscribe_requests_to_report_dao(
+        report_id=unsubscribe_request_report.id,
+        service_id=unsubscribe_request_report.service_id,
+        earliest_timestamp=unsubscribe_request_report.earliest_timestamp,
+        latest_timestamp=unsubscribe_request_report.latest_timestamp,
+    )
+    unsubscribe_requests = UnsubscribeRequest.query.filter_by(
+        unsubscribe_request_report_id=unsubscribe_request_report.id
+    ).all()
+
+    for unsubscribe_request in unsubscribe_requests:
+        assert unsubscribe_request.unsubscribe_request_report_id == unsubscribe_request_report.id
+    assert len(unsubscribe_requests) == 2

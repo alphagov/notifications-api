@@ -105,6 +105,7 @@ from app.dao.unsubscribe_request_dao import (
     get_unsubscribe_requests_statistics_dao,
     update_unsubscribe_request_report_processed_by_date_dao,
     get_unsubscribe_requests_statistics_dao, create_unsubscribe_request_reports_dao,
+    assign_unbatched_unsubscribe_requests_to_report_dao,
 )
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
@@ -1137,28 +1138,35 @@ def process_unsubscribe_request_report(service_id, batch_id):
 @service_blueprint.route("/<uuid:service_id>/create-unsubscribe-request-report", methods=["POST"])
 def create_unsubscribe_request_report(service_id):
     summary_data = request.get_json()
-    unsubscribe_request_report = UnsubscribeRequestReport(
-        id=uuid.uuid4(),
-        count=summary_data["count"],
-        earliest_timestamp=summary_data["earliest_timestamp"],
-        latest_timestamp=summary_data["latest_timestamp"],
-        processed_by_service_at=summary_data["processed_by_service_at"],
-        service_id=service_id,
-    )
-    create_unsubscribe_request_reports_dao(unsubscribe_request_report)
-    assign_unbatched_unsubscribe_requests_to_report_dao(
-        report_id=unsubscribe_request_report.id,
-        service_id=unsubscribe_request_report.service_id,
-        latest_timestamp=unsubscribe_request_report.latest_timestamp,
-    )
-    return (
-        jsonify(
-            {
-                "report_id": unsubscribe_request_report.id,
-            }
-        ),
-        201,
-    )
+    if summary_data:
+        unsubscribe_request_report = UnsubscribeRequestReport(
+            id=uuid.uuid4(),
+            count=summary_data["count"],
+            earliest_timestamp=summary_data["earliest_timestamp"],
+            latest_timestamp=summary_data["latest_timestamp"],
+            processed_by_service_at=summary_data["processed_by_service_at"],
+            service_id=service_id,
+        )
+        create_unsubscribe_request_reports_dao(unsubscribe_request_report)
+        assign_unbatched_unsubscribe_requests_to_report_dao(
+            report_id=unsubscribe_request_report.id,
+            service_id=unsubscribe_request_report.service_id,
+            earliest_timestamp=unsubscribe_request_report.earliest_timestamp,
+            latest_timestamp=unsubscribe_request_report.latest_timestamp,
+        )
+        return (
+            jsonify(
+                {
+                    "report_id": unsubscribe_request_report.id,
+                }
+            ),
+            201,
+        )
+    else:
+        raise InvalidRequest(
+            message=f"summary data needed to create an unsubscribe request report is missing",
+            status_code=400,
+        )
 
 
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])

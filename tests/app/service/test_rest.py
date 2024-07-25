@@ -3769,7 +3769,15 @@ def test_create_unsubscribe_request_report(sample_service, admin_request, mocker
     mock_assign_unbatched_requests.assert_called_once_with(
         report_id=created_unsubscribe_request_report.id,
         service_id=created_unsubscribe_request_report.service_id,
+        earliest_timestamp=created_unsubscribe_request_report.earliest_timestamp,
         latest_timestamp=created_unsubscribe_request_report.latest_timestamp,
+    )
+
+
+def test_create_unsubscribe_request_report_raises_error_for_no_summary_data(sample_service, admin_request, mocker):
+    response = admin_request.post(
+        "service.create_unsubscribe_request_report", service_id=sample_service.id, _data=None,
+        _expected_status=400
     )
 
 
