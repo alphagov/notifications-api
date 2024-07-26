@@ -3854,8 +3854,7 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
     )
     unsubscribe_requests = sorted(
         UnsubscribeRequest.query.filter_by(service_id=sample_service.id).all(),
-        key=lambda row: row.notification.sent_at,
-        reverse=True,
+        key=lambda row: row.template.name, reverse=True,
     )
     date_format = "%a, %d %b %Y %H:%M:%S"
     assert response["batch_id"] == str(unsubscribe_request_report.id)

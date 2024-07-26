@@ -109,7 +109,7 @@ from app.dao.unsubscribe_request_dao import (
     create_unsubscribe_request_reports_dao,
     get_latest_unsubscribe_request_date_dao,
     get_unsubscribe_request_reports_by_id_dao,
-    get_unsubscribe_requests_statistics_dao,
+    get_unsubscribe_requests_statistics_dao, get_unsubscribe_requests_data_for_download_dao,
 )
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
@@ -1181,18 +1181,16 @@ def get_unsubscribe_request_report_for_download(service_id, batch_id):
             "batch_id": report.id,
             "earliest_timestamp": report.earliest_timestamp,
             "latest_timestamp": report.latest_timestamp,
-            "unsubscribe_requests": sorted(
+            "unsubscribe_requests":
                 [
                     {
                         "email_address": unsubscribe_request.email_address,
-                        "template_name": unsubscribe_request.template.name,
-                        "template_sent_at": unsubscribe_request.notification.sent_at,
+                        "template_name": unsubscribe_request.template_name,
+                        "original_file_name": unsubscribe_request.original_file_name,
+                        "template_sent_at": unsubscribe_request.template_sent_at,
                     }
-                    for get_unsubscribe_request_report_for_download_dao(unsubscribe_request.id) in report.unsubscribe_requests
+                    for unsubscribe_request in get_unsubscribe_requests_data_for_download_dao(service_id, report.id)
                 ],
-                key=lambda row: row["template_sent_at"],
-                reverse=True,
-            ),
         }
         return jsonify(data), 200
     else:
