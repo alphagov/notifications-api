@@ -125,15 +125,21 @@ def send_email_to_provider(notification):
             template_id=notification.template_id, service_id=service.id, version=notification.template_version
         )
 
+        unsubscribe_link_for_body = notification.get_unsubscribe_link_for_body(
+            template_has_unsubscribe_link=template.has_unsubscribe_link
+        )
+
         html_email = HTMLEmailTemplate(
             template.__dict__,
             values=notification.personalisation,
+            unsubscribe_link=unsubscribe_link_for_body,
             **get_html_email_options(service),
         )
 
         plain_text_email = PlainTextEmailTemplate(
             template.__dict__,
             values=notification.personalisation,
+            unsubscribe_link=unsubscribe_link_for_body,
         )
         created_at = notification.created_at
         key_type = notification.key_type

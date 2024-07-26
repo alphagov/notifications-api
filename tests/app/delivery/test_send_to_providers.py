@@ -844,16 +844,25 @@ def test_get_html_email_options_add_email_branding_from_service(sample_service):
 
 
 @pytest.mark.parametrize(
-    "template_has_unsubscribe_link",
+    "template_has_unsubscribe_link, expected_link_in_email_body",
     (
-        # If the notification has an unsubscribe link it shouldn’t matter what the
-        # setting on the template is
-        True,
-        False,
+        (True, "https://www.notify.example.com"),
+        (False, None),
     ),
 )
-def test_send_email_to_provider_sends_unsubscribe_link(sample_service, mocker, template_has_unsubscribe_link):
+def test_send_email_to_provider_sends_unsubscribe_link(
+    sample_service,
+    mocker,
+    template_has_unsubscribe_link,
+    expected_link_in_email_body,
+):
     mocker.patch("app.aws_ses_client.send_email", return_value="reference")
+    mock_html_email = mocker.patch("app.delivery.send_to_providers.HTMLEmailTemplate")
+    mock_plain_text_email = mocker.patch("app.delivery.send_to_providers.PlainTextEmailTemplate")
+    mocker.patch(
+        "app.models.url_with_token",
+        return_value="https://www.notify.example.com",
+    )
 
     template = create_template(
         service=sample_service,
@@ -874,13 +883,21 @@ def test_send_email_to_provider_sends_unsubscribe_link(sample_service, mocker, t
     app.aws_ses_client.send_email.assert_called_once()
     assert app.aws_ses_client.send_email.call_args[1]["headers"] == expected_headers
 
+    assert mock_html_email.call_args[1]["unsubscribe_link"] == expected_link_in_email_body
+    assert mock_plain_text_email.call_args[1]["unsubscribe_link"] == expected_link_in_email_body
+
 
 def test_send_email_to_provider_sends_unsubscribe_link_if_template_is_unsubscribable(sample_service, mocker):
     mocker.patch("app.aws_ses_client.send_email", return_value="reference")
     mock_url_with_token = mocker.patch(
         "app.models.url_with_token",
-        return_value="https://api.notify.example.com",
+        side_effect=[
+            "https://www.notify.example.com",
+            "https://api.notify.example.com",
+        ],
     )
+    mock_html_email = mocker.patch("app.delivery.send_to_providers.HTMLEmailTemplate")
+    mock_plain_text_email = mocker.patch("app.delivery.send_to_providers.PlainTextEmailTemplate")
 
     template = create_template(
         service=sample_service,
@@ -894,6 +911,7 @@ def test_send_email_to_provider_sends_unsubscribe_link_if_template_is_unsubscrib
     app.aws_ses_client.send_email.assert_called_once()
 
     assert mock_url_with_token.call_args_list == [
+        call("test@example.com", url=f"/unsubscribe/{db_notification.id}/", base_url="http://localhost:6012"),
         call("test@example.com", url=f"/unsubscribe/{db_notification.id}/", base_url="http://localhost:6011"),
     ]
 
@@ -901,3 +919,6 @@ def test_send_email_to_provider_sends_unsubscribe_link_if_template_is_unsubscrib
         {"Name": "List-Unsubscribe", "Value": "<https://api.notify.example.com>"},
         {"Name": "List-Unsubscribe-Post", "Value": "List-Unsubscribe=One-Click"},
     ]
+
+    assert mock_html_email.call_args[1]["unsubscribe_link"] == "https://www.notify.example.com"
+    assert mock_plain_text_email.call_args[1]["unsubscribe_link"] == "https://www.notify.example.com"
