@@ -2,7 +2,7 @@ import json
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
-from unittest.mock import ANY
+from unittest.mock import ANY, call
 
 import pytest
 from flask import current_app
@@ -843,10 +843,25 @@ def test_get_html_email_options_add_email_branding_from_service(sample_service):
     }
 
 
-def test_send_email_to_provider_sends_unsubscribe_link(sample_email_template, mocker):
+@pytest.mark.parametrize(
+    "template_has_unsubscribe_link",
+    (
+        # If the notification has an unsubscribe link it shouldn’t matter what the
+        # setting on the template is
+        True,
+        False,
+    ),
+)
+def test_send_email_to_provider_sends_unsubscribe_link(sample_service, mocker, template_has_unsubscribe_link):
     mocker.patch("app.aws_ses_client.send_email", return_value="reference")
 
-    db_notification = create_notification(template=sample_email_template, unsubscribe_link="https://example.com")
+    template = create_template(
+        service=sample_service,
+        template_type="email",
+        has_unsubscribe_link=template_has_unsubscribe_link,
+    )
+
+    db_notification = create_notification(template=template, unsubscribe_link="https://example.com")
 
     expected_headers = [
         {"Name": "List-Unsubscribe", "Value": "<https://example.com>"},
@@ -858,3 +873,31 @@ def test_send_email_to_provider_sends_unsubscribe_link(sample_email_template, mo
     )
     app.aws_ses_client.send_email.assert_called_once()
     assert app.aws_ses_client.send_email.call_args[1]["headers"] == expected_headers
+
+
+def test_send_email_to_provider_sends_unsubscribe_link_if_template_is_unsubscribable(sample_service, mocker):
+    mocker.patch("app.aws_ses_client.send_email", return_value="reference")
+    mock_url_with_token = mocker.patch(
+        "app.models.url_with_token",
+        return_value="https://api.notify.example.com",
+    )
+
+    template = create_template(
+        service=sample_service,
+        template_type="email",
+        has_unsubscribe_link=True,
+    )
+
+    db_notification = create_notification(template=template)
+
+    send_to_providers.send_email_to_provider(db_notification)
+    app.aws_ses_client.send_email.assert_called_once()
+
+    assert mock_url_with_token.call_args_list == [
+        call("test@example.com", url=f"/unsubscribe/{db_notification.id}/", base_url="http://localhost:6011"),
+    ]
+
+    assert app.aws_ses_client.send_email.call_args[1]["headers"] == [
+        {"Name": "List-Unsubscribe", "Value": "<https://api.notify.example.com>"},
+        {"Name": "List-Unsubscribe-Post", "Value": "List-Unsubscribe=One-Click"},
+    ]

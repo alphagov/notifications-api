@@ -100,16 +100,16 @@ def send_sms_to_provider(notification):
             statsd_client.timing("sms.live-key.total-time", delta_seconds)
 
 
-def _get_email_headers(notification: Notification) -> list[dict[str, str]]:
-    headers = []
-
-    if notification.unsubscribe_link:
-        headers += [
-            {"Name": "List-Unsubscribe", "Value": f"<{notification.unsubscribe_link}>"},
+def _get_email_headers(notification: Notification, template: SerialisedTemplate) -> list[dict[str, str]]:
+    if unsubscribe_link := notification.get_unsubscribe_link_for_headers(
+        template_has_unsubscribe_link=template.has_unsubscribe_link
+    ):
+        return [
+            {"Name": "List-Unsubscribe", "Value": f"<{unsubscribe_link}>"},
             {"Name": "List-Unsubscribe-Post", "Value": "List-Unsubscribe=One-Click"},
         ]
 
-    return headers
+    return []
 
 
 def send_email_to_provider(notification):
@@ -121,15 +121,20 @@ def send_email_to_provider(notification):
     if notification.status == "created":
         provider = provider_to_use(EMAIL_TYPE)
 
-        template_dict = SerialisedTemplate.from_id_and_service_id(
+        template = SerialisedTemplate.from_id_and_service_id(
             template_id=notification.template_id, service_id=service.id, version=notification.template_version
-        ).__dict__
-
-        html_email = HTMLEmailTemplate(
-            template_dict, values=notification.personalisation, **get_html_email_options(service)
         )
 
-        plain_text_email = PlainTextEmailTemplate(template_dict, values=notification.personalisation)
+        html_email = HTMLEmailTemplate(
+            template.__dict__,
+            values=notification.personalisation,
+            **get_html_email_options(service),
+        )
+
+        plain_text_email = PlainTextEmailTemplate(
+            template.__dict__,
+            values=notification.personalisation,
+        )
         created_at = notification.created_at
         key_type = notification.key_type
         if notification.key_type == KEY_TYPE_TEST:
@@ -149,7 +154,7 @@ def send_email_to_provider(notification):
                 body=str(plain_text_email),
                 html_body=str(html_email),
                 reply_to_address=notification.reply_to_text,
-                headers=_get_email_headers(notification),
+                headers=_get_email_headers(notification, template),
             )
             notification.reference = reference
             update_notification_to_sending(notification, provider)

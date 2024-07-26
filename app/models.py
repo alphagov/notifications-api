@@ -77,6 +77,7 @@ from app.utils import (
     DATETIME_FORMAT_NO_TIMEZONE,
     get_dt_string_or_none,
     get_uuid_string_or_none,
+    url_with_token,
 )
 
 
@@ -1622,7 +1623,9 @@ class Notification(db.Model):
             "completed_at": self.completed_at(),
             "scheduled_for": None,
             "postage": self.postage,
-            "one_click_unsubscribe_url": self.unsubscribe_link,
+            "one_click_unsubscribe_url": self.get_unsubscribe_link_for_headers(
+                template_has_unsubscribe_link=self.template.has_unsubscribe_link
+            ),
         }
 
         if self.notification_type == LETTER_TYPE:
@@ -1747,6 +1750,16 @@ class Notification(db.Model):
         )
 
         return letter_rate
+
+    def get_unsubscribe_link_for_headers(self, *, template_has_unsubscribe_link):
+        if self.unsubscribe_link:
+            return self.unsubscribe_link
+        if template_has_unsubscribe_link:
+            return url_with_token(
+                self.to,
+                url=f"/unsubscribe/{str(self.id)}/",
+                base_url=current_app.config["API_HOST_NAME"],
+            )
 
 
 class NotificationHistory(db.Model):

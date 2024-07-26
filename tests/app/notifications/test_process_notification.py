@@ -612,11 +612,6 @@ def test_persist_notification_when_template_has_unsubscribe_link_is_false(
     sample_job.service = template.service
     recipient = "foo@bar.com"
 
-    mocker.patch(
-        "app.notifications.process_notifications.url_with_token",
-        return_value="https://notify-generated-super-unsubscribe-link.com/unsubscribe",
-    )
-
     persist_notification(
         notification_id=uuid.uuid4(),
         template_id=sample_job.template.id,
@@ -640,7 +635,7 @@ def test_persist_notification_when_template_has_unsubscribe_link_is_false(
     "unsubscribe_link, expected_unsubscribe_link",
     [
         ("https://please-unsubscribe-me.com/unsubscribe", "https://please-unsubscribe-me.com/unsubscribe"),
-        (None, "https://notify-generated-super-unsubscribe-link.com/unsubscribe"),
+        (None, None),
     ],
 )
 def test_persist_notification_when_template_has_unsubscribe_link_is_true(
@@ -660,11 +655,6 @@ def test_persist_notification_when_template_has_unsubscribe_link_is_true(
     job = create_job(template=template)
 
     recipient = "foo@bar.com"
-
-    mocker.patch(
-        "app.notifications.process_notifications.url_with_token",
-        return_value="https://notify-generated-super-unsubscribe-link.com/unsubscribe",
-    )
 
     persist_notification(
         notification_id=uuid.uuid4(),
