@@ -5,12 +5,14 @@ from app.dao.unsubscribe_request_dao import (
     create_unsubscribe_request_reports_dao,
     get_latest_unsubscribe_request_date_dao,
     get_unsubscribe_request_by_notification_id_dao,
-    get_unsubscribe_requests_statistics_dao, get_unsubscribe_requests_data_for_download_dao,
+    get_unsubscribe_request_report_by_id_dao,
+    get_unsubscribe_requests_data_for_download_dao,
+    get_unsubscribe_requests_statistics_dao,
 )
 from app.models import UnsubscribeRequest, UnsubscribeRequestReport
 from app.one_click_unsubscribe.rest import get_unsubscribe_request_data
 from app.utils import midnight_n_days_ago
-from tests.app.db import create_notification, create_service, create_template, create_job
+from tests.app.db import create_job, create_notification, create_service, create_template
 
 
 def test_create_unsubscribe_request_dao(sample_email_notification):
@@ -300,11 +302,13 @@ def test_get_unsubscribe_request_data_for_download_dao(sample_service):
     create_unsubscribe_request_reports_dao(unsubscribe_request_report)
     template_1 = create_template(
         sample_service,
+        template_name="first Template",
         template_type=EMAIL_TYPE,
     )
     job_1 = create_job(template=template_1, original_file_name="contact list")
-    notification_1 = create_notification(template=template_1, job=job_1,
-                                         to_field="foo@bar.com", sent_at=midnight_n_days_ago(1))
+    notification_1 = create_notification(
+        template=template_1, job=job_1, to_field="foo@bar.com", sent_at=midnight_n_days_ago(1)
+    )
     create_unsubscribe_request_dao(
         {  # noqa
             "notification_id": notification_1.id,
@@ -316,8 +320,9 @@ def test_get_unsubscribe_request_data_for_download_dao(sample_service):
             "unsubscribe_request_report_id": unsubscribe_request_report.id,
         }
     )
-    notification_2 = create_notification(template=template_1, job=job_1, to_field="fizz@bar.com",
-                                         sent_at=midnight_n_days_ago(2))
+    notification_2 = create_notification(
+        template=template_1, job=job_1, to_field="fizz@bar.com", sent_at=midnight_n_days_ago(2)
+    )
     create_unsubscribe_request_dao(
         {  # noqa
             "notification_id": notification_2.id,
@@ -331,12 +336,13 @@ def test_get_unsubscribe_request_data_for_download_dao(sample_service):
     )
     template_2 = create_template(
         service=sample_service,
-        template_name="Another Service",
+        template_name="Another Template",
         template_type=EMAIL_TYPE,
     )
     job_2 = create_job(template=template_2, original_file_name="another contact list")
-    notification_3 = create_notification(template=template_2, job=job_2, to_field="buzz@bar.com",
-                                         sent_at=midnight_n_days_ago(3))
+    notification_3 = create_notification(
+        template=template_2, job=job_2, to_field="buzz@bar.com", sent_at=midnight_n_days_ago(3)
+    )
     create_unsubscribe_request_dao(
         {  # noqa
             "notification_id": notification_3.id,
@@ -348,8 +354,9 @@ def test_get_unsubscribe_request_data_for_download_dao(sample_service):
             "unsubscribe_request_report_id": unsubscribe_request_report.id,
         }
     )
-    notification_4 = create_notification(template=template_2, to_field="fizzbuzz@bar.com",
-                                         sent_at=midnight_n_days_ago(4))
+    notification_4 = create_notification(
+        template=template_2, to_field="fizzbuzz@bar.com", sent_at=midnight_n_days_ago(4)
+    )
     create_unsubscribe_request_dao(
         {  # noqa
             "notification_id": notification_4.id,
@@ -363,19 +370,47 @@ def test_get_unsubscribe_request_data_for_download_dao(sample_service):
     )
 
     result = get_unsubscribe_requests_data_for_download_dao(sample_service.id, unsubscribe_request_report.id)
-    result[0].email_address == notification_1.to
-    result[0].template_name == notification_1.template.name
-    result[0].original_file_name == notification_1.job.original_file_name
-    result[0].template_sent_at == notification_1.sent_at
-    result[1].email_address == notification_2.to
-    result[1].template_name == notification_2.template.name
-    result[1].original_file_name == notification_2.job.original_file_name
-    result[1].template_sent_at == notification_2.sent_at
-    result[2].email_address == notification_3.to
-    result[2].template_name == notification_3.template.name
-    result[2].original_file_name == notification_3.job.original_file_name
-    result[2].template_sent_at == notification_3.sent_at
-    result[3].email_address == notification_4.to
-    result[3].template_name == notification_4.template.name
-    result[3].original_file_name == None
-    result[3].template_sent_at == notification_4.sent_at
+
+    assert result[0].email_address == notification_1.to
+    assert result[0].template_name == notification_1.template.name
+    assert result[0].original_file_name == notification_1.job.original_file_name
+    assert result[0].template_sent_at == notification_1.sent_at
+    assert result[1].email_address == notification_2.to
+    assert result[1].template_name == notification_2.template.name
+    assert result[1].original_file_name == notification_2.job.original_file_name
+    assert result[1].template_sent_at == notification_2.sent_at
+    assert result[2].email_address == notification_4.to
+    assert result[2].template_name == notification_4.template.name
+    assert result[2].original_file_name == "N/A"
+    assert result[2].template_sent_at == notification_4.sent_at
+    assert result[3].email_address == notification_3.to
+    assert result[3].template_name == notification_3.template.name
+    assert result[3].original_file_name == notification_3.job.original_file_name
+    assert result[3].template_sent_at == notification_3.sent_at
+
+
+def test_get_unsubscribe_request_data_for_download_dao_invalid_batch_id(sample_service):
+    result = get_unsubscribe_requests_data_for_download_dao(sample_service.id, "c5019907-656a-4adf-9c02-da422529e507")
+    assert result == []
+
+
+def test_get_unsubscribe_request_report_by_id_dao(sample_service):
+    unsubscribe_request_report = UnsubscribeRequestReport(
+        id="7536fd15-3d9c-494b-9053-0fd9822bcae6",
+        count=141,
+        earliest_timestamp=midnight_n_days_ago(4),
+        latest_timestamp=midnight_n_days_ago(0),
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report)
+    result = get_unsubscribe_request_report_by_id_dao(unsubscribe_request_report.id)
+    assert result.id == unsubscribe_request_report.id
+    assert result.count == unsubscribe_request_report.count
+    assert result.earliest_timestamp == unsubscribe_request_report.earliest_timestamp
+    assert result.latest_timestamp == unsubscribe_request_report.latest_timestamp
+    assert result.service_id == unsubscribe_request_report.service_id
+
+
+def test_get_unsubscribe_request_report_by_id_dao_invalid_service_id(sample_service):
+    result = get_unsubscribe_request_report_by_id_dao("c5019907-656a-4adf-9c02-da422529e507")
+    assert result is None

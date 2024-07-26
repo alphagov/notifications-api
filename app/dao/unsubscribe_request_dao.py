@@ -4,7 +4,7 @@ from sqlalchemy import desc, func
 
 from app import db
 from app.dao.dao_utils import autocommit
-from app.models import UnsubscribeRequest, UnsubscribeRequestReport, Notification, NotificationHistory, Template, Job
+from app.models import Job, Notification, NotificationHistory, Template, UnsubscribeRequest, UnsubscribeRequestReport
 from app.utils import midnight_n_days_ago
 
 
@@ -72,8 +72,8 @@ def get_unsubscribe_requests_data_for_download_dao(service_id, batch_id):
                 UnsubscribeRequest.email_address,
                 Template.name.label("template_name"),
                 table.template_id,
-                Job.original_file_name,
-                table.sent_at.label("template_sent_at")
+                func.coalesce(Job.original_file_name, "N/A").label("original_file_name"),
+                table.sent_at.label("template_sent_at"),
             )
             .outerjoin(Job, table.job_id == Job.id)
             .filter(
@@ -108,8 +108,7 @@ def update_unsubscribe_request_report_processed_by_date_dao(report, report_has_b
 
 
 @autocommit
-def assign_unbatched_unsubscribe_requests_to_report_dao(report_id, service_id, earliest_timestamp,
-                                                        latest_timestamp):
+def assign_unbatched_unsubscribe_requests_to_report_dao(report_id, service_id, earliest_timestamp, latest_timestamp):
     """
     This method retrieves all the un-batched unsubscribe requests received before or on
     the report's latest_timestamp and sets their unsubscribe_request_report_id to the report_i

@@ -100,16 +100,13 @@ from app.dao.services_dao import (
 )
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.unsubscribe_request_dao import (
-    get_latest_unsubscribe_request_date_dao,
-    get_unsubscribe_request_report_by_id_dao,
-    get_unsubscribe_requests_statistics_dao,
-    update_unsubscribe_request_report_processed_by_date_dao,
-    get_unsubscribe_requests_statistics_dao, create_unsubscribe_request_reports_dao,
     assign_unbatched_unsubscribe_requests_to_report_dao,
     create_unsubscribe_request_reports_dao,
     get_latest_unsubscribe_request_date_dao,
-    get_unsubscribe_request_reports_by_id_dao,
-    get_unsubscribe_requests_statistics_dao, get_unsubscribe_requests_data_for_download_dao,
+    get_unsubscribe_request_report_by_id_dao,
+    get_unsubscribe_requests_data_for_download_dao,
+    get_unsubscribe_requests_statistics_dao,
+    update_unsubscribe_request_report_processed_by_date_dao,
 )
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
@@ -1169,28 +1166,27 @@ def create_unsubscribe_request_report(service_id):
         )
     else:
         raise InvalidRequest(
-            message="summary data needed to create an unsubscribe request report is missing",
+            message={"summary_data": "summary data needed to create an unsubscribe request report is missing"},
             status_code=400,
         )
 
 
 @service_blueprint.route("/<uuid:service_id>/unsubscribe-request-report/<uuid:batch_id>", methods=["GET"])
 def get_unsubscribe_request_report_for_download(service_id, batch_id):
-    if report := get_unsubscribe_request_reports_by_id_dao(batch_id):
+    if report := get_unsubscribe_request_report_by_id_dao(batch_id):
         data = {
             "batch_id": report.id,
             "earliest_timestamp": report.earliest_timestamp,
             "latest_timestamp": report.latest_timestamp,
-            "unsubscribe_requests":
-                [
-                    {
-                        "email_address": unsubscribe_request.email_address,
-                        "template_name": unsubscribe_request.template_name,
-                        "original_file_name": unsubscribe_request.original_file_name,
-                        "template_sent_at": unsubscribe_request.template_sent_at,
-                    }
-                    for unsubscribe_request in get_unsubscribe_requests_data_for_download_dao(service_id, report.id)
-                ],
+            "unsubscribe_requests": [
+                {
+                    "email_address": unsubscribe_request.email_address,
+                    "template_name": unsubscribe_request.template_name,
+                    "original_file_name": unsubscribe_request.original_file_name,
+                    "template_sent_at": unsubscribe_request.template_sent_at,
+                }
+                for unsubscribe_request in get_unsubscribe_requests_data_for_download_dao(service_id, report.id)
+            ],
         }
         return jsonify(data), 200
     else:
