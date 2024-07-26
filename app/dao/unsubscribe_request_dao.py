@@ -63,7 +63,7 @@ def get_unsubscribe_request_report_by_id_dao(batch_id):
     return UnsubscribeRequestReport.query.filter_by(id=batch_id).one_or_none()
 
 
-def get_unsubscribe_request_report_for_download_dao(service_id, batch_id):
+def get_unsubscribe_requests_data_for_download_dao(service_id, batch_id):
     results = []
     for table in [Notification, NotificationHistory]:
         query = (
@@ -85,7 +85,6 @@ def get_unsubscribe_request_report_for_download_dao(service_id, batch_id):
             .order_by(desc(Template.name), desc(Job.original_file_name), desc(table.sent_at))
         )
         results = results + query.all()
-    results = sorted(results, key=lambda i: i.created_at, reverse=True)
     return results
 
 
