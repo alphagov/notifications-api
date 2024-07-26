@@ -3489,6 +3489,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[4]["uploaded_letter_file_name"] == "filename.pdf"
 
 
+@freeze_time("2024-07-01 12:00")
 def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests(admin_request, sample_service, mocker):
     """
     Test case covers when the initial unsubscribe requests have been received and have not yet been batched.
@@ -3544,6 +3545,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
     assert response == expected_reports_summary
 
 
+@freeze_time("2024-07-01 12:00")
 def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, mocker):
     date_format = "%a, %d %b %Y %H:%M:%S %Z"
     # Create 2 unbatched unsubscribe requests
