@@ -1114,9 +1114,15 @@ def process_unsubscribe_request_report(service_id, batch_id):
     This endpoint processes unsubscribe_request_reports by updating the processed_by_service_at
     field
     """
-    report = get_unsubscribe_request_report_by_id_dao(batch_id)
-    if report:
-        update_unsubscribe_request_report_processed_by_date_dao(report)
+    if data := request.get_json():
+        report_has_been_processed = data["report_has_been_processed"]
+    else:
+        raise InvalidRequest(
+            message={"marked_as_completed": "missing data for required field"},
+            status_code=400,
+        )
+    if report := get_unsubscribe_request_report_by_id_dao(batch_id):
+        update_unsubscribe_request_report_processed_by_date_dao(report, report_has_been_processed)
     else:
         raise InvalidRequest(
             message={"batch_id": f"No UnsubscribeRequestReport found for id:{batch_id}"},
