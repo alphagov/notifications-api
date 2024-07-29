@@ -10,7 +10,6 @@ from app.constants import (
     EMAIL_AUTH,
     EXTRA_LETTER_FORMATTING,
     INBOUND_SMS_TYPE,
-    LETTER_TYPE,
     SECOND_CLASS,
     SEND_EMAILS,
     SEND_LETTERS,
@@ -356,9 +355,6 @@ def _create_email_template(service, user_id):
 
     new_template = template_schema.load(data)
 
-    if not new_template.postage and new_template.template_type == LETTER_TYPE:
-        new_template.postage = SECOND_CLASS
-
     new_template.service = service
 
     dao_create_template(new_template)
@@ -412,6 +408,7 @@ def _create_letter_template(service, user_id):
     new_template = template_schema.load(data)
 
     new_template.service = service
+    new_template.postage = SECOND_CLASS
 
     dao_create_template(new_template)
 
