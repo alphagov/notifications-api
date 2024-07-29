@@ -77,6 +77,6 @@ def create_unsubscribe_request_reports_dao(unsubscribe_request_report):
 
 
 @autocommit
-def update_unsubscribe_request_report_processed_by_date_dao(report):
-    report.processed_by_service_at = datetime.utcnow()
+def update_unsubscribe_request_report_processed_by_date_dao(report, report_has_been_processed):
+    report.processed_by_service_at = datetime.utcnow() if report_has_been_processed else None
     db.session.add(report)
