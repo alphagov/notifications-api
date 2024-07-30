@@ -100,7 +100,9 @@ from app.dao.services_dao import (
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.unsubscribe_request_dao import (
     get_latest_unsubscribe_request_date_dao,
+    get_unsubscribe_request_report_by_id_dao,
     get_unsubscribe_requests_statistics_dao,
+    update_unsubscribe_request_report_processed_by_date_dao,
 )
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
@@ -1104,6 +1106,30 @@ def get_unsubscribe_requests_statistics(service_id):
         }
 
     return jsonify(data), 200
+
+
+@service_blueprint.route("/<uuid:service_id>/process-unsubscribe-request-report/<uuid:batch_id>", methods=["POST"])
+def process_unsubscribe_request_report(service_id, batch_id):
+    """
+    This endpoint processes unsubscribe_request_reports by updating the processed_by_service_at
+    field
+    """
+    if data := request.get_json():
+        report_has_been_processed = data["report_has_been_processed"]
+    else:
+        raise InvalidRequest(
+            message={"marked_as_completed": "missing data for required field"},
+            status_code=400,
+        )
+    if report := get_unsubscribe_request_report_by_id_dao(batch_id):
+        update_unsubscribe_request_report_processed_by_date_dao(report, report_has_been_processed)
+    else:
+        raise InvalidRequest(
+            message={"batch_id": f"No UnsubscribeRequestReport found for id:{batch_id}"},
+            status_code=400,
+        )
+
+    return "", 204
 
 
 @service_blueprint.route("/<uuid:service_id>/contact-list", methods=["GET"])

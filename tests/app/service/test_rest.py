@@ -3678,6 +3678,67 @@ def test_get_unsubscribe_requests_statistics_for_no_unsubscribe_requests(admin_r
     assert response == {}
 
 
+@freeze_time("2024-07-17")
+def test_process_unsubscribe_request_report(admin_request, sample_service):
+    unsubscribe_request_report = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=242,
+        earliest_timestamp=datetime.utcnow() + timedelta(days=-5),
+        latest_timestamp=datetime.utcnow() + timedelta(days=-4),
+        processed_by_service_at=None,
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report)
+    admin_request.post(
+        "service.process_unsubscribe_request_report",
+        service_id=sample_service.id,
+        batch_id=unsubscribe_request_report.id,
+        _expected_status=204,
+        _data={"report_has_been_processed": True},
+    )
+    updated_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(
+        id=unsubscribe_request_report.id
+    ).one()
+    assert updated_unsubscribe_request_report.id == unsubscribe_request_report.id
+    assert updated_unsubscribe_request_report.processed_by_service_at == datetime.utcnow()
+
+
+@freeze_time("2024-07-17")
+def test_process_unsubscribe_request_report_set_processed_by_date_back_to_none(admin_request, sample_service):
+    unsubscribe_request_report = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=242,
+        earliest_timestamp=datetime.utcnow() + timedelta(days=-5),
+        latest_timestamp=datetime.utcnow() + timedelta(days=-4),
+        processed_by_service_at=datetime.utcnow() + timedelta(days=-2),
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report)
+    admin_request.post(
+        "service.process_unsubscribe_request_report",
+        service_id=sample_service.id,
+        batch_id=unsubscribe_request_report.id,
+        _expected_status=204,
+        _data={"report_has_been_processed": False},
+    )
+    updated_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(
+        id=unsubscribe_request_report.id
+    ).one()
+    assert updated_unsubscribe_request_report.id == unsubscribe_request_report.id
+    assert updated_unsubscribe_request_report.processed_by_service_at is None
+
+
+def test_process_unsubscribe_request_report_raises_error_for_invalid_batch_id(admin_request, sample_service):
+    random_batch_id = "258de158-07d3-457b-8eec-3e0e3bdab3bf"
+    admin_request.post(
+        "service.process_unsubscribe_request_report",
+        service_id=sample_service.id,
+        batch_id=random_batch_id,
+        _expected_status=400,
+        _data={"report_has_been_processed": False},
+    )
+
+
 @pytest.mark.parametrize(
     "new_custom_email_sender_name, expected_email_sender_local_part",
     [
