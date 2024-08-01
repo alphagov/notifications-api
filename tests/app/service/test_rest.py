@@ -3520,7 +3520,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
         template=template_2, created_at=(datetime.utcnow() + timedelta(days=-1)).strftime(date_format) + " GMT"
     )
     create_unsubscribe_request_dao(
-        {  # noqa
+        {
             "notification_id": notification_2.id,
             "template_id": notification_2.template_id,
             "template_version": notification_2.template_version,
@@ -3533,8 +3533,8 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
     expected_unbatched_unsubscribe_request_summary = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": notification_2.created_at.strftime(date_format) + " GMT",
-        "latest_timestamp": (datetime.utcnow()).strftime(date_format) + " GMT",
+        "earliest_timestamp": notification_1.created_at.isoformat(),
+        "latest_timestamp": notification_2.created_at.isoformat(),
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3547,38 +3547,35 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
 
 @freeze_time("2024-07-01 12:00")
 def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, mocker):
-    date_format = "%a, %d %b %Y %H:%M:%S %Z"
     # Create 2 unbatched unsubscribe requests
     template_1 = create_template(
         sample_service,
         template_type=EMAIL_TYPE,
     )
     notification_1 = create_notification(template=template_1)
-    create_unsubscribe_request_dao(
-        {  # noqa
-            "notification_id": notification_1.id,
-            "template_id": notification_1.template_id,
-            "template_version": notification_1.template_version,
-            "service_id": notification_1.service_id,
-            "email_address": notification_1.to,
-            "created_at": (datetime.utcnow() + timedelta(days=-2)).strftime(date_format),
-        }
-    )
+    unbatched_request_1_data = {
+        "notification_id": notification_1.id,
+        "template_id": notification_1.template_id,
+        "template_version": notification_1.template_version,
+        "service_id": notification_1.service_id,
+        "email_address": notification_1.to,
+        "created_at": (datetime.utcnow() + timedelta(days=-2)),
+    }
+    create_unsubscribe_request_dao(unbatched_request_1_data)
     template_2 = create_template(
         sample_service,
         template_type=EMAIL_TYPE,
     )
     notification_2 = create_notification(template=template_2)
-    create_unsubscribe_request_dao(
-        {  # noqa
-            "notification_id": notification_2.id,
-            "template_id": notification_2.template_id,
-            "template_version": notification_2.template_version,
-            "service_id": notification_2.service_id,
-            "email_address": notification_2.to,
-            "created_at": datetime.utcnow() + timedelta(days=-1),
-        }
-    )
+    unbatched_request_2_data = {
+        "notification_id": notification_2.id,
+        "template_id": notification_2.template_id,
+        "template_version": notification_2.template_version,
+        "service_id": notification_2.service_id,
+        "email_address": notification_2.to,
+        "created_at": datetime.utcnow() + timedelta(days=-1),
+    }
+    create_unsubscribe_request_dao(unbatched_request_2_data)
 
     # Create 2 unsubscribe_request_reports
     unsubscribe_request_report_1 = UnsubscribeRequestReport(
@@ -3605,9 +3602,9 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         {
             "batch_id": str(report.id),
             "count": report.count,
-            "earliest_timestamp": report.earliest_timestamp.strftime(date_format),
-            "latest_timestamp": report.latest_timestamp.strftime(date_format),
-            "processed_by_service_at": report.processed_by_service_at.strftime(date_format),
+            "earliest_timestamp": report.earliest_timestamp.isoformat(),
+            "latest_timestamp": report.latest_timestamp.isoformat(),
+            "processed_by_service_at": report.processed_by_service_at.isoformat(),
             "is_a_batched_report": True,
         }
         for report in [unsubscribe_request_report_2, unsubscribe_request_report_1]
@@ -3615,8 +3612,8 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     expected_unbatched_unsubscribe_request_summary = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": unsubscribe_request_report_2.latest_timestamp.strftime(date_format),
-        "latest_timestamp": datetime.utcnow().strftime(date_format),
+        "earliest_timestamp": unbatched_request_1_data["created_at"].isoformat(),
+        "latest_timestamp": unbatched_request_2_data["created_at"].isoformat(),
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3626,20 +3623,17 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     ] + expected_batched_unsubscribe_request_reports_summary
 
     response = admin_request.get("service.get_unsubscribe_request_reports_summary", service_id=sample_service.id)
-    assert datetime.strptime(response[0]["earliest_timestamp"], date_format) == datetime.strptime(
-        response[1]["latest_timestamp"], date_format
-    )
 
     for index, summary in enumerate(response):
         assert summary["batch_id"] == expected_reports_summary[index]["batch_id"]
         assert summary["count"] == expected_reports_summary[index]["count"]
-        assert summary["earliest_timestamp"] == expected_reports_summary[index]["earliest_timestamp"] + "GMT"
-        assert summary["latest_timestamp"] == expected_reports_summary[index]["latest_timestamp"] + "GMT"
+        assert summary["earliest_timestamp"] == expected_reports_summary[index]["earliest_timestamp"]
+        assert summary["latest_timestamp"] == expected_reports_summary[index]["latest_timestamp"]
         assert summary["is_a_batched_report"] == expected_reports_summary[index]["is_a_batched_report"]
 
     assert response[0]["processed_by_service_at"] == expected_reports_summary[0]["processed_by_service_at"]
-    assert response[1]["processed_by_service_at"] == expected_reports_summary[1]["processed_by_service_at"] + "GMT"
-    assert response[2]["processed_by_service_at"] == expected_reports_summary[2]["processed_by_service_at"] + "GMT"
+    assert response[1]["processed_by_service_at"] == expected_reports_summary[1]["processed_by_service_at"]
+    assert response[2]["processed_by_service_at"] == expected_reports_summary[2]["processed_by_service_at"]
 
 
 def test_get_unsubscribe_requests_statistics(admin_request, sample_service, mocker):
