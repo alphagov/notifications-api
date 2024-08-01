@@ -10,6 +10,7 @@ from app.celery.tasks import (
     update_letter_notifications_statuses,
 )
 from app.config import QueueNames
+from app.errors import InvalidRequest
 from app.notifications.utils import autoconfirm_subscription
 from app.schema_validation import validate
 from app.v2.errors import register_errors
@@ -71,7 +72,8 @@ def process_letter_callback():
         notification_id = signing.decode(token)
     except BadSignature:
         current_app.logger.info("Letter callback with invalid token of %s received", token)
-    else:
-        current_app.logger.info("Letter callback for notification id %s received", notification_id)
+        raise InvalidRequest("A valid token must be provided in the query string", 403) from None
+
+    current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
     return jsonify(result="success"), 200
