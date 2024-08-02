@@ -77,6 +77,7 @@ from app.utils import (
     DATETIME_FORMAT_NO_TIMEZONE,
     get_dt_string_or_none,
     get_uuid_string_or_none,
+    url_with_token,
 )
 
 
@@ -1622,7 +1623,9 @@ class Notification(db.Model):
             "completed_at": self.completed_at(),
             "scheduled_for": None,
             "postage": self.postage,
-            "one_click_unsubscribe_url": self.unsubscribe_link,
+            "one_click_unsubscribe_url": self.get_unsubscribe_link_for_headers(
+                template_has_unsubscribe_link=self.template.has_unsubscribe_link
+            ),
         }
 
         if self.notification_type == LETTER_TYPE:
@@ -1747,6 +1750,30 @@ class Notification(db.Model):
         )
 
         return letter_rate
+
+    def _generate_unsubscribe_link(self, base_url):
+        return url_with_token(
+            self.to,
+            url=f"/unsubscribe/{str(self.id)}/",
+            base_url=base_url,
+        )
+
+    def get_unsubscribe_link_for_headers(self, *, template_has_unsubscribe_link):
+        """
+        Generates a URL on the API domain, which accepts a POST request from an email client
+        """
+        if self.unsubscribe_link:
+            return self.unsubscribe_link
+        if template_has_unsubscribe_link:
+            return self._generate_unsubscribe_link(current_app.config["API_HOST_NAME"])
+
+    def get_unsubscribe_link_for_body(self, *, template_has_unsubscribe_link):
+        """
+        Generates a URL on the admin domain, which serves a page telling the user they
+        have been unsubscribed
+        """
+        if template_has_unsubscribe_link:
+            return self._generate_unsubscribe_link(current_app.config["ADMIN_BASE_URL"])
 
 
 class NotificationHistory(db.Model):
