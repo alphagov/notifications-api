@@ -1759,12 +1759,19 @@ class Notification(db.Model):
         )
 
     def get_unsubscribe_link_for_headers(self, *, template_has_unsubscribe_link):
+        """
+        Generates a URL on the API domain, which accepts a POST request from an email client
+        """
         if self.unsubscribe_link:
             return self.unsubscribe_link
         if template_has_unsubscribe_link:
             return self._generate_unsubscribe_link(current_app.config["API_HOST_NAME"])
 
     def get_unsubscribe_link_for_body(self, *, template_has_unsubscribe_link):
+        """
+        Generates a URL on the admin domain, which serves a page telling the user they
+        have been unsubscribed
+        """
         if template_has_unsubscribe_link:
             return self._generate_unsubscribe_link(current_app.config["ADMIN_BASE_URL"])
 

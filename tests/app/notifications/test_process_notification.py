@@ -635,6 +635,7 @@ def test_persist_notification_when_template_has_unsubscribe_link_is_false(
     "unsubscribe_link, expected_unsubscribe_link",
     [
         ("https://please-unsubscribe-me.com/unsubscribe", "https://please-unsubscribe-me.com/unsubscribe"),
+        # We don’t persist template-level unsubscribe links – they are generated at time of sending
         (None, None),
     ],
 )
