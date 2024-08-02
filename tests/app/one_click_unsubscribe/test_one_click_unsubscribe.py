@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import call
 
 from flask import current_app
 from notifications_utils.url_safe_token import generate_token
@@ -29,7 +30,10 @@ def test_valid_one_click_unsubscribe_url(mocker, client, sample_email_notificati
     assert created_unsubscribe_request.template_version == sample_email_notification.template_version
     assert created_unsubscribe_request.service_id == sample_email_notification.service_id
     assert created_unsubscribe_request.email_address == sample_email_notification.to
-    mock_redis.assert_called_once_with(f"service-{sample_email_notification.service.id}-unsubscribe-request-statistics")
+    assert mock_redis.call_args_list == [
+        call(f"service-{sample_email_notification.service.id}-unsubscribe-request-statistics"),
+        call(f"service-{sample_email_notification.service.id}-unsubscribe-request-reports-summary"),
+    ]
 
 
 def test_unsubscribe_request_object_refers_to_correct_template_version_after_template_updated(client, sample_service):

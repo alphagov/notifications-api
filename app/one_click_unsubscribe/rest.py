@@ -46,6 +46,7 @@ def one_click_unsubscribe(notification_id, token):
 
     create_unsubscribe_request_dao(unsubscribe_data)
     redis_store.delete(f"service-{unsubscribe_data['service_id']}-unsubscribe-request-statistics")
+    redis_store.delete(f"service-{unsubscribe_data['service_id']}-unsubscribe-request-reports-summary")
 
     current_app.logger.debug("Received unsubscribe request for notification_id: %s", notification_id)
 
