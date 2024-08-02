@@ -1168,3 +1168,28 @@ def mock_onwards_request_headers(mocker):
 
 def datetime_in_past(days=0, seconds=0):
     return datetime.now(tz=pytz.utc) - timedelta(days=days, seconds=seconds)
+
+
+@pytest.fixture(scope="function")
+def mock_dvla_callback_data():
+    return {
+        "specVersion": "version-1",
+        "type": "uk.gov.dvla.osl.print.v1.printjob-webhook-status",
+        "source": "dvla:resource:osl:print:print-hub:5.6.0",
+        "id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
+        "time": "2021-04-01T00:00:00Z",
+        "dataContentType": "application/json",
+        "dataSchema": "print/v1/printjob-webhook-status",
+        "data": {
+            "despatchProperties": {"totalSheets": 5, "postageClass": "2ND", "mailingProduct": "UNSORTED"},
+            "jobId": "9876543251",
+            "jobType": "NOTIFY",
+            "jobStatus": "DESPATCHED",
+            "templateReference": "NOTIFY",
+        },
+        "metadata": {
+            "handler": {"urn": "dvla:resource:osl:print:print-hub:5.6.0"},
+            "origin": {"urn": "dvla:resource:osg:dev:printhub:1.0.1"},
+            "correlationId": "b5d9b2bd-6e8f-4275-bdd3-c8086fe09c52",
+        },
+    }

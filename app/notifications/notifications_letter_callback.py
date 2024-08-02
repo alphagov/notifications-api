@@ -32,6 +32,48 @@ dvla_sns_callback_schema = {
     "required": ["Type", "MessageId", "Message"],
 }
 
+dvla_letter_callback_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "dvla letter callback schema",
+    "type": "object",
+    "properties": {
+        "specVersion": {"type": "string"},
+        "type": {"type": "string"},
+        "source": {"type": "string"},
+        "id": {"type": "string"},
+        "time": {"type": "string", "format": "date-time"},
+        "dataContentType": {"type": "string", "enum": ["application/json"]},
+        "data": {
+            "type": "object",
+            "properties": {
+                "despatchProperties": {
+                    "type": "object",
+                    "properties": {
+                        "totalSheets": {"type": "number"},
+                        "postageClass": {"type": "string", "enum": ["1ST", "2ND", "INTERNATIONAL"]},
+                        "mailingProduct": {
+                            "type": "string",
+                            "enum": ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"],
+                        },
+                    },
+                    "required": ["totalSheets", "postageClass", "mailingProduct"],
+                },
+                "jobId": {"type": "string"},
+                "jobType": {"type": "string"},
+                "jobStatus": {"type": "string", "enum": ["DESPATCHED", "REJECTED"]},
+                "templateReference": {"type": "string"},
+            },
+            "required": ["despatchProperties", "jobId", "jobStatus"],
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {"correlationId": {"type": "string"}},
+            "required": ["correlationId"],
+        },
+    },
+    "required": ["id", "time", "data", "metadata"],
+}
+
 
 def validate_schema(schema):
     def decorator(f):
@@ -65,6 +107,7 @@ def process_letter_response():
 
 
 @letter_callback_blueprint.route("/notifications/letter/status", methods=["POST"])
+@validate_schema(dvla_letter_callback_schema)
 def process_letter_callback():
     token = request.args.get("token", "")
 

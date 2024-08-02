@@ -115,3 +115,61 @@ def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client
 
     assert response.status_code == 403
     assert response.get_json()["errors"][0]["message"] == "A valid token must be provided in the query string"
+
+
+def test_process_letter_callback_validation_error_for_invalid_data(client):
+    data = json.dumps({})
+    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=data)
+
+    response_json_data = response.get_json()
+    errors = response_json_data["errors"]
+
+    validation_errors = [
+        {"error": "ValidationError", "message": "id is a required property"},
+        {"error": "ValidationError", "message": "time is a required property"},
+        {"error": "ValidationError", "message": "data is a required property"},
+        {"error": "ValidationError", "message": "metadata is a required property"},
+    ]
+
+    assert response.status_code == 400
+    assert errors == validation_errors
+
+
+def test_process_letter_callback_validation_error_for_nested_field_data(client):
+    data = json.dumps({"data": {"despatchProperties": {}}})
+    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=data)
+
+    response_json_data = response.get_json()
+    errors = response_json_data["errors"]
+
+    assert response.status_code == 400
+    assert {"error": "ValidationError", "message": "data totalSheets is a required property"} in errors
+    assert {"error": "ValidationError", "message": "data postageClass is a required property"} in errors
+    assert {"error": "ValidationError", "message": "data mailingProduct is a required property"} in errors
+    assert {"error": "ValidationError", "message": "data jobId is a required property"} in errors
+    assert {"error": "ValidationError", "message": "data jobStatus is a required property"} in errors
+
+
+def test_process_letter_callback_validation_error_for_nested_field_metadata(client):
+    data = json.dumps({"metadata": {}})
+    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=data)
+
+    response_json_data = response.get_json()
+    errors = response_json_data["errors"]
+
+    assert response.status_code == 400
+    assert {"error": "ValidationError", "message": "metadata correlationId is a required property"} in errors
+
+
+def test_process_letter_callback_validation_error_for_invalid_enum(client):
+    data = json.dumps({"data": {"despatchProperties": {"postageClass": "invalid-postage-class"}}})
+    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=data)
+
+    response_json_data = response.get_json()
+    errors = response_json_data["errors"]
+
+    assert response.status_code == 400
+    assert {
+        "error": "ValidationError",
+        "message": "data invalid-postage-class is not one of [1ST, 2ND, INTERNATIONAL]",
+    } in errors
