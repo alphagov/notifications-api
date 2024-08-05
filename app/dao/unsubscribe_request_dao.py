@@ -110,15 +110,12 @@ def update_unsubscribe_request_report_processed_by_date_dao(report, report_has_b
 @autocommit
 def assign_unbatched_unsubscribe_requests_to_report_dao(report_id, service_id, earliest_timestamp, latest_timestamp):
     """
-    This method retrieves all the un-batched unsubscribe requests received before or on
-    the report's latest_timestamp and sets their unsubscribe_request_report_id to the report_i
+    This method updates the unsubscribe_request_report_id of all un-batched unsubscribe requests that fall
+    within the earliest_timestamp and latest_timestamp values to report_id
     """
-    unbatched_unsubscribe_requests = UnsubscribeRequest.query.filter(
+    UnsubscribeRequest.query.filter(
         UnsubscribeRequest.unsubscribe_request_report_id.is_(None),
         UnsubscribeRequest.service_id == service_id,
         UnsubscribeRequest.created_at >= earliest_timestamp,
         UnsubscribeRequest.created_at <= latest_timestamp,
-    ).all()
-    for unsubscribe_request in unbatched_unsubscribe_requests:
-        unsubscribe_request.unsubscribe_request_report_id = report_id
-        db.session.add(unsubscribe_request)
+    ).update({"unsubscribe_request_report_id": report_id})
