@@ -62,28 +62,11 @@ def get_unsubscribe_request_data(notification, email_address):
 
 
 def create_unsubscribe_request_reports_summary(service_id):
-    reports_summary = []
-    batched_unsubscribe_reports_summary = []
-    unbatched_unsubscribe_report_summary = []
-    # Check for existing unsubscribe reports and create their summaries
-    if unsubscribe_request_reports := get_unsubscribe_request_reports_dao(service_id):
-        batched_unsubscribe_reports_summary = _create_batched_unsubscribe_request_reports_summary(
-            unsubscribe_request_reports,
-        )
-        batched_unsubscribe_reports_summary = batched_unsubscribe_reports_summary
-    # Check for unsubscribe requests and create a summary for them
+    unsubscribe_request_reports = [report.serialize() for report in get_unsubscribe_request_reports_dao(service_id)]
+
     if unbatched_unsubscribe_requests := get_unbatched_unsubscribe_requests_dao(service_id):
-        unbatched_unsubscribe_report_summary.append(
-            _create_unbatched_unsubscribe_request_report_summary(unbatched_unsubscribe_requests)
-        )
-    reports_summary = unbatched_unsubscribe_report_summary + batched_unsubscribe_reports_summary
+        return [
+            UnsubscribeRequestReport.serialize_unbatched_requests(unbatched_unsubscribe_requests)
+        ] + unsubscribe_request_reports
 
-    return reports_summary
-
-
-def _create_batched_unsubscribe_request_reports_summary(unsubscribe_request_reports: list) -> list:
-    return [report.serialize() for report in unsubscribe_request_reports]
-
-
-def _create_unbatched_unsubscribe_request_report_summary(unbatched_unsubscribe_requests: list) -> dict:
-    return UnsubscribeRequestReport.serialize_unbatched_requests(unbatched_unsubscribe_requests)
+    return unsubscribe_request_reports

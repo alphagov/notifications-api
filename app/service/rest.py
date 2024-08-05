@@ -1084,8 +1084,7 @@ def get_unsubscribe_request_reports_summary(service_id):
     return: reports_summary = []
 
     """
-    reports_summary = create_unsubscribe_request_reports_summary(service_id)
-    return jsonify(reports_summary)
+    return jsonify(create_unsubscribe_request_reports_summary(service_id))
 
 
 @service_blueprint.route("/<uuid:service_id>/unsubscribe-request-statistics", methods=["GET"])

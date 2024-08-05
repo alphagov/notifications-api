@@ -2687,7 +2687,7 @@ class UnsubscribeRequestReport(db.Model):
         }
 
     @staticmethod
-    def serialize_unbatched_requests(self, unbatched_unsubscribe_requests):
+    def serialize_unbatched_requests(unbatched_unsubscribe_requests):
         return {
             "batch_id": None,
             "count": len(unbatched_unsubscribe_requests),
