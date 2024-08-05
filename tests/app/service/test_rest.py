@@ -31,7 +31,10 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
 )
 from app.dao.templates_dao import dao_redact_template
-from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao, create_unsubscribe_request_reports_dao
+from app.dao.unsubscribe_request_dao import (
+    create_unsubscribe_request_dao,
+    create_unsubscribe_request_reports_dao,
+)
 from app.dao.users_dao import save_model_user
 from app.models import (
     AnnualBilling,
@@ -3736,6 +3739,106 @@ def test_process_unsubscribe_request_report_raises_error_for_invalid_batch_id(ad
         batch_id=random_batch_id,
         _expected_status=400,
         _data={"report_has_been_processed": False},
+    )
+
+
+def test_create_unsubscribe_request_report(sample_service, admin_request, mocker):
+    date_format = "%Y-%m-%d %H:%M:%S"
+    test_id = "2802262c-b6ac-4254-93c3-a83ae7180d96"
+    summary_data = {
+        "batch_id": None,
+        "count": 2,
+        "earliest_timestamp": "2024-07-03 13:30:00",
+        "latest_timestamp": "2024-07-09 21:13:11",
+        "processed_by_service_at": None,
+        "is_a_batched_report": False,
+    }
+    mocker.patch("app.service.rest.uuid.uuid4", return_value=test_id)
+    mock_assign_unbatched_requests = mocker.patch(
+        "app.service.rest.assign_unbatched_unsubscribe_requests_to_report_dao"
+    )
+    response = admin_request.post(
+        "service.create_unsubscribe_request_report",
+        service_id=sample_service.id,
+        _data=summary_data,
+        _expected_status=201,
+    )
+    created_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(id=test_id).one()
+    assert response == {"report_id": str(created_unsubscribe_request_report.id)}
+    assert summary_data["count"] == created_unsubscribe_request_report.count
+    assert summary_data["earliest_timestamp"] == created_unsubscribe_request_report.earliest_timestamp.strftime(
+        date_format
+    )
+    assert summary_data["latest_timestamp"] == created_unsubscribe_request_report.latest_timestamp.strftime(date_format)
+    assert summary_data["processed_by_service_at"] == created_unsubscribe_request_report.processed_by_service_at
+    mock_assign_unbatched_requests.assert_called_once_with(
+        report_id=created_unsubscribe_request_report.id,
+        service_id=created_unsubscribe_request_report.service_id,
+        earliest_timestamp=created_unsubscribe_request_report.earliest_timestamp,
+        latest_timestamp=created_unsubscribe_request_report.latest_timestamp,
+    )
+
+
+def test_create_unsubscribe_request_report_raises_error_for_no_summary_data(sample_service, admin_request, mocker):
+    admin_request.post(
+        "service.create_unsubscribe_request_report", service_id=sample_service.id, _data=None, _expected_status=400
+    )
+
+
+def test_get_unsubscribe_request_report_for_download(admin_request, sample_service, mocker):
+    # test_data
+    UnsubscribeRequestReport = namedtuple(
+        "UnsubscribeRequestReport", ["id", "earliest_timestamp", "latest_timestamp", "unsubscribe_requests"]
+    )
+    UnsubscribeRequest = namedtuple(
+        "UnsubscribeRequest", ["email_address", "template_name", "original_file_name", "template_sent_at"]
+    )
+
+    unsubscribe_request_1 = UnsubscribeRequest(
+        "foo@bar.com", "email Template Name", "contact list", "2024-07-23 13:30:00"
+    )
+    unsubscribe_request_2 = UnsubscribeRequest(
+        "fizz@bar.com", "email Template Name", "contact list", "2024-07-21 11:04:00"
+    )
+    unsubscribe_request_3 = UnsubscribeRequest("fizzbuzz@bar.com", "Another Service", None, "2024-07-19 23:45:00")
+    unsubscribe_request_4 = UnsubscribeRequest(
+        "buzz@bar.com", "Another Service", "another contact list", "2024-07-17 09:42:00"
+    )
+    unsubscribe_request_report = UnsubscribeRequestReport(
+        "e6c02a98-8e64-4ab3-b176-271274517c21",
+        "2024-07-17 09:42:00",
+        "2024-07-23 13:30:00",
+        [unsubscribe_request_1, unsubscribe_request_2, unsubscribe_request_3, unsubscribe_request_4],
+    )
+    mocker.patch("app.service.rest.get_unsubscribe_request_report_by_id_dao", return_value=unsubscribe_request_report)
+    mocker.patch(
+        "app.service.rest.get_unsubscribe_requests_data_for_download_dao",
+        return_value=unsubscribe_request_report.unsubscribe_requests,
+    )
+    response = admin_request.get(
+        "service.get_unsubscribe_request_report_for_download",
+        service_id=sample_service.id,
+        batch_id=unsubscribe_request_report.id,
+    )
+
+    assert response["batch_id"] == unsubscribe_request_report.id
+    assert response["earliest_timestamp"] == unsubscribe_request_report.earliest_timestamp
+    assert response["latest_timestamp"] == unsubscribe_request_report.latest_timestamp
+
+    for i, row in enumerate(unsubscribe_request_report.unsubscribe_requests):
+        assert response["unsubscribe_requests"][i]["email_address"] == row.email_address
+        assert response["unsubscribe_requests"][i]["template_name"] == row.template_name
+        assert response["unsubscribe_requests"][i]["original_file_name"] == row.original_file_name
+        assert response["unsubscribe_requests"][i]["template_sent_at"] == row.template_sent_at
+
+
+def test_get_unsubscribe_request_report_for_download_400_error(admin_request, sample_service):
+    invalid_batch_id = "c92de771-32a0-49ec-b398-75b1308c7142"
+    admin_request.get(
+        "service.get_unsubscribe_request_report_for_download",
+        service_id=sample_service.id,
+        batch_id=invalid_batch_id,
+        _expected_status=400,
     )
 
 

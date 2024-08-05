@@ -4,7 +4,7 @@ from sqlalchemy import desc, func
 
 from app import db
 from app.dao.dao_utils import autocommit
-from app.models import UnsubscribeRequest, UnsubscribeRequestReport
+from app.models import Job, Notification, NotificationHistory, Template, UnsubscribeRequest, UnsubscribeRequestReport
 from app.utils import midnight_n_days_ago
 
 
@@ -63,6 +63,31 @@ def get_unsubscribe_request_report_by_id_dao(batch_id):
     return UnsubscribeRequestReport.query.filter_by(id=batch_id).one_or_none()
 
 
+def get_unsubscribe_requests_data_for_download_dao(service_id, batch_id):
+    results = []
+    for table in [Notification, NotificationHistory]:
+        query = (
+            db.session.query(
+                UnsubscribeRequest.notification_id,
+                UnsubscribeRequest.email_address,
+                Template.name.label("template_name"),
+                table.template_id,
+                func.coalesce(Job.original_file_name, "N/A").label("original_file_name"),
+                table.sent_at.label("template_sent_at"),
+            )
+            .outerjoin(Job, table.job_id == Job.id)
+            .filter(
+                UnsubscribeRequest.service_id == service_id,
+                UnsubscribeRequest.unsubscribe_request_report_id == batch_id,
+                UnsubscribeRequest.notification_id == table.id,
+                table.template_id == Template.id,
+            )
+            .order_by(desc(Template.name), desc(Job.original_file_name), desc(table.sent_at))
+        )
+        results = results + query.all()
+    return results
+
+
 def get_unbatched_unsubscribe_requests_dao(service_id):
     return (
         UnsubscribeRequest.query.filter_by(service_id=service_id, unsubscribe_request_report_id=None)
@@ -80,3 +105,17 @@ def create_unsubscribe_request_reports_dao(unsubscribe_request_report):
 def update_unsubscribe_request_report_processed_by_date_dao(report, report_has_been_processed):
     report.processed_by_service_at = datetime.utcnow() if report_has_been_processed else None
     db.session.add(report)
+
+
+@autocommit
+def assign_unbatched_unsubscribe_requests_to_report_dao(report_id, service_id, earliest_timestamp, latest_timestamp):
+    """
+    This method updates the unsubscribe_request_report_id of all un-batched unsubscribe requests that fall
+    within the earliest_timestamp and latest_timestamp values to report_id
+    """
+    UnsubscribeRequest.query.filter(
+        UnsubscribeRequest.unsubscribe_request_report_id.is_(None),
+        UnsubscribeRequest.service_id == service_id,
+        UnsubscribeRequest.created_at >= earliest_timestamp,
+        UnsubscribeRequest.created_at <= latest_timestamp,
+    ).update({"unsubscribe_request_report_id": report_id})
