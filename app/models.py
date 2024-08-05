@@ -2676,6 +2676,27 @@ class UnsubscribeRequestReport(db.Model):
     processed_by_service_at = db.Column(db.DateTime, nullable=True)
     count = db.Column(db.BigInteger, nullable=False)
 
+    def serialize(self):
+        return {
+            "batch_id": str(self.id),
+            "count": self.count,
+            "earliest_timestamp": self.earliest_timestamp.isoformat(),
+            "latest_timestamp": self.latest_timestamp.isoformat(),
+            "processed_by_service_at": self.processed_by_service_at.isoformat(),
+            "is_a_batched_report": True,
+        }
+
+    @staticmethod
+    def serialize_unbatched_requests(self, unbatched_unsubscribe_requests):
+        return {
+            "batch_id": None,
+            "count": len(unbatched_unsubscribe_requests),
+            "earliest_timestamp": unbatched_unsubscribe_requests[-1].created_at.isoformat(),
+            "latest_timestamp": unbatched_unsubscribe_requests[0].created_at.isoformat(),
+            "processed_by_service_at": None,
+            "is_a_batched_report": False,
+        }
+
 
 class UnsubscribeRequest(db.Model):
     __tablename__ = "unsubscribe_request"
