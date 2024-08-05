@@ -2682,7 +2682,9 @@ class UnsubscribeRequestReport(db.Model):
             "count": self.count,
             "earliest_timestamp": self.earliest_timestamp.isoformat(),
             "latest_timestamp": self.latest_timestamp.isoformat(),
-            "processed_by_service_at": self.processed_by_service_at.isoformat(),
+            "processed_by_service_at": (
+                self.processed_by_service_at.isoformat() if self.processed_by_service_at else None
+            ),
             "is_a_batched_report": True,
         }
 

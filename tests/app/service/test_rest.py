@@ -3583,7 +3583,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         count=141,
         earliest_timestamp=datetime.utcnow() + timedelta(days=-8),
         latest_timestamp=datetime.utcnow() + timedelta(days=-7),
-        processed_by_service_at=datetime.utcnow() + timedelta(days=-6),
+        processed_by_service_at=None,
         service_id=sample_service.id,
     )
     create_unsubscribe_request_reports_dao(unsubscribe_request_report_1)
@@ -3604,7 +3604,9 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
             "count": report.count,
             "earliest_timestamp": report.earliest_timestamp.isoformat(),
             "latest_timestamp": report.latest_timestamp.isoformat(),
-            "processed_by_service_at": report.processed_by_service_at.isoformat(),
+            "processed_by_service_at": (
+                report.processed_by_service_at.isoformat() if report.processed_by_service_at else None
+            ),
             "is_a_batched_report": True,
         }
         for report in [unsubscribe_request_report_2, unsubscribe_request_report_1]
