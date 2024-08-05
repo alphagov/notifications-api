@@ -303,6 +303,12 @@ def process_sanitised_letter(self, sanitise_data):
                 "Processing invalid precompiled pdf with id %s (file %s)", notification_id, filename
             )
 
+            # Log letters that fail with no fixed abode error so we can check for false positives
+            if letter_details["message"] == "no-fixed-abode-address":
+                current_app.logger.info(
+                    "Precomiled PDF with id %s was invalid due to no fixed abode address", notification_id
+                )
+
             _move_invalid_letter_and_update_status(
                 notification=notification,
                 filename=filename,
