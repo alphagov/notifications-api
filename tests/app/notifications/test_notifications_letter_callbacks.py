@@ -1,6 +1,8 @@
 import pytest
 from flask import json, url_for
 
+from app import signing
+
 
 def dvla_post(client, data):
     return client.post(path="/notifications/letter/dvla", data=data, headers=[("Content-Type", "application/json")])
@@ -173,3 +175,26 @@ def test_process_letter_callback_validation_error_for_invalid_enum(client):
         "error": "ValidationError",
         "message": "data invalid-postage-class is not one of [1ST, 2ND, INTERNATIONAL]",
     } in errors
+
+
+def test_process_letter_callback_raises_error_if_token_and_notification_id_in_data_do_not_match(
+    client,
+    caplog,
+    mock_dvla_callback_data,
+    fake_uuid,
+):
+    signed_token_id = signing.encode(fake_uuid)
+
+    response = client.post(
+        url_for("notifications_letter_callback.process_letter_callback", token=signed_token_id),
+        data=json.dumps(mock_dvla_callback_data),
+    )
+
+    assert (
+        f"Notification ID {mock_dvla_callback_data['id']} in letter callback data does not match token ID {fake_uuid}"
+    ) in caplog.messages
+
+    assert response.status_code == 400
+    assert response.get_json()["errors"][0]["message"] == (
+        "Notification ID in letter callback data does not match ID in token"
+    )

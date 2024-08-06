@@ -117,6 +117,16 @@ def process_letter_callback():
         current_app.logger.info("Letter callback with invalid token of %s received", token)
         raise InvalidRequest("A valid token must be provided in the query string", 403) from None
 
+    request_data = request.get_json()
+
+    if notification_id != request_data["id"]:
+        current_app.logger.exception(
+            "Notification ID %s in letter callback data does not match token ID %s",
+            request_data["id"],
+            notification_id,
+        )
+        raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
+
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
     return jsonify(result="success"), 200
