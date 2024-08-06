@@ -131,9 +131,10 @@ def process_letter_callback():
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
     page_count = request_data["data"]["despatchProperties"]["totalSheets"]
+    status = request_data["data"]["jobStatus"]
 
     process_letter_callback_data.apply_async(
-        kwargs={"notification_id": notification_id, "page_count": page_count},
+        kwargs={"notification_id": notification_id, "page_count": page_count, "status": status},
         queue=QueueNames.NOTIFY,
     )
 

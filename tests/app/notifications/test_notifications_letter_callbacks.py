@@ -200,8 +200,16 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
     )
 
 
-def test_process_letter_callback_calls_process_letter_callback_data_task(client, mocker, mock_dvla_callback_data):
+@pytest.mark.parametrize("status", ["DESPATCHED", "REJECTED"])
+def test_process_letter_callback_calls_process_letter_callback_data_task(
+    client,
+    mocker,
+    mock_dvla_callback_data,
+    status,
+):
     mock_task = mocker.patch("app.notifications.notifications_letter_callback.process_letter_callback_data.apply_async")
+
+    mock_dvla_callback_data["data"]["jobStatus"] = status
 
     client.post(
         url_for(
@@ -216,5 +224,6 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(client,
         kwargs={
             "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
             "page_count": 5,
+            "status": status,
         },
     )
