@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from flask import Blueprint, current_app, jsonify
 from itsdangerous import BadData
 from notifications_utils.url_safe_token import check_token
@@ -13,6 +11,7 @@ from app.dao.unsubscribe_request_dao import (
     get_unsubscribe_request_reports_dao,
 )
 from app.errors import InvalidRequest, register_errors
+from app.models import UnsubscribeRequestReport
 
 one_click_unsubscribe_blueprint = Blueprint("one_click_unsubscribe", __name__)
 
@@ -64,56 +63,11 @@ def get_unsubscribe_request_data(notification, email_address):
 
 
 def create_unsubscribe_request_reports_summary(service_id):
-    reports_summary = []
-    batched_unsubscribe_reports_summary = []
-    unbatched_unsubscribe_report_summary = []
-    # Check for existing unsubscribe reports and create their summaries
-    if unsubscribe_request_reports := get_unsubscribe_request_reports_dao(service_id):
-        batched_unsubscribe_reports_summary = _create_batched_unsubscribe_request_reports_summary(
-            unsubscribe_request_reports,
-        )
-        batched_unsubscribe_reports_summary = batched_unsubscribe_reports_summary
-    # Check for unsubscribe requests and create a summary for them
+    unsubscribe_request_reports = [report.serialize() for report in get_unsubscribe_request_reports_dao(service_id)]
+
     if unbatched_unsubscribe_requests := get_unbatched_unsubscribe_requests_dao(service_id):
-        if batched_unsubscribe_reports_summary:
-            earliest_timestamp = batched_unsubscribe_reports_summary[0]["latest_timestamp"]
-        else:
+        return [
+            UnsubscribeRequestReport.serialize_unbatched_requests(unbatched_unsubscribe_requests)
+        ] + unsubscribe_request_reports
 
-            earliest_timestamp = unbatched_unsubscribe_requests[0].created_at
-
-        unbatched_unsubscribe_report_summary.append(
-            _create_unbatched_unsubscribe_request_report_summary(unbatched_unsubscribe_requests, earliest_timestamp)
-        )
-    reports_summary = unbatched_unsubscribe_report_summary + batched_unsubscribe_reports_summary
-
-    return reports_summary
-
-
-def _create_batched_unsubscribe_request_reports_summary(unsubscribe_request_reports: list) -> list:
-    report_summaries = []
-    for report in unsubscribe_request_reports:
-        report_summary = {
-            "batch_id": str(report.id),
-            "count": report.count,
-            "earliest_timestamp": report.earliest_timestamp,
-            "latest_timestamp": report.latest_timestamp,
-            "processed_by_service_at": report.processed_by_service_at,
-            "is_a_batched_report": True,
-        }
-        report_summaries.append(report_summary)
-    return report_summaries
-
-
-def _create_unbatched_unsubscribe_request_report_summary(
-    unbatched_unsubscribe_requests: list, earliest_timestamp: str = None
-) -> dict:
-    count = len(unbatched_unsubscribe_requests)
-    report_summary = {
-        "batch_id": None,
-        "count": count,
-        "earliest_timestamp": earliest_timestamp,
-        "latest_timestamp": datetime.utcnow(),
-        "processed_by_service_at": None,
-        "is_a_batched_report": False,
-    }
-    return report_summary
+    return unsubscribe_request_reports

@@ -1080,20 +1080,16 @@ def get_unsubscribe_request_reports_summary(service_id):
     This returns report summaries for both batched and un-batched unsubscribe requests.
 
     In the case of un-batched unsubscribe requests:
-    is_a_batched_result has a value of False.
-    The latest earliest_timestamp value is the date the user views the summary
-    The earliest_timestamp value is either:
-        i. the latest_timestamp of the last existing unsubscribe_request_report
-        or
-        ii. the date of the earliest unsubscribe request in the report.
+    - is_a_batched_result has a value of False.
+    - the latest_timestamp value is the date of the newest unsubscribe request in the report
+    - the earliest_timestamp value is the date of the oldest unsubscribe request in the report
 
     parameter: uuid service_id
 
     return: reports_summary = []
 
     """
-    reports_summary = create_unsubscribe_request_reports_summary(service_id)
-    return jsonify(reports_summary)
+    return jsonify(create_unsubscribe_request_reports_summary(service_id))
 
 
 @service_blueprint.route("/<uuid:service_id>/unsubscribe-request-statistics", methods=["GET"])
