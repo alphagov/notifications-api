@@ -5,6 +5,7 @@ from flask import Blueprint, current_app, jsonify, request
 from itsdangerous import BadSignature
 
 from app import signing
+from app.celery.process_letter_client_response_tasks import process_letter_callback_data
 from app.celery.tasks import (
     record_daily_sorted_counts,
     update_letter_notifications_statuses,
@@ -128,5 +129,12 @@ def process_letter_callback():
         raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
 
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
+
+    page_count = request_data["data"]["despatchProperties"]["totalSheets"]
+
+    process_letter_callback_data.apply_async(
+        kwargs={"notification_id": notification_id, "page_count": page_count},
+        queue=QueueNames.NOTIFY,
+    )
 
     return jsonify(result="success"), 200

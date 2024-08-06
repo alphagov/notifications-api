@@ -198,3 +198,23 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
     assert response.get_json()["errors"][0]["message"] == (
         "Notification ID in letter callback data does not match ID in token"
     )
+
+
+def test_process_letter_callback_calls_process_letter_callback_data_task(client, mocker, mock_dvla_callback_data):
+    mock_task = mocker.patch("app.notifications.notifications_letter_callback.process_letter_callback_data.apply_async")
+
+    client.post(
+        url_for(
+            "notifications_letter_callback.process_letter_callback",
+            token=signing.encode("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
+        ),
+        data=json.dumps(mock_dvla_callback_data),
+    )
+
+    mock_task.assert_called_once_with(
+        queue="notify-internal-tasks",
+        kwargs={
+            "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
+            "page_count": 5,
+        },
+    )
