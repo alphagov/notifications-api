@@ -3,7 +3,12 @@ from datetime import datetime, timedelta
 import pytest
 from freezegun import freeze_time
 
-from app.celery.process_letter_client_response_tasks import check_billable_units_by_id, process_letter_callback_data
+from app.celery.process_letter_client_response_tasks import (
+    check_billable_units_by_id,
+    determine_new_status,
+    is_duplicate_update,
+    process_letter_callback_data,
+)
 from app.constants import (
     DVLA_NOTIFICATION_DISPATCHED,
     DVLA_NOTIFICATION_REJECTED,
@@ -89,3 +94,19 @@ def test_process_letter_callback_data_dao_update_notification_rejected_status_hi
 
     assert notification.status == NOTIFICATION_TECHNICAL_FAILURE
     assert notification.updated_at == datetime.now()
+
+
+def test_determine_new_status_dispatched():
+    assert determine_new_status(DVLA_NOTIFICATION_DISPATCHED) == NOTIFICATION_DELIVERED
+
+
+def test_determine_new_status_rejected():
+    assert determine_new_status(DVLA_NOTIFICATION_REJECTED) == NOTIFICATION_TECHNICAL_FAILURE
+
+
+def test_is_duplicate_update_same_status():
+    assert is_duplicate_update(NOTIFICATION_DELIVERED, NOTIFICATION_DELIVERED) is True
+
+
+def test_is_duplicate_update_different_status():
+    assert is_duplicate_update(NOTIFICATION_DELIVERED, NOTIFICATION_TECHNICAL_FAILURE) is False

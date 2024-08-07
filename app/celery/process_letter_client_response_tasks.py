@@ -11,22 +11,17 @@ from app.exceptions import NotificationTechnicalFailureException
 
 @notify_celery.task(bind=True, name="process-letter-callback")
 def process_letter_callback_data(self, notification_id, page_count, dvla_status):
-    # decide what to do with duplicate updates
-
     notification = dao_get_notification_or_history_by_id(notification_id)
 
     check_billable_units_by_id(notification, page_count)
 
-    if dvla_status == DVLA_NOTIFICATION_DISPATCHED:
-        status = NOTIFICATION_DELIVERED
-    else:
-        status = NOTIFICATION_TECHNICAL_FAILURE
+    new_status = determine_new_status(dvla_status)
 
-    notification.status = status
+    notification.status = new_status
 
     dao_update_notification(notification)
 
-    if status == NOTIFICATION_TECHNICAL_FAILURE:
+    if new_status == NOTIFICATION_TECHNICAL_FAILURE:
         raise NotificationTechnicalFailureException(
             f"Letter status received as REJECTED for notification id: {notification.id}"
         )
@@ -40,3 +35,14 @@ def check_billable_units_by_id(notification, dvla_page_count):
             notification.billable_units,
             dvla_page_count,
         )
+
+
+def determine_new_status(dvla_status):
+    if dvla_status == DVLA_NOTIFICATION_DISPATCHED:
+        return NOTIFICATION_DELIVERED
+
+    return NOTIFICATION_TECHNICAL_FAILURE
+
+
+def is_duplicate_update(current_status, new_status):
+    return new_status == current_status
