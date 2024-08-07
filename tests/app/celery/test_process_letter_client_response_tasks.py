@@ -96,6 +96,24 @@ def test_process_letter_callback_data_dao_update_notification_rejected_status_hi
     assert notification.updated_at == datetime.now()
 
 
+@freeze_time("2024-07-05T10:00:00")
+def test_process_letter_callback_data_duplicate_update(sample_letter_notification, caplog):
+    yesteday = datetime.now() - timedelta(days=1)
+
+    sample_letter_notification.status = NOTIFICATION_DELIVERED
+    sample_letter_notification.updated_at = yesteday
+
+    process_letter_callback_data(sample_letter_notification.id, 1, DVLA_NOTIFICATION_DISPATCHED)
+
+    assert sample_letter_notification.status == NOTIFICATION_DELIVERED
+    assert sample_letter_notification.updated_at == yesteday
+
+    assert (
+        f"Duplicate update received for notification id: "
+        f"{sample_letter_notification.id} with status: {NOTIFICATION_DELIVERED}"
+    ) in caplog.messages
+
+
 def test_determine_new_status_dispatched():
     assert determine_new_status(DVLA_NOTIFICATION_DISPATCHED) == NOTIFICATION_DELIVERED
 

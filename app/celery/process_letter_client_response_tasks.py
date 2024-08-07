@@ -17,6 +17,14 @@ def process_letter_callback_data(self, notification_id, page_count, dvla_status)
 
     new_status = determine_new_status(dvla_status)
 
+    if is_duplicate_update(notification.status, new_status):
+        current_app.logger.info(
+            "Duplicate update received for notification id: %s with status: %s",
+            notification_id,
+            new_status,
+        )
+        return
+
     notification.status = new_status
 
     dao_update_notification(notification)
