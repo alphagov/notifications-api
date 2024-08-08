@@ -9,6 +9,7 @@ from app.constants import (
     INTERNATIONAL_SMS_TYPE,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
+    SMS_TO_UK_LANDLINES,
     SMS_TYPE,
 )
 from app.dao import templates_dao
@@ -765,19 +766,26 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     assert not deliver_mock.called
 
 
+@pytest.mark.parametrize(
+    "permissions",
+    [
+        [SMS_TYPE],
+        [SMS_TYPE, SMS_TO_UK_LANDLINES],
+    ],
+)
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
     api_client_request,
     notify_db_session,
+    permissions,
 ):
-    service = create_service(service_permissions=[SMS_TYPE])
+    service = create_service(service_permissions=permissions)
     template = create_template(service=service)
 
-    data = {"phone_number": "20-12-1234-1234", "template_id": template.id}
+    data = {"phone_number": "+14158961600", "template_id": template.id}
 
     error_json = api_client_request.post(
         service.id, "v2_notifications.post_notification", notification_type="sms", _data=data, _expected_status=400
     )
-
     assert error_json["status_code"] == 400
     assert error_json["errors"] == [
         {"error": "BadRequestError", "message": "Cannot send to international mobile numbers"}
@@ -859,22 +867,87 @@ def test_post_sms_notification_returns_400_if_number_not_in_guest_list(
     ]
 
 
+@pytest.mark.parametrize(
+    "permissions",
+    [
+        [SMS_TYPE, INTERNATIONAL_SMS_TYPE],
+        [SMS_TYPE, SMS_TO_UK_LANDLINES, INTERNATIONAL_SMS_TYPE],
+    ],
+)
 def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(
-    sample_service,
-    sample_template,
+    notify_db_session,
     api_client_request,
     mocker,
+    permissions,
 ):
     mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
 
-    data = {"phone_number": "20-12-1234-1234", "template_id": sample_template.id}
-
+    service = create_service(service_permissions=permissions)
+    template = create_template(service=service)
+    data = {"phone_number": "20-12-1234-1234", "template_id": template.id}
     api_client_request.post(
-        sample_service.id,
+        service.id,
         "v2_notifications.post_notification",
         notification_type="sms",
         _data=data,
     )
+
+
+@pytest.mark.parametrize(
+    "permissions",
+    [
+        [SMS_TYPE, SMS_TO_UK_LANDLINES],
+        [SMS_TYPE, SMS_TO_UK_LANDLINES, INTERNATIONAL_SMS_TYPE],
+    ],
+)
+def test_post_sms_notification_returns_201_if_allowed_to_send_to_uk_landlines(
+    notify_db_session,
+    api_client_request,
+    mocker,
+    permissions,
+):
+    mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
+
+    service = create_service(service_permissions=permissions)
+    template = create_template(service=service)
+    data = {"phone_number": "01709510122", "template_id": template.id}
+    resp_json = api_client_request.post(
+        service.id,
+        "v2_notifications.post_notification",
+        notification_type="sms",
+        _data=data,
+    )
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    notification_id = notifications[0].id
+    assert "01709510122" == notifications[0].to
+    assert resp_json["id"] == str(notification_id)
+
+
+@pytest.mark.parametrize(
+    "permissions",
+    [
+        [SMS_TYPE],
+        [SMS_TYPE, INTERNATIONAL_SMS_TYPE],
+    ],
+)
+def test_post_sms_notification_returns_400_if_not_allowed_to_send_to_uk_landlines(
+    notify_db_session,
+    api_client_request,
+    mocker,
+    permissions,
+):
+    mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
+
+    service = create_service(service_permissions=permissions)
+    template = create_template(service=service)
+    data = {"phone_number": "01709510122", "template_id": template.id}
+    error_json = api_client_request.post(
+        service.id, "v2_notifications.post_notification", notification_type="sms", _data=data, _expected_status=400
+    )
+
+    assert error_json["status_code"] == 400
+    assert error_json["errors"] == [{"error": "InvalidPhoneError", "message": "Not a UK mobile number"}]
 
 
 def test_post_sms_should_persist_supplied_sms_number(api_client_request, sample_template_with_placeholders, mocker):
