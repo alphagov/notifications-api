@@ -29,6 +29,7 @@ from app.dao.notifications_dao import (
     dao_get_letters_to_be_printed,
     dao_get_notification_by_reference,
     dao_get_notification_count_for_job_id,
+    dao_get_notification_or_history_by_id,
     dao_get_notification_or_history_by_reference,
     dao_get_notifications_by_recipient_or_reference,
     dao_timeout_notifications,
@@ -1621,3 +1622,15 @@ def test_get_service_ids_with_notifications_on_date_checks_ft_status(
 
     assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 1))) == 1
     assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 2))) == 1
+
+
+def test_dao_get_notification_or_history_by_id_when_notification_exists(sample_notification):
+    notification = dao_get_notification_or_history_by_id(sample_notification.id)
+
+    assert sample_notification == notification
+
+
+def test_dao_get_notification_or_history_by_id_when_notification_history_exists(sample_notification_history):
+    notification = dao_get_notification_or_history_by_id(sample_notification_history.id)
+
+    assert sample_notification_history == notification
