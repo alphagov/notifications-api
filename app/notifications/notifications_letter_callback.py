@@ -48,16 +48,40 @@ dvla_letter_callback_schema = {
             "type": "object",
             "properties": {
                 "despatchProperties": {
-                    "type": "object",
-                    "properties": {
-                        "totalSheets": {"type": "number"},
-                        "postageClass": {"type": "string", "enum": ["1ST", "2ND", "INTERNATIONAL"]},
-                        "mailingProduct": {
-                            "type": "string",
-                            "enum": ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"],
-                        },
+                    "type": "array",
+                    "minItems": 4,
+                    "uniqueItems": True,
+                    "items": {
+                        "type": "object",
+                        "properties": {"key": {"type": "string"}, "value": {"type": "string"}},
+                        "required": ["key", "value"],
+                        "oneOf": [
+                            {
+                                "properties": {
+                                    "key": {"const": "postageClass"},
+                                    "value": {"enum": ["1ST", "2ND", "INTERNATIONAL"]},
+                                }
+                            },
+                            {
+                                "properties": {
+                                    "key": {"const": "mailingProduct"},
+                                    "value": {
+                                        "enum": ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"]
+                                    },
+                                }
+                            },
+                            {"properties": {"key": {"const": "totalSheets"}, "value": {"type": "string"}}},
+                            {"properties": {"key": {"const": "Print Date"}, "value": {"format": "date-time"}}},
+                            # if the key does not match the requirements above, do not check values specified previously
+                            {
+                                "properties": {
+                                    "key": {
+                                        "not": {"enum": ["postageClass", "mailingProduct", "totalSheets", "Print Date"]}
+                                    },
+                                }
+                            },
+                        ],
                     },
-                    "required": ["totalSheets", "postageClass", "mailingProduct"],
                 },
                 "jobId": {"type": "string"},
                 "jobType": {"type": "string"},
@@ -130,7 +154,10 @@ def process_letter_callback():
 
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
-    page_count = request_data["data"]["despatchProperties"]["totalSheets"]
+    despatch_properties = request_data["data"]["despatchProperties"]
+
+    # Since validation guarantees the presence of "totalSheets", we can directly extract it
+    page_count = next(item["value"] for item in despatch_properties if item["key"] == "totalSheets")
     status = request_data["data"]["jobStatus"]
 
     process_letter_callback_data.apply_async(

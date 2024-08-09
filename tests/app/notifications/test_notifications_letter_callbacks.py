@@ -108,7 +108,7 @@ def _sns_confirmation_callback():
 
 @pytest.mark.parametrize("token", [None, "invalid-token"])
 def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client, token, mock_dvla_callback_data):
-    data = json.dumps(mock_dvla_callback_data)
+    data = json.dumps(mock_dvla_callback_data())
     response = client.post(
         url_for("notifications_letter_callback.process_letter_callback", token=token),
         data=data,
@@ -119,62 +119,120 @@ def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client
     assert response.get_json()["errors"][0]["message"] == "A valid token must be provided in the query string"
 
 
-def test_process_letter_callback_validation_error_for_invalid_data(client):
-    data = json.dumps({})
-    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=data)
+@pytest.mark.parametrize(
+    "overrides, expected_error_message",
+    [
+        # missing `id`
+        (
+            {"id": None},
+            "id is a required property",
+        ),
+        # missing `time`
+        (
+            {"time": None},
+            "time is a required property",
+        ),
+        # missing `data`
+        (
+            {"data": None},
+            "data is a required property",
+        ),
+        # missing `metadata`
+        (
+            {"metadata": None},
+            "metadata is a required property",
+        ),
+        # missing `jobId` in data
+        (
+            {"data": {"jobId": None}},
+            "jobId is a required property",
+        ),
+        # missing `jobStatus` in data
+        (
+            {"data": {"jobStatus": None}},
+            "jobStatus is a required property",
+        ),
+        # missing `correlationId` in metadata
+        (
+            {"metadata": {"correlationId": None}},
+            "correlationId is a required property",
+        ),
+        # invalid enum value for `jobStatus`
+        (
+            {"data": {"jobStatus": "INVALID_STATUS"}},
+            "data INVALID_STATUS is not one of [DESPATCHED, REJECTED]",
+        ),
+        # invalid `time` format
+        (
+            {"time": "invalid-time-format"},
+            "time invalid-time-format is not a date-time",
+        ),
+    ],
+)
+def test_process_letter_callback_validation_for_required_fields(
+    client, mock_dvla_callback_data, overrides, expected_error_message
+):
+    data = mock_dvla_callback_data(overrides=overrides)
+
+    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=json.dumps(data))
 
     response_json_data = response.get_json()
     errors = response_json_data["errors"]
 
-    validation_errors = [
-        {"error": "ValidationError", "message": "id is a required property"},
-        {"error": "ValidationError", "message": "time is a required property"},
-        {"error": "ValidationError", "message": "data is a required property"},
-        {"error": "ValidationError", "message": "metadata is a required property"},
-    ]
-
     assert response.status_code == 400
-    assert errors == validation_errors
+    assert any(
+        expected_error_message in error["message"] for error in errors
+    ), f"Expected error message '{expected_error_message}' not found in {errors}"
 
 
-def test_process_letter_callback_validation_error_for_nested_field_data(client):
-    data = json.dumps({"data": {"despatchProperties": {}}})
-    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=data)
+@pytest.mark.parametrize(
+    "despatch_properties, expected_error_message",
+    [
+        # invalid enum for postageClass
+        (
+            [
+                {"key": "postageClass", "value": "invalid-postage-class"},
+                {"key": "totalSheets", "value": "5"},
+                {"key": "mailingProduct", "value": "MM UNSORTED"},
+                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+            ],
+            "data {key: postageClass, value: invalid-postage-class} is not valid under any of the given schemas",
+        ),
+        # missing totalSheets field
+        (
+            [
+                {"key": "postageClass", "value": "1ST"},
+                {"key": "mailingProduct", "value": "MM UNSORTED"},
+                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+            ],
+            "data [{key: postageClass, value: 1ST}, {key: mailingProduct, value: MM UNSORTED}, {key: Print Date, "
+            "value: 2024-08-01T09:15:14.456Z}] is too short",
+        ),
+        # invalid date-time format for Print Date
+        (
+            [
+                {"key": "postageClass", "value": "1ST"},
+                {"key": "totalSheets", "value": "5"},
+                {"key": "mailingProduct", "value": "MM UNSORTED"},
+                {"key": "Print Date", "value": "invalid-date"},
+            ],
+            "data {key: Print Date, value: invalid-date} is not valid under any of the given schemas",
+        ),
+    ],
+)
+def test_process_letter_callback_validation_for_despatch_properties(
+    client, mock_dvla_callback_data, despatch_properties, expected_error_message
+):
+    data = mock_dvla_callback_data(overrides={"data": {"despatchProperties": despatch_properties}})
+    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=json.dumps(data))
 
     response_json_data = response.get_json()
     errors = response_json_data["errors"]
 
     assert response.status_code == 400
-    assert {"error": "ValidationError", "message": "data totalSheets is a required property"} in errors
-    assert {"error": "ValidationError", "message": "data postageClass is a required property"} in errors
-    assert {"error": "ValidationError", "message": "data mailingProduct is a required property"} in errors
-    assert {"error": "ValidationError", "message": "data jobId is a required property"} in errors
-    assert {"error": "ValidationError", "message": "data jobStatus is a required property"} in errors
-
-
-def test_process_letter_callback_validation_error_for_nested_field_metadata(client):
-    data = json.dumps({"metadata": {}})
-    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=data)
-
-    response_json_data = response.get_json()
-    errors = response_json_data["errors"]
-
-    assert response.status_code == 400
-    assert {"error": "ValidationError", "message": "metadata correlationId is a required property"} in errors
-
-
-def test_process_letter_callback_validation_error_for_invalid_enum(client):
-    data = json.dumps({"data": {"despatchProperties": {"postageClass": "invalid-postage-class"}}})
-    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=data)
-
-    response_json_data = response.get_json()
-    errors = response_json_data["errors"]
-
-    assert response.status_code == 400
-    assert {
-        "error": "ValidationError",
-        "message": "data invalid-postage-class is not one of [1ST, 2ND, INTERNATIONAL]",
-    } in errors
+    assert any(
+        expected_error_message in error["message"] for error in errors
+    ), f"Expected error message '{expected_error_message}' not found in {errors}"
 
 
 def test_process_letter_callback_raises_error_if_token_and_notification_id_in_data_do_not_match(
@@ -185,13 +243,15 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
 ):
     signed_token_id = signing.encode(fake_uuid)
 
+    data = mock_dvla_callback_data()
+
     response = client.post(
         url_for("notifications_letter_callback.process_letter_callback", token=signed_token_id),
-        data=json.dumps(mock_dvla_callback_data),
+        data=json.dumps(data),
     )
 
     assert (
-        f"Notification ID {mock_dvla_callback_data['id']} in letter callback data does not match token ID {fake_uuid}"
+        f"Notification ID {data['id']} in letter callback data does not match token ID {fake_uuid}"
     ) in caplog.messages
 
     assert response.status_code == 400
@@ -208,22 +268,22 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
     status,
 ):
     mock_task = mocker.patch("app.notifications.notifications_letter_callback.process_letter_callback_data.apply_async")
-
-    mock_dvla_callback_data["data"]["jobStatus"] = status
+    data = mock_dvla_callback_data()
+    data["data"]["jobStatus"] = status
 
     client.post(
         url_for(
             "notifications_letter_callback.process_letter_callback",
             token=signing.encode("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
         ),
-        data=json.dumps(mock_dvla_callback_data),
+        data=json.dumps(data),
     )
 
     mock_task.assert_called_once_with(
         queue="notify-internal-tasks",
         kwargs={
             "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
-            "page_count": 5,
+            "page_count": "5",
             "status": status,
         },
     )

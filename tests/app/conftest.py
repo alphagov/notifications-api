@@ -1,3 +1,5 @@
+import collections.abc
+import copy
 import json
 import textwrap
 import uuid
@@ -1170,26 +1172,56 @@ def datetime_in_past(days=0, seconds=0):
     return datetime.now(tz=pytz.utc) - timedelta(days=days, seconds=seconds)
 
 
+def merge_fields(dct, merge_dct):
+    """recursively merges `merge_dct` into `dct`, allowing for the removal of fields by setting them to `None`"""
+    for k, v in merge_dct.items():
+        if v is None:
+            # remove the field from `dct` if the value in `merge_dct` is `None`
+            dct.pop(k, None)
+        elif isinstance(v, collections.abc.Mapping):
+            # recursively merge nested dictionaries
+            dct[k] = merge_fields(dct.get(k, {}), v)
+        else:
+            # otherwise, update or add the field in `dct`
+            dct[k] = v
+    return dct
+
+
 @pytest.fixture(scope="function")
 def mock_dvla_callback_data():
-    return {
-        "specVersion": "version-1",
-        "type": "uk.gov.dvla.osl.print.v1.printjob-webhook-status",
-        "source": "dvla:resource:osl:print:print-hub:5.6.0",
-        "id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
-        "time": "2021-04-01T00:00:00Z",
-        "dataContentType": "application/json",
-        "dataSchema": "print/v1/printjob-webhook-status",
-        "data": {
-            "despatchProperties": {"totalSheets": 5, "postageClass": "2ND", "mailingProduct": "UNSORTED"},
-            "jobId": "9876543251",
-            "jobType": "NOTIFY",
-            "jobStatus": "DESPATCHED",
-            "templateReference": "NOTIFY",
-        },
-        "metadata": {
-            "handler": {"urn": "dvla:resource:osl:print:print-hub:5.6.0"},
-            "origin": {"urn": "dvla:resource:osg:dev:printhub:1.0.1"},
-            "correlationId": "b5d9b2bd-6e8f-4275-bdd3-c8086fe09c52",
-        },
-    }
+    def _mock_dvla_callback_data(overrides=None):
+        # default mock data structure
+        data = {
+            "specVersion": "version-1",
+            "type": "uk.gov.dvla.osl.print.v1.printjob-webhook-status",
+            "source": "dvla:resource:osl:print:print-hub:5.6.0",
+            "id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
+            "time": "2021-04-01T00:00:00Z",
+            "dataContentType": "application/json",
+            "dataSchema": "print/v1/printjob-webhook-status",
+            "data": {
+                "despatchProperties": [
+                    {"key": "totalSheets", "value": "5"},
+                    {"key": "postageClass", "value": "1ST"},
+                    {"key": "mailingProduct", "value": "MM UNSORTED"},
+                    {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+                ],
+                "jobId": "9876543251",
+                "jobType": "NOTIFY",
+                "jobStatus": "DESPATCHED",
+                "templateReference": "NOTIFY",
+            },
+            "metadata": {
+                "handler": {"urn": "dvla:resource:osl:print:print-hub:5.6.0"},
+                "origin": {"urn": "dvla:resource:osg:dev:printhub:1.0.1"},
+                "correlationId": "b5d9b2bd-6e8f-4275-bdd3-c8086fe09c52",
+            },
+        }
+
+        # custom mock data structure
+        if overrides:
+            data = merge_fields(copy.deepcopy(data), overrides)
+
+        return data
+
+    return _mock_dvla_callback_data
