@@ -1142,7 +1142,6 @@ def create_unsubscribe_request_report(service_id):
             count=summary_data["count"],
             earliest_timestamp=summary_data["earliest_timestamp"],
             latest_timestamp=summary_data["latest_timestamp"],
-            processed_by_service_at=summary_data["processed_by_service_at"],
             service_id=service_id,
         )
         create_unsubscribe_request_reports_dao(unsubscribe_request_report)
