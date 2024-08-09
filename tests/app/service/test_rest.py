@@ -3735,13 +3735,12 @@ def test_process_unsubscribe_request_report_raises_error_for_invalid_batch_id(ad
 
 
 def test_create_unsubscribe_request_report(sample_service, admin_request, mocker):
-    date_format = "%Y-%m-%d %H:%M:%S"
     test_id = "2802262c-b6ac-4254-93c3-a83ae7180d96"
     summary_data = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": "2024-07-03 13:30:00",
-        "latest_timestamp": "2024-07-09 21:13:11",
+        "earliest_timestamp": "2024-07-03T13:30:00+01:00",
+        "latest_timestamp": "2024-07-09T21:13:11+01:00",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3758,11 +3757,9 @@ def test_create_unsubscribe_request_report(sample_service, admin_request, mocker
     created_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(id=test_id).one()
     assert response == {"report_id": str(created_unsubscribe_request_report.id)}
     assert summary_data["count"] == created_unsubscribe_request_report.count
-    assert summary_data["earliest_timestamp"] == created_unsubscribe_request_report.earliest_timestamp.strftime(
-        date_format
-    )
-    assert summary_data["latest_timestamp"] == created_unsubscribe_request_report.latest_timestamp.strftime(date_format)
-    assert summary_data["processed_by_service_at"] == created_unsubscribe_request_report.processed_by_service_at
+    assert created_unsubscribe_request_report.earliest_timestamp == datetime(2024, 7, 3, 13, 30)
+    assert created_unsubscribe_request_report.latest_timestamp == datetime(2024, 7, 9, 21, 13, 11)
+    assert created_unsubscribe_request_report.processed_by_service_at is None
     mock_assign_unbatched_requests.assert_called_once_with(
         report_id=created_unsubscribe_request_report.id,
         service_id=created_unsubscribe_request_report.service_id,
