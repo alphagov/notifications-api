@@ -2707,10 +2707,10 @@ class UnsubscribeRequestReport(db.Model):
         return {
             "batch_id": str(self.id),
             "count": self.count,
-            "earliest_timestamp": self.earliest_timestamp.isoformat(),
-            "latest_timestamp": self.latest_timestamp.isoformat(),
+            "earliest_timestamp": self.earliest_timestamp.strftime(DATETIME_FORMAT),
+            "latest_timestamp": self.latest_timestamp.strftime(DATETIME_FORMAT),
             "processed_by_service_at": (
-                self.processed_by_service_at.isoformat() if self.processed_by_service_at else None
+                self.processed_by_service_at.strftime(DATETIME_FORMAT) if self.processed_by_service_at else None
             ),
             "is_a_batched_report": True,
         }
@@ -2720,8 +2720,8 @@ class UnsubscribeRequestReport(db.Model):
         return {
             "batch_id": None,
             "count": len(unbatched_unsubscribe_requests),
-            "earliest_timestamp": unbatched_unsubscribe_requests[-1].created_at.isoformat(),
-            "latest_timestamp": unbatched_unsubscribe_requests[0].created_at.isoformat(),
+            "earliest_timestamp": unbatched_unsubscribe_requests[-1].created_at.strftime(DATETIME_FORMAT),
+            "latest_timestamp": unbatched_unsubscribe_requests[0].created_at.strftime(DATETIME_FORMAT),
             "processed_by_service_at": None,
             "is_a_batched_report": False,
         }
