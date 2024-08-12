@@ -4,10 +4,10 @@ import pytest
 from freezegun import freeze_time
 
 from app.celery.process_letter_client_response_tasks import (
-    check_billable_units_by_id,
     determine_new_status,
     is_duplicate_update,
     process_letter_callback_data,
+    validate_billable_units,
 )
 from app.constants import (
     DVLA_NOTIFICATION_DISPATCHED,
@@ -20,25 +20,25 @@ from app.exceptions import NotificationTechnicalFailureException
 from tests.app.db import create_notification_history
 
 
-def test_check_billable_units_by_id_logs_error_if_billable_units_do_not_match_page_count(
+def test_mock_validate_billable_units_logs_error_if_billable_units_do_not_match_page_count(
     sample_letter_notification,
     caplog,
 ):
-    check_billable_units_by_id(sample_letter_notification, 5)
+    validate_billable_units(sample_letter_notification, "5")
 
     assert (
         f"Notification with id {sample_letter_notification.id} has 1 billable_units but DVLA says page count is 5"
     ) in caplog.messages
 
 
-def test_process_letter_callback_data_checks_billable_units(mocker, sample_letter_notification):
-    mock_check_billable_units = mocker.patch(
-        "app.celery.process_letter_client_response_tasks.check_billable_units_by_id"
+def test_process_letter_callback_data_validate_billable_units(mocker, sample_letter_notification):
+    mock_validate_billable_units = mocker.patch(
+        "app.celery.process_letter_client_response_tasks.validate_billable_units"
     )
 
     process_letter_callback_data(sample_letter_notification.id, 1, DVLA_NOTIFICATION_DISPATCHED)
 
-    mock_check_billable_units.assert_called_once_with(sample_letter_notification, 1)
+    mock_validate_billable_units.assert_called_once_with(sample_letter_notification, 1)
 
 
 @freeze_time("2024-07-05T10:00:00")

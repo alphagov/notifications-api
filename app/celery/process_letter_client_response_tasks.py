@@ -13,7 +13,7 @@ from app.exceptions import NotificationTechnicalFailureException
 def process_letter_callback_data(self, notification_id, page_count, dvla_status):
     notification = dao_get_notification_or_history_by_id(notification_id)
 
-    check_billable_units_by_id(notification, page_count)
+    validate_billable_units(notification, page_count)
 
     new_status = determine_new_status(dvla_status)
 
@@ -35,7 +35,7 @@ def process_letter_callback_data(self, notification_id, page_count, dvla_status)
         )
 
 
-def check_billable_units_by_id(notification, dvla_page_count):
+def validate_billable_units(notification, dvla_page_count):
     if notification.billable_units != int(dvla_page_count):
         current_app.logger.error(
             "Notification with id %s has %s billable_units but DVLA says page count is %s",
