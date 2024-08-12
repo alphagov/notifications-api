@@ -49,6 +49,7 @@ from app.models import (
     UnsubscribeRequestReport,
     User,
 )
+from app.utils import DATETIME_FORMAT
 from tests import create_admin_authorization_header
 from tests.app.db import (
     create_annual_billing,
@@ -3497,14 +3498,11 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
     """
     Test case covers when the initial unsubscribe requests have been received and have not yet been batched.
     """
-    date_format = "%a, %d %b %Y %H:%M:%S"
     template_1 = create_template(
         sample_service,
         template_type=EMAIL_TYPE,
     )
-    notification_1 = create_notification(
-        template=template_1, created_at=(datetime.utcnow() + timedelta(days=-2)).strftime(date_format) + " GMT"
-    )
+    notification_1 = create_notification(template=template_1, created_at=datetime.utcnow() + timedelta(days=-2))
     create_unsubscribe_request_dao(
         {  # noqa
             "notification_id": notification_1.id,
@@ -3519,9 +3517,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
         sample_service,
         template_type=EMAIL_TYPE,
     )
-    notification_2 = create_notification(
-        template=template_2, created_at=(datetime.utcnow() + timedelta(days=-1)).strftime(date_format) + " GMT"
-    )
+    notification_2 = create_notification(template=template_2, created_at=datetime.utcnow() + timedelta(days=-1))
     create_unsubscribe_request_dao(
         {
             "notification_id": notification_2.id,
@@ -3536,8 +3532,8 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
     expected_unbatched_unsubscribe_request_summary = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": notification_1.created_at.isoformat(),
-        "latest_timestamp": notification_2.created_at.isoformat(),
+        "earliest_timestamp": "2024-06-29T12:00:00.000000Z",
+        "latest_timestamp": "2024-06-30T12:00:00.000000Z",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3605,10 +3601,10 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         {
             "batch_id": str(report.id),
             "count": report.count,
-            "earliest_timestamp": report.earliest_timestamp.isoformat(),
-            "latest_timestamp": report.latest_timestamp.isoformat(),
+            "earliest_timestamp": report.earliest_timestamp.strftime(DATETIME_FORMAT),
+            "latest_timestamp": report.latest_timestamp.strftime(DATETIME_FORMAT),
             "processed_by_service_at": (
-                report.processed_by_service_at.isoformat() if report.processed_by_service_at else None
+                report.processed_by_service_at.strftime(DATETIME_FORMAT) if report.processed_by_service_at else None
             ),
             "is_a_batched_report": True,
         }
@@ -3617,8 +3613,8 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     expected_unbatched_unsubscribe_request_summary = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": unbatched_request_1_data["created_at"].isoformat(),
-        "latest_timestamp": unbatched_request_2_data["created_at"].isoformat(),
+        "earliest_timestamp": "2024-06-29T12:00:00.000000Z",
+        "latest_timestamp": "2024-06-30T12:00:00.000000Z",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3739,13 +3735,12 @@ def test_process_unsubscribe_request_report_raises_error_for_invalid_batch_id(ad
 
 
 def test_create_unsubscribe_request_report(sample_service, admin_request, mocker):
-    date_format = "%Y-%m-%d %H:%M:%S"
     test_id = "2802262c-b6ac-4254-93c3-a83ae7180d96"
     summary_data = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": "2024-07-03 13:30:00",
-        "latest_timestamp": "2024-07-09 21:13:11",
+        "earliest_timestamp": "2024-07-03T13:30:00+01:00",
+        "latest_timestamp": "2024-07-09T21:13:11+01:00",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3762,11 +3757,9 @@ def test_create_unsubscribe_request_report(sample_service, admin_request, mocker
     created_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(id=test_id).one()
     assert response == {"report_id": str(created_unsubscribe_request_report.id)}
     assert summary_data["count"] == created_unsubscribe_request_report.count
-    assert summary_data["earliest_timestamp"] == created_unsubscribe_request_report.earliest_timestamp.strftime(
-        date_format
-    )
-    assert summary_data["latest_timestamp"] == created_unsubscribe_request_report.latest_timestamp.strftime(date_format)
-    assert summary_data["processed_by_service_at"] == created_unsubscribe_request_report.processed_by_service_at
+    assert created_unsubscribe_request_report.earliest_timestamp == datetime(2024, 7, 3, 13, 30)
+    assert created_unsubscribe_request_report.latest_timestamp == datetime(2024, 7, 9, 21, 13, 11)
+    assert created_unsubscribe_request_report.processed_by_service_at is None
     mock_assign_unbatched_requests.assert_called_once_with(
         report_id=created_unsubscribe_request_report.id,
         service_id=created_unsubscribe_request_report.service_id,
