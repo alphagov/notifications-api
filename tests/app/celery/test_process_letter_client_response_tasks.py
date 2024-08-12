@@ -114,12 +114,15 @@ def test_process_letter_callback_data_duplicate_update(sample_letter_notificatio
     ) in caplog.messages
 
 
-def test_determine_new_status_dispatched():
-    assert determine_new_status(DVLA_NOTIFICATION_DISPATCHED) == NOTIFICATION_DELIVERED
-
-
-def test_determine_new_status_rejected():
-    assert determine_new_status(DVLA_NOTIFICATION_REJECTED) == NOTIFICATION_TECHNICAL_FAILURE
+@pytest.mark.parametrize(
+    "dvla_status, expected_status",
+    [
+        (DVLA_NOTIFICATION_DISPATCHED, NOTIFICATION_DELIVERED),
+        (DVLA_NOTIFICATION_REJECTED, NOTIFICATION_TECHNICAL_FAILURE),
+    ],
+)
+def test_determine_new_status(dvla_status, expected_status):
+    assert determine_new_status(dvla_status) == expected_status
 
 
 def test_is_duplicate_update_same_status():

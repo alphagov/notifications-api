@@ -1,7 +1,10 @@
 from flask import current_app
 
 from app import notify_celery
-from app.constants import DVLA_NOTIFICATION_DISPATCHED, NOTIFICATION_DELIVERED, NOTIFICATION_TECHNICAL_FAILURE
+from app.constants import (
+    DVLA_TO_NOTIFICATION_STATUS_MAP,
+    NOTIFICATION_TECHNICAL_FAILURE,
+)
 from app.dao.notifications_dao import (
     dao_get_notification_or_history_by_id,
     dao_update_notification,
@@ -46,10 +49,7 @@ def validate_billable_units(notification, dvla_page_count):
 
 
 def determine_new_status(dvla_status):
-    if dvla_status == DVLA_NOTIFICATION_DISPATCHED:
-        return NOTIFICATION_DELIVERED
-
-    return NOTIFICATION_TECHNICAL_FAILURE
+    return DVLA_TO_NOTIFICATION_STATUS_MAP[dvla_status]
 
 
 def is_duplicate_update(current_status, new_status):
