@@ -1802,6 +1802,49 @@ def test_get_notifications_for_service_pagination_links(
     assert "next" not in resp["links"]
 
 
+def test_get_notifications_for_service_with_paginate_by_older_than(
+    admin_request,
+    sample_job,
+    sample_template,
+    sample_user,
+):
+    oldest_notification = create_notification(sample_template)
+    end_of_page_1_notification = create_notification(sample_template)
+    create_notification(sample_template)
+
+    page_size = 2
+
+    page_1_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+    )
+
+    assert f"older_than={str(end_of_page_1_notification.id)}" in page_1_response["links"]["next"]
+
+    page_2_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+        older_than=end_of_page_1_notification.id,
+    )
+    # even though this is the oldest notification, we give a next link - to avoid querying next page.
+    # last page being occasionally empty is ok - as the output is only utilised to create a CSV with no pages
+    assert f"older_than={str(oldest_notification.id)}" in page_2_response["links"]["next"]
+
+    page_3_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+        older_than=oldest_notification.id,
+    )
+    # no next link as current page is empty
+    assert not page_3_response["links"].get("next")
+
+
 @pytest.mark.parametrize(
     "should_prefix",
     [
