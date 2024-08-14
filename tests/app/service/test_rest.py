@@ -1783,23 +1783,31 @@ def test_get_notifications_for_service_pagination_links(
     sample_template,
     sample_user,
 ):
-    for _ in range(101):
+    for _ in range(11):
         create_notification(sample_template, to_field="+447700900855", normalised_to="447700900855")
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id)
+    page_size = 5
 
-    assert "prev" not in resp["links"]
-    assert "?page=2" in resp["links"]["next"]
+    page_1_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page_size=page_size
+    )
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id, page=2)
+    assert "prev" not in page_1_response["links"]
+    assert "?page=2" in page_1_response["links"]["next"]
 
-    assert "?page=1" in resp["links"]["prev"]
-    assert "?page=3" in resp["links"]["next"]
+    page_2_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page=2, page_size=page_size
+    )
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id, page=3)
+    assert "?page=1" in page_2_response["links"]["prev"]
+    assert "?page=3" in page_2_response["links"]["next"]
 
-    assert "?page=2" in resp["links"]["prev"]
-    assert "next" not in resp["links"]
+    page_3_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page=3, page_size=page_size
+    )
+
+    assert "?page=2" in page_3_response["links"]["prev"]
+    assert "next" not in page_3_response["links"]
 
 
 def test_get_notifications_for_service_with_paginate_by_older_than(
