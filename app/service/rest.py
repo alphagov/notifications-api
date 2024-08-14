@@ -506,6 +506,22 @@ def get_all_notifications_for_service(service_id):
     )
 
 
+@service_blueprint.route("/<uuid:service_id>/notifications/count", methods=["GET"])
+def count_notifications_for_service(service_id):
+    data = notifications_filter_schema.load(request.args)
+
+    multidict = MultiDict(data)
+
+    notification_count = notifications_dao.count_notifications_for_service(
+        service_id=service_id,
+        status=multidict.getlist("status"),
+        template_type=multidict.getlist("template_type"),
+        limit_days=data.get("limit_days"),
+    )
+
+    return jsonify({"count": notification_count}), 200
+
+
 @service_blueprint.route("/<uuid:service_id>/notifications/<uuid:notification_id>", methods=["GET"])
 def get_notification_for_service(service_id, notification_id):
     notification = notifications_dao.get_notification_with_personalisation(

@@ -3875,3 +3875,33 @@ def test_update_service_set_custom_email_sender_name_sets_email_sender_local_par
 
     assert new_history.version == 3
     assert new_history.email_sender_local_part == expected_email_sender_local_part
+
+
+@pytest.mark.parametrize(
+    "payload,expected_status_code,expected_response",
+    [
+        (
+            {
+                "status": ["delivered", "failed"],
+                "template_type": "sms",
+                "limit_days": 7,
+            },
+            200,
+            {"count": 1},
+        ),
+    ],
+)
+@freeze_time("2023-08-10")
+def test_count_notifications_for_service(
+    admin_request, sample_template, payload, expected_status_code, expected_response
+):
+    create_notification(template=sample_template, status="delivered", created_at=datetime.now() - timedelta(days=1))
+
+    resp = admin_request.get(
+        "service.count_notifications_for_service",
+        service_id=sample_template.service_id,
+        _expected_status=expected_status_code,
+        **payload,
+    )
+
+    assert resp == expected_response
