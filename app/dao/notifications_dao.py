@@ -294,6 +294,29 @@ def get_notifications_for_service(
     )
 
 
+def count_notifications_for_service(
+    service_id,
+    status,
+    template_type,
+    limit_days,
+):
+    filters = [
+        Notification.service_id == service_id,
+        Notification.created_at >= midnight_n_days_ago(limit_days),
+        Notification.status.in_(status),
+    ]
+
+    query = Notification.query.filter(*filters)
+
+    if status:
+        converted_status = Notification.substitute_status(status)
+        query.filter(Notification.status.in_(converted_status))
+
+    query.filter(Notification.notification_type.in_([template_type]))
+
+    return query.count()
+
+
 def _filter_query(query, filter_dict=None):
     if filter_dict is None:
         return query
