@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -19,6 +20,7 @@ from app.dao.fact_billing_dao import (
     fetch_usage_for_service_annual,
     fetch_usage_for_service_by_month,
     fetch_volumes_by_service,
+    get_count_of_notifications_sent,
     get_rate,
     get_rates_for_billing,
     update_ft_billing_letter_despatch,
@@ -1460,3 +1462,71 @@ class TestUpdateFtBillingLetterDespatch:
         assert facts[0].postage == "first"
         assert facts[0].notifications_sent == 1
         assert facts[0].updated_at == datetime(2023, 1, 1, 12, 0, 0)
+
+
+NotificationCountTestCase = namedtuple(
+    "NotificationCountTestCase", ["notifications_data", "template_types", "limit_days", "expected_count"]
+)
+
+test_cases = [
+    NotificationCountTestCase(
+        notifications_data=[
+            {"bst_date": "2023-08-09", "template_type": "sms", "notifications_sent": 2},
+            {"bst_date": "2023-08-08", "template_type": "sms", "notifications_sent": 3},
+            {"bst_date": "2023-08-07", "template_type": "email", "notifications_sent": 4},
+            {"bst_date": "2023-07-25", "template_type": "sms", "notifications_sent": 20},  # Before limit_days
+        ],
+        template_types=["sms", "email"],
+        limit_days=7,
+        expected_count=9,  # 2+3+4
+    ),
+    NotificationCountTestCase(
+        notifications_data=[
+            {"bst_date": "2023-08-09", "template_type": "sms", "notifications_sent": 2},
+            {"bst_date": "2023-08-08", "template_type": "sms", "notifications_sent": 3},
+            {"bst_date": "2023-08-07", "template_type": "email", "notifications_sent": 4},
+            {"bst_date": "2023-07-25", "template_type": "sms", "notifications_sent": 20},  # Before limit_days
+        ],
+        template_types=["sms"],
+        limit_days=7,
+        expected_count=5,  # 2+3
+    ),
+    NotificationCountTestCase(
+        notifications_data=[
+            {"bst_date": "2023-08-01", "template_type": "sms", "notifications_sent": 10},
+            {"bst_date": "2023-08-02", "template_type": "sms", "notifications_sent": 15},
+            {"bst_date": "2023-08-03", "template_type": "email", "notifications_sent": 5},
+            {"bst_date": "2023-07-25", "template_type": "sms", "notifications_sent": 20},  # Before limit_days
+        ],
+        template_types=["sms", "email"],
+        limit_days=2,
+        expected_count=0,  # No notifications within the last 2 days
+    ),
+]
+
+
+@freeze_time("2023-08-10")
+@pytest.mark.parametrize(
+    "test_case",
+    test_cases,
+    ids=["All template types within 7 days", "Only SMS template type within 7 days", "Limit days exclude all data"],
+)
+def test_get_count_of_notifications_sent(sample_service, test_case):
+    assert len(FactBilling.query.all()) == 0
+
+    sms_template = create_template(service=sample_service, template_type="sms")
+    email_template = create_template(service=sample_service, template_type="email")
+
+    for notification_data in test_case.notifications_data:
+        template = sms_template if notification_data["template_type"] == "sms" else email_template
+        create_ft_billing(
+            bst_date=notification_data["bst_date"],
+            template=template,
+            notifications_sent=notification_data["notifications_sent"],
+        )
+
+    count = get_count_of_notifications_sent(
+        service_id=sample_service.id, template_types=test_case.template_types, limit_days=test_case.limit_days
+    )
+
+    assert count == test_case.expected_count
