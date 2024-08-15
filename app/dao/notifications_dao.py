@@ -297,24 +297,30 @@ def get_notifications_for_service(
 def count_notifications_for_service(
     service_id,
     status,
-    template_type,
+    template_types,
     limit_days,
 ):
-    filters = [
-        Notification.service_id == service_id,
-        Notification.created_at >= midnight_n_days_ago(limit_days),
-        Notification.status.in_(status),
-    ]
+    query = """
+    SELECT COUNT(*) FROM (
+        SELECT 1 FROM notifications
+        WHERE service_id = :service_id
+        AND created_at >= :created_at
+        AND notification_status IN :status
+        AND notification_type IN :template_types
+    ) AS subquery
+    """
 
-    query = Notification.query.filter(*filters)
+    converted_status = Notification.substitute_status(status)
 
-    if status:
-        converted_status = Notification.substitute_status(status)
-        query.filter(Notification.status.in_(converted_status))
+    params = {
+        "service_id": service_id,
+        "created_at": midnight_n_days_ago(limit_days),
+        "status": tuple(converted_status),
+        "template_types": tuple(template_types),
+    }
 
-    query.filter(Notification.notification_type.in_([template_type]))
-
-    return query.count()
+    result = db.session.execute(query, params)
+    return result.scalar()
 
 
 def _filter_query(query, filter_dict=None):

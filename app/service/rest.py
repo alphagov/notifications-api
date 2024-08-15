@@ -515,7 +515,7 @@ def count_notifications_for_service(service_id):
     notification_count = notifications_dao.count_notifications_for_service(
         service_id=service_id,
         status=multidict.getlist("status"),
-        template_type=multidict.getlist("template_type"),
+        template_types=multidict.getlist("template_type"),
         limit_days=data.get("limit_days"),
     )
 
