@@ -4,7 +4,15 @@ from sqlalchemy import desc, func
 
 from app import db
 from app.dao.dao_utils import autocommit
-from app.models import Job, Notification, NotificationHistory, Template, UnsubscribeRequest, UnsubscribeRequestReport
+from app.models import (
+    Job,
+    Notification,
+    NotificationHistory,
+    Template,
+    UnsubscribeRequest,
+    UnsubscribeRequestHistory,
+    UnsubscribeRequestReport,
+)
 from app.utils import midnight_n_days_ago
 
 
@@ -121,3 +129,42 @@ def assign_unbatched_unsubscribe_requests_to_report_dao(report_id, service_id, e
         UnsubscribeRequest.created_at >= earliest_timestamp,
         UnsubscribeRequest.created_at <= latest_timestamp,
     ).update({"unsubscribe_request_report_id": report_id})
+
+
+def get_service_ids_with_unsubscribe_requests():
+    return {row.service_id for row in UnsubscribeRequest.query.distinct()}
+
+
+def dao_archive_processed_unsubscribe_requests(service_id):
+    return archive_unsubscribe_requests_from_query(
+        UnsubscribeRequest.query.join(
+            UnsubscribeRequestReport,
+            UnsubscribeRequest.unsubscribe_request_report_id == UnsubscribeRequestReport.id,
+        ).filter(
+            UnsubscribeRequestReport.processed_by_service_at < midnight_n_days_ago(7),
+            UnsubscribeRequest.service_id == service_id,
+        )
+    )
+
+
+def dao_archive_old_unsubscribe_requests(service_id):
+    return archive_unsubscribe_requests_from_query(
+        UnsubscribeRequest.query.filter(
+            UnsubscribeRequest.created_at < midnight_n_days_ago(90),
+            UnsubscribeRequest.service_id == service_id,
+        )
+    )
+
+
+def archive_unsubscribe_requests_from_query(query):
+    rows = [unsubscribe_request.serialize_for_history() for unsubscribe_request in query.all()]
+
+    if not rows:
+        return 0
+
+    db.session.execute(UnsubscribeRequestHistory.__table__.insert().values(rows))
+    delete_result = db.session.execute(
+        UnsubscribeRequest.__table__.delete().where(UnsubscribeRequest.id.in_({row["id"] for row in rows}))
+    )
+
+    return delete_result.rowcount

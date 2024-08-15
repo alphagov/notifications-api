@@ -2780,6 +2780,11 @@ class UnsubscribeRequest(db.Model):
         Index("ix_unsubscribe_request_unsubscribe_request_report_id", "unsubscribe_request_report_id"),
     )
 
+    def serialize_for_history(self):
+        return {
+            column.key: getattr(self, column.key) for column in self.__table__.columns if column.key != "email_address"
+        }
+
 
 class UnsubscribeRequestHistory(db.Model):
     __tablename__ = "unsubscribe_request_history"
@@ -2793,7 +2798,6 @@ class UnsubscribeRequestHistory(db.Model):
     template_id = db.Column(UUID(as_uuid=True), nullable=False)
     template_version = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
-    processed_at = db.Column(db.DateTime)
     unsubscribe_request_report_id = db.Column(UUID(as_uuid=True), index=True, nullable=True)
 
 

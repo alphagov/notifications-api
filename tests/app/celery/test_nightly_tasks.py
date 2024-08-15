@@ -12,6 +12,9 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 from app.celery import nightly_tasks
 from app.celery.nightly_tasks import (
     _delete_notifications_older_than_retention_by_type,
+    archive_old_unsubscribe_requests,
+    archive_processed_unsubscribe_requests,
+    archive_unsubscribe_requests,
     delete_email_notifications_older_than_retention,
     delete_inbound_sms,
     delete_letter_notifications_older_than_retention,
@@ -27,13 +30,16 @@ from app.celery.nightly_tasks import (
     timeout_notifications,
 )
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
-from app.models import FactProcessingTime
+from app.models import FactProcessingTime, UnsubscribeRequest, UnsubscribeRequestHistory, UnsubscribeRequestReport
+from app.utils import midnight_n_days_ago
 from tests.app.db import (
     create_job,
     create_notification,
     create_service,
     create_service_data_retention,
     create_template,
+    create_unsubscribe_request,
+    create_unsubscribe_request_report,
 )
 
 
@@ -127,6 +133,112 @@ def test_remove_csv_files_filters_by_type(mocker, sample_service):
     assert s3.remove_job_from_s3.call_args_list == [
         call(job_to_delete.service_id, job_to_delete.id),
     ]
+
+
+def test_archive_unsubscribe_requests(notify_db_session, mocker):
+    mock_archive_processed = mocker.patch("app.celery.nightly_tasks.archive_processed_unsubscribe_requests.apply_async")
+    mock_archive_old = mocker.patch("app.celery.nightly_tasks.archive_old_unsubscribe_requests.apply_async")
+
+    services_with_requests = [create_service(service_name=f"Unsubscribe service {i}") for i in range(3)]
+    [create_service(service_name=f"Normal service {i}") for i in range(3)]
+
+    for service in services_with_requests:
+        create_unsubscribe_request(service)
+
+    archive_unsubscribe_requests()
+
+    assert (
+        {call[1]["args"][0] for call in mock_archive_processed.call_args_list}
+        == {call[1]["args"][0] for call in mock_archive_old.call_args_list}
+        == {service.id for service in services_with_requests}
+    )
+
+    assert (
+        [call[1]["queue"] for call in mock_archive_processed.call_args_list]
+        == [call[1]["queue"] for call in mock_archive_old.call_args_list]
+        == [
+            "reporting-tasks",
+            "reporting-tasks",
+            "reporting-tasks",
+        ]
+    )
+
+
+def test_archive_processed_unsubscribe_requests(sample_service):
+    unsubscribe_request_report_1 = create_unsubscribe_request_report(
+        sample_service,
+        earliest_timestamp=midnight_n_days_ago(12),
+        latest_timestamp=midnight_n_days_ago(10),
+        processed_by_service_at=midnight_n_days_ago(9),
+    )
+    unsubscribe_request_report_2 = create_unsubscribe_request_report(
+        sample_service,
+        earliest_timestamp=midnight_n_days_ago(9),
+        latest_timestamp=midnight_n_days_ago(8),
+        processed_by_service_at=midnight_n_days_ago(8),
+    )
+    unsubscribe_request_report_3 = create_unsubscribe_request_report(
+        sample_service,
+        earliest_timestamp=midnight_n_days_ago(7),
+        latest_timestamp=midnight_n_days_ago(4),
+        processed_by_service_at=midnight_n_days_ago(3),
+    )
+
+    another_service = create_service(service_name="Another service")
+
+    for service, created_days_ago, report_id in (
+        (sample_service, 12, unsubscribe_request_report_1.id),
+        (sample_service, 10, unsubscribe_request_report_1.id),
+        (another_service, 9, unsubscribe_request_report_2.id),
+        (another_service, 8, unsubscribe_request_report_2.id),
+        (another_service, 7, unsubscribe_request_report_3.id),
+        (another_service, 4, unsubscribe_request_report_3.id),
+        (another_service, 4, None),
+    ):
+        create_unsubscribe_request(
+            service, created_at=midnight_n_days_ago(created_days_ago), unsubscribe_request_report_id=report_id
+        )
+
+    archive_processed_unsubscribe_requests(sample_service.id)
+    created_unsubscribe_request_history_objects = UnsubscribeRequestHistory.query.all()
+    remaining_unsubscribe_requests = UnsubscribeRequest.query.all()
+    UnsubscribeRequestReport.query.all()
+    assert len(created_unsubscribe_request_history_objects) == 2
+    assert len(remaining_unsubscribe_requests) == 5
+
+
+def test_archive_old_unsubscribe_requests(sample_service):
+    unsubscribe_request_report = create_unsubscribe_request_report(
+        sample_service,
+        earliest_timestamp=midnight_n_days_ago(12),
+        latest_timestamp=midnight_n_days_ago(10),
+        processed_by_service_at=midnight_n_days_ago(9),
+    )
+
+    another_service = create_service(service_name="Another service")
+    service_with_no_old_requests = create_service(service_name="No old requests")
+
+    for service, created_days_ago, report_id in (
+        (service_with_no_old_requests, 1, None),
+        (sample_service, 90, unsubscribe_request_report.id),
+        (sample_service, 90, None),
+        (another_service, 90, None),
+        (sample_service, 91, unsubscribe_request_report.id),
+        (sample_service, 91, None),
+        (another_service, 91, None),
+    ):
+        create_unsubscribe_request(
+            service, created_at=midnight_n_days_ago(created_days_ago), unsubscribe_request_report_id=report_id
+        )
+
+    for service in (sample_service, another_service, service_with_no_old_requests):
+        archive_old_unsubscribe_requests(service.id)
+
+    created_unsubscribe_request_history_objects = UnsubscribeRequestHistory.query.all()
+    remaining_unsubscribe_requests = UnsubscribeRequest.query.all()
+    UnsubscribeRequestReport.query.all()
+    assert len(created_unsubscribe_request_history_objects) == 3
+    assert len(remaining_unsubscribe_requests) == 4
 
 
 def test_delete_sms_notifications_older_than_retention_calls_child_task(notify_api, mocker):
