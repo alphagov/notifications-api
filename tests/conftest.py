@@ -8,7 +8,7 @@ import freezegun
 import pytest
 import sqlalchemy
 
-from app import create_app, db
+from app import create_app, db, reset_memos
 from app.authentication.auth import requires_admin_auth, requires_no_auth
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.notify_api_flask_app import NotifyApiFlaskApp
@@ -54,6 +54,7 @@ def notify_api():
     yield app
 
     ctx.pop()
+    reset_memos()
 
 
 @pytest.fixture(scope="function")

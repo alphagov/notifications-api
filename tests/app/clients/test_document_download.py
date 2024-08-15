@@ -10,7 +10,6 @@ from app.clients.document_download import (
 
 @pytest.fixture(scope="function")
 def document_download(client, mocker):
-    client = DocumentDownloadClient()
     current_app = mocker.Mock(
         config={
             "DOCUMENT_DOWNLOAD_API_HOST": "https://document-download",
@@ -18,7 +17,7 @@ def document_download(client, mocker):
             "DOCUMENT_DOWNLOAD_API_KEY": "test-key",
         },
     )
-    client.init_app(current_app)
+    client = DocumentDownloadClient(current_app)
     return client
 
 
