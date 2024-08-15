@@ -16,7 +16,7 @@ class DocumentDownloadError(Exception):
 
 
 class DocumentDownloadClient:
-    def init_app(self, app):
+    def __init__(self, app):
         self.api_host_external = app.config["DOCUMENT_DOWNLOAD_API_HOST"]
         self.api_host_internal = app.config["DOCUMENT_DOWNLOAD_API_HOST_INTERNAL"]
         self.auth_token = app.config["DOCUMENT_DOWNLOAD_API_KEY"]

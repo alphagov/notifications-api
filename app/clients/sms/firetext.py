@@ -46,8 +46,8 @@ class FiretextClient(SmsClient):
     FireText sms client.
     """
 
-    def init_app(self, *args, **kwargs):
-        super().init_app(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.api_key = self.current_app.config.get("FIRETEXT_API_KEY")
         self.international_api_key = self.current_app.config.get("FIRETEXT_INTERNATIONAL_API_KEY")
         self.url = self.current_app.config.get("FIRETEXT_URL")

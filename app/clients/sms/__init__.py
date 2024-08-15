@@ -20,7 +20,8 @@ class SmsClient(Client):
     Base Sms client for sending smss.
     """
 
-    def init_app(self, current_app, statsd_client):
+    def __init__(self, current_app, statsd_client):
+        super().__init__()
         self.current_app = current_app
         self.statsd_client = statsd_client
 

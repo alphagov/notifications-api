@@ -570,10 +570,8 @@ def create_mock_firetext_config(mocker, additional_config=None):
 
 
 def create_mock_firetext_client(mocker, mock_config):
-    client = FiretextClient()
     statsd_client = mocker.Mock()
-    client.init_app(mock_config, statsd_client)
-    return client
+    return FiretextClient(mock_config, statsd_client)
 
 
 @pytest.fixture(scope="function")
@@ -591,7 +589,6 @@ def mock_firetext_client_with_receipts(mocker):
 
 @pytest.fixture(scope="function")
 def mock_mmg_client_with_receipts(mocker):
-    client = MMGClient()
     statsd_client = mocker.Mock()
     current_app = mocker.Mock(
         config={
@@ -600,8 +597,7 @@ def mock_mmg_client_with_receipts(mocker):
             "MMG_RECEIPT_URL": "https://www.example.com/notifications/sms/mmg",
         }
     )
-    client.init_app(current_app, statsd_client)
-    return client
+    return MMGClient(current_app, statsd_client)
 
 
 @pytest.fixture(scope="function")

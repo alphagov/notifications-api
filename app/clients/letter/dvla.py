@@ -117,7 +117,7 @@ class DVLAClient:
     _jwt_token = None
     _jwt_expires_at = None
 
-    def init_app(self, application, *, statsd_client):
+    def __init__(self, application, *, statsd_client):
         self.base_url = application.config["DVLA_API_BASE_URL"]
         self.ciphers = application.config["DVLA_API_TLS_CIPHERS"]
         ssm_client = boto3.client("ssm", region_name=application.config["AWS_REGION"])

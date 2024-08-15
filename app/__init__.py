@@ -3,6 +3,8 @@ import random
 import string
 import time
 import uuid
+from contextvars import ContextVar
+from functools import partial
 from time import monotonic
 
 from celery import current_task
@@ -25,6 +27,7 @@ from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.signing.signing_client import Signing
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
+from notifications_utils.local_vars import LazyLocalGetter
 from sqlalchemy import event
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
@@ -42,17 +45,11 @@ db = SQLAlchemy()
 migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
-firetext_client = FiretextClient()
-mmg_client = MMGClient()
-aws_ses_client = AwsSesClient()
-aws_ses_stub_client = AwsSesStubClient()
-dvla_client = DVLAClient()
 signing = Signing()
 zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
 cbc_proxy_client = CBCProxyClient()
-document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()
 
 notification_provider_clients = NotificationProviderClients()
@@ -64,6 +61,60 @@ CONCURRENT_REQUESTS = Gauge(
     "concurrent_web_request_count",
     "How many concurrent requests are currently being served",
 )
+
+
+def _error_factory(name: str):
+    # this is a placeholder factory implementation that should never get called, instead
+    # being replaced by one created by create_app once an `application` is available to
+    # initialize it with
+    raise LookupError(f"{name} not ready yet: must be initialized & populated by create_app")
+
+
+#
+# "clients" that need thread-local copies
+#
+
+_firetext_client_context_var: ContextVar[FiretextClient] = ContextVar("firetext_client")
+get_firetext_client: LazyLocalGetter[FiretextClient] = LazyLocalGetter(
+    _firetext_client_context_var,
+    partial(_error_factory, "firetext client"),
+)
+firetext_client = LocalProxy(get_firetext_client)
+
+_mmg_client_context_var: ContextVar[MMGClient] = ContextVar("mmg_client")
+get_mmg_client: LazyLocalGetter[MMGClient] = LazyLocalGetter(
+    _mmg_client_context_var,
+    partial(_error_factory, "mmg client"),
+)
+mmg_client = LocalProxy(get_mmg_client)
+
+_aws_ses_client_context_var: ContextVar[AwsSesClient] = ContextVar("aws_ses_client")
+get_aws_ses_client: LazyLocalGetter[AwsSesClient] = LazyLocalGetter(
+    _aws_ses_client_context_var,
+    partial(_error_factory, "aws ses client"),
+)
+aws_ses_client = LocalProxy(get_aws_ses_client)
+
+_aws_ses_stub_client_context_var: ContextVar[AwsSesStubClient] = ContextVar("aws_ses_stub_client")
+get_aws_ses_stub_client: LazyLocalGetter[AwsSesStubClient] = LazyLocalGetter(
+    _aws_ses_stub_client_context_var,
+    partial(_error_factory, "aws ses stub client"),
+)
+aws_ses_stub_client = LocalProxy(get_aws_ses_stub_client)
+
+_dvla_client_context_var: ContextVar[DVLAClient] = ContextVar("dvla_client")
+get_dvla_client: LazyLocalGetter[DVLAClient] = LazyLocalGetter(
+    _dvla_client_context_var,
+    partial(_error_factory, "dvla client"),
+)
+dvla_client = LocalProxy(get_dvla_client)
+
+_document_download_client_context_var: ContextVar[DocumentDownloadClient] = ContextVar("document_download_client")
+get_document_download_client: LazyLocalGetter[DocumentDownloadClient] = LazyLocalGetter(
+    _document_download_client_context_var,
+    partial(_error_factory, "document download client"),
+)
+document_download_client = LocalProxy(get_document_download_client)
 
 
 def create_app(application):
@@ -91,21 +142,37 @@ def create_app(application):
     zendesk_client.init_app(application)
     statsd_client.init_app(application)
     logging.init_app(application, statsd_client)
-    firetext_client.init_app(application, statsd_client=statsd_client)
-    mmg_client.init_app(application, statsd_client=statsd_client)
-    dvla_client.init_app(application, statsd_client=statsd_client)
-    aws_ses_client.init_app(application.config["AWS_REGION"], statsd_client=statsd_client)
-    aws_ses_stub_client.init_app(
-        application.config["AWS_REGION"], statsd_client=statsd_client, stub_url=application.config["SES_STUB_URL"]
+
+    get_firetext_client.factory = partial(FiretextClient, application, statsd_client=statsd_client)
+    get_firetext_client.clear()
+
+    get_mmg_client.factory = partial(MMGClient, application, statsd_client=statsd_client)
+    get_mmg_client.clear()
+
+    get_aws_ses_client.factory = partial(AwsSesClient, application.config["AWS_REGION"], statsd_client=statsd_client)
+    get_aws_ses_client.clear()
+
+    get_aws_ses_stub_client.factory = partial(
+        AwsSesStubClient,
+        application.config["AWS_REGION"],
+        statsd_client=statsd_client,
+        stub_url=application.config["SES_STUB_URL"],
     )
+    get_aws_ses_stub_client.clear()
+
     # If a stub url is provided for SES, then use the stub client rather than the real SES boto client
     email_clients = [aws_ses_stub_client] if application.config["SES_STUB_URL"] else [aws_ses_client]
     notification_provider_clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
 
+    get_dvla_client.factory = partial(DVLAClient, application, statsd_client=statsd_client)
+    get_dvla_client.clear()
+
+    get_document_download_client.factory = partial(DocumentDownloadClient, application)
+    get_document_download_client.clear()
+
     notify_celery.init_app(application)
     signing.init_app(application)
     redis_store.init_app(application)
-    document_download_client.init_app(application)
 
     cbc_proxy_client.init_app(application)
 
