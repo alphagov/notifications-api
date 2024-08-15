@@ -80,8 +80,8 @@ class MMGClient(SmsClient):
 
     name = "mmg"
 
-    def init_app(self, *args, **kwargs):
-        super().init_app(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.api_key = self.current_app.config.get("MMG_API_KEY")
         self.mmg_url = self.current_app.config.get("MMG_URL")
         self.receipt_url = self.current_app.config.get("MMG_RECEIPT_URL")

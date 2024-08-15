@@ -3,6 +3,8 @@ import random
 import string
 import time
 import uuid
+from collections.abc import Callable
+from contextvars import ContextVar
 from time import monotonic
 
 from celery import current_task
@@ -25,6 +27,7 @@ from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.signing.signing_client import Signing
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
+from notifications_utils.local_vars import LazyLocalGetter
 from sqlalchemy import event
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
@@ -42,20 +45,12 @@ db = SQLAlchemy()
 migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
-firetext_client = FiretextClient()
-mmg_client = MMGClient()
-aws_ses_client = AwsSesClient()
-aws_ses_stub_client = AwsSesStubClient()
-dvla_client = DVLAClient()
 signing = Signing()
 zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
 cbc_proxy_client = CBCProxyClient()
-document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()
-
-notification_provider_clients = NotificationProviderClients()
 
 api_user = LocalProxy(lambda: g.api_user)
 authenticated_service = LocalProxy(lambda: g.authenticated_service)
@@ -64,6 +59,93 @@ CONCURRENT_REQUESTS = Gauge(
     "concurrent_web_request_count",
     "How many concurrent requests are currently being served",
 )
+
+memo_resetters: list[Callable] = []
+
+#
+# "clients" that need thread-local copies
+#
+
+_firetext_client_context_var: ContextVar[FiretextClient] = ContextVar("firetext_client")
+get_firetext_client: LazyLocalGetter[FiretextClient] = LazyLocalGetter(
+    _firetext_client_context_var,
+    lambda: FiretextClient(current_app, statsd_client=statsd_client),
+    expected_type=FiretextClient,
+)
+memo_resetters.append(lambda: get_firetext_client.clear())
+firetext_client = LocalProxy(get_firetext_client)
+
+_mmg_client_context_var: ContextVar[MMGClient] = ContextVar("mmg_client")
+get_mmg_client: LazyLocalGetter[MMGClient] = LazyLocalGetter(
+    _mmg_client_context_var,
+    lambda: MMGClient(current_app, statsd_client=statsd_client),
+    expected_type=MMGClient,
+)
+memo_resetters.append(lambda: get_mmg_client.clear())
+mmg_client = LocalProxy(get_mmg_client)
+
+_aws_ses_client_context_var: ContextVar[AwsSesClient] = ContextVar("aws_ses_client")
+get_aws_ses_client: LazyLocalGetter[AwsSesClient] = LazyLocalGetter(
+    _aws_ses_client_context_var,
+    lambda: AwsSesClient(current_app.config["AWS_REGION"], statsd_client=statsd_client),
+    expected_type=AwsSesClient,
+)
+memo_resetters.append(lambda: get_aws_ses_client.clear())
+aws_ses_client = LocalProxy(get_aws_ses_client)
+
+_aws_ses_stub_client_context_var: ContextVar[AwsSesStubClient] = ContextVar("aws_ses_stub_client")
+get_aws_ses_stub_client: LazyLocalGetter[AwsSesStubClient] = LazyLocalGetter(
+    _aws_ses_stub_client_context_var,
+    lambda: AwsSesStubClient(
+        current_app.config["AWS_REGION"],
+        statsd_client=statsd_client,
+        stub_url=current_app.config["SES_STUB_URL"],
+    ),
+    expected_type=AwsSesStubClient,
+)
+memo_resetters.append(lambda: get_aws_ses_stub_client.clear())
+aws_ses_stub_client = LocalProxy(get_aws_ses_stub_client)
+
+_notification_provider_clients_context_var: ContextVar[NotificationProviderClients] = ContextVar(
+    "notification_provider_clients"
+)
+get_notification_provider_clients: LazyLocalGetter[NotificationProviderClients] = LazyLocalGetter(
+    _notification_provider_clients_context_var,
+    lambda: NotificationProviderClients(
+        sms_clients={
+            getter.expected_type.name: LocalProxy(getter)
+            for getter in (
+                get_firetext_client,
+                get_mmg_client,
+            )
+        },
+        email_clients={
+            getter.expected_type.name: LocalProxy(getter)
+            # If a stub url is provided for SES, then use the stub client rather
+            # than the real SES boto client
+            for getter in ((get_aws_ses_stub_client,) if current_app.config["SES_STUB_URL"] else (get_aws_ses_client,))
+        },
+    ),
+)
+memo_resetters.append(lambda: get_notification_provider_clients.clear())
+notification_provider_clients = LocalProxy(get_notification_provider_clients)
+
+
+_dvla_client_context_var: ContextVar[DVLAClient] = ContextVar("dvla_client")
+get_dvla_client: LazyLocalGetter[DVLAClient] = LazyLocalGetter(
+    _dvla_client_context_var,
+    lambda: DVLAClient(current_app, statsd_client=statsd_client),
+)
+memo_resetters.append(lambda: get_dvla_client.clear())
+dvla_client = LocalProxy(get_dvla_client)
+
+_document_download_client_context_var: ContextVar[DocumentDownloadClient] = ContextVar("document_download_client")
+get_document_download_client: LazyLocalGetter[DocumentDownloadClient] = LazyLocalGetter(
+    _document_download_client_context_var,
+    lambda: DocumentDownloadClient(current_app),
+)
+memo_resetters.append(lambda: get_document_download_client.clear())
+document_download_client = LocalProxy(get_document_download_client)
 
 
 def create_app(application):
@@ -91,21 +173,10 @@ def create_app(application):
     zendesk_client.init_app(application)
     statsd_client.init_app(application)
     logging.init_app(application, statsd_client)
-    firetext_client.init_app(application, statsd_client=statsd_client)
-    mmg_client.init_app(application, statsd_client=statsd_client)
-    dvla_client.init_app(application, statsd_client=statsd_client)
-    aws_ses_client.init_app(application.config["AWS_REGION"], statsd_client=statsd_client)
-    aws_ses_stub_client.init_app(
-        application.config["AWS_REGION"], statsd_client=statsd_client, stub_url=application.config["SES_STUB_URL"]
-    )
-    # If a stub url is provided for SES, then use the stub client rather than the real SES boto client
-    email_clients = [aws_ses_stub_client] if application.config["SES_STUB_URL"] else [aws_ses_client]
-    notification_provider_clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
 
     notify_celery.init_app(application)
     signing.init_app(application)
     redis_store.init_app(application)
-    document_download_client.init_app(application)
 
     cbc_proxy_client.init_app(application)
 
@@ -121,6 +192,14 @@ def create_app(application):
     setup_sqlalchemy_events(application)
 
     return application
+
+
+def reset_memos():
+    """
+    Reset all memos registered in memo_resetters
+    """
+    for resetter in memo_resetters:
+        resetter()
 
 
 def register_blueprint(application):
