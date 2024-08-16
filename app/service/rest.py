@@ -516,7 +516,7 @@ def count_notifications_for_service(service_id):
     template_types = multidict.getlist("template_type")
 
     # set default values for template_types and limit_days
-    if limit_days is None or limit_days == 0:
+    if not limit_days:
         limit_days = 7
 
     if not template_types:
