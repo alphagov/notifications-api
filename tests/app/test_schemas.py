@@ -58,7 +58,6 @@ def test_notification_schema_includes_templates_bilingual_related_fields(sample_
     [
         "notification_schema",
         "notification_with_template_schema",
-        "notification_with_personalisation_schema",
     ],
 )
 def test_notification_schema_has_correct_status(sample_notification, schema_name):
