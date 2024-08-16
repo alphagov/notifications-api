@@ -3877,31 +3877,55 @@ def test_update_service_set_custom_email_sender_name_sets_email_sender_local_par
     assert new_history.email_sender_local_part == expected_email_sender_local_part
 
 
+CountNotificationsTestCase = namedtuple(
+    "CountNotificationsTestCase",
+    ["payload", "expected_status_code", "expected_response"],
+)
+
+test_cases = [
+    CountNotificationsTestCase(
+        payload={"template_type": "sms", "limit_days": 7},
+        expected_status_code=200,
+        expected_response={"notifications_sent_count": 1},
+    ),
+    CountNotificationsTestCase(
+        payload={"template_type": "email", "limit_days": 7},
+        expected_status_code=200,
+        expected_response={"notifications_sent_count": 4},
+    ),
+    CountNotificationsTestCase(
+        payload={"template_type": "sms", "limit_days": 7},
+        expected_status_code=200,
+        expected_response={"notifications_sent_count": 0},
+    ),
+]
+
+
 @pytest.mark.parametrize(
-    "payload,expected_status_code,expected_response",
-    [
-        (
-            {
-                "status": ["delivered", "failed"],
-                "template_type": "sms",
-                "limit_days": 7,
-            },
-            200,
-            {"count": 1},
-        ),
+    "test_case",
+    test_cases,
+    ids=[
+        "Single SMS notification within limit days",
+        "Single Email notification within limit days",
+        "No notifications",
     ],
 )
 @freeze_time("2023-08-10")
-def test_count_notifications_for_service(
-    admin_request, sample_template, payload, expected_status_code, expected_response
-):
-    create_notification(template=sample_template, status="delivered", created_at=datetime.now() - timedelta(days=1))
+def test_count_notifications_for_service(admin_request, sample_template, test_case):
+    service = create_service(service_name="service_1")
+    template = create_template(service, template_type=test_case.payload["template_type"])
+
+    create_ft_billing(
+        bst_date=datetime.now().date(),
+        template=template,
+        notifications_sent=test_case.expected_response["notifications_sent_count"],
+    )
 
     resp = admin_request.get(
         "service.count_notifications_for_service",
-        service_id=sample_template.service_id,
-        _expected_status=expected_status_code,
-        **payload,
+        service_id=template.service_id,
+        _expected_status=test_case.expected_status_code,
+        **test_case.payload,
     )
 
-    assert resp == expected_response
+    assert resp == test_case.expected_response

@@ -21,7 +21,7 @@ from app.constants import (
     MOBILE_TYPE,
     NOTIFICATION_CANCELLED,
 )
-from app.dao import fact_notification_status_dao, notifications_dao
+from app.dao import fact_billing_dao, fact_notification_status_dao, notifications_dao
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.api_key_dao import (
     expire_api_key,
@@ -512,14 +512,13 @@ def count_notifications_for_service(service_id):
 
     multidict = MultiDict(data)
 
-    notification_count = notifications_dao.count_notifications_for_service(
+    notification_count = fact_billing_dao.get_count_of_notifications_sent(
         service_id=service_id,
-        status=multidict.getlist("status"),
         template_types=multidict.getlist("template_type"),
         limit_days=data.get("limit_days"),
     )
 
-    return jsonify({"count": notification_count}), 200
+    return jsonify({"notifications_sent_count": notification_count}), 200
 
 
 @service_blueprint.route("/<uuid:service_id>/notifications/<uuid:notification_id>", methods=["GET"])
