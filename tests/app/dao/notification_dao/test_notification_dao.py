@@ -22,7 +22,6 @@ from app.constants import (
     SMS_TYPE,
 )
 from app.dao.notifications_dao import (
-    count_notifications_for_service,
     dao_create_notification,
     dao_delete_notifications_by_id,
     dao_get_last_notification_added_for_job_id,
@@ -1622,84 +1621,3 @@ def test_get_service_ids_with_notifications_on_date_checks_ft_status(
 
     assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 1))) == 1
     assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 2))) == 1
-
-
-@pytest.mark.parametrize(
-    "notifications_data,status,template_type,limit_days,expected_count",
-    [
-        # Case 1: Matching notifications by status and template_type within the time limit
-        (
-            [
-                {"status": "delivered", "template_type": "sms"},
-                {"status": "failed", "template_type": "sms"},
-                {"status": "delivered", "template_type": "email"},
-            ],
-            ["delivered", "failed"],
-            ["sms"],
-            7,
-            2,
-        ),
-        # Case 2: No matching notifications due to different template_type
-        (
-            [
-                {"status": "delivered", "template_type": "email"},
-                {"status": "failed", "template_type": "email"},
-            ],
-            ["delivered", "failed"],
-            ["sms"],
-            7,
-            0,  # No SMS notifications should match
-        ),
-        # Case 3: No matching notifications due to time limit (created 10 days ago)
-        (
-            [
-                {"status": "delivered", "template_type": "sms", "days_ago": 10},
-                {"status": "failed", "template_type": "sms", "days_ago": 10},
-            ],
-            ["delivered", "failed"],
-            ["sms"],
-            7,
-            0,  # Notifications are older than 7 days
-        ),
-        # Case 4: Mixed notifications, some within time limit and some outside
-        (
-            [
-                {"status": "delivered", "template_type": "sms", "days_ago": 3},
-                {"status": "failed", "template_type": "sms", "days_ago": 10},
-                {"status": "delivered", "template_type": "sms", "days_ago": 1},
-            ],
-            ["delivered", "failed"],
-            ["sms"],
-            7,
-            2,  # Only the first and third should be counted
-        ),
-    ],
-)
-@freeze_time("2023-08-10")
-def test_dao_count_notifications_for_service(
-    sample_template, notifications_data, status, template_type, limit_days, expected_count
-):
-    assert len(Notification.query.all()) == 0
-
-    for notification_data in notifications_data:
-        sample_template.template_type = notification_data["template_type"]
-
-        # create notification with the converted status because that is how these are saved on db
-        statuses = Notification.substitute_status(notification_data["status"])
-        days_ago = notification_data.get("days_ago")
-
-        # initialise time here to make use of timefreeze
-        if days_ago:
-            days_ago = datetime.now() - timedelta(days=days_ago)
-
-        create_notification(
-            template=sample_template,
-            status=statuses[0],
-            created_at=days_ago,
-        )
-
-    notification_count = count_notifications_for_service(
-        service_id=sample_template.service_id, status=status, template_types=template_type, limit_days=limit_days
-    )
-
-    assert notification_count == expected_count
