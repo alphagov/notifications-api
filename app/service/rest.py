@@ -20,6 +20,7 @@ from app.constants import (
     LETTER_TYPE,
     MOBILE_TYPE,
     NOTIFICATION_CANCELLED,
+    NOTIFICATION_TYPES,
 )
 from app.dao import fact_billing_dao, fact_notification_status_dao, notifications_dao
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
@@ -509,13 +510,22 @@ def get_all_notifications_for_service(service_id):
 @service_blueprint.route("/<uuid:service_id>/notifications/count", methods=["GET"])
 def count_notifications_for_service(service_id):
     data = notifications_filter_schema.load(request.args)
-
+    limit_days = data.get("limit_days")
     multidict = MultiDict(data)
+
+    template_types = multidict.getlist("template_type")
+
+    # set default values for template_types and limit_days
+    if limit_days is None or limit_days == 0:
+        limit_days = 7
+
+    if not template_types:
+        template_types = NOTIFICATION_TYPES
 
     notification_count = fact_billing_dao.get_count_of_notifications_sent(
         service_id=service_id,
-        template_types=multidict.getlist("template_type"),
-        limit_days=data.get("limit_days"),
+        template_types=template_types,
+        limit_days=limit_days,
     )
 
     return jsonify({"notifications_sent_count": notification_count}), 200

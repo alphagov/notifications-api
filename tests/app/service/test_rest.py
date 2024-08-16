@@ -21,6 +21,7 @@ from app.constants import (
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_RETURNED_LETTER,
+    NOTIFICATION_TYPES,
     SMS_TYPE,
     UPLOAD_LETTERS,
 )
@@ -3879,7 +3880,7 @@ def test_update_service_set_custom_email_sender_name_sets_email_sender_local_par
 
 CountNotificationsTestCase = namedtuple(
     "CountNotificationsTestCase",
-    ["payload", "expected_status_code", "expected_response"],
+    ["payload", "expected_status_code", "expected_response", "create_notifications"],
 )
 
 test_cases = [
@@ -3887,16 +3888,25 @@ test_cases = [
         payload={"template_type": "sms", "limit_days": 7},
         expected_status_code=200,
         expected_response={"notifications_sent_count": 1},
+        create_notifications=True,
     ),
     CountNotificationsTestCase(
         payload={"template_type": "email", "limit_days": 7},
         expected_status_code=200,
-        expected_response={"notifications_sent_count": 4},
+        expected_response={"notifications_sent_count": 1},
+        create_notifications=True,
+    ),
+    CountNotificationsTestCase(
+        payload={},
+        expected_status_code=200,
+        expected_response={"notifications_sent_count": 3},
+        create_notifications=True,
     ),
     CountNotificationsTestCase(
         payload={"template_type": "sms", "limit_days": 7},
         expected_status_code=200,
         expected_response={"notifications_sent_count": 0},
+        create_notifications=False,
     ),
 ]
 
@@ -3907,23 +3917,24 @@ test_cases = [
     ids=[
         "Single SMS notification within limit days",
         "Single Email notification within limit days",
+        "No template_type or limit_days provided (defaults applied)",
         "No notifications",
     ],
 )
 @freeze_time("2023-08-10")
 def test_count_notifications_for_service(admin_request, sample_template, test_case):
     service = create_service(service_name="service_1")
-    template = create_template(service, template_type=test_case.payload["template_type"])
 
-    create_ft_billing(
-        bst_date=datetime.now().date(),
-        template=template,
-        notifications_sent=test_case.expected_response["notifications_sent_count"],
-    )
+    if test_case.create_notifications:
+        for template_type in NOTIFICATION_TYPES:
+            create_ft_billing(
+                bst_date=datetime.now().date(),
+                template=create_template(service, template_type),
+            )
 
     resp = admin_request.get(
         "service.count_notifications_for_service",
-        service_id=template.service_id,
+        service_id=service.id,
         _expected_status=test_case.expected_status_code,
         **test_case.payload,
     )
