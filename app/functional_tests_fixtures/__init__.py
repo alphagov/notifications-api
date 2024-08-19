@@ -469,6 +469,6 @@ def _create_service_inbound_api(service_id, user_id):
             service_id=service_id, url="https://5c6b93352e82dab5d82d02e5178c2d57.m.pipedream.net", updated_by_id=user_id
         )
 
-    inbound_api.bearer_token = os.environ["REQUEST_BIN_API_TOKEN"]
+    inbound_api.bearer_token = "1234567890"
 
     save_service_inbound_api(inbound_api)
