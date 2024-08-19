@@ -108,6 +108,7 @@ def _notify_db(notify_api, worker_id):
             "SQLALCHEMY_DATABASE_URI": current_app.config["SQLALCHEMY_DATABASE_URI"],
             "FLASK_APP": "application:application",
         },
+        check=True,
     )
 
     # now db is initialised, run cleanup on it to remove any artifacts from migrations (such as the notify service and
