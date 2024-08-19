@@ -218,6 +218,16 @@ def test_process_letter_callback_validation_for_required_fields(
             ],
             "data {key: Print Date, value: invalid-date} is not valid under any of the given schemas",
         ),
+        # invalid enum for mailingProduct
+        (
+            [
+                {"key": "postageClass", "value": "1ST"},
+                {"key": "totalSheets", "value": "5"},
+                {"key": "mailingProduct", "value": "invalid-mailing-product"},
+                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+            ],
+            "data {key: mailingProduct, value: invalid-mailing-product} is not valid under any of the given schemas",
+        ),
     ],
 )
 def test_process_letter_callback_validation_for_despatch_properties(
