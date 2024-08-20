@@ -1204,6 +1204,7 @@ def get_unsubscribe_request_report_for_download(service_id, batch_id):
                     "template_name": unsubscribe_request.template_name,
                     "original_file_name": unsubscribe_request.original_file_name,
                     "template_sent_at": unsubscribe_request.template_sent_at,
+                    "unsubscribe_request_received_at": unsubscribe_request.unsubscribe_request_received_at
                 }
                 for unsubscribe_request in get_unsubscribe_requests_data_for_download_dao(service_id, report.id)
             ],

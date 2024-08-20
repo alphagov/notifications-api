@@ -74,7 +74,7 @@ def get_unsubscribe_requests_data_for_download_dao(service_id, batch_id):
                 table.template_id,
                 func.coalesce(Job.original_file_name, "N/A").label("original_file_name"),
                 table.sent_at.label("template_sent_at"),
-                UnsubscribeRequest.created_at.label("unsubscribe_request_received_at")
+                UnsubscribeRequest.created_at.label("unsubscribe_request_received_at"),
             )
             .outerjoin(Job, table.job_id == Job.id)
             .filter(
