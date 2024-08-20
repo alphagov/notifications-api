@@ -3820,8 +3820,10 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
         assert response["unsubscribe_requests"][i]["template_name"] == row.template_name
         assert response["unsubscribe_requests"][i]["original_file_name"] == row.original_file_name
         assert response["unsubscribe_requests"][i]["template_sent_at"] == row.template_sent_at
-        assert response["unsubscribe_requests"][i]["unsubscribe_request_received_at"] == \
-               row.unsubscribe_request_received_at
+        assert (
+            response["unsubscribe_requests"][i]["unsubscribe_request_received_at"]
+            == row.unsubscribe_request_received_at
+        )
 
 
 def test_get_unsubscribe_request_report_for_download_400_error(admin_request, sample_service):
