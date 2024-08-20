@@ -40,6 +40,8 @@ def pagination_links(pagination, endpoint, **kwargs):
     return links
 
 
+# Not sure those links ever get utilised beyond checking if they exist - changing the mocks to nonsense in admin
+# didn't break any tests, and admin does its own page counting - so maybe a bit redundant code here?
 def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **kwargs):
     if "page" in kwargs:
         kwargs.pop("page", None)
@@ -48,6 +50,16 @@ def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **k
         links["prev"] = url_for(endpoint, page=current_page - 1, **kwargs)
     if next_page_exists:
         links["next"] = url_for(endpoint, page=current_page + 1, **kwargs)
+    return links
+
+
+def get_next_link_for_pagination_by_older_than(current_notifications_batch, endpoint, **kwargs):
+    links = {}
+
+    if len(current_notifications_batch):
+        kwargs["older_than"] = current_notifications_batch[-1].id
+        links["next"] = url_for(endpoint, **kwargs)
+
     return links
 
 

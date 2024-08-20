@@ -1784,23 +1784,74 @@ def test_get_notifications_for_service_pagination_links(
     sample_template,
     sample_user,
 ):
-    for _ in range(101):
+    for _ in range(11):
         create_notification(sample_template, to_field="+447700900855", normalised_to="447700900855")
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id)
+    page_size = 5
 
-    assert "prev" not in resp["links"]
-    assert "?page=2" in resp["links"]["next"]
+    page_1_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page_size=page_size
+    )
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id, page=2)
+    assert "prev" not in page_1_response["links"]
+    assert "?page=2" in page_1_response["links"]["next"]
 
-    assert "?page=1" in resp["links"]["prev"]
-    assert "?page=3" in resp["links"]["next"]
+    page_2_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page=2, page_size=page_size
+    )
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id, page=3)
+    assert "?page=1" in page_2_response["links"]["prev"]
+    assert "?page=3" in page_2_response["links"]["next"]
 
-    assert "?page=2" in resp["links"]["prev"]
-    assert "next" not in resp["links"]
+    page_3_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page=3, page_size=page_size
+    )
+
+    assert "?page=2" in page_3_response["links"]["prev"]
+    assert "next" not in page_3_response["links"]
+
+
+def test_get_notifications_for_service_with_paginate_by_older_than(
+    admin_request,
+    sample_job,
+    sample_template,
+    sample_user,
+):
+    oldest_notification = create_notification(sample_template)
+    end_of_page_1_notification = create_notification(sample_template)
+    create_notification(sample_template)
+
+    page_size = 2
+
+    page_1_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+    )
+
+    assert f"older_than={str(end_of_page_1_notification.id)}" in page_1_response["links"]["next"]
+
+    page_2_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+        older_than=end_of_page_1_notification.id,
+    )
+    # even though this is the oldest notification, we give a next link - to avoid querying next page.
+    # last page being occasionally empty is ok - as the output is only utilised to create a CSV with no pages
+    assert f"older_than={str(oldest_notification.id)}" in page_2_response["links"]["next"]
+
+    page_3_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+        older_than=oldest_notification.id,
+    )
+    # no next link as current page is empty
+    assert not page_3_response["links"].get("next")
 
 
 @pytest.mark.parametrize(
