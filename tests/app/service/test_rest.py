@@ -3781,18 +3781,21 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
         "UnsubscribeRequestReport", ["id", "earliest_timestamp", "latest_timestamp", "unsubscribe_requests"]
     )
     UnsubscribeRequest = namedtuple(
-        "UnsubscribeRequest", ["email_address", "template_name", "original_file_name", "template_sent_at"]
+        "UnsubscribeRequest",
+        ["email_address", "template_name", "original_file_name", "template_sent_at", "unsubscribe_request_received_at"],
     )
 
     unsubscribe_request_1 = UnsubscribeRequest(
-        "foo@bar.com", "email Template Name", "contact list", "2024-07-23 13:30:00"
+        "foo@bar.com", "email Template Name", "contact list", "2024-07-23 13:30:00", "2024-07-25 13:30:00"
     )
     unsubscribe_request_2 = UnsubscribeRequest(
-        "fizz@bar.com", "email Template Name", "contact list", "2024-07-21 11:04:00"
+        "fizz@bar.com", "email Template Name", "contact list", "2024-07-21 11:04:00", "2024-07-23 11:04:00"
     )
-    unsubscribe_request_3 = UnsubscribeRequest("fizzbuzz@bar.com", "Another Service", None, "2024-07-19 23:45:00")
+    unsubscribe_request_3 = UnsubscribeRequest(
+        "fizzbuzz@bar.com", "Another Service", None, "2024-07-19 23:45:00", "2024-07-21 23:45:00"
+    )
     unsubscribe_request_4 = UnsubscribeRequest(
-        "buzz@bar.com", "Another Service", "another contact list", "2024-07-17 09:42:00"
+        "buzz@bar.com", "Another Service", "another contact list", "2024-07-17 09:42:00", "2024-07-19 09:42:00"
     )
     unsubscribe_request_report = UnsubscribeRequestReport(
         "e6c02a98-8e64-4ab3-b176-271274517c21",
