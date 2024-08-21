@@ -82,6 +82,7 @@ class MMGClient(SmsClient):
         super().init_app(*args, **kwargs)
         self.api_key = self.current_app.config.get("MMG_API_KEY")
         self.mmg_url = self.current_app.config.get("MMG_URL")
+        self.mmg_rcs_url = self.current_app.config.get("MMG_RCS_URL")
         self.receipt_url = self.current_app.config.get("MMG_RECEIPT_URL")
 
     @property
@@ -89,7 +90,14 @@ class MMGClient(SmsClient):
         return "mmg"
 
     def try_send_sms(self, to, content, reference, international, sender):
-        data = {"reqType": "BULK", "MSISDN": to, "msg": content, "sender": sender, "cid": reference, "multi": True}
+        data = {
+            "reqType": "BULK",
+            "MSISDN": to,
+            "msg": content,
+            "sender": "NotifyTest",
+            "cid": reference,
+            "multi": True,
+        }
 
         if self.receipt_url:
             data["delurl"] = self.receipt_url
@@ -97,7 +105,7 @@ class MMGClient(SmsClient):
         try:
             response = request(
                 "POST",
-                self.mmg_url,
+                self.mmg_rcs_url,
                 data=json.dumps(data),
                 headers={"Content-Type": "application/json", "Authorization": f"Basic {self.api_key}"},
                 timeout=60,
