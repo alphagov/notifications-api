@@ -1,6 +1,6 @@
 import json
 
-from requests import RequestException, request
+import requests
 
 from app.clients.sms import SmsClient, SmsClientResponseException
 
@@ -76,6 +76,8 @@ class MMGClientResponseException(SmsClientResponseException):
 class MMGClient(SmsClient):
     """
     MMG sms client
+
+    This class is not thread-safe.
     """
 
     def __init__(self, *args, **kwargs):
@@ -83,6 +85,7 @@ class MMGClient(SmsClient):
         self.api_key = self.current_app.config.get("MMG_API_KEY")
         self.mmg_url = self.current_app.config.get("MMG_URL")
         self.receipt_url = self.current_app.config.get("MMG_RECEIPT_URL")
+        self.requests_session = requests.Session()
 
     @property
     def name(self):
@@ -95,7 +98,7 @@ class MMGClient(SmsClient):
             data["delurl"] = self.receipt_url
 
         try:
-            response = request(
+            response = self.requests_session.request(
                 "POST",
                 self.mmg_url,
                 data=json.dumps(data),
@@ -108,7 +111,7 @@ class MMGClient(SmsClient):
                 json.loads(response.text)
             except (ValueError, AttributeError) as e:
                 raise SmsClientResponseException("Invalid response JSON") from e
-        except RequestException as e:
+        except requests.RequestException as e:
             raise SmsClientResponseException("Request failed") from e
 
         return response
