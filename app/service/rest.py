@@ -20,8 +20,9 @@ from app.constants import (
     LETTER_TYPE,
     MOBILE_TYPE,
     NOTIFICATION_CANCELLED,
+    NOTIFICATION_TYPES,
 )
-from app.dao import fact_notification_status_dao, notifications_dao
+from app.dao import fact_billing_dao, fact_notification_status_dao, notifications_dao
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.api_key_dao import (
     expire_api_key,
@@ -157,6 +158,7 @@ from app.user.users_schema import post_set_permissions_schema
 from app.utils import (
     DATE_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
+    get_next_link_for_pagination_by_older_than,
     get_prev_next_pagination_links,
     midnight_n_days_ago,
 )
@@ -440,21 +442,22 @@ def get_all_notifications_for_service(service_id):
             statuses=data.get("status"),
             notification_type=notification_type,
         )
-    page = data["page"] if "page" in data else 1
+
+    paginate_by_older_than = data.get("paginate_by_older_than")
+    older_than = data.get("older_than")
+    page = data.get("page", 1)
+
     page_size = data["page_size"] if "page_size" in data else current_app.config.get("PAGE_SIZE")
     limit_days = data.get("limit_days")
     include_jobs = data.get("include_jobs", True)
     include_from_test_key = data.get("include_from_test_key", False)
     include_one_off = data.get("include_one_off", True)
 
-    # count_pages is not being used for whether to count the number of pages, but instead as a flag
-    # for whether to show pagination links
-    count_pages = data.get("count_pages", True)
-
-    pagination = notifications_dao.get_notifications_for_service(
+    current_notifications_batch = notifications_dao.get_notifications_for_service(
         service_id,
         filter_dict=data,
-        page=page,
+        older_than=older_than if paginate_by_older_than else None,
+        page=page if not paginate_by_older_than else 1,
         page_size=page_size,
         count_pages=False,
         limit_days=limit_days,
@@ -467,43 +470,80 @@ def get_all_notifications_for_service(service_id):
     kwargs["service_id"] = service_id
 
     if data.get("format_for_csv"):
-        notifications = [notification.serialize_for_csv() for notification in pagination.items]
+        notifications = [notification.serialize_for_csv() for notification in current_notifications_batch.items]
     else:
-        notifications = notification_with_template_schema.dump(pagination.items, many=True)
+        notifications = notification_with_template_schema.dump(current_notifications_batch.items, many=True)
 
-    # We try and get the next page of results to work out if we need provide a pagination link to the next page
-    # in our response if it exists. Note, this could be done instead by changing `count_pages` in the previous
-    # call to be True which will enable us to use Flask-Sqlalchemy to tell if there is a next page of results but
-    # this way is much more performant for services with many results (unlike Flask SqlAlchemy, this approach
-    # doesn't do an additional query to count all the results of which there could be millions but instead only
-    # asks for a single extra page of results).
-    next_page_of_pagination = notifications_dao.get_notifications_for_service(
-        service_id,
-        filter_dict=data,
-        page=page + 1,
-        page_size=page_size,
-        count_pages=False,
-        limit_days=limit_days,
-        include_jobs=include_jobs,
-        include_from_test_key=include_from_test_key,
-        include_one_off=include_one_off,
-        error_out=False,  # False so that if there are no results, it doesn't end in aborting with a 404
-    )
+    # if we paginate by older_than, then we don't need to get the next batch, as we use it to get data for a CSV report
+    # only for now - once we use it for views where we are actually showing a next page link, we might need it?
+    # Or we could keep track how many notifications we have left to pull insteead.
+    if not paginate_by_older_than:
+        # We try and get the next page of results to work out if we need provide a pagination link to the next page
+        # in our response if it exists. Note, this could be done instead by changing `count_pages` in the previous
+        # call to be True which will enable us to use Flask-Sqlalchemy to tell if there is a next page of results but
+        # this way is much more performant for services with many results (unlike Flask SqlAlchemy, this approach
+        # doesn't do an additional query to count all the results of which there could be millions but instead only
+        # asks for a single extra page of results).
+        next_notifications_batch = notifications_dao.get_notifications_for_service(
+            service_id,
+            filter_dict=data,
+            page=page + 1,
+            page_size=page_size,
+            count_pages=False,
+            limit_days=limit_days,
+            include_jobs=include_jobs,
+            include_from_test_key=include_from_test_key,
+            include_one_off=include_one_off,
+            error_out=False,  # False so that if there are no results, it doesn't end in aborting with a 404
+        )
+
+    # count_pages is not being used for whether to count the number of pages, but instead as a flag
+    # for whether to show pagination links
+    count_pages = data.get("count_pages", True)
+
+    links = {}
+    if count_pages and not paginate_by_older_than:
+        links = get_prev_next_pagination_links(
+            page, len(next_notifications_batch.items), ".get_all_notifications_for_service", **kwargs
+        )
+    elif paginate_by_older_than:
+        # for first iteration, we don't care about 'previous' link, as CSV report doesn't utilise that.
+        links = get_next_link_for_pagination_by_older_than(
+            current_notifications_batch.items, ".get_all_notifications_for_service", **kwargs
+        )
 
     return (
         jsonify(
             notifications=notifications,
             page_size=page_size,
-            links=(
-                get_prev_next_pagination_links(
-                    page, len(next_page_of_pagination.items), ".get_all_notifications_for_service", **kwargs
-                )
-                if count_pages
-                else {}
-            ),
+            links=links,
         ),
         200,
     )
+
+
+@service_blueprint.route("/<uuid:service_id>/notifications/count", methods=["GET"])
+def count_notifications_for_service(service_id):
+    data = notifications_filter_schema.load(request.args)
+    limit_days = data.get("limit_days")
+    multidict = MultiDict(data)
+
+    template_types = multidict.getlist("template_type")
+
+    # set default values for template_types and limit_days
+    if not limit_days:
+        limit_days = 7
+
+    if not template_types:
+        template_types = NOTIFICATION_TYPES
+
+    notification_count = fact_billing_dao.get_count_of_notifications_sent(
+        service_id=service_id,
+        template_types=template_types,
+        limit_days=limit_days,
+    )
+
+    return jsonify({"notifications_sent_count": notification_count}), 200
 
 
 @service_blueprint.route("/<uuid:service_id>/notifications/<uuid:notification_id>", methods=["GET"])
@@ -1142,7 +1182,6 @@ def create_unsubscribe_request_report(service_id):
             count=summary_data["count"],
             earliest_timestamp=summary_data["earliest_timestamp"],
             latest_timestamp=summary_data["latest_timestamp"],
-            processed_by_service_at=summary_data["processed_by_service_at"],
             service_id=service_id,
         )
         create_unsubscribe_request_reports_dao(unsubscribe_request_report)
@@ -1180,6 +1219,7 @@ def get_unsubscribe_request_report_for_download(service_id, batch_id):
                     "template_name": unsubscribe_request.template_name,
                     "original_file_name": unsubscribe_request.original_file_name,
                     "template_sent_at": unsubscribe_request.template_sent_at,
+                    "unsubscribe_request_received_at": unsubscribe_request.unsubscribe_request_received_at,
                 }
                 for unsubscribe_request in get_unsubscribe_requests_data_for_download_dao(service_id, report.id)
             ],

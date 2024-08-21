@@ -40,7 +40,7 @@ from app.models import (
     Service,
     ServicePermission,
 )
-from app.utils import get_ft_billing_data_for_today_updated_at, get_london_midnight_in_utc
+from app.utils import get_ft_billing_data_for_today_updated_at, get_london_midnight_in_utc, midnight_n_days_ago
 
 
 def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None):
@@ -1154,3 +1154,21 @@ def fetch_volumes_by_service(start_date, end_date):
     )
 
     return results
+
+
+def get_count_of_notifications_sent(
+    service_id,
+    template_types,
+    limit_days,
+):
+    filters = [
+        FactBilling.service_id == service_id,
+        FactBilling.bst_date >= midnight_n_days_ago(limit_days).date(),
+        FactBilling.notification_type.in_(template_types),
+    ]
+
+    query = FactBilling.query.filter(*filters)
+
+    notifications_count = query.with_entities(func.sum(FactBilling.notifications_sent)).scalar()
+
+    return notifications_count or 0

@@ -1,3 +1,5 @@
+from sqlalchemy import desc
+
 from app.constants import EMAIL_TYPE
 from app.dao.unsubscribe_request_dao import (
     assign_unbatched_unsubscribe_requests_to_report_dao,
@@ -370,23 +372,28 @@ def test_get_unsubscribe_request_data_for_download_dao(sample_service):
     )
 
     result = get_unsubscribe_requests_data_for_download_dao(sample_service.id, unsubscribe_request_report.id)
+    created_unsubscribe_requests = UnsubscribeRequest.query.order_by(desc(UnsubscribeRequest.created_at)).all()
 
     assert result[0].email_address == notification_1.to
     assert result[0].template_name == notification_1.template.name
     assert result[0].original_file_name == notification_1.job.original_file_name
     assert result[0].template_sent_at == notification_1.sent_at
+    assert result[0].unsubscribe_request_received_at == created_unsubscribe_requests[0].created_at
     assert result[1].email_address == notification_2.to
     assert result[1].template_name == notification_2.template.name
     assert result[1].original_file_name == notification_2.job.original_file_name
     assert result[1].template_sent_at == notification_2.sent_at
+    assert result[1].unsubscribe_request_received_at == created_unsubscribe_requests[1].created_at
     assert result[2].email_address == notification_4.to
     assert result[2].template_name == notification_4.template.name
     assert result[2].original_file_name == "N/A"
     assert result[2].template_sent_at == notification_4.sent_at
+    assert result[2].unsubscribe_request_received_at == created_unsubscribe_requests[3].created_at
     assert result[3].email_address == notification_3.to
     assert result[3].template_name == notification_3.template.name
     assert result[3].original_file_name == notification_3.job.original_file_name
     assert result[3].template_sent_at == notification_3.sent_at
+    assert result[3].unsubscribe_request_received_at == created_unsubscribe_requests[2].created_at
 
 
 def test_get_unsubscribe_request_data_for_download_dao_invalid_batch_id(sample_service):

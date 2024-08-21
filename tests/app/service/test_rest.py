@@ -21,6 +21,7 @@ from app.constants import (
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_RETURNED_LETTER,
+    NOTIFICATION_TYPES,
     SMS_TYPE,
     UPLOAD_LETTERS,
 )
@@ -49,6 +50,7 @@ from app.models import (
     UnsubscribeRequestReport,
     User,
 )
+from app.utils import DATETIME_FORMAT
 from tests import create_admin_authorization_header
 from tests.app.db import (
     create_annual_billing,
@@ -1782,23 +1784,74 @@ def test_get_notifications_for_service_pagination_links(
     sample_template,
     sample_user,
 ):
-    for _ in range(101):
+    for _ in range(11):
         create_notification(sample_template, to_field="+447700900855", normalised_to="447700900855")
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id)
+    page_size = 5
 
-    assert "prev" not in resp["links"]
-    assert "?page=2" in resp["links"]["next"]
+    page_1_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page_size=page_size
+    )
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id, page=2)
+    assert "prev" not in page_1_response["links"]
+    assert "?page=2" in page_1_response["links"]["next"]
 
-    assert "?page=1" in resp["links"]["prev"]
-    assert "?page=3" in resp["links"]["next"]
+    page_2_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page=2, page_size=page_size
+    )
 
-    resp = admin_request.get("service.get_all_notifications_for_service", service_id=sample_template.service_id, page=3)
+    assert "?page=1" in page_2_response["links"]["prev"]
+    assert "?page=3" in page_2_response["links"]["next"]
 
-    assert "?page=2" in resp["links"]["prev"]
-    assert "next" not in resp["links"]
+    page_3_response = admin_request.get(
+        "service.get_all_notifications_for_service", service_id=sample_template.service_id, page=3, page_size=page_size
+    )
+
+    assert "?page=2" in page_3_response["links"]["prev"]
+    assert "next" not in page_3_response["links"]
+
+
+def test_get_notifications_for_service_with_paginate_by_older_than(
+    admin_request,
+    sample_job,
+    sample_template,
+    sample_user,
+):
+    oldest_notification = create_notification(sample_template)
+    end_of_page_1_notification = create_notification(sample_template)
+    create_notification(sample_template)
+
+    page_size = 2
+
+    page_1_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+    )
+
+    assert f"older_than={str(end_of_page_1_notification.id)}" in page_1_response["links"]["next"]
+
+    page_2_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+        older_than=end_of_page_1_notification.id,
+    )
+    # even though this is the oldest notification, we give a next link - to avoid querying next page.
+    # last page being occasionally empty is ok - as the output is only utilised to create a CSV with no pages
+    assert f"older_than={str(oldest_notification.id)}" in page_2_response["links"]["next"]
+
+    page_3_response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=sample_template.service_id,
+        page_size=page_size,
+        paginate_by_older_than=True,
+        older_than=oldest_notification.id,
+    )
+    # no next link as current page is empty
+    assert not page_3_response["links"].get("next")
 
 
 @pytest.mark.parametrize(
@@ -3497,14 +3550,11 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
     """
     Test case covers when the initial unsubscribe requests have been received and have not yet been batched.
     """
-    date_format = "%a, %d %b %Y %H:%M:%S"
     template_1 = create_template(
         sample_service,
         template_type=EMAIL_TYPE,
     )
-    notification_1 = create_notification(
-        template=template_1, created_at=(datetime.utcnow() + timedelta(days=-2)).strftime(date_format) + " GMT"
-    )
+    notification_1 = create_notification(template=template_1, created_at=datetime.utcnow() + timedelta(days=-2))
     create_unsubscribe_request_dao(
         {  # noqa
             "notification_id": notification_1.id,
@@ -3519,9 +3569,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
         sample_service,
         template_type=EMAIL_TYPE,
     )
-    notification_2 = create_notification(
-        template=template_2, created_at=(datetime.utcnow() + timedelta(days=-1)).strftime(date_format) + " GMT"
-    )
+    notification_2 = create_notification(template=template_2, created_at=datetime.utcnow() + timedelta(days=-1))
     create_unsubscribe_request_dao(
         {
             "notification_id": notification_2.id,
@@ -3536,8 +3584,8 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
     expected_unbatched_unsubscribe_request_summary = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": notification_1.created_at.isoformat(),
-        "latest_timestamp": notification_2.created_at.isoformat(),
+        "earliest_timestamp": "2024-06-29T12:00:00.000000Z",
+        "latest_timestamp": "2024-06-30T12:00:00.000000Z",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3605,10 +3653,10 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         {
             "batch_id": str(report.id),
             "count": report.count,
-            "earliest_timestamp": report.earliest_timestamp.isoformat(),
-            "latest_timestamp": report.latest_timestamp.isoformat(),
+            "earliest_timestamp": report.earliest_timestamp.strftime(DATETIME_FORMAT),
+            "latest_timestamp": report.latest_timestamp.strftime(DATETIME_FORMAT),
             "processed_by_service_at": (
-                report.processed_by_service_at.isoformat() if report.processed_by_service_at else None
+                report.processed_by_service_at.strftime(DATETIME_FORMAT) if report.processed_by_service_at else None
             ),
             "is_a_batched_report": True,
         }
@@ -3617,8 +3665,8 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     expected_unbatched_unsubscribe_request_summary = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": unbatched_request_1_data["created_at"].isoformat(),
-        "latest_timestamp": unbatched_request_2_data["created_at"].isoformat(),
+        "earliest_timestamp": "2024-06-29T12:00:00.000000Z",
+        "latest_timestamp": "2024-06-30T12:00:00.000000Z",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3739,13 +3787,12 @@ def test_process_unsubscribe_request_report_raises_error_for_invalid_batch_id(ad
 
 
 def test_create_unsubscribe_request_report(sample_service, admin_request, mocker):
-    date_format = "%Y-%m-%d %H:%M:%S"
     test_id = "2802262c-b6ac-4254-93c3-a83ae7180d96"
     summary_data = {
         "batch_id": None,
         "count": 2,
-        "earliest_timestamp": "2024-07-03 13:30:00",
-        "latest_timestamp": "2024-07-09 21:13:11",
+        "earliest_timestamp": "2024-07-03T13:30:00+01:00",
+        "latest_timestamp": "2024-07-09T21:13:11+01:00",
         "processed_by_service_at": None,
         "is_a_batched_report": False,
     }
@@ -3762,11 +3809,9 @@ def test_create_unsubscribe_request_report(sample_service, admin_request, mocker
     created_unsubscribe_request_report = UnsubscribeRequestReport.query.filter_by(id=test_id).one()
     assert response == {"report_id": str(created_unsubscribe_request_report.id)}
     assert summary_data["count"] == created_unsubscribe_request_report.count
-    assert summary_data["earliest_timestamp"] == created_unsubscribe_request_report.earliest_timestamp.strftime(
-        date_format
-    )
-    assert summary_data["latest_timestamp"] == created_unsubscribe_request_report.latest_timestamp.strftime(date_format)
-    assert summary_data["processed_by_service_at"] == created_unsubscribe_request_report.processed_by_service_at
+    assert created_unsubscribe_request_report.earliest_timestamp == datetime(2024, 7, 3, 13, 30)
+    assert created_unsubscribe_request_report.latest_timestamp == datetime(2024, 7, 9, 21, 13, 11)
+    assert created_unsubscribe_request_report.processed_by_service_at is None
     mock_assign_unbatched_requests.assert_called_once_with(
         report_id=created_unsubscribe_request_report.id,
         service_id=created_unsubscribe_request_report.service_id,
@@ -3787,18 +3832,21 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
         "UnsubscribeRequestReport", ["id", "earliest_timestamp", "latest_timestamp", "unsubscribe_requests"]
     )
     UnsubscribeRequest = namedtuple(
-        "UnsubscribeRequest", ["email_address", "template_name", "original_file_name", "template_sent_at"]
+        "UnsubscribeRequest",
+        ["email_address", "template_name", "original_file_name", "template_sent_at", "unsubscribe_request_received_at"],
     )
 
     unsubscribe_request_1 = UnsubscribeRequest(
-        "foo@bar.com", "email Template Name", "contact list", "2024-07-23 13:30:00"
+        "foo@bar.com", "email Template Name", "contact list", "2024-07-23 13:30:00", "2024-07-25 13:30:00"
     )
     unsubscribe_request_2 = UnsubscribeRequest(
-        "fizz@bar.com", "email Template Name", "contact list", "2024-07-21 11:04:00"
+        "fizz@bar.com", "email Template Name", "contact list", "2024-07-21 11:04:00", "2024-07-23 11:04:00"
     )
-    unsubscribe_request_3 = UnsubscribeRequest("fizzbuzz@bar.com", "Another Service", None, "2024-07-19 23:45:00")
+    unsubscribe_request_3 = UnsubscribeRequest(
+        "fizzbuzz@bar.com", "Another Service", None, "2024-07-19 23:45:00", "2024-07-21 23:45:00"
+    )
     unsubscribe_request_4 = UnsubscribeRequest(
-        "buzz@bar.com", "Another Service", "another contact list", "2024-07-17 09:42:00"
+        "buzz@bar.com", "Another Service", "another contact list", "2024-07-17 09:42:00", "2024-07-19 09:42:00"
     )
     unsubscribe_request_report = UnsubscribeRequestReport(
         "e6c02a98-8e64-4ab3-b176-271274517c21",
@@ -3826,6 +3874,10 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
         assert response["unsubscribe_requests"][i]["template_name"] == row.template_name
         assert response["unsubscribe_requests"][i]["original_file_name"] == row.original_file_name
         assert response["unsubscribe_requests"][i]["template_sent_at"] == row.template_sent_at
+        assert (
+            response["unsubscribe_requests"][i]["unsubscribe_request_received_at"]
+            == row.unsubscribe_request_received_at
+        )
 
 
 def test_get_unsubscribe_request_report_for_download_400_error(admin_request, sample_service):
@@ -3882,3 +3934,67 @@ def test_update_service_set_custom_email_sender_name_sets_email_sender_local_par
 
     assert new_history.version == 3
     assert new_history.email_sender_local_part == expected_email_sender_local_part
+
+
+CountNotificationsTestCase = namedtuple(
+    "CountNotificationsTestCase",
+    ["payload", "expected_status_code", "expected_response", "create_notifications"],
+)
+
+test_cases = [
+    CountNotificationsTestCase(
+        payload={"template_type": "sms", "limit_days": 7},
+        expected_status_code=200,
+        expected_response={"notifications_sent_count": 1},
+        create_notifications=True,
+    ),
+    CountNotificationsTestCase(
+        payload={"template_type": "email", "limit_days": 7},
+        expected_status_code=200,
+        expected_response={"notifications_sent_count": 1},
+        create_notifications=True,
+    ),
+    CountNotificationsTestCase(
+        payload={},
+        expected_status_code=200,
+        expected_response={"notifications_sent_count": 3},
+        create_notifications=True,
+    ),
+    CountNotificationsTestCase(
+        payload={"template_type": "sms", "limit_days": 7},
+        expected_status_code=200,
+        expected_response={"notifications_sent_count": 0},
+        create_notifications=False,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    test_cases,
+    ids=[
+        "Single SMS notification within limit days",
+        "Single Email notification within limit days",
+        "No template_type or limit_days provided (defaults applied)",
+        "No notifications",
+    ],
+)
+@freeze_time("2023-08-10")
+def test_count_notifications_for_service(admin_request, sample_template, test_case):
+    service = create_service(service_name="service_1")
+
+    if test_case.create_notifications:
+        for template_type in NOTIFICATION_TYPES:
+            create_ft_billing(
+                bst_date=datetime.now().date(),
+                template=create_template(service, template_type),
+            )
+
+    resp = admin_request.get(
+        "service.count_notifications_for_service",
+        service_id=service.id,
+        _expected_status=test_case.expected_status_code,
+        **test_case.payload,
+    )
+
+    assert resp == test_case.expected_response
