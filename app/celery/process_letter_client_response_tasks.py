@@ -6,6 +6,7 @@ from app.constants import (
     NOTIFICATION_TECHNICAL_FAILURE,
 )
 from app.dao.notifications_dao import (
+    _duplicate_update_warning,
     dao_get_notification_or_history_by_id,
     dao_update_notification,
 )
@@ -20,12 +21,10 @@ def process_letter_callback_data(self, notification_id, page_count, dvla_status)
 
     new_status = determine_new_status(dvla_status)
 
-    if is_duplicate_update(notification.status, new_status):
-        current_app.logger.info(
-            "Duplicate update received for notification id: %s with status: %s",
-            notification_id,
-            new_status,
-        )
+    already_updated_status = set(DVLA_TO_NOTIFICATION_STATUS_MAP.values())
+
+    if notification.status in already_updated_status:
+        _duplicate_update_warning(notification, new_status)
         return
 
     notification.status = new_status
@@ -50,7 +49,3 @@ def validate_billable_units(notification, dvla_page_count):
 
 def determine_new_status(dvla_status):
     return DVLA_TO_NOTIFICATION_STATUS_MAP[dvla_status]
-
-
-def is_duplicate_update(current_status, new_status):
-    return new_status == current_status

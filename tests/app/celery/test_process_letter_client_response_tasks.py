@@ -5,7 +5,6 @@ from freezegun import freeze_time
 
 from app.celery.process_letter_client_response_tasks import (
     determine_new_status,
-    is_duplicate_update,
     process_letter_callback_data,
     validate_billable_units,
 )
@@ -98,20 +97,23 @@ def test_process_letter_callback_data_dao_update_notification_rejected_status_hi
 
 @freeze_time("2024-07-05T10:00:00")
 def test_process_letter_callback_data_duplicate_update(sample_letter_notification, caplog):
-    yesteday = datetime.now() - timedelta(days=1)
+    yesterday = datetime.now() - timedelta(days=1)
 
-    sample_letter_notification.status = NOTIFICATION_DELIVERED
-    sample_letter_notification.updated_at = yesteday
+    initial_status = NOTIFICATION_DELIVERED
+    sample_letter_notification.status = initial_status
+    sample_letter_notification.updated_at = yesterday
 
     process_letter_callback_data(sample_letter_notification.id, 1, DVLA_NOTIFICATION_DISPATCHED)
 
-    assert sample_letter_notification.status == NOTIFICATION_DELIVERED
-    assert sample_letter_notification.updated_at == yesteday
+    assert sample_letter_notification.status == initial_status
+    assert sample_letter_notification.updated_at == yesterday
 
-    assert (
-        f"Duplicate update received for notification id: "
-        f"{sample_letter_notification.id} with status: {NOTIFICATION_DELIVERED}"
-    ) in caplog.messages
+    assert any(
+        f"Duplicate callback received for service {sample_letter_notification.service_id}. "
+        f"Notification ID {sample_letter_notification.id} with type letter sent by None. "
+        f"New status was {sample_letter_notification.status}, current status is {initial_status}." in message
+        for message in caplog.messages
+    )
 
 
 @pytest.mark.parametrize(
@@ -123,11 +125,3 @@ def test_process_letter_callback_data_duplicate_update(sample_letter_notificatio
 )
 def test_determine_new_status(dvla_status, expected_status):
     assert determine_new_status(dvla_status) == expected_status
-
-
-def test_is_duplicate_update_same_status():
-    assert is_duplicate_update(NOTIFICATION_DELIVERED, NOTIFICATION_DELIVERED) is True
-
-
-def test_is_duplicate_update_different_status():
-    assert is_duplicate_update(NOTIFICATION_DELIVERED, NOTIFICATION_TECHNICAL_FAILURE) is False
