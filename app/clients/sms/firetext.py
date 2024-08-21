@@ -1,7 +1,7 @@
 import json
 import logging
 
-from requests import RequestException, request
+import requests
 
 from app.clients.sms import SmsClient, SmsClientResponseException
 
@@ -44,6 +44,8 @@ def get_message_status_and_reason_from_firetext_code(detailed_status_code):
 class FiretextClient(SmsClient):
     """
     FireText sms client.
+
+    This class is not thread-safe.
     """
 
     def __init__(self, *args, **kwargs):
@@ -52,6 +54,7 @@ class FiretextClient(SmsClient):
         self.international_api_key = self.current_app.config.get("FIRETEXT_INTERNATIONAL_API_KEY")
         self.url = self.current_app.config.get("FIRETEXT_URL")
         self.receipt_url = self.current_app.config.get("FIRETEXT_RECEIPT_URL")
+        self.requests_session = requests.Session()
 
     @property
     def name(self):
@@ -70,7 +73,7 @@ class FiretextClient(SmsClient):
             data["receipt"] = self.receipt_url
 
         try:
-            response = request("POST", self.url, data=data, timeout=60)
+            response = self.requests_session.request("POST", self.url, data=data, timeout=60)
             response.raise_for_status()
             try:
                 json.loads(response.text)
@@ -78,7 +81,7 @@ class FiretextClient(SmsClient):
                     raise ValueError("Expected 'code' to be '0'")
             except (ValueError, AttributeError) as e:
                 raise SmsClientResponseException("Invalid response JSON") from e
-        except RequestException as e:
+        except requests.RequestException as e:
             raise SmsClientResponseException("Request failed") from e
 
         return response
