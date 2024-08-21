@@ -110,6 +110,8 @@ class _SpecifiedCiphersAdapter(HTTPAdapter):
 class DVLAClient:
     """
     DVLA HTTP API letter client.
+
+    This class is not thread-safe.
     """
 
     statsd_client = None

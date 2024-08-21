@@ -54,6 +54,8 @@ class AwsSesClientThrottlingSendRateException(AwsSesClientException):
 class AwsSesClient(EmailClient):
     """
     Amazon SES email client.
+
+    This class is not thread-safe
     """
 
     def __init__(self, region, statsd_client):
