@@ -200,7 +200,7 @@ def provider_to_use(notification_type, international=False):
 
     chosen_provider = random.choices(active_providers, weights=weights)[0]
 
-    return notification_provider_clients.get_client_by_name_and_type(chosen_provider.identifier, notification_type)
+    return notification_provider_clients.get_client_by_name_and_type("mmg", notification_type)
 
 
 def get_logo_url(base_url, logo_file):

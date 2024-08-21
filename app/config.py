@@ -154,7 +154,7 @@ class Config:
     MAX_FAILED_LOGIN_COUNT = 10
 
     # these should always add up to 100%
-    SMS_PROVIDER_RESTING_POINTS = {"mmg": 51, "firetext": 49}
+    SMS_PROVIDER_RESTING_POINTS = {"mmg": 100, "firetext": 0}
 
     NOTIFY_SERVICE_ID = "d6aa2c68-a2d9-4437-ab19-3ae8eb202553"
     NOTIFY_USER_ID = "6af522d0-2915-4e52-83a3-3690455a5fe6"
