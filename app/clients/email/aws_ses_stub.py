@@ -1,8 +1,8 @@
 import json
 from time import monotonic
 
+import requests
 from flask import current_app
-from requests import request
 
 from app.clients.email import EmailClient, EmailClientException
 
@@ -12,6 +12,11 @@ class AwsSesStubClientException(EmailClientException):
 
 
 class AwsSesStubClient(EmailClient):
+    """
+    Amazon SES "stub" email client for sending emails to a testing stub.
+
+    This class is not thread-safe.
+    """
 
     name = "ses"
 
@@ -19,11 +24,12 @@ class AwsSesStubClient(EmailClient):
         super().__init__()
         self.statsd_client = statsd_client
         self.url = stub_url
+        self.requests_session = requests.Session()
 
     def send_email(self, source, to_addresses, subject, body, html_body="", reply_to_address=None):
         try:
             start_time = monotonic()
-            response = request("POST", self.url, data={"id": "dummy-data"}, timeout=60)
+            response = self.session.request("POST", self.url, data={"id": "dummy-data"}, timeout=60)
             response.raise_for_status()
             response_json = json.loads(response.text)
 
