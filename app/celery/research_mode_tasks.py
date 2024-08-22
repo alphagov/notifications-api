@@ -1,16 +1,29 @@
 import json
 import random
+from contextvars import ContextVar
 from datetime import datetime, timedelta
 
+import requests
 from flask import current_app
+from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.s3 import s3upload
-from requests import HTTPError, request
+from werkzeug.local import LocalProxy
 
-from app import notify_celery
+from app import memo_resetters, notify_celery
 from app.aws.s3 import file_exists
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.config import QueueNames
 from app.constants import SMS_TYPE
+
+
+# thread-local copies of persistent requests.Session
+_requests_session_context_var: ContextVar[requests.Session] = ContextVar("research_mode_requests_session")
+get_requests_session: LazyLocalGetter[requests.Session] = LazyLocalGetter(
+    _requests_session_context_var,
+    lambda: requests.Session(),
+)
+memo_resetters.append(lambda: get_requests_session.clear())
+requests_session = LocalProxy(get_requests_session)
 
 temp_fail = "7700900003"
 perm_fail = "7700900002"
@@ -53,9 +66,9 @@ def make_request(notification_type, provider, data, headers):
     api_call = f"{current_app.config['API_HOST_NAME_INTERNAL']}/notifications/{notification_type}/{provider}"
 
     try:
-        response = request("POST", api_call, headers=headers, data=data, timeout=60)
+        response = requests_session.request("POST", api_call, headers=headers, data=data, timeout=60)
         response.raise_for_status()
-    except HTTPError as e:
+    except requests.HTTPError as e:
         current_app.logger.error("API POST request on %s failed with status %s", api_call, e.response.status_code)
         raise e
     finally:
