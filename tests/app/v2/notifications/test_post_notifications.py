@@ -651,9 +651,9 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
     expected_filename,
 ):
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
-    document_download_mock = mocker.patch("app.v2.notifications.post_notifications.document_download_client")
-    document_download_mock.upload_document.side_effect = (
-        lambda service_id, content, is_csv, confirmation_email, **kwargs: f"{content}-link"
+    document_download_upload_document_mock = mocker.patch(
+        "app.document_download_client.upload_document",
+        side_effect=lambda service_id, content, is_csv, confirmation_email, **kwargs: f"{content}-link",
     )
 
     service = create_service(
@@ -686,7 +686,7 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
         assert expect_error_message in response["errors"][0]["message"]
 
     if expect_upload:
-        assert document_download_mock.upload_document.call_args_list == [
+        assert document_download_upload_document_mock.call_args_list == [
             mocker.call(
                 str(template.service_id),
                 "YSxiLGMKMSwyLDMK",
@@ -1131,8 +1131,10 @@ def test_post_notification_with_document_upload(
     )
 
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
-    document_download_mock = mocker.patch("app.v2.notifications.post_notifications.document_download_client")
-    document_download_mock.upload_document.side_effect = lambda service_id, content, is_csv, **kwargs: f"{content}-link"
+    document_download_upload_document_mock = mocker.patch(
+        "app.document_download_client.upload_document",
+        side_effect=lambda service_id, content, is_csv, **kwargs: f"{content}-link",
+    )
 
     data = {
         "email_address": service.users[0].email_address,
@@ -1151,7 +1153,7 @@ def test_post_notification_with_document_upload(
 
     confirmation_email = data["email_address"] if expect_email_confirmation else None
 
-    assert document_download_mock.upload_document.call_args_list == [
+    assert document_download_upload_document_mock.call_args_list == [
         call(
             str(service.id),
             "abababab",
@@ -1184,8 +1186,10 @@ def test_post_notification_with_document_upload_simulated(api_client_request, no
     template = create_template(service=service, template_type="email", content="Document: ((document))")
 
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
-    document_download_mock = mocker.patch("app.v2.notifications.post_notifications.document_download_client")
-    document_download_mock.get_upload_url_for_simulated_email.return_value = "https://document-url"
+    mocker.patch(
+        "app.document_download_client.get_upload_url_for_simulated_email",
+        return_value="https://document-url",
+    )
 
     data = {
         "email_address": "simulate-delivered@notifications.service.gov.uk",
@@ -1210,8 +1214,10 @@ def test_post_notification_without_document_upload_permission(api_client_request
     template = create_template(service=service, template_type="email", content="Document: ((document))")
 
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
-    document_download_mock = mocker.patch("app.v2.notifications.post_notifications.document_download_client")
-    document_download_mock.upload_document.return_value = "https://document-url/"
+    document_download_upload_document_mock = mocker.patch(
+        "app.document_download_client.upload_document",
+        return_value="https://document-url",
+    )
 
     data = {
         "email_address": service.users[0].email_address,
