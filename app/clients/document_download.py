@@ -20,6 +20,7 @@ class DocumentDownloadClient:
         self.api_host_external = app.config["DOCUMENT_DOWNLOAD_API_HOST"]
         self.api_host_internal = app.config["DOCUMENT_DOWNLOAD_API_HOST_INTERNAL"]
         self.auth_token = app.config["DOCUMENT_DOWNLOAD_API_KEY"]
+        self.requests_session = requests.Session()
 
     def get_upload_url_for_simulated_email(self, service_id):
         """
@@ -62,7 +63,7 @@ class DocumentDownloadClient:
             if has_request_context() and hasattr(request, "get_onwards_request_headers"):
                 headers.update(request.get_onwards_request_headers())
 
-            response = requests.post(
+            response = self.requests_session.post(
                 self._get_upload_url(service_id),
                 headers=headers,
                 json=data,
