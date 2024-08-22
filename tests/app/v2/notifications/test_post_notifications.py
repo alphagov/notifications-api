@@ -614,9 +614,9 @@ def test_post_email_notification_returns_201(
             {"doc": {"file": "YSxiLGMKMSwyLDMK", "filename": "file.csv"}},
             201,
             None,
-            False,
-            None,
-            None,
+            True,
+            True,
+            "26 weeks",
             "file.csv",
         ),
         (
@@ -685,8 +685,8 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
     if expect_error_message:
         assert expect_error_message in response["errors"][0]["message"]
 
-    if expect_upload:
-        assert document_download_upload_document_mock.call_args_list == [
+    assert document_download_upload_document_mock.call_args_list == (
+        [
             mocker.call(
                 str(template.service_id),
                 "YSxiLGMKMSwyLDMK",
@@ -696,6 +696,9 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
                 filename=expected_filename,
             )
         ]
+        if expect_upload
+        else []
+    )
 
 
 @pytest.mark.parametrize(
@@ -1228,6 +1231,7 @@ def test_post_notification_without_document_upload_permission(api_client_request
     api_client_request.post(
         service.id, "v2_notifications.post_notification", notification_type="email", _data=data, _expected_status=400
     )
+    assert document_download_upload_document_mock.call_args_list == []
 
 
 @pytest.mark.parametrize(
