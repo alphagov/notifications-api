@@ -137,11 +137,11 @@ def process_letter_callback():
     token = request.args.get("token", "")
     notification_id = parse_token(token)
 
+    current_app.logger.info("Letter callback for notification id %s received", notification_id)
+
     request_data = request.get_json()
 
     check_token_matches_payload(notification_id, request_data["id"])
-
-    current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
     page_count, status = extract_properties_from_request(request_data)
 
