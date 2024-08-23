@@ -143,11 +143,7 @@ def process_letter_callback():
 
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
-    despatch_properties = request_data["data"]["despatchProperties"]
-
-    # Since validation guarantees the presence of "totalSheets", we can directly extract it
-    page_count = next(item["value"] for item in despatch_properties if item["key"] == "totalSheets")
-    status = request_data["data"]["jobStatus"]
+    page_count, status = extract_properties_from_request(request_data)
 
     process_letter_callback_data.apply_async(
         kwargs={"notification_id": notification_id, "page_count": page_count, "status": status},
@@ -174,3 +170,13 @@ def check_token_matches_payload(notification_id, request_id):
             request_id,
         )
         raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
+
+
+def extract_properties_from_request(request_data):
+    despatch_properties = request_data["data"]["despatchProperties"]
+
+    # Since validation guarantees the presence of "totalSheets", we can directly extract it
+    page_count = next(item["value"] for item in despatch_properties if item["key"] == "totalSheets")
+    status = request_data["data"]["jobStatus"]
+
+    return page_count, status

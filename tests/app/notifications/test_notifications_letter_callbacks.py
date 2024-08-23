@@ -4,7 +4,11 @@ from itsdangerous import BadSignature
 
 from app import signing
 from app.errors import InvalidRequest
-from app.notifications.notifications_letter_callback import check_token_matches_payload, parse_token
+from app.notifications.notifications_letter_callback import (
+    check_token_matches_payload,
+    extract_properties_from_request,
+    parse_token,
+)
 
 
 def dvla_post(client, data):
@@ -336,3 +340,21 @@ def test_check_token_matches_payload(notification_id, request_id, should_raise_e
     else:
         check_token_matches_payload(notification_id, request_id)
         assert not caplog.records, "Expected no log messages, but some were captured."
+
+
+def test_extract_properties_from_request(mock_dvla_callback_data):
+    overrides = {
+        "data": {
+            "despatchProperties": [
+                {"key": "totalSheets", "value": "10"},
+            ],
+            "jobStatus": "REJECTED",
+        }
+    }
+
+    data = mock_dvla_callback_data(overrides)
+
+    page_count, status = extract_properties_from_request(data)
+
+    assert page_count == "10"
+    assert status == "REJECTED"
