@@ -234,6 +234,13 @@ def get_notification_by_id(notification_id, service_id=None, _raise=False):
     return query.one() if _raise else query.first()
 
 
+def dao_get_notification_or_history_by_id(notification_id):
+    if notification := Notification.query.get(notification_id):
+        return notification
+    else:
+        return NotificationHistory.query.get(notification_id)
+
+
 def get_notifications_for_service(
     service_id,
     filter_dict=None,

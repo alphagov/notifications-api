@@ -5,11 +5,13 @@ from flask import Blueprint, current_app, jsonify, request
 from itsdangerous import BadSignature
 
 from app import signing
+from app.celery.process_letter_client_response_tasks import process_letter_callback_data
 from app.celery.tasks import (
     record_daily_sorted_counts,
     update_letter_notifications_statuses,
 )
 from app.config import QueueNames
+from app.errors import InvalidRequest
 from app.notifications.utils import autoconfirm_subscription
 from app.schema_validation import validate
 from app.v2.errors import register_errors
@@ -29,6 +31,72 @@ dvla_sns_callback_schema = {
         "Message": {"type": ["string", "object"]},
     },
     "required": ["Type", "MessageId", "Message"],
+}
+
+dvla_letter_callback_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "dvla letter callback schema",
+    "type": "object",
+    "properties": {
+        "specVersion": {"type": "string"},
+        "type": {"type": "string"},
+        "source": {"type": "string"},
+        "id": {"type": "string"},
+        "time": {"type": "string", "format": "date-time"},
+        "dataContentType": {"type": "string", "enum": ["application/json"]},
+        "data": {
+            "type": "object",
+            "properties": {
+                "despatchProperties": {
+                    "type": "array",
+                    "minItems": 4,
+                    "uniqueItems": True,
+                    "items": {
+                        "type": "object",
+                        "properties": {"key": {"type": "string"}, "value": {"type": "string"}},
+                        "required": ["key", "value"],
+                        "oneOf": [
+                            {
+                                "properties": {
+                                    "key": {"const": "postageClass"},
+                                    "value": {"enum": ["1ST", "2ND", "INTERNATIONAL"]},
+                                }
+                            },
+                            {
+                                "properties": {
+                                    "key": {"const": "mailingProduct"},
+                                    "value": {
+                                        "enum": ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"]
+                                    },
+                                }
+                            },
+                            {"properties": {"key": {"const": "totalSheets"}, "value": {"type": "string"}}},
+                            {"properties": {"key": {"const": "Print Date"}, "value": {"format": "date-time"}}},
+                            # if the key does not match the requirements above, do not check values specified previously
+                            {
+                                "properties": {
+                                    "key": {
+                                        "not": {"enum": ["postageClass", "mailingProduct", "totalSheets", "Print Date"]}
+                                    },
+                                }
+                            },
+                        ],
+                    },
+                },
+                "jobId": {"type": "string"},
+                "jobType": {"type": "string"},
+                "jobStatus": {"type": "string", "enum": ["DESPATCHED", "REJECTED"]},
+                "templateReference": {"type": "string"},
+            },
+            "required": ["despatchProperties", "jobId", "jobStatus"],
+        },
+        "metadata": {
+            "type": "object",
+            "properties": {"correlationId": {"type": "string"}},
+            "required": ["correlationId"],
+        },
+    },
+    "required": ["id", "time", "data", "metadata"],
 }
 
 
@@ -64,14 +132,51 @@ def process_letter_response():
 
 
 @letter_callback_blueprint.route("/notifications/letter/status", methods=["POST"])
+@validate_schema(dvla_letter_callback_schema)
 def process_letter_callback():
     token = request.args.get("token", "")
+    notification_id = parse_token(token)
 
-    try:
-        notification_id = signing.decode(token)
-    except BadSignature:
-        current_app.logger.info("Letter callback with invalid token of %s received", token)
-    else:
-        current_app.logger.info("Letter callback for notification id %s received", notification_id)
+    current_app.logger.info("Letter callback for notification id %s received", notification_id)
+
+    request_data = request.get_json()
+
+    check_token_matches_payload(notification_id, request_data["id"])
+
+    page_count, status = extract_properties_from_request(request_data)
+
+    process_letter_callback_data.apply_async(
+        kwargs={"notification_id": notification_id, "page_count": page_count, "status": status},
+        queue=QueueNames.NOTIFY,
+    )
 
     return jsonify(result="success"), 200
+
+
+def parse_token(token):
+    try:
+        notification_id = signing.decode(token)
+        return notification_id
+    except BadSignature:
+        current_app.logger.info("Letter callback with invalid token of %s received", token)
+        raise InvalidRequest("A valid token must be provided in the query string", 403) from None
+
+
+def check_token_matches_payload(notification_id, request_id):
+    if notification_id != request_id:
+        current_app.logger.exception(
+            "Notification ID %s in letter callback data does not match token ID %s",
+            notification_id,
+            request_id,
+        )
+        raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
+
+
+def extract_properties_from_request(request_data):
+    despatch_properties = request_data["data"]["despatchProperties"]
+
+    # Since validation guarantees the presence of "totalSheets", we can directly extract it
+    page_count = next(item["value"] for item in despatch_properties if item["key"] == "totalSheets")
+    status = request_data["data"]["jobStatus"]
+
+    return page_count, status
