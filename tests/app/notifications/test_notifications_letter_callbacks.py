@@ -1,7 +1,10 @@
 import pytest
 from flask import json, url_for
+from itsdangerous import BadSignature
 
 from app import signing
+from app.errors import InvalidRequest
+from app.notifications.notifications_letter_callback import parse_token
 
 
 def dvla_post(client, data):
@@ -297,3 +300,15 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
             "status": status,
         },
     )
+
+
+@pytest.mark.parametrize("token", [None, "invalid-token"])
+def test_parse_token_invalid(client, token, caplog, mocker):
+    mocker.patch("app.signing.decode", side_effect=BadSignature("Invalid token"))
+
+    with pytest.raises(InvalidRequest) as e:
+        parse_token(token)
+
+    assert f"Letter callback with invalid token of {token} received" in caplog.text
+
+    assert "A valid token must be provided in the query string" in str(e.value)

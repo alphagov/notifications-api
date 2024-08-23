@@ -136,11 +136,7 @@ def process_letter_response():
 def process_letter_callback():
     token = request.args.get("token", "")
 
-    try:
-        notification_id = signing.decode(token)
-    except BadSignature:
-        current_app.logger.info("Letter callback with invalid token of %s received", token)
-        raise InvalidRequest("A valid token must be provided in the query string", 403) from None
+    notification_id = parse_token(token)
 
     request_data = request.get_json()
 
@@ -166,3 +162,12 @@ def process_letter_callback():
     )
 
     return jsonify(result="success"), 200
+
+
+def parse_token(token):
+    try:
+        notification_id = signing.decode(token)
+        return notification_id
+    except BadSignature:
+        current_app.logger.info("Letter callback with invalid token of %s received", token)
+        raise InvalidRequest("A valid token must be provided in the query string", 403) from None
