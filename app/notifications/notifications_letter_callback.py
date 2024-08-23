@@ -135,18 +135,11 @@ def process_letter_response():
 @validate_schema(dvla_letter_callback_schema)
 def process_letter_callback():
     token = request.args.get("token", "")
-
     notification_id = parse_token(token)
 
     request_data = request.get_json()
 
-    if notification_id != request_data["id"]:
-        current_app.logger.exception(
-            "Notification ID %s in letter callback data does not match token ID %s",
-            request_data["id"],
-            notification_id,
-        )
-        raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
+    check_token_matches_payload(notification_id, request_data["id"])
 
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
@@ -171,3 +164,13 @@ def parse_token(token):
     except BadSignature:
         current_app.logger.info("Letter callback with invalid token of %s received", token)
         raise InvalidRequest("A valid token must be provided in the query string", 403) from None
+
+
+def check_token_matches_payload(notification_id, request_id):
+    if notification_id != request_id:
+        current_app.logger.exception(
+            "Notification ID %s in letter callback data does not match token ID %s",
+            notification_id,
+            request_id,
+        )
+        raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)

@@ -4,7 +4,7 @@ from itsdangerous import BadSignature
 
 from app import signing
 from app.errors import InvalidRequest
-from app.notifications.notifications_letter_callback import parse_token
+from app.notifications.notifications_letter_callback import check_token_matches_payload, parse_token
 
 
 def dvla_post(client, data):
@@ -264,7 +264,7 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
     )
 
     assert (
-        f"Notification ID {data['id']} in letter callback data does not match token ID {fake_uuid}"
+        f"Notification ID {fake_uuid} in letter callback data does not match token ID {data['id']}"
     ) in caplog.messages
 
     assert response.status_code == 400
@@ -310,5 +310,29 @@ def test_parse_token_invalid(client, token, caplog, mocker):
         parse_token(token)
 
     assert f"Letter callback with invalid token of {token} received" in caplog.text
-
     assert "A valid token must be provided in the query string" in str(e.value)
+
+
+@pytest.mark.parametrize(
+    "notification_id, request_id, should_raise_exception",
+    [
+        ("12345", "12345", False),
+        ("12345", "67890", True),
+    ],
+    ids=[
+        "IDs match, no exception",
+        "IDs do not match, exception expected",
+    ],
+)
+def test_check_token_matches_payload(notification_id, request_id, should_raise_exception, caplog):
+    if should_raise_exception:
+        with pytest.raises(InvalidRequest):
+            check_token_matches_payload(notification_id, request_id)
+
+        assert (
+            f"Notification ID {notification_id} in letter callback data does not match token ID {request_id}"
+        ) in caplog.messages
+
+    else:
+        check_token_matches_payload(notification_id, request_id)
+        assert not caplog.records, "Expected no log messages, but some were captured."
