@@ -183,6 +183,7 @@ class Config:
     NHS_LETTER_BRANDING_ID = "2cd354bb-6b85-eda3-c0ad-6b613150459f"
     REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID = "77677459-f862-44ee-96d9-b8cb2323d407"
     RECEIPT_FOR_REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID = "38bcd263-6ce8-431f-979d-8e637c1f0576"
+    USER_RESEARCH_EMAIL_FOR_NEW_USERS_TEMPLATE_ID = "55bcb671-4924-46c5-a00d-1a9d48458008"
     # we only need real email in Live environment (production)
     DVLA_EMAIL_ADDRESSES = json.loads(os.environ.get("DVLA_EMAIL_ADDRESSES", "[]"))
 
@@ -353,6 +354,11 @@ class Config:
                 "task": "weekly-dwp-report",
                 "schedule": crontab(hour=9, minute=0, day_of_week="mon"),
                 "options": {"queue": QueueNames.REPORTING},
+            },
+            "weekly-user-research-email": {
+                "task": "weekly-user-research-email",
+                "schedule": crontab(hour=10, minute=0, day_of_week="wed"),
+                "options": {"queue": QueueNames.PERIODIC},
             },
             # first tuesday of every month
             "change-dvla-api-key": {

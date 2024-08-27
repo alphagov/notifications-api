@@ -928,6 +928,40 @@ def organisation_reject_go_live_request_template(notify_service):
     )
 
 
+@pytest.fixture(scope="function")
+def user_research_email_for_new_users_template(notify_service):
+    template_content = textwrap.dedent(
+        """\
+        Hi ((name))
+        # How easy was it to start using GOV.UK Notify?
+
+        Please take 30 seconds to let us know:
+
+        https://surveys.publishing.service.gov.uk/s/notify-getting-started/
+
+        If you want to, you can tell us more about your experiences so far – from creating an account to setting up your first service.
+
+        We’ll read every piece of feedback we get, and your insights will help us to make GOV.UK Notify better for everyone.
+
+        Kind regards
+        GOV.UK Notify
+
+        ---
+
+        If you do not want to take part in user research, you can [unsubscribe from these emails](https://www.notifications.service.gov.uk/user-profile/take-part-in-user-research).
+        """  # noqa
+    )
+
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="USER_RESEARCH_EMAIL_FOR_NEW_USERS_TEMPLATE_ID",
+        content=template_content,
+        subject="How easy was it to start using GOV.UK Notify?",
+        template_type="email",
+    )
+
+
 @pytest.fixture
 def notify_service(notify_db_session, sample_user):
     service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])

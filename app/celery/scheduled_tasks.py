@@ -1,7 +1,7 @@
 import csv
 import io
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import jinja2
 import sentry_sdk
@@ -34,6 +34,7 @@ from app.constants import (
     JOB_STATUS_ERROR,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
+    KEY_TYPE_NORMAL,
     SMS_TYPE,
     CacheKeys,
 )
@@ -67,10 +68,12 @@ from app.dao.provider_details_dao import (
     dao_reduce_sms_provider_priority,
 )
 from app.dao.services_dao import (
+    dao_fetch_service_by_id,
     dao_find_services_sending_to_tv_numbers,
     dao_find_services_with_high_failure_rates,
 )
-from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.dao.templates_dao import dao_get_template_by_id
+from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago, get_users_for_research
 from app.letters.utils import generate_letter_pdf_filename
 from app.models import (
     AnnualBilling,
@@ -81,7 +84,7 @@ from app.models import (
     Service,
     User,
 )
-from app.notifications.process_notifications import send_notification_to_queue
+from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.utils import get_london_midnight_in_utc
 
 
@@ -606,6 +609,37 @@ def weekly_dwp_report():
         ),
         due_at=convert_utc_to_bst(datetime.utcnow() + timedelta(days=7, hours=3, minutes=10)),
     )
+
+
+@notify_celery.task(name="weekly-user-research-email")
+def weekly_user_research_email():
+    """
+    Runs every Wednesday and finds all active users who were created the week starting on Monday 16 days ago.
+    These users get emailed inviting them to give feedback on how they have found getting started with Notify.
+    """
+    start_date = date.today() - timedelta(days=16)
+    end_date = date.today() - timedelta(days=9)
+
+    template = dao_get_template_by_id(current_app.config["USER_RESEARCH_EMAIL_FOR_NEW_USERS_TEMPLATE_ID"])
+    notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
+
+    users = get_users_for_research(start_date=start_date, end_date=end_date)
+
+    current_app.logger.info("Sending weekly user research email to %s users", len(users))
+
+    for user in users:
+        saved_notification = persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient=user.email_address,
+            service=notify_service,
+            personalisation={"name": user.name},
+            notification_type=template.template_type,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
+            reply_to_text=notify_service.get_default_reply_to_email_address(),
+        )
+        send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
 
 @notify_celery.task(bind=True, name="change-dvla-password", max_retries=3, default_retry_delay=60)
