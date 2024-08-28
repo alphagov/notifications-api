@@ -24,7 +24,11 @@ def validate_schema_phone_number(instance):
 
     if isinstance(instance, str):
         try:
-            PhoneNumber(instance, allow_international=True)
+            number = PhoneNumber(instance)
+            number.validate(
+                allow_international_number=True,
+                allow_uk_landline=True,
+            )
         except InvalidPhoneError as e:
             legacy_message = e.get_legacy_v2_api_error_message()
             raise ValidationError(legacy_message) from None

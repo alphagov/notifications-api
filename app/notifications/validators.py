@@ -143,7 +143,11 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
     if notification_type == SMS_TYPE:
         if service.has_permission(SMS_TO_UK_LANDLINES):
             try:
-                phone_number = PhoneNumber(send_to, allow_international=service.has_permission(INTERNATIONAL_SMS_TYPE))
+                phone_number = PhoneNumber(send_to)
+                phone_number.validate(
+                    allow_international_number=service.has_permission(INTERNATIONAL_SMS_TYPE),
+                    allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
+                )
                 return phone_number.get_normalised_format()
             except InvalidPhoneError as e:
                 if e.code == InvalidPhoneError.Codes.NOT_A_UK_MOBILE:
