@@ -69,6 +69,7 @@ from app.constants import (
     VERIFY_CODE_TYPES,
     LetterLanguageOptions,
     OrganisationUserPermissionTypes,
+    RequestStatus,
 )
 from app.hashing import check_hash, hashpw
 from app.history_meta import Versioned
@@ -2798,3 +2799,31 @@ class ProtectedSenderId(db.Model):
     __tablename__ = "protected_sender_ids"
 
     sender_id = db.Column(db.String, primary_key=True, nullable=False)
+
+
+contacted_users = db.Table(
+    "contacted_users",
+    db.Model.metadata,
+    db.Column(
+        "service_join_request_id", UUID(as_uuid=True), db.ForeignKey("service_join_requests.id"), primary_key=True
+    ),
+    db.Column("user_id", UUID(as_uuid=True), db.ForeignKey("users.id"), primary_key=True),
+)
+
+
+class ServiceJoinRequest(db.Model):
+    __tablename__ = "service_join_requests"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requester_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow())
+    status = db.Column(db.Enum(RequestStatus), nullable=False, default=RequestStatus.PENDING)
+    status_changed_at = db.Column(db.DateTime, nullable=True)
+    status_changed_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
+    reason = db.Column(db.Text, nullable=True)
+
+    requester = db.relationship("User", foreign_keys=[requester_id])
+    status_changed_by = db.relationship("User", foreign_keys=[status_changed_by_id])
+
+    contacted_service_users = db.relationship("User", secondary=contacted_users, backref="service_join_requests")

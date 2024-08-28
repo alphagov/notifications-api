@@ -175,7 +175,6 @@ CROWN_ORGANISATION_TYPES = ["nhs_central"]
 NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "nhs_gp", "emergency_service", "school_or_college"]
 NHS_ORGANISATION_TYPES = ["nhs_central", "nhs_local", "nhs_gp"]
 
-
 # Service permissions
 MANAGE_USERS = "manage_users"
 MANAGE_TEMPLATES = "manage_templates"
@@ -238,7 +237,6 @@ PERMISSION_LIST = [
     CANCEL_BROADCASTS,
     REJECT_BROADCASTS,
 ]
-
 
 CAN_ASK_TO_JOIN_SERVICE = "can_ask_to_join_a_service"
 ORGANISATION_PERMISSION_TYPES = [
@@ -340,3 +338,9 @@ class CacheKeys:
 
 # Admin API error codes
 QR_CODE_TOO_LONG = "qr-code-too-long"
+
+
+class RequestStatus(enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
