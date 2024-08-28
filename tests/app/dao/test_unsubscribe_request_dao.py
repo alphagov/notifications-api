@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from sqlalchemy import desc
 
 from app.constants import EMAIL_TYPE
@@ -8,6 +10,7 @@ from app.dao.unsubscribe_request_dao import (
     get_latest_unsubscribe_request_date_dao,
     get_unsubscribe_request_by_notification_id_dao,
     get_unsubscribe_request_report_by_id_dao,
+    get_unsubscribe_request_reports_dao,
     get_unsubscribe_requests_data_for_download_dao,
     get_unsubscribe_requests_statistics_dao,
 )
@@ -291,6 +294,50 @@ def test_assign_unbatched_unsubscribe_requests_to_report_dao(sample_service):
     for unsubscribe_request in unsubscribe_requests:
         assert unsubscribe_request.unsubscribe_request_report_id == unsubscribe_request_report.id
     assert len(unsubscribe_requests) == 2
+
+
+def test_unsubscribe_reports_only_includes_those_with_requests(sample_service):
+    unsubscribe_request_report_1 = UnsubscribeRequestReport(
+        id=uuid4(),
+        count=123,
+        earliest_timestamp=midnight_n_days_ago(4),
+        latest_timestamp=midnight_n_days_ago(0),
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report_1)
+
+    unsubscribe_request_report_2 = UnsubscribeRequestReport(
+        id=uuid4(),
+        count=456,
+        earliest_timestamp=midnight_n_days_ago(4),
+        latest_timestamp=midnight_n_days_ago(0),
+        service_id=sample_service.id,
+    )
+    create_unsubscribe_request_reports_dao(unsubscribe_request_report_2)
+
+    notification = create_notification(
+        template=create_template(
+            sample_service,
+            template_type=EMAIL_TYPE,
+        )
+    )
+    create_unsubscribe_request_dao(
+        {
+            "notification_id": notification.id,
+            "template_id": notification.template_id,
+            "template_version": notification.template_version,
+            "service_id": notification.service_id,
+            "email_address": notification.to,
+            "created_at": midnight_n_days_ago(0),
+        }
+    )
+    assign_unbatched_unsubscribe_requests_to_report_dao(
+        report_id=unsubscribe_request_report_1.id,
+        service_id=unsubscribe_request_report_1.service_id,
+        earliest_timestamp=unsubscribe_request_report_1.earliest_timestamp,
+        latest_timestamp=unsubscribe_request_report_1.latest_timestamp,
+    )
+    assert list(get_unsubscribe_request_reports_dao(sample_service.id)) == [unsubscribe_request_report_1]
 
 
 def test_get_unsubscribe_request_data_for_download_dao(sample_service):

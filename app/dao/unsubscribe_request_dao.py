@@ -53,9 +53,10 @@ def get_latest_unsubscribe_request_date_dao(service_id):
 
 def get_unsubscribe_request_reports_dao(service_id):
     return (
-        UnsubscribeRequestReport.query.filter_by(service_id=service_id)
+        UnsubscribeRequestReport.query.filter(UnsubscribeRequestReport.service_id == service_id)
+        .join(UnsubscribeRequest, UnsubscribeRequest.unsubscribe_request_report_id == UnsubscribeRequestReport.id)
         .order_by(desc(UnsubscribeRequestReport.latest_timestamp))
-        .all()
+        .distinct()
     )
 
 
