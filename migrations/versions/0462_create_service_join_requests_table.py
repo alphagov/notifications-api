@@ -2,7 +2,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "0461_create_service_join_requests_table"
+revision = "0461_svc_join_req"
 down_revision = "0460_letter_rates_july_2024"
 
 request_status_enum = sa.Enum("PENDING", "APPROVED", "REJECTED", name="requeststatus")
