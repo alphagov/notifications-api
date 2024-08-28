@@ -3638,6 +3638,9 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         service_id=sample_service.id,
     )
     create_unsubscribe_request_reports_dao(unsubscribe_request_report_1)
+    create_unsubscribe_request_dao(
+        unbatched_request_2_data | {"unsubscribe_request_report_id": unsubscribe_request_report_1.id}
+    )
 
     unsubscribe_request_report_2 = UnsubscribeRequestReport(
         id=uuid.uuid4(),
@@ -3648,6 +3651,9 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         service_id=sample_service.id,
     )
     create_unsubscribe_request_reports_dao(unsubscribe_request_report_2)
+    create_unsubscribe_request_dao(
+        unbatched_request_2_data | {"unsubscribe_request_report_id": unsubscribe_request_report_2.id}
+    )
 
     expected_batched_unsubscribe_request_reports_summary = [
         {
