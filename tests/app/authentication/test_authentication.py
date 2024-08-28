@@ -67,7 +67,7 @@ def service_jwt_token(sample_api_key, service_jwt_secret):
 
 def test_requires_auth_should_allow_valid_token_for_request(client, sample_api_key):
     header = create_service_authorization_header(sample_api_key.service_id)
-    response = client.get("/notifications", headers=[header])
+    response = client.get("/v2/notifications", headers=[header])
     assert response.status_code == 200
 
 

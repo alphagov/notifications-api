@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
@@ -21,6 +21,7 @@ from app.dao.users_dao import (
     delete_model_user,
     get_user_by_email,
     get_user_by_id,
+    get_users_for_research,
     increment_failed_login_count,
     reset_failed_login_count,
     save_model_user,
@@ -313,3 +314,24 @@ def test_user_cannot_be_archived_if_the_other_service_members_do_not_have_the_ma
 
     assert len(sample_service.users) == 3
     assert not user_can_be_archived(active_user)
+
+
+def test_get_users_for_research(notify_db_session):
+    # users that don't get returned from function
+    create_user(state="active", take_part_in_research=True, created_at=datetime(2024, 6, 30, 23, 59))
+    create_user(state="active", take_part_in_research=True, created_at=datetime(2024, 8, 14))
+    create_user(state="active", take_part_in_research=False, created_at=datetime(2024, 8, 1))
+    create_user(state="inactive", take_part_in_research=True, created_at=datetime(2024, 8, 1))
+    create_user(state="pending", take_part_in_research=True, created_at=datetime(2024, 8, 1))
+
+    # users that do get returned from function
+    returned_user_1 = create_user(state="active", take_part_in_research=True, created_at=datetime(2024, 8, 1))
+    returned_user_2 = create_user(state="active", take_part_in_research=True, created_at=datetime(2024, 8, 5, 14))
+    returned_user_3 = create_user(state="active", take_part_in_research=True, created_at=datetime(2024, 8, 13, 23, 59))
+
+    users = get_users_for_research(date(2024, 7, 31), date(2024, 8, 14))
+
+    assert len(users) == 3
+    assert returned_user_1 in users
+    assert returned_user_2 in users
+    assert returned_user_3 in users

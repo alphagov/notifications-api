@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from random import SystemRandom
 
 from flask import current_app
@@ -192,3 +192,16 @@ def user_can_be_archived(user):
             return False
 
     return True
+
+
+def get_users_for_research(start_date: date, end_date: date) -> list[User]:
+    """
+    Returns active users who have consented to take part in user research and who
+    were created on or after the start but before the end date.
+    """
+    return User.query.filter(
+        User.state == "active",
+        User.take_part_in_research == True,  # noqa
+        User.created_at >= start_date,
+        User.created_at < end_date,
+    ).all()

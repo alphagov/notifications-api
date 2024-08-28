@@ -25,7 +25,7 @@ import app.constants
 from app import db, ma, models
 from app.dao.permissions_dao import permission_dao
 from app.models import ServicePermission
-from app.utils import DATETIME_FORMAT_NO_TIMEZONE, get_template_instance
+from app.utils import DATETIME_FORMAT_NO_TIMEZONE
 
 
 def _validate_positive_number(value, msg="Not a positive integer"):
@@ -583,23 +583,6 @@ class SmsNotificationSchema(NotificationSchema):
         return item
 
 
-class EmailNotificationSchema(NotificationSchema):
-    to = fields.Str(required=True)
-    template = fields.Str(required=True)
-
-    @validates("to")
-    def validate_to(self, value):
-        try:
-            validate_email_address(value)
-        except InvalidEmailError as e:
-            raise ValidationError(str(e)) from e
-
-
-class SmsTemplateNotificationSchema(SmsNotificationSchema):
-    template = fields.Str(required=True)
-    job = fields.String()
-
-
 class NotificationWithTemplateSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.Notification
@@ -641,66 +624,6 @@ class NotificationWithTemplateSchema(BaseSchema):
             in_data.key_name = in_data.api_key.name
         else:
             in_data.key_name = None
-        return in_data
-
-
-class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
-    template_history = fields.Nested(
-        TemplateHistorySchema,
-        attribute="template",
-        only=["id", "name", "template_type", "content", "subject", "version"],
-        dump_only=True,
-    )
-
-    class Meta(NotificationWithTemplateSchema.Meta):
-        # mark as many fields as possible as required since this is a public api.
-        # WARNING: Does _not_ reference fields computed in handle_template_merge, such as
-        # 'body', 'subject' [for emails], and 'content_char_count'
-        fields = (
-            # db rows
-            "billable_units",
-            "created_at",
-            "id",
-            "job_row_number",
-            "notification_type",
-            "reference",
-            "sent_at",
-            "sent_by",
-            "status",
-            "template_version",
-            "to",
-            "updated_at",
-            # computed fields
-            "personalisation",
-            # relationships
-            "api_key",
-            "job",
-            "service",
-            "template_history",
-        )
-        # Overwrite the `NotificationWithTemplateSchema` base class to not exclude `_personalisation`, which
-        # isn't a defined field for this class
-        exclude = ()
-
-    @pre_dump
-    def handle_personalisation_property(self, in_data, **kwargs):
-        self.personalisation = in_data.personalisation
-        return in_data
-
-    @post_dump
-    def handle_template_merge(self, in_data, **kwargs):
-        in_data["template"] = in_data.pop("template_history")
-        template = get_template_instance(in_data["template"], in_data["personalisation"])
-        in_data["body"] = template.content_with_placeholders_filled_in
-        if in_data["template"]["template_type"] != app.constants.SMS_TYPE:
-            in_data["subject"] = template.subject
-            in_data["content_char_count"] = None
-        else:
-            in_data["content_char_count"] = template.content_count
-
-        in_data.pop("personalisation", None)
-        in_data["template"].pop("content", None)
-        in_data["template"].pop("subject", None)
         return in_data
 
 
@@ -845,11 +768,8 @@ template_schema = TemplateSchema()
 template_schema_no_detail = TemplateSchemaNoDetail()
 api_key_schema = ApiKeySchema()
 job_schema = JobSchema()
-sms_template_notification_schema = SmsTemplateNotificationSchema()
-email_notification_schema = EmailNotificationSchema()
 notification_schema = NotificationModelSchema()
 notification_with_template_schema = NotificationWithTemplateSchema()
-notification_with_personalisation_schema = NotificationWithPersonalisationSchema()
 invited_user_schema = InvitedUserSchema()
 email_data_request_schema = EmailDataSchema()
 partial_email_data_request_schema = EmailDataSchema(partial_email=True)

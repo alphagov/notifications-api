@@ -38,6 +38,7 @@ from app.celery.scheduled_tasks import (
     run_scheduled_jobs,
     switch_current_sms_provider_on_slow_delivery,
     weekly_dwp_report,
+    weekly_user_research_email,
     zendesk_new_email_branding_report,
 )
 from app.clients.letter.dvla import (
@@ -57,7 +58,7 @@ from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import SlowProviderDeliveryReport
 from app.dao.provider_details_dao import get_provider_details_by_identifier
-from app.models import Event, InboundNumber
+from app.models import Event, InboundNumber, Notification
 from tests.app import load_example_csv
 from tests.app.db import (
     create_email_branding,
@@ -1072,6 +1073,29 @@ def test_check_for_low_available_inbound_sms_numbers_does_not_proceed_if_enough_
         check_for_low_available_inbound_sms_numbers()
 
     assert mock_send_ticket.call_args_list == []
+
+
+@freeze_time("2024-08-14T10:00:00")
+def test_weekly_user_research_email(mocker, user_research_email_for_new_users_template, notify_db_session):
+    mocker_send_email = mocker.patch("app.celery.scheduled_tasks.send_notification_to_queue")
+
+    create_user(email="user1@gov.uk", take_part_in_research=True, created_at=datetime(2024, 7, 29, 12, 0))
+    create_user(email="user2@gov.uk", take_part_in_research=True, created_at=datetime(2024, 8, 1, 14))
+    create_user(email="user3@gov.uk", take_part_in_research=True, created_at=datetime(2024, 8, 4, 23, 59))
+
+    # user does not receive email
+    create_user(email="user4@gov.uk", take_part_in_research=True, created_at=datetime(2024, 8, 5))
+
+    weekly_user_research_email()
+
+    assert mocker_send_email.call_args_list == [
+        call(ANY, queue="notify-internal-tasks"),
+        call(ANY, queue="notify-internal-tasks"),
+        call(ANY, queue="notify-internal-tasks"),
+    ]
+
+    notifications = Notification.query.all()
+    assert {email.to for email in notifications} == {"user1@gov.uk", "user2@gov.uk", "user3@gov.uk"}
 
 
 class TestChangeDvlaPasswordTask:
