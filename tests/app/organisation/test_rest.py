@@ -596,6 +596,24 @@ def test_archive_organisation_sets_active_to_false(
     assert not sample_organisation.active
 
 
+@pytest.mark.parametrize("service_trial_mode", [True, False])
+def test_archive_organisation_works_if_inactive_services_exist_for_org(
+    admin_request,
+    sample_organisation,
+    sample_service,
+    service_trial_mode,
+):
+    sample_service.active = False
+    sample_service.restricted = service_trial_mode
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+
+    admin_request.post(
+        "organisation.archive_organisation", organisation_id=sample_organisation.id, _expected_status=204
+    )
+
+    assert not sample_organisation.active
+
+
 def test_archive_organisation_raises_an_error_if_org_has_team_members(
     admin_request,
     sample_organisation,
@@ -624,30 +642,21 @@ def test_archive_organisation_raises_an_error_if_org_has_pending_invited_team_me
     assert sample_organisation.active
 
 
-@pytest.mark.parametrize(
-    "service_active, service_trial_mode",
-    [
-        (True, True),
-        (False, True),
-        (False, False),
-        (True, False),
-    ],
-)
+@pytest.mark.parametrize("service_trial_mode", [True, False])
 def test_archive_organisation_raises_an_error_if_org_has_services(
     admin_request,
     sample_organisation,
     sample_service,
-    service_active,
     service_trial_mode,
 ):
-    sample_service.active = service_active
+    sample_service.active = True
     sample_service.restricted = service_trial_mode
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
 
     response = admin_request.post(
         "organisation.archive_organisation", organisation_id=sample_organisation.id, _expected_status=400
     )
-    assert response["message"] == "Cannot archive an organisation with services"
+    assert response["message"] == "Cannot archive an organisation with active services"
 
     assert sample_organisation.active
 

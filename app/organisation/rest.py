@@ -157,8 +157,8 @@ def archive_organisation(organisation_id):
 
     organisation = dao_get_organisation_by_id(organisation_id)
 
-    if organisation.services:
-        raise InvalidRequest("Cannot archive an organisation with services", 400)
+    if any(service.active for service in organisation.services):
+        raise InvalidRequest("Cannot archive an organisation with active services", 400)
 
     pending_invited_users = [
         user for user in get_invited_org_users_for_organisation(organisation_id) if user.status == INVITE_PENDING
