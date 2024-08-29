@@ -101,15 +101,16 @@ def _notify_db(notify_api, worker_id):
 
     # Run this in a subprocess - alembic loads a lot of logging config that will otherwise splatter over our desired
     # app logging config and breaks pytest.caplog.
-    subprocess.run(
+    result = subprocess.run(
         ["flask", "db", "upgrade"],
         env={
             **os.environ,
             "SQLALCHEMY_DATABASE_URI": current_app.config["SQLALCHEMY_DATABASE_URI"],
             "FLASK_APP": "application:application",
         },
-        check=True,
+        capture_output=True,
     )
+    assert result.returncode == 0, result.stderr.decode()
 
     # now db is initialised, run cleanup on it to remove any artifacts from migrations (such as the notify service and
     # templates). Otherwise the very first test executed by a worker will be running on a different db setup to
