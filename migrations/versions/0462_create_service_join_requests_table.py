@@ -5,8 +5,6 @@ from sqlalchemy.dialects import postgresql
 revision = "0462_svc_join_req"
 down_revision = "0461_user_research_email"
 
-request_status_enum = sa.Enum("PENDING", "APPROVED", "REJECTED", name="requeststatus")
-
 
 def upgrade():
     op.create_table(
@@ -15,7 +13,12 @@ def upgrade():
         sa.Column("requester_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
         sa.Column("service_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("services.id"), nullable=False),
         sa.Column("created_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
-        sa.Column("status", request_status_enum, nullable=False, server_default="PENDING"),
+        sa.Column(
+            "status",
+            sa.Enum("PENDING", "APPROVED", "REJECTED", name="request_status"),
+            nullable=False,
+            server_default="PENDING",
+        ),
         sa.Column("status_changed_at", sa.DateTime, nullable=True),
         sa.Column("status_changed_by_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=True),
         sa.Column("reason", sa.Text, nullable=True),
