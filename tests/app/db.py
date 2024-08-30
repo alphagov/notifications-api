@@ -34,6 +34,7 @@ from app.dao.service_sms_sender_dao import (
 )
 from app.dao.services_dao import dao_add_user_to_service, dao_create_service
 from app.dao.templates_dao import dao_create_template, dao_update_template
+from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao, create_unsubscribe_request_reports_dao
 from app.dao.users_dao import save_model_user
 from app.models import (
     AnnualBilling,
@@ -76,6 +77,7 @@ from app.models import (
     ServiceSmsSender,
     Template,
     TemplateFolder,
+    UnsubscribeRequestReport,
     User,
     WebauthnCredential,
 )
@@ -1280,3 +1282,58 @@ def create_letter_attachment(created_by_id):
     db.session.add(letter_attachment)
     db.session.commit()
     return letter_attachment
+
+
+def create_unsubscribe_request(
+    service,
+    *,
+    email_address=None,
+    created_at=None,
+    job=None,
+    unsubscribe_request_report_id=None,
+):
+    template = (
+        job.template
+        if job
+        else create_template(
+            service,
+            template_type=EMAIL_TYPE,
+        )
+    )
+    notification = create_notification(
+        template=template,
+        job=job,
+        to_field=email_address,
+        sent_at=(created_at or datetime.now()) - timedelta(days=1),
+    )
+    return create_unsubscribe_request_dao(
+        {
+            "notification_id": notification.id,
+            "template_id": notification.template_id,
+            "template_version": notification.template_version,
+            "service_id": notification.service_id,
+            "email_address": notification.to,
+            "created_at": created_at or datetime.now(),
+            "unsubscribe_request_report_id": unsubscribe_request_report_id,
+        }
+    )
+
+
+def create_unsubscribe_request_report(
+    service,
+    *,
+    count=123,
+    earliest_timestamp,
+    latest_timestamp,
+    processed_by_service_at=None,
+):
+    report = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=count,
+        earliest_timestamp=earliest_timestamp,
+        latest_timestamp=latest_timestamp,
+        service_id=service.id,
+        processed_by_service_at=processed_by_service_at,
+    )
+    create_unsubscribe_request_reports_dao(report)
+    return report
