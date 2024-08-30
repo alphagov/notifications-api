@@ -12,13 +12,12 @@ class AwsSesStubClientException(EmailClientException):
 
 
 class AwsSesStubClient(EmailClient):
+
+    name = "ses"
+
     def init_app(self, region, statsd_client, stub_url):
         self.statsd_client = statsd_client
         self.url = stub_url
-
-    @property
-    def name(self):
-        return "ses"
 
     def send_email(self, source, to_addresses, subject, body, html_body="", reply_to_address=None):
         try:

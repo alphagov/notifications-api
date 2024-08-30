@@ -112,6 +112,8 @@ class DVLAClient:
     DVLA HTTP API letter client.
     """
 
+    name = "dvla"
+
     statsd_client = None
 
     _jwt_token = None
@@ -128,10 +130,6 @@ class DVLAClient:
 
         self.session = requests.Session()
         self.session.mount(self.base_url, _SpecifiedCiphersAdapter(ciphers=self.ciphers))
-
-    @property
-    def name(self):
-        return "dvla"
 
     @property
     def jwt_token(self):

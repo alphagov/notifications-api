@@ -56,14 +56,12 @@ class AwsSesClient(EmailClient):
     Amazon SES email client.
     """
 
+    name = "ses"
+
     def init_app(self, region, statsd_client, *args, **kwargs):
         self._client = boto3.client("sesv2", region_name=region)
         super().__init__(*args, **kwargs)
         self.statsd_client = statsd_client
-
-    @property
-    def name(self):
-        return "ses"
 
     def send_email(
         self,
