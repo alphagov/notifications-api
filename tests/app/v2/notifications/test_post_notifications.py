@@ -1334,3 +1334,21 @@ def test_post_email_notification_when_data_is_empty_returns_400(api_client_reque
         assert error_msg == "phone_number is a required property"
     else:
         assert error_msg == "email_address is a required property"
+
+
+def test_post_sms_notification_returns_400_with_correct_error_message_if_empty_string_is_passed_as_phonenumber(
+    notify_db_session,
+    api_client_request,
+    mocker,
+):
+    mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
+
+    service = create_service(service_permissions=[SMS_TYPE])
+    template = create_template(service=service)
+    data = {"phone_number": "", "template_id": template.id}
+    error_json = api_client_request.post(
+        service.id, "v2_notifications.post_notification", notification_type="sms", _data=data, _expected_status=400
+    )
+
+    assert error_json["status_code"] == 400
+    assert error_json["errors"] == [{"error": "ValidationError", "message": "phone_number Not enough digits"}]
