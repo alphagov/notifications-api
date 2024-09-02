@@ -43,8 +43,8 @@ from app.dao.service_data_retention_dao import (
     fetch_service_data_retention_for_all_services_by_notification_type,
 )
 from app.dao.unsubscribe_request_dao import (
+    dao_archive_batched_unsubscribe_requests,
     dao_archive_old_unsubscribe_requests,
-    dao_archive_processed_unsubscribe_requests,
     get_service_ids_with_unsubscribe_requests,
 )
 from app.models import FactProcessingTime, Notification
@@ -77,14 +77,14 @@ def _remove_csv_files(job_types):
 @notify_celery.task(name="archive_unsubscribe_requests")
 def archive_unsubscribe_requests():
     for service_id in get_service_ids_with_unsubscribe_requests():
-        archive_processed_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
+        archive_batched_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
         archive_old_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
 
 
-@notify_celery.task(name="archive_processed_unsubscribe_requests")
-def archive_processed_unsubscribe_requests(service_id):
+@notify_celery.task(name="archive_batched_unsubscribe_requests")
+def archive_batched_unsubscribe_requests(service_id):
     start = datetime.now(UTC)
-    count_deleted = dao_archive_processed_unsubscribe_requests(service_id)
+    count_deleted = dao_archive_batched_unsubscribe_requests(service_id)
     log_archive_unsubscribe_requests(start, service_id, count_deleted)
 
 

@@ -135,13 +135,13 @@ def get_service_ids_with_unsubscribe_requests():
     return {row.service_id for row in UnsubscribeRequest.query.distinct()}
 
 
-def dao_archive_processed_unsubscribe_requests(service_id):
+def dao_archive_batched_unsubscribe_requests(service_id):
     return archive_unsubscribe_requests_from_query(
         UnsubscribeRequest.query.join(
             UnsubscribeRequestReport,
             UnsubscribeRequest.unsubscribe_request_report_id == UnsubscribeRequestReport.id,
         ).filter(
-            UnsubscribeRequestReport.processed_by_service_at < midnight_n_days_ago(7),
+            UnsubscribeRequestReport.created_at < midnight_n_days_ago(7),
             UnsubscribeRequest.service_id == service_id,
         )
     )

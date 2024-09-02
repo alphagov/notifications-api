@@ -12,8 +12,8 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 from app.celery import nightly_tasks
 from app.celery.nightly_tasks import (
     _delete_notifications_older_than_retention_by_type,
+    archive_batched_unsubscribe_requests,
     archive_old_unsubscribe_requests,
-    archive_processed_unsubscribe_requests,
     archive_unsubscribe_requests,
     delete_email_notifications_older_than_retention,
     delete_inbound_sms,
@@ -136,7 +136,7 @@ def test_remove_csv_files_filters_by_type(mocker, sample_service):
 
 
 def test_archive_unsubscribe_requests(notify_db_session, mocker):
-    mock_archive_processed = mocker.patch("app.celery.nightly_tasks.archive_processed_unsubscribe_requests.apply_async")
+    mock_archive_processed = mocker.patch("app.celery.nightly_tasks.archive_batched_unsubscribe_requests.apply_async")
     mock_archive_old = mocker.patch("app.celery.nightly_tasks.archive_old_unsubscribe_requests.apply_async")
 
     services_with_requests = [create_service(service_name=f"Unsubscribe service {i}") for i in range(3)]
@@ -164,24 +164,24 @@ def test_archive_unsubscribe_requests(notify_db_session, mocker):
     )
 
 
-def test_archive_processed_unsubscribe_requests(sample_service):
+def test_archive_batched_unsubscribe_requests(sample_service):
     unsubscribe_request_report_1 = create_unsubscribe_request_report(
         sample_service,
         earliest_timestamp=midnight_n_days_ago(12),
         latest_timestamp=midnight_n_days_ago(10),
-        processed_by_service_at=midnight_n_days_ago(9),
+        created_at=midnight_n_days_ago(9),
     )
     unsubscribe_request_report_2 = create_unsubscribe_request_report(
         sample_service,
         earliest_timestamp=midnight_n_days_ago(9),
         latest_timestamp=midnight_n_days_ago(8),
-        processed_by_service_at=midnight_n_days_ago(8),
+        created_at=midnight_n_days_ago(8),
     )
     unsubscribe_request_report_3 = create_unsubscribe_request_report(
         sample_service,
         earliest_timestamp=midnight_n_days_ago(7),
         latest_timestamp=midnight_n_days_ago(4),
-        processed_by_service_at=midnight_n_days_ago(3),
+        created_at=midnight_n_days_ago(3),
     )
 
     another_service = create_service(service_name="Another service")
@@ -199,7 +199,7 @@ def test_archive_processed_unsubscribe_requests(sample_service):
             service, created_at=midnight_n_days_ago(created_days_ago), unsubscribe_request_report_id=report_id
         )
 
-    archive_processed_unsubscribe_requests(sample_service.id)
+    archive_batched_unsubscribe_requests(sample_service.id)
     created_unsubscribe_request_history_objects = UnsubscribeRequestHistory.query.all()
     remaining_unsubscribe_requests = UnsubscribeRequest.query.all()
     UnsubscribeRequestReport.query.all()
