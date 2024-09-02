@@ -219,11 +219,13 @@ def test_archive_old_unsubscribe_requests(sample_service):
     service_with_no_old_requests = create_service(service_name="No old requests")
 
     for service, created_days_ago, report_id in (
+        # Should not be deleted by this task
         (service_with_no_old_requests, 1, None),
         (sample_service, 90, unsubscribe_request_report.id),
         (sample_service, 90, None),
         (another_service, 90, None),
         (sample_service, 91, unsubscribe_request_report.id),
+        # Should be deleted by this task
         (sample_service, 91, None),
         (another_service, 91, None),
     ):
@@ -237,8 +239,8 @@ def test_archive_old_unsubscribe_requests(sample_service):
     created_unsubscribe_request_history_objects = UnsubscribeRequestHistory.query.all()
     remaining_unsubscribe_requests = UnsubscribeRequest.query.all()
     UnsubscribeRequestReport.query.all()
-    assert len(created_unsubscribe_request_history_objects) == 3
-    assert len(remaining_unsubscribe_requests) == 4
+    assert len(created_unsubscribe_request_history_objects) == 2
+    assert len(remaining_unsubscribe_requests) == 5
 
 
 def test_delete_sms_notifications_older_than_retention_calls_child_task(notify_api, mocker):

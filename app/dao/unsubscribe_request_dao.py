@@ -152,6 +152,7 @@ def dao_archive_old_unsubscribe_requests(service_id):
         UnsubscribeRequest.query.filter(
             UnsubscribeRequest.created_at < midnight_n_days_ago(90),
             UnsubscribeRequest.service_id == service_id,
+            UnsubscribeRequest.unsubscribe_request_report_id.is_(None),
         )
     )
 
