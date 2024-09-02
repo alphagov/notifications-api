@@ -2698,6 +2698,7 @@ class UnsubscribeRequestReport(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
     service = db.relationship(Service, backref=db.backref("unsubscribe_request_reports"))
 
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
     earliest_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     latest_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     processed_by_service_at = db.Column(db.DateTime, nullable=True)
@@ -2707,6 +2708,7 @@ class UnsubscribeRequestReport(db.Model):
         return {
             "batch_id": str(self.id),
             "count": self.count,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "earliest_timestamp": self.earliest_timestamp.strftime(DATETIME_FORMAT),
             "latest_timestamp": self.latest_timestamp.strftime(DATETIME_FORMAT),
             "processed_by_service_at": (
@@ -2720,6 +2722,7 @@ class UnsubscribeRequestReport(db.Model):
         return {
             "batch_id": None,
             "count": len(unbatched_unsubscribe_requests),
+            "created_at": None,
             "earliest_timestamp": unbatched_unsubscribe_requests[-1].created_at.strftime(DATETIME_FORMAT),
             "latest_timestamp": unbatched_unsubscribe_requests[0].created_at.strftime(DATETIME_FORMAT),
             "processed_by_service_at": None,

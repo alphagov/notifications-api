@@ -14,14 +14,16 @@ DAY_ZERO = "2024-05-29"  # The day before we added the table
 
 
 def upgrade():
-    op.execute(f"""
+    op.execute(
+        f"""
         UPDATE
             unsubscribe_request_report
         SET
             created_at = '{DAY_ZERO}'
         WHERE
             created_at is NULL
-    """)
+    """
+    )
     op.alter_column(
         "unsubscribe_request_report",
         "created_at",
@@ -37,11 +39,13 @@ def downgrade():
         existing_type=DateTime(),
         nullable=True,
     )
-    op.execute(f"""
+    op.execute(
+        f"""
         UPDATE
             unsubscribe_request_report
         SET
             created_at = NULL
         WHERE
             created_at <= '{DAY_ZERO}'
-    """)
+    """
+    )
