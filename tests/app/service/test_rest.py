@@ -3557,6 +3557,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
         {
             "batch_id": None,
             "count": 2,
+            "created_at": None,
             "earliest_timestamp": "2024-06-29T12:00:00.000000Z",
             "latest_timestamp": "2024-06-30T12:00:00.000000Z",
             "processed_by_service_at": None,
@@ -3597,6 +3598,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         {
             "batch_id": str(report.id),
             "count": report.count,
+            "created_at": report.created_at.strftime(DATETIME_FORMAT),
             "earliest_timestamp": report.earliest_timestamp.strftime(DATETIME_FORMAT),
             "latest_timestamp": report.latest_timestamp.strftime(DATETIME_FORMAT),
             "processed_by_service_at": (
@@ -3609,6 +3611,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
     expected_unbatched_unsubscribe_request_summary = {
         "batch_id": None,
         "count": 2,
+        "created_at": None,
         "earliest_timestamp": "2024-06-29T12:00:00.000000Z",
         "latest_timestamp": "2024-06-30T12:00:00.000000Z",
         "processed_by_service_at": None,
@@ -3621,16 +3624,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
 
     response = admin_request.get("service.get_unsubscribe_request_reports_summary", service_id=sample_service.id)
 
-    for index, summary in enumerate(response):
-        assert summary["batch_id"] == expected_reports_summary[index]["batch_id"]
-        assert summary["count"] == expected_reports_summary[index]["count"]
-        assert summary["earliest_timestamp"] == expected_reports_summary[index]["earliest_timestamp"]
-        assert summary["latest_timestamp"] == expected_reports_summary[index]["latest_timestamp"]
-        assert summary["is_a_batched_report"] == expected_reports_summary[index]["is_a_batched_report"]
-
-    assert response[0]["processed_by_service_at"] == expected_reports_summary[0]["processed_by_service_at"]
-    assert response[1]["processed_by_service_at"] == expected_reports_summary[1]["processed_by_service_at"]
-    assert response[2]["processed_by_service_at"] == expected_reports_summary[2]["processed_by_service_at"]
+    assert response == expected_reports_summary
 
 
 def test_get_unsubscribe_requests_statistics(admin_request, sample_service, mocker):
