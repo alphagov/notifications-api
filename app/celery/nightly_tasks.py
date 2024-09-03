@@ -74,21 +74,21 @@ def _remove_csv_files(job_types):
         current_app.logger.info("Job ID %s has been removed from s3.", job.id)
 
 
-@notify_celery.task(name="archive_unsubscribe_requests")
+@notify_celery.task(name="archive-unsubscribe-requests")
 def archive_unsubscribe_requests():
     for service_id in get_service_ids_with_unsubscribe_requests():
         archive_batched_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
         archive_old_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
 
 
-@notify_celery.task(name="archive_batched_unsubscribe_requests")
+@notify_celery.task(name="archive-batched-unsubscribe-requests")
 def archive_batched_unsubscribe_requests(service_id):
     start = datetime.now(UTC)
     count_deleted = dao_archive_batched_unsubscribe_requests(service_id)
     log_archive_unsubscribe_requests(start, service_id, count_deleted)
 
 
-@notify_celery.task(name="archive_old_unsubscribe_requests")
+@notify_celery.task(name="archive-old-unsubscribe-requests")
 def archive_old_unsubscribe_requests(service_id):
     start = datetime.now(UTC)
     count_deleted = dao_archive_old_unsubscribe_requests(service_id)

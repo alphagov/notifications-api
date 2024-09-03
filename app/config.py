@@ -264,6 +264,11 @@ class Config:
                 "schedule": crontab(hour=0, minute=5),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "archive-unsubscribe-requests": {
+                "task": "archive-unsubscribe-requests",
+                "schedule": crontab(hour=0, minute=5),
+                "options": {"queue": QueueNames.REPORTING},
+            },
             "create-nightly-billing": {
                 "task": "create-nightly-billing",
                 "schedule": crontab(hour=0, minute=15),
