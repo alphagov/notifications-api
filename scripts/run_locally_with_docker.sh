@@ -2,6 +2,7 @@
 set -eu
 
 DOCKER_IMAGE_NAME=notifications-api
+PORT=6011
 
 source environment.sh
 
@@ -16,7 +17,7 @@ API_HOST_NAME_INTERNAL=${API_HOST_NAME_INTERNAL:-"http://host.docker.internal:60
 # Only expose port 6011 if we're running the API - anything else is celery which shouldn't bind the port.
 # This lets us run celery via docker and the API locally.
 if [[ "${@}" == "api" || "${@}" == "api-local" ]]; then
-  EXPOSED_PORTS="-e PORT=6011 -p 6011:6011"
+  EXPOSED_PORTS="-e PORT=${PORT} -p 127.0.0.1:${PORT}:${PORT}"
 else
   EXPOSED_PORTS=""
 fi
