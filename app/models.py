@@ -1583,6 +1583,7 @@ class Notification(db.Model):
     def serialize_for_csv(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
         serialized = {
+            "id": self.id,
             "row_number": "" if self.job_row_number is None else self.job_row_number + 1,
             "recipient": self.to,
             "client_reference": self.client_reference or "",

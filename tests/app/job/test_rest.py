@@ -868,6 +868,7 @@ def test_get_all_notifications_for_job_returns_csv_format(admin_request, sample_
 
     assert len(resp["notifications"]) == 1
     assert set(resp["notifications"][0].keys()) == {
+        "id",
         "created_at",
         "created_by_name",
         "created_by_email_address",
