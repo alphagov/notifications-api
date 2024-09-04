@@ -1326,6 +1326,7 @@ def create_unsubscribe_request_report(
     earliest_timestamp,
     latest_timestamp,
     processed_by_service_at=None,
+    created_at=None,
 ):
     report = UnsubscribeRequestReport(
         id=uuid.uuid4(),
@@ -1334,6 +1335,7 @@ def create_unsubscribe_request_report(
         latest_timestamp=latest_timestamp,
         service_id=service.id,
         processed_by_service_at=processed_by_service_at,
+        created_at=created_at,
     )
     create_unsubscribe_request_reports_dao(report)
     return report

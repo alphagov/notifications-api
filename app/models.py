@@ -76,6 +76,7 @@ from app.utils import (
     DATETIME_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
     get_dt_string_or_none,
+    get_london_midnight_in_utc,
     get_uuid_string_or_none,
     url_with_token,
 )
@@ -2704,6 +2705,10 @@ class UnsubscribeRequestReport(db.Model):
     processed_by_service_at = db.Column(db.DateTime, nullable=True)
     count = db.Column(db.BigInteger, nullable=False)
 
+    @property
+    def will_be_archived_at(self):
+        return get_london_midnight_in_utc(self.created_at + datetime.timedelta(days=7))
+
     def serialize(self):
         return {
             "batch_id": str(self.id),
@@ -2715,6 +2720,7 @@ class UnsubscribeRequestReport(db.Model):
                 self.processed_by_service_at.strftime(DATETIME_FORMAT) if self.processed_by_service_at else None
             ),
             "is_a_batched_report": True,
+            "will_be_archived_at": self.will_be_archived_at.strftime(DATETIME_FORMAT),
         }
 
     @staticmethod
@@ -2727,6 +2733,9 @@ class UnsubscribeRequestReport(db.Model):
             "latest_timestamp": unbatched_unsubscribe_requests[0].created_at.strftime(DATETIME_FORMAT),
             "processed_by_service_at": None,
             "is_a_batched_report": False,
+            "will_be_archived_at": get_london_midnight_in_utc(
+                unbatched_unsubscribe_requests[-1].created_at + datetime.timedelta(days=90)
+            ).strftime(DATETIME_FORMAT),
         }
 
 
@@ -2780,6 +2789,11 @@ class UnsubscribeRequest(db.Model):
         Index("ix_unsubscribe_request_unsubscribe_request_report_id", "unsubscribe_request_report_id"),
     )
 
+    def serialize_for_history(self):
+        return {
+            column.key: getattr(self, column.key) for column in self.__table__.columns if column.key != "email_address"
+        }
+
 
 class UnsubscribeRequestHistory(db.Model):
     __tablename__ = "unsubscribe_request_history"
@@ -2793,7 +2807,6 @@ class UnsubscribeRequestHistory(db.Model):
     template_id = db.Column(UUID(as_uuid=True), nullable=False)
     template_version = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
-    processed_at = db.Column(db.DateTime)
     unsubscribe_request_report_id = db.Column(UUID(as_uuid=True), index=True, nullable=True)
 
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
@@ -42,6 +42,11 @@ from app.dao.notifications_dao import (
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention_for_all_services_by_notification_type,
 )
+from app.dao.unsubscribe_request_dao import (
+    dao_archive_batched_unsubscribe_requests,
+    dao_archive_old_unsubscribe_requests,
+    get_service_ids_with_unsubscribe_requests,
+)
 from app.models import FactProcessingTime, Notification
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
@@ -67,6 +72,39 @@ def _remove_csv_files(job_types):
         s3.remove_job_from_s3(job.service_id, job.id)
         dao_archive_job(job)
         current_app.logger.info("Job ID %s has been removed from s3.", job.id)
+
+
+@notify_celery.task(name="archive-unsubscribe-requests")
+def archive_unsubscribe_requests():
+    for service_id in get_service_ids_with_unsubscribe_requests():
+        archive_batched_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
+        archive_old_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
+
+
+@notify_celery.task(name="archive-batched-unsubscribe-requests")
+def archive_batched_unsubscribe_requests(service_id):
+    start = datetime.now(UTC)
+    count_deleted = dao_archive_batched_unsubscribe_requests(service_id)
+    log_archive_unsubscribe_requests(start, service_id, count_deleted)
+
+
+@notify_celery.task(name="archive-old-unsubscribe-requests")
+def archive_old_unsubscribe_requests(service_id):
+    start = datetime.now(UTC)
+    count_deleted = dao_archive_old_unsubscribe_requests(service_id)
+    log_archive_unsubscribe_requests(start, service_id, count_deleted)
+
+
+def log_archive_unsubscribe_requests(start, service_id, count_deleted):
+    current_app.logger.info(
+        "%(task)s service: %(service_id)s, count deleted: %(count_deleted)s, duration: %(duration)s seconds",
+        {
+            "task": notify_celery.current_task.name,
+            "service_id": service_id,
+            "count_deleted": count_deleted,
+            "duration": (datetime.now(UTC) - start).seconds,
+        },
+    )
 
 
 @notify_celery.task(name="delete-notifications-older-than-retention")
