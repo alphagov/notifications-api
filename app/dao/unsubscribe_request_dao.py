@@ -168,4 +168,6 @@ def archive_unsubscribe_requests_from_query(query):
         UnsubscribeRequest.__table__.delete().where(UnsubscribeRequest.id.in_({row["id"] for row in rows}))
     )
 
+    db.session.commit()
+
     return delete_result.rowcount
