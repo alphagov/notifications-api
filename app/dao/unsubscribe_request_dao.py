@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import desc, func
 
-from app import db
+from app import db, redis_store
 from app.dao.dao_utils import autocommit
 from app.models import (
     Job,
@@ -169,5 +169,8 @@ def archive_unsubscribe_requests_from_query(query):
     )
 
     db.session.commit()
+
+    redis_store.delete(f"service-{rows[0]['service_id']}-unsubscribe-request-statistics")
+    redis_store.delete(f"service-{rows[0]['service_id']}-unsubscribe-request-reports-summary")
 
     return delete_result.rowcount
