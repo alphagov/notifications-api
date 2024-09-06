@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import desc, func, or_, and_
+from sqlalchemy import and_, desc, func, or_
 
 from app import db, redis_store
 from app.dao.dao_utils import autocommit
@@ -33,15 +33,21 @@ def get_unsubscribe_requests_statistics_dao(service_id):
             func.max(UnsubscribeRequest.created_at).label("datetime_of_latest_unsubscribe_request"),
         )
         .select_from(UnsubscribeRequest)
-        .join(UnsubscribeRequestReport,
-              UnsubscribeRequestReport.id == UnsubscribeRequest.unsubscribe_request_report_id,
-              isouter=True)
-        .filter(UnsubscribeRequest.service_id == service_id,
-                or_(UnsubscribeRequest.unsubscribe_request_report_id.is_(None),
-                    and_(UnsubscribeRequest.unsubscribe_request_report_id.is_not(None),
-                         UnsubscribeRequestReport.processed_by_service_at.is_(None))
-                    )
-                )
+        .join(
+            UnsubscribeRequestReport,
+            UnsubscribeRequestReport.id == UnsubscribeRequest.unsubscribe_request_report_id,
+            isouter=True,
+        )
+        .filter(
+            UnsubscribeRequest.service_id == service_id,
+            or_(
+                UnsubscribeRequest.unsubscribe_request_report_id.is_(None),
+                and_(
+                    UnsubscribeRequest.unsubscribe_request_report_id.is_not(None),
+                    UnsubscribeRequestReport.processed_by_service_at.is_(None),
+                ),
+            ),
+        )
         .group_by(UnsubscribeRequest.service_id)
         .one_or_none()
     )

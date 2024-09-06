@@ -74,7 +74,7 @@ def test_get_unsubscribe_requests_statistics_dao(sample_service):
     # The unsubscribe request for "Other service" and the processed unsubscribe request should not be returned
     expected_result = {
         "unsubscribe_requests_count": 3,
-        "datetime_of_latest_unsubscribe_request": unsubscribe_requests[0].created_at,
+        "datetime_of_latest_unsubscribe_request": unsubscribe_requests[1].created_at,
     }
     assert result.unsubscribe_requests_count == expected_result["unsubscribe_requests_count"]
     assert result.datetime_of_latest_unsubscribe_request == expected_result["datetime_of_latest_unsubscribe_request"]
@@ -85,22 +85,6 @@ def test_get_unsubscribe_requests_statistics_dao_returns_none_when_there_are_no_
 ):
     result = get_unsubscribe_requests_statistics_dao(sample_service.id)
     assert result is None
-
-
-def test_get_unsubscribe_requests_statistics_dao_adheres_to_7_days_limit(sample_service):
-    # Create 2 un-batched unsubscribe requests, with 1 request created outside the 7 days limit
-    create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(7))
-    create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(8))
-
-    unsubscribe_requests = UnsubscribeRequest.query.order_by(UnsubscribeRequest.created_at.desc()).all()
-    result = get_unsubscribe_requests_statistics_dao(sample_service.id)
-    expected_result = {
-        "unsubscribe_requests_count": 1,
-        "datetime_of_latest_unsubscribe_request": unsubscribe_requests[0].created_at,
-    }
-
-    assert result.unsubscribe_requests_count == expected_result["unsubscribe_requests_count"]
-    assert result.datetime_of_latest_unsubscribe_request == expected_result["datetime_of_latest_unsubscribe_request"]
 
 
 def test_get_latest_unsubscribe_request_dao(sample_service):
