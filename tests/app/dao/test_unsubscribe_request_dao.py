@@ -43,17 +43,14 @@ def test_get_unsubscribe_requests_statistics_dao(sample_service):
     create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(1))
     create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(2))
 
-    # Create 2 batched unsubscribe requests
+    # Create 2 batched unsubscribe requests, the processed unsubscribe request should not be counted
     create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(4))
     create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(6))
 
-    # This request should not be counted because it’s more than 7 days ago
-    create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(8))
-
     # This request should not be counted because it’s from a different service
-    create_unsubscribe_request(create_service(service_name="Other service"), created_at=midnight_n_days_ago(4))
+    create_unsubscribe_request(create_service(service_name="Other service"), created_at=midnight_n_days_ago(3))
 
-    # Create 2 unsubscribe_request_reports, one processed and the other not processed
+    # Create 2 unsubscribe_request_reports, one processed and the other not processed.
     unsubscribe_request_report_1 = create_unsubscribe_request_report(
         sample_service,
         earliest_timestamp=midnight_n_days_ago(6),
@@ -70,15 +67,15 @@ def test_get_unsubscribe_requests_statistics_dao(sample_service):
     # Retrieve the created unsubscribe requests and batch the two earliest requests, with the earliest report
     # being processed.
     unsubscribe_requests = UnsubscribeRequest.query.order_by(UnsubscribeRequest.created_at.desc()).all()
-    unsubscribe_requests[2].unsubscribe_request_report_id = unsubscribe_request_report_1.id
-    unsubscribe_requests[3].unsubscribe_request_report_id = unsubscribe_request_report_2.id
+    unsubscribe_requests[0].unsubscribe_request_report_id = unsubscribe_request_report_1.id
+    unsubscribe_requests[1].unsubscribe_request_report_id = unsubscribe_request_report_2.id
 
     result = get_unsubscribe_requests_statistics_dao(sample_service.id)
+    # The unsubscribe request for "Other service" and the processed unsubscribe request should not be returned
     expected_result = {
-        "unsubscribe_requests_count": 4,
+        "unsubscribe_requests_count": 3,
         "datetime_of_latest_unsubscribe_request": unsubscribe_requests[0].created_at,
     }
-
     assert result.unsubscribe_requests_count == expected_result["unsubscribe_requests_count"]
     assert result.datetime_of_latest_unsubscribe_request == expected_result["datetime_of_latest_unsubscribe_request"]
 
