@@ -164,7 +164,9 @@ def test_archive_unsubscribe_requests(notify_db_session, mocker):
     )
 
 
-def test_archive_batched_unsubscribe_requests(sample_service):
+def test_archive_batched_unsubscribe_requests(sample_service, mocker):
+    mock_redis = mocker.patch("app.dao.unsubscribe_request_dao.redis_store.delete")
+
     unsubscribe_request_report_1 = create_unsubscribe_request_report(
         sample_service,
         earliest_timestamp=midnight_n_days_ago(12),
@@ -205,9 +207,15 @@ def test_archive_batched_unsubscribe_requests(sample_service):
     UnsubscribeRequestReport.query.all()
     assert len(created_unsubscribe_request_history_objects) == 2
     assert len(remaining_unsubscribe_requests) == 5
+    assert mock_redis.call_args_list == [
+        call(f"service-{sample_service.id}-unsubscribe-request-statistics"),
+        call(f"service-{sample_service.id}-unsubscribe-request-reports-summary"),
+    ]
 
 
-def test_archive_old_unsubscribe_requests(sample_service):
+def test_archive_old_unsubscribe_requests(mocker, sample_service):
+    mock_redis = mocker.patch("app.dao.unsubscribe_request_dao.redis_store.delete")
+
     unsubscribe_request_report = create_unsubscribe_request_report(
         sample_service,
         earliest_timestamp=midnight_n_days_ago(12),
@@ -241,6 +249,12 @@ def test_archive_old_unsubscribe_requests(sample_service):
     UnsubscribeRequestReport.query.all()
     assert len(created_unsubscribe_request_history_objects) == 2
     assert len(remaining_unsubscribe_requests) == 5
+    assert mock_redis.call_args_list == [
+        call(f"service-{sample_service.id}-unsubscribe-request-statistics"),
+        call(f"service-{sample_service.id}-unsubscribe-request-reports-summary"),
+        call(f"service-{another_service.id}-unsubscribe-request-statistics"),
+        call(f"service-{another_service.id}-unsubscribe-request-reports-summary"),
+    ]
 
 
 def test_delete_sms_notifications_older_than_retention_calls_child_task(notify_api, mocker):
