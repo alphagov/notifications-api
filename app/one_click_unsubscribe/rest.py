@@ -64,10 +64,8 @@ def get_unsubscribe_request_data(notification, email_address):
 
 def create_unsubscribe_request_reports_summary(service_id):
     unsubscribe_request_reports = [report.serialize() for report in get_unsubscribe_request_reports_dao(service_id)]
-
     if unbatched_unsubscribe_requests := get_unbatched_unsubscribe_requests_dao(service_id):
         return [
             UnsubscribeRequestReport.serialize_unbatched_requests(unbatched_unsubscribe_requests)
         ] + unsubscribe_request_reports
-
     return unsubscribe_request_reports
