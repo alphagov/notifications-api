@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from functools import wraps
 
 from flask import Blueprint, current_app, jsonify, request
@@ -143,10 +144,14 @@ def process_letter_callback():
 
     check_token_matches_payload(notification_id, request_data["id"])
 
-    page_count, status = extract_properties_from_request(request_data)
+    letter_update = extract_properties_from_request(request_data)
 
     process_letter_callback_data.apply_async(
-        kwargs={"notification_id": notification_id, "page_count": page_count, "status": status},
+        kwargs={
+            "notification_id": notification_id,
+            "page_count": letter_update.page_count,
+            "status": letter_update.status,
+        },
         queue=QueueNames.NOTIFY,
     )
 
@@ -172,11 +177,17 @@ def check_token_matches_payload(notification_id, request_id):
         raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
 
 
-def extract_properties_from_request(request_data):
+@dataclass
+class LetterUpdate:
+    page_count: str
+    status: str
+
+
+def extract_properties_from_request(request_data) -> LetterUpdate:
     despatch_properties = request_data["data"]["despatchProperties"]
 
     # Since validation guarantees the presence of "totalSheets", we can directly extract it
     page_count = next(item["value"] for item in despatch_properties if item["key"] == "totalSheets")
     status = request_data["data"]["jobStatus"]
 
-    return page_count, status
+    return LetterUpdate(page_count=page_count, status=status)

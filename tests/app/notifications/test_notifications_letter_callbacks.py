@@ -354,7 +354,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
 
     data = mock_dvla_callback_data(overrides)
 
-    page_count, status = extract_properties_from_request(data)
+    letter_update = extract_properties_from_request(data)
 
-    assert page_count == "10"
-    assert status == "REJECTED"
+    assert letter_update.page_count == "10"
+    assert letter_update.status == "REJECTED"
