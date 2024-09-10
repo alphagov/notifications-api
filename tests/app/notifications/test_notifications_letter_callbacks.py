@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 from flask import json, url_for
 from itsdangerous import BadSignature
@@ -5,6 +7,8 @@ from itsdangerous import BadSignature
 from app import signing
 from app.errors import InvalidRequest
 from app.notifications.notifications_letter_callback import (
+    _get_cost_threshold,
+    _get_despatch_date,
     check_token_matches_payload,
     extract_properties_from_request,
     parse_token,
@@ -347,6 +351,9 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
         "data": {
             "despatchProperties": [
                 {"key": "totalSheets", "value": "10"},
+                {"key": "postageClass", "value": "1ST"},
+                {"key": "mailingProduct", "value": "MM UNSORTED"},
+                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
             ],
             "jobStatus": "REJECTED",
         }
@@ -358,3 +365,28 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
 
     assert letter_update.page_count == "10"
     assert letter_update.status == "REJECTED"
+    assert letter_update.cost_threshold == LetterCostThreshold.unsorted
+    assert letter_update.despatch_date == datetime.date(2024, 8, 1)
+
+
+@pytest.mark.parametrize("postage", ["1ST", "2ND", "INTERNATIONAL"])
+@pytest.mark.parametrize("mailing_product", ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"])
+def test__get_cost_threshold(mailing_product, postage):
+    if postage == "2ND" and mailing_product == "MM":
+        expected_cost_threshold = LetterCostThreshold.sorted
+    else:
+        expected_cost_threshold = LetterCostThreshold.unsorted
+
+    assert _get_cost_threshold(mailing_product, postage) == expected_cost_threshold
+
+
+@pytest.mark.parametrize(
+    "datestring, expected_result",
+    [
+        ("2024-08-01T09:15:14.456Z", datetime.date(2024, 8, 1)),
+        ("2024-08-01T23:15:14.0Z", datetime.date(2024, 8, 2)),
+        ("2024-01-21T23:15:14.0Z", datetime.date(2024, 1, 21)),
+    ],
+)
+def test__get_despatch_date(datestring, expected_result):
+    assert _get_despatch_date(datestring) == expected_result
