@@ -154,6 +154,8 @@ def process_letter_callback():
             "notification_id": notification_id,
             "page_count": letter_update.page_count,
             "status": letter_update.status,
+            "cost_threshold": letter_update.cost_threshold,
+            "despatch_date": letter_update.despatch_date,
         },
         queue=QueueNames.NOTIFY,
     )

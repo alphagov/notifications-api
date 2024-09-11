@@ -8,13 +8,14 @@ from app.constants import (
 from app.dao.notifications_dao import (
     _duplicate_update_warning,
     dao_get_notification_or_history_by_id,
+    dao_record_letter_despatched_on_by_id,
     dao_update_notification,
 )
 from app.exceptions import NotificationTechnicalFailureException
 
 
 @notify_celery.task(bind=True, name="process-letter-callback")
-def process_letter_callback_data(self, notification_id, page_count, dvla_status):
+def process_letter_callback_data(self, notification_id, page_count, dvla_status, cost_threshold, despatch_date):
     notification = dao_get_notification_or_history_by_id(notification_id)
 
     validate_billable_units(notification, page_count)
@@ -35,6 +36,8 @@ def process_letter_callback_data(self, notification_id, page_count, dvla_status)
         raise NotificationTechnicalFailureException(
             f"Letter status received as REJECTED for notification id: {notification.id}"
         )
+
+    dao_record_letter_despatched_on_by_id(notification_id, despatch_date, cost_threshold)
 
 
 def validate_billable_units(notification, dvla_page_count):

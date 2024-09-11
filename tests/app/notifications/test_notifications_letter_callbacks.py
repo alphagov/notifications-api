@@ -6,6 +6,7 @@ from itsdangerous import BadSignature
 
 from app import signing
 from app.errors import InvalidRequest
+from app.models import LetterCostThreshold
 from app.notifications.notifications_letter_callback import (
     _get_cost_threshold,
     _get_despatch_date,
@@ -306,6 +307,8 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
             "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
             "page_count": "5",
             "status": status,
+            "cost_threshold": LetterCostThreshold.unsorted,
+            "despatch_date": datetime.date(2024, 8, 1),
         },
     )
 
