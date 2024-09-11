@@ -293,7 +293,7 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
     data = mock_dvla_callback_data()
     data["data"]["jobStatus"] = status
 
-    client.post(
+    response = client.post(
         url_for(
             "notifications_letter_callback.process_letter_callback",
             token=signing.encode("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
@@ -311,6 +311,8 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
             "despatch_date": datetime.date(2024, 8, 1),
         },
     )
+
+    assert response.status_code == 204
 
 
 @pytest.mark.parametrize("token", [None, "invalid-token"])

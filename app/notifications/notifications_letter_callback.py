@@ -160,7 +160,7 @@ def process_letter_callback():
         queue=QueueNames.NOTIFY,
     )
 
-    return jsonify(result="success"), 200
+    return {}, 204
 
 
 def parse_token(token):
