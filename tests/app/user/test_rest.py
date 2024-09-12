@@ -20,6 +20,7 @@ from app.dao.service_user_dao import (
     dao_update_service_user,
 )
 from app.models import Notification, OrganisationUserPermissions, Permission, User
+from app.utils import DATETIME_FORMAT
 from tests import create_admin_authorization_header, create_service_authorization_header
 from tests.app.db import (
     create_organisation,
@@ -41,11 +42,12 @@ def test_get_user(admin_request, sample_service, sample_organisation):
     expected_permissions = default_service_permissions
     fetched = json_resp["data"]
 
-    assert len(fetched) == 19
+    assert len(fetched) == 20
 
     assert fetched["id"] == str(sample_user.id)
     assert fetched["name"] == sample_user.name
     assert fetched["email_address"] == sample_user.email_address
+    assert fetched["created_at"] == sample_user.created_at.strftime(DATETIME_FORMAT)
     assert fetched["auth_type"] == SMS_AUTH_TYPE
     assert fetched["current_session_id"] is None
     assert fetched["failed_login_count"] == 0
