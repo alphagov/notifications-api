@@ -68,6 +68,62 @@ def test_create_invited_user(
     mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
 
 
+@pytest.mark.parametrize(
+    "extra_args, expected_start_of_invite_url",
+    [
+        ({}, "{hostnames.admin}"),
+        ({"invite_link_host": "https://www.example2.com"}, "https://www.example2.com"),
+    ],
+)
+def test_requester_invite_approved_notification(
+    admin_request,
+    sample_service,
+    mocker,
+    invitation_email_template,
+    extra_args,
+    expected_start_of_invite_url,
+    hostnames,
+):
+    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    email_address = "invited_user@service.gov.uk"
+    mock_invited_user = create_user(email=email_address)
+    mocker.patch("app.dao.users_dao.get_user_by_email", return_value=mock_invited_user)
+
+    invite_from = sample_service.users[0]
+
+    data = dict(
+        service=str(sample_service.id),
+        email_address=email_address,
+        from_user=str(invite_from.id),
+        permissions="send_messages,manage_service,manage_api_keys",
+        auth_type=EMAIL_AUTH_TYPE,
+        folder_permissions=["folder_1", "folder_2", "folder_3"],
+        is_join_request=True,
+        **extra_args,
+    )
+
+    json_resp = admin_request.post(
+        "service_invite.create_invited_user", service_id=sample_service.id, _data=data, _expected_status=201
+    )
+    assert json_resp["data"]["email_address"] == email_address
+    assert json_resp["data"]["id"] == str(mock_invited_user.id)
+
+    notification = Notification.query.first()
+
+    assert notification.reply_to_text == invite_from.email_address
+    assert len(notification.personalisation.keys()) == 4
+    assert notification.personalisation["approver name"] == invite_from.name
+    assert notification.personalisation["requester name"] == mock_invited_user.name
+    assert notification.personalisation["service name"] == "Sample service"
+    assert (
+        notification.personalisation["dashboard url"]
+        == f"{expected_start_of_invite_url.format(hostnames=hostnames)}/services/{sample_service.id}"
+    )
+    assert str(notification.template_id) == current_app.config["JOIN_LIVE_SERVICE_REQUESTER_APPROVED_TEMPLATE_ID"]
+
+    mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
+
+
 def test_create_invited_user_without_auth_type(admin_request, sample_service, mocker, invitation_email_template):
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     email_address = "invited_user@service.gov.uk"

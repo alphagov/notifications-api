@@ -12,7 +12,7 @@ from app.dao.invited_user_dao import (
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.users_dao import get_user_by_id
+from app.dao.users_dao import get_user_by_email, get_user_by_id
 from app.errors import InvalidRequest, register_errors
 from app.models import Service
 from app.notifications.process_notifications import (
@@ -31,36 +31,24 @@ register_errors(service_invite)
 def create_invited_user(service_id):
     request_json = request.get_json()
     invited_user = invited_user_schema.load(request_json)
-    save_invited_user(invited_user)
-
+    is_join_request = request_json.get("is_join_request")
     if invited_user.service.has_permission(BROADCAST_TYPE):
         template_id = current_app.config["BROADCAST_INVITATION_EMAIL_TEMPLATE_ID"]
+    elif is_join_request:
+        template_id = current_app.config["JOIN_LIVE_SERVICE_REQUESTER_APPROVED_TEMPLATE_ID"]
     else:
         template_id = current_app.config["INVITATION_EMAIL_TEMPLATE_ID"]
 
     template = dao_get_template_by_id(template_id)
-    service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
 
-    saved_notification = persist_notification(
-        template_id=template.id,
-        template_version=template.version,
-        recipient=invited_user.email_address,
-        service=service,
-        personalisation={
-            "user_name": invited_user.from_user.name,
-            "service_name": invited_user.service.name,
-            "url": invited_user_url(
-                invited_user.id,
-                request_json.get("invite_link_host"),
-            ),
-        },
-        notification_type=EMAIL_TYPE,
-        api_key_id=None,
-        key_type=KEY_TYPE_NORMAL,
-        reply_to_text=invited_user.from_user.email_address,
-    )
-
-    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
+    if is_join_request:
+        requester_user = get_user_by_email(invited_user.email_address)
+        send_requester_invite_approved_notification(
+            invited_user.from_user, requester_user, invited_user.service, template, request_json
+        )
+    else:
+        save_invited_user(invited_user)
+        send_invite_notification(invited_user, template, request_json)
 
     return jsonify(data=invited_user_schema.dump(invited_user)), 201
 
@@ -201,6 +189,12 @@ def send_service_invite_request(
         raise BadRequestError(400, "no-valid-service-managers-ids")
 
 
+def service_dashboard_url(service_id, host_url=None):
+    if host_url is None:
+        host_url = current_app.config["ADMIN_BASE_URL"]
+    return f"{host_url}/services/{service_id}"
+
+
 def send_receipt_after_sending_request_invite_letter(
     user_requesting_invite,
     *,
@@ -227,5 +221,54 @@ def send_receipt_after_sending_request_invite_letter(
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL,
         reply_to_text=notify_service.get_default_reply_to_email_address(),
+    )
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
+
+
+def send_invite_notification(invited_user, template, request_json):
+    service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=invited_user.email_address,
+        service=service,
+        personalisation={
+            "user_name": invited_user.from_user.name,
+            "service_name": invited_user.service.name,
+            "url": invited_user_url(
+                invited_user.id,
+                request_json.get("invite_link_host"),
+            ),
+        },
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=invited_user.from_user.email_address,
+    )
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
+
+
+def send_requester_invite_approved_notification(
+    approver_user, requester_user, requested_service, template, request_json
+):
+    service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=requester_user.email_address,
+        service=service,
+        personalisation={
+            "approver name": approver_user.name,
+            "requester name": requester_user.name,
+            "service name": requested_service.name,
+            "dashboard url": service_dashboard_url(
+                requested_service.id,
+                request_json.get("invite_link_host"),
+            ),
+        },
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=approver_user.email_address,
     )
     send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
