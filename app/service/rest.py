@@ -161,6 +161,7 @@ from app.utils import (
     get_next_link_for_pagination_by_older_than,
     get_prev_next_pagination_links,
     midnight_n_days_ago,
+    utc_string_to_bst_string,
 )
 
 service_blueprint = Blueprint("service", __name__)
@@ -1218,8 +1219,10 @@ def get_unsubscribe_request_report_for_download(service_id, batch_id):
                     "email_address": unsubscribe_request.email_address,
                     "template_name": unsubscribe_request.template_name,
                     "original_file_name": unsubscribe_request.original_file_name,
-                    "template_sent_at": unsubscribe_request.template_sent_at,
-                    "unsubscribe_request_received_at": unsubscribe_request.unsubscribe_request_received_at,
+                    "template_sent_at": utc_string_to_bst_string(unsubscribe_request.template_sent_at),
+                    "unsubscribe_request_received_at": utc_string_to_bst_string(
+                        unsubscribe_request.unsubscribe_request_received_at
+                    ),
                 }
                 for unsubscribe_request in get_unsubscribe_requests_data_for_download_dao(service_id, report.id)
             ],

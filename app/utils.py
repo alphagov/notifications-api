@@ -8,7 +8,7 @@ from notifications_utils.template import (
     LetterPrintTemplate,
     SMSMessageTemplate,
 )
-from notifications_utils.timezones import convert_bst_to_utc
+from notifications_utils.timezones import convert_bst_to_utc, utc_string_to_aware_gmt_datetime
 from notifications_utils.url_safe_token import generate_token
 from sqlalchemy import func
 
@@ -168,3 +168,7 @@ def get_ft_billing_data_for_today_updated_at() -> str | None:
         return updated_at_utc_isoformat.decode()
 
     return None
+
+
+def utc_string_to_bst_string(utc_string):
+    return utc_string_to_aware_gmt_datetime(utc_string).strftime("%Y-%m-%d %H:%M:%S")
