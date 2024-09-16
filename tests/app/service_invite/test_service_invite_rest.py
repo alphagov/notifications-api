@@ -79,7 +79,7 @@ def test_requester_invite_approved_notification(
     admin_request,
     sample_service,
     mocker,
-    invitation_email_template,
+    join_request_approved_email_template,
     extra_args,
     expected_start_of_invite_url,
     hostnames,

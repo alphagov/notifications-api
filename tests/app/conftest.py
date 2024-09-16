@@ -1259,3 +1259,31 @@ def mock_dvla_callback_data():
         return data
 
     return _mock_dvla_callback_data
+
+
+@pytest.fixture(scope="function")
+def join_request_approved_email_template(notify_service):
+    content = (
+        """
+            Hi ((requester name))
+
+            ((approver name)) has approved your request to join the following GOV.UK Notify service:
+
+            ^[((service name))](((dashboard url)))
+
+            Sign in to GOV.UK Notify to get started.
+
+            Thanks
+
+            GOV.​UK Notify
+            https://www.gov.uk/notify
+        """,
+    )
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="JOIN_LIVE_SERVICE_REQUESTER_APPROVED_TEMPLATE_ID",
+        content=content,
+        subject="((approver name)) has approved your request",
+        template_type="email",
+    )

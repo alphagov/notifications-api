@@ -46,6 +46,7 @@ def create_invited_user(service_id):
         send_requester_invite_approved_notification(
             invited_user.from_user, requester_user, invited_user.service, template, request_json
         )
+        invited_user.id = requester_user.id
     else:
         save_invited_user(invited_user)
         send_invite_notification(invited_user, template, request_json)
