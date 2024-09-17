@@ -3802,16 +3802,36 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
     assert response["batch_id"] == unsubscribe_request_report.id
     assert response["earliest_timestamp"] == unsubscribe_request_report.earliest_timestamp
     assert response["latest_timestamp"] == unsubscribe_request_report.latest_timestamp
-
-    for i, row in enumerate(unsubscribe_request_report.unsubscribe_requests):
-        assert response["unsubscribe_requests"][i]["email_address"] == row.email_address
-        assert response["unsubscribe_requests"][i]["template_name"] == row.template_name
-        assert response["unsubscribe_requests"][i]["original_file_name"] == row.original_file_name
-        assert response["unsubscribe_requests"][i]["template_sent_at"] == row.template_sent_at
-        assert (
-            response["unsubscribe_requests"][i]["unsubscribe_request_received_at"]
-            == row.unsubscribe_request_received_at
-        )
+    assert response["unsubscribe_requests"] == [
+        {
+            "email_address": "foo@bar.com",
+            "original_file_name": "contact list",
+            "template_name": "email Template Name",
+            "template_sent_at": "2024-07-23 14:30:00",
+            "unsubscribe_request_received_at": "2024-07-25 14:30:00",
+        },
+        {
+            "email_address": "fizz@bar.com",
+            "original_file_name": "contact list",
+            "template_name": "email Template Name",
+            "template_sent_at": "2024-07-21 12:04:00",
+            "unsubscribe_request_received_at": "2024-07-23 12:04:00",
+        },
+        {
+            "email_address": "fizzbuzz@bar.com",
+            "original_file_name": None,
+            "template_name": "Another Service",
+            "template_sent_at": "2024-07-20 00:45:00",
+            "unsubscribe_request_received_at": "2024-07-22 00:45:00",
+        },
+        {
+            "email_address": "buzz@bar.com",
+            "original_file_name": "another contact list",
+            "template_name": "Another Service",
+            "template_sent_at": "2024-07-17 10:42:00",
+            "unsubscribe_request_received_at": "2024-07-19 10:42:00",
+        },
+    ]
 
 
 def test_get_unsubscribe_request_report_for_download_400_error(admin_request, sample_service):
