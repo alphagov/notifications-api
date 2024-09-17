@@ -1,6 +1,7 @@
 import datetime
 import enum
 import uuid
+from dataclasses import dataclass
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -44,6 +45,7 @@ from app.constants import (
     GUEST_LIST_RECIPIENT_TYPE,
     INVITE_PENDING,
     INVITED_USER_STATUS_TYPES,
+    JOIN_REQUEST_PENDING,
     LETTER_TYPE,
     MOBILE_TYPE,
     NORMAL,
@@ -62,6 +64,7 @@ from app.constants import (
     ORGANISATION_PERMISSION_TYPES,
     PERMISSION_LIST,
     PRECOMPILED_TEMPLATE_NAME,
+    REQUEST_STATUS_VALUES,
     SMS_AUTH_TYPE,
     SMS_TYPE,
     TEMPLATE_TYPES,
@@ -2815,3 +2818,63 @@ class ProtectedSenderId(db.Model):
     __tablename__ = "protected_sender_ids"
 
     sender_id = db.Column(db.String, primary_key=True, nullable=False)
+
+
+@dataclass
+class SerializedServiceJoinRequest:
+    service_join_request_id: str
+    requester_id: str
+    service_id: str
+    created_at: str
+    status: str
+    status_changed_at: str | None
+    status_changed_by_id: str | None
+    reason: str | None
+    contacted_service_users: list[str]
+
+
+contacted_users = db.Table(
+    "contacted_users",
+    db.Model.metadata,
+    db.Column(
+        "service_join_request_id", UUID(as_uuid=True), db.ForeignKey("service_join_requests.id"), primary_key=True
+    ),
+    db.Column("user_id", UUID(as_uuid=True), db.ForeignKey("users.id"), primary_key=True),
+)
+
+
+class ServiceJoinRequest(db.Model):
+    __tablename__ = "service_join_requests"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    requester_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow())
+    status = db.Column(
+        db.Enum(*REQUEST_STATUS_VALUES, name="request_status"), nullable=False, default=JOIN_REQUEST_PENDING
+    )
+    status_changed_at = db.Column(db.DateTime, nullable=True)
+    status_changed_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
+    reason = db.Column(db.Text, nullable=True)
+
+    requester = db.relationship("User", foreign_keys=[requester_id])
+    status_changed_by = db.relationship("User", foreign_keys=[status_changed_by_id])
+
+    # Use lazy="joined" to load the contacted_service_users relationship with a SQL JOIN
+    # This is a nice option as we expect to load this relationship frequently when querying ServiceJoinRequest
+    contacted_service_users = db.relationship(
+        "User", secondary=contacted_users, backref="service_join_requests", lazy="joined"
+    )
+
+    def serialize(self) -> SerializedServiceJoinRequest:
+        return SerializedServiceJoinRequest(
+            service_join_request_id=get_uuid_string_or_none(self.id),
+            requester_id=get_uuid_string_or_none(self.requester_id),
+            service_id=get_uuid_string_or_none(self.service_id),
+            created_at=get_dt_string_or_none(self.created_at),
+            status=self.status,
+            status_changed_at=get_dt_string_or_none(self.status_changed_at),
+            status_changed_by_id=get_uuid_string_or_none(self.status_changed_by_id),
+            reason=self.reason,
+            contacted_service_users=[get_uuid_string_or_none(user.id) for user in self.contacted_service_users],
+        )
