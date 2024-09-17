@@ -3563,6 +3563,7 @@ def test_get_unsubscribe_request_report_summary_for_initial_unsubscribe_requests
             "processed_by_service_at": None,
             "is_a_batched_report": False,
             "will_be_archived_at": "2024-09-26T23:00:00.000000Z",
+            "service_id": str(sample_service.id),
         }
     ]
 
@@ -3607,6 +3608,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
             ),
             "is_a_batched_report": True,
             "will_be_archived_at": report.will_be_archived_at.strftime(DATETIME_FORMAT),
+            "service_id": str(sample_service.id),
         }
         for report in [unsubscribe_request_report_2, unsubscribe_request_report_1]
     ]
@@ -3619,6 +3621,7 @@ def test_get_unsubscribe_request_reports_summary(admin_request, sample_service, 
         "processed_by_service_at": None,
         "is_a_batched_report": False,
         "will_be_archived_at": "2024-09-26T23:00:00.000000Z",
+        "service_id": str(sample_service.id),
     }
 
     expected_reports_summary = [
