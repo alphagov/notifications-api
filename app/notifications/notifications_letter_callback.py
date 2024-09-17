@@ -1,8 +1,11 @@
+import datetime
 import json
+from dataclasses import dataclass
 from functools import wraps
 
 from flask import Blueprint, current_app, jsonify, request
 from itsdangerous import BadSignature
+from notifications_utils.timezones import convert_utc_to_bst
 
 from app import signing
 from app.celery.process_letter_client_response_tasks import process_letter_callback_data
@@ -12,6 +15,7 @@ from app.celery.tasks import (
 )
 from app.config import QueueNames
 from app.errors import InvalidRequest
+from app.models import LetterCostThreshold
 from app.notifications.utils import autoconfirm_subscription
 from app.schema_validation import validate
 from app.v2.errors import register_errors
@@ -143,14 +147,20 @@ def process_letter_callback():
 
     check_token_matches_payload(notification_id, request_data["id"])
 
-    page_count, status = extract_properties_from_request(request_data)
+    letter_update = extract_properties_from_request(request_data)
 
     process_letter_callback_data.apply_async(
-        kwargs={"notification_id": notification_id, "page_count": page_count, "status": status},
+        kwargs={
+            "notification_id": notification_id,
+            "page_count": letter_update.page_count,
+            "status": letter_update.status,
+            "cost_threshold": letter_update.cost_threshold,
+            "despatch_date": letter_update.despatch_date,
+        },
         queue=QueueNames.NOTIFY,
     )
 
-    return jsonify(result="success"), 200
+    return {}, 204
 
 
 def parse_token(token):
@@ -172,11 +182,46 @@ def check_token_matches_payload(notification_id, request_id):
         raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
 
 
-def extract_properties_from_request(request_data):
+@dataclass
+class LetterUpdate:
+    page_count: str
+    status: str
+    cost_threshold: LetterCostThreshold
+    despatch_date: str
+
+
+def extract_properties_from_request(request_data) -> LetterUpdate:
     despatch_properties = request_data["data"]["despatchProperties"]
 
     # Since validation guarantees the presence of "totalSheets", we can directly extract it
     page_count = next(item["value"] for item in despatch_properties if item["key"] == "totalSheets")
     status = request_data["data"]["jobStatus"]
 
-    return page_count, status
+    mailing_product = next(item["value"] for item in despatch_properties if item["key"] == "mailingProduct")
+    postage = next(item["value"] for item in despatch_properties if item["key"] == "postageClass")
+    cost_threshold = _get_cost_threshold(mailing_product, postage)
+
+    despatch_datetime = next(item["value"] for item in despatch_properties if item["key"] == "Print Date")
+    despatch_date = _get_despatch_date(despatch_datetime)
+
+    return LetterUpdate(
+        page_count=page_count,
+        status=status,
+        cost_threshold=cost_threshold,
+        despatch_date=despatch_date,
+    )
+
+
+def _get_cost_threshold(mailing_product: str, postage: str) -> LetterCostThreshold:
+    if mailing_product == "MM" and postage == "2ND":
+        return LetterCostThreshold("sorted")
+
+    return LetterCostThreshold("unsorted")
+
+
+def _get_despatch_date(despatch_datetime: str) -> datetime.date:
+    """
+    Converts a string which has the format of 2024-08-01T09:15:14.456Z to a local time date
+    """
+    utc_datetime = datetime.datetime.strptime(despatch_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
+    return convert_utc_to_bst(utc_datetime).date()

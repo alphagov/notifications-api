@@ -1,10 +1,15 @@
+import datetime
+
 import pytest
 from flask import json, url_for
 from itsdangerous import BadSignature
 
 from app import signing
 from app.errors import InvalidRequest
+from app.models import LetterCostThreshold
 from app.notifications.notifications_letter_callback import (
+    _get_cost_threshold,
+    _get_despatch_date,
     check_token_matches_payload,
     extract_properties_from_request,
     parse_token,
@@ -288,7 +293,7 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
     data = mock_dvla_callback_data()
     data["data"]["jobStatus"] = status
 
-    client.post(
+    response = client.post(
         url_for(
             "notifications_letter_callback.process_letter_callback",
             token=signing.encode("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
@@ -302,8 +307,12 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
             "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
             "page_count": "5",
             "status": status,
+            "cost_threshold": LetterCostThreshold.unsorted,
+            "despatch_date": datetime.date(2024, 8, 1),
         },
     )
+
+    assert response.status_code == 204
 
 
 @pytest.mark.parametrize("token", [None, "invalid-token"])
@@ -347,6 +356,9 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
         "data": {
             "despatchProperties": [
                 {"key": "totalSheets", "value": "10"},
+                {"key": "postageClass", "value": "1ST"},
+                {"key": "mailingProduct", "value": "MM UNSORTED"},
+                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
             ],
             "jobStatus": "REJECTED",
         }
@@ -354,7 +366,32 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
 
     data = mock_dvla_callback_data(overrides)
 
-    page_count, status = extract_properties_from_request(data)
+    letter_update = extract_properties_from_request(data)
 
-    assert page_count == "10"
-    assert status == "REJECTED"
+    assert letter_update.page_count == "10"
+    assert letter_update.status == "REJECTED"
+    assert letter_update.cost_threshold == LetterCostThreshold.unsorted
+    assert letter_update.despatch_date == datetime.date(2024, 8, 1)
+
+
+@pytest.mark.parametrize("postage", ["1ST", "2ND", "INTERNATIONAL"])
+@pytest.mark.parametrize("mailing_product", ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"])
+def test__get_cost_threshold(mailing_product, postage):
+    if postage == "2ND" and mailing_product == "MM":
+        expected_cost_threshold = LetterCostThreshold.sorted
+    else:
+        expected_cost_threshold = LetterCostThreshold.unsorted
+
+    assert _get_cost_threshold(mailing_product, postage) == expected_cost_threshold
+
+
+@pytest.mark.parametrize(
+    "datestring, expected_result",
+    [
+        ("2024-08-01T09:15:14.456Z", datetime.date(2024, 8, 1)),
+        ("2024-08-01T23:15:14.0Z", datetime.date(2024, 8, 2)),
+        ("2024-01-21T23:15:14.0Z", datetime.date(2024, 1, 21)),
+    ],
+)
+def test__get_despatch_date(datestring, expected_result):
+    assert _get_despatch_date(datestring) == expected_result

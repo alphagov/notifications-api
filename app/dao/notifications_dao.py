@@ -889,3 +889,25 @@ def dao_record_letter_despatched_on(reference: str, despatched_on: datetime.date
     )
 
     db.session.execute(stmt)
+
+
+@autocommit
+def dao_record_letter_despatched_on_by_id(
+    notification_id: str,
+    despatched_on: datetime.date,
+    cost_threshold: LetterCostThreshold,
+):
+    stmt = (
+        insert(NotificationLetterDespatch)
+        .values(
+            notification_id=notification_id,
+            despatched_on=despatched_on,
+            cost_threshold=cost_threshold,
+        )
+        .on_conflict_do_update(
+            index_elements=["notification_id"],
+            set_={"despatched_on": despatched_on, "cost_threshold": cost_threshold.value},
+        )
+    )
+
+    db.session.execute(stmt)
