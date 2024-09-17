@@ -47,7 +47,6 @@ migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
 signing = Signing()
-zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
 cbc_proxy_client = CBCProxyClient()
@@ -148,6 +147,14 @@ get_document_download_client: LazyLocalGetter[DocumentDownloadClient] = LazyLoca
 memo_resetters.append(lambda: get_document_download_client.clear())
 document_download_client = LocalProxy(get_document_download_client)
 
+_zendesk_client_context_var: ContextVar[ZendeskClient] = ContextVar("zendesk_client")
+get_zendesk_client: LazyLocalGetter[ZendeskClient] = LazyLocalGetter(
+    _zendesk_client_context_var,
+    lambda: ZendeskClient(current_app.config["ZENDESK_API_KEY"]),
+)
+memo_resetters.append(lambda: get_zendesk_client.clear())
+zendesk_client = LocalProxy(get_zendesk_client)
+
 
 def create_app(application):
     from app.config import Config, configs
@@ -168,7 +175,6 @@ def create_app(application):
     db.init_app(application)
     migrate.init_app(application, db=db)
     ma.init_app(application)
-    zendesk_client.init_app(application)
     statsd_client.init_app(application)
     logging.init_app(application, statsd_client)
 

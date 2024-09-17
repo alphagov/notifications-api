@@ -507,7 +507,7 @@ def test_check_if_letters_still_pending_virus_check_restarts_scan_for_stuck_lett
 
 @freeze_time("2019-05-30 14:00:00")
 def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant_be_found(
-    mocker, sample_letter_template
+    sample_letter_template, mocker
 ):
     mock_file_exists = mocker.patch("app.aws.s3.file_exists", return_value=False)
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
@@ -569,7 +569,7 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
 
 
 @freeze_time("2019-05-30 14:00:00")
-def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_template, caplog):
+def test_check_if_letters_still_in_created_during_bst(sample_letter_template, caplog, mocker):
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
     mock_send_ticket_to_zendesk = mocker.patch(
         "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
@@ -605,7 +605,7 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
 
 
 @freeze_time("2019-01-30 14:00:00")
-def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_template, caplog):
+def test_check_if_letters_still_in_created_during_utc(sample_letter_template, caplog, mocker):
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
     mock_send_ticket_to_zendesk = mocker.patch(
         "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
@@ -783,7 +783,7 @@ MockServicesWithHighFailureRate = namedtuple(
     ],
 )
 def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
-    mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_log, expected_message, caplog
+    notify_db_session, failure_rates, sms_to_tv_numbers, expected_log, expected_message, caplog, mocker
 ):
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
     mock_send_ticket_to_zendesk = mocker.patch(
@@ -833,7 +833,7 @@ def test_delete_old_records_from_events_table(notify_db_session):
 
 
 @freeze_time("2022-11-01 00:30:00", tick=True)
-def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_user, hostnames):
+def test_zendesk_new_email_branding_report(notify_db_session, notify_user, hostnames, mocker):
     org_1 = create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
     org_2 = create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
     email_brand_1 = create_email_branding(
@@ -922,7 +922,7 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
 
 @freeze_time("2022-11-01 00:30:00")
 def test_zendesk_new_email_branding_report_for_unassigned_branding_only(
-    notify_db_session, mocker, notify_user, hostnames
+    notify_db_session, notify_user, hostnames, mocker
 ):
     create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
     create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
@@ -968,7 +968,7 @@ def test_zendesk_new_email_branding_report_for_unassigned_branding_only(
     ),
 )
 def test_zendesk_new_email_branding_report_calculates_last_weekday_correctly(
-    notify_db_session, mocker, task_run_time, earliest_searched_timestamp, expected_last_day_string, notify_user
+    notify_db_session, task_run_time, earliest_searched_timestamp, expected_last_day_string, notify_user, mocker
 ):
     org_1 = create_organisation()
 
@@ -1155,11 +1155,11 @@ class TestChangeDvlaApiKeyTask:
 
 class TestWeeklyDWPReport:
     @pytest.fixture(scope="function")
-    def mock_zendesk_update_ticket(self, mocker):
+    def mock_zendesk_update_ticket(self, notify_api, mocker):
         yield mocker.patch("app.celery.scheduled_tasks.zendesk_client.update_ticket")
 
     @pytest.fixture(scope="function")
-    def mock_env_with_zendesk_alerts_enabled(self, mocker, notify_api):
+    def mock_env_with_zendesk_alerts_enabled(self, notify_api, mocker):
         with set_config(notify_api, "SEND_ZENDESK_ALERTS_ENABLED", True):
             yield notify_api
 
@@ -1210,7 +1210,7 @@ class TestWeeklyDWPReport:
 
     @freeze_time("2022-01-01T09:00:00")
     def test_successful_run(
-        self, mocker, mock_env_with_zendesk_alerts_enabled, notify_db_session, mock_zendesk_update_ticket
+        self, mock_env_with_zendesk_alerts_enabled, notify_db_session, mock_zendesk_update_ticket, mocker
     ):
         with set_config(
             mock_env_with_zendesk_alerts_enabled,
