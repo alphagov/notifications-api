@@ -340,3 +340,14 @@ class CacheKeys:
 
 # Admin API error codes
 QR_CODE_TOO_LONG = "qr-code-too-long"
+
+# Service Join Request statuses
+JOIN_REQUEST_PENDING = "pending"
+JOIN_REQUEST_APPROVED = "approved"
+JOIN_REQUEST_REJECTED = "rejected"
+
+REQUEST_STATUS_VALUES = [
+    JOIN_REQUEST_APPROVED,
+    JOIN_REQUEST_REJECTED,
+    JOIN_REQUEST_PENDING,
+]
