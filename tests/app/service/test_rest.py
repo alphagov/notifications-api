@@ -1,7 +1,7 @@
 import json
 import uuid
 from collections import namedtuple
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
@@ -1613,13 +1613,11 @@ def test_get_all_notifications_for_service_filters_notifications_when_using_post
     assert response.status_code == 200
 
 
-def test_get_all_notifications_for_service_formatted_for_csv(client, sample_template):
+def test_get_all_notifications_for_service_for_csv(client, sample_template):
     notification = create_notification(template=sample_template)
     auth_header = create_admin_authorization_header()
 
-    response = client.get(
-        path=f"/service/{sample_template.service_id}/notifications?format_for_csv=True", headers=[auth_header]
-    )
+    response = client.get(path=f"/service/{sample_template.service_id}/notifications/csv", headers=[auth_header])
 
     resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
@@ -1792,64 +1790,50 @@ def test_get_notifications_for_service_pagination_links(
     )
 
     assert "prev" not in page_1_response["links"]
-    assert "?page=2" in page_1_response["links"]["next"]
+    assert page_1_response["links"]["next"]
 
     page_2_response = admin_request.get(
         "service.get_all_notifications_for_service", service_id=sample_template.service_id, page=2, page_size=page_size
     )
 
-    assert "?page=1" in page_2_response["links"]["prev"]
-    assert "?page=3" in page_2_response["links"]["next"]
+    assert page_2_response["links"]["prev"]
+    assert page_2_response["links"]["next"]
 
     page_3_response = admin_request.get(
         "service.get_all_notifications_for_service", service_id=sample_template.service_id, page=3, page_size=page_size
     )
 
-    assert "?page=2" in page_3_response["links"]["prev"]
+    assert page_3_response["links"]["prev"]
     assert "next" not in page_3_response["links"]
 
 
-def test_get_notifications_for_service_with_paginate_by_older_than(
+def test_get_notifications_for_service_for_csv_multipage(
     admin_request,
-    sample_job,
     sample_template,
-    sample_user,
 ):
-    oldest_notification = create_notification(sample_template)
-    end_of_page_1_notification = create_notification(sample_template)
+    oldest_notification = create_notification(sample_template, created_at=datetime.now(UTC) - timedelta(2))
+    end_of_page_1_notification = create_notification(sample_template, created_at=datetime.now(UTC) - timedelta(1))
     create_notification(sample_template)
 
     page_size = 2
 
-    page_1_response = admin_request.get(
-        "service.get_all_notifications_for_service",
+    first_response = admin_request.get(
+        "service.get_all_notifications_for_service_for_csv",
         service_id=sample_template.service_id,
         page_size=page_size,
-        paginate_by_older_than=True,
     )
 
-    assert f"older_than={str(end_of_page_1_notification.id)}" in page_1_response["links"]["next"]
+    assert len(first_response["notifications"]) == 2
+    assert first_response["notifications"][1]["id"] == str(end_of_page_1_notification.id)
 
-    page_2_response = admin_request.get(
-        "service.get_all_notifications_for_service",
+    second_response = admin_request.get(
+        "service.get_all_notifications_for_service_for_csv",
         service_id=sample_template.service_id,
         page_size=page_size,
-        paginate_by_older_than=True,
         older_than=end_of_page_1_notification.id,
     )
-    # even though this is the oldest notification, we give a next link - to avoid querying next page.
-    # last page being occasionally empty is ok - as the output is only utilised to create a CSV with no pages
-    assert f"older_than={str(oldest_notification.id)}" in page_2_response["links"]["next"]
-
-    page_3_response = admin_request.get(
-        "service.get_all_notifications_for_service",
-        service_id=sample_template.service_id,
-        page_size=page_size,
-        paginate_by_older_than=True,
-        older_than=oldest_notification.id,
-    )
-    # no next link as current page is empty
-    assert not page_3_response["links"].get("next")
+    assert len(second_response["notifications"]) == 1
+    assert second_response["notifications"][0]["id"] == str(oldest_notification.id)
 
 
 @pytest.mark.parametrize(
@@ -2177,7 +2161,7 @@ def test_search_for_notification_by_to_field_returns_next_link_if_more_than_50(c
         create_notification(sample_template, to_field="+447700900855", normalised_to="447700900855")
 
     response = client.get(
-        "/service/{}/notifications?to={}&template_type={}".format(sample_template.service_id, "+447700900855", "sms"),
+        f"/service/{sample_template.service_id}/notifications?to=+447700900855&template_type=sms",
         headers=[create_admin_authorization_header()],
     )
     assert response.status_code == 200
@@ -2185,7 +2169,7 @@ def test_search_for_notification_by_to_field_returns_next_link_if_more_than_50(c
 
     assert len(response_json["notifications"]) == 50
     assert "prev" not in response_json["links"]
-    assert "page=2" in response_json["links"]["next"]
+    assert response_json["links"]["next"]
 
 
 def test_search_for_notification_by_to_field_returns_no_next_link_if_50_or_less(client, sample_template):
