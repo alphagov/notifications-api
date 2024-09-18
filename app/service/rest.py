@@ -71,6 +71,7 @@ from app.dao.service_guest_list_dao import (
     dao_fetch_service_guest_list,
     dao_remove_service_guest_list,
 )
+from app.dao.service_join_requests_dao import dao_create_service_join_request, dao_get_service_join_request_by_id
 from app.dao.service_letter_contact_dao import (
     add_letter_contact_for_service,
     archive_letter_contact,
@@ -126,6 +127,7 @@ from app.notifications.process_notifications import (
 )
 from app.one_click_unsubscribe.rest import create_unsubscribe_request_reports_summary
 from app.schema_validation import validate
+from app.schema_validation.service_join_request import service_join_request_schema
 from app.schemas import (
     api_key_schema,
     detailed_service_schema,
@@ -163,6 +165,7 @@ from app.utils import (
     midnight_n_days_ago,
     utc_string_to_bst_string,
 )
+from app.v2.errors import ValidationError
 
 service_blueprint = Blueprint("service", __name__)
 
@@ -1272,3 +1275,31 @@ def create_contact_list(service_id):
     save_service_contact_list(list_to_save)
 
     return jsonify(list_to_save.serialize()), 201
+
+
+@service_blueprint.route("<uuid:service_id>/service-join-request", methods=["POST"])
+def create_service_join_request(service_id: uuid.UUID):
+    data = request.get_json()
+
+    try:
+        validate(data, service_join_request_schema)
+    except ValidationError as err:
+        raise InvalidRequest(message=err.messages, status_code=400) from err
+
+    new_request = dao_create_service_join_request(
+        requester_id=data["requester_id"],
+        service_id=service_id,
+        contacted_user_ids=data["contacted_user_ids"],
+    )
+
+    return jsonify({"service_join_request_id": str(new_request.id)}), 201
+
+
+@service_blueprint.route("/service-join-request/<uuid:request_id>", methods=["GET"])
+def get_service_join_request(request_id: uuid.UUID):
+    service_join_request = dao_get_service_join_request_by_id(request_id)
+
+    if not service_join_request:
+        raise InvalidRequest(message=f"Service join request with ID {request_id} not found.", status_code=404)
+
+    return jsonify(service_join_request.serialize()), 200
