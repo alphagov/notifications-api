@@ -425,6 +425,43 @@ def get_service_history(service_id):
     return jsonify(data=data)
 
 
+@service_blueprint.route("/<uuid:service_id>/notifications/csv", methods=["GET", "POST"])
+def get_all_notifications_for_service_for_csv(service_id):
+    data = notifications_filter_schema.load(request.args)
+
+    older_than = data.get("older_than")
+    page_size = data["page_size"] if "page_size" in data else current_app.config.get("PAGE_SIZE")
+    limit_days = data.get("limit_days")
+    include_jobs = data.get("include_jobs", True)
+    include_from_test_key = data.get("include_from_test_key", False)
+    include_one_off = data.get("include_one_off", True)
+
+    current_notifications_batch = notifications_dao.get_notifications_for_service(
+        service_id,
+        filter_dict=data,
+        older_than=older_than,
+        page_size=page_size,
+        count_pages=False,
+        limit_days=limit_days,
+        include_jobs=include_jobs,
+        include_from_test_key=include_from_test_key,
+        include_one_off=include_one_off,
+    )
+
+    kwargs = request.args.to_dict()
+    kwargs["service_id"] = service_id
+
+    notifications = [notification.serialize_for_csv() for notification in current_notifications_batch.items]
+
+    return (
+        jsonify(
+            notifications=notifications,
+            page_size=page_size,
+        ),
+        200,
+    )
+
+
 @service_blueprint.route("/<uuid:service_id>/notifications", methods=["GET", "POST"])
 def get_all_notifications_for_service(service_id):
     if request.method == "GET":
