@@ -1852,6 +1852,16 @@ def test_get_notifications_for_service_with_paginate_by_older_than(
     assert not page_3_response["links"].get("next")
 
 
+def test_get_all_notifications_for_service_when_no_results(admin_request):
+    service_1 = create_service(service_name="1")
+    response = admin_request.get(
+        "service.get_all_notifications_for_service",
+        service_id=service_1.id,
+    )
+
+    assert response == {"links": {}, "notifications": [], "page_size": 50}
+
+
 @pytest.mark.parametrize(
     "should_prefix",
     [
