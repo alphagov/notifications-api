@@ -158,7 +158,6 @@ from app.user.users_schema import post_set_permissions_schema
 from app.utils import (
     DATE_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
-    get_next_link_for_pagination_by_older_than,
     get_prev_next_pagination_links,
     midnight_n_days_ago,
 )
@@ -542,11 +541,6 @@ def get_all_notifications_for_service(service_id):
     if count_pages and not paginate_by_older_than:
         links = get_prev_next_pagination_links(
             page, len(next_notifications_batch.items), ".get_all_notifications_for_service", **kwargs
-        )
-    elif paginate_by_older_than:
-        # for first iteration, we don't care about 'previous' link, as CSV report doesn't utilise that.
-        links = get_next_link_for_pagination_by_older_than(
-            current_notifications_batch.items, ".get_all_notifications_for_service", **kwargs
         )
 
     return (
