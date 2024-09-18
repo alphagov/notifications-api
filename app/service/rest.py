@@ -445,6 +445,7 @@ def get_all_notifications_for_service_for_csv(service_id):
         include_jobs=include_jobs,
         include_from_test_key=include_from_test_key,
         include_one_off=include_one_off,
+        error_out=False,
     )
 
     kwargs = request.args.to_dict()
