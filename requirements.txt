@@ -82,7 +82,7 @@ flask==3.0.0
     #   sentry-sdk
 flask-bcrypt==1.0.1
     # via -r requirements.in
-flask-marshmallow==0.14.0
+flask-marshmallow==1.2.1
     # via -r requirements.in
 flask-migrate==3.1.0
     # via -r requirements.in
@@ -145,7 +145,7 @@ marshmallow==3.18.0
     #   -r requirements.in
     #   flask-marshmallow
     #   marshmallow-sqlalchemy
-marshmallow-sqlalchemy==0.28.1
+marshmallow-sqlalchemy==0.28.2
     # via -r requirements.in
 mistune==0.8.4
     # via notifications-utils
@@ -215,7 +215,6 @@ sentry-sdk[celery,flask,sqlalchemy]==1.38.0
 six==1.16.0
     # via
     #   click-repl
-    #   flask-marshmallow
     #   python-dateutil
     #   rfc3339-validator
 smartypants==2.0.1

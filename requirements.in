@@ -4,7 +4,7 @@
 cffi==1.15.1
 celery[sqs]==5.4.0
 Flask-Bcrypt==1.0.1
-flask-marshmallow==0.14.0
+flask-marshmallow==1.2.1
 Flask-Migrate==3.1.0
 flask-sqlalchemy==3.0.5
 click-datetime==0.2
@@ -12,7 +12,7 @@ click-datetime==0.2
 gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
 iso8601==1.1.0
 jsonschema[format]==4.16.0
-marshmallow-sqlalchemy==0.28.1
+marshmallow-sqlalchemy==0.28.2
 marshmallow==3.18.0
 # Requests pinned to 2.32.2 until https://github.com/psf/requests/issues/6730 is fixed. Once so, we can remove this pin
 requests==2.32.2
