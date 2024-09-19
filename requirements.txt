@@ -88,7 +88,7 @@ flask-migrate==3.1.0
     # via -r requirements.in
 flask-redis==0.4.0
     # via notifications-utils
-flask-sqlalchemy==3.0.2
+flask-sqlalchemy==3.0.5
     # via
     #   -r requirements.in
     #   flask-migrate
@@ -151,7 +151,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==8.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@84.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@84.2.0
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -220,7 +220,7 @@ six==1.16.0
     #   rfc3339-validator
 smartypants==2.0.1
     # via notifications-utils
-sqlalchemy==1.4.41
+sqlalchemy==1.4.54
     # via
     #   -r requirements.in
     #   alembic
