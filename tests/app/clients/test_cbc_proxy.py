@@ -73,7 +73,7 @@ def test_cbc_proxy_client_returns_correct_client(provider_name, expected_provide
 
     ret = cbc_proxy_client.get_proxy(provider_name)
 
-    assert type(ret) == expected_provider_class
+    assert type(ret) is expected_provider_class
     assert ret._lambda_client == mock_lambda
 
 
