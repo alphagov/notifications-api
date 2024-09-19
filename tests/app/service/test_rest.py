@@ -16,6 +16,7 @@ from app.constants import (
     INBOUND_SMS_TYPE,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
+    JOIN_REQUEST_PENDING,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
@@ -48,6 +49,7 @@ from app.models import (
 )
 from app.utils import DATETIME_FORMAT
 from tests import create_admin_authorization_header
+from tests.app.dao.test_service_join_requests_dao import setup_service_join_request_test_data
 from tests.app.db import (
     create_annual_billing,
     create_api_key,
@@ -3802,16 +3804,36 @@ def test_get_unsubscribe_request_report_for_download(admin_request, sample_servi
     assert response["batch_id"] == unsubscribe_request_report.id
     assert response["earliest_timestamp"] == unsubscribe_request_report.earliest_timestamp
     assert response["latest_timestamp"] == unsubscribe_request_report.latest_timestamp
-
-    for i, row in enumerate(unsubscribe_request_report.unsubscribe_requests):
-        assert response["unsubscribe_requests"][i]["email_address"] == row.email_address
-        assert response["unsubscribe_requests"][i]["template_name"] == row.template_name
-        assert response["unsubscribe_requests"][i]["original_file_name"] == row.original_file_name
-        assert response["unsubscribe_requests"][i]["template_sent_at"] == row.template_sent_at
-        assert (
-            response["unsubscribe_requests"][i]["unsubscribe_request_received_at"]
-            == row.unsubscribe_request_received_at
-        )
+    assert response["unsubscribe_requests"] == [
+        {
+            "email_address": "foo@bar.com",
+            "original_file_name": "contact list",
+            "template_name": "email Template Name",
+            "template_sent_at": "2024-07-23 14:30:00",
+            "unsubscribe_request_received_at": "2024-07-25 14:30:00",
+        },
+        {
+            "email_address": "fizz@bar.com",
+            "original_file_name": "contact list",
+            "template_name": "email Template Name",
+            "template_sent_at": "2024-07-21 12:04:00",
+            "unsubscribe_request_received_at": "2024-07-23 12:04:00",
+        },
+        {
+            "email_address": "fizzbuzz@bar.com",
+            "original_file_name": None,
+            "template_name": "Another Service",
+            "template_sent_at": "2024-07-20 00:45:00",
+            "unsubscribe_request_received_at": "2024-07-22 00:45:00",
+        },
+        {
+            "email_address": "buzz@bar.com",
+            "original_file_name": "another contact list",
+            "template_name": "Another Service",
+            "template_sent_at": "2024-07-17 10:42:00",
+            "unsubscribe_request_received_at": "2024-07-19 10:42:00",
+        },
+    ]
 
 
 def test_get_unsubscribe_request_report_for_download_400_error(admin_request, sample_service):
@@ -3932,3 +3954,105 @@ def test_count_notifications_for_service(admin_request, sample_template, test_ca
     )
 
     assert resp == test_case.expected_response
+
+
+ServiceJoinRequestTestCase = namedtuple(
+    "TestCase",
+    [
+        "requester_id",
+        "service_id",
+        "contacted_user_ids",
+        "expected_status_code",
+        "expected_response",
+    ],
+)
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        ServiceJoinRequestTestCase(
+            requester_id=uuid.uuid4(),
+            service_id=uuid.uuid4(),
+            contacted_user_ids=[],
+            expected_status_code=400,
+            expected_response="contacted_user_ids [] is too short",
+        ),
+        ServiceJoinRequestTestCase(
+            requester_id=None,
+            service_id=uuid.uuid4(),
+            contacted_user_ids=[str(uuid.uuid4())],
+            expected_status_code=400,
+            expected_response="requester_id badly formed hexadecimal UUID string",
+        ),
+        ServiceJoinRequestTestCase(
+            requester_id=uuid.uuid4(),
+            service_id=uuid.uuid4(),
+            contacted_user_ids=[str(uuid.uuid4())],
+            expected_status_code=201,
+            expected_response={"service_join_request_id": "some-uuid-here"},
+        ),
+    ],
+    ids=[
+        "Validation Error - No contacts",
+        "Validation Error - Invalid Type for Requester ID (None)",
+        "Created Request Successfully",
+    ],
+)
+def test_create_service_join_request(
+    admin_request,
+    test_case,
+):
+    setup_service_join_request_test_data(test_case.service_id, test_case.requester_id, test_case.contacted_user_ids)
+
+    resp = admin_request.post(
+        "service.create_service_join_request",
+        service_id=str(test_case.service_id),
+        _data={"requester_id": str(test_case.requester_id), "contacted_user_ids": test_case.contacted_user_ids},
+        _expected_status=test_case.expected_status_code,
+    )
+
+    if test_case.expected_status_code == 400:
+        assert resp["errors"][0]["message"] == test_case.expected_response
+    elif test_case.expected_status_code == 201:
+        assert "service_join_request_id" in resp
+
+
+def test_get_service_join_request_not_found(admin_request):
+    request_id = uuid.uuid4()
+
+    resp = admin_request.get(
+        "service.get_service_join_request",
+        request_id=request_id,
+        _expected_status=404,
+    )
+
+    assert resp["message"] == f"Service join request with ID {request_id} not found."
+
+
+def test_get_service_join_request_found(admin_request):
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    contacted_user = uuid.uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [contacted_user])
+
+    resp = admin_request.post(
+        "service.create_service_join_request",
+        service_id=str(service_id),
+        _data={"requester_id": str(requester_id), "contacted_user_ids": [str(contacted_user)]},
+        _expected_status=201,
+    )
+
+    request_id = resp["service_join_request_id"]
+
+    resp = admin_request.get(
+        "service.get_service_join_request",
+        request_id=request_id,
+        _expected_status=200,
+    )
+
+    assert resp["contacted_service_users"] is not None
+    assert resp["status"] == JOIN_REQUEST_PENDING
+    assert resp["service_join_request_id"] == request_id
+    assert resp["created_at"] is not None

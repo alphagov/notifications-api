@@ -7,8 +7,8 @@ from alembic import op
 from flask import current_app
 
 
-revision = "0464_requester_invite_approved"
-down_revision = "0463_backfill_created_at"
+revision = "0465_requester_invite_approved"
+down_revision = "0464_create_svc_join_requests"
 
 template_id = "4d8ee728-100e-4f0e-8793-5638cfa4ffa4"
 template_content = textwrap.dedent(

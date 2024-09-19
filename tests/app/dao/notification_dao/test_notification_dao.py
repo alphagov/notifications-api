@@ -32,6 +32,7 @@ from app.dao.notifications_dao import (
     dao_get_notification_or_history_by_id,
     dao_get_notification_or_history_by_reference,
     dao_get_notifications_by_recipient_or_reference,
+    dao_record_letter_despatched_on_by_id,
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_by_reference,
@@ -44,7 +45,7 @@ from app.dao.notifications_dao import (
     notifications_not_yet_sent,
     update_notification_status_by_id,
 )
-from app.models import Job, Notification, NotificationHistory
+from app.models import Job, LetterCostThreshold, Notification, NotificationHistory, NotificationLetterDespatch
 from tests.app.db import (
     create_ft_notification_status,
     create_job,
@@ -1634,3 +1635,22 @@ def test_dao_get_notification_or_history_by_id_when_notification_history_exists(
     notification = dao_get_notification_or_history_by_id(sample_notification_history.id)
 
     assert sample_notification_history == notification
+
+
+def test_dao_record_letter_despatched_on_by_id(notify_db_session):
+    notification_id = uuid.uuid4()
+
+    dao_record_letter_despatched_on_by_id(notification_id, date(2024, 3, 7), LetterCostThreshold("sorted"))
+    letter_despatch = NotificationLetterDespatch.query.one()
+
+    assert letter_despatch.notification_id == notification_id
+    assert letter_despatch.despatched_on == date(2024, 3, 7)
+    assert letter_despatch.cost_threshold == LetterCostThreshold.sorted
+
+    # Calling the function with a notification_id that already exists updates the row
+    dao_record_letter_despatched_on_by_id(notification_id, date(2024, 3, 8), LetterCostThreshold("unsorted"))
+    letter_despatch = NotificationLetterDespatch.query.one()
+
+    assert letter_despatch.notification_id == notification_id
+    assert letter_despatch.despatched_on == date(2024, 3, 8)
+    assert letter_despatch.cost_threshold == LetterCostThreshold.unsorted
