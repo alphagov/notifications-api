@@ -96,6 +96,7 @@ def _notify_db(notify_api, worker_id):
     current_app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
 
     # reinitalise the db so it picks up on the new test database name
+    current_app.extensions.pop("sqlalchemy")
     db.init_app(notify_api)
     create_test_db(current_app.config["SQLALCHEMY_DATABASE_URI"])
 
