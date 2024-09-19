@@ -876,6 +876,7 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
                 {"id": "360022943959", "value": None},
                 {"id": "360022943979", "value": None},
                 {"id": "1900000745014", "value": None},
+                {'id': '15925693889308', 'value': None},
                 {"id": "1900000744994", "value": "notify_ticket_type_non_technical"},
             ],
         }
