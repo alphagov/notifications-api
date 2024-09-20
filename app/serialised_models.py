@@ -1,6 +1,8 @@
 from collections import defaultdict
+from datetime import datetime
 from functools import partial
 from threading import RLock
+from typing import Any
 
 import cachetools
 from notifications_utils.clients.redis import RequestCache
@@ -36,18 +38,16 @@ def ignore_first_argument_cache_key(cls, *args, **kwargs):
 
 
 class SerialisedTemplate(SerialisedModel):
-    ALLOWED_PROPERTIES = {
-        "archived",
-        "content",
-        "id",
-        "postage",
-        "process_type",
-        "reply_to_text",
-        "subject",
-        "template_type",
-        "version",
-        "has_unsubscribe_link",
-    }
+    archived: bool
+    content: str
+    id: Any
+    postage: str
+    process_type: str
+    reply_to_text: str
+    subject: str
+    template_type: str
+    version: int
+    has_unsubscribe_link: bool
 
     @classmethod
     @memory_cache
@@ -73,22 +73,20 @@ class SerialisedTemplate(SerialisedModel):
 
 
 class SerialisedService(SerialisedModel):
-    ALLOWED_PROPERTIES = {
-        "id",
-        "name",
-        "active",
-        "contact_link",
-        "custom_email_sender_name",
-        "email_sender_local_part",
-        "email_message_limit",
-        "letter_message_limit",
-        "sms_message_limit",
-        "permissions",
-        "rate_limit",
-        "restricted",
-        "prefix_sms",
-        "email_branding",
-    }
+    id: Any
+    name: str
+    active: bool
+    contact_link: str
+    custom_email_sender_name: str
+    email_sender_local_part: str
+    email_message_limit: int
+    letter_message_limit: int
+    sms_message_limit: int
+    permissions: Any
+    rate_limit: int
+    restricted: bool
+    prefix_sms: bool
+    email_branding: Any
 
     @classmethod
     @memory_cache
@@ -114,12 +112,10 @@ class SerialisedService(SerialisedModel):
 
 
 class SerialisedAPIKey(SerialisedModel):
-    ALLOWED_PROPERTIES = {
-        "id",
-        "secret",
-        "expiry_date",
-        "key_type",
-    }
+    id: Any
+    secret: str
+    expiry_date: datetime
+    key_type: str
 
 
 class SerialisedAPIKeyCollection(SerialisedModelCollection):
@@ -129,7 +125,7 @@ class SerialisedAPIKeyCollection(SerialisedModelCollection):
     @memory_cache
     def from_service_id(cls, service_id):
         keys = [
-            {k: getattr(key, k) for k in SerialisedAPIKey.ALLOWED_PROPERTIES} for key in get_model_api_keys(service_id)
+            {k: getattr(key, k) for k in SerialisedAPIKey.__annotations__} for key in get_model_api_keys(service_id)
         ]
         db.session.commit()
         return cls(keys)
