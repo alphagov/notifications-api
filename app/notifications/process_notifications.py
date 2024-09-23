@@ -149,7 +149,8 @@ def persist_notification(
     )
     if notification_type == SMS_TYPE:
         if service.has_permission(SMS_TO_UK_LANDLINES):
-            phonenumber = PhoneNumber(recipient, allow_international=True)
+            phonenumber = PhoneNumber(recipient)
+            phonenumber.validate(allow_international_number=True, allow_uk_landline=True)
             formatted_recipient = phonenumber.get_normalised_format()
             recipient_info = phonenumber.get_international_phone_info()
         else:
