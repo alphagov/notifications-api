@@ -88,7 +88,6 @@ def test_user_update_schema_rejects_invalid_attribute_pairs(user_attribute, user
     from app.schemas import user_update_schema_load_json
 
     update_dict = {user_attribute: user_value}
-
     with pytest.raises(ValidationError):
         user_update_schema_load_json.load(update_dict)
 

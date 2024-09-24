@@ -8,10 +8,7 @@ from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.letter_timings import get_letter_timings
 from notifications_utils.recipient_validation.email_address import validate_email_address
 from notifications_utils.recipient_validation.errors import InvalidRecipientError
-from notifications_utils.recipient_validation.phone_number import (
-    try_validate_and_format_phone_number,
-    validate_phone_number,
-)
+from notifications_utils.recipient_validation.phone_number import PhoneNumber, try_validate_and_format_phone_number
 from notifications_utils.recipient_validation.postal_address import (
     address_lines_1_to_6_and_postcode_keys,
 )
@@ -825,7 +822,8 @@ class ServiceGuestList(db.Model):
 
         try:
             if recipient_type == MOBILE_TYPE:
-                validate_phone_number(recipient, international=True)
+                number = PhoneNumber(recipient)
+                number.validate(allow_international_number=True)
                 instance.recipient = recipient
             elif recipient_type == EMAIL_TYPE:
                 validate_email_address(recipient)
