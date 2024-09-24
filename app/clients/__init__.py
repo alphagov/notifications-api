@@ -16,15 +16,9 @@ STATISTICS_FAILURE = "failure"
 
 
 class NotificationProviderClients:
-    sms_clients = {}
-    email_clients = {}
-
-    def init_app(self, sms_clients, email_clients):
-        for client in sms_clients:
-            self.sms_clients[client.name] = client
-
-        for client in email_clients:
-            self.email_clients[client.name] = client
+    def __init__(self, sms_clients, email_clients):
+        self.sms_clients = {**sms_clients}
+        self.email_clients = {**email_clients}
 
     def get_sms_client(self, name):
         return self.sms_clients.get(name)

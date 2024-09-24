@@ -2,12 +2,12 @@ import uuid
 from unittest.mock import ANY, call
 
 import pytest
+import requests
 import requests_mock
 from flask import current_app, json
 from freezegun import freeze_time
 
 from app.celery.research_mode_tasks import (
-    HTTPError,
     create_fake_letter_response_file,
     firetext_callback,
     mmg_callback,
@@ -37,7 +37,7 @@ def test_callback_logs_on_api_call_failure(notify_api, rmock, caplog):
     endpoint = "http://localhost:6011/notifications/sms/mmg"
     rmock.request("POST", endpoint, json={"error": "something went wrong"}, status_code=500)
 
-    with pytest.raises(HTTPError), caplog.at_level("ERROR"):
+    with pytest.raises(requests.HTTPError), caplog.at_level("ERROR"):
         send_sms_response("mmg", "1234", "07700900001")
 
     assert rmock.called

@@ -54,16 +54,16 @@ class AwsSesClientThrottlingSendRateException(AwsSesClientException):
 class AwsSesClient(EmailClient):
     """
     Amazon SES email client.
+
+    This class is not thread-safe
     """
 
-    def init_app(self, region, statsd_client, *args, **kwargs):
-        self._client = boto3.client("sesv2", region_name=region)
-        super().__init__(*args, **kwargs)
-        self.statsd_client = statsd_client
+    name = "ses"
 
-    @property
-    def name(self):
-        return "ses"
+    def __init__(self, region, statsd_client):
+        super().__init__()
+        self._client = boto3.client("sesv2", region_name=region)
+        self.statsd_client = statsd_client
 
     def send_email(
         self,

@@ -227,7 +227,7 @@ def test__send_data_to_service_callback_api_retries_if_request_raises_unknown_ex
 
     celery_task_mock = mock.MagicMock()
 
-    mocker.patch("app.celery.service_callback_tasks.request", side_effect=RequestException())
+    mocker.patch("app.celery.service_callback_tasks.requests_session.request", side_effect=RequestException())
 
     _send_data_to_service_callback_api(celery_task_mock, data, callback_url, "my-token", "my_function_name")
 
