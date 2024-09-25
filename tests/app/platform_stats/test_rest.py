@@ -203,9 +203,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[3]["purchase_order_number"] is None
 
 
-def test_daily_volumes_report(
-    notify_db_session, sample_template, sample_email_template, sample_letter_template, admin_request
-):
+def test_daily_volumes_report(notify_db_session, admin_request):
     set_up_usage_data(datetime(2022, 3, 1))
     response = admin_request.get("platform_stats.daily_volumes_report", start_date="2022-03-01", end_date="2022-03-31")
 
@@ -239,9 +237,7 @@ def test_daily_volumes_report(
     }
 
 
-def test_volumes_by_service_report(
-    notify_db_session, sample_template, sample_email_template, sample_letter_template, admin_request
-):
+def test_volumes_by_service_report(notify_db_session, admin_request):
     fixture = set_up_usage_data(datetime(2022, 3, 1))
     response = admin_request.get(
         "platform_stats.volumes_by_service_report", start_date="2022-03-01", end_date="2022-03-01"

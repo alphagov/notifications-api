@@ -283,7 +283,7 @@ def test_should_be_error_on_update_if_no_permission(
     assert json_resp["message"] == expected_error
 
 
-def test_should_error_if_created_by_missing(client, sample_user, sample_service):
+def test_should_error_if_created_by_missing(client, sample_service):
     service_id = str(sample_service.id)
     data = {"name": "my template", "template_type": SMS_TYPE, "content": "template content", "service": service_id}
     data = json.dumps(data)
@@ -795,7 +795,6 @@ def test_create_400_for_over_limit_content(
     client,
     notify_api,
     sample_user,
-    fake_uuid,
     template_type,
 ):
     sample_service = create_service(service_permissions=[template_type])

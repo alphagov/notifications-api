@@ -64,7 +64,6 @@ def test_send_pdf_letter_notification_validates_created_by(sample_service_full_p
 
 
 def test_send_pdf_letter_notification_raises_error_if_service_in_trial_mode(
-    mocker,
     sample_service_full_permissions,
     post_data,
 ):

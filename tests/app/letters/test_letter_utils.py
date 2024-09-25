@@ -188,7 +188,7 @@ def test_generate_letter_pdf_filename_returns_correct_filename_for_test_letters(
     assert filename == "NOTIFY.FOO.D.2.C.20171204172900.PDF"
 
 
-def test_generate_letter_pdf_filename_returns_tomorrows_filename(notify_api, mocker):
+def test_generate_letter_pdf_filename_returns_tomorrows_filename(notify_api):
     created_at = datetime(2017, 12, 4, 17, 31)
     filename = generate_letter_pdf_filename(reference="foo", created_at=created_at)
 
@@ -250,8 +250,8 @@ def test_upload_letter_pdf_to_correct_bucket(
     )
 
 
-@pytest.mark.parametrize("postage,expected_postage", [("second", 2), ("first", 1)])
-def test_upload_letter_pdf_uses_postage_from_notification(sample_letter_template, mocker, postage, expected_postage):
+@pytest.mark.parametrize("postage", ["second", "first"])
+def test_upload_letter_pdf_uses_postage_from_notification(sample_letter_template, mocker, postage):
     letter_notification = create_notification(template=sample_letter_template, postage=postage)
     mock_s3 = mocker.patch("app.letters.utils.s3upload")
 
@@ -332,7 +332,7 @@ def test_get_folder_name_in_british_summer_time(notify_api, timestamp, expected_
 
 
 @mock_aws
-def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
+def test_move_sanitised_letter_to_live_pdf_bucket(notify_api):
     filename = "my_letter.pdf"
     source_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
     target_bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
@@ -357,7 +357,7 @@ def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
 
 
 @mock_aws
-def test_move_sanitised_letter_to_test_pdf_bucket(notify_api, mocker):
+def test_move_sanitised_letter_to_test_pdf_bucket(notify_api):
     filename = "my_letter.pdf"
     source_bucket_name = current_app.config["S3_BUCKET_LETTER_SANITISE"]
     target_bucket_name = current_app.config["S3_BUCKET_TEST_LETTERS"]

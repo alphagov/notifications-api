@@ -265,8 +265,7 @@ def test_get_all_template_request_schema_against_valid_args_is_valid(template_ty
     assert validate(data, get_all_template_request) == data
 
 
-@pytest.mark.parametrize("template_type", TEMPLATE_TYPES)
-def test_get_all_template_request_schema_against_invalid_args_is_invalid(template_type):
+def test_get_all_template_request_schema_against_invalid_args_is_invalid():
     data = {"type": "unknown"}
 
     with pytest.raises(ValidationError) as e:

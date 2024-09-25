@@ -652,7 +652,6 @@ def test_send_user_reset_password_should_send_reset_password_link(
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_reset_password_should_use_provided_base_url(
     admin_request,
-    sample_user,
     password_reset_email_template,
     mocker,
     data,

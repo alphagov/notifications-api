@@ -94,7 +94,7 @@ def test_check_service_over_daily_message_limit_should_not_interact_with_cache_f
 @pytest.mark.parametrize("key_type", ["team", "normal"])
 @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
 def test_check_service_over_daily_message_limit_should_set_cache_value_as_zero_if_cache_not_set(
-    key_type, sample_template, sample_service, mocker, notification_type
+    key_type, sample_service, mocker, notification_type
 ):
     serialised_service = SerialisedService.from_id(sample_service.id)
     with freeze_time("2016-01-01 12:00:00.000000"):
@@ -417,7 +417,7 @@ def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_servic
         assert not mock_check_message_is_too_long.called
 
 
-def test_validate_template_calls_all_validators_exception_message_too_long(mocker, fake_uuid, sample_service):
+def test_validate_template_calls_all_validators_exception_message_too_long(mocker, sample_service):
     template = create_template(sample_service, template_type="email")
     mock_check_type = mocker.patch("app.notifications.validators.check_template_is_for_notification_type")
     mock_check_if_active = mocker.patch("app.notifications.validators.check_template_is_active")

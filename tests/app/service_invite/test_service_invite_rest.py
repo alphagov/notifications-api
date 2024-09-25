@@ -286,7 +286,7 @@ def test_get_invited_user(admin_request, sample_invited_user):
     assert json_resp["data"]["permissions"] == sample_invited_user.permissions
 
 
-def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, sample_invited_user, fake_uuid):
+def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, fake_uuid):
     json_resp = admin_request.get("service_invite.get_invited_user", invited_user_id=fake_uuid, _expected_status=404)
     assert json_resp["result"] == "error"
 

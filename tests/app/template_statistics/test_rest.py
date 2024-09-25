@@ -32,7 +32,7 @@ def test_get_template_statistics_for_service_by_day_with_bad_arg_returns_400(adm
     assert "whole_days" in json_resp["message"]
 
 
-def test_get_template_statistics_for_service_by_day_returns_template_info(admin_request, mocker, sample_notification):
+def test_get_template_statistics_for_service_by_day_returns_template_info(admin_request, sample_notification):
     json_resp = admin_request.get(
         "template_statistics.get_template_statistics_for_service_by_day",
         service_id=sample_notification.service_id,
