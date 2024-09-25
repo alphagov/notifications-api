@@ -47,19 +47,9 @@ def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **k
         kwargs.pop("page", None)
     links = {}
     if current_page > 1:
-        links["prev"] = url_for(endpoint, page=current_page - 1, **kwargs)
+        links["prev"] = True
     if next_page_exists:
-        links["next"] = url_for(endpoint, page=current_page + 1, **kwargs)
-    return links
-
-
-def get_next_link_for_pagination_by_older_than(current_notifications_batch, endpoint, **kwargs):
-    links = {}
-
-    if len(current_notifications_batch):
-        kwargs["older_than"] = current_notifications_batch[-1].id
-        links["next"] = url_for(endpoint, **kwargs)
-
+        links["next"] = True
     return links
 
 
