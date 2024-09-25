@@ -481,8 +481,6 @@ def get_all_notifications_for_service(service_id):
             notification_type=notification_type,
         )
 
-    paginate_by_older_than = data.get("paginate_by_older_than")
-    older_than = data.get("older_than")
     page = data.get("page", 1)
 
     page_size = data["page_size"] if "page_size" in data else current_app.config.get("PAGE_SIZE")
@@ -494,8 +492,7 @@ def get_all_notifications_for_service(service_id):
     current_notifications_batch = notifications_dao.get_notifications_for_service(
         service_id,
         filter_dict=data,
-        older_than=older_than if paginate_by_older_than else None,
-        page=page if not paginate_by_older_than else 1,
+        page=page,
         page_size=page_size,
         count_pages=False,
         limit_days=limit_days,
@@ -507,40 +504,33 @@ def get_all_notifications_for_service(service_id):
     kwargs = request.args.to_dict()
     kwargs["service_id"] = service_id
 
-    if data.get("format_for_csv"):
-        notifications = [notification.serialize_for_csv() for notification in current_notifications_batch.items]
-    else:
-        notifications = notification_with_template_schema.dump(current_notifications_batch.items, many=True)
+    notifications = notification_with_template_schema.dump(current_notifications_batch.items, many=True)
 
-    # if we paginate by older_than, then we don't need to get the next batch, as we use it to get data for a CSV report
-    # only for now - once we use it for views where we are actually showing a next page link, we might need it?
-    # Or we could keep track how many notifications we have left to pull insteead.
-    if not paginate_by_older_than:
-        # We try and get the next page of results to work out if we need provide a pagination link to the next page
-        # in our response if it exists. Note, this could be done instead by changing `count_pages` in the previous
-        # call to be True which will enable us to use Flask-Sqlalchemy to tell if there is a next page of results but
-        # this way is much more performant for services with many results (unlike Flask SqlAlchemy, this approach
-        # doesn't do an additional query to count all the results of which there could be millions but instead only
-        # asks for a single extra page of results).
-        next_notifications_batch = notifications_dao.get_notifications_for_service(
-            service_id,
-            filter_dict=data,
-            page=page + 1,
-            page_size=page_size,
-            count_pages=False,
-            limit_days=limit_days,
-            include_jobs=include_jobs,
-            include_from_test_key=include_from_test_key,
-            include_one_off=include_one_off,
-            error_out=False,  # False so that if there are no results, it doesn't end in aborting with a 404
-        )
+    # We try and get the next page of results to work out if we need provide a pagination link to the next page
+    # in our response if it exists. Note, this could be done instead by changing `count_pages` in the previous
+    # call to be True which will enable us to use Flask-Sqlalchemy to tell if there is a next page of results but
+    # this way is much more performant for services with many results (unlike Flask SqlAlchemy, this approach
+    # doesn't do an additional query to count all the results of which there could be millions but instead only
+    # asks for a single extra page of results).
+    next_notifications_batch = notifications_dao.get_notifications_for_service(
+        service_id,
+        filter_dict=data,
+        page=page + 1,
+        page_size=page_size,
+        count_pages=False,
+        limit_days=limit_days,
+        include_jobs=include_jobs,
+        include_from_test_key=include_from_test_key,
+        include_one_off=include_one_off,
+        error_out=False,  # False so that if there are no results, it doesn't end in aborting with a 404
+    )
 
     # count_pages is not being used for whether to count the number of pages, but instead as a flag
     # for whether to show pagination links
     count_pages = data.get("count_pages", True)
 
     links = {}
-    if count_pages and not paginate_by_older_than:
+    if count_pages:
         links = get_prev_next_pagination_links(
             page, len(next_notifications_batch.items), ".get_all_notifications_for_service", **kwargs
         )
