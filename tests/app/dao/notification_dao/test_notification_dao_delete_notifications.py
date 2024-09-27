@@ -31,7 +31,7 @@ def test_every_column_in_notification_history_is_filled_with_data_from_notificat
 
 @mock_aws
 @freeze_time("2019-09-01 04:30")
-def test_move_notifications_deletes_letters_from_s3(sample_letter_template, mocker):
+def test_move_notifications_deletes_letters_from_s3(sample_letter_template):
     s3 = boto3.client("s3", region_name="eu-west-1")
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
@@ -57,7 +57,7 @@ def test_move_notifications_deletes_letters_from_s3(sample_letter_template, mock
 
 @mock_aws
 @freeze_time("2019-09-01 04:30")
-def test_move_notifications_copes_if_letter_not_in_s3(sample_letter_template, mocker):
+def test_move_notifications_copes_if_letter_not_in_s3(sample_letter_template):
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(
         Bucket=current_app.config["S3_BUCKET_LETTERS_PDF"],
@@ -72,7 +72,7 @@ def test_move_notifications_copes_if_letter_not_in_s3(sample_letter_template, mo
     assert NotificationHistory.query.count() == 1
 
 
-def test_move_notifications_does_nothing_if_notification_history_row_already_exists(sample_email_template, mocker):
+def test_move_notifications_does_nothing_if_notification_history_row_already_exists(sample_email_template):
     notification = create_notification(
         template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=8), status="temporary-failure"
     )
@@ -117,7 +117,7 @@ def test_move_notifications_deletes_letters_not_sent_and_in_final_state_from_tab
 @freeze_time("2020-12-24 04:30")
 @pytest.mark.parametrize("notification_status", ["delivered", "returned-letter", "technical-failure"])
 def test_move_notifications_deletes_letters_sent_and_in_final_state_from_table_and_s3(
-    sample_service, mocker, notification_status
+    sample_service, notification_status
 ):
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
     s3 = boto3.client("s3", region_name="eu-west-1")

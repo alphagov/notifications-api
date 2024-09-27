@@ -83,7 +83,7 @@ def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(s
     assert sample_job == Job.query.get(notification.job_id)
 
 
-def test_should_update_status_by_id_if_created(sample_template, sample_notification):
+def test_should_update_status_by_id_if_created(sample_notification):
     assert Notification.query.get(sample_notification.id).status == "created"
     updated = update_notification_status_by_id(sample_notification.id, "failed")
     assert Notification.query.get(sample_notification.id).status == "failed"
@@ -1369,7 +1369,7 @@ def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_temp
     assert dao_get_last_notification_added_for_job_id(job.id) is None
 
 
-def test_dao_get_last_notification_added_for_job_id_no_job(sample_template, fake_uuid):
+def test_dao_get_last_notification_added_for_job_id_no_job(fake_uuid):
     assert dao_get_last_notification_added_for_job_id(fake_uuid) is None
 
 

@@ -21,7 +21,7 @@ def test_firetext_callback_should_not_need_auth(client, mocker):
     assert response.status_code == 200
 
 
-def test_firetext_callback_should_return_400_if_empty_reference(client, mocker):
+def test_firetext_callback_should_return_400_if_empty_reference(client):
     data = "mobile=441234123123&status=0&reference=&time=2016-03-10 14:17:00"
     response = firetext_post(client, data)
 
@@ -31,7 +31,7 @@ def test_firetext_callback_should_return_400_if_empty_reference(client, mocker):
     assert json_resp["message"] == ["Firetext callback failed: reference missing"]
 
 
-def test_firetext_callback_should_return_400_if_no_reference(client, mocker):
+def test_firetext_callback_should_return_400_if_no_reference(client):
     data = "mobile=441234123123&status=0&time=2016-03-10 14:17:00"
     response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
@@ -40,7 +40,7 @@ def test_firetext_callback_should_return_400_if_no_reference(client, mocker):
     assert json_resp["message"] == ["Firetext callback failed: reference missing"]
 
 
-def test_firetext_callback_should_return_400_if_no_status(client, mocker):
+def test_firetext_callback_should_return_400_if_no_status(client):
     data = "mobile=441234123123&time=2016-03-10 14:17:00&reference=notification_id"
     response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))

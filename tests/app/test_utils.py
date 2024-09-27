@@ -81,7 +81,7 @@ def test_url_with_token_unsubscribe_link(sample_email_notification, hostnames, n
     assert generated_unsubscribe_link == expected_unsubscribe_link
 
 
-def test_url_with_token__create_confirmation_url(sample_email_notification, hostnames, notify_api):
+def test_url_with_token__create_confirmation_url(hostnames, notify_api):
     data = json.dumps({"user_id": str(uuid.uuid4()), "email": "foo@bar.com"})
     base_url = hostnames.admin
     url = "/user-profile/email/confirm/"

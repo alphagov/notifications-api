@@ -130,7 +130,6 @@ def test_provider_details_schema_returns_user_details(mocker, sample_user, resto
 
 
 def test_provider_details_history_schema_returns_user_details(
-    mocker,
     sample_user,
     restore_provider_details,
 ):

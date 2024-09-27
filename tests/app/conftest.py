@@ -60,7 +60,6 @@ from tests.app.db import (
     create_invited_org_user,
     create_job,
     create_letter_branding,
-    create_letter_contact,
     create_letter_rate,
     create_notification,
     create_rate,
@@ -173,12 +172,6 @@ def _sample_service_full_permissions(notify_db_session):
     return service
 
 
-@pytest.fixture(scope="function", name="sample_service_custom_letter_contact_block")
-def _sample_service_custom_letter_contact_block(sample_service):
-    create_letter_contact(sample_service, contact_block="((contact block))")
-    return sample_service
-
-
 @pytest.fixture(scope="function")
 def sample_template(sample_user):
     # This will be the same service as the one returned by the sample_service fixture as we look for a
@@ -204,12 +197,6 @@ def sample_template(sample_user):
 @pytest.fixture
 def sample_sms_template(sample_template):
     return sample_template
-
-
-@pytest.fixture(scope="function")
-def sample_template_without_sms_permission(notify_db_session):
-    service = create_service(service_permissions=[EMAIL_TYPE], check_if_service_exists=True)
-    return create_template(service, template_type=SMS_TYPE)
 
 
 @pytest.fixture(scope="function")
@@ -239,12 +226,6 @@ def sample_email_template(sample_user):
     template = Template(**data)
     dao_create_template(template)
     return template
-
-
-@pytest.fixture(scope="function")
-def sample_template_without_email_permission(notify_db_session):
-    service = create_service(service_permissions=[SMS_TYPE], check_if_service_exists=True)
-    return create_template(service, template_type=EMAIL_TYPE)
 
 
 @pytest.fixture
@@ -547,11 +528,6 @@ def sample_user_service_permission(sample_user):
 @pytest.fixture(scope="function")
 def fake_uuid():
     return "6ce466d0-fd6a-11e5-82f5-e0accb9d11a6"
-
-
-@pytest.fixture(scope="function")
-def ses_provider():
-    return ProviderDetails.query.filter_by(identifier="ses").one()
 
 
 @pytest.fixture(scope="function")

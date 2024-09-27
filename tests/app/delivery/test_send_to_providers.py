@@ -251,9 +251,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(sampl
     assert not persisted_notification.personalisation
 
 
-def test_should_call_send_sms_response_task_if_test_api_key(
-    notify_db_session, sample_service, sample_notification, mocker
-):
+def test_should_call_send_sms_response_task_if_test_api_key(notify_db_session, sample_notification, mocker):
     mocker.patch("app.mmg_client.send_sms")
     mocker.patch("app.delivery.send_to_providers.send_sms_response")
 
@@ -333,7 +331,7 @@ def test_send_sms_should_use_service_sms_sender(sample_service, sample_template,
     )
 
 
-def test_send_email_to_provider_should_call_response_task_if_test_key(sample_service, sample_email_template, mocker):
+def test_send_email_to_provider_should_call_response_task_if_test_key(sample_email_template, mocker):
     notification = create_notification(
         template=sample_email_template, to_field="john@smith.com", key_type=KEY_TYPE_TEST, billable_units=0
     )
@@ -589,7 +587,7 @@ def test_should_set_notification_billable_units_and_reduces_provider_priority_if
     mock_reduce.assert_called_once_with("mmg", time_threshold=timedelta(minutes=1))
 
 
-def test_should_send_sms_to_international_providers(sample_template, sample_user, mocker):
+def test_should_send_sms_to_international_providers(sample_template, mocker):
     mocker.patch("app.mmg_client.send_sms")
     mocker.patch("app.firetext_client.send_sms")
 
@@ -621,7 +619,7 @@ def test_should_send_sms_to_international_providers(sample_template, sample_user
     assert notification_international.sent_by == "mmg"
 
 
-def test_should_send_non_international_sms_to_default_provider(sample_template, sample_user, mocker):
+def test_should_send_non_international_sms_to_default_provider(sample_template, mocker):
     mocker.patch("app.mmg_client.send_sms")
     mocker.patch("app.firetext_client.send_sms")
 
