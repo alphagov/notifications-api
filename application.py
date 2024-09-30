@@ -11,7 +11,7 @@ application = NotifyApiFlaskApp("app")
 import sys
 
 using_eventlet = False
-if "eventlet" in sys.modules::
+if "eventlet" in sys.modules:
     try:
         import socket
         from eventlet.patcher import is_monkey_patched
