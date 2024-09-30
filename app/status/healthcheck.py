@@ -1,3 +1,5 @@
+from time import sleep
+
 from flask import Blueprint, jsonify, request
 
 from app import db, version
@@ -26,6 +28,18 @@ def show_status():
 
 @status.route("/_status/live-service-and-organisation-counts")
 def live_service_and_organisation_counts():
+    return (
+        jsonify(
+            organisations=dao_count_organisations_with_live_services(),
+            services=dao_count_live_services(),
+        ),
+        200,
+    )
+
+
+@status.route("/_status/slow")
+def slow():
+    sleep(45)
     return (
         jsonify(
             organisations=dao_count_organisations_with_live_services(),
