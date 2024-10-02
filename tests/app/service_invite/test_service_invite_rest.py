@@ -7,7 +7,7 @@ from freezegun import freeze_time
 from notifications_utils.url_safe_token import generate_token
 
 from app.constants import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE
-from app.models import Notification
+from app.models import Notification, ServiceJoinRequest
 from tests import create_admin_authorization_header
 from tests.app.db import create_invited_user, create_permissions, create_service, create_user
 
@@ -317,6 +317,7 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     sample_service,
     request_invite_email_template,
     receipt_for_request_invite_email_template,
+    notify_db_session,
     mocker,
     reason,
     expected_reason_given,
@@ -362,6 +363,13 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
 
     mocked.call_count = 3
     assert len(notifications) == 3
+
+    # Join service request is created
+    join_requests = ServiceJoinRequest.query.all()
+    db_request = [r for r in join_requests if r.requester_id == user_requesting_invite.id][0]
+
+    assert db_request.service_id == sample_service.id
+    assert len(db_request.contacted_service_users) == 3
 
     # Request invite notification
     assert len(manager_notification.personalisation.keys()) == 7
