@@ -10,6 +10,7 @@ from app.constants import (
     EMAIL_AUTH_TYPE,
     MANAGE_SETTINGS,
     MANAGE_TEMPLATES,
+    MANAGE_USERS,
     SMS_AUTH_TYPE,
     OrganisationUserPermissionTypes,
 )
@@ -24,6 +25,7 @@ from app.utils import DATETIME_FORMAT
 from tests import create_admin_authorization_header, create_service_authorization_header
 from tests.app.db import (
     create_organisation,
+    create_permissions,
     create_service,
     create_template_folder,
     create_user,
@@ -1075,6 +1077,24 @@ def test_search_for_users_by_email_handles_incorrect_data_format(notify_db_sessi
     json = admin_request.post("user.find_users_by_email", _data=data, _expected_status=400)
 
     assert json["message"] == {"email": ["Not a valid string."]}
+
+
+def test_find_users_by_email_includes_permissions(notify_db_session, admin_request, sample_user):
+    service = create_service(service_name="Service 1")
+    user = create_user(email="findel.mestro@foo.com")
+    service.users = [sample_user, user]
+    create_permissions(user, service, MANAGE_USERS)
+
+    data = {"email": "findel"}
+
+    users = admin_request.post(
+        "user.find_users_by_email",
+        _data=data,
+    )
+
+    assert len(users["data"]) == 1
+    assert users["data"][0]["email_address"] == "findel.mestro@foo.com"
+    assert users["data"][0]["permissions"] == {str(service.id): [MANAGE_USERS]}
 
 
 @pytest.mark.parametrize(
