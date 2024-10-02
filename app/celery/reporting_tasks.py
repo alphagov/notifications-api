@@ -30,7 +30,13 @@ def create_nightly_billing(day_start=None):
     for i in range(10):
         process_day = (day_start - timedelta(days=i)).isoformat()
 
-        create_or_update_ft_billing_for_day.apply_async(kwargs={"process_day": process_day}, queue=QueueNames.REPORTING)
+        create_or_update_ft_billing_for_day.apply_async(
+            kwargs={"process_day": process_day},
+            queue=QueueNames.REPORTING,
+            # starting all the spawned queries at the same time uses a lot of
+            # database resources
+            countdown=timedelta(minutes=5).seconds * i,
+        )
         current_app.logger.info(
             "create-nightly-billing task: create-or-update-ft-billing-for-day task created for %s", process_day
         )
