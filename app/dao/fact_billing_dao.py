@@ -501,8 +501,6 @@ def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permis
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
     current_app.logger.info("Populate ft_billing for %s to %s", start_date, end_date)
     billing_data = []
-    if service_ids is None:
-        service_ids = [id_ for (id_,) in Service.query.with_entities(Service.id).all()]
 
     for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
         partial_billing_data = _query_for_billing_data(
@@ -552,7 +550,7 @@ def _query_for_billing_data(notification_type, start_date, end_date, service_ids
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id.in_(service_ids),
+                *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
             .group_by(
                 Service.id,
@@ -584,7 +582,7 @@ def _query_for_billing_data(notification_type, start_date, end_date, service_ids
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id.in_(service_ids),
+                *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
             .group_by(
                 Service.id,
@@ -618,7 +616,7 @@ def _query_for_billing_data(notification_type, start_date, end_date, service_ids
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id.in_(service_ids),
+                *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
             .group_by(
                 Service.id,
