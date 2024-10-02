@@ -4,7 +4,7 @@ import pytz
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 
-from app import notify_celery, redis_store
+from app import db, notify_celery, redis_store
 from app.config import QueueNames
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, CacheKeys
 from app.cronitor import cronitor
@@ -54,6 +54,8 @@ def update_ft_billing_for_today():
 
 @notify_celery.task(name="create-or-update-ft-billing-for-day")
 def create_or_update_ft_billing_for_day(process_day: str):
+    db.session.execute("SET LOCAL max_parallel_workers_per_gather = 2")
+
     process_date = datetime.strptime(process_day, "%Y-%m-%d").date()
     current_app.logger.info("create-or-update-ft-billing-for-day task for %s: started", process_date)
 
