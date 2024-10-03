@@ -13,7 +13,7 @@ down_revision = "0466_delete_broadcast_tables"
 enum_name = "permission_types"
 tmp_name = "tmp_" + enum_name
 
-old_options = (
+new_options = (
     "manage_users",
     "manage_templates",
     "manage_settings",
@@ -24,7 +24,7 @@ old_options = (
     "platform_admin",
     "view_activity",
 )
-old_type = sa.Enum(*old_options, name=enum_name)
+new_type = sa.Enum(*new_options, name=enum_name)
 
 
 def upgrade():
@@ -34,7 +34,7 @@ def upgrade():
     )
 
     op.execute(f"ALTER TYPE {enum_name} RENAME TO {tmp_name}")
-    old_type.create(op.get_bind())
+    new_type.create(op.get_bind())
     op.execute(f"ALTER TABLE permissions ALTER COLUMN permission TYPE {enum_name} USING permission::text::{enum_name}")
     op.execute(f"DROP TYPE {tmp_name}")
 

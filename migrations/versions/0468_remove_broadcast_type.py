@@ -99,6 +99,7 @@ def upgrade():
 
     drop_check_constraints()
 
+    # TODO: split into three separate migrations. figure out downgrade steps.
     op.alter_column(
         table_name="templates",
         column_name="template_type",
