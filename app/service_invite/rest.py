@@ -10,6 +10,7 @@ from app.dao.invited_user_dao import (
     get_invited_users_for_service,
     save_invited_user,
 )
+from app.dao.service_join_requests_dao import dao_create_service_join_request
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import get_user_by_id
@@ -140,6 +141,14 @@ def request_invite_to_service(service_id, user_to_invite_id):
 
     if user_requesting_invite.services and service in user_requesting_invite.services:
         raise BadRequestError(400, "user-already-in-service")
+
+    # Temporary logic to capture the request
+    # Once the join service request flow is completed this needs to be refactored
+    dao_create_service_join_request(
+        requester_id=user_to_invite_id,
+        service_id=service_id,
+        contacted_user_ids=recipients_of_invite_request_ids,
+    )
 
     send_service_invite_request(
         user_requesting_invite, recipients_of_invite_request, service, reason_for_request, accept_invite_request_url
