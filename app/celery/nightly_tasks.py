@@ -212,6 +212,12 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
                 "duration": (end - start).seconds,
             },
         )
+        # if some things were deleted, there could be more! lets queue up a new task with the same params
+        # if there was nothing deleted, we've got no more work to do
+        delete_notifications_for_service_and_type.apply_async(
+            args=(service_id, notification_type, datetime_to_delete_before),
+            queue=QueueNames.REPORTING,
+        )
 
 
 @notify_celery.task(name="timeout-sending-notifications")
