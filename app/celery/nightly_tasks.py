@@ -36,6 +36,7 @@ from app.dao.notification_history_dao import (
 from app.dao.notifications_dao import (
     dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
+    delete_test_notifications,
     get_service_ids_with_notifications_before,
     move_notifications_to_notification_history,
 )
@@ -213,6 +214,10 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
             args=(service_id, notification_type, datetime_to_delete_before),
             queue=QueueNames.REPORTING,
         )
+    else:
+        # now we've deleted all the real notifications, clean up the test notifications - this doesnt have a limit so
+        # is only run once per service/day/type
+        delete_test_notifications(notification_type, service_id, datetime_to_delete_before)
 
 
 @notify_celery.task(name="timeout-sending-notifications")

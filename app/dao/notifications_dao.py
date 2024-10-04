@@ -404,13 +404,15 @@ def move_notifications_to_notification_history(
 
         _delete_letters_from_s3(notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit)
 
-    deleted = insert_notification_history_delete_notifications(
+    return insert_notification_history_delete_notifications(
         notification_type=notification_type,
         service_id=service_id,
         timestamp_to_delete_backwards_from=timestamp_to_delete_backwards_from,
         qry_limit=qry_limit,
     )
 
+
+def delete_test_notifications(notification_type, service_id, timestamp_to_delete_backwards_from):
     # Deleting test Notifications, test notifications are not persisted to NotificationHistory
     Notification.query.filter(
         Notification.notification_type == notification_type,
@@ -418,9 +420,8 @@ def move_notifications_to_notification_history(
         Notification.created_at < timestamp_to_delete_backwards_from,
         Notification.key_type == KEY_TYPE_TEST,
     ).delete(synchronize_session=False)
-    db.session.commit()
 
-    return deleted
+    db.session.commit()
 
 
 def _delete_letters_from_s3(notification_type, service_id, date_to_delete_from, query_limit):

@@ -9,6 +9,7 @@ from moto import mock_aws
 from app.constants import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from app.dao.notifications_dao import (
     FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY,
+    delete_test_notifications,
     insert_notification_history_delete_notifications,
     move_notifications_to_notification_history,
 )
@@ -222,7 +223,7 @@ def test_move_notifications_only_moves_for_given_service(notify_db_session):
     assert Notification.query.one().service_id == other_service.id
 
 
-def test_move_notifications_just_deletes_test_key_notifications(sample_template):
+def test_move_notifications_doesnt_touch_test_notifications(sample_template):
     delete_time = datetime(2020, 6, 1, 12)
     one_second_before = delete_time - timedelta(seconds=1)
     create_notification(template=sample_template, created_at=one_second_before, key_type=KEY_TYPE_NORMAL)
@@ -233,9 +234,41 @@ def test_move_notifications_just_deletes_test_key_notifications(sample_template)
 
     assert result == 2
 
-    assert Notification.query.count() == 0
+    assert Notification.query.count() == 1
+    assert Notification.query.filter(Notification.key_type == KEY_TYPE_TEST).count() == 1
+
     assert NotificationHistory.query.count() == 2
     assert NotificationHistory.query.filter(NotificationHistory.key_type == KEY_TYPE_TEST).count() == 0
+
+
+def test_delete_test_notifications(sample_template, sample_email_template):
+    delete_time = datetime(2020, 6, 1, 12)
+    one_second_before = delete_time - timedelta(seconds=1)
+    one_second_after = delete_time + timedelta(seconds=1)
+
+    other_service = create_service(service_name="other")
+    other_template = create_template(other_service)
+
+    # to be deleted
+    expected_deleted = create_notification(
+        template=sample_template, created_at=one_second_before, key_type=KEY_TYPE_TEST
+    )
+    expected_deleted_id = expected_deleted.id
+
+    # wrong keytype
+    create_notification(template=sample_template, created_at=one_second_before, key_type=KEY_TYPE_NORMAL)
+    create_notification(template=sample_template, created_at=one_second_before, key_type=KEY_TYPE_TEAM)
+    # wrong service
+    create_notification(template=other_template, created_at=one_second_before, key_type=KEY_TYPE_TEST)
+    # wrong notification type
+    create_notification(template=sample_email_template, created_at=one_second_before, key_type=KEY_TYPE_TEST)
+    # too recent
+    create_notification(template=sample_template, created_at=one_second_after, key_type=KEY_TYPE_TEST)
+
+    delete_test_notifications("sms", sample_template.service_id, delete_time)
+
+    assert Notification.query.count() == 5
+    assert Notification.query.get(expected_deleted_id) is None
 
 
 @freeze_time("2020-03-20 14:00")
