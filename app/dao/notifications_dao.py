@@ -352,6 +352,7 @@ def insert_notification_history_delete_notifications(
           AND notification_type = :notification_type
           AND created_at < :timestamp_to_delete_backwards_from
           AND key_type in ('normal', 'team')
+        ORDER BY created_at
         limit :qry_limit
         """
     select_into_temp_table_for_letters = f"""
@@ -363,6 +364,7 @@ def insert_notification_history_delete_notifications(
           AND created_at < :timestamp_to_delete_backwards_from
           AND notification_status NOT IN ('pending-virus-check', 'created', 'sending')
           AND key_type in ('normal', 'team')
+        ORDER BY created_at
         limit :qry_limit
         """
     # Insert into NotificationHistory if the row already exists do nothing.
@@ -400,7 +402,8 @@ def move_notifications_to_notification_history(
 ):
     if notification_type == LETTER_TYPE:
         # reduced query limit so we don't run into issues trying to loop through 50k letters in python deleting from s3
-        qry_limit = 5_000
+        # use `min` so we can reduce query limit artificially during unit tests
+        qry_limit = min(qry_limit, 5_000)
 
         _delete_letters_from_s3(notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit)
 
@@ -436,6 +439,7 @@ def _delete_letters_from_s3(notification_type, service_id, date_to_delete_from, 
             # them from it
             Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED),
         )
+        .order_by(Notification.created_at)
         .limit(query_limit)
         .all()
     )
