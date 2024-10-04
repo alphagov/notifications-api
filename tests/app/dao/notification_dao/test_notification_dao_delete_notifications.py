@@ -57,6 +57,50 @@ def test_move_notifications_deletes_letters_from_s3(sample_letter_template):
 
 @mock_aws
 @freeze_time("2019-09-01 04:30")
+def test_move_notifications_deletes_same_letter_from_s3_as_notifications(sample_letter_template):
+    s3 = boto3.client("s3", region_name="eu-west-1")
+    bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+
+    noti_a_timestamp = datetime.utcnow() - timedelta(days=8)
+    noti_b_timestamp = datetime.utcnow() - timedelta(days=8, seconds=1)
+    noti_a = create_notification(
+        template=sample_letter_template,
+        status="delivered",
+        reference="REF_A",
+        created_at=noti_a_timestamp,
+        sent_at=noti_a_timestamp,
+    )
+    create_notification(
+        template=sample_letter_template,
+        status="delivered",
+        reference="REF_B",
+        created_at=noti_b_timestamp,
+        sent_at=noti_b_timestamp,
+    )
+    filename_a = f"{noti_a_timestamp.date()}/NOTIFY.REF_A.D.2.C.{noti_a_timestamp.strftime('%Y%m%d%H%M%S')}.PDF"
+    filename_b = f"{noti_b_timestamp.date()}/NOTIFY.REF_B.D.2.C.{noti_b_timestamp.strftime('%Y%m%d%H%M%S')}.PDF"
+
+    s3.put_object(Bucket=bucket_name, Key=filename_a, Body=b"foo")
+    s3.put_object(Bucket=bucket_name, Key=filename_b, Body=b"foo")
+
+    move_notifications_to_notification_history(
+        "letter",
+        sample_letter_template.service_id,
+        datetime(2020, 1, 2),
+        qry_limit=1,
+    )
+
+    # only notification B has been deleted, as it's one second older
+    assert Notification.query.all() == [noti_a]
+    assert s3.get_object(Bucket=bucket_name, Key=filename_a) is not None
+
+    with pytest.raises(s3.exceptions.NoSuchKey):
+        s3.get_object(Bucket=bucket_name, Key=filename_b)
+
+
+@mock_aws
+@freeze_time("2019-09-01 04:30")
 def test_move_notifications_copes_if_letter_not_in_s3(sample_letter_template):
     s3 = boto3.client("s3", region_name="eu-west-1")
     s3.create_bucket(
