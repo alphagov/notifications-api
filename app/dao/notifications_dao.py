@@ -400,6 +400,9 @@ def move_notifications_to_notification_history(
 ):
     deleted = 0
     if notification_type == LETTER_TYPE:
+        # reduced query limit so we don't run into issues trying to loop through 50k letters in python deleting from s3
+        qry_limit = 5_000
+
         _delete_letters_from_s3(notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit)
     delete_count_per_call = 1
     while delete_count_per_call > 0:
