@@ -398,21 +398,18 @@ def insert_notification_history_delete_notifications(
 def move_notifications_to_notification_history(
     notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit=50000
 ):
-    deleted = 0
     if notification_type == LETTER_TYPE:
         # reduced query limit so we don't run into issues trying to loop through 50k letters in python deleting from s3
         qry_limit = 5_000
 
         _delete_letters_from_s3(notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit)
-    delete_count_per_call = 1
-    while delete_count_per_call > 0:
-        delete_count_per_call = insert_notification_history_delete_notifications(
-            notification_type=notification_type,
-            service_id=service_id,
-            timestamp_to_delete_backwards_from=timestamp_to_delete_backwards_from,
-            qry_limit=qry_limit,
-        )
-        deleted += delete_count_per_call
+
+    deleted = insert_notification_history_delete_notifications(
+        notification_type=notification_type,
+        service_id=service_id,
+        timestamp_to_delete_backwards_from=timestamp_to_delete_backwards_from,
+        qry_limit=qry_limit,
+    )
 
     # Deleting test Notifications, test notifications are not persisted to NotificationHistory
     Notification.query.filter(
