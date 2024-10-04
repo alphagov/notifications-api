@@ -83,7 +83,7 @@ def test_move_notifications_does_nothing_if_notification_history_row_already_exi
         status="delivered",
     )
 
-    move_notifications_to_notification_history("email", sample_email_template.service_id, datetime.utcnow(), 1)
+    move_notifications_to_notification_history("email", sample_email_template.service_id, datetime.utcnow())
 
     assert Notification.query.count() == 0
     history = NotificationHistory.query.all()
