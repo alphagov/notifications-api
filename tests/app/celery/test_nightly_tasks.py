@@ -572,7 +572,7 @@ def test_delete_notifications_task_calls_task_for_services_with_data_retention_b
                     "notification_type": "sms",
                     "datetime_to_delete_before": datetime(2021, 3, 22, 0, 0),
                 },
-                countdown=0.0,
+                countdown=ANY,
             ),
             call(
                 queue=ANY,
@@ -581,10 +581,15 @@ def test_delete_notifications_task_calls_task_for_services_with_data_retention_b
                     "notification_type": "sms",
                     "datetime_to_delete_before": datetime(2021, 4, 1, 23, 0),
                 },
-                countdown=timedelta(hours=1).seconds / 2,
+                countdown=ANY,
             ),
         ],
     )
+    # iterated order in tested code is not necessarily deterministic
+    assert sorted(kwargs["countdown"] for method, args, kwargs in mock_subtask.apply_async.mock_calls) == [
+        0.0,
+        timedelta(hours=1).seconds / 2,
+    ]
 
 
 @freeze_time("2021-04-03 03:00")
@@ -624,7 +629,7 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
                     "notification_type": "sms",
                     "datetime_to_delete_before": datetime(2021, 3, 27, 0, 0),
                 },
-                countdown=timedelta(hours=1).seconds / 2,
+                countdown=ANY,
             ),
             call(
                 queue=ANY,
@@ -633,10 +638,15 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
                     "notification_type": "sms",
                     "datetime_to_delete_before": datetime(2021, 3, 27, 0, 0),
                 },
-                countdown=0.0,
+                countdown=ANY,
             ),
         ],
     )
+    # iterated order in tested code is not necessarily deterministic
+    assert sorted(kwargs["countdown"] for method, args, kwargs in mock_subtask.apply_async.mock_calls) == [
+        0.0,
+        timedelta(hours=1).seconds / 2,
+    ]
 
 
 def test_delete_unneeded_notification_history_for_specific_hour(mocker):
