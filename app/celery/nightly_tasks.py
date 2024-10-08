@@ -132,10 +132,13 @@ def delete_letter_notifications_older_than_retention():
     _delete_notifications_older_than_retention_by_type("letter")
 
 
-def _delete_notifications_older_than_retention_by_type(notification_type):
+def _delete_notifications_older_than_retention_by_type(
+    notification_type,
+    stagger_total_period=timedelta(hours=1),
+):
     flexible_data_retention = fetch_service_data_retention_for_all_services_by_notification_type(notification_type)
 
-    for f in flexible_data_retention:
+    for i, f in enumerate(flexible_data_retention):
         day_to_delete_backwards_from = get_london_midnight_in_utc(
             convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=f.days_of_retention)
         )
@@ -147,6 +150,7 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
                 "notification_type": notification_type,
                 "datetime_to_delete_before": day_to_delete_backwards_from,
             },
+            countdown=(i / len(flexible_data_retention)) * stagger_total_period.seconds,
         )
 
     seven_days_ago = get_london_midnight_in_utc(convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7))
@@ -160,7 +164,7 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
 
     service_ids_to_purge = service_ids_that_have_sent_notifications_recently - service_ids_with_data_retention
 
-    for service_id in service_ids_to_purge:
+    for i, service_id in enumerate(service_ids_to_purge):
         delete_notifications_for_service_and_type.apply_async(
             queue=QueueNames.REPORTING,
             kwargs={
@@ -168,6 +172,7 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
                 "notification_type": notification_type,
                 "datetime_to_delete_before": seven_days_ago,
             },
+            countdown=(i / len(service_ids_to_purge)) * stagger_total_period.seconds,
         )
 
     current_app.logger.info(
