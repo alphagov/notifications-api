@@ -209,6 +209,7 @@ class User(db.Model):
             "name": self.name,
             "email_address": self.email_address,
             "mobile_number": self.mobile_number,
+            "permissions": self.get_permissions(),
         }
 
 
