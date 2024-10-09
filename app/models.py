@@ -2725,6 +2725,7 @@ class UnsubscribeRequestReport(db.Model):
             ),
             "is_a_batched_report": True,
             "will_be_archived_at": self.will_be_archived_at.strftime(DATETIME_FORMAT),
+            "service_id": str(self.service_id),
         }
 
     @staticmethod
@@ -2740,6 +2741,7 @@ class UnsubscribeRequestReport(db.Model):
             "will_be_archived_at": get_london_midnight_in_utc(
                 unbatched_unsubscribe_requests[-1].created_at + datetime.timedelta(days=90)
             ).strftime(DATETIME_FORMAT),
+            "service_id": unbatched_unsubscribe_requests[0].service_id,
         }
 
 
