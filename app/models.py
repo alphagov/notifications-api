@@ -2825,14 +2825,15 @@ class ProtectedSenderId(db.Model):
 @dataclass
 class SerializedServiceJoinRequest:
     service_join_request_id: str
-    requester_id: str
     service_id: str
     created_at: str
     status: str
     status_changed_at: str | None
-    status_changed_by_id: str | None
     reason: str | None
     contacted_service_users: list[str]
+    status_changed_by: User
+    requester: User
+    requested_service: Service
 
 
 contacted_users = db.Table(
@@ -2861,6 +2862,7 @@ class ServiceJoinRequest(db.Model):
 
     requester = db.relationship("User", foreign_keys=[requester_id])
     status_changed_by = db.relationship("User", foreign_keys=[status_changed_by_id])
+    requested_service = db.relationship("Service", foreign_keys=[service_id])
 
     # Use lazy="joined" to load the contacted_service_users relationship with a SQL JOIN
     # This is a nice option as we expect to load this relationship frequently when querying ServiceJoinRequest
@@ -2871,12 +2873,26 @@ class ServiceJoinRequest(db.Model):
     def serialize(self) -> SerializedServiceJoinRequest:
         return SerializedServiceJoinRequest(
             service_join_request_id=get_uuid_string_or_none(self.id),
-            requester_id=get_uuid_string_or_none(self.requester_id),
             service_id=get_uuid_string_or_none(self.service_id),
             created_at=get_dt_string_or_none(self.created_at),
             status=self.status,
+            status_changed_by=(
+                {
+                    "id": self.status_changed_by.id,
+                    "name": self.status_changed_by.name,
+                }
+                if self.status_changed_by
+                else None
+            ),
+            requester={
+                "id": self.requester.id,
+                "name": self.requester.name,
+                "belongs_to_service": [service.id for service in self.requester.services],
+            },
+            requested_service={
+                "id": self.requested_service.id,
+            },
             status_changed_at=get_dt_string_or_none(self.status_changed_at),
-            status_changed_by_id=get_uuid_string_or_none(self.status_changed_by_id),
             reason=self.reason,
             contacted_service_users=[get_uuid_string_or_none(user.id) for user in self.contacted_service_users],
         )
