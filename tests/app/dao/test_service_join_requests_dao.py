@@ -103,7 +103,7 @@ def test_get_service_join_request_by_id(client, test_case, notify_db_session):
 
     assert retrieved_request is not None
     assert retrieved_request.id == request.id
-    assert retrieved_request.requester_id == test_case.requester_id
+    assert retrieved_request.requester.id == test_case.requester_id
     assert retrieved_request.service_id == test_case.service_id
     assert len(retrieved_request.contacted_service_users) == test_case.expected_num_contacts
 
