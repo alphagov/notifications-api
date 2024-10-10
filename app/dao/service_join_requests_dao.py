@@ -24,6 +24,6 @@ def dao_create_service_join_request(
 def dao_get_service_join_request_by_id(request_id: UUID) -> ServiceJoinRequest | None:
     return (
         ServiceJoinRequest.query.filter_by(id=request_id)
-        .options(db.joinedload("contacted_service_users"))
+        .options(db.joinedload("contacted_service_users"), db.joinedload("requester.services"))
         .one_or_none()
     )
