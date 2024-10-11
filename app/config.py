@@ -146,6 +146,13 @@ class Config:
             "options": "-c statement_timeout=1200000",
         },
     }
+    DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY = (
+        os.getenv(
+            "DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY",
+            "1",
+        )
+        == "1"
+    )
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250
     TEST_MESSAGE_FILENAME = "Test message"
