@@ -474,6 +474,10 @@ def setup_sqlalchemy_events(app):  # noqa: C901
             # with our own constructed one
 
             cursor.execute(
+                "SET statement_timeout = %s",
+                (current_app.config["DATABASE_STATEMENT_TIMEOUT_MS"],),
+            )
+            cursor.execute(
                 "SET application_name = %s",
                 (current_app.config["NOTIFY_APP_NAME"],),
             )
