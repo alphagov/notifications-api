@@ -13,4 +13,4 @@ application = NotifyApiFlaskApp("app")
 create_app(application)
 
 if using_eventlet:
-    application = EventletTimeoutMiddleware(application, timeout_seconds=60)
+    application.wsgi_app = EventletTimeoutMiddleware(application.wsgi_app, timeout_seconds=30)
