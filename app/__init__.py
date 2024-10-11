@@ -444,7 +444,7 @@ def create_random_identifier():
     return "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
 
 
-def setup_sqlalchemy_events(app):
+def setup_sqlalchemy_events(app):  # noqa: C901
     TOTAL_DB_CONNECTIONS = Gauge(
         "db_connection_total_connected",
         "How many db connections are currently held (potentially idle) by the server",
@@ -469,19 +469,22 @@ def setup_sqlalchemy_events(app):
             # connection first opened with db
             TOTAL_DB_CONNECTIONS.inc()
 
-            # by default disable parallel query because it allows large analytic-style
-            # queries to consume more resources than smaller transactional queries
-            # typically will, and if anything we want to prioritize the small
-            # transactional queries. this can be re-enabled on a case-by-case basis by
-            # executing SET LOCAL max_parallel_workers_per_gather = ... before the
-            # intended query.
-            #
-            # because this is only done once at connection-creation time, there's a small
-            # danger that SET max_par... (instead of SET LOCAL max_par...) will be used
-            # by the application somewhere, which would persist across checkouts.
-            # however, (re-)setting this on every checkout would likely add a database
-            # round-trip of latency to every request.
-            dbapi_connection.cursor().execute("SET max_parallel_workers_per_gather = 0")
+            cursor = dbapi_connection.cursor()
+
+            if current_app.config["DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY"]:
+                # by default disable parallel query because it allows large analytic-style
+                # queries to consume more resources than smaller transactional queries
+                # typically will, and if anything we want to prioritize the small
+                # transactional queries. this can be re-enabled on a case-by-case basis by
+                # executing SET LOCAL max_parallel_workers_per_gather = ... before the
+                # intended query.
+                #
+                # because this is only done once at connection-creation time, there's a small
+                # danger that SET max_par... (instead of SET LOCAL max_par...) will be used
+                # by the application somewhere, which would persist across checkouts.
+                # however, (re-)setting this on every checkout would likely add a database
+                # round-trip of latency to every request.
+                cursor.execute("SET max_parallel_workers_per_gather = 0")
 
         @event.listens_for(db.engine, "close")
         def close(dbapi_connection, connection_record):
