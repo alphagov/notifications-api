@@ -160,9 +160,6 @@ def create_app(application):
         application.config.from_object(Config)
 
     application.config["NOTIFY_APP_NAME"] = application.name
-    application.config["SQLALCHEMY_ENGINE_OPTIONS"]["connect_args"]["application_name"] = os.environ.get(
-        "NOTIFY_APP_NAME", "api"
-    )
     init_app(application)
 
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
@@ -470,6 +467,16 @@ def setup_sqlalchemy_events(app):  # noqa: C901
             TOTAL_DB_CONNECTIONS.inc()
 
             cursor = dbapi_connection.cursor()
+
+            # why not set most of these using connect_args/options? just to avoid the
+            # early-binding issues cross-referencing config vars in the config object
+            # raises, and it's neater to compose these calls than to overwrite connect_args
+            # with our own constructed one
+
+            cursor.execute(
+                "SET application_name = %s",
+                (current_app.config["NOTIFY_APP_NAME"],),
+            )
 
             if current_app.config["DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY"]:
                 # by default disable parallel query because it allows large analytic-style
