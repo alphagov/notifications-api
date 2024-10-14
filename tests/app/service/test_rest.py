@@ -1703,6 +1703,26 @@ def test_get_notification_for_service_returns_old_template_version(admin_request
     assert resp["template"]["content"] != sample_template.content
 
 
+@pytest.mark.parametrize("has_unsubscribe_link", (True, False))
+def test_get_notification_for_service_returns_unsubscribe_link_of_template(
+    admin_request,
+    sample_service,
+    has_unsubscribe_link,
+):
+    template = create_template(
+        service=sample_service,
+        template_type="email",
+        has_unsubscribe_link=has_unsubscribe_link,
+    )
+    sample_notification = create_notification(template)
+    resp = admin_request.get(
+        "service.get_notification_for_service",
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id,
+    )
+    assert resp["template"]["has_unsubscribe_link"] == has_unsubscribe_link
+
+
 @pytest.mark.parametrize("include_from_test_key, expected_count_of_notifications", [(False, 2), (True, 3)])
 def test_get_all_notifications_for_service_including_ones_made_by_jobs(
     client,
