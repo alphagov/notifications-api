@@ -5,7 +5,8 @@ from sqlalchemy.dialects import postgresql
 revision = "0464_create_svc_join_requests"
 down_revision = "0463_backfill_created_at"
 
-request_status_enum = sa.Enum("pending", "approved", "rejected", name="request_status")
+values = ["pending", "approved", "rejected"]
+request_status_enum = sa.Enum(*values, name="request_status")
 
 
 def upgrade():
@@ -18,7 +19,13 @@ def upgrade():
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
         sa.Column(
             "status",
-            request_status_enum,
+            postgresql.ENUM(
+                *values,
+                name="request_status",
+                create_type=False,
+                checkfirst=True,
+                inherit_schema=True,
+            ),
             nullable=False,
             server_default="pending",
         ),
