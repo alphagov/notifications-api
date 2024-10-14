@@ -605,6 +605,7 @@ class NotificationWithTemplateSchema(BaseSchema):
             "letter_languages",
             "letter_welsh_subject",
             "letter_welsh_content",
+            "has_unsubscribe_link",
         ],
         dump_only=True,
     )
