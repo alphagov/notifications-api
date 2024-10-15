@@ -2853,7 +2853,7 @@ class ServiceJoinRequest(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow())
     status = db.Column(
-        db.Enum(*SERVICE_JOIN_REQUEST_STATUS_TYPES, name="request_status"),
+        db.Enum(*SERVICE_JOIN_REQUEST_STATUS_TYPES, name="service_join_request_status_type"),
         nullable=False,
         default=SERVICE_JOIN_REQUEST_PENDING,
     )
