@@ -45,7 +45,6 @@ from app.constants import (
     GUEST_LIST_RECIPIENT_TYPE,
     INVITE_PENDING,
     INVITED_USER_STATUS_TYPES,
-    JOIN_REQUEST_PENDING,
     LETTER_TYPE,
     MOBILE_TYPE,
     NORMAL,
@@ -64,7 +63,8 @@ from app.constants import (
     ORGANISATION_PERMISSION_TYPES,
     PERMISSION_LIST,
     PRECOMPILED_TEMPLATE_NAME,
-    REQUEST_STATUS_VALUES,
+    SERVICE_JOIN_REQUEST_PENDING,
+    SERVICE_JOIN_REQUEST_STATUS_TYPES,
     SMS_AUTH_TYPE,
     SMS_TYPE,
     TEMPLATE_TYPES,
@@ -2853,7 +2853,9 @@ class ServiceJoinRequest(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow())
     status = db.Column(
-        db.Enum(*REQUEST_STATUS_VALUES, name="request_status"), nullable=False, default=JOIN_REQUEST_PENDING
+        db.Enum(*SERVICE_JOIN_REQUEST_STATUS_TYPES, name="request_status"),
+        nullable=False,
+        default=SERVICE_JOIN_REQUEST_PENDING,
     )
     status_changed_at = db.Column(db.DateTime, nullable=True)
     status_changed_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)

@@ -16,13 +16,13 @@ from app.constants import (
     INBOUND_SMS_TYPE,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
-    JOIN_REQUEST_PENDING,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_RETURNED_LETTER,
     NOTIFICATION_TYPES,
+    SERVICE_JOIN_REQUEST_PENDING,
     SMS_TYPE,
     UPLOAD_LETTERS,
 )
@@ -4040,6 +4040,6 @@ def test_get_service_join_request_found(admin_request):
     )
 
     assert resp["contacted_service_users"] is not None
-    assert resp["status"] == JOIN_REQUEST_PENDING
+    assert resp["status"] == SERVICE_JOIN_REQUEST_PENDING
     assert resp["service_join_request_id"] == request_id
     assert resp["created_at"] is not None
