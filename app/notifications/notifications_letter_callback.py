@@ -1,7 +1,6 @@
 import datetime
 import json
 from dataclasses import dataclass
-from functools import wraps
 
 from flask import Blueprint, current_app, jsonify, request
 from itsdangerous import BadSignature
@@ -105,22 +104,11 @@ dvla_letter_callback_schema = {
 }
 
 
-def validate_schema(schema):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kw):
-            validate(request.get_json(force=True), schema)
-            return f(*args, **kw)
-
-        return wrapper
-
-    return decorator
-
-
 @letter_callback_blueprint.route("/notifications/letter/dvla", methods=["POST"])
-@validate_schema(dvla_sns_callback_schema)
 def process_letter_response():
     req_json = request.get_json(force=True)
+    validate(req_json, dvla_sns_callback_schema)
+
     current_app.logger.debug("Received SNS callback: %s", req_json)
     if not autoconfirm_subscription(req_json):
         # The callback should have one record for an S3 Put Event.
@@ -137,14 +125,14 @@ def process_letter_response():
 
 
 @letter_callback_blueprint.route("/notifications/letter/status", methods=["POST"])
-@validate_schema(dvla_letter_callback_schema)
 def process_letter_callback():
     token = request.args.get("token", "")
     notification_id = parse_token(token)
 
-    current_app.logger.info("Letter callback for notification id %s received", notification_id)
+    request_data = request.get_json(force=True)
+    validate(request_data, dvla_letter_callback_schema)
 
-    request_data = request.get_json()
+    current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
     check_token_matches_payload(notification_id, request_data["id"])
 
