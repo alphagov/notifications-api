@@ -14,6 +14,7 @@ from app.celery.tasks import (
     update_letter_notifications_statuses,
 )
 from app.config import QueueNames
+from app.constants import DVLA_NOTIFICATION_DISPATCHED, DVLA_NOTIFICATION_REJECTED
 from app.errors import InvalidRequest
 from app.models import LetterCostThreshold
 from app.notifications.utils import autoconfirm_subscription
@@ -89,7 +90,7 @@ dvla_letter_callback_schema = {
                 },
                 "jobId": {"type": "string"},
                 "jobType": {"type": "string"},
-                "jobStatus": {"type": "string", "enum": ["DESPATCHED", "REJECTED"]},
+                "jobStatus": {"type": "string", "enum": [DVLA_NOTIFICATION_DISPATCHED, DVLA_NOTIFICATION_REJECTED]},
                 "templateReference": {"type": "string"},
             },
             "required": ["despatchProperties", "jobId", "jobStatus"],
