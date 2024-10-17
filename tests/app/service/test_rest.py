@@ -4178,3 +4178,42 @@ def test_update_service_join_request_request_not_found(admin_request):
     )
 
     assert resp["message"] == "Service join request not found"
+
+
+@pytest.mark.parametrize(
+    "status_changed_by_id, set_permissions, status, reason",
+    [
+        (uuid.uuid4(), ["manage_users"], "approved", None),
+        (uuid.uuid4(), [], "approved", None),
+    ],
+)
+def test_update_service_join_request_update_permissions(
+    admin_request, status_changed_by_id, set_permissions, status, reason
+):
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    user_id = status_changed_by_id
+
+    requester_user, contacted_users = setup_service_join_request_test_data(service_id, requester_id, [user_id])
+
+    request = dao_create_service_join_request(
+        requester_id=requester_id,
+        service_id=service_id,
+        contacted_user_ids=[user_id],
+    )
+
+    admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(request.id),
+        _data={
+            "permissions": set_permissions,
+            "status_changed_by_id": str(status_changed_by_id),
+            "status": status,
+            "reason": reason,
+        },
+        _expected_status=200,
+    )
+
+    permissions = requester_user.get_permissions(service_id=service_id)
+
+    assert permissions == set_permissions
