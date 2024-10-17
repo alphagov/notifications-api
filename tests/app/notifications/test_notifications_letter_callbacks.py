@@ -120,7 +120,8 @@ def _sns_confirmation_callback():
 
 @pytest.mark.parametrize("token", [None, "invalid-token"])
 def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client, token, mock_dvla_callback_data):
-    data = json.dumps(mock_dvla_callback_data())
+    # assert that even with invalid json, we still check the token first
+    data = json.dumps(mock_dvla_callback_data(overrides={"id": None}))
     response = client.post(
         url_for("notifications_letter_callback.process_letter_callback", token=token),
         data=data,
@@ -172,7 +173,7 @@ def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client
         # invalid enum value for `jobStatus`
         (
             {"data": {"jobStatus": "INVALID_STATUS"}},
-            "data INVALID_STATUS is not one of [DESPATCHED, REJECTED]",
+            "data INVALID_STATUS is not one of [Despatched, Rejected]",
         ),
         # invalid `time` format
         (
@@ -186,7 +187,13 @@ def test_process_letter_callback_validation_for_required_fields(
 ):
     data = mock_dvla_callback_data(overrides=overrides)
 
-    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=json.dumps(data))
+    response = client.post(
+        url_for(
+            "notifications_letter_callback.process_letter_callback",
+            token=signing.encode("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
+        ),
+        data=json.dumps(data),
+    )
 
     response_json_data = response.get_json()
     errors = response_json_data["errors"]
@@ -246,7 +253,13 @@ def test_process_letter_callback_validation_for_despatch_properties(
     client, mock_dvla_callback_data, despatch_properties, expected_error_message
 ):
     data = mock_dvla_callback_data(overrides={"data": {"despatchProperties": despatch_properties}})
-    response = client.post(url_for("notifications_letter_callback.process_letter_callback"), data=json.dumps(data))
+    response = client.post(
+        url_for(
+            "notifications_letter_callback.process_letter_callback",
+            token=signing.encode("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
+        ),
+        data=json.dumps(data),
+    )
 
     response_json_data = response.get_json()
     errors = response_json_data["errors"]
@@ -282,7 +295,7 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
     )
 
 
-@pytest.mark.parametrize("status", ["DESPATCHED", "REJECTED"])
+@pytest.mark.parametrize("status", ["Despatched", "Rejected"])
 def test_process_letter_callback_calls_process_letter_callback_data_task(
     client,
     mocker,
@@ -360,7 +373,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
                 {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
             ],
-            "jobStatus": "REJECTED",
+            "jobStatus": "Rejected",
         }
     }
 
@@ -369,7 +382,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
     letter_update = extract_properties_from_request(data)
 
     assert letter_update.page_count == "10"
-    assert letter_update.status == "REJECTED"
+    assert letter_update.status == "Rejected"
     assert letter_update.cost_threshold == LetterCostThreshold.unsorted
     assert letter_update.despatch_date == datetime.date(2024, 8, 1)
 

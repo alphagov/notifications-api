@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.constants import JOIN_REQUEST_PENDING
+from app.constants import SERVICE_JOIN_REQUEST_PENDING
 from app.dao.service_join_requests_dao import dao_create_service_join_request, dao_get_service_join_request_by_id
 from tests.app.db import create_service, create_user
 
@@ -58,7 +58,7 @@ def test_dao_create_service_join_request(client, test_case, notify_db_session):
     assert request.requester_id == test_case.requester_id
     assert request.service_id == test_case.service_id
     assert len(request.contacted_service_users) == test_case.expected_num_contacts
-    assert request.status == JOIN_REQUEST_PENDING
+    assert request.status == SERVICE_JOIN_REQUEST_PENDING
 
     for user in users:
         assert user in request.contacted_service_users
