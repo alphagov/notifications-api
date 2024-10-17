@@ -7,6 +7,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from app.dao.templates_dao import (
     dao_create_template,
     dao_get_all_templates_for_service,
+    dao_get_template_by_id,
     dao_get_template_by_id_and_service_id,
     dao_get_template_versions,
     dao_redact_template,
@@ -408,3 +409,15 @@ def test_get_template_versions_is_empty_for_hidden_templates(sample_service):
     sample_template = create_template(template_name="Test Template", hidden=True, service=sample_service)
     versions = dao_get_template_versions(service_id=sample_template.service_id, template_id=sample_template.id)
     assert len(versions) == 0
+
+
+def test_dao_get_template_service_join_request_approved(service_join_request_approved_template):
+    template_id = "4d8ee728-100e-4f0e-8793-5638cfa4ffa4"
+    template_type = "email"
+    partial_content = "has approved your request to join"
+
+    template = dao_get_template_by_id(template_id=template_id)
+
+    assert str(template.id) == template_id
+    assert template.template_type == template_type
+    assert partial_content in template.content

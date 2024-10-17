@@ -934,6 +934,29 @@ def user_research_email_for_new_users_template(notify_service):
     )
 
 
+@pytest.fixture(scope="function")
+def service_join_request_approved_template(notify_service):
+    content = (
+        """
+             Hi ((requester_name))
+            ((approver_name)) has approved your request to join the following GOV.UK Notify service:
+            ^[((service_name))](((dashboard_url)))
+            Sign in to GOV.UK Notify to get started.
+            Thanks
+            GOV.​UK Notify
+            https://www.gov.uk/notify
+        """,
+    )
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID",
+        content=content,
+        subject="((approver_name)) has approved your request",
+        template_type="email",
+    )
+
+
 @pytest.fixture
 def notify_service(notify_db_session, sample_user):
     service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
