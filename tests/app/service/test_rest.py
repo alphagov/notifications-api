@@ -27,6 +27,7 @@ from app.constants import (
     UPLOAD_LETTERS,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
+from app.dao.service_join_requests_dao import dao_create_service_join_request
 from app.dao.service_user_dao import dao_get_service_user
 from app.dao.services_dao import (
     dao_add_user_to_service,
@@ -4037,7 +4038,7 @@ def test_get_service_join_request_not_found(admin_request):
     assert resp["message"] == f"Service join request with ID {request_id} not found."
 
 
-def test_get_service_join_request_found(admin_request):
+def test_get_service_join_request_success(admin_request):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     contacted_user = uuid.uuid4()
@@ -4061,5 +4062,118 @@ def test_get_service_join_request_found(admin_request):
 
     assert resp["contacted_service_users"] is not None
     assert resp["status"] == SERVICE_JOIN_REQUEST_PENDING
-    assert resp["service_join_request_id"] == request_id
+    assert resp["id"] == request_id
     assert resp["created_at"] is not None
+
+
+@pytest.mark.parametrize(
+    "status_changed_by_id, permissions, status, reason, expected_error",
+    [
+        (
+            uuid.uuid4(),
+            ["invalid_permission"],
+            "approved",
+            None,
+            "permissions invalid_permission is not one of "
+            "[manage_users, "
+            "manage_templates, "
+            "manage_settings, "
+            "send_texts, send_emails, "
+            "send_letters, "
+            "manage_api_keys, "
+            "view_activity]",
+        ),
+        (
+            uuid.uuid4(),
+            ["manage_users"],
+            "invalid_status",
+            None,
+            "status invalid_status is not one of [pending, approved, rejected, cancelled]",
+        ),
+        (
+            None,
+            ["manage_users"],
+            "approved",
+            None,
+            "status_changed_by_id badly formed hexadecimal UUID string",
+        ),
+    ],
+)
+def test_update_service_join_request_validation_errors(
+    admin_request, status_changed_by_id, permissions, status, reason, expected_error
+):
+    resp = admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(uuid.uuid4()),
+        _data={
+            "permissions": permissions,
+            "status_changed_by_id": str(status_changed_by_id),
+            "status": status,
+            "reason": reason,
+        },
+        _expected_status=400,
+    )
+
+    assert resp["errors"][0]["message"] == expected_error
+
+
+@pytest.mark.parametrize(
+    "status_changed_by_id, permissions, status, reason",
+    [
+        (uuid.uuid4(), ["manage_users"], "approved", None),
+        (uuid.uuid4(), [], "approved", None),
+        (uuid.uuid4(), ["manage_users"], "rejected", "user is not part of company anymore"),
+    ],
+)
+def test_update_service_join_request_updates_service_join_request_table(
+    admin_request, status_changed_by_id, permissions, status, reason
+):
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    user_id = status_changed_by_id
+
+    setup_service_join_request_test_data(service_id, requester_id, [user_id])
+
+    request = dao_create_service_join_request(
+        requester_id=requester_id,
+        service_id=service_id,
+        contacted_user_ids=[user_id],
+    )
+
+    resp = admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(request.id),
+        _data={
+            "permissions": permissions,
+            "status_changed_by_id": str(status_changed_by_id),
+            "status": status,
+            "reason": reason,
+        },
+        _expected_status=200,
+    )
+
+    assert resp["status"] == status
+    assert resp["reason"] == reason
+    assert resp["status_changed_by"]["id"] == str(status_changed_by_id)
+
+
+def test_update_service_join_request_request_not_found(admin_request):
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [user_id])
+
+    resp = admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(uuid.uuid4()),
+        _data={
+            "permissions": ["manage_users"],
+            "status_changed_by_id": str(user_id),
+            "status": "approved",
+            "reason": None,
+        },
+        _expected_status=404,
+    )
+
+    assert resp["message"] == "Service join request not found"

@@ -2824,7 +2824,7 @@ class ProtectedSenderId(db.Model):
 
 @dataclass
 class SerializedServiceJoinRequest:
-    service_join_request_id: str
+    id: str
     service_id: str
     created_at: str
     status: str
@@ -2872,7 +2872,7 @@ class ServiceJoinRequest(db.Model):
 
     def serialize(self) -> SerializedServiceJoinRequest:
         return SerializedServiceJoinRequest(
-            service_join_request_id=get_uuid_string_or_none(self.id),
+            id=get_uuid_string_or_none(self.id),
             service_id=get_uuid_string_or_none(self.service_id),
             created_at=get_dt_string_or_none(self.created_at),
             status=self.status,
