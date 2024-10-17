@@ -9,20 +9,23 @@ from app.dao.service_join_requests_dao import (
     dao_get_service_join_request_by_id,
     dao_update_service_join_request,
 )
+from app.models import User
 from tests.app.db import create_service, create_user
 
 
-def setup_service_join_request_test_data(service_id: uuid4(), requester_id: uuid4(), contacted_user_ids: list[uuid4()]):
+def setup_service_join_request_test_data(
+    service_id: uuid4(), requester_id: uuid4(), contacted_user_ids: list[uuid4()]
+) -> tuple[User, list[User]]:
     """Helper function to create service, requester, and contacted users."""
     create_service(service_id=service_id, service_name=f"Service Requester Wants To Join {service_id}")
     create_user(id=requester_id, name="Requester User")
 
-    users = []
+    contacted_users = []
     for user_id in contacted_user_ids:
         user = create_user(id=user_id, name=f"User Within Existing Service {user_id}")
-        users.append(user)
+        contacted_users.append(user)
 
-    return users
+    return contacted_users
 
 
 ServiceJoinRequestTestCase = namedtuple(
@@ -49,7 +52,7 @@ ServiceJoinRequestTestCase = namedtuple(
     ids=["two_contacts", "one_contact"],
 )
 def test_dao_create_service_join_request(client, test_case, notify_db_session):
-    users = setup_service_join_request_test_data(
+    contacted_users = setup_service_join_request_test_data(
         test_case.service_id, test_case.requester_id, test_case.contacted_user_ids
     )
 
@@ -64,7 +67,7 @@ def test_dao_create_service_join_request(client, test_case, notify_db_session):
     assert len(request.contacted_service_users) == test_case.expected_num_contacts
     assert request.status == SERVICE_JOIN_REQUEST_PENDING
 
-    for user in users:
+    for user in contacted_users:
         assert user in request.contacted_service_users
 
 
@@ -93,7 +96,7 @@ def test_dao_create_service_join_request(client, test_case, notify_db_session):
     ids=["no_contacts", "two_contacts", "one_contact"],
 )
 def test_get_service_join_request_by_id(client, test_case, notify_db_session):
-    users = setup_service_join_request_test_data(
+    contacted_user = setup_service_join_request_test_data(
         test_case.service_id, test_case.requester_id, test_case.contacted_user_ids
     )
 
@@ -111,7 +114,7 @@ def test_get_service_join_request_by_id(client, test_case, notify_db_session):
     assert retrieved_request.service_id == test_case.service_id
     assert len(retrieved_request.contacted_service_users) == test_case.expected_num_contacts
 
-    for user in users:
+    for user in contacted_user:
         assert user in retrieved_request.contacted_service_users
 
 

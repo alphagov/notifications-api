@@ -21,6 +21,7 @@ from app.constants import (
     MOBILE_TYPE,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_TYPES,
+    SERVICE_JOIN_REQUEST_APPROVED,
 )
 from app.dao import fact_billing_dao, fact_notification_status_dao, notifications_dao
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
@@ -1342,5 +1343,23 @@ def update_service_join_request(request_id: uuid.UUID):
 
     if updated_request is None:
         return jsonify({"message": "Service join request not found"}), 404
+
+    if status == SERVICE_JOIN_REQUEST_APPROVED:
+        permissions = data.get("permissions", None)
+
+        if permissions:
+            permissions = [
+                Permission(service_id=updated_request.service_id, user_id=updated_request.requester_id, permission=p)
+                for p in permissions
+            ]
+
+        user = get_user_by_id(updated_request.requester_id)
+        service = dao_fetch_service_by_id(updated_request.service_id)
+
+        dao_add_user_to_service(
+            service,
+            user,
+            permissions,
+        )
 
     return jsonify(updated_request.serialize()), 200

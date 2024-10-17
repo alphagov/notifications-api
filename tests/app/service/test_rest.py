@@ -34,7 +34,7 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
 )
 from app.dao.templates_dao import dao_redact_template
-from app.dao.users_dao import save_model_user
+from app.dao.users_dao import get_user_by_id, save_model_user
 from app.models import (
     AnnualBilling,
     EmailBranding,
@@ -4177,3 +4177,46 @@ def test_update_service_join_request_request_not_found(admin_request):
     )
 
     assert resp["message"] == "Service join request not found"
+
+
+@pytest.mark.parametrize(
+    "status_changed_by_id, set_permissions, status, reason",
+    [
+        (uuid.uuid4(), ["manage_users"], "approved", None),
+        (uuid.uuid4(), [], "approved", None),
+    ],
+)
+def test_update_service_join_request_add_user_to_service(
+    admin_request, status_changed_by_id, set_permissions, status, reason
+):
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    user_id = status_changed_by_id
+
+    setup_service_join_request_test_data(service_id, requester_id, [user_id])
+
+    request = dao_create_service_join_request(
+        requester_id=requester_id,
+        service_id=service_id,
+        contacted_user_ids=[user_id],
+    )
+
+    admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(request.id),
+        _data={
+            "permissions": set_permissions,
+            "status_changed_by_id": str(status_changed_by_id),
+            "status": status,
+            "reason": reason,
+        },
+        _expected_status=200,
+    )
+
+    user = get_user_by_id(requester_id)
+
+    assert user is not None
+    assert str(service_id) in [str(service.id) for service in user.services]
+
+    if set_permissions:
+        assert user.get_permissions() == {str(service_id): set_permissions}
