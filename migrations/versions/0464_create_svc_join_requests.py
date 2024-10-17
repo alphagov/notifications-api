@@ -5,8 +5,12 @@ from sqlalchemy.dialects import postgresql
 revision = "0464_create_svc_join_requests"
 down_revision = "0463_backfill_created_at"
 
+values = ["pending", "approved", "rejected"]
+request_status_enum = sa.Enum(*values, name="request_status")
+
 
 def upgrade():
+    request_status_enum.create(op.get_bind())
     op.create_table(
         "service_join_requests",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, default=sa.text("uuid_generate_v4()")),
@@ -15,7 +19,13 @@ def upgrade():
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
         sa.Column(
             "status",
-            sa.Enum("pending", "approved", "rejected", name="request_status"),
+            postgresql.ENUM(
+                *values,
+                name="request_status",
+                create_type=False,
+                checkfirst=True,
+                inherit_schema=True,
+            ),
             nullable=False,
             server_default="pending",
         ),
@@ -41,3 +51,5 @@ def downgrade():
     op.drop_table("contacted_users")
 
     op.drop_table("service_join_requests")
+
+    request_status_enum.drop(op.get_bind(), checkfirst=False)
