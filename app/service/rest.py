@@ -21,6 +21,7 @@ from app.constants import (
     MOBILE_TYPE,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_TYPES,
+    SERVICE_JOIN_REQUEST_APPROVED,
 )
 from app.dao import fact_billing_dao, fact_notification_status_dao, notifications_dao
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
@@ -40,6 +41,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range,
 )
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
+from app.dao.permissions_dao import permission_dao
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -71,7 +73,11 @@ from app.dao.service_guest_list_dao import (
     dao_fetch_service_guest_list,
     dao_remove_service_guest_list,
 )
-from app.dao.service_join_requests_dao import dao_create_service_join_request, dao_get_service_join_request_by_id
+from app.dao.service_join_requests_dao import (
+    dao_create_service_join_request,
+    dao_get_service_join_request_by_id,
+    dao_update_service_join_request,
+)
 from app.dao.service_letter_contact_dao import (
     add_letter_contact_for_service,
     archive_letter_contact,
@@ -127,7 +133,7 @@ from app.notifications.process_notifications import (
 )
 from app.one_click_unsubscribe.rest import create_unsubscribe_request_reports_summary
 from app.schema_validation import validate
-from app.schema_validation.service_join_request import service_join_request_schema
+from app.schema_validation.service_join_request import service_join_request_schema, service_join_request_update_schema
 from app.schemas import (
     api_key_schema,
     detailed_service_schema,
@@ -1322,3 +1328,38 @@ def get_service_join_request(request_id: uuid.UUID):
         raise InvalidRequest(message=f"Service join request with ID {request_id} not found.", status_code=404)
 
     return jsonify(service_join_request.serialize()), 200
+
+
+@service_blueprint.route("/update-service-join-request-status/<uuid:request_id>", methods=["POST"])
+def update_service_join_request(request_id: uuid.UUID):
+    data = request.get_json()
+
+    try:
+        validate(data, service_join_request_update_schema)
+    except ValidationError as err:
+        raise InvalidRequest(message=err.messages, status_code=400) from err
+
+    status = data["status"]
+    status_changed_by_id = data["status_changed_by_id"]
+    reason = data.get("reason", None)
+
+    updated_request = dao_update_service_join_request(request_id, status, status_changed_by_id, reason)
+
+    if updated_request is None:
+        return jsonify({"message": "Service join request not found"}), 404
+
+    if status == SERVICE_JOIN_REQUEST_APPROVED:
+        permissions = data.get("permissions", None)
+
+        if permissions:
+            permission_list = [
+                Permission(service_id=updated_request.service_id, user_id=updated_request.requester_id, permission=p)
+                for p in permissions
+            ]
+
+            user = get_user_by_id(updated_request.requester_id)
+            service = dao_fetch_service_by_id(updated_request.service_id)
+
+            permission_dao.set_user_service_permission(user, service, permission_list, _commit=True, replace=True)
+
+    return jsonify(updated_request.serialize()), 200
