@@ -590,7 +590,7 @@ def test_delete_notifications_task_calls_task_for_services_with_data_retention_b
     # iterated order in tested code is not necessarily deterministic
     assert sorted(kwargs["countdown"] for method, args, kwargs in mock_subtask.apply_async.mock_calls) == [
         0.0,
-        timedelta(hours=1).seconds / 2,
+        timedelta(minutes=5).seconds / 2,
     ]
 
 
@@ -647,7 +647,7 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
     # iterated order in tested code is not necessarily deterministic
     assert sorted(kwargs["countdown"] for method, args, kwargs in mock_subtask.apply_async.mock_calls) == [
         0.0,
-        timedelta(hours=1).seconds / 2,
+        timedelta(minutes=5).seconds / 2,
     ]
 
 

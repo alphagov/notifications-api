@@ -19,15 +19,19 @@ from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
 
 @notify_celery.task(name="create-nightly-billing")
 @cronitor("create-nightly-billing")
-def create_nightly_billing(day_start=None):
-    # day_start is a datetime.date() object. e.g.
-    # up to 4 days of data counting back from day_start is consolidated
+def create_nightly_billing(
+    day_start=None,
+    n_days=10,
+    stagger_total_period_seconds=timedelta(minutes=5).seconds,
+):
+    # day_start is a datetime.date() object. i.e. up to n_days days of data counting
+    # back from day_start is consolidated
     if day_start is None:
         day_start = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
         day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
-    for i in range(10):
+    for i in range(n_days):
         process_day = (day_start - timedelta(days=i)).isoformat()
 
         create_or_update_ft_billing_for_day.apply_async(
@@ -35,7 +39,7 @@ def create_nightly_billing(day_start=None):
             queue=QueueNames.REPORTING,
             # starting all the spawned queries at the same time uses a lot of
             # database resources
-            countdown=timedelta(minutes=5).seconds * i,
+            countdown=stagger_total_period_seconds * i / n_days,
         )
         current_app.logger.info(
             "create-nightly-billing task: create-or-update-ft-billing-for-day task created for %s", process_day
