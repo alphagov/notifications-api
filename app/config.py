@@ -138,14 +138,27 @@ class Config:
     AWS_REGION = "eu-west-1"
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = "api"
+
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 5)),
         "pool_timeout": 30,
         "pool_recycle": 300,
         "connect_args": {
+            # statement_timeout is overridden in setup_sqlalchemy_events, but not all our
+            # invocations heed those event hooks (e.g. alembic migrations), so this is set
+            # as a fallback
             "options": "-c statement_timeout=1200000",
         },
     }
+    DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY = (
+        os.getenv(
+            "DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY",
+            "1",
+        )
+        == "1"
+    )
+    DATABASE_STATEMENT_TIMEOUT_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_MS", 1_200_000))
+
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250
     TEST_MESSAGE_FILENAME = "Test message"
