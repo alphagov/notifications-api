@@ -3,7 +3,11 @@ from typing import Literal
 from uuid import UUID
 
 from app import db
-from app.constants import SERVICE_JOIN_REQUEST_STATUS_TYPES
+from app.constants import (
+    SERVICE_JOIN_REQUEST_CANCELLED,
+    SERVICE_JOIN_REQUEST_PENDING,
+    SERVICE_JOIN_REQUEST_STATUS_TYPES,
+)
 from app.dao.dao_utils import autocommit
 from app.models import ServiceJoinRequest, User
 
@@ -54,3 +58,18 @@ def dao_update_service_join_request(
 
     db.session.add(service_join_request)
     return service_join_request
+
+
+def dao_cancel_pending_service_join_requests(requester_id: UUID, approver_id: UUID, service_id: UUID) -> None:
+    pending_requests = ServiceJoinRequest.query.filter_by(
+        requester_id=requester_id, service_id=service_id, status=SERVICE_JOIN_REQUEST_PENDING
+    ).all()
+
+    if pending_requests:
+        for request in pending_requests:
+            dao_update_service_join_request(
+                request_id=request.id,
+                status=SERVICE_JOIN_REQUEST_CANCELLED,
+                status_changed_by_id=approver_id,
+                reason="system update due to cancellation",
+            )

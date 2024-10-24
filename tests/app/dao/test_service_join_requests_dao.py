@@ -3,13 +3,19 @@ from uuid import uuid4
 
 import pytest
 
-from app.constants import SERVICE_JOIN_REQUEST_APPROVED, SERVICE_JOIN_REQUEST_PENDING, SERVICE_JOIN_REQUEST_REJECTED
+from app.constants import (
+    SERVICE_JOIN_REQUEST_APPROVED,
+    SERVICE_JOIN_REQUEST_CANCELLED,
+    SERVICE_JOIN_REQUEST_PENDING,
+    SERVICE_JOIN_REQUEST_REJECTED,
+)
 from app.dao.service_join_requests_dao import (
+    dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
     dao_get_service_join_request_by_id,
     dao_update_service_join_request,
 )
-from app.models import User
+from app.models import ServiceJoinRequest, User
 from tests.app.db import create_service, create_user
 
 
@@ -18,14 +24,36 @@ def setup_service_join_request_test_data(
 ) -> tuple[User, list[User]]:
     """Helper function to create service, requester, and contacted users."""
     create_service(service_id=service_id, service_name=f"Service Requester Wants To Join {service_id}")
-    create_user(id=requester_id, name="Requester User")
+    create_user(id=requester_id, name="Requester User", email=f"{requester_id}@digital.cabinet-office.gov.uk")
 
     contacted_users = []
     for user_id in contacted_user_ids:
-        user = create_user(id=user_id, name=f"User Within Existing Service {user_id}")
+        user = create_user(
+            id=user_id,
+            name=f"User Within Existing Service {user_id}",
+            email=f"{user_id}@digital.cabinet-office.gov.uk",
+        )
         contacted_users.append(user)
 
     return contacted_users
+
+
+def create_service_join_request(requester_id, service_id, contacted_user_ids, status=None, decider_id=None):
+    """Helper function to create a service join request and optionally update its status."""
+    service_join_request = dao_create_service_join_request(
+        requester_id=requester_id,
+        service_id=service_id,
+        contacted_user_ids=contacted_user_ids,
+    )
+
+    if status and decider_id:
+        service_join_request = dao_update_service_join_request(
+            request_id=service_join_request.id,
+            status=status,
+            status_changed_by_id=decider_id,
+        )
+
+    return service_join_request
 
 
 ServiceJoinRequestTestCase = namedtuple(
@@ -176,3 +204,111 @@ def test_dao_update_service_join_request_no_request_found(client, notify_db_sess
     )
 
     assert updated_request is None
+
+
+def test_dao_cancel_pending_service_join_requests(client, notify_db_session):
+    requester_id = uuid4()
+    decider_id = uuid4()
+    service_id = uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [decider_id])
+
+    pending_request_1 = create_service_join_request(
+        requester_id, service_id, [decider_id], status=SERVICE_JOIN_REQUEST_REJECTED, decider_id=decider_id
+    )
+
+    pending_request_2 = create_service_join_request(requester_id, service_id, [decider_id])
+
+    pending_request_3 = create_service_join_request(requester_id, service_id, [decider_id])
+
+    pending_request_4 = create_service_join_request(
+        requester_id, service_id, [decider_id], status=SERVICE_JOIN_REQUEST_APPROVED, decider_id=decider_id
+    )
+
+    dao_cancel_pending_service_join_requests(requester_id, decider_id, service_id)
+
+    all_user_requests = ServiceJoinRequest.query.filter_by(service_id=service_id, requester_id=requester_id).all()
+
+    request_status_map = {request.id: request.status for request in all_user_requests}
+    request_reason_map = {request.id: request.reason for request in all_user_requests}
+
+    assert len(all_user_requests) == 4
+
+    assert request_status_map[pending_request_1.id] == SERVICE_JOIN_REQUEST_REJECTED
+    assert request_status_map[pending_request_4.id] == SERVICE_JOIN_REQUEST_APPROVED
+
+    assert request_status_map[pending_request_2.id] == SERVICE_JOIN_REQUEST_CANCELLED
+    assert request_status_map[pending_request_3.id] == SERVICE_JOIN_REQUEST_CANCELLED
+
+    assert request_reason_map[pending_request_1.id] is None
+    assert request_reason_map[pending_request_4.id] is None
+    assert request_reason_map[pending_request_2.id] == "system update due to cancellation"
+    assert request_reason_map[pending_request_3.id] == "system update due to cancellation"
+
+
+def test_dao_cancel_pending_service_join_requests_no_pending_requests(client, notify_db_session):
+    requester_id = uuid4()
+    decider_id = uuid4()
+    service_id = uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [decider_id])
+
+    approved_request = create_service_join_request(
+        requester_id, service_id, [decider_id], status=SERVICE_JOIN_REQUEST_APPROVED, decider_id=decider_id
+    )
+
+    rejected_request = create_service_join_request(
+        requester_id, service_id, [decider_id], status=SERVICE_JOIN_REQUEST_REJECTED, decider_id=decider_id
+    )
+
+    dao_cancel_pending_service_join_requests(requester_id, decider_id, service_id)
+
+    all_user_requests = ServiceJoinRequest.query.filter_by(service_id=service_id, requester_id=requester_id).all()
+
+    request_status_map = {request.id: request.status for request in all_user_requests}
+
+    assert len(all_user_requests) == 2
+    assert request_status_map[approved_request.id] == SERVICE_JOIN_REQUEST_APPROVED
+    assert request_status_map[rejected_request.id] == SERVICE_JOIN_REQUEST_REJECTED
+
+
+def test_dao_cancel_pending_service_join_requests_service_specific(client, notify_db_session):
+    requester_id = uuid4()
+    decider_id = uuid4()
+    service_id_1 = uuid4()
+    service_id_2 = uuid4()
+
+    setup_service_join_request_test_data(service_id_1, requester_id, [decider_id])
+    setup_service_join_request_test_data(service_id_2, requester_id, [decider_id])
+
+    pending_request_service_1_1 = create_service_join_request(requester_id, service_id_1, [decider_id])
+    pending_request_service_1_2 = create_service_join_request(requester_id, service_id_1, [decider_id])
+
+    pending_request_service_2 = create_service_join_request(requester_id, service_id_2, [decider_id])
+    approved_request_service_2 = create_service_join_request(
+        requester_id, service_id_2, [decider_id], status=SERVICE_JOIN_REQUEST_APPROVED, decider_id=decider_id
+    )
+
+    # Cancel pending requests for service 1 only
+    dao_cancel_pending_service_join_requests(requester_id, decider_id, service_id_1)
+
+    all_user_requests_service_1 = ServiceJoinRequest.query.filter_by(
+        service_id=service_id_1, requester_id=requester_id
+    ).all()
+
+    all_user_requests_service_2 = ServiceJoinRequest.query.filter_by(
+        service_id=service_id_2, requester_id=requester_id
+    ).all()
+
+    request_status_map_service_1 = {request.id: request.status for request in all_user_requests_service_1}
+    request_status_map_service_2 = {request.id: request.status for request in all_user_requests_service_2}
+
+    # Verify that pending requests for service 1 were canceled
+    assert request_status_map_service_1[pending_request_service_1_1.id] == SERVICE_JOIN_REQUEST_CANCELLED
+    assert request_status_map_service_1[pending_request_service_1_2.id] == SERVICE_JOIN_REQUEST_CANCELLED
+
+    # Verify that the pending request for service 2 remains pending
+    assert request_status_map_service_2[pending_request_service_2.id] == SERVICE_JOIN_REQUEST_PENDING
+
+    # Verify that the approved request for service 2 remains approved
+    assert request_status_map_service_2[approved_request_service_2.id] == SERVICE_JOIN_REQUEST_APPROVED

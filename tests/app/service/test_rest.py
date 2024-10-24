@@ -22,6 +22,8 @@ from app.constants import (
     LETTER_TYPE,
     NOTIFICATION_RETURNED_LETTER,
     NOTIFICATION_TYPES,
+    SERVICE_JOIN_REQUEST_APPROVED,
+    SERVICE_JOIN_REQUEST_CANCELLED,
     SERVICE_JOIN_REQUEST_PENDING,
     SMS_TYPE,
     UPLOAD_LETTERS,
@@ -42,6 +44,7 @@ from app.models import (
     Permission,
     Service,
     ServiceEmailReplyTo,
+    ServiceJoinRequest,
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
@@ -50,7 +53,10 @@ from app.models import (
 )
 from app.utils import DATETIME_FORMAT
 from tests import create_admin_authorization_header
-from tests.app.dao.test_service_join_requests_dao import setup_service_join_request_test_data
+from tests.app.dao.test_service_join_requests_dao import (
+    create_service_join_request,
+    setup_service_join_request_test_data,
+)
 from tests.app.db import (
     create_annual_billing,
     create_api_key,
@@ -4126,13 +4132,21 @@ def test_update_service_join_request_validation_errors(
     ],
 )
 def test_update_service_join_request_updates_service_join_request_table(
-    admin_request, status_changed_by_id, permissions, status, reason
+    admin_request,
+    status_changed_by_id,
+    permissions,
+    status,
+    reason,
+    notify_service,
+    service_join_request_approved_template,
+    mocker,
 ):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     user_id = status_changed_by_id
 
     setup_service_join_request_test_data(service_id, requester_id, [user_id])
+    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
 
     request = dao_create_service_join_request(
         requester_id=requester_id,
@@ -4187,13 +4201,21 @@ def test_update_service_join_request_request_not_found(admin_request):
     ],
 )
 def test_update_service_join_request_add_user_to_service(
-    admin_request, status_changed_by_id, set_permissions, status, reason
+    admin_request,
+    status_changed_by_id,
+    set_permissions,
+    status,
+    reason,
+    notify_service,
+    service_join_request_approved_template,
+    mocker,
 ):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     user_id = status_changed_by_id
 
     setup_service_join_request_test_data(service_id, requester_id, [user_id])
+    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
 
     request = dao_create_service_join_request(
         requester_id=requester_id,
@@ -4220,3 +4242,127 @@ def test_update_service_join_request_add_user_to_service(
 
     if set_permissions:
         assert user.get_permissions() == {str(service_id): set_permissions}
+
+
+def test_update_service_join_request_notification_sent(
+    admin_request,
+    notify_service,
+    service_join_request_approved_template,
+    mocker,
+):
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    approver_id = uuid.uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [approver_id])
+    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+
+    request = dao_create_service_join_request(
+        requester_id=requester_id,
+        service_id=service_id,
+        contacted_user_ids=[approver_id],
+    )
+
+    admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(request.id),
+        _data={
+            "permissions": ["manage_users"],
+            "status_changed_by_id": str(approver_id),
+            "status": "approved",
+        },
+        _expected_status=200,
+    )
+
+    notification = Notification.query.first()
+    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
+    assert notification.to == f"{requester_id}@digital.cabinet-office.gov.uk"
+
+    assert notification.personalisation["requester_name"] == "Requester User"
+    assert notification.personalisation["approver_name"] == f"User Within Existing Service {approver_id}"
+    assert notification.personalisation["service_name"] == f"Service Requester Wants To Join {service_id}"
+    assert f"/services/{service_id}" in notification.personalisation["dashboard_url"]
+
+
+def test_update_service_join_request_get_template(
+    admin_request,
+    notify_service,
+    service_join_request_approved_template,
+    mocker,
+):
+    template = service_join_request_approved_template
+    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    mocker.patch("app.dao.templates_dao.dao_get_template_by_id", return_value=template)
+
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    approver_id = uuid.uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [approver_id])
+
+    request = dao_create_service_join_request(
+        requester_id=requester_id,
+        service_id=service_id,
+        contacted_user_ids=[approver_id],
+    )
+
+    admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(request.id),
+        _data={
+            "permissions": ["manage_users"],
+            "status_changed_by_id": str(approver_id),
+            "status": "approved",
+        },
+        _expected_status=200,
+    )
+
+    notification = Notification.query.first()
+    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+
+    assert notification.template.version == template.version
+    assert notification.template_id == template.id
+
+
+def test_update_service_join_request_cancels_pending_requests(
+    admin_request,
+    notify_service,
+    service_join_request_approved_template,
+    mocker,
+):
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    approver_id = uuid.uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [approver_id])
+    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+
+    pending_request_1 = create_service_join_request(
+        requester_id=requester_id, service_id=service_id, contacted_user_ids=[approver_id]
+    )
+
+    pending_request_2 = create_service_join_request(
+        requester_id=requester_id, service_id=service_id, contacted_user_ids=[approver_id]
+    )
+
+    admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(pending_request_2.id),
+        _data={
+            "permissions": ["manage_users"],
+            "status_changed_by_id": str(approver_id),
+            "status": "approved",
+        },
+        _expected_status=200,
+    )
+
+    all_user_requests = ServiceJoinRequest.query.filter_by(requester_id=requester_id, service_id=service_id).all()
+
+    assert len(all_user_requests) == 2
+
+    request_status_map = {request.id: request.status for request in all_user_requests}
+
+    assert request_status_map[pending_request_2.id] == SERVICE_JOIN_REQUEST_APPROVED
+    assert request_status_map[pending_request_1.id] == SERVICE_JOIN_REQUEST_CANCELLED
