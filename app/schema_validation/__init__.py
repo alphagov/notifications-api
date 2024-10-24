@@ -127,17 +127,13 @@ def send_a_file_confirm_email_before_download(instance):
     )
 
 
-@format_checker.checks("datetime", raises=ValidationError)
-def validate_schema_datetime(instance):
+@format_checker.checks("letter_production_run_date", raises=ValidationError)
+def validate_letter_production_run_date(instance):
     if isinstance(instance, str):
-        try:
-            iso8601.parse_date(instance)
-        except ParseError as e:
-            raise ValidationError(
-                "datetime format is invalid. It must be a valid ISO8601 date time format, "
-                "https://en.wikipedia.org/wiki/ISO_8601"
-            ) from e
-    return True
+        if re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+", instance):
+            return True
+
+    raise ValidationError("Datetime format is invalid. It must be in the format %Y-%m-%d %H:%M:%S.%f")
 
 
 def validate(json_to_validate, schema):

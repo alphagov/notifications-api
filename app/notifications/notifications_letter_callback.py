@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from flask import Blueprint, current_app, jsonify, request
 from itsdangerous import BadSignature
-from notifications_utils.timezones import convert_utc_to_bst
 
 from app import signing
 from app.celery.process_letter_client_response_tasks import process_letter_callback_data
@@ -75,12 +74,24 @@ dvla_letter_callback_schema = {
                                 }
                             },
                             {"properties": {"key": {"const": "totalSheets"}, "value": {"type": "string"}}},
-                            {"properties": {"key": {"const": "Print Date"}, "value": {"format": "date-time"}}},
+                            {
+                                "properties": {
+                                    "key": {"const": "productionRunDate"},
+                                    "value": {"type": "string", "format": "letter_production_run_date"},
+                                }
+                            },
                             # if the key does not match the requirements above, do not check values specified previously
                             {
                                 "properties": {
                                     "key": {
-                                        "not": {"enum": ["postageClass", "mailingProduct", "totalSheets", "Print Date"]}
+                                        "not": {
+                                            "enum": [
+                                                "postageClass",
+                                                "mailingProduct",
+                                                "totalSheets",
+                                                "productionRunDate",
+                                            ]
+                                        }
                                     },
                                 }
                             },
@@ -190,7 +201,7 @@ def extract_properties_from_request(request_data) -> LetterUpdate:
     postage = next(item["value"] for item in despatch_properties if item["key"] == "postageClass")
     cost_threshold = _get_cost_threshold(mailing_product, postage)
 
-    despatch_datetime = next(item["value"] for item in despatch_properties if item["key"] == "Print Date")
+    despatch_datetime = next(item["value"] for item in despatch_properties if item["key"] == "productionRunDate")
     despatch_date = _get_despatch_date(despatch_datetime)
 
     return LetterUpdate(
@@ -210,7 +221,7 @@ def _get_cost_threshold(mailing_product: str, postage: str) -> LetterCostThresho
 
 def _get_despatch_date(despatch_datetime: str) -> datetime.date:
     """
-    Converts a string which has the format of 2024-08-01T09:15:14.456Z to a local time date
+    Converts a datetime string in the format of 2024-10-15 04:00:16.287 to a date.
+    Both the despatch_date argument and date returned are in London local time.
     """
-    utc_datetime = datetime.datetime.strptime(despatch_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
-    return convert_utc_to_bst(utc_datetime).date()
+    return datetime.datetime.strptime(despatch_datetime, "%Y-%m-%d %H:%M:%S.%f").date()
