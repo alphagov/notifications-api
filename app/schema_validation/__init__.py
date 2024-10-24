@@ -136,19 +136,6 @@ def validate_letter_production_run_date(instance):
     raise ValidationError("Datetime format is invalid. It must be in the format %Y-%m-%d %H:%M:%S.%f")
 
 
-@format_checker.checks("datetime", raises=ValidationError)
-def validate_schema_datetime(instance):
-    if isinstance(instance, str):
-        try:
-            iso8601.parse_date(instance)
-        except ParseError as e:
-            raise ValidationError(
-                "datetime format is invalid. It must be a valid ISO8601 date time format, "
-                "https://en.wikipedia.org/wiki/ISO_8601"
-            ) from e
-    return True
-
-
 def validate(json_to_validate, schema):
     validator = Draft7Validator(schema, format_checker=format_checker)
     errors = list(validator.iter_errors(json_to_validate))
