@@ -213,7 +213,7 @@ def test_process_letter_callback_validation_for_required_fields(
                 {"key": "postageClass", "value": "invalid-postage-class"},
                 {"key": "totalSheets", "value": "5"},
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
-                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+                {"key": "productionRunDate", "value": "2024-10-15 08:53:32.361"},
             ],
             "data {key: postageClass, value: invalid-postage-class} is not valid under any of the given schemas",
         ),
@@ -222,20 +222,20 @@ def test_process_letter_callback_validation_for_required_fields(
             [
                 {"key": "postageClass", "value": "1ST"},
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
-                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+                {"key": "productionRunDate", "value": "2024-10-15 08:53:32.361"},
             ],
-            "data [{key: postageClass, value: 1ST}, {key: mailingProduct, value: MM UNSORTED}, {key: Print Date, "
-            "value: 2024-08-01T09:15:14.456Z}] is too short",
+            "data [{key: postageClass, value: 1ST}, {key: mailingProduct, value: MM UNSORTED}, "
+            "{key: productionRunDate, value: 2024-10-15 08:53:32.361}] is too short",
         ),
-        # invalid date-time format for Print Date
+        # invalid date-time format for productionRunDate
         (
             [
                 {"key": "postageClass", "value": "1ST"},
                 {"key": "totalSheets", "value": "5"},
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
-                {"key": "Print Date", "value": "invalid-date"},
+                {"key": "productionRunDate", "value": "invalid-date"},
             ],
-            "data {key: Print Date, value: invalid-date} is not valid under any of the given schemas",
+            "data {key: productionRunDate, value: invalid-date} is not valid under any of the given schemas",
         ),
         # invalid enum for mailingProduct
         (
@@ -243,7 +243,7 @@ def test_process_letter_callback_validation_for_required_fields(
                 {"key": "postageClass", "value": "1ST"},
                 {"key": "totalSheets", "value": "5"},
                 {"key": "mailingProduct", "value": "invalid-mailing-product"},
-                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+                {"key": "productionRunDate", "value": "2024-10-15 08:53:32.361"},
             ],
             "data {key: mailingProduct, value: invalid-mailing-product} is not valid under any of the given schemas",
         ),
@@ -371,7 +371,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
                 {"key": "totalSheets", "value": "10"},
                 {"key": "postageClass", "value": "1ST"},
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
-                {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+                {"key": "productionRunDate", "value": "2024-10-15 04:00:16.287"},
             ],
             "jobStatus": "Rejected",
         }
@@ -384,7 +384,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
     assert letter_update.page_count == "10"
     assert letter_update.status == "Rejected"
     assert letter_update.cost_threshold == LetterCostThreshold.unsorted
-    assert letter_update.despatch_date == datetime.date(2024, 8, 1)
+    assert letter_update.despatch_date == datetime.date(2024, 10, 15)
 
 
 @pytest.mark.parametrize("postage", ["1ST", "2ND", "INTERNATIONAL"])
@@ -401,9 +401,9 @@ def test__get_cost_threshold(mailing_product, postage):
 @pytest.mark.parametrize(
     "datestring, expected_result",
     [
-        ("2024-08-01T09:15:14.456Z", datetime.date(2024, 8, 1)),
-        ("2024-08-01T23:15:14.0Z", datetime.date(2024, 8, 2)),
-        ("2024-01-21T23:15:14.0Z", datetime.date(2024, 1, 21)),
+        ("2024-08-01 09:15:14.456", datetime.date(2024, 8, 1)),
+        ("2024-08-01 23:15:14.000", datetime.date(2024, 8, 1)),
+        ("2024-01-21 23:15:14.000", datetime.date(2024, 1, 21)),
     ],
 )
 def test__get_despatch_date(datestring, expected_result):

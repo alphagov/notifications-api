@@ -127,6 +127,15 @@ def send_a_file_confirm_email_before_download(instance):
     )
 
 
+@format_checker.checks("letter_production_run_date", raises=ValidationError)
+def validate_letter_production_run_date(instance):
+    if isinstance(instance, str):
+        if re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+", instance):
+            return True
+
+    raise ValidationError("Datetime format is invalid. It must be in the format %Y-%m-%d %H:%M:%S.%f")
+
+
 @format_checker.checks("datetime", raises=ValidationError)
 def validate_schema_datetime(instance):
     if isinstance(instance, str):
