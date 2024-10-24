@@ -17,41 +17,55 @@ down_revision = "0437_min_numeric_scl_aux_tbls"
 
 request_invite_to_a_service_template_id = "77677459-f862-44ee-96d9-b8cb2323d407"
 request_invite_to_a_service_template_content = textwrap.dedent(
-    """\
-Hi ((name))
+    """
+        Hi ((approver_name))
 
-((requester_name)) would like to join the ‘((service_name))’ team on GOV.UK Notify.
+        ((requester_name)) has asked to join the following GOV.UK Notify service:
 
-((reason_given??They gave the following reason for wanting to join:))
+        ^((service_name))
 
-((reason))
+        ((reason_given??They gave the following reason for wanting to join:))
 
-Use this link to invite ((requester_name)) to join the team:
+        ((reason))
 
-((url))
+        # What you need to do
 
-If you have any questions, you can email ((requester_name)) at ((requester_email))
+        Use this link to approve or refuse their request:
 
-Thanks
+        ((url))
 
-GOV.​UK Notify team
-https://www.gov.uk/notify
+
+        ## If you have any questions
+
+        You can email ((requester_name)) at ((requester_email_address))
+
+        Thanks
+
+        GOV.​UK Notify
+        https://www.gov.uk/notify
     """
 )
 
 
 receipt_for_request_invite_to_a_service_template_id = "38bcd263-6ce8-431f-979d-8e637c1f0576"
 receipt_for_request_invite_to_a_service_template_content = textwrap.dedent(
-    """\
-    Hi ((name))
+    """
+        Hi ((requester_name))
 
-    …
+        You have asked to join the following GOV.UK Notify service:
 
-    Thanks
+        ^((service_name))
 
-    GOV.​UK Notify team
-    https://www.gov.uk/notify
+        If you need an update about your request, you can contact:
 
+        ((service_admin_names))
+
+        If they do not reply, you can [ask a different team member to approve your request]((url_ask_to_join_page)).
+
+        Thanks
+
+        GOV.​UK Notify
+        https://www.gov.uk/notify
     """
 )
 
@@ -129,7 +143,7 @@ def upgrade():
             )
             VALUES (
                 '{receipt_for_request_invite_to_a_service_template_id}',
-                'Receipt email after requesting service invite',
+                'You have asked to join a GOV.UK Notify service',
                 'email',
                 current_timestamp,
                 '',
