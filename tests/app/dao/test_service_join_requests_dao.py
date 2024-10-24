@@ -18,11 +18,15 @@ def setup_service_join_request_test_data(
 ) -> tuple[User, list[User]]:
     """Helper function to create service, requester, and contacted users."""
     create_service(service_id=service_id, service_name=f"Service Requester Wants To Join {service_id}")
-    create_user(id=requester_id, name="Requester User")
+    create_user(id=requester_id, name="Requester User", email=f"{requester_id}@digital.cabinet-office.gov.uk")
 
     contacted_users = []
     for user_id in contacted_user_ids:
-        user = create_user(id=user_id, name=f"User Within Existing Service {user_id}")
+        user = create_user(
+            id=user_id,
+            name=f"User Within Existing Service {user_id}",
+            email=f"{user_id}@digital.cabinet-office.gov.uk",
+        )
         contacted_users.append(user)
 
     return contacted_users

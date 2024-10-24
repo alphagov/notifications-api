@@ -1353,13 +1353,44 @@ def update_service_join_request(request_id: uuid.UUID):
                 for p in permissions
             ]
 
-        user = get_user_by_id(updated_request.requester_id)
+        requester_user = get_user_by_id(updated_request.requester_id)
+        approver_user = get_user_by_id(updated_request.status_changed_by_id)
         service = dao_fetch_service_by_id(updated_request.service_id)
 
-        dao_add_user_to_service(
-            service,
-            user,
-            permissions,
+        dao_add_user_to_service(service, requester_user, permissions)
+
+        send_service_join_request_decision_email(
+            requester_email_address=requester_user.email_address,
+            template_id=current_app.config["SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID"],
+            personalisation=create_personalisation(requester_user.name, approver_user.name, service.name, service.id),
         )
 
     return jsonify(updated_request.serialize()), 200
+
+
+def create_personalisation(requester_name: str, approver_name: str, service_name: str, service_id: uuid):
+    admin_base_url = current_app.config["ADMIN_BASE_URL"]
+    return {
+        "requester_name": requester_name,
+        "approver_name": approver_name,
+        "service_name": service_name,
+        "dashboard_url": f"{admin_base_url}/services/{service_id}",
+    }
+
+
+def send_service_join_request_decision_email(requester_email_address: str, template_id: uuid, personalisation: dict):
+    notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
+
+    saved_notification = persist_notification(
+        template_id=template_id,
+        template_version=1,
+        recipient=requester_email_address,
+        service=notify_service,
+        personalisation=personalisation,
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=notify_service.get_default_reply_to_email_address(),
+    )
+
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
