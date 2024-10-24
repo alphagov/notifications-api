@@ -73,6 +73,7 @@ from app.dao.service_guest_list_dao import (
     dao_remove_service_guest_list,
 )
 from app.dao.service_join_requests_dao import (
+    dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
     dao_get_service_join_request_by_id,
     dao_update_service_join_request,
@@ -1364,6 +1365,8 @@ def update_service_join_request(request_id: uuid.UUID):
             template_id=current_app.config["SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID"],
             personalisation=create_personalisation(requester_user.name, approver_user.name, service.name, service.id),
         )
+
+        dao_cancel_pending_service_join_requests(requester_user.id, approver_user.id, service.id)
 
     return jsonify(updated_request.serialize()), 200
 
