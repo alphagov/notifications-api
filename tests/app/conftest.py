@@ -1233,7 +1233,7 @@ def mock_dvla_callback_data():
                     {"key": "totalSheets", "value": "5"},
                     {"key": "postageClass", "value": "1ST"},
                     {"key": "mailingProduct", "value": "MM UNSORTED"},
-                    {"key": "Print Date", "value": "2024-08-01T09:15:14.456Z"},
+                    {"key": "productionRunDate", "value": "2024-08-01 09:15:14.456"},
                 ],
                 "jobId": "9876543251",
                 "jobType": "NOTIFY",
