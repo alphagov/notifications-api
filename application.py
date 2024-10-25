@@ -1,4 +1,6 @@
 ##!/usr/bin/env python
+import os
+
 from app.performance import init_performance_monitoring
 
 init_performance_monitoring()
@@ -13,4 +15,7 @@ application = NotifyApiFlaskApp("app")
 create_app(application)
 
 if using_eventlet:
-    application = EventletTimeoutMiddleware(application, timeout_seconds=60)
+    application.wsgi_app = EventletTimeoutMiddleware(
+        application.wsgi_app,
+        timeout_seconds=int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30)),
+    )
