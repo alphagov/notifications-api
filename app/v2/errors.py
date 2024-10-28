@@ -2,6 +2,7 @@ import json
 
 from flask import current_app, jsonify, request
 from jsonschema import ValidationError as JsonSchemaValidationError
+from notifications_utils.eventlet import EventletTimeout
 from notifications_utils.recipient_validation.errors import InvalidPhoneError, InvalidRecipientError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
@@ -128,6 +129,16 @@ def register_errors(blueprint):
     def auth_error(error):
         current_app.logger.info("API AuthError, client: %s error: %s", request.headers.get("User-Agent"), error)
         return jsonify(error.to_dict_v2()), error.code
+
+    @blueprint.errorhandler(EventletTimeout)
+    def eventlet_timeout(error):
+        current_app.logger.exception(error)
+        return (
+            jsonify(
+                status_code=504, errors=[{"error": error.__class__.__name__, "message": "Timeout serving request"}]
+            ),
+            504,
+        )
 
     @blueprint.errorhandler(Exception)
     def internal_server_error(error):
