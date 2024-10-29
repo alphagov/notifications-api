@@ -1466,6 +1466,22 @@ class Notification(db.Model):
             "notification_type = 'email' OR unsubscribe_link is null",
             name="ck_unsubscribe_link_is_null_if_notification_not_an_email",
         ),
+        Index(
+            "ix_notifications_normalised_to_trgm",
+            "normalised_to",
+            postgresql_using="gin",
+            postgresql_ops={
+                "normalised_to": "gin_trgm_ops",
+            },
+        ),
+        Index(
+            "ix_notifications_client_reference_trgm",
+            "client_reference",
+            postgresql_using="gin",
+            postgresql_ops={
+                "client_reference": "gin_trgm_ops",
+            },
+        ),
     )
 
     @property
