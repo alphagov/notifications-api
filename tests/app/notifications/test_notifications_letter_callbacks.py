@@ -173,7 +173,7 @@ def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client
         # invalid enum value for `jobStatus`
         (
             {"data": {"jobStatus": "INVALID_STATUS"}},
-            "data INVALID_STATUS is not one of [Despatched, Rejected]",
+            "data INVALID_STATUS is not one of [DESPATCHED, REJECTED]",
         ),
         # invalid `time` format
         (
@@ -295,7 +295,7 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
     )
 
 
-@pytest.mark.parametrize("status", ["Despatched", "Rejected"])
+@pytest.mark.parametrize("status", ["DESPATCHED", "REJECTED"])
 def test_process_letter_callback_calls_process_letter_callback_data_task(
     client,
     mocker,
@@ -373,7 +373,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
                 {"key": "productionRunDate", "value": "2024-10-15 04:00:16.287"},
             ],
-            "jobStatus": "Rejected",
+            "jobStatus": "REJECTED",
         }
     }
 
@@ -382,7 +382,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
     letter_update = extract_properties_from_request(data)
 
     assert letter_update.page_count == "10"
-    assert letter_update.status == "Rejected"
+    assert letter_update.status == "REJECTED"
     assert letter_update.cost_threshold == LetterCostThreshold.unsorted
     assert letter_update.despatch_date == datetime.date(2024, 10, 15)
 
