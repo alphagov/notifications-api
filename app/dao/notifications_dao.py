@@ -748,7 +748,6 @@ def dao_get_letters_to_be_printed(print_run_deadline_local, query_limit=10000):
             Notification.key_type == KEY_TYPE_NORMAL,
             Notification.billable_units > 0,
         )
-        .order_by(Notification.service_id, Notification.created_at)
         .yield_per(query_limit)
     )
     return notifications
