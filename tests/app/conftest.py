@@ -1237,7 +1237,7 @@ def mock_dvla_callback_data():
                 ],
                 "jobId": "9876543251",
                 "jobType": "NOTIFY",
-                "jobStatus": "Despatched",
+                "jobStatus": "DESPATCHED",
                 "templateReference": "NOTIFY",
             },
             "metadata": {
