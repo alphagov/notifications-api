@@ -230,7 +230,9 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
 
 def send_dvla_letters_via_api(print_run_deadline_local):
     current_app.logger.info("send-dvla-letters-for-day-via-api - starting queuing")
-    for row in dao_get_letters_to_be_printed(print_run_deadline_local):
+    for i, row in enumerate(dao_get_letters_to_be_printed(print_run_deadline_local)):
+        if i % 10000 == 0:
+            current_app.logger.info("triggered tasks for %i letters", i)
         deliver_letter.apply_async(kwargs={"notification_id": row.id}, queue=QueueNames.SEND_LETTER)
 
     current_app.logger.info("send-dvla-letters-for-day-via-api - finished queuing")
