@@ -746,6 +746,8 @@ def dao_get_letters_to_be_printed(print_run_deadline_local, query_limit=10000):
             Notification.notification_type == LETTER_TYPE,
             Notification.status == NOTIFICATION_CREATED,
             Notification.key_type == KEY_TYPE_NORMAL,
+            # we need billable_units as if a letter is stuck pre-validation, it'll be in state created but won't have a
+            # generated (or sanitised if precompiled) pdf associated with it.
             Notification.billable_units > 0,
         )
         .yield_per(query_limit)
