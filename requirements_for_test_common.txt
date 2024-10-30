@@ -1,4 +1,4 @@
-# This file is automatically copied from notifications-utils@86.1.0
+# This file is automatically copied from notifications-utils@88.0.1
 
 beautifulsoup4==4.11.1
 pytest==7.2.0
