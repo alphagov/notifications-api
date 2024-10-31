@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from flask import Blueprint, current_app, jsonify, request
 from itsdangerous import BadSignature
+from jsonschema import ValidationError
 
 from app import signing
 from app.celery.process_letter_client_response_tasks import process_letter_callback_data
@@ -141,7 +142,11 @@ def process_letter_callback():
     notification_id = parse_token(token)
 
     request_data = request.get_json(force=True)
-    validate(request_data, dvla_letter_callback_schema)
+    try:
+        validate(request_data, dvla_letter_callback_schema)
+    except ValidationError:
+        current_app.logger.error("Received invalid json schema: %s", request_data)
+        raise
 
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
