@@ -147,7 +147,7 @@ NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]  # duplicate that can pr
 
 
 # Language options supported for bilingual letter templates
-class LetterLanguageOptions(str, enum.Enum):
+class LetterLanguageOptions(enum.StrEnum):
     english = "english"
     welsh_then_english = "welsh_then_english"
 
@@ -247,7 +247,7 @@ ORGANISATION_PERMISSION_TYPES = [
 
 
 # Organisation user permissions
-class OrganisationUserPermissionTypes(enum.Enum):
+class OrganisationUserPermissionTypes(enum.StrEnum):
     can_make_services_live = "can_make_services_live"
 
 
