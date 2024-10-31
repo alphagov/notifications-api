@@ -22,7 +22,6 @@ from app.constants import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
-    POSTAGE_TYPES,
 )
 from app.cronitor import cronitor
 from app.dao.notifications_dao import (
@@ -148,8 +147,7 @@ def collate_letter_pdfs_to_be_sent(print_run_deadline_utc_str: str):
     print_run_deadline_local = convert_utc_to_bst(datetime.fromisoformat(print_run_deadline_utc_str))
     _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline_local)
 
-    for postage in POSTAGE_TYPES:
-        send_dvla_letters_via_api(print_run_deadline_local, postage)
+    send_dvla_letters_via_api(print_run_deadline_local)
 
     current_app.logger.info("finished collate-letter-pdfs-to-be-sent")
 
@@ -230,12 +228,12 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
         send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
 
-def send_dvla_letters_via_api(print_run_deadline_local, postage):
-    current_app.logger.info("send-dvla-letters-for-day-via-api - starting queuing for postage class %s", postage)
-    for letter in dao_get_letters_to_be_printed(print_run_deadline_local, postage):
+def send_dvla_letters_via_api(print_run_deadline_local):
+    current_app.logger.info("send-dvla-letters-for-day-via-api - starting queuing")
+    for letter in dao_get_letters_to_be_printed(print_run_deadline_local):
         deliver_letter.apply_async(kwargs={"notification_id": letter.id}, queue=QueueNames.SEND_LETTER)
 
-    current_app.logger.info("send-dvla-letters-for-day-via-api - finished queuing for postage class %s", postage)
+    current_app.logger.info("send-dvla-letters-for-day-via-api - finished queuing")
 
 
 @notify_celery.task(bind=True, name="sanitise-letter", max_retries=15, default_retry_delay=300)

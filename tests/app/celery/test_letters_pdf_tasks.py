@@ -312,12 +312,8 @@ class TestCollateLetterPdfsToBeSent:
         with freeze_time("2021-06-01T17:00+00:00"):
             collate_letter_pdfs_to_be_sent("2021-06-01T16:30:00")
 
-        assert mock_send_via_api.call_count == 4
         # Expected to be called with a local (BST) value
-        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "first")
-        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "second")
-        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "europe")
-        mock_send_via_api.assert_any_call(datetime(2021, 6, 1, 17, 30), "rest-of-world")
+        mock_send_via_api.assert_called_once_with(datetime(2021, 6, 1, 17, 30))
 
 
 def test_send_dvla_letters_via_api(sample_letter_template, mocker):
@@ -325,18 +321,21 @@ def test_send_dvla_letters_via_api(sample_letter_template, mocker):
 
     with freeze_time("2021-06-01 16:29"):
         first_class = create_notification(sample_letter_template, postage="first")
-        create_notification(sample_letter_template, postage="second")
-        create_notification(sample_letter_template, postage="rest-of-world")
+        second_class = create_notification(sample_letter_template, postage="second")
 
     with freeze_time("2021-06-01 16:31"):
         create_notification(sample_letter_template, postage="first")  # too recent
 
     # note print_run_deadline is in local time
-    send_dvla_letters_via_api(datetime(2021, 6, 1, 17, 30), "first")
+    send_dvla_letters_via_api(datetime(2021, 6, 1, 17, 30))
 
-    assert mock_celery.call_args_list == [
-        call(kwargs={"notification_id": first_class.id}, queue="send-letter-tasks"),
-    ]
+    mock_celery.assert_has_calls(
+        [
+            call(kwargs={"notification_id": first_class.id}, queue="send-letter-tasks"),
+            call(kwargs={"notification_id": second_class.id}, queue="send-letter-tasks"),
+        ],
+        any_order=True,
+    )
 
 
 def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker, letter_volumes_email_template):

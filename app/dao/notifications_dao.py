@@ -725,7 +725,7 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
     return notifications
 
 
-def dao_get_letters_to_be_printed(print_run_deadline_local, postage, query_limit=10000):
+def dao_get_letters_to_be_printed(print_run_deadline_local, query_limit=10000):
     """
     Return all letters created before the print run deadline that have not yet been sent. This yields in batches of 10k
     to prevent the query taking too long and eating up too much memory. As each 10k batch is yielded, we'll start
@@ -745,7 +745,6 @@ def dao_get_letters_to_be_printed(print_run_deadline_local, postage, query_limit
             Notification.notification_type == LETTER_TYPE,
             Notification.status == NOTIFICATION_CREATED,
             Notification.key_type == KEY_TYPE_NORMAL,
-            Notification.postage == postage,
             Notification.billable_units > 0,
         )
         .order_by(Notification.service_id, Notification.created_at)
