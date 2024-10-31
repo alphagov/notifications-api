@@ -98,7 +98,7 @@ dvla_letter_callback_schema = {
                         ],
                     },
                 },
-                "jobId": {"type": "string"},
+                "jobId": {"type": "string", "format": "uuid"},
                 "jobType": {"type": "string"},
                 "jobStatus": {"type": "string", "enum": [DVLA_NOTIFICATION_DISPATCHED, DVLA_NOTIFICATION_REJECTED]},
                 "templateReference": {"type": "string"},
@@ -145,7 +145,7 @@ def process_letter_callback():
 
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
-    check_token_matches_payload(token_id=notification_id, json_id=request_data["id"])
+    check_token_matches_payload(token_id=notification_id, json_id=request_data["data"]["jobId"])
 
     letter_update = extract_properties_from_request(request_data)
 

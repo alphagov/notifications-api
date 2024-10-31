@@ -180,6 +180,11 @@ def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client
             {"time": "invalid-time-format"},
             "time invalid-time-format is not a date-time",
         ),
+        # invalid `jobId` format
+        (
+            {"data": {"jobId": "1234 not a uuid 1234"}},
+            "data badly formed hexadecimal UUID string",
+        ),
     ],
 )
 def test_process_letter_callback_validation_for_required_fields(
@@ -310,6 +315,8 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
         data=json.dumps(data),
     )
 
+    assert response.status_code == 204, response.json
+
     mock_task.assert_called_once_with(
         queue="notify-internal-tasks",
         kwargs={
@@ -320,8 +327,6 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
             "despatch_date": datetime.date(2024, 8, 1),
         },
     )
-
-    assert response.status_code == 204
 
 
 @pytest.mark.parametrize("token", [None, "invalid-token"])
