@@ -6,6 +6,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+# was meant to be 0468_add_notifications_trgm_normto_cref_idxs but accidentally committed as this
 revision = "0468"
 down_revision = "0467_svc_join_approved_tmp"
 
