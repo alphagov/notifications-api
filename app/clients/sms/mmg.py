@@ -87,7 +87,6 @@ class MMGClient(SmsClient):
         self.api_key = self.current_app.config.get("MMG_API_KEY")
         self.mmg_url = self.current_app.config.get("MMG_URL")
         self.receipt_url = self.current_app.config.get("MMG_RECEIPT_URL")
-        self.requests_session = requests.Session()
 
     def try_send_sms(self, to, content, reference, international, sender):
         data = {"reqType": "BULK", "MSISDN": to, "msg": content, "sender": sender, "cid": reference, "multi": True}
