@@ -740,7 +740,8 @@ def dao_get_letters_to_be_printed(print_run_deadline_local, query_limit=10000):
     https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg12443.html
     """
     notifications = (
-        Notification.query.filter(
+        Notification.query.with_entities(Notification.id)
+        .filter(
             Notification.created_at < convert_bst_to_utc(print_run_deadline_local),
             Notification.notification_type == LETTER_TYPE,
             Notification.status == NOTIFICATION_CREATED,
