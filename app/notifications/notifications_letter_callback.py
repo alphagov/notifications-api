@@ -145,7 +145,7 @@ def process_letter_callback():
 
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
-    check_token_matches_payload(notification_id, request_data["id"])
+    check_token_matches_payload(token_id=notification_id, json_id=request_data["id"])
 
     letter_update = extract_properties_from_request(request_data)
 
@@ -172,12 +172,12 @@ def parse_token(token):
         raise InvalidRequest("A valid token must be provided in the query string", 403) from None
 
 
-def check_token_matches_payload(notification_id, request_id):
-    if notification_id != request_id:
+def check_token_matches_payload(token_id, json_id):
+    if token_id != json_id:
         current_app.logger.exception(
-            "Notification ID %s in letter callback data does not match token ID %s",
-            notification_id,
-            request_id,
+            "Notification ID in token does not match json. token: %s - json: %s",
+            token_id,
+            json_id,
         )
         raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
 
