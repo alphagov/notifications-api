@@ -11,6 +11,7 @@ import pytest
 import pytz
 import requests_mock
 from flask import current_app, url_for
+from kombu.serialization import dumps
 from sqlalchemy.orm.session import make_transient
 
 from app import db
@@ -1273,8 +1274,9 @@ def mock_celery_task(mocker):
             # this'll raise an exception if the args/kwargs don't match the function definition
             celery_task.__header__(*(args or ()), **(kwargs or {}))
             # make sure the values are all json serializable
-            json.dumps(args)
-            json.dumps(kwargs)
+
+            dumps(args, serializer="json")
+            dumps(kwargs, serializer="json")
 
         mock_apply_async = MagicMock(side_effect=check_apply_async)
 
