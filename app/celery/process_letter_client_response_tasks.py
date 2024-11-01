@@ -1,3 +1,6 @@
+import uuid
+from datetime import date
+
 from flask import current_app
 
 from app import notify_celery
@@ -12,10 +15,17 @@ from app.dao.notifications_dao import (
     dao_update_notification,
 )
 from app.exceptions import NotificationTechnicalFailureException
+from app.models import LetterCostThreshold
 
 
 @notify_celery.task(bind=True, name="process-letter-callback")
-def process_letter_callback_data(self, notification_id, page_count, dvla_status, cost_threshold, despatch_date):
+def process_letter_callback_data(
+    self, notification_id: str, page_count: int, dvla_status: str, cost_threshold: str, despatch_date: str
+):
+    notification_id = uuid.UUID(notification_id)
+    cost_threshold = LetterCostThreshold(cost_threshold)
+    despatch_date = date.fromisoformat(despatch_date)
+
     notification = dao_get_notification_or_history_by_id(notification_id)
 
     validate_billable_units(notification, page_count)
