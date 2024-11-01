@@ -54,7 +54,7 @@ case "$1" in
     exec $COMMON_CMD broadcast-tasks
     ;;
   api-worker-receipts)
-    exec $COMMON_CMD ses-callbacks,sms-callbacks
+    exec $COMMON_CMD ses-callbacks,sms-callbacks,letter-callbacks
     ;;
   api-worker-service-callbacks)
     exec $COMMON_CMD service-callbacks,service-callbacks-retry

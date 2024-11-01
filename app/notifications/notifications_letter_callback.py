@@ -162,7 +162,7 @@ def process_letter_callback():
             "cost_threshold": letter_update.cost_threshold,
             "despatch_date": letter_update.despatch_date,
         },
-        queue=QueueNames.NOTIFY,
+        queue=QueueNames.LETTER_CALLBACKS,
     )
 
     return {}, 204

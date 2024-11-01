@@ -318,7 +318,7 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
     assert response.status_code == 204, response.json
 
     mock_task.assert_called_once_with(
-        queue="notify-internal-tasks",
+        queue="letter-callbacks",
         kwargs={
             "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
             "page_count": 5,
