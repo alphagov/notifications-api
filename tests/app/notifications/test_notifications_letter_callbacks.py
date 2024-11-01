@@ -180,6 +180,11 @@ def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client
             {"time": "invalid-time-format"},
             "time invalid-time-format is not a date-time",
         ),
+        # invalid `jobId` format
+        (
+            {"data": {"jobId": "1234 not a uuid 1234"}},
+            "data badly formed hexadecimal UUID string",
+        ),
     ],
 )
 def test_process_letter_callback_validation_for_required_fields(
@@ -285,10 +290,6 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
         data=json.dumps(data),
     )
 
-    assert (
-        f"Notification ID {fake_uuid} in letter callback data does not match token ID {data['id']}"
-    ) in caplog.messages
-
     assert response.status_code == 400
     assert response.get_json()["errors"][0]["message"] == (
         "Notification ID in letter callback data does not match ID in token"
@@ -314,18 +315,18 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
         data=json.dumps(data),
     )
 
+    assert response.status_code == 204, response.json
+
     mock_task.assert_called_once_with(
         queue="notify-internal-tasks",
         kwargs={
             "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
-            "page_count": "5",
-            "status": status,
+            "page_count": 5,
+            "dvla_status": status,
             "cost_threshold": LetterCostThreshold.unsorted,
             "despatch_date": datetime.date(2024, 8, 1),
         },
     )
-
-    assert response.status_code == 204
 
 
 @pytest.mark.parametrize("token", [None, "invalid-token"])
@@ -339,29 +340,16 @@ def test_parse_token_invalid(client, token, caplog, mocker):
     assert "A valid token must be provided in the query string" in str(e.value)
 
 
-@pytest.mark.parametrize(
-    "notification_id, request_id, should_raise_exception",
-    [
-        ("12345", "12345", False),
-        ("12345", "67890", True),
-    ],
-    ids=[
-        "IDs match, no exception",
-        "IDs do not match, exception expected",
-    ],
-)
-def test_check_token_matches_payload(notification_id, request_id, should_raise_exception, caplog):
-    if should_raise_exception:
-        with pytest.raises(InvalidRequest):
-            check_token_matches_payload(notification_id, request_id)
+def test_check_token_fails_invalid_payload(caplog, client):
+    with pytest.raises(InvalidRequest):
+        check_token_matches_payload(token_id="12345", json_id="67890")
 
-        assert (
-            f"Notification ID {notification_id} in letter callback data does not match token ID {request_id}"
-        ) in caplog.messages
+    assert "Notification ID in token does not match json. token: 12345 - json: 67890" in caplog.messages
 
-    else:
-        check_token_matches_payload(notification_id, request_id)
-        assert not caplog.records, "Expected no log messages, but some were captured."
+
+def test_check_token_passes_matching_paylods(caplog, client):
+    check_token_matches_payload(token_id="12345", json_id="12345")
+    assert not caplog.records, "Expected no log messages, but some were captured."
 
 
 def test_extract_properties_from_request(mock_dvla_callback_data):
@@ -381,7 +369,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
 
     letter_update = extract_properties_from_request(data)
 
-    assert letter_update.page_count == "10"
+    assert letter_update.page_count == 10
     assert letter_update.status == "REJECTED"
     assert letter_update.cost_threshold == LetterCostThreshold.unsorted
     assert letter_update.despatch_date == datetime.date(2024, 10, 15)

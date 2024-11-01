@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from flask import Blueprint, current_app, jsonify, request
 from itsdangerous import BadSignature
+from jsonschema import ValidationError
 
 from app import signing
 from app.celery.process_letter_client_response_tasks import process_letter_callback_data
@@ -98,7 +99,7 @@ dvla_letter_callback_schema = {
                         ],
                     },
                 },
-                "jobId": {"type": "string"},
+                "jobId": {"type": "string", "format": "uuid"},
                 "jobType": {"type": "string"},
                 "jobStatus": {"type": "string", "enum": [DVLA_NOTIFICATION_DISPATCHED, DVLA_NOTIFICATION_REJECTED]},
                 "templateReference": {"type": "string"},
@@ -141,11 +142,15 @@ def process_letter_callback():
     notification_id = parse_token(token)
 
     request_data = request.get_json(force=True)
-    validate(request_data, dvla_letter_callback_schema)
+    try:
+        validate(request_data, dvla_letter_callback_schema)
+    except ValidationError:
+        current_app.logger.error("Received invalid json schema: %s", request_data)
+        raise
 
     current_app.logger.info("Letter callback for notification id %s received", notification_id)
 
-    check_token_matches_payload(notification_id, request_data["id"])
+    check_token_matches_payload(token_id=notification_id, json_id=request_data["data"]["jobId"])
 
     letter_update = extract_properties_from_request(request_data)
 
@@ -153,7 +158,7 @@ def process_letter_callback():
         kwargs={
             "notification_id": notification_id,
             "page_count": letter_update.page_count,
-            "status": letter_update.status,
+            "dvla_status": letter_update.status,
             "cost_threshold": letter_update.cost_threshold,
             "despatch_date": letter_update.despatch_date,
         },
@@ -172,29 +177,29 @@ def parse_token(token):
         raise InvalidRequest("A valid token must be provided in the query string", 403) from None
 
 
-def check_token_matches_payload(notification_id, request_id):
-    if notification_id != request_id:
+def check_token_matches_payload(token_id, json_id):
+    if token_id != json_id:
         current_app.logger.exception(
-            "Notification ID %s in letter callback data does not match token ID %s",
-            notification_id,
-            request_id,
+            "Notification ID in token does not match json. token: %s - json: %s",
+            token_id,
+            json_id,
         )
         raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
 
 
 @dataclass
 class LetterUpdate:
-    page_count: str
+    page_count: int
     status: str
     cost_threshold: LetterCostThreshold
-    despatch_date: str
+    despatch_date: datetime.date
 
 
 def extract_properties_from_request(request_data) -> LetterUpdate:
     despatch_properties = request_data["data"]["despatchProperties"]
 
     # Since validation guarantees the presence of "totalSheets", we can directly extract it
-    page_count = next(item["value"] for item in despatch_properties if item["key"] == "totalSheets")
+    page_count = int(next(item["value"] for item in despatch_properties if item["key"] == "totalSheets"))
     status = request_data["data"]["jobStatus"]
 
     mailing_product = next(item["value"] for item in despatch_properties if item["key"] == "mailingProduct")

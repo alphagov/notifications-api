@@ -1850,7 +1850,7 @@ class NotificationHistory(db.Model):
     )
 
 
-class LetterCostThreshold(enum.Enum):
+class LetterCostThreshold(enum.StrEnum):
     sorted = "sorted"
     unsorted = "unsorted"
 

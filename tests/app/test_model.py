@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import call
 
@@ -21,7 +22,7 @@ from app.constants import (
     PRECOMPILED_TEMPLATE_NAME,
     SMS_TYPE,
 )
-from app.models import Notification, ServiceGuestList
+from app.models import LetterCostThreshold, Notification, ServiceGuestList
 from tests.app.db import (
     create_inbound_number,
     create_letter_contact,
@@ -519,3 +520,7 @@ def test_user_can_use_webauthn_if_they_login_with_it(sample_user, auth_type, can
 
 def test_user_can_use_webauthn_if_in_notify_team(notify_service):
     assert notify_service.users[0].can_use_webauthn
+
+
+def test_letter_cost_threshold_is_json_serializable():
+    assert json.dumps(LetterCostThreshold.sorted) == '"sorted"'
