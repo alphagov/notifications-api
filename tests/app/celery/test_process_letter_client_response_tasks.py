@@ -41,7 +41,7 @@ def test_process_letter_callback_data_validate_billable_units(mocker, sample_let
         1,
         DVLA_NOTIFICATION_DISPATCHED,
         str(LetterCostThreshold.unsorted),
-        date(2024, 8, 10).isoformat(),
+        date(2024, 8, 10),
     )
 
     mock_validate_billable_units.assert_called_once_with(sample_letter_notification, 1)
@@ -55,7 +55,7 @@ def test_process_letter_callback_data_dao_update_notification_despatched_status(
         1,
         DVLA_NOTIFICATION_DISPATCHED,
         str(LetterCostThreshold.unsorted),
-        date(2024, 7, 9).isoformat(),
+        date(2024, 7, 9),
     )
 
     assert sample_letter_notification.status == NOTIFICATION_DELIVERED
@@ -81,7 +81,7 @@ def test_process_letter_callback_data_dao_update_notification_rejected_status(sa
             1,
             DVLA_NOTIFICATION_REJECTED,
             str(LetterCostThreshold.sorted),
-            date(2024, 7, 8).isoformat(),
+            date(2024, 7, 8),
         )
 
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
@@ -105,7 +105,7 @@ def test_process_letter_callback_data_dao_update_notification_despatched_status_
         1,
         DVLA_NOTIFICATION_DISPATCHED,
         str(LetterCostThreshold.sorted),
-        date(2024, 7, 10).isoformat(),
+        date(2024, 7, 10),
     )
 
     assert notification.status == NOTIFICATION_DELIVERED
@@ -139,7 +139,7 @@ def test_process_letter_callback_data_dao_update_notification_rejected_status_hi
             1,
             DVLA_NOTIFICATION_REJECTED,
             str(LetterCostThreshold.unsorted),
-            date(2024, 3, 1).isoformat(),
+            date(2024, 3, 1),
         )
 
     assert notification.status == NOTIFICATION_TECHNICAL_FAILURE
@@ -164,7 +164,7 @@ def test_process_letter_callback_data_duplicate_update(sample_letter_notificatio
         1,
         DVLA_NOTIFICATION_DISPATCHED,
         str(LetterCostThreshold.unsorted),
-        date(2024, 7, 8).isoformat(),
+        date(2024, 7, 8),
     )
 
     assert sample_letter_notification.status == initial_status
