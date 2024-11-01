@@ -4,7 +4,9 @@ import json
 import textwrap
 import uuid
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
+import celery
 import pytest
 import pytz
 import requests_mock
@@ -14,6 +16,7 @@ from sqlalchemy.orm.session import make_transient
 from app import db
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -1260,3 +1263,27 @@ def mock_dvla_callback_data():
         return data
 
     return _mock_dvla_callback_data
+
+
+@pytest.fixture
+def mock_celery_task(mocker):
+
+    def celery_mocker(celery_task: celery.local.PromiseProxy) -> MagicMock:
+        def check_apply_async(
+            args: tuple | list | None = None,
+            kwargs: dict | None = None,
+            queue=None,
+            **options,
+        ):
+            assert queue in QueueNames.all_queues()
+            # this'll raise an exception if the args/kwargs don't match the function definition
+            celery_task.__header__(*(args or ()), **(kwargs or {}))
+            # make sure the values are all json serializable
+            json.dumps(args)
+            json.dumps(kwargs)
+
+        mock_apply_async = MagicMock(side_effect=check_apply_async)
+
+        return mocker.patch.object(celery_task, "apply_async", new=mock_apply_async)
+
+    return celery_mocker
