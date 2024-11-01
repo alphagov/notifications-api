@@ -321,7 +321,7 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
         queue="notify-internal-tasks",
         kwargs={
             "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
-            "page_count": "5",
+            "page_count": 5,
             "dvla_status": status,
             "cost_threshold": LetterCostThreshold.unsorted,
             "despatch_date": datetime.date(2024, 8, 1),
@@ -369,7 +369,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
 
     letter_update = extract_properties_from_request(data)
 
-    assert letter_update.page_count == "10"
+    assert letter_update.page_count == 10
     assert letter_update.status == "REJECTED"
     assert letter_update.cost_threshold == LetterCostThreshold.unsorted
     assert letter_update.despatch_date == datetime.date(2024, 10, 15)

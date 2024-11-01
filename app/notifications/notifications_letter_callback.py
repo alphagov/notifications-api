@@ -189,17 +189,17 @@ def check_token_matches_payload(token_id, json_id):
 
 @dataclass
 class LetterUpdate:
-    page_count: str
+    page_count: int
     status: str
     cost_threshold: LetterCostThreshold
-    despatch_date: str
+    despatch_date: datetime.date
 
 
 def extract_properties_from_request(request_data) -> LetterUpdate:
     despatch_properties = request_data["data"]["despatchProperties"]
 
     # Since validation guarantees the presence of "totalSheets", we can directly extract it
-    page_count = next(item["value"] for item in despatch_properties if item["key"] == "totalSheets")
+    page_count = int(next(item["value"] for item in despatch_properties if item["key"] == "totalSheets"))
     status = request_data["data"]["jobStatus"]
 
     mailing_product = next(item["value"] for item in despatch_properties if item["key"] == "mailingProduct")
