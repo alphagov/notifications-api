@@ -67,10 +67,11 @@ class SmsClient(Client):
             elapsed_time = monotonic() - start_time
             self.statsd_client.timing(f"clients.{self.name}.request-time", elapsed_time)
             self.current_app.logger.info(
-                "%s request for %s finished in %s",
+                "%s request for %s finished in %s, headers %s",
                 self.name,
                 reference,
                 elapsed_time,
+                str(response.headers),
                 extra={
                     "provider_name": self.name,
                     "reference": reference,
