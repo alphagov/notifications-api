@@ -358,8 +358,19 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     # 2.receipt for request invite notification to the user that initiated the invite request.
 
     notifications = Notification.query.all()
-    manager_notification = [n for n in notifications if n.personalisation["name"] == service_manager_1.name][0]
-    user_notification = [n for n in notifications if n.personalisation["name"] == user_requesting_invite.name][0]
+    manager_notification = [
+        n
+        for n in notifications
+        if n.personalisation.get("approver_name") == service_manager_1.name
+        and n.template_id == request_invite_email_template.id
+    ][0]
+
+    user_notification = [
+        n
+        for n in notifications
+        if n.personalisation.get("requester_name") == user_requesting_invite.name
+        and n.template_id == receipt_for_request_invite_email_template.id
+    ][0]
 
     mocked.call_count = 3
     assert len(notifications) == 3
@@ -385,14 +396,14 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
 
     # Receipt for request invite notification
     assert user_notification.personalisation == {
-        "name": user_requesting_invite.name,
-        "service name": "Sample service",
-        "service admin names": [
+        "requester_name": user_requesting_invite.name,
+        "service_name": "Sample service",
+        "service_admin_names": [
             "Manager 1 – manager.1@example.gov.uk",
             "Manager 2 – manager.2@example.gov.uk",
             "Manager 3 – manager.3@example.gov.uk",
         ],
-        "request again url": f"{invite_link_host}/services/{sample_service.id}/join",
+        "url_ask_to_join_page": f"{invite_link_host}/services/{sample_service.id}/join",
     }
     assert user_notification.reply_to_text == "notify@gov.uk"
 
