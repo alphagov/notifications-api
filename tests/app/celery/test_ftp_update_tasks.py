@@ -5,6 +5,7 @@ import pytest
 from flask import current_app
 from freezegun import freeze_time
 
+from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.tasks import (
     check_billable_units,
     get_billing_date_in_bst_from_filename,
@@ -196,7 +197,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
 
 
 def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(
-    notify_api, mocker, sample_letter_template
+    notify_api, mocker, sample_letter_template, mock_celery_task
 ):
     sent_letter = create_notification(
         sample_letter_template, reference="ref-foo", status=NOTIFICATION_SENDING, billable_units=0
@@ -204,7 +205,7 @@ def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(
     valid_file = f"{sent_letter.reference}|Sent|1|Unsorted|2022-08-11\n"
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
 
-    send_mock = mocker.patch("app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async")
+    send_mock = mock_celery_task(send_delivery_status_to_service)
 
     update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
     send_mock.assert_not_called()

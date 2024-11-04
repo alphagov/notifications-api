@@ -1,5 +1,7 @@
 import pytest
 
+from app.celery.tasks import process_returned_letters_list
+
 
 @pytest.mark.parametrize(
     "status, references",
@@ -11,8 +13,8 @@ import pytest
         (400, ["NOTIFY0001234567890ABCDEF", "1234567890ABCDEG"]),
     ],
 )
-def test_process_returned_letters(status, references, admin_request, mocker):
-    mock_celery = mocker.patch("app.letters.rest.process_returned_letters_list.apply_async")
+def test_process_returned_letters(status, references, admin_request, mock_celery_task):
+    mock_celery = mock_celery_task(process_returned_letters_list)
 
     response = admin_request.post(
         "letter-job.create_process_returned_letters_job", _data={"references": references}, _expected_status=status
@@ -24,8 +26,8 @@ def test_process_returned_letters(status, references, admin_request, mocker):
         mock_celery.assert_called_once_with(args=(references,), queue="database-tasks", compression="zlib")
 
 
-def test_process_returned_letters_splits_tasks_up(admin_request, mocker):
-    mock_celery = mocker.patch("app.letters.rest.process_returned_letters_list.apply_async")
+def test_process_returned_letters_splits_tasks_up(admin_request, mocker, mock_celery_task):
+    mock_celery = mock_celery_task(process_returned_letters_list)
     mocker.patch("app.letters.rest.MAX_REFERENCES_PER_TASK", 3)
 
     references = [f"{x:016}" for x in range(10)]

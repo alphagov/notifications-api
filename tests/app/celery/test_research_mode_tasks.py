@@ -7,6 +7,7 @@ import requests_mock
 from flask import current_app, json
 from freezegun import freeze_time
 
+from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.celery.research_mode_tasks import (
     create_fake_letter_response_file,
     firetext_callback,
@@ -56,14 +57,14 @@ def test_make_firetext_callback(notify_api, rmock, phone_number):
     assert f"mobile={phone_number}" in rmock.request_history[0].text
 
 
-def test_make_ses_callback(notify_api, mocker):
-    mock_task = mocker.patch("app.celery.research_mode_tasks.process_ses_results")
+def test_make_ses_callback(notify_api, mock_celery_task):
+    mock_task = mock_celery_task(process_ses_results)
     some_ref = str(uuid.uuid4())
 
     send_email_response(reference=some_ref, to="test@test.com")
 
-    mock_task.apply_async.assert_called_once_with(ANY, queue=QueueNames.RESEARCH_MODE)
-    assert mock_task.apply_async.call_args[0][0][0] == ses_notification_callback(some_ref)
+    mock_task.assert_called_once_with(ANY, queue=QueueNames.RESEARCH_MODE)
+    assert mock_task.call_args[0][0][0] == ses_notification_callback(some_ref)
 
 
 @pytest.mark.parametrize(

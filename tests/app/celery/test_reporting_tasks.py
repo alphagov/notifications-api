@@ -10,6 +10,7 @@ from app.celery.reporting_tasks import (
     create_nightly_notification_status,
     create_nightly_notification_status_for_service_and_day,
     create_or_update_ft_billing_for_day,
+    create_or_update_ft_billing_letter_despatch_for_day,
 )
 from app.config import QueueNames
 from app.constants import (
@@ -52,29 +53,24 @@ def mocker_get_rate(
         ("2019-07-21", [f"2019-07-{21-i}" for i in range(10)]),
     ],
 )
-def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mocker, day_start, expected_kwargs):
-    mock_ft_billing = mocker.patch("app.celery.reporting_tasks.create_or_update_ft_billing_for_day")
-    mock_ft_billing_letter_despatch = mocker.patch(
-        "app.celery.reporting_tasks.create_or_update_ft_billing_letter_despatch_for_day"
-    )
+def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mock_celery_task, day_start, expected_kwargs):
+    mock_ft_billing = mock_celery_task(create_or_update_ft_billing_for_day)
+    mock_ft_billing_letter_despatch = mock_celery_task(create_or_update_ft_billing_letter_despatch_for_day)
     create_nightly_billing(day_start)
 
     for mock in [mock_ft_billing, mock_ft_billing_letter_despatch]:
-        assert mock.apply_async.call_count == 10
+        assert mock.call_count == 10
         for i in range(10):
-            assert mock.apply_async.call_args_list[i][1]["kwargs"] == {"process_day": expected_kwargs[i]}
+            assert mock.call_args_list[i][1]["kwargs"] == {"process_day": expected_kwargs[i]}
 
 
 @freeze_time("2019-08-01T00:30")
 def test_create_nightly_notification_status_triggers_tasks(
-    notify_api,
     sample_service,
     sample_template,
-    mocker,
+    mock_celery_task,
 ):
-    mock_celery = mocker.patch(
-        "app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day"
-    ).apply_async
+    mock_celery = mock_celery_task(create_nightly_notification_status_for_service_and_day)
 
     create_notification(template=sample_template, created_at="2019-07-31")
     create_nightly_notification_status()
@@ -98,15 +94,12 @@ def test_create_nightly_notification_status_triggers_tasks(
     ],
 )
 def test_create_nightly_notification_status_triggers_relevant_tasks(
-    notify_api,
     sample_service,
-    mocker,
+    mock_celery_task,
     notification_date,
     expected_types_aggregated,
 ):
-    mock_celery = mocker.patch(
-        "app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day"
-    ).apply_async
+    mock_celery = mock_celery_task(create_nightly_notification_status_for_service_and_day)
 
     for notification_type in NOTIFICATION_TYPES:
         template = create_template(sample_service, template_type=notification_type)
