@@ -1358,8 +1358,9 @@ def update_service_join_request(request_id: uuid.UUID):
         requester_user = get_user_by_id(updated_request.requester_id)
         approver_user = get_user_by_id(updated_request.status_changed_by_id)
         service = dao_fetch_service_by_id(updated_request.service_id)
+        folder_permissions = data.get("folder_permissions", [])
 
-        dao_add_user_to_service(service, requester_user, permissions)
+        dao_add_user_to_service(service, requester_user, permissions, folder_permissions)
 
         send_service_join_request_decision_email(
             requester_email_address=requester_user.email_address,
