@@ -192,6 +192,20 @@ export MMG_INBOUND_SMS_AUTH={current_app.config['MMG_INBOUND_SMS_AUTH'][0]}
 
 export REQUEST_BIN_API_TOKEN={request_bin_api_token}
 
+# Exporting for integration tests: TODO ACTUALLY GENERATE THESE - THEY WON'T WORK
+export API_CLIENT_INTEGRATION_TESTS_SERVICE_ID='{service.id}'
+export API_CLIENT_INTEGRATION_TESTS_EMAIL='{service_admin_user.email_address}'
+export API_CLIENT_INTEGRATION_TESTS_NUMBER=07700900501
+export API_CLIENT_INTEGRATION_TESTS_EMAIL_TEMPLATE_ID={template1_id}
+export API_CLIENT_INTEGRATION_TESTS_SMS_TEMPLATE_ID={template2_id}
+export API_CLIENT_INTEGRATION_TESTS_LETTER_TEMPLATE_ID={template3_id}
+export API_CLIENT_INTEGRATION_TESTS_EMAIL_REPLY_TO_ID=tba-41ef-43cd-a04a-tba
+export API_CLIENT_INTEGRATION_TESTS_SMS_SENDER_ID=tba-c52f-4648-abb6-tba
+export API_CLIENT_INTEGRATION_TESTS_NOTIFY_API_URL={current_app.config['API_HOST_NAME']}
+export API_CLIENT_INTEGRATION_TESTS_TEST_API_KEY='{function_tests_live_key_name}-{service.id}-{api_key_live_key.secret}'
+export API_CLIENT_INTEGRATION_TESTS_TEAM_API_KEY='{function_tests_live_key_name}-{service.id}-{api_key_live_key.secret}'
+export API_CLIENT_INTEGRATION_TESTS_INBOUND_SMS_API_KEY='{function_tests_live_key_name}-a-{api_key_live_key.secret}'
+
 """
 
     if functional_test_env_file != "":
