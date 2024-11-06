@@ -1484,6 +1484,14 @@ class Notification(db.Model):
         ),
     )
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_notifications_service_id_api_key_id", ("service_id", "api_key_id"), ("dependencies",)),
+        ("st_dep_notifications_service_id_job_id", ("service_id", "job_id"), ("dependencies",)),
+        ("st_dep_notifications_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
+        ("st_dep_notifications_template_id_notification_type", ("template_id", "notification_type"), ("dependencies",)),
+    )
+
     @property
     def personalisation(self):
         if self._personalisation:

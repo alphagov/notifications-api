@@ -4,6 +4,7 @@ from unittest.mock import call
 
 import pytest
 from freezegun import freeze_time
+from sqlalchemy import func, literal_column, select, table
 from sqlalchemy.exc import IntegrityError
 
 from app import signing
@@ -398,6 +399,56 @@ def test_notification_references_template_history(client, sample_template):
 
     assert res["body"] == noti.template.content
     assert noti.template.content != sample_template.content
+
+
+@pytest.mark.parametrize("model", (Notification,))
+def test_extended_statistics_presence(notify_db_session, model):
+    """
+    Test that the extended statistics objects in the fully-migrated database correspond to
+    those declared on a model's  __extended_statistics__
+    """
+
+    # a map of internal statistics kind labels to those used in the
+    # CREATE STATISTICS syntax
+    kinds_map = {
+        "d": "ndistinct",
+        "f": "dependencies",
+        "m": "mcv",
+    }
+
+    # it would be much more convenient to use the pg_stats_ext view, but
+    # that doesn't show entries for empty tables with no statistics - which
+    # is how tables tend to appear in these tests - so we have to do a lot
+    # of the joining nonsense ourselves.
+    # NOTE not handled: expression statistics
+    assert frozenset(
+        (
+            (name, frozenset(attnames), frozenset(kinds_map[kind] for kind in kinds))
+            for name, attnames, kinds in notify_db_session.execute(
+                select(
+                    literal_column("stxname"),
+                    select(func.array_agg(literal_column("attname")))
+                    .select_from(table("pg_attribute"))
+                    .where(
+                        literal_column("pg_attribute.attrelid") == literal_column("pg_statistic_ext.stxrelid"),
+                        literal_column("pg_attribute.attnum") == literal_column("pg_statistic_ext.stxkeys").any_(),
+                    )
+                    .scalar_subquery(),
+                    literal_column("stxkind"),
+                )
+                .select_from(
+                    table("pg_statistic_ext"),
+                    table("pg_class"),
+                )
+                .where(
+                    literal_column("pg_class.oid") == literal_column("pg_statistic_ext.stxrelid"),
+                    literal_column("pg_class.relname") == model.__tablename__,
+                )
+            ).fetchall()
+        )
+    ) == frozenset(
+        ((name, frozenset(attnames), frozenset(kinds)) for name, attnames, kinds in model.__extended_statistics__)
+    )
 
 
 def test_notification_requires_a_valid_template_version(client, sample_template):
