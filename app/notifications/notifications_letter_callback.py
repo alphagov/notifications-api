@@ -1,5 +1,6 @@
 import datetime
 import json
+import uuid
 from dataclasses import dataclass
 
 from flask import Blueprint, current_app, jsonify, request
@@ -156,7 +157,7 @@ def process_letter_callback():
 
     process_letter_callback_data.apply_async(
         kwargs={
-            "notification_id": notification_id,
+            "notification_id": uuid.UUID(notification_id),
             "page_count": letter_update.page_count,
             "dvla_status": letter_update.status,
             "cost_threshold": letter_update.cost_threshold,

@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 import pytest
 from flask import json, url_for
@@ -320,7 +321,7 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
     mock_task.assert_called_once_with(
         queue="letter-callbacks",
         kwargs={
-            "notification_id": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
+            "notification_id": uuid.UUID("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
             "page_count": 5,
             "dvla_status": status,
             "cost_threshold": LetterCostThreshold.unsorted,

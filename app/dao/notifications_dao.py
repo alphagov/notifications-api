@@ -1,3 +1,4 @@
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import groupby
@@ -898,7 +899,7 @@ def dao_record_letter_despatched_on(reference: str, despatched_on: datetime.date
 
 @autocommit
 def dao_record_letter_despatched_on_by_id(
-    notification_id: str,
+    notification_id: uuid.UUID,
     despatched_on: datetime.date,
     cost_threshold: LetterCostThreshold,
 ):
