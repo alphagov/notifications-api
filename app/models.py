@@ -1490,6 +1490,10 @@ class Notification(db.Model):
         ("st_dep_notifications_service_id_job_id", ("service_id", "job_id"), ("dependencies",)),
         ("st_dep_notifications_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
         ("st_dep_notifications_template_id_notification_type", ("template_id", "notification_type"), ("dependencies",)),
+        # most common values
+        ("st_mcv_notifications_notification_type_status", ("notification_type", "notification_status"), ("mcv",)),
+        ("st_mcv_notifications_service_id_key_type", ("service_id", "key_type"), ("mcv",)),
+        ("st_mcv_notifications_service_id_notification_type", ("service_id", "notification_type"), ("mcv",)),
     )
 
     @property
