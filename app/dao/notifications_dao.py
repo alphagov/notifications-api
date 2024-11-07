@@ -726,7 +726,7 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
     return notifications
 
 
-def dao_get_letters_to_be_printed(print_run_deadline_local, postage, query_limit=10000):
+def dao_get_letters_to_be_printed(print_run_deadline_local, query_limit=10000):
     """
     Return all letters created before the print run deadline that have not yet been sent. This yields in batches of 10k
     to prevent the query taking too long and eating up too much memory. As each 10k batch is yielded, we'll start
@@ -741,15 +741,16 @@ def dao_get_letters_to_be_printed(print_run_deadline_local, postage, query_limit
     https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg12443.html
     """
     notifications = (
-        Notification.query.filter(
+        Notification.query.with_entities(Notification.id)
+        .filter(
             Notification.created_at < convert_bst_to_utc(print_run_deadline_local),
             Notification.notification_type == LETTER_TYPE,
             Notification.status == NOTIFICATION_CREATED,
             Notification.key_type == KEY_TYPE_NORMAL,
-            Notification.postage == postage,
+            # we need billable_units as if a letter is stuck pre-validation, it'll be in state created but won't have a
+            # generated (or sanitised if precompiled) pdf associated with it.
             Notification.billable_units > 0,
         )
-        .order_by(Notification.service_id, Notification.created_at)
         .yield_per(query_limit)
     )
     return notifications
