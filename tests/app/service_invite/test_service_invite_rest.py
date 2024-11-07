@@ -388,6 +388,7 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     assert manager_notification.personalisation["service_name"] == sample_service.name
     assert manager_notification.personalisation["reason_given"] == expected_reason_given
     assert manager_notification.personalisation["reason"] == expected_reason
+    assert manager_notification.to == service_manager_1.email_address
     assert (
         manager_notification.personalisation["url"]
         == f"{invite_link_host}/services/{sample_service.id}/users/invite/{user_requesting_invite.id}"
