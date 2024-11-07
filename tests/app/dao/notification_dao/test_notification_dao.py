@@ -1521,39 +1521,27 @@ def test_notifications_not_yet_sent_return_no_rows(sample_service, notification_
     assert len(results) == 0
 
 
-def test_letters_to_be_printed_sort_by_service(notify_db_session):
+def test_letters_to_be_printed_returns_ids(notify_db_session):
     first_service = create_service(service_name="first service", service_id="3a5cea08-29fd-4bb9-b582-8dedd928b149")
     second_service = create_service(service_name="second service", service_id="642bf33b-54b5-45f2-8c13-942a46616704")
     first_template = create_template(service=first_service, template_type="letter", postage="second")
     second_template = create_template(service=second_service, template_type="letter", postage="second")
-    letters_ordered_by_service_then_time = [
-        create_notification(template=first_template, created_at=datetime(2020, 12, 1, 9, 30)),
-        create_notification(template=first_template, created_at=datetime(2020, 12, 1, 12, 30)),
-        create_notification(template=first_template, created_at=datetime(2020, 12, 1, 13, 30)),
-        create_notification(template=first_template, created_at=datetime(2020, 12, 1, 14, 30)),
-        create_notification(template=first_template, created_at=datetime(2020, 12, 1, 15, 30)),
-        create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 30)),
-        create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 31)),
-        create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 32)),
-        create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 33)),
-        create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 34)),
-    ]
+    email_template = create_template(service=first_service, template_type="email")
+
+    printed_notifications = {
+        create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30)),
+        create_notification(second_template, created_at=datetime(2020, 12, 1, 8, 30)),
+    }
+    # unprinted_notifications
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 17, 31)),  # too late
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test"),  # wrong keytype
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test"),  # wrong keytype
+    create_notification(email_template, created_at=datetime(2020, 12, 1, 9, 30))  # email
+    # no billable units (probably still in virus scan/sanitsation phase)
+    create_notification(template=first_template, created_at=datetime(2020, 12, 1, 9, 31), billable_units=0)
 
     results = list(dao_get_letters_to_be_printed(print_run_deadline_local=datetime(2020, 12, 1, 17, 30), query_limit=4))
-    assert [x.id for x in results] == [x.id for x in letters_ordered_by_service_then_time]
-
-
-def test_letters_to_be_printed_does_not_include_letters_without_billable_units_set(
-    notify_db_session, sample_letter_template
-):
-    included_letter = create_notification(
-        template=sample_letter_template, created_at=datetime(2020, 12, 1, 9, 30), billable_units=3
-    )
-    create_notification(template=sample_letter_template, created_at=datetime(2020, 12, 1, 9, 31), billable_units=0)
-
-    results = list(dao_get_letters_to_be_printed(print_run_deadline_local=datetime(2020, 12, 1, 17, 30), query_limit=4))
-    assert len(results) == 1
-    assert results[0].id == included_letter.id
+    assert sorted(x.id for x in results) == sorted(x.id for x in printed_notifications)
 
 
 def test_dao_get_letters_and_sheets_volume_by_postage(notify_db_session):
