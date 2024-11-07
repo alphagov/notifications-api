@@ -176,7 +176,7 @@ def send_service_invite_request(
             saved_notification = persist_notification(
                 template_id=template.id,
                 template_version=template.version,
-                recipient="notify-join-service-request@digital.cabinet-office.gov.uk",
+                recipient=recipient.email_address,
                 service=notify_service,
                 personalisation={
                     "approver_name": recipient.name,
