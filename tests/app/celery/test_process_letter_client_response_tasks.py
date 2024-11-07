@@ -24,7 +24,7 @@ def test_mock_validate_billable_units_logs_error_if_billable_units_do_not_match_
     sample_letter_notification,
     caplog,
 ):
-    validate_billable_units(sample_letter_notification, "5")
+    validate_billable_units(sample_letter_notification, 5)
 
     assert (
         f"Notification with id {sample_letter_notification.id} has 1 billable_units but DVLA says page count is 5"
@@ -37,24 +37,24 @@ def test_process_letter_callback_data_validate_billable_units(mocker, sample_let
     )
 
     process_letter_callback_data(
-        sample_letter_notification.id,
-        "1",
+        str(sample_letter_notification.id),
+        1,
         DVLA_NOTIFICATION_DISPATCHED,
-        LetterCostThreshold.unsorted,
+        str(LetterCostThreshold.unsorted),
         date(2024, 8, 10),
     )
 
-    mock_validate_billable_units.assert_called_once_with(sample_letter_notification, "1")
+    mock_validate_billable_units.assert_called_once_with(sample_letter_notification, 1)
 
 
 @freeze_time("2024-07-05T10:00:00")
 def test_process_letter_callback_data_dao_update_notification_despatched_status(sample_letter_notification):
     assert sample_letter_notification.updated_at is None
     process_letter_callback_data(
-        sample_letter_notification.id,
-        "1",
+        str(sample_letter_notification.id),
+        1,
         DVLA_NOTIFICATION_DISPATCHED,
-        LetterCostThreshold.unsorted,
+        str(LetterCostThreshold.unsorted),
         date(2024, 7, 9),
     )
 
@@ -77,10 +77,10 @@ def test_process_letter_callback_data_dao_update_notification_rejected_status(sa
 
     with pytest.raises(NotificationTechnicalFailureException):
         process_letter_callback_data(
-            sample_letter_notification.id,
-            "1",
+            str(sample_letter_notification.id),
+            1,
             DVLA_NOTIFICATION_REJECTED,
-            LetterCostThreshold.sorted,
+            str(LetterCostThreshold.sorted),
             date(2024, 7, 8),
         )
 
@@ -101,10 +101,10 @@ def test_process_letter_callback_data_dao_update_notification_despatched_status_
     notification.updated_at = datetime.now() - timedelta(days=1)
 
     process_letter_callback_data(
-        notification.id,
-        "1",
+        str(notification.id),
+        1,
         DVLA_NOTIFICATION_DISPATCHED,
-        LetterCostThreshold.sorted,
+        str(LetterCostThreshold.sorted),
         date(2024, 7, 10),
     )
 
@@ -135,10 +135,10 @@ def test_process_letter_callback_data_dao_update_notification_rejected_status_hi
 
     with pytest.raises(NotificationTechnicalFailureException):
         process_letter_callback_data(
-            notification.id,
-            "1",
+            str(notification.id),
+            1,
             DVLA_NOTIFICATION_REJECTED,
-            LetterCostThreshold.unsorted,
+            str(LetterCostThreshold.unsorted),
             date(2024, 3, 1),
         )
 
@@ -160,10 +160,10 @@ def test_process_letter_callback_data_duplicate_update(sample_letter_notificatio
     sample_letter_notification.updated_at = yesterday
 
     process_letter_callback_data(
-        sample_letter_notification.id,
-        "1",
+        str(sample_letter_notification.id),
+        1,
         DVLA_NOTIFICATION_DISPATCHED,
-        LetterCostThreshold.unsorted,
+        str(LetterCostThreshold.unsorted),
         date(2024, 7, 8),
     )
 
