@@ -6,6 +6,7 @@ from unittest.mock import ANY, call
 
 import pytest
 from flask import current_app
+from freezegun import freeze_time
 from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
 from requests import HTTPError
 
@@ -18,6 +19,8 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
+    SMS_PROVIDER_ERROR_INTERVAL,
+    SMS_PROVIDER_ERROR_THRESHOLD,
 )
 from app.dao import notifications_dao
 from app.dao.provider_details_dao import get_provider_details_by_identifier
@@ -570,12 +573,34 @@ def test_should_update_billable_units_and_status_according_to_and_key_type(
     assert notification.status == expected_status
 
 
-def test_should_set_notification_billable_units_and_reduces_provider_priority_if_sending_to_provider_fails(
+@freeze_time("2034-03-26 23:01")
+def test_should_set_notification_billable_units_if_sending_to_provider_fails_and_error_rate_limit_not_exceeded(
     sample_notification,
     mocker,
 ):
     mocker.patch("app.mmg_client.send_sms", side_effect=Exception())
     mock_reduce = mocker.patch("app.delivery.send_to_providers.dao_reduce_sms_provider_priority")
+    mock_redis = mocker.patch("app.delivery.send_to_providers.redis_store.exceeded_rate_limit", return_value=False)
+
+    sample_notification.billable_units = 0
+    assert sample_notification.sent_by is None
+
+    with pytest.raises(Exception):  # noqa
+        send_to_providers.send_sms_to_provider(sample_notification)
+
+    assert sample_notification.billable_units == 1
+    assert not mock_reduce.called
+    mock_redis.assert_called_once_with("mmg-error-rate", SMS_PROVIDER_ERROR_THRESHOLD, SMS_PROVIDER_ERROR_INTERVAL)
+
+
+@freeze_time("2034-03-26 23:01")
+def test_should_set_notification_billable_units_and_reduce_provider_priority_if_sending_fails_and_error_limit_exceeded(
+    sample_notification,
+    mocker,
+):
+    mocker.patch("app.mmg_client.send_sms", side_effect=Exception())
+    mock_reduce = mocker.patch("app.delivery.send_to_providers.dao_reduce_sms_provider_priority")
+    mock_redis = mocker.patch("app.delivery.send_to_providers.redis_store.exceeded_rate_limit", return_value=True)
 
     sample_notification.billable_units = 0
     assert sample_notification.sent_by is None
@@ -585,6 +610,7 @@ def test_should_set_notification_billable_units_and_reduces_provider_priority_if
 
     assert sample_notification.billable_units == 1
     mock_reduce.assert_called_once_with("mmg", time_threshold=timedelta(minutes=1))
+    mock_redis.assert_called_once_with("mmg-error-rate", SMS_PROVIDER_ERROR_THRESHOLD, SMS_PROVIDER_ERROR_INTERVAL)
 
 
 def test_should_send_sms_to_international_providers(sample_template, mocker):

@@ -11,7 +11,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
 )
 
-from app import create_uuid, db, notification_provider_clients, statsd_client
+from app import create_uuid, db, notification_provider_clients, redis_store, statsd_client
 from app.celery.research_mode_tasks import (
     send_email_response,
     send_sms_response,
@@ -25,6 +25,8 @@ from app.constants import (
     NOTIFICATION_SENT,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
     NOTIFICATION_TECHNICAL_FAILURE,
+    SMS_PROVIDER_ERROR_INTERVAL,
+    SMS_PROVIDER_ERROR_THRESHOLD,
     SMS_TYPE,
 )
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
@@ -84,7 +86,12 @@ def send_sms_to_provider(notification):
             except Exception as e:
                 notification.billable_units = template.fragment_count
                 dao_update_notification(notification)
-                dao_reduce_sms_provider_priority(provider.name, time_threshold=timedelta(minutes=1))
+
+                if redis_store.exceeded_rate_limit(
+                    f"{provider.name}-error-rate", SMS_PROVIDER_ERROR_THRESHOLD, SMS_PROVIDER_ERROR_INTERVAL
+                ):
+                    dao_reduce_sms_provider_priority(provider.name, time_threshold=timedelta(minutes=1))
+                    current_app.logger.warning("Error threshold exceeded for provider %s", provider.name)
                 raise e
             else:
                 notification.billable_units = template.fragment_count
