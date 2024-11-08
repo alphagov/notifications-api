@@ -151,7 +151,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==8.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@90.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@91.0.0
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -159,7 +159,7 @@ packaging==23.2
     # via
     #   marshmallow
     #   marshmallow-sqlalchemy
-phonenumbers==8.13.48
+phonenumbers==8.13.50
     # via notifications-utils
 prometheus-client==0.14.1
     # via
