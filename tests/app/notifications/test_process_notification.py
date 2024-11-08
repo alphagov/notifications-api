@@ -358,8 +358,7 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
         ("7900900123", False, "44", 1),  # UK
         ("+447900900123", False, "44", 1),  # UK
         ("07700910222", True, "44", 1),  # UK (Jersey)
-        ("07700900222", False, "44", 1),  # TV number
-        ("73122345678", True, "7", 4),  # Russia
+        ("74957108855", True, "7", 4),  # Russia
         ("360623400400", True, "36", 3),
     ],  # Hungary
 )
@@ -475,14 +474,14 @@ def test_persist_notification_with_international_info_does_not_store_for_email(s
 @pytest.mark.parametrize(
     "recipient, expected_recipient_normalised",
     [
-        ("7900900123", "447900900123"),
-        ("+447900   900 123", "447900900123"),
-        ("  07700900222", "447700900222"),
-        ("07700900222", "447700900222"),
-        (" 73122345678", "73122345678"),
-        ("360623400400", "360623400400"),
-        ("-077-00900222-", "447700900222"),
-        ("(360623(400400)", "360623400400"),
+        ("7900900123", "447900900123"),  # uk number adding country code correctly
+        ("+447900   900 123", "447900900123"),  # uk number stripping whitespace and leading plus
+        ("  07700900222", "447700900222"),  # uk number stripping whitespace and adding country code
+        ("07700900222", "447700900222"),  # uk number stripping leading zero and adding country code
+        (" 74952122020", "74952122020"),  # russian number that looks like a uk mobile
+        ("36705450911", "36705450911"),  # hungarian number to test international numbers
+        ("-077-00900222-", "447700900222"),  # uk mobile test stripping hyphens
+        ("(3670545(0911))", "36705450911"),  # hungarian number to test international numbers (stripping brackets)
     ],
 )
 def test_persist_sms_notification_stores_normalised_number(
