@@ -137,7 +137,7 @@ def request_invite_to_service(service_id, user_to_invite_id):
     reason_for_request = request_json["reason"]
     invite_link_host = request_json["invite_link_host"]
     accept_invite_request_url = f"{invite_link_host}/services/{service.id}/users/invite/{user_requesting_invite.id}"
-    request_again_url = f"{invite_link_host}/services/{service.id}/join"
+    request_again_url = f"{invite_link_host}/services/{service.id}/join/ask"
 
     if user_requesting_invite.services and service in user_requesting_invite.services:
         raise BadRequestError(400, "user-already-in-service")
