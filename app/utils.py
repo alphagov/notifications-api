@@ -166,16 +166,18 @@ def utc_string_to_bst_string(utc_string):
     return utc_string_to_aware_gmt_datetime(utc_string).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def try_parse_and_format_phone_number(number: str, log_msg=None) -> str:
+def try_parse_and_format_phone_number(number: str, log_msg=None, with_country_code=True) -> str:
     try:
-        return parse_and_format_phone_number(number)
+        return parse_and_format_phone_number(number, with_country_code=with_country_code)
     except InvalidPhoneError as e:
         current_app.logger.warning("%s: %s", log_msg, e)
         return number
 
 
-def parse_and_format_phone_number(number: str) -> str:
+def parse_and_format_phone_number(number: str, with_country_code=True) -> str:
     phone_number = PhoneNumber(number)
+    if not with_country_code:
+        return str(phone_number.number.national_number)
     return phone_number.get_normalised_format()
 
 
