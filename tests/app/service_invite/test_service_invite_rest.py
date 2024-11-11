@@ -404,7 +404,7 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
             "Manager 2 – manager.2@example.gov.uk",
             "Manager 3 – manager.3@example.gov.uk",
         ],
-        "url_ask_to_join_page": f"{invite_link_host}/services/{sample_service.id}/join",
+        "url_ask_to_join_page": f"{invite_link_host}/services/{sample_service.id}/join/ask",
     }
     assert user_notification.reply_to_text == "notify@gov.uk"
 
