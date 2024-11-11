@@ -1,5 +1,5 @@
 -r requirements.in
--r requirements_for_test_common.txt
+-r requirements_for_test_common.in
 
 flaky==3.7.0
 moto==5.0.11
