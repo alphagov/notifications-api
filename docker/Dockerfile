@@ -81,7 +81,7 @@ RUN mkdir -p app
 COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
-COPY --chown=notify:notify Makefile requirements.txt requirements_for_test.txt requirements_for_test_common.txt ./
+COPY --chown=notify:notify Makefile requirements_for_test.txt ./
 RUN make bootstrap
 
 COPY --chown=notify:notify . .
