@@ -1331,6 +1331,12 @@ class Job(db.Model):
     archived = db.Column(db.Boolean, nullable=False, default=False)
     contact_list_id = db.Column(UUID(as_uuid=True), db.ForeignKey("service_contact_list.id"), nullable=True, index=True)
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_jobs_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
+        ("st_dep_jobs_service_id_contact_list_id", ("service_id", "contact_list_id"), ("dependencies",)),
+    )
+
 
 class VerifyCode(db.Model):
     __tablename__ = "verify_codes"
