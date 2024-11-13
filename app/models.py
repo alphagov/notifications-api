@@ -1881,6 +1881,10 @@ class NotificationHistory(db.Model):
             ("job_id", "template_id", "notification_type"),
             ("dependencies",),
         ),
+        # most common values
+        ("st_mcv_notification_history_ntfcn_type_status", ("notification_type", "notification_status"), ("mcv",)),
+        ("st_mcv_notification_history_service_id_key_type", ("service_id", "key_type"), ("mcv",)),
+        ("st_mcv_notification_history_service_id_ntfcn_type", ("service_id", "notification_type"), ("mcv",)),
     )
 
 
