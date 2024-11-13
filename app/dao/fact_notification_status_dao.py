@@ -168,25 +168,36 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
 
     all_stats_table = stats_for_7_days.union_all(stats_for_today).subquery()
 
+    aggregation = (
+        db.session.query(
+            *([all_stats_table.c.template_id] if by_template else []),
+            all_stats_table.c.notification_type,
+            all_stats_table.c.status,
+            func.cast(func.sum(all_stats_table.c.count), Integer).label("count"),
+        )
+        .group_by(
+            *([all_stats_table.c.template_id] if by_template else []),
+            all_stats_table.c.notification_type,
+            all_stats_table.c.status,
+        )
+        .subquery()
+    )
+
     query = db.session.query(
         *(
-            [Template.name.label("template_name"), Template.is_precompiled_letter, all_stats_table.c.template_id]
+            [Template.name.label("template_name"), Template.is_precompiled_letter, aggregation.c.template_id]
             if by_template
             else []
         ),
-        all_stats_table.c.notification_type,
-        all_stats_table.c.status,
-        func.cast(func.sum(all_stats_table.c.count), Integer).label("count"),
+        aggregation.c.notification_type,
+        aggregation.c.status,
+        aggregation.c.count,
     )
 
     if by_template:
-        query = query.filter(all_stats_table.c.template_id == Template.id)
+        query = query.filter(aggregation.c.template_id == Template.id)
 
-    return query.group_by(
-        *([Template.name, Template.is_precompiled_letter, all_stats_table.c.template_id] if by_template else []),
-        all_stats_table.c.notification_type,
-        all_stats_table.c.status,
-    ).all()
+    return query.all()
 
 
 def fetch_notification_status_totals_for_all_services(start_date, end_date):
