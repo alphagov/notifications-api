@@ -391,7 +391,7 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
     assert manager_notification.to == service_manager_1.email_address
     assert (
         manager_notification.personalisation["url"]
-        == f"{invite_link_host}/services/{sample_service.id}/users/invite/{user_requesting_invite.id}"
+        == f"{invite_link_host}/services/{sample_service.id}/join-request/{db_request.id}/approve"
     )
     assert manager_notification.reply_to_text == user_requesting_invite.email_address
 

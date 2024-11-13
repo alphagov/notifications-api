@@ -136,7 +136,6 @@ def request_invite_to_service(service_id, user_to_invite_id):
     service = dao_fetch_service_by_id(service_id)
     reason_for_request = request_json["reason"]
     invite_link_host = request_json["invite_link_host"]
-    accept_invite_request_url = f"{invite_link_host}/services/{service.id}/users/invite/{user_requesting_invite.id}"
     request_again_url = f"{invite_link_host}/services/{service.id}/join/ask"
 
     if user_requesting_invite.services and service in user_requesting_invite.services:
@@ -144,14 +143,18 @@ def request_invite_to_service(service_id, user_to_invite_id):
 
     # Temporary logic to capture the request
     # Once the join service request flow is completed this needs to be refactored
-    dao_create_service_join_request(
+    created_service_join_request = dao_create_service_join_request(
         requester_id=user_to_invite_id,
         service_id=service_id,
         contacted_user_ids=recipients_of_invite_request_ids,
     )
 
+    approve_request_url = (
+        f"{invite_link_host}/services/{service.id}/join-request/{created_service_join_request.id}/approve"
+    )
+
     send_service_invite_request(
-        user_requesting_invite, recipients_of_invite_request, service, reason_for_request, accept_invite_request_url
+        user_requesting_invite, recipients_of_invite_request, service, reason_for_request, approve_request_url
     )
 
     send_receipt_after_sending_request_invite_letter(
@@ -165,7 +168,7 @@ def request_invite_to_service(service_id, user_to_invite_id):
 
 
 def send_service_invite_request(
-    user_requesting_invite, recipients_of_invite_request, service, reason_for_request, accept_invite_request_url
+    user_requesting_invite, recipients_of_invite_request, service, reason_for_request, approve_request_url
 ):
     template_id = current_app.config["REQUEST_INVITE_TO_SERVICE_TEMPLATE_ID"]
     template = dao_get_template_by_id(template_id)
@@ -185,7 +188,7 @@ def send_service_invite_request(
                     "service_name": service.name,
                     "reason_given": "yes" if reason_for_request else "no",
                     "reason": "\n".join(f"^ {line}" for line in reason_for_request.splitlines()),
-                    "url": accept_invite_request_url,
+                    "url": approve_request_url,
                 },
                 notification_type=template.template_type,
                 api_key_id=None,
