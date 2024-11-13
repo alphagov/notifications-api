@@ -33,6 +33,7 @@ service_join_request_update_schema = {
             },
             "description": "List of permissions being granted or modified",
         },
+        "folder_permissions": {"type": "array", "items": {"type": "string"}},
         "status_changed_by_id": {"type": "string", "format": "uuid"},
         "status": {
             "type": "string",

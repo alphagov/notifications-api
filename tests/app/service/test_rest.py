@@ -33,6 +33,7 @@ from app.dao.service_join_requests_dao import dao_create_service_join_request
 from app.dao.service_user_dao import dao_get_service_user
 from app.dao.services_dao import (
     dao_add_user_to_service,
+    dao_fetch_service_by_id,
     dao_remove_user_from_service,
 )
 from app.dao.templates_dao import dao_redact_template
@@ -4194,16 +4195,17 @@ def test_update_service_join_request_request_not_found(admin_request):
 
 
 @pytest.mark.parametrize(
-    "status_changed_by_id, set_permissions, status, reason",
+    "status_changed_by_id, set_permissions, with_folder_permissions, status, reason",
     [
-        (uuid.uuid4(), ["manage_users"], "approved", None),
-        (uuid.uuid4(), [], "approved", None),
+        (uuid.uuid4(), ["manage_users"], False, "approved", None),
+        (uuid.uuid4(), [], True, "approved", None),
     ],
 )
 def test_update_service_join_request_add_user_to_service(
     admin_request,
     status_changed_by_id,
     set_permissions,
+    with_folder_permissions,
     status,
     reason,
     notify_service,
@@ -4213,6 +4215,9 @@ def test_update_service_join_request_add_user_to_service(
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     user_id = status_changed_by_id
+    folder_permissions = []
+    folder_1 = None
+    folder_2 = None
 
     setup_service_join_request_test_data(service_id, requester_id, [user_id])
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
@@ -4223,11 +4228,18 @@ def test_update_service_join_request_add_user_to_service(
         contacted_user_ids=[user_id],
     )
 
+    if with_folder_permissions:
+        service = dao_fetch_service_by_id(service_id)
+        folder_1 = create_template_folder(service)
+        folder_2 = create_template_folder(service)
+        folder_permissions = [str(folder_1.id), str(folder_2.id)]
+
     admin_request.post(
         "service.update_service_join_request",
         request_id=str(request.id),
         _data={
             "permissions": set_permissions,
+            "folder_permissions": folder_permissions,
             "status_changed_by_id": str(status_changed_by_id),
             "status": status,
             "reason": reason,
@@ -4242,6 +4254,12 @@ def test_update_service_join_request_add_user_to_service(
 
     if set_permissions:
         assert user.get_permissions() == {str(service_id): set_permissions}
+
+    if with_folder_permissions:
+        service_user = dao_get_service_user(user_id=requester_id, service_id=service_id)
+        assert len(service_user.folders) == 2
+        assert folder_1 in service_user.folders
+        assert folder_2 in service_user.folders
 
 
 def test_update_service_join_request_notification_sent(
