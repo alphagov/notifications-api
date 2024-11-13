@@ -1871,6 +1871,18 @@ class NotificationHistory(db.Model):
         Index("ix_notification_history_created_at", "created_at", postgresql_concurrently=True),
     )
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_notification_history_service_id_api_key_id", ("service_id", "api_key_id"), ("dependencies",)),
+        ("st_dep_notification_history_service_id_job_id", ("service_id", "job_id"), ("dependencies",)),
+        ("st_dep_notification_history_service_id_tpt_id", ("service_id", "template_id"), ("dependencies",)),
+        (
+            "st_dep_notification_history_job_id_tpt_id_ntfcn_type",
+            ("job_id", "template_id", "notification_type"),
+            ("dependencies",),
+        ),
+    )
+
 
 class LetterCostThreshold(enum.StrEnum):
     sorted = "sorted"
