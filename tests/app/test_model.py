@@ -23,7 +23,7 @@ from app.constants import (
     PRECOMPILED_TEMPLATE_NAME,
     SMS_TYPE,
 )
-from app.models import LetterCostThreshold, Notification, ServiceGuestList
+from app.models import FactNotificationStatus, Job, LetterCostThreshold, Notification, ServiceGuestList
 from tests.app.db import (
     create_inbound_number,
     create_letter_contact,
@@ -401,7 +401,14 @@ def test_notification_references_template_history(client, sample_template):
     assert noti.template.content != sample_template.content
 
 
-@pytest.mark.parametrize("model", (Notification,))
+@pytest.mark.parametrize(
+    "model",
+    (
+        FactNotificationStatus,
+        Job,
+        Notification,
+    ),
+)
 def test_extended_statistics_presence(notify_db_session, model):
     """
     Test that the extended statistics objects in the fully-migrated database correspond to
