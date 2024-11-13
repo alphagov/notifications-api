@@ -338,6 +338,9 @@ class CacheKeys:
     NUMBER_OF_TIMES_OVER_SLOW_SMS_DELIVERY_THRESHOLD = "slow-sms-delivery:number-of-times-over-threshold"
 
 
+SMS_PROVIDER_ERROR_THRESHOLD = 50
+SMS_PROVIDER_ERROR_INTERVAL = 60
+
 # Admin API error codes
 QR_CODE_TOO_LONG = "qr-code-too-long"
 
