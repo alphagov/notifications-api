@@ -134,7 +134,7 @@ from app.notifications.process_notifications import (
 )
 from app.one_click_unsubscribe.rest import create_unsubscribe_request_reports_summary
 from app.schema_validation import validate
-from app.schema_validation.service_join_request import service_join_request_schema, service_join_request_update_schema
+from app.service.service_join_request_schema import service_join_request_schema, service_join_request_update_schema
 from app.schemas import (
     api_key_schema,
     detailed_service_schema,
