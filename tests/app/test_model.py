@@ -23,7 +23,14 @@ from app.constants import (
     PRECOMPILED_TEMPLATE_NAME,
     SMS_TYPE,
 )
-from app.models import FactNotificationStatus, Job, LetterCostThreshold, Notification, ServiceGuestList
+from app.models import (
+    FactNotificationStatus,
+    Job,
+    LetterCostThreshold,
+    Notification,
+    NotificationHistory,
+    ServiceGuestList,
+)
 from tests.app.db import (
     create_inbound_number,
     create_letter_contact,
@@ -407,6 +414,7 @@ def test_notification_references_template_history(client, sample_template):
         FactNotificationStatus,
         Job,
         Notification,
+        NotificationHistory,
     ),
 )
 def test_extended_statistics_presence(notify_db_session, model):
