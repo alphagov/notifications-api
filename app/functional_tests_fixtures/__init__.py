@@ -136,11 +136,23 @@ def apply_fixtures():
     inbound_number_id = _create_inbound_numbers(service.id, service_admin_user.id)
 
     template1_id = _create_email_template(service, service_admin_user.id,
-                                "Functional Tests - CSV Email Template with Build ID",
-                                "Functional Tests - CSV Email",
-                                "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).")
-    template2_id = _create_sms_template(service, service_admin_user.id)
-    template3_id = _create_letter_template(service, service_admin_user.id)
+                                          "Functional Tests - CSV Email Template with Build ID",
+                                          "Functional Tests - CSV Email",
+                                          "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).")
+    template2_id = _create_sms_template(service, service_admin_user.id, "Functional Tests - CSV SMS Template with Build ID", "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).")
+    template3_id = _create_letter_template(service, service_admin_user.id,
+                                           "Functional Tests - CSV Letter Template with Build ID",
+                                           "Functional Tests - CSV Letter",
+                                           "The quick brown fox jumped over the lazy dog. Build id: ((build_id))."  )
+    template4_id = _create_email_template(service, service_admin_user.id,
+                                          "Client Functional test email template",
+                                          "Functional Tests are good",
+                                          "Hello ((name))\n\nFunctional test help make our world a better place")
+    template5_id = _create_sms_template(service, service_admin_user.id, "Client Functional test sms template", "Hello ((name))\n\nFunctional Tests make our world a better place")
+    template6_id = _create_letter_template(service, service_admin_user.id,
+                                           "Functional Tests - CSV Letter Template with something different Build ID",
+                                           "Functional Tests - CSV Letter",
+                                           "The quick brown fox jumped over the lazy dog. Build id: ((build_id))."  )
 
     current_app.logger.info("--> Ensure service email reply to exists")
     _create_service_email_reply_to(
@@ -199,10 +211,10 @@ export REQUEST_BIN_API_TOKEN={request_bin_api_token}
 export API_CLIENT_INTEGRATION_TESTS_SERVICE_ID='{service.id}'
 export API_CLIENT_INTEGRATION_TESTS_EMAIL='{service_admin_user.email_address}'
 export API_CLIENT_INTEGRATION_TESTS_NUMBER=07700900501
-export API_CLIENT_INTEGRATION_TESTS_EMAIL_TEMPLATE_ID={template1_id}
-export API_CLIENT_INTEGRATION_TESTS_SMS_TEMPLATE_ID={template2_id}
-export API_CLIENT_INTEGRATION_TESTS_LETTER_TEMPLATE_ID={template3_id}
-export API_CLIENT_INTEGRATION_TESTS_EMAIL_REPLY_TO_ID="notyetdefined"
+export API_CLIENT_INTEGRATION_TESTS_EMAIL_TEMPLATE_ID={template4_id}
+export API_CLIENT_INTEGRATION_TESTS_SMS_TEMPLATE_ID={template5_id}
+export API_CLIENT_INTEGRATION_TESTS_LETTER_TEMPLATE_ID={template6_id}
+export API_CLIENT_INTEGRATION_TESTS_EMAIL_REPLY_TO_ID=rand-c52f-4648-abb6-tba
 export API_CLIENT_INTEGRATION_TESTS_SMS_SENDER_ID=tba-c52f-4648-abb6-tba
 export API_CLIENT_INTEGRATION_TESTS_NOTIFY_API_URL={current_app.config['API_HOST_NAME']}
 export API_CLIENT_INTEGRATION_TESTS_TEST_API_KEY='{function_tests_live_key_name}-{service.id}-{api_key_live_key.secret}'
@@ -380,8 +392,7 @@ def _create_email_template(service, user_id, name, subject, content):
     return new_template.id
 
 
-def _create_sms_template(service, user_id):
-    name = "Functional Tests - CSV SMS Template with Build ID"
+def _create_sms_template(service, user_id, name, content):
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
@@ -390,9 +401,9 @@ def _create_sms_template(service, user_id):
             return template.id
 
     data = {
-        "name": "Functional Tests - CSV SMS Template with Build ID",
+        "name": name,
         "template_type": "sms",
-        "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
+        "content": content,
         "created_by": user_id,
     }
 
@@ -405,9 +416,7 @@ def _create_sms_template(service, user_id):
     return new_template.id
 
 
-def _create_letter_template(service, user_id):
-
-    name = "Functional Tests - CSV Letter Template with Build ID"
+def _create_letter_template(service, user_id, name, subject, content):
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
@@ -416,10 +425,10 @@ def _create_letter_template(service, user_id):
             return template.id
 
     data = {
-        "name": "Functional Tests - CSV Letter Template with Build ID",
+        "name": name,
         "template_type": "letter",
-        "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
-        "subject": "Functional Tests - CSV Letter",
+        "content": content,
+        "subject": subject,
         "created_by": user_id,
     }
 
