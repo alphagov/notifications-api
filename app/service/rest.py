@@ -116,7 +116,7 @@ from app.dao.unsubscribe_request_dao import (
     get_unsubscribe_requests_statistics_dao,
     update_unsubscribe_request_report_processed_by_date_dao,
 )
-from app.dao.users_dao import get_user_by_id
+from app.dao.users_dao import get_user_by_id, save_user_attribute
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters, letter_print_day
 from app.models import (
@@ -134,7 +134,6 @@ from app.notifications.process_notifications import (
 )
 from app.one_click_unsubscribe.rest import create_unsubscribe_request_reports_summary
 from app.schema_validation import validate
-from app.schema_validation.service_join_request import service_join_request_schema, service_join_request_update_schema
 from app.schemas import (
     api_key_schema,
     detailed_service_schema,
@@ -157,6 +156,7 @@ from app.service.service_data_retention_schema import (
     add_service_data_retention_request,
     update_service_data_retention_request,
 )
+from app.service.service_join_request_schema import service_join_request_schema, service_join_request_update_schema
 from app.service.service_senders_schema import (
     add_service_email_reply_to_request,
     add_service_letter_contact_block_request,
@@ -1362,6 +1362,9 @@ def update_service_join_request(request_id: uuid.UUID):
 
         dao_add_user_to_service(service, requester_user, permissions, folder_permissions)
 
+        updated_auth_type = data.get("auth_type")
+        _update_auth_type(updated_auth_type, requester_user)
+
         send_service_join_request_decision_email(
             requester_email_address=requester_user.email_address,
             template=dao_get_template_by_id(current_app.config["SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID"]),
@@ -1399,3 +1402,11 @@ def send_service_join_request_decision_email(requester_email_address: str, templ
     )
 
     send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
+
+
+def _update_auth_type(updated_auth_type, user):
+    if updated_auth_type and updated_auth_type != user.auth_type:
+        if updated_auth_type == "sms_auth" and not user.mobile_number:
+            return
+
+        save_user_attribute(user, update_dict={"auth_type": updated_auth_type})

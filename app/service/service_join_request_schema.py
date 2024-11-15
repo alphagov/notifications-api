@@ -1,3 +1,5 @@
+from app.constants import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE
+
 service_join_request_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "Schema for creating a service join request",
@@ -41,6 +43,7 @@ service_join_request_update_schema = {
             "description": "The new status of the join request",
         },
         "reason": {"type": ["string", "null"], "description": "Optional reason for the status change"},
+        "auth_type": {"enum": [EMAIL_AUTH_TYPE, SMS_AUTH_TYPE]},
     },
     "required": ["status_changed_by_id", "status"],
     "additionalProperties": False,
