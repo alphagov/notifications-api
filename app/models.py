@@ -1488,6 +1488,13 @@ class Notification(db.Model):
                 "client_reference": "gin_trgm_ops",
             },
         ),
+        Index(
+            "ix_notifications_failed_service_id_composite",
+            "service_id",
+            "notification_type",
+            "created_at",
+            postgresql_where=status.in_(NOTIFICATION_STATUS_TYPES_FAILED),
+        ),
     )
 
     __extended_statistics__ = (
