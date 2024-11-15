@@ -4243,6 +4243,7 @@ def test_update_service_join_request_add_user_to_service(
             "status_changed_by_id": str(status_changed_by_id),
             "status": status,
             "reason": reason,
+            "auth_type": "sms_auth",
         },
         _expected_status=200,
     )
@@ -4260,6 +4261,54 @@ def test_update_service_join_request_add_user_to_service(
         assert len(service_user.folders) == 2
         assert folder_1 in service_user.folders
         assert folder_2 in service_user.folders
+
+
+@pytest.mark.parametrize(
+    "current_auth_type, mobile_no, selected_auth_type, expected_auth_type",
+    [
+        ("sms_auth", "07700900986", "sms_auth", "sms_auth"),
+        ("sms_auth", "07700900986", "email_auth", "email_auth"),
+        ("email_auth", "07700900986", "sms_auth", "sms_auth"),
+        ("email_auth", "07700900986", "email_auth", "email_auth"),
+        ("email_auth", None, "sms_auth", "email_auth"),
+        ("email_auth", None, "email_auth", "email_auth"),
+    ],
+)
+def test_update_service_join_request_updates_user_auth_type(
+    admin_request,
+    sample_user_service_permission,
+    notify_service,
+    service_join_request_approved_template,
+    current_auth_type,
+    mobile_no,
+    selected_auth_type,
+    expected_auth_type,
+    mocker,
+):
+    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+
+    requester = create_user(mobile_number=mobile_no, auth_type=current_auth_type)
+
+    request = dao_create_service_join_request(
+        requester_id=requester.id,
+        service_id=sample_user_service_permission.service.id,
+        contacted_user_ids=[sample_user_service_permission.id],
+    )
+
+    admin_request.post(
+        "service.update_service_join_request",
+        request_id=str(request.id),
+        _data={
+            "permissions": ["manage_users"],
+            "folder_permissions": [],
+            "status_changed_by_id": str(sample_user_service_permission.user.id),
+            "status": "approved",
+            "reason": None,
+            "auth_type": selected_auth_type,
+        },
+    )
+
+    assert requester.auth_type == expected_auth_type
 
 
 def test_update_service_join_request_notification_sent(
@@ -4288,6 +4337,7 @@ def test_update_service_join_request_notification_sent(
             "permissions": ["manage_users"],
             "status_changed_by_id": str(approver_id),
             "status": "approved",
+            "auth_type": "email_auth",
         },
         _expected_status=200,
     )
@@ -4372,6 +4422,7 @@ def test_update_service_join_request_cancels_pending_requests(
             "permissions": ["manage_users"],
             "status_changed_by_id": str(approver_id),
             "status": "approved",
+            "auth_type": "sms_auth",
         },
         _expected_status=200,
     )
