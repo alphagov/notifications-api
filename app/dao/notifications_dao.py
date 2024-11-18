@@ -16,7 +16,7 @@ from notifications_utils.recipient_validation.phone_number import try_validate_a
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy import and_, asc, desc, func, literal, or_, union
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import defer, joinedload, undefer
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
@@ -251,6 +251,7 @@ def get_notifications_for_service(
     limit_days=None,
     key_type=None,
     with_template=False,
+    with_personalisation=True,
     include_jobs=False,
     include_from_test_key=False,
     older_than=None,
@@ -291,6 +292,8 @@ def get_notifications_for_service(
 
     if with_template:
         query = query.options(joinedload("template"))
+
+    query = query.options((undefer if with_personalisation else defer)("_personalisation"))
 
     query = query.options(joinedload("api_key"))
 
