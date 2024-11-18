@@ -250,7 +250,7 @@ def get_notifications_for_service(
     count_pages=True,
     limit_days=None,
     key_type=None,
-    personalisation=False,
+    with_template=False,
     include_jobs=False,
     include_from_test_key=False,
     older_than=None,
@@ -289,7 +289,7 @@ def get_notifications_for_service(
     query = Notification.query.filter(*filters)
     query = _filter_query(query, filter_dict)
 
-    if personalisation:
+    if with_template:
         query = query.options(joinedload("template"))
 
     query = query.options(joinedload("api_key"))
