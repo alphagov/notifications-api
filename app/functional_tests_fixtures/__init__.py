@@ -338,7 +338,7 @@ def _create_inbound_numbers(service_id, user_id, number="07700900500", provider=
 
 
 def _create_email_template(service, user_id):
-    name = "Functional Tests - CSV Email Template with Build ID"
+    name = "Functional Tests - CSV Email Template"
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
@@ -349,7 +349,7 @@ def _create_email_template(service, user_id):
     data = {
         "name": name,
         "template_type": "email",
-        "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
+        "content": "Hello ((name)),\n\n((content))",
         "subject": "Functional Tests - CSV Email",
         "created_by": user_id,
     }
@@ -364,7 +364,7 @@ def _create_email_template(service, user_id):
 
 
 def _create_sms_template(service, user_id):
-    name = "Functional Tests - CSV SMS Template with Build ID"
+    name = "Functional Tests - CSV SMS Template"
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
@@ -373,9 +373,9 @@ def _create_sms_template(service, user_id):
             return template.id
 
     data = {
-        "name": "Functional Tests - CSV SMS Template with Build ID",
+        "name": "Functional Tests - CSV SMS Template",
         "template_type": "sms",
-        "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
+        "content": "Hello ((name)),\n\n((content))",
         "created_by": user_id,
     }
 
@@ -390,7 +390,7 @@ def _create_sms_template(service, user_id):
 
 def _create_letter_template(service, user_id):
 
-    name = "Functional Tests - CSV Letter Template with Build ID"
+    name = "Functional Tests - CSV Letter Template"
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
@@ -399,9 +399,9 @@ def _create_letter_template(service, user_id):
             return template.id
 
     data = {
-        "name": "Functional Tests - CSV Letter Template with Build ID",
+        "name": "Functional Tests - CSV Letter Template",
         "template_type": "letter",
-        "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
+        "content": "Hello ((address_line_1)),\n\n((content))",
         "subject": "Functional Tests - CSV Letter",
         "created_by": user_id,
     }
