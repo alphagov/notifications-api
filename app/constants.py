@@ -18,6 +18,7 @@ NOTIFICATION_RETURNED_LETTER = "returned-letter"
 
 # Raw notification status values grouped into types
 NOTIFICATION_STATUS_TYPES_FAILED = [
+    # if changing this group, update ix_notifications_failed_service_id_composite to match
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
