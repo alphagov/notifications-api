@@ -108,11 +108,9 @@ def test_update_letter_notifications_statuses_raises_dvla_exception(notify_api, 
 def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
     s3_mock = mocker.patch("app.celery.tasks.s3.get_s3_object")
 
-    with set_config(notify_api, "NOTIFY_EMAIL_DOMAIN", "foo.bar"):
+    with set_config(notify_api, "S3_BUCKET_DVLA_RESPONSE", "foo.bar-ftp"):
         update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
-        s3_mock.assert_called_with(
-            "{}-ftp".format(current_app.config["NOTIFY_EMAIL_DOMAIN"]), "NOTIFY-20170823160812-RSP.TXT"
-        )
+        s3_mock.assert_called_with(current_app.config["S3_BUCKET_DVLA_RESPONSE"], "NOTIFY-20170823160812-RSP.TXT")
 
 
 def test_update_letter_notifications_statuses_builds_updates_from_content(notify_api, mocker):
