@@ -175,6 +175,28 @@ def _clean_database(_db):
     _db.session.commit()
 
 
+# based on https://github.com/sqlalchemy/sqlalchemy/issues/5709#issuecomment-729689097
+@pytest.fixture(scope="function")
+def notify_db_session_log(notify_db_session):
+    queries = []
+
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        queries.append(
+            (
+                statement,
+                parameters,
+                context,
+                executemany,
+            )
+        )
+
+    sqlalchemy.event.listen(sqlalchemy.engine.Engine, "before_cursor_execute", before_cursor_execute)
+    try:
+        yield queries
+    finally:
+        sqlalchemy.event.remove(sqlalchemy.engine.Engine, "before_cursor_execute", before_cursor_execute)
+
+
 @pytest.fixture
 def os_environ():
     """

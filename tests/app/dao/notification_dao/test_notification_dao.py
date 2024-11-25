@@ -800,6 +800,80 @@ def test_get_notifications_with_a_team_api_key_type(
     assert len(all_notifications) == 1
 
 
+@pytest.mark.parametrize("with_personalisation", (False, True))
+@pytest.mark.parametrize("with_template", (False, True))
+def test_get_notifications_for_service_optional_loading(
+    notify_db_session,
+    notify_db_session_log,
+    sample_job,
+    sample_api_key,
+    sample_team_api_key,
+    with_personalisation,
+    with_template,
+):
+    create_notification(template=sample_job.template, created_at=datetime.utcnow(), job=sample_job)
+    create_notification(
+        template=sample_job.template,
+        created_at=datetime.utcnow(),
+        api_key=sample_api_key,
+        key_type=sample_api_key.key_type,
+        personalisation={
+            "foo": "bar",
+            "baz": "123",
+        },
+    )
+    create_notification(
+        template=sample_job.template,
+        created_at=datetime.utcnow(),
+        api_key=sample_team_api_key,
+        key_type=sample_team_api_key.key_type,
+        personalisation={
+            "foo": "bar",
+            "baz": "123",
+        },
+    )
+
+    notifications = get_notifications_for_service(
+        sample_job.service_id,
+        count_pages=False,
+        with_personalisation=with_personalisation,
+        with_template=with_template,
+    ).items
+    assert len(notifications) == 2
+
+    notify_db_session_log[:] = []
+    assert notifications[0].personalisation == {
+        "foo": "bar",
+        "baz": "123",
+    }
+    assert len(notify_db_session_log) == 0 if with_personalisation else 1
+
+    notify_db_session_log[:] = []
+    assert notifications[0].template
+    assert len(notify_db_session_log) == 0 if with_template else 1
+
+    notify_db_session_log[:] = []
+    assert notifications[0].api_key
+    assert len(notify_db_session_log) == 0  # api_key always joinedload
+
+    notify_db_session_log[:] = []
+    assert notifications[1].personalisation == {
+        "foo": "bar",
+        "baz": "123",
+    }
+    assert len(notify_db_session_log) == 0 if with_personalisation else 1
+
+    notify_db_session_log[:] = []
+    assert notifications[1].template
+    # both notifications share the same template, sqlalchemy's identity map knows
+    # a re-fetch is not needed
+    assert len(notify_db_session_log) == 0
+
+    notify_db_session_log[:] = []
+    assert notifications[1].api_key
+    assert len(notify_db_session_log) == 0  # api_key always joinedload
+
+
 def test_should_exclude_test_key_notifications_by_default(
     sample_job, sample_api_key, sample_team_api_key, sample_test_api_key
 ):

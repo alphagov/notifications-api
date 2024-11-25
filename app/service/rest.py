@@ -451,6 +451,7 @@ def get_all_notifications_for_service_for_csv(service_id):
         count_pages=False,
         limit_days=limit_days,
         error_out=False,
+        with_personalisation=False,
         include_jobs=True,
         include_from_test_key=False,
         include_one_off=True,

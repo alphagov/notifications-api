@@ -77,7 +77,7 @@ def get_notifications():
         str(authenticated_service.id),
         filter_dict=data,
         key_type=api_user.key_type,
-        personalisation=True,
+        with_template=True,
         older_than=data.get("older_than"),
         client_reference=data.get("reference"),
         page_size=current_app.config.get("API_PAGE_SIZE"),
