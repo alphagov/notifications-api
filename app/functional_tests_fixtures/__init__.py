@@ -58,7 +58,6 @@ from app.dao.users_dao import get_user_by_email, save_model_user
 from app.models import (
     InboundNumber,
     Organisation,
-    OrganisationPermission,
     Permission,
     Service,
     ServiceEmailReplyTo,
@@ -215,7 +214,7 @@ export REQUEST_BIN_API_TOKEN={request_bin_api_token}
 
     for counter in range(101, 300):
         service = _create_service2(org.id, service_user, counter)
-        print(service.id)
+        current_app.logger.info(service.id)
     current_app.logger.info("--> Functional test fixtures completed successfully")
 
 
