@@ -9,6 +9,8 @@ from notifications_utils.recipient_validation.email_address import validate_and_
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import (
     PhoneNumber,
+    get_international_phone_info,
+    validate_and_format_phone_number,
 )
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from sqlalchemy.orm.exc import NoResultFound
@@ -33,7 +35,7 @@ from app.notifications.process_notifications import (
 )
 from app.serialised_models import SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
-from app.utils import get_international_phone_info, get_public_notify_type_text, parse_and_format_phone_number
+from app.utils import get_public_notify_type_text
 from app.v2.errors import (
     BadRequestError,
     RateLimitError,
@@ -152,14 +154,11 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
                     raise BadRequestError(message="Cannot send to international mobile numbers") from e
                 else:
                     raise
+
         else:
-            check_if_service_can_send_to_number(service, send_to)
-            phone_number = PhoneNumber(send_to)
-            phone_number.validate(
-                allow_international_number=service.has_permission(INTERNATIONAL_SMS_TYPE),
-                allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
-            )
-            return phone_number.get_normalised_format()
+            international_phone_info = check_if_service_can_send_to_number(service, send_to)
+
+        return validate_and_format_phone_number(number=send_to, international=international_phone_info.international)
     elif notification_type == EMAIL_TYPE:
         return validate_and_format_email_address(email_address=send_to)
 
@@ -171,6 +170,7 @@ def check_if_service_can_send_to_number(service, number):
         permissions = [p.permission for p in service.permissions]
     else:
         permissions = service.permissions
+
     if (
         # if number is international and not a crown dependency
         international_phone_info.international
