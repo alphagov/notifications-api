@@ -122,7 +122,7 @@ def apply_fixtures():
     service = _create_service(org.id, service_admin_user)
 
     for counter in range(101, 300):
-        service = _create_service2(org.id, service_admin_user, counter)
+        _create_service2(org.id, service_admin_user, counter)
         current_app.logger.info(service.id)
 
     current_app.logger.info("--> Ensure users are added to service")
