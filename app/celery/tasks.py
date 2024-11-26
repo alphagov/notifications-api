@@ -371,8 +371,7 @@ def record_daily_sorted_counts(self, filename):
 
 
 def parse_dvla_file(filename):
-    bucket_location = "{}-ftp".format(current_app.config["NOTIFY_EMAIL_DOMAIN"])
-    response_file_content = s3.get_s3_file(bucket_location, filename)
+    response_file_content = s3.get_s3_file(current_app.config["S3_BUCKET_DVLA_RESPONSE"], filename)
     return process_updates_from_file(response_file_content, filename=filename)
 
 
