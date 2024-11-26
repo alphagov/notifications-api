@@ -7,6 +7,7 @@ from boto3.exceptions import Boto3Error
 from freezegun import freeze_time
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
+from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, LETTER_TYPE, SMS_TO_UK_LANDLINES, SMS_TYPE
@@ -18,7 +19,6 @@ from app.notifications.process_notifications import (
     simulated_recipient,
 )
 from app.serialised_models import SerialisedTemplate
-from app.utils import parse_and_format_phone_number
 from app.v2.errors import BadRequestError, QrCodeTooLongError
 from tests.app.db import create_api_key, create_job, create_service, create_template
 from tests.conftest import set_config
@@ -345,7 +345,7 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
     if notification_type == "email":
         formatted_address = validate_and_format_email_address(to_address)
     else:
-        formatted_address = parse_and_format_phone_number(to_address)
+        formatted_address = validate_and_format_phone_number(to_address)
 
     is_simulated_address = simulated_recipient(formatted_address, notification_type)
 
@@ -358,7 +358,8 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
         ("7900900123", False, "44", 1),  # UK
         ("+447900900123", False, "44", 1),  # UK
         ("07700910222", True, "44", 1),  # UK (Jersey)
-        ("74957108855", True, "7", 4),  # Russia
+        ("07700900222", False, "44", 1),  # TV number
+        ("73122345678", True, "7", 4),  # Russia
         ("360623400400", True, "36", 3),
     ],  # Hungary
 )
@@ -474,14 +475,14 @@ def test_persist_notification_with_international_info_does_not_store_for_email(s
 @pytest.mark.parametrize(
     "recipient, expected_recipient_normalised",
     [
-        ("7900900123", "447900900123"),  # uk number adding country code correctly
-        ("+447900   900 123", "447900900123"),  # uk number stripping whitespace and leading plus
-        ("  07700900222", "447700900222"),  # uk number stripping whitespace and adding country code
-        ("07700900222", "447700900222"),  # uk number stripping leading zero and adding country code
-        (" 74952122020", "74952122020"),  # russian number that looks like a uk mobile
-        ("36705450911", "36705450911"),  # hungarian number to test international numbers
-        ("-077-00900222-", "447700900222"),  # uk mobile test stripping hyphens
-        ("(3670545(0911))", "36705450911"),  # hungarian number to test international numbers (stripping brackets)
+        ("7900900123", "447900900123"),
+        ("+447900   900 123", "447900900123"),
+        ("  07700900222", "447700900222"),
+        ("07700900222", "447700900222"),
+        (" 73122345678", "73122345678"),
+        ("360623400400", "360623400400"),
+        ("-077-00900222-", "447700900222"),
+        ("(360623(400400)", "360623400400"),
     ],
 )
 def test_persist_sms_notification_stores_normalised_number(
