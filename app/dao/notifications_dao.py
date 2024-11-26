@@ -612,7 +612,8 @@ def dao_get_notifications_by_recipient_or_reference(
     error_out=True,
 ):
     if notification_type == SMS_TYPE:
-        normalised = try_parse_and_format_phone_number(search_term, with_country_code=False)
+        normalised = try_parse_and_format_phone_number(search_term)
+
         for character in {"(", ")", " ", "-"}:
             normalised = normalised.replace(character, "")
 

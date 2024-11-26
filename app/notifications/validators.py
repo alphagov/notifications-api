@@ -33,7 +33,7 @@ from app.notifications.process_notifications import (
 )
 from app.serialised_models import SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
-from app.utils import get_international_phone_info, get_public_notify_type_text
+from app.utils import get_international_phone_info, get_public_notify_type_text, parse_and_format_phone_number
 from app.v2.errors import (
     BadRequestError,
     RateLimitError,
