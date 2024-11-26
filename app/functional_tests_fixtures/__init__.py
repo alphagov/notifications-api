@@ -10,7 +10,6 @@ from app.constants import (
     EMAIL_AUTH,
     EXTRA_LETTER_FORMATTING,
     INBOUND_SMS_TYPE,
-    CAN_ASK_TO_JOIN_SERVICE,
     SECOND_CLASS,
     SEND_EMAILS,
     SEND_LETTERS,
