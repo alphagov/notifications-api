@@ -10,6 +10,7 @@ from app.constants import (
     EMAIL_AUTH,
     EXTRA_LETTER_FORMATTING,
     INBOUND_SMS_TYPE,
+    CAN_ASK_TO_JOIN_SERVICE,
     SECOND_CLASS,
     SEND_EMAILS,
     SEND_LETTERS,
@@ -58,6 +59,7 @@ from app.dao.users_dao import get_user_by_email, save_model_user
 from app.models import (
     InboundNumber,
     Organisation,
+    OrganisationPermission,
     Permission,
     Service,
     ServiceEmailReplyTo,
@@ -210,6 +212,11 @@ export REQUEST_BIN_API_TOKEN={request_bin_api_token}
         if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
             raise Exception("Failed to upload to SSM")
 
+    service_user = get_user_by_email("notify-tests-preview+email-auth@digital.cabinet-office.gov.uk")
+
+    for counter in range(101, 300):
+        service = _create_service2(org.id, service_user, counter)
+        print(service.id)
     current_app.logger.info("--> Functional test fixtures completed successfully")
 
 
@@ -258,6 +265,27 @@ def _create_organiation(org_name="Functional Tests Org"):
 
     return org
 
+def _create_service2(org_id, user, counter):
+
+
+    data = {
+        "name": f"Functional Tests {counter}",
+        "restricted": False,
+        "organisation_id": org_id,
+        "organisation_type": "central",
+        "created_by": user.id,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
+        "email_message_limit": 1000,
+        "contact_link": current_app.config["ADMIN_BASE_URL"],
+        "go_live_at": "2017-04-01 11:09:00.061258",
+    }
+    service = Service.from_json(data)
+    dao_create_service(service, user)
+
+    set_default_free_allowance_for_service(service=service, year_start=None)
+
+    return service
 
 def _create_service(org_id, user, service_name="Functional Tests"):
 
