@@ -121,6 +121,10 @@ def apply_fixtures():
     current_app.logger.info("--> Ensure service exists")
     service = _create_service(org.id, service_admin_user)
 
+    for counter in range(101, 300):
+        service = _create_service2(org.id, service_admin_user, counter)
+        current_app.logger.info(service.id)
+
     current_app.logger.info("--> Ensure users are added to service")
     dao_add_user_to_service(service, service_admin_user)
     dao_add_user_to_service(service, email_auth_user)
@@ -210,9 +214,6 @@ export REQUEST_BIN_API_TOKEN={request_bin_api_token}
         if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
             raise Exception("Failed to upload to SSM")
 
-    for counter in range(101, 300):
-        service = _create_service2(org.id, service_admin_user, counter)
-        current_app.logger.info(service.id)
     current_app.logger.info("--> Functional test fixtures completed successfully")
 
 
