@@ -549,7 +549,7 @@ class Test(Development):
     # but the database name is set in the _notify_db fixture
     SQLALCHEMY_RECORD_QUERIES = True
 
-    CELERY = {**Config.CELERY, "broker_url": "you-forgot-to-mock-celery-in-your-tests://"}
+    CELERY = {**Config.CELERY, "broker_url": "you-forgot-to-mock-celery-in-your-tests://", "broker_transport": None}
 
     ANTIVIRUS_ENABLED = True
 

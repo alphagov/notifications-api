@@ -8,6 +8,7 @@ import pytz
 from freezegun import freeze_time
 
 import app.celery.tasks
+from app.celery.tasks import process_job
 from app.constants import JOB_STATUS_PENDING, JOB_STATUS_TYPES
 from app.dao.templates_dao import dao_update_template
 from tests import create_admin_authorization_header
@@ -129,8 +130,8 @@ def test_cancel_letter_job_does_not_call_cancel_if_can_letter_job_be_cancelled_r
     assert response["message"] == "Sorry, it's too late, letters have already been sent."
 
 
-def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_create_unscheduled_job(client, sample_template, mocker, mock_celery_task, fake_uuid):
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -167,8 +168,10 @@ def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
     assert resp_json["data"]["notification_count"] == 1
 
 
-def test_create_unscheduled_job_with_sender_id_in_metadata(client, sample_template, mocker, fake_uuid):
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_create_unscheduled_job_with_sender_id_in_metadata(
+    client, sample_template, mocker, mock_celery_task, fake_uuid
+):
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -196,9 +199,9 @@ def test_create_unscheduled_job_with_sender_id_in_metadata(client, sample_templa
 
 
 @freeze_time("2016-01-01 12:00:00.000000")
-def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
+def test_create_scheduled_job(client, sample_template, mocker, mock_celery_task, fake_uuid):
     scheduled_date = (datetime.utcnow() + timedelta(hours=95, minutes=59)).isoformat()
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -242,11 +245,12 @@ def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
 def test_create_job_with_contact_list_id(
     client,
     mocker,
+    mock_celery_task,
     sample_template,
     fake_uuid,
     contact_list_archived,
 ):
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+    mock_celery_task(process_job)
     mocker.patch("app.job.rest.get_job_metadata_from_s3", return_value={"template_id": str(sample_template.id)})
     contact_list = create_service_contact_list(archived=contact_list_archived)
     data = {
@@ -353,9 +357,11 @@ def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_not_create_scheduled_job_more_then_7_days_in_the_future(client, sample_template, mocker, fake_uuid):
+def test_should_not_create_scheduled_job_more_then_7_days_in_the_future(
+    client, sample_template, mocker, mock_celery_task, fake_uuid
+):
     scheduled_date = (datetime.utcnow() + timedelta(days=7, minutes=1)).isoformat()
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -386,9 +392,9 @@ def test_should_not_create_scheduled_job_more_then_7_days_in_the_future(client, 
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_not_create_scheduled_job_in_the_past(client, sample_template, mocker, fake_uuid):
+def test_should_not_create_scheduled_job_in_the_past(client, sample_template, mocker, mock_celery_task, fake_uuid):
     scheduled_date = (datetime.utcnow() - timedelta(minutes=1)).isoformat()
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -414,8 +420,8 @@ def test_should_not_create_scheduled_job_in_the_past(client, sample_template, mo
     assert resp_json["message"]["scheduled_for"] == ["Date cannot be in the past"]
 
 
-def test_create_job_returns_400_if_missing_id(client, sample_template, mocker):
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_create_job_returns_400_if_missing_id(client, sample_template, mocker, mock_celery_task):
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -436,8 +442,8 @@ def test_create_job_returns_400_if_missing_id(client, sample_template, mocker):
     assert "Missing data for required field." in resp_json["message"]["id"]
 
 
-def test_create_job_returns_400_if_missing_data(client, sample_template, mocker, fake_uuid):
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_create_job_returns_400_if_missing_data(client, sample_template, mocker, mock_celery_task, fake_uuid):
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -462,8 +468,8 @@ def test_create_job_returns_400_if_missing_data(client, sample_template, mocker,
     assert "Missing data for required field." in resp_json["message"]["notification_count"]
 
 
-def test_create_job_returns_404_if_template_does_not_exist(client, sample_service, mocker, fake_uuid):
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_create_job_returns_404_if_template_does_not_exist(client, sample_service, mocker, mock_celery_task, fake_uuid):
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -486,8 +492,8 @@ def test_create_job_returns_404_if_template_does_not_exist(client, sample_servic
     assert resp_json["message"] == "No result found"
 
 
-def test_create_job_returns_404_if_missing_service(client, sample_template, mocker):
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_create_job_returns_404_if_missing_service(client, sample_template, mocker, mock_celery_task):
+    mock_celery_task(process_job)
     mocker.patch(
         "app.job.rest.get_job_metadata_from_s3",
         return_value={
@@ -509,8 +515,8 @@ def test_create_job_returns_404_if_missing_service(client, sample_template, mock
     assert resp_json["message"] == "No result found"
 
 
-def test_create_job_returns_400_if_archived_template(client, sample_template, mocker, fake_uuid):
-    mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_create_job_returns_400_if_archived_template(client, sample_template, mocker, mock_celery_task, fake_uuid):
+    mock_celery_task(process_job)
     sample_template.archived = True
     dao_update_template(sample_template)
     mocker.patch(

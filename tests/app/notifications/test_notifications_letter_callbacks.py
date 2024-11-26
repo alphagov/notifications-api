@@ -6,6 +6,8 @@ from flask import json, url_for
 from itsdangerous import BadSignature
 
 from app import signing
+from app.celery.process_letter_client_response_tasks import process_letter_callback_data
+from app.celery.tasks import record_daily_sorted_counts, update_letter_notifications_statuses
 from app.errors import InvalidRequest
 from app.models import LetterCostThreshold
 from app.notifications.notifications_letter_callback import (
@@ -36,11 +38,9 @@ def test_dvla_callback_autoconfirms_subscription(client, mocker):
     assert autoconfirm_mock.called
 
 
-def test_dvla_callback_autoconfirm_does_not_call_update_letter_notifications_task(client, mocker):
+def test_dvla_callback_autoconfirm_does_not_call_update_letter_notifications_task(client, mocker, mock_celery_task):
     autoconfirm_mock = mocker.patch("app.notifications.notifications_letter_callback.autoconfirm_subscription")
-    update_task = mocker.patch(
-        "app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async"
-    )
+    update_task = mock_celery_task(update_letter_notifications_statuses)
 
     data = _sns_confirmation_callback()
     response = dvla_post(client, data)
@@ -50,10 +50,8 @@ def test_dvla_callback_autoconfirm_does_not_call_update_letter_notifications_tas
     assert not update_task.called
 
 
-def test_dvla_callback_calls_does_not_update_letter_notifications_task_with_invalid_file_type(client, mocker):
-    update_task = mocker.patch(
-        "app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async"
-    )
+def test_dvla_callback_calls_does_not_update_letter_notifications_task_with_invalid_file_type(client, mock_celery_task):
+    update_task = mock_celery_task(update_letter_notifications_statuses)
 
     data = _sample_sns_s3_callback("bar.txt")
     response = dvla_post(client, data)
@@ -63,13 +61,9 @@ def test_dvla_callback_calls_does_not_update_letter_notifications_task_with_inva
 
 
 @pytest.mark.parametrize("filename", ["Notify-20170411153023-rs.txt", "Notify-20170411153023-rsp.txt"])
-def test_dvla_rs_and_rsp_txt_file_callback_calls_update_letter_notifications_task(client, mocker, filename):
-    update_task = mocker.patch(
-        "app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async"
-    )
-    daily_sorted_counts_task = mocker.patch(
-        "app.notifications.notifications_letter_callback.record_daily_sorted_counts.apply_async"
-    )
+def test_dvla_rs_and_rsp_txt_file_callback_calls_update_letter_notifications_task(client, mock_celery_task, filename):
+    update_task = mock_celery_task(update_letter_notifications_statuses)
+    daily_sorted_counts_task = mock_celery_task(record_daily_sorted_counts)
     data = _sample_sns_s3_callback(filename)
     response = dvla_post(client, data)
 
@@ -79,13 +73,9 @@ def test_dvla_rs_and_rsp_txt_file_callback_calls_update_letter_notifications_tas
     daily_sorted_counts_task.assert_called_with([filename], queue="notify-internal-tasks")
 
 
-def test_dvla_ack_calls_does_not_call_letter_notifications_task(client, mocker):
-    update_task = mocker.patch(
-        "app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async"
-    )
-    daily_sorted_counts_task = mocker.patch(
-        "app.notifications.notifications_letter_callback.record_daily_sorted_counts.apply_async"
-    )
+def test_dvla_ack_calls_does_not_call_letter_notifications_task(client, mock_celery_task):
+    update_task = mock_celery_task(update_letter_notifications_statuses)
+    daily_sorted_counts_task = mock_celery_task(record_daily_sorted_counts)
     data = _sample_sns_s3_callback("bar.ack.txt")
     response = dvla_post(client, data)
 
@@ -300,11 +290,11 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
 @pytest.mark.parametrize("status", ["DESPATCHED", "REJECTED"])
 def test_process_letter_callback_calls_process_letter_callback_data_task(
     client,
-    mocker,
+    mock_celery_task,
     mock_dvla_callback_data,
     status,
 ):
-    mock_task = mocker.patch("app.notifications.notifications_letter_callback.process_letter_callback_data.apply_async")
+    mock_task = mock_celery_task(process_letter_callback_data)
     data = mock_dvla_callback_data()
     data["data"]["jobStatus"] = status
 
