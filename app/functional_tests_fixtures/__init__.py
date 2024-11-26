@@ -152,7 +152,7 @@ def apply_fixtures():
 
     current_app.logger.info("--> Ensure service sms senders exists")
     _create_service_sms_senders(service.id, "07700900500", True, inbound_number_id)
-    _create_service_sms_senders(service.id, "func tests", False, None)
+    sms_sender = _create_service_sms_senders(service.id, "func tests", False, None)
 
     current_app.logger.info("--> Ensure service inbound api exists")
     _create_service_inbound_api(service.id, service_admin_user.id)
@@ -184,6 +184,7 @@ export FUNCTIONAL_TESTS_API_AUTH_SECRET='{current_app.config['INTERNAL_CLIENT_AP
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO='{test_email_username}+{environment}-reply-to@{email_domain}'
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_ID='{email_reply_to.id}'
+export FUNCTIONAL_TESTS_SERVICE_SMS_SENDER_ID='{sms_sender.id}'
 export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER=07700900500
 
 export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={template2_id}
@@ -458,9 +459,9 @@ def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_numb
 
     for service_sms_sender in service_sms_senders:
         if service_sms_sender.sms_sender == sms_sender:
-            return
+            return service_sms_sender
 
-    dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id)
+    return dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id)
 
 
 def _create_service_inbound_api(service_id, user_id):
