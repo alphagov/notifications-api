@@ -263,8 +263,8 @@ def _create_organiation(org_name="Functional Tests Org"):
 
     return org
 
-def _create_service2(org_id, user, counter):
 
+def _create_service2(org_id, user, counter):
 
     data = {
         "name": f"Functional Tests {counter}",
@@ -284,6 +284,7 @@ def _create_service2(org_id, user, counter):
     set_default_free_allowance_for_service(service=service, year_start=None)
 
     return service
+
 
 def _create_service(org_id, user, service_name="Functional Tests"):
 
