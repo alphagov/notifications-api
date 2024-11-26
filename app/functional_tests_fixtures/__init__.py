@@ -143,7 +143,9 @@ def apply_fixtures():
     _create_service_email_reply_to(
         service.id, f"{test_email_username}+{environment}-reply-to-default@{email_domain}", True
     )
-    _create_service_email_reply_to(service.id, f"{test_email_username}+{environment}-reply-to@{email_domain}", False)
+    email_reply_to = _create_service_email_reply_to(
+        service.id, f"{test_email_username}+{environment}-reply-to@{email_domain}", False
+    )
 
     current_app.logger.info("--> Ensure service permissions exists")
     _create_service_permissions(service.id)
@@ -181,6 +183,7 @@ export FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY='{function_tests_test_key_name}-{se
 export FUNCTIONAL_TESTS_API_AUTH_SECRET='{current_app.config['INTERNAL_CLIENT_API_KEYS']['notify-functional-tests'][0]}'
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO='{test_email_username}+{environment}-reply-to@{email_domain}'
+export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_ID='{email_reply_to.id}'
 export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER=07700900500
 
 export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={template2_id}
@@ -422,7 +425,7 @@ def _create_service_email_reply_to(service_id, email_address, is_default):
 
     for service_email_reply_to in service_email_reply_tos:
         if service_email_reply_to.email_address == email_address:
-            return
+            return service_email_reply_to
 
     service_email_reply_to = ServiceEmailReplyTo()
 
@@ -430,7 +433,7 @@ def _create_service_email_reply_to(service_id, email_address, is_default):
     service_email_reply_to.is_default = is_default
     service_email_reply_to.email_address = email_address
 
-    add_reply_to_email_address_for_service(service_id, email_address, is_default)
+    return add_reply_to_email_address_for_service(service_id, email_address, is_default)
 
 
 def _create_service_permissions(service_id, permissions=None):
