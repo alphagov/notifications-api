@@ -118,7 +118,9 @@ COPY --chown=notify:notify . .
 
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
 
-RUN pip3 install -r requirements_for_test.txt
+RUN pip3 install --upgrade uv
+
+RUN uv pip install -r requirements_for_test.txt
 
 USER root
 
