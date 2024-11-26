@@ -2908,7 +2908,7 @@ class SerializedServiceJoinRequest:
 
 
 contacted_users = db.Table(
-    "contacted_users",
+    "service_join_request_contacted_users",
     db.Model.metadata,
     db.Column(
         "service_join_request_id", UUID(as_uuid=True), db.ForeignKey("service_join_requests.id"), primary_key=True
