@@ -122,8 +122,8 @@ def apply_fixtures():
     service = _create_service(org.id, service_admin_user)
 
     for counter in range(301, 500):
-        _create_service2(org.id, service_admin_user, counter)
-        current_app.logger.info(service.id)
+        _create_service2(org.id, service_admin_user, uuid4())
+        current_app.logger.info(service.id, counter)
 
     current_app.logger.info("--> Ensure users are added to service")
     dao_add_user_to_service(service, service_admin_user)
