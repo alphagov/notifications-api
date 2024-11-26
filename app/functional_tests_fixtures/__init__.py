@@ -210,10 +210,9 @@ export REQUEST_BIN_API_TOKEN={request_bin_api_token}
         if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
             raise Exception("Failed to upload to SSM")
 
-    service_user = get_user_by_email("saurabh.patel+deva1@digital.cabinet-office.gov.uk")
 
     for counter in range(101, 300):
-        service = _create_service2(org.id, service_user, counter)
+        service = _create_service2(org.id, service_admin_user, counter)
         current_app.logger.info(service.id)
     current_app.logger.info("--> Functional test fixtures completed successfully")
 
