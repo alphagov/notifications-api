@@ -64,6 +64,7 @@ from app.models import (
     NotificationHistory,
     Organisation,
     Permission,
+    ProtectedSenderId,
     Rate,
     ReturnedLetter,
     Service,
@@ -1339,3 +1340,17 @@ def create_unsubscribe_request_report(
     )
     create_unsubscribe_request_reports_dao(report)
     return report
+
+
+def create_protected_sender_id(
+    sender_id,
+    organisation_id=None,
+):
+    data = ProtectedSenderId(
+        sender_id=sender_id,
+        organisation_id=organisation_id,
+    )
+    db.session.add(data)
+    db.session.commit()
+
+    return data

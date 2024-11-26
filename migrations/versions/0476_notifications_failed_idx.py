@@ -4,7 +4,6 @@ Create Date: 2024-11-15 14:01:27.039958
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 revision = "0476_notifications_failed_idx"
 down_revision = "0475_ntfcn_hist_xstats_mcv"

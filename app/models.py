@@ -2892,6 +2892,7 @@ class ProtectedSenderId(db.Model):
     __tablename__ = "protected_sender_ids"
 
     sender_id = db.Column(db.String, primary_key=True, nullable=False)
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=True)
 
 
 @dataclass

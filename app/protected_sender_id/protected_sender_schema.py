@@ -4,6 +4,8 @@ protected_sender_request = {
     "type": "object",
     "title": "Protected sender id check",
     "properties": {
-        "sender_id": {"type": ["string", "null"]},
+        "sender_id": {"type": "string", "minLength": 1},
+        "organisation_id": {"type": "string", "format": "uuid"},
     },
+    "required": ["sender_id"],
 }
