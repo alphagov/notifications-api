@@ -3,6 +3,8 @@ from urllib.parse import urljoin
 
 import pytz
 from flask import current_app, url_for
+from notifications_utils.recipient_validation.errors import InvalidPhoneError
+from notifications_utils.recipient_validation.phone_number import PhoneNumber
 from notifications_utils.template import (
     HTMLEmailTemplate,
     LetterPrintTemplate,
@@ -162,3 +164,23 @@ def get_ft_billing_data_for_today_updated_at() -> str | None:
 
 def utc_string_to_bst_string(utc_string):
     return utc_string_to_aware_gmt_datetime(utc_string).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def try_parse_and_format_phone_number(number: str, log_msg=None, with_country_code=True) -> str:
+    try:
+        return parse_and_format_phone_number(number, with_country_code=with_country_code)
+    except InvalidPhoneError as e:
+        current_app.logger.warning("%s: %s", log_msg, e)
+        return number
+
+
+def parse_and_format_phone_number(number: str, with_country_code=True) -> str:
+    phone_number = PhoneNumber(number)
+    if not with_country_code:
+        return str(phone_number.number.national_number)
+    return phone_number.get_normalised_format()
+
+
+def get_international_phone_info(number: str):
+    phone_number = PhoneNumber(number)
+    return phone_number.get_international_phone_info()

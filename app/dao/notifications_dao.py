@@ -12,7 +12,6 @@ from notifications_utils.international_billing_rates import (
 )
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError
-from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy import and_, asc, desc, func, literal, or_, union
 from sqlalchemy.dialects.postgresql import insert
@@ -57,6 +56,7 @@ from app.utils import (
     escape_special_characters,
     get_london_midnight_in_utc,
     midnight_n_days_ago,
+    try_parse_and_format_phone_number,
 )
 
 FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
@@ -612,8 +612,7 @@ def dao_get_notifications_by_recipient_or_reference(
     error_out=True,
 ):
     if notification_type == SMS_TYPE:
-        normalised = try_validate_and_format_phone_number(search_term)
-
+        normalised = try_parse_and_format_phone_number(search_term, with_country_code=False)
         for character in {"(", ")", " ", "-"}:
             normalised = normalised.replace(character, "")
 
@@ -639,7 +638,6 @@ def dao_get_notifications_by_recipient_or_reference(
 
     normalised = escape_special_characters(normalised)
     search_term = escape_special_characters(search_term)
-
     filters = [
         Notification.service_id == service_id,
         or_(
@@ -653,7 +651,6 @@ def dao_get_notifications_by_recipient_or_reference(
         filters.append(Notification.status.in_(statuses))
     if notification_type:
         filters.append(Notification.notification_type == notification_type)
-
     results = (
         db.session.query(Notification)
         .filter(*filters)
