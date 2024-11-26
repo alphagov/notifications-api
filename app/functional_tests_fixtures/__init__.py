@@ -1,9 +1,9 @@
 import os
+import random
 from uuid import uuid4
 
 import boto3
 from flask import current_app
-from random import randrange
 from sqlalchemy.exc import NoResultFound
 
 from app.constants import (
@@ -124,7 +124,7 @@ def apply_fixtures():
 
     for counter in range(301, 500):
         _create_service2(org.id, service_admin_user, uuid4())
-        current_app.logger.info(f"{service.id}-{counter}")
+        current_app.logger.info("%s %f", service.id, counter)
 
     current_app.logger.info("--> Ensure users are added to service")
     dao_add_user_to_service(service, service_admin_user)
@@ -353,7 +353,7 @@ def _create_inbound_numbers(service_id, user_id, number="07700900", provider="mm
         return inbound_number.id
 
     inbound_number = InboundNumber()
-    inbound_number.number = number + str(randrange(1000))
+    inbound_number.number = number + str(random.randrange(1000))
     inbound_number.provider = provider
     inbound_number.service_id = service_id
     inbound_number.active = True
