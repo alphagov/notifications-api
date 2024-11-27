@@ -27,10 +27,11 @@ RUN echo "Install OS dependencies for python app requirements" &&  \
 
 COPY requirements.txt .
 
+RUN pip install uv
+
 RUN echo "Installing python requirements" && \
     python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install uv && \
-    /opt/venv/bin/uv pip install --python /opt/venv/bin/python -r requirements.txt
+    uv pip install --python /opt/venv/bin/python -r requirements.txt
 
 COPY . .
 RUN make generate-version-file  # This file gets copied across
