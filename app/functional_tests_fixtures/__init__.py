@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from uuid import uuid4
 
 import boto3
@@ -27,6 +28,7 @@ from app.dao.inbound_numbers_dao import (
     dao_get_inbound_number_for_service,
     dao_set_inbound_number_to_service,
 )
+from app.dao.inbound_sms_dao import dao_create_inbound_sms, dao_get_inbound_sms_for_service
 from app.dao.organisation_dao import (
     dao_create_organisation,
     dao_get_organisation_by_id,
@@ -58,6 +60,7 @@ from app.dao.templates_dao import dao_create_template, dao_get_all_templates_for
 from app.dao.users_dao import get_user_by_email, save_model_user
 from app.models import (
     InboundNumber,
+    InboundSms,
     Organisation,
     Permission,
     Service,
@@ -171,6 +174,9 @@ def apply_fixtures():
 
     current_app.logger.info("--> Ensure service inbound api exists")
     _create_service_inbound_api(service.id, service_admin_user.id)
+
+    current_app.logger.info("--> Ensure dummy inbound SMS objects exist")
+    _create_inbound_sms(service, 3)
 
     functional_test_config = f"""
 
@@ -503,3 +509,21 @@ def _create_service_inbound_api(service_id, user_id):
     inbound_api.bearer_token = "1234567890"
 
     save_service_inbound_api(inbound_api)
+
+
+def _create_inbound_sms(service, count):
+
+    num_existing = len(dao_get_inbound_sms_for_service(service.id, limit=count))
+
+    for _ in range(num_existing, count):
+        dao_create_inbound_sms(
+            InboundSms(
+                service=service,
+                notify_number=service.get_inbound_number(),
+                user_number="00000000000",
+                provider_date=datetime.utcnow(),
+                provider_reference="SOME-MMG-SPECIFIC-ID",
+                content="This is a test message",
+                provider="mmg",
+            )
+        )
