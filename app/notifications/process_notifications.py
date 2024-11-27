@@ -156,7 +156,7 @@ def persist_notification(
         notification.normalised_to = formatted_recipient
         notification.international = recipient_info.international
         notification.phone_prefix = recipient_info.country_prefix
-        notification.rate_multiplier = recipient_info.billable_units
+        notification.rate_multiplier = recipient_info.rate_multiplier
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:

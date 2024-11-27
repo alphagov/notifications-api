@@ -184,7 +184,7 @@ mypy-extensions==1.0.0
     # via black
 notifications-python-client==8.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@90.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@91.0.1
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -196,7 +196,7 @@ packaging==24.2
     #   pytest
 pathspec==0.12.1
     # via black
-phonenumbers==8.13.49
+phonenumbers==8.13.50
     # via notifications-utils
 platformdirs==4.3.6
     # via black
