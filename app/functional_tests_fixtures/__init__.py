@@ -39,6 +39,7 @@ from app.dao.service_email_reply_to_dao import (
     dao_get_reply_to_by_service_id,
 )
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service, save_service_inbound_api
+from app.dao.service_letter_contact_dao import add_letter_contact_for_service, dao_get_letter_contacts_by_service_id
 from app.dao.service_permissions_dao import (
     dao_add_service_permission,
     dao_fetch_service_permissions,
@@ -135,9 +136,23 @@ def apply_fixtures():
     current_app.logger.info("--> Ensure inbound number exists")
     inbound_number_id = _create_inbound_numbers(service.id, service_admin_user.id)
 
+    current_app.logger.info("--> Ensure service letter contact exists")
+    letter_contact = _create_service_letter_contact(
+        service.id,
+        (
+            "Government Digital Service\n"
+            "The White Chapel Building\n"
+            "10 Whitechapel High Street\n"
+            "London\n"
+            "E1 8QS\n"
+            "United Kingdom"
+        ),
+        True,
+    )
+
     template1_id = _create_email_template(service, service_admin_user.id)
     template2_id = _create_sms_template(service, service_admin_user.id)
-    template3_id = _create_letter_template(service, service_admin_user.id)
+    template3_id = _create_letter_template(service, service_admin_user.id, letter_contact.id)
 
     current_app.logger.info("--> Ensure service email reply to exists")
     _create_service_email_reply_to(
@@ -341,6 +356,17 @@ def _create_inbound_numbers(service_id, user_id, number="07700900500", provider=
     return inbound_number.id
 
 
+def _create_service_letter_contact(service_id, contact_block, is_default):
+
+    letter_contacts = dao_get_letter_contacts_by_service_id(service_id)
+
+    for letter_contact in letter_contacts:
+        if letter_contact.contact_block == contact_block:
+            return letter_contact
+
+    return add_letter_contact_for_service(service_id, contact_block, is_default)
+
+
 def _create_email_template(service, user_id):
     name = "Functional Tests - CSV Email Template with Build ID"
 
@@ -392,9 +418,9 @@ def _create_sms_template(service, user_id):
     return new_template.id
 
 
-def _create_letter_template(service, user_id):
+def _create_letter_template(service, user_id, letter_contact_id):
 
-    name = "Functional Tests - CSV Letter Template with Build ID"
+    name = "Functional Tests - CSV Letter Template with Build ID and Letter Contact"
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
@@ -403,7 +429,7 @@ def _create_letter_template(service, user_id):
             return template.id
 
     data = {
-        "name": "Functional Tests - CSV Letter Template with Build ID",
+        "name": name,
         "template_type": "letter",
         "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
         "subject": "Functional Tests - CSV Letter",
@@ -414,6 +440,7 @@ def _create_letter_template(service, user_id):
 
     new_template.service = service
     new_template.postage = SECOND_CLASS
+    new_template.service_letter_contact_id = letter_contact_id
 
     dao_create_template(new_template)
 
