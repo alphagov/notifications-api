@@ -7,7 +7,6 @@ from boto3.exceptions import Boto3Error
 from freezegun import freeze_time
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
-from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, LETTER_TYPE, SMS_TO_UK_LANDLINES, SMS_TYPE
@@ -19,6 +18,7 @@ from app.notifications.process_notifications import (
     simulated_recipient,
 )
 from app.serialised_models import SerialisedTemplate
+from app.utils import parse_and_format_phone_number
 from app.v2.errors import BadRequestError, QrCodeTooLongError
 from tests.app.db import create_api_key, create_job, create_service, create_template
 from tests.conftest import set_config
@@ -345,7 +345,7 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
     if notification_type == "email":
         formatted_address = validate_and_format_email_address(to_address)
     else:
-        formatted_address = validate_and_format_phone_number(to_address)
+        formatted_address = parse_and_format_phone_number(to_address)
 
     is_simulated_address = simulated_recipient(formatted_address, notification_type)
 
