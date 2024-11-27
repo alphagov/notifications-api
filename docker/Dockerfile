@@ -29,6 +29,7 @@ COPY requirements.txt .
 
 RUN pip install uv
 
+ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN echo "Installing python requirements" && \
     python3 -m venv /opt/venv && \
     uv pip install --python /opt/venv/bin/python -r requirements.txt
@@ -84,6 +85,7 @@ COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
 COPY --chown=notify:notify Makefile requirements_for_test.txt ./
+ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN make bootstrap
 
 COPY --chown=notify:notify . .
@@ -122,6 +124,7 @@ ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
 
 RUN pip3 install --upgrade uv
 
+ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN uv pip install -r requirements_for_test.txt
 
 USER root
