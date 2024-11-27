@@ -892,7 +892,7 @@ def organisation_reject_go_live_request_template(notify_service):
 
         GOV.​UK Notify team
         https://www.gov.uk/notify
-        """  # noqa
+        """
     )
 
     return create_custom_template(
