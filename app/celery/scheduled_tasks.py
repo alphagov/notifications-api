@@ -22,10 +22,11 @@ from app import db, dvla_client, notify_celery, redis_store, statsd_client, zend
 from app.aws import s3
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
+    get_id_task_args_kwargs_for_job_row,
     get_recipient_csv_and_template_and_sender_id,
     process_incomplete_jobs,
     process_job,
-    process_row,
+    process_job_row,
 )
 from app.clients.letter.dvla import DvlaRetryableException
 from app.config import QueueNames, TaskNames
@@ -397,8 +398,11 @@ def check_for_missing_rows_in_completed_jobs():
         missing_rows = find_missing_row_for_job(job.id, job.notification_count)
         for row_to_process in missing_rows:
             row = recipient_csv[row_to_process.missing_row]
+            _, task_args_kwargs = get_id_task_args_kwargs_for_job_row(
+                row, template, job, job.service, sender_id=sender_id
+            )
             current_app.logger.info("Processing missing row: %s for job: %s", row_to_process.missing_row, job.id)
-            process_row(row, template, job, job.service, sender_id=sender_id)
+            process_job_row(template.template_type, task_args_kwargs)
 
 
 @notify_celery.task(name="check-for-services-with-high-failure-rates-or-sending-to-tv-numbers")

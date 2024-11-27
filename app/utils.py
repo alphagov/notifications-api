@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from itertools import islice
 from urllib.parse import urljoin
 
 import pytz
@@ -51,6 +52,19 @@ def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **k
     if next_page_exists:
         links["next"] = True
     return links
+
+
+# "approximate equivalent" of itertools.batched from python 3.12's documentation. remove once we upgrade
+# past python 3.12 and use itertools' version instead
+def batched(iterable, n, *, strict=False):
+    # batched('ABCDEFG', 3) → ABC DEF G
+    if n < 1:
+        raise ValueError("n must be at least one")
+    iterator = iter(iterable)
+    while batch := tuple(islice(iterator, n)):
+        if strict and len(batch) != n:
+            raise ValueError("batched(): incomplete batch")
+        yield batch
 
 
 def url_with_token(data, url, base_url=None):
