@@ -5,7 +5,6 @@ from datetime import datetime
 
 from flask import abort, current_app, jsonify, request
 from gds_metrics import Histogram
-from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
 from app import (
     api_user,
@@ -55,6 +54,7 @@ from app.notifications.validators import (
     validate_template,
 )
 from app.schema_validation import validate
+from app.utils import try_parse_and_format_phone_number
 from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.create_response import (
@@ -396,7 +396,7 @@ def get_reply_to_text(notification_type, form, template):
             str(authenticated_service.id), service_sms_sender_id, notification_type
         )
         if sms_sender_id:
-            reply_to = try_validate_and_format_phone_number(sms_sender_id)
+            reply_to = try_parse_and_format_phone_number(sms_sender_id)
         else:
             reply_to = template.reply_to_text
 
