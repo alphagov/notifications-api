@@ -1,6 +1,8 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
+from app.constants import INBOUND_SMS_TYPE
+from app.dao.inbound_numbers_dao import dao_archive_inbound_number
 from app.dao.inbound_sms_dao import (
     dao_count_inbound_sms_for_service,
     dao_get_inbound_sms_by_id,
@@ -8,6 +10,11 @@ from app.dao.inbound_sms_dao import (
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service,
 )
 from app.dao.service_data_retention_dao import fetch_service_data_retention_by_notification_type
+from app.dao.service_permissions_dao import (
+    dao_remove_service_permission,
+)
+from app.dao.service_sms_sender_dao import dao_remove_sms_senders
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors
 from app.inbound_sms.inbound_sms_schemas import get_inbound_sms_for_service_schema
 from app.schema_validation import validate
@@ -60,3 +67,36 @@ def get_inbound_by_id(service_id, inbound_sms_id):
     message = dao_get_inbound_sms_by_id(service_id, inbound_sms_id)
 
     return jsonify(message.serialize()), 200
+
+
+@inbound_sms.route("/remove-capability", methods=["POST"])
+def remove_inbound_sms_capability(service_id):
+    current_app.logger.info("Received request to remove inbound SMS capability for service %s", service_id)
+
+    # Check if the service exists
+    service = dao_fetch_service_by_id(service_id)
+    if not service:
+        current_app.logger.error("Service with ID %s does not exist", service)
+        return jsonify({"message": "Service not found"}), 404
+
+    current_app.logger.info("Service %s found. Proceeding with inbound SMS removal", service_id)
+
+    try:
+        # Remove the inbound_sms permission
+        current_app.logger.info("Removing 'inbound_sms' permission for service %s", service_id)
+        dao_remove_service_permission(service_id, INBOUND_SMS_TYPE)
+
+        # Remove any SMS senders linked to the inbound number
+        current_app.logger.info("Removing SMS senders linked to service %s", service_id)
+        dao_remove_sms_senders(service_id)
+
+        # Archive the inbound number
+        current_app.logger.info("Archiving inbound number for service %s", service_id)
+        dao_archive_inbound_number(service_id)
+
+        current_app.logger.info("Successfully removed inbound SMS capability for service %s", service_id)
+        return jsonify({"message": "Inbound SMS capability removed successfully"}), 200
+
+    except Exception as e:
+        current_app.logger.error("Error removing inbound SMS capability for service %s: %w", service_id, e)
+        return jsonify({"message": "An error occurred while removing inbound SMS capability"}), 500
