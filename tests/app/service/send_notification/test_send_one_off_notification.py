@@ -100,14 +100,14 @@ def test_send_one_off_notification_calls_persist_correctly_for_international_sms
 
     post_data = {
         "template_id": str(template.id),
-        "to": "+1415-771-1401",
+        "to": "+1 555 0100",
         "personalisation": {"name": "foo"},
         "created_by": str(service.created_by_id),
     }
 
     send_one_off_notification(service.id, post_data)
 
-    assert persist_mock.call_args[1]["recipient"] == "+1415-771-1401"
+    assert persist_mock.call_args[1]["recipient"] == "+1 555 0100"
 
 
 def test_send_one_off_notification_calls_persist_correctly_for_email(persist_mock, celery_mock, notify_db_session):
