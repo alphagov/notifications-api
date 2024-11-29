@@ -27,9 +27,12 @@ RUN echo "Install OS dependencies for python app requirements" &&  \
 
 COPY requirements.txt .
 
+RUN pip install uv
+
+ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN echo "Installing python requirements" && \
     python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install -r requirements.txt
+    uv pip sync --python /opt/venv/bin/python requirements.txt
 
 COPY . .
 RUN make generate-version-file  # This file gets copied across
@@ -81,7 +84,9 @@ RUN mkdir -p app
 COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
+RUN pip install uv
 COPY --chown=notify:notify Makefile requirements_for_test.txt ./
+ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN make bootstrap
 
 COPY --chown=notify:notify . .
@@ -118,11 +123,10 @@ COPY --chown=notify:notify . .
 
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
 
-RUN pip3 install -r requirements.txt
+RUN pip3 install uv
 
-RUN python -c "from notifications_utils.version_tools import copy_config; copy_config()"
-
-RUN pip3 install -r requirements_for_test.txt
+ENV UV_CACHE_DIR='/tmp/uv-cache/'
+RUN uv pip sync requirements_for_test.txt
 
 USER root
 
