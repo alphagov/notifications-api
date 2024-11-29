@@ -134,7 +134,7 @@ def test_should_raise_non_400_statuses_as_exceptions(document_download, mock_onw
 
         document_download.upload_document("service-id", "abababab")
 
-    assert type(excinfo.value) == Exception  # make sure it's a base exception, so will be handled as a 500 by v2 api
+    assert type(excinfo.value) is Exception  # make sure it's a base exception, so will be handled as a 500 by v2 api
     assert str(excinfo.value) == 'Unhandled document download error: {"error": "Auth Error Of Some Kind"}'
 
 
@@ -149,5 +149,5 @@ def test_should_raise_exceptions_without_http_response_bodies_as_exceptions(
 
         document_download.upload_document("service-id", "abababab")
 
-    assert type(excinfo.value) == Exception  # make sure it's a base exception, so will be handled as a 500 by v2 api
+    assert type(excinfo.value) is Exception  # make sure it's a base exception, so will be handled as a 500 by v2 api
     assert str(excinfo.value) == "Unhandled document download error: ConnectTimeout()"

@@ -116,7 +116,7 @@ class notify_command:
     help="""
     Functional test user email prefix. eg "notify-test-preview"
 """,
-)  # noqa
+)
 def purge_functional_test_data(user_email_prefix):
     """
     Remove non-seeded functional test data

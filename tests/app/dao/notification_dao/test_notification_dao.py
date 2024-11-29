@@ -1607,9 +1607,9 @@ def test_letters_to_be_printed_returns_ids(notify_db_session):
         create_notification(second_template, created_at=datetime(2020, 12, 1, 8, 30)),
     }
     # unprinted_notifications
-    create_notification(first_template, created_at=datetime(2020, 12, 1, 17, 31)),  # too late
-    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test"),  # wrong keytype
-    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test"),  # wrong keytype
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 17, 31))  # too late
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test")  # wrong keytype
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test")  # wrong keytype
     create_notification(email_template, created_at=datetime(2020, 12, 1, 9, 30))  # email
     # no billable units (probably still in virus scan/sanitsation phase)
     create_notification(template=first_template, created_at=datetime(2020, 12, 1, 9, 31), billable_units=0)
