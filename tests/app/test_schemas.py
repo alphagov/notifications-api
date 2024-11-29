@@ -82,12 +82,13 @@ def test_user_update_schema_accepts_valid_attribute_pairs(user_attribute, user_v
 
 @pytest.mark.parametrize(
     "user_attribute, user_value",
-    [("name", None), ("name", ""), ("email_address", "bademail@...com"), ("mobile_number", "06000400200")],
+    [("name", None), ("name", ""), ("email_address", "bademail@...com"), ("mobile_number", "+44077009")],
 )
 def test_user_update_schema_rejects_invalid_attribute_pairs(user_attribute, user_value):
     from app.schemas import user_update_schema_load_json
 
     update_dict = {user_attribute: user_value}
+
     with pytest.raises(ValidationError):
         user_update_schema_load_json.load(update_dict)
 

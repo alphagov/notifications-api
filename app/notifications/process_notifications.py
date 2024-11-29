@@ -9,6 +9,8 @@ from notifications_utils.recipient_validation.email_address import (
 )
 from notifications_utils.recipient_validation.phone_number import (
     PhoneNumber,
+    get_international_phone_info,
+    validate_and_format_phone_number,
 )
 from notifications_utils.template import (
     LetterPrintTemplate,
@@ -34,7 +36,6 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_by_id,
 )
 from app.models import Notification
-from app.utils import parse_and_format_phone_number
 from app.v2.errors import BadRequestError, QrCodeTooLongError
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
@@ -147,16 +148,18 @@ def persist_notification(
         updated_at=updated_at,
     )
     if notification_type == SMS_TYPE:
-        phonenumber = PhoneNumber(recipient)
-        phonenumber.validate(
-            allow_international_number=True, allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES)
-        )
-        formatted_recipient = phonenumber.get_normalised_format()
-        recipient_info = phonenumber.get_international_phone_info()
+        if service.has_permission(SMS_TO_UK_LANDLINES):
+            phonenumber = PhoneNumber(recipient)
+            phonenumber.validate(allow_international_number=True, allow_uk_landline=True)
+            formatted_recipient = phonenumber.get_normalised_format()
+            recipient_info = phonenumber.get_international_phone_info()
+        else:
+            formatted_recipient = validate_and_format_phone_number(recipient, international=True)
+            recipient_info = get_international_phone_info(formatted_recipient)
         notification.normalised_to = formatted_recipient
         notification.international = recipient_info.international
         notification.phone_prefix = recipient_info.country_prefix
-        notification.rate_multiplier = recipient_info.rate_multiplier
+        notification.rate_multiplier = recipient_info.billable_units
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:
@@ -220,7 +223,7 @@ def send_notification_to_queue(notification, queue=None):
 def simulated_recipient(to_address, notification_type):
     if notification_type == SMS_TYPE:
         formatted_simulated_numbers = [
-            parse_and_format_phone_number(number) for number in current_app.config["SIMULATED_SMS_NUMBERS"]
+            validate_and_format_phone_number(number) for number in current_app.config["SIMULATED_SMS_NUMBERS"]
         ]
         return to_address in formatted_simulated_numbers
     else:
