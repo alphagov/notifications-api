@@ -488,14 +488,20 @@ def test_check_if_letters_still_pending_virus_check_restarts_scan_for_stuck_lett
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=601),
+        created_at=datetime.utcnow() - timedelta(minutes=10, seconds=1),
         reference="one",
     )
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=599),
+        created_at=datetime.utcnow() - timedelta(minutes=9, seconds=59),
         reference="still has time to send",
+    )
+    create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(minutes=30, seconds=1),
+        reference="too old for us to bother with",
     )
     expected_filename = "NOTIFY.ONE.D.2.C.20190530134959.PDF"
 

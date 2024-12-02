@@ -316,10 +316,11 @@ def replay_created_notifications():
 
 
 @notify_celery.task(name="check-if-letters-still-pending-virus-check")
-def check_if_letters_still_pending_virus_check():
+def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 30):
+    # this task runs every ten minutes, so allowing a couple of runs
+    # if this task doesn't run for some reason, we may need to manually trigger it with a longer max_minutes_ago value
     letters = []
-
-    for letter in dao_precompiled_letters_still_pending_virus_check():
+    for letter in dao_precompiled_letters_still_pending_virus_check(max_minutes_ago_to_check):
         # find letter in the scan bucket
         filename = generate_letter_pdf_filename(
             letter.reference, letter.created_at, ignore_folder=True, postage=letter.postage

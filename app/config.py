@@ -331,9 +331,18 @@ class Config:
                 "schedule": crontab(day_of_week="mon-fri", hour=7, minute=0),
                 "options": {"queue": QueueNames.PERIODIC},
             },
-            "check-if-letters-still-pending-virus-check": {
+            "check-if-letters-still-pending-virus-check-ten-minutely": {
                 "task": "check-if-letters-still-pending-virus-check",
                 "schedule": crontab(minute="*/10"),
+                # check last half hour, every ten minutes
+                "kwargs": {"max_minutes_ago_to_check": 30},
+                "options": {"queue": QueueNames.PERIODIC},
+            },
+            "check-if-letters-still-pending-virus-check-nightly": {
+                "task": "check-if-letters-still-pending-virus-check",
+                "schedule": crontab(hour=20, minute=0),
+                # check back two entire days, once per day, just in case things slipped through the net somehow
+                "kwargs": {"max_minutes_ago_to_check": 60 * 24 * 2},
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "check-for-services-with-high-failure-rates-or-sending-to-tv-numbers": {

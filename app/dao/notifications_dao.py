@@ -815,12 +815,16 @@ def letters_missing_from_sending_bucket(seconds_to_subtract):
     return notifications
 
 
-def dao_precompiled_letters_still_pending_virus_check():
-    ten_minutes_ago = datetime.utcnow() - timedelta(seconds=600)
+def dao_precompiled_letters_still_pending_virus_check(max_minutes_ago_to_check):
+    earliest_timestamp_to_check = datetime.utcnow() - timedelta(minutes=max_minutes_ago_to_check)
+    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
 
     notifications = (
         Notification.query.filter(
-            Notification.created_at < ten_minutes_ago, Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
+            Notification.created_at > earliest_timestamp_to_check,
+            Notification.created_at < ten_minutes_ago,
+            Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK,
+            Notification.notification_type == LETTER_TYPE,
         )
         .order_by(Notification.created_at)
         .all()
