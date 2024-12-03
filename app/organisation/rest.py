@@ -301,7 +301,9 @@ def remove_letter_branding_from_organisation_pool(organisation_id, letter_brandi
 
 @organisation_blueprint.route("/notify-users-of-request-to-go-live/<uuid:service_id>", methods=["POST"])
 def notify_users_of_request_to_go_live(service_id):
-    template = dao_get_template_by_id(current_app.config["GO_LIVE_NEW_REQUEST_FOR_ORG_USERS_TEMPLATE_ID"])
+    approver_template = dao_get_template_by_id(current_app.config["GO_LIVE_NEW_REQUEST_FOR_ORG_APPROVERS_TEMPLATE_ID"])
+    requester_template = dao_get_template_by_id(current_app.config["GO_LIVE_NEW_REQUEST_FOR_ORG_REQUESTER_TEMPLATE_ID"])
+
     service = dao_fetch_service_by_id(service_id)
     organisation = service.organisation
     make_service_live_link = f"{current_app.config['ADMIN_BASE_URL']}/services/{service.id}/make-service-live"
@@ -309,7 +311,9 @@ def notify_users_of_request_to_go_live(service_id):
 
     send_notification_to_organisation_users(
         organisation=organisation,
-        template=template,
+        service=service,
+        approver_template=approver_template,
+        requester_template=requester_template,
         reply_to_text=service.go_live_user.email_address,
         with_permission=OrganisationUserPermissionTypes.can_make_services_live,
         personalisation={
