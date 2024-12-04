@@ -8,7 +8,8 @@ from app.dao.notifications_dao import get_notification_by_id
 from app.dao.unsubscribe_request_dao import (
     create_unsubscribe_request_dao,
     get_unbatched_unsubscribe_requests_dao,
-    get_unsubscribe_request_reports_dao,
+    get_unsubscribe_request_reports_dao, get_unsubscribe_request_by_notification_id_dao,
+    get_unsubscribe_request_report_by_id_dao,
 )
 from app.errors import InvalidRequest, register_errors
 from app.models import UnsubscribeRequestReport
@@ -69,3 +70,18 @@ def create_unsubscribe_request_reports_summary(service_id):
             UnsubscribeRequestReport.serialize_unbatched_requests(unbatched_unsubscribe_requests)
         ] + unsubscribe_request_reports
     return unsubscribe_request_reports
+
+
+def is_duplicate_unsubscribe_request(notification_id):
+    """
+    A duplicate unsubscribe request is being defined as an unsubscribe_request that has
+    the same notification_id of a previously received unsubscribe request that has not yet been processed
+    by the service that initiated the notification.
+    """
+    if unsubscribe_request := get_unsubscribe_request_by_notification_id_dao(notification_id):
+        report_id = unsubscribe_request.unsubscribe_request_report_id
+        if not report_id:
+            return True
+
+        return False if get_unsubscribe_request_report_by_id_dao(report_id).processed_by_service_at else True
+    return False
