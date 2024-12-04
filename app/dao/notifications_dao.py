@@ -242,7 +242,7 @@ def dao_get_notification_or_history_by_id(notification_id):
         return NotificationHistory.query.get(notification_id)
 
 
-def get_notifications_for_service(
+def get_notifications_for_service(  # noqa: C901
     service_id,
     filter_dict=None,
     page=1,
@@ -268,10 +268,18 @@ def get_notifications_for_service(
         filters.append(Notification.created_at >= midnight_n_days_ago(limit_days))
 
     if older_than is not None:
+        # fetching this separately and including in query as literal makes it visible to
+        # the planner
         older_than_created_at = (
-            db.session.query(Notification.created_at).filter(Notification.id == older_than).as_scalar()
+            db.session.query(Notification.created_at)
+            .filter(Notification.id == older_than, Notification.service_id == service_id)
+            .scalar()
         )
-        filters.append(Notification.created_at < older_than_created_at)
+        if older_than_created_at is None:
+            # ensure we return no results
+            filters.append(False)
+        else:
+            filters.append(Notification.created_at < older_than_created_at)
 
     if not include_jobs:
         filters.append(Notification.job_id == None)  # noqa
