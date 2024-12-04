@@ -6,4 +6,11 @@ class ValidationErrorSlugs:
     NO_LETTERS_OR_SYMBOLS = "phone_number:remove_letters_and_symbols"
     INVALID_COUNTRY_PREFIX = "phone_number:invalid_country_prefix"
 
-    PHONE_NUMBER_REQUIRED = "phone_number:is_required_property"
+    # required property 
+    REQUIRED_PHONE_NUMBER = "required_property:phone_number"
+    REQUIRED_EMAIL_ADDRESS = "required_property:email_address"
+    REQUIRED_TEMPLATE_ID = "required_property:template_id"
+    REQUIRED_PERSONALISATION = "required_property:personalisation"
+    REQUIRED_NOTIFICATION_ID = "required_property:notification_id"
+    REQUIRED_REFERENCE = "required_property:reference" # for precompiled letters only
+    REQUIRED_CONTENT = "required_property:content"
