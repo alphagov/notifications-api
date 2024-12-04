@@ -35,7 +35,7 @@ def _is_versioning_col(col):
     return "version_meta" in col.info
 
 
-def _history_mapper(local_mapper):  # noqa (C901 too complex)
+def _history_mapper(local_mapper):
     cls = local_mapper.class_
 
     # set the "active_history" flag
