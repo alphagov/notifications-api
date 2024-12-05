@@ -14,7 +14,7 @@ from notifications_utils.recipient_validation.email_address import validate_and_
 from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, literal, or_, union
+from sqlalchemy import and_, asc, desc, func, or_, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import defer, joinedload, undefer
 from sqlalchemy.orm.exc import NoResultFound
@@ -50,7 +50,6 @@ from app.models import (
     FactNotificationStatus,
     LetterCostThreshold,
     Notification,
-    NotificationAllTimeView,
     NotificationHistory,
     NotificationLetterDespatch,
     ProviderDetails,
@@ -902,27 +901,6 @@ def get_service_ids_with_notifications_on_date(notification_type, date):
         row.service_id
         for row in db.session.query(union(notification_table_query, ft_status_table_query).subquery()).distinct()
     }
-
-
-@autocommit
-def dao_record_letter_despatched_on(reference: str, despatched_on: datetime.date, cost_threshold: LetterCostThreshold):
-    stmt = (
-        insert(NotificationLetterDespatch)
-        .from_select(
-            ["notification_id", "despatched_on", "cost_threshold"],
-            NotificationAllTimeView.query.with_entities(
-                NotificationAllTimeView.id,
-                literal(despatched_on),
-                literal(cost_threshold.value),
-            ).filter(NotificationAllTimeView.reference == reference),
-        )
-        .on_conflict_do_update(
-            index_elements=["notification_id"],
-            set_={"despatched_on": despatched_on, "cost_threshold": cost_threshold.value},
-        )
-    )
-
-    db.session.execute(stmt)
 
 
 @autocommit
