@@ -8,8 +8,9 @@ from app.dao.notifications_dao import get_notification_by_id
 from app.dao.unsubscribe_request_dao import (
     create_unsubscribe_request_dao,
     get_unbatched_unsubscribe_requests_dao,
-    get_unsubscribe_request_reports_dao, get_unsubscribe_request_by_notification_id_dao,
+    get_unsubscribe_request_by_notification_id_dao,
     get_unsubscribe_request_report_by_id_dao,
+    get_unsubscribe_request_reports_dao,
 )
 from app.errors import InvalidRequest, register_errors
 from app.models import UnsubscribeRequestReport
