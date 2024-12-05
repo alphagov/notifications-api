@@ -353,19 +353,20 @@ def test_dont_create_ticket_if_letter_notifications_not_still_sending(notify_api
     mock_send_ticket_to_zendesk.assert_not_called()
 
 
-@freeze_time("Thursday 17th January 2018 17:00")
+@freeze_time("Thursday 17th January 2018 19:00")
 def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_no_letters_if_sent_a_day_ago(
     sample_letter_template,
 ):
-    today = datetime.utcnow()
-    one_day_ago = today - timedelta(days=1)
-    create_notification(template=sample_letter_template, status="sending", sent_at=one_day_ago)
+    yesterday_lunch = datetime(2018, 1, 16, 12, 0)
+    today_lunch = datetime(2018, 1, 17, 12, 0)
+    create_notification(template=sample_letter_template, status="sending", sent_at=yesterday_lunch)
+    create_notification(template=sample_letter_template, status="sending", sent_at=today_lunch)
 
     count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
     assert count == 0
 
 
-@freeze_time("Thursday 17th January 2018 17:00")
+@freeze_time("Thursday 17th January 2018 19:00")
 def test_get_letter_notifications_still_sending_when_they_shouldnt_only_finds_letters_still_in_sending_status(
     sample_letter_template,
 ):
@@ -379,7 +380,7 @@ def test_get_letter_notifications_still_sending_when_they_shouldnt_only_finds_le
     assert expected_sent_date == date(2018, 1, 15)
 
 
-@freeze_time("Thursday 17th January 2018 17:00")
+@freeze_time("Thursday 17th January 2018 19:00")
 def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_letters_older_than_offset(
     sample_letter_template,
 ):
@@ -391,7 +392,7 @@ def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_letters
     assert expected_sent_date == date(2018, 1, 15)
 
 
-@freeze_time("Sunday 14th January 2018 17:00")
+@freeze_time("Sunday 14th January 2018 19:00")
 def test_get_letter_notifications_still_sending_when_they_shouldnt_be_finds_no_letters_on_weekend(
     sample_letter_template,
 ):
@@ -402,7 +403,7 @@ def test_get_letter_notifications_still_sending_when_they_shouldnt_be_finds_no_l
     assert count == 0
 
 
-@freeze_time("Monday 15th January 2018 17:00")
+@freeze_time("Monday 15th January 2018 19:00")
 def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_thursday_letters_when_run_on_monday(
     sample_letter_template,
 ):
@@ -417,7 +418,7 @@ def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_thursda
     assert expected_sent_date == date(2018, 1, 11)
 
 
-@freeze_time("Tuesday 16th January 2018 17:00")
+@freeze_time("Tuesday 16th January 2018 19:00")
 def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_friday_letters_when_run_on_tuesday(
     sample_letter_template,
 ):
@@ -432,7 +433,7 @@ def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_friday_
     assert expected_sent_date == date(2018, 1, 12)
 
 
-@freeze_time("Thursday 29th December 2022 17:00")
+@freeze_time("Thursday 29th December 2022 19:00")
 def test_get_letter_notifications_still_sending_when_they_shouldnt_treats_bank_holidays_as_non_working_and_looks_beyond(
     sample_letter_template, rmock
 ):
