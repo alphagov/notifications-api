@@ -1,5 +1,4 @@
-import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from freezegun import freeze_time
 
@@ -22,7 +21,7 @@ from tests.app.db import (
     create_service,
     create_template,
     create_unsubscribe_request,
-    create_unsubscribe_request_report, create_notification,
+    create_unsubscribe_request_report,
 )
 
 
