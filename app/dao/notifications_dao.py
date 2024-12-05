@@ -38,7 +38,9 @@ from app.constants import (
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
+    NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
+    NOTIFICATION_STATUS_TYPES_DEPRECATED,
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
 )
@@ -323,7 +325,8 @@ def _filter_query(query, filter_dict=None):
     statuses = multidict.getlist("status")
     if statuses:
         statuses = Notification.substitute_status(statuses)
-        query = query.filter(Notification.status.in_(statuses))
+        if not set(statuses).issuperset(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_DEPRECATED)):
+            query = query.filter(Notification.status.in_(statuses))
 
     # filter by template
     template_types = multidict.getlist("template_type")
