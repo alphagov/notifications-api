@@ -14,3 +14,8 @@ class ValidationErrorSlugs:
     REQUIRED_NOTIFICATION_ID = "required_property:notification_id"
     REQUIRED_REFERENCE = "required_property:reference" # for precompiled letters only
     REQUIRED_CONTENT = "required_property:content"
+
+    # scheduled notification
+    SCHEDULED_NOTIFICATION_IN_PAST = "scheduled_notification:cannot_be_in_past"
+    SCHEDULED_NOTIFICATION_EXCEEDS_TWENTY_FOUR_HOURS = "scheduled_notification:cannot_be_greater_than_twenty_four_hours"
+    SCHEDULED_FOR_INVALID_DATETIME = "scheduled_notification:not_a_valid_datetime"
