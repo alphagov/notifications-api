@@ -84,6 +84,8 @@ def test_should_have_decorated_tasks_functions():
     assert save_sms.__wrapped__.__name__ == "save_sms"
     assert save_email.__wrapped__.__name__ == "save_email"
     assert save_letter.__wrapped__.__name__ == "save_letter"
+    assert process_returned_letters_list.__wrapped__.__name__ == "process_returned_letters_list"
+    assert process_incomplete_jobs.__wrapped__.__name__ == "process_incomplete_jobs"
 
 
 @pytest.fixture
