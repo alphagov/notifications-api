@@ -32,6 +32,10 @@ def one_click_unsubscribe(notification_id, token):
         errors = {"unsubscribe request": "This is not a valid unsubscribe link."}
         raise InvalidRequest(errors, status_code=404) from e
 
+    # Check if the unsubscribe request is a duplicate
+    if is_duplicate_unsubscribe_request(notification_id):
+        return jsonify(result="success", message="Unsubscribe successful"), 200
+
     if notification := get_notification_by_id(notification_id):
         unsubscribe_data = get_unsubscribe_request_data(notification, email_address)
 
@@ -83,6 +87,5 @@ def is_duplicate_unsubscribe_request(notification_id):
         report_id = unsubscribe_request.unsubscribe_request_report_id
         if not report_id:
             return True
-
         return False if get_unsubscribe_request_report_by_id_dao(report_id).processed_by_service_at else True
     return False
