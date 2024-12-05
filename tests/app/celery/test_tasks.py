@@ -27,6 +27,7 @@ from app.celery.tasks import (
     save_email,
     save_letter,
     save_sms,
+    shatter_job_rows,
 )
 from app.config import QueueNames
 from app.constants import (
@@ -79,9 +80,12 @@ def _notification_json(template, to, personalisation=None, job_id=None, row_numb
 
 def test_should_have_decorated_tasks_functions():
     assert process_job.__wrapped__.__name__ == "process_job"
+    assert shatter_job_rows.__wrapped__.__name__ == "shatter_job_rows"
     assert save_sms.__wrapped__.__name__ == "save_sms"
     assert save_email.__wrapped__.__name__ == "save_email"
     assert save_letter.__wrapped__.__name__ == "save_letter"
+    assert process_returned_letters_list.__wrapped__.__name__ == "process_returned_letters_list"
+    assert process_incomplete_jobs.__wrapped__.__name__ == "process_incomplete_jobs"
 
 
 @pytest.fixture
@@ -476,6 +480,57 @@ def test_process_row_when_reference_is_provided(mocker, mock_celery_task, fake_u
             "client_reference": "ab1234",
         }
     )
+
+
+# -------- shatter_job_rows tests --------------- #
+
+
+@pytest.mark.parametrize(
+    "template_type,send_fn",
+    [
+        (SMS_TYPE, save_sms),
+        (EMAIL_TYPE, save_email),
+        (LETTER_TYPE, save_letter),
+    ],
+)
+def test_shatter_job_rows(template_type, send_fn, mock_celery_task, mocker):
+    mock_send_fn = mock_celery_task(send_fn)
+
+    shatter_job_rows(
+        template_type,
+        [
+            (
+                ("service-id-0", "notification-id-0", "encoded-0"),
+                {} if template_type == LETTER_TYPE else {"sender_id": "0"},
+            ),
+            (
+                ("service-id-1", "notification-id-1", "encoded-1"),
+                {} if template_type == LETTER_TYPE else {"sender_id": "1"},
+            ),
+            (
+                ("service-id-2", "notification-id-2", "encoded-2"),
+                {} if template_type == LETTER_TYPE else {"sender_id": "2"},
+            ),
+        ],
+    )
+
+    assert mock_send_fn.mock_calls == [
+        call(
+            ("service-id-0", "notification-id-0", "encoded-0"),
+            {} if template_type == LETTER_TYPE else {"sender_id": "0"},
+            queue="database-tasks",
+        ),
+        call(
+            ("service-id-1", "notification-id-1", "encoded-1"),
+            {} if template_type == LETTER_TYPE else {"sender_id": "1"},
+            queue="database-tasks",
+        ),
+        call(
+            ("service-id-2", "notification-id-2", "encoded-2"),
+            {} if template_type == LETTER_TYPE else {"sender_id": "2"},
+            queue="database-tasks",
+        ),
+    ]
 
 
 # -------- save_sms and save_email tests -------- #

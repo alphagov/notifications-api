@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -84,6 +85,28 @@ def process_job(job_id, sender_id=None):
         process_row(row, template, job, service, sender_id=sender_id)
 
     job_complete(job, start=start)
+
+
+@notify_celery.task(name="shatter-job-rows")
+def shatter_job_rows(
+    template_type: str,
+    args_kwargs_seq: Sequence,
+):
+    for task_args_kwargs in args_kwargs_seq:
+        process_job_row(template_type, task_args_kwargs)
+
+
+def process_job_row(template_type, task_args_kwargs):
+    send_fn = {
+        SMS_TYPE: save_sms,
+        EMAIL_TYPE: save_email,
+        LETTER_TYPE: save_letter,
+    }[template_type]
+
+    send_fn.apply_async(
+        *task_args_kwargs,
+        queue=QueueNames.DATABASE,
+    )
 
 
 def job_complete(job, resumed=False, start=None):
