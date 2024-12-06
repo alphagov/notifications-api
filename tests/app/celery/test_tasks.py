@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
-from unittest.mock import Mock, call
+from itertools import count
+from unittest.mock import ANY, Mock, call
 
 import pytest
 from celery.exceptions import Retry
@@ -17,12 +18,12 @@ from app import signing
 from app.celery import provider_tasks, tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
+    get_id_task_args_kwargs_for_job_row,
     get_recipient_csv_and_template_and_sender_id,
     process_incomplete_job,
     process_incomplete_jobs,
     process_job,
     process_returned_letters_list,
-    process_row,
     s3,
     save_email,
     save_letter,
@@ -100,23 +101,44 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_task):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3", return_value=(load_example_csv("sms"), {"sender_id": None})
     )
-    mock_task = mock_celery_task(save_sms)
-    mocker.patch("app.signing.encode", return_value="something_encoded")
+    mock_task = mock_celery_task(shatter_job_rows)
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
     mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
 
     process_job(sample_job.id)
+
     s3.get_job_and_metadata_from_s3.assert_called_once_with(
         service_id=str(sample_job.service.id), job_id=str(sample_job.id)
     )
-    assert signing.encode.call_args[0][0]["to"] == "+441234123123"
-    assert signing.encode.call_args[0][0]["template"] == str(sample_job.template.id)
-    assert signing.encode.call_args[0][0]["template_version"] == sample_job.template.version
-    assert signing.encode.call_args[0][0]["personalisation"] == {"phonenumber": "+441234123123"}
-    assert signing.encode.call_args[0][0]["row_number"] == 0
-    mock_task.assert_called_once_with(
-        (str(sample_job.service_id), "uuid", "something_encoded"), {}, queue="database-tasks"
-    )
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(sample_job.template.id),
+                "template_version": sample_job.template.version,
+                "job": str(sample_job.id),
+                "to": "+441234123123",
+                "row_number": 0,
+                "personalisation": {"phonenumber": "+441234123123"},
+                "client_reference": None,
+            }
+        )
+    ]
+
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
+    assert mock_task.mock_calls == [
+        call(
+            (
+                job.template.template_type,
+                [
+                    (
+                        (str(sample_job.service_id), "uuid", "something_encoded"),
+                        {},
+                    )
+                ],
+            ),
+            queue="job-tasks",
+        )
+    ]
     assert job.job_status == "finished"
 
 
@@ -125,27 +147,57 @@ def test_should_process_sms_job_with_sender_id(sample_job, mocker, mock_celery_t
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("sms"), {"sender_id": fake_uuid}),
     )
-    mock_celery_task(save_sms)
-    mocker.patch("app.signing.encode", return_value="something_encoded")
+    mock_task = mock_celery_task(shatter_job_rows)
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
     mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
 
     process_job(sample_job.id, sender_id=fake_uuid)
 
-    tasks.save_sms.apply_async.assert_called_once_with(
-        (str(sample_job.service_id), "uuid", "something_encoded"), {"sender_id": fake_uuid}, queue="database-tasks"
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(sample_job.service.id), job_id=str(sample_job.id)
     )
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(sample_job.template.id),
+                "template_version": sample_job.template.version,
+                "job": str(sample_job.id),
+                "to": "+441234123123",
+                "row_number": 0,
+                "personalisation": {"phonenumber": "+441234123123"},
+                "client_reference": None,
+            }
+        )
+    ]
+
+    job = jobs_dao.dao_get_job_by_id(sample_job.id)
+    assert mock_task.mock_calls == [
+        call(
+            (
+                job.template.template_type,
+                [
+                    (
+                        (str(sample_job.service_id), "uuid", "something_encoded"),
+                        {"sender_id": fake_uuid},
+                    )
+                ],
+            ),
+            queue="job-tasks",
+        )
+    ]
+    assert job.job_status == "finished"
 
 
 def test_should_not_process_job_if_already_pending(sample_template, mocker, mock_celery_task):
     job = create_job(template=sample_template, job_status="scheduled")
 
     mocker.patch("app.celery.tasks.s3.get_job_and_metadata_from_s3")
-    mocker.patch("app.celery.tasks.process_row")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     process_job(job.id)
 
     assert s3.get_job_and_metadata_from_s3.called is False
-    assert tasks.process_row.called is False
+    assert mock_shatter_job_rows.called is False
 
 
 def test_should_not_process_if_send_limit_is_exceeded(notify_api, notify_db_session, mocker, mock_celery_task):
@@ -156,7 +208,7 @@ def test_should_not_process_if_send_limit_is_exceeded(notify_api, notify_db_sess
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
     )
-    mocker.patch("app.celery.tasks.process_row")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
     mock_check_message_limit = mocker.patch(
         "app.celery.tasks.check_service_over_daily_message_limit",
         side_effect=TooManyRequestsError("total", "exceeded limit"),
@@ -166,9 +218,9 @@ def test_should_not_process_if_send_limit_is_exceeded(notify_api, notify_db_sess
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == "sending limits exceeded"
     assert s3.get_job_and_metadata_from_s3.called is False
-    assert tasks.process_row.called is False
-    assert mock_check_message_limit.call_args_list == [
-        mocker.call(service, "normal", notification_type=SMS_TYPE, num_notifications=10),
+    assert mock_shatter_job_rows.called is False
+    assert mock_check_message_limit.mock_calls == [
+        call(service, "normal", notification_type=SMS_TYPE, num_notifications=10),
     ]
 
 
@@ -182,7 +234,7 @@ def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
     )
-    mock_process_row = mocker.patch("app.celery.tasks.process_row")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
     mock_check_message_limit = mocker.patch(
         "app.celery.tasks.check_service_over_daily_message_limit", side_effect=TooManyRequestsError("total", 9)
     )
@@ -190,10 +242,10 @@ def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == "sending limits exceeded"
-    mock_s3.assert_not_called()
-    mock_process_row.assert_not_called()
-    assert mock_check_message_limit.call_args_list == [
-        mocker.call(service, "normal", notification_type=SMS_TYPE, num_notifications=10),
+    assert mock_s3.called is False
+    assert mock_shatter_job_rows.called is False
+    assert mock_check_message_limit.mock_calls == [
+        call(service, "normal", notification_type=SMS_TYPE, num_notifications=10),
     ]
 
 
@@ -206,37 +258,74 @@ def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_d
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_email"), {"sender_id": None}),
     )
-    mock_celery_task(save_email)
-    mocker.patch("app.signing.encode", return_value="something_encoded")
-    mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+    mocker.patch("app.signing.encode", side_effect=(f"something-encoded-{i}" for i in count()))
+    mocker.patch("app.celery.tasks.create_uuid", side_effect=(f"uuid-{i}" for i in count()))
     mock_check_message_limit = mocker.patch(
         "app.celery.tasks.check_service_over_daily_message_limit", return_value=None
     )
-    process_job(job.id)
+
+    process_job(job.id, shatter_batch_size=3)
 
     s3.get_job_and_metadata_from_s3.assert_called_once_with(service_id=str(job.service.id), job_id=str(job.id))
     job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.job_status == "finished"
-    tasks.save_email.apply_async.assert_called_with(
-        (
-            str(job.service_id),
-            "uuid",
-            "something_encoded",
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                job.template.template_type,
+                [
+                    ((str(job.service_id), "uuid-0", "something-encoded-0"), {}),
+                    ((str(job.service_id), "uuid-1", "something-encoded-1"), {}),
+                    ((str(job.service_id), "uuid-2", "something-encoded-2"), {}),
+                ],
+            ),
+            queue="job-tasks",
         ),
-        {},
-        queue="database-tasks",
-    )
-    assert mock_check_message_limit.call_args_list == [
-        mocker.call(service, "normal", notification_type=EMAIL_TYPE, num_notifications=10),
+        call(
+            (
+                job.template.template_type,
+                [
+                    ((str(job.service_id), "uuid-3", "something-encoded-3"), {}),
+                    ((str(job.service_id), "uuid-4", "something-encoded-4"), {}),
+                    ((str(job.service_id), "uuid-5", "something-encoded-5"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                job.template.template_type,
+                [
+                    ((str(job.service_id), "uuid-6", "something-encoded-6"), {}),
+                    ((str(job.service_id), "uuid-7", "something-encoded-7"), {}),
+                    ((str(job.service_id), "uuid-8", "something-encoded-8"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                job.template.template_type,
+                [
+                    ((str(job.service_id), "uuid-9", "something-encoded-9"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+    ]
+    assert mock_check_message_limit.mock_calls == [
+        call(service, "normal", notification_type=EMAIL_TYPE, num_notifications=10),
     ]
 
+    assert job.job_status == "finished"
 
-def test_should_not_create_save_task_for_empty_file(sample_job, mocker, mock_celery_task):
+
+def test_should_not_create_shatter_task_for_empty_file(sample_job, mocker, mock_celery_task):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("empty"), {"sender_id": None}),
     )
-    mock_celery_task(save_sms)
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     process_job(sample_job.id)
 
@@ -245,7 +334,7 @@ def test_should_not_create_save_task_for_empty_file(sample_job, mocker, mock_cel
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.job_status == "finished"
-    assert tasks.save_sms.apply_async.called is False
+    assert mock_shatter_job_rows.called is False
 
 
 def test_should_process_email_job(email_job_with_placeholders, mocker, mock_celery_task):
@@ -253,28 +342,40 @@ def test_should_process_email_job(email_job_with_placeholders, mocker, mock_cele
     test@test.com,foo
     """
     mocker.patch("app.celery.tasks.s3.get_job_and_metadata_from_s3", return_value=(email_csv, {"sender_id": None}))
-    mock_celery_task(save_email)
-    mocker.patch("app.signing.encode", return_value="something_encoded")
-    mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
+    mocker.patch("app.celery.tasks.create_uuid", return_value="some_uuid")
 
     process_job(email_job_with_placeholders.id)
 
     s3.get_job_and_metadata_from_s3.assert_called_once_with(
         service_id=str(email_job_with_placeholders.service.id), job_id=str(email_job_with_placeholders.id)
     )
-    assert signing.encode.call_args[0][0]["to"] == "test@test.com"
-    assert signing.encode.call_args[0][0]["template"] == str(email_job_with_placeholders.template.id)
-    assert signing.encode.call_args[0][0]["template_version"] == email_job_with_placeholders.template.version
-    assert signing.encode.call_args[0][0]["personalisation"] == {"emailaddress": "test@test.com", "name": "foo"}
-    tasks.save_email.apply_async.assert_called_once_with(
-        (
-            str(email_job_with_placeholders.service_id),
-            "uuid",
-            "something_encoded",
-        ),
-        {},
-        queue="database-tasks",
-    )
+
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(email_job_with_placeholders.template.id),
+                "template_version": email_job_with_placeholders.template.version,
+                "job": str(email_job_with_placeholders.id),
+                "to": "test@test.com",
+                "row_number": 0,
+                "personalisation": {"emailaddress": "test@test.com", "name": "foo"},
+                "client_reference": None,
+            }
+        )
+    ]
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                email_job_with_placeholders.template.template_type,
+                [((str(email_job_with_placeholders.service_id), "some_uuid", "something_encoded"), {})],
+            ),
+            queue="job-tasks",
+        )
+    ]
+
     job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
     assert job.job_status == "finished"
 
@@ -284,17 +385,47 @@ def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mo
     test@test.com,foo
     """
     mocker.patch("app.celery.tasks.s3.get_job_and_metadata_from_s3", return_value=(email_csv, {"sender_id": fake_uuid}))
-    mock_celery_task(save_email)
-    mocker.patch("app.signing.encode", return_value="something_encoded")
-    mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
+    mocker.patch("app.celery.tasks.create_uuid", return_value="some_uuid")
 
     process_job(email_job_with_placeholders.id, sender_id=fake_uuid)
 
-    tasks.save_email.apply_async.assert_called_once_with(
-        (str(email_job_with_placeholders.service_id), "uuid", "something_encoded"),
-        {"sender_id": fake_uuid},
-        queue="database-tasks",
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(email_job_with_placeholders.service.id), job_id=str(email_job_with_placeholders.id)
     )
+
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(email_job_with_placeholders.template.id),
+                "template_version": email_job_with_placeholders.template.version,
+                "job": str(email_job_with_placeholders.id),
+                "to": "test@test.com",
+                "row_number": 0,
+                "personalisation": {"emailaddress": "test@test.com", "name": "foo"},
+                "client_reference": None,
+            }
+        )
+    ]
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                email_job_with_placeholders.template.template_type,
+                [
+                    (
+                        (str(email_job_with_placeholders.service_id), "some_uuid", "something_encoded"),
+                        {"sender_id": fake_uuid},
+                    )
+                ],
+            ),
+            queue="job-tasks",
+        )
+    ]
+
+    job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
+    assert job.job_status == "finished"
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -303,29 +434,46 @@ def test_should_process_letter_job(sample_letter_job, mocker, mock_celery_task):
     A1,A2,A3,A4,A_POST,Alice
     """
     s3_mock = mocker.patch("app.celery.tasks.s3.get_job_and_metadata_from_s3", return_value=(csv, {"sender_id": None}))
-    process_row_mock = mocker.patch("app.celery.tasks.process_row")
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
     mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
 
     process_job(sample_letter_job.id)
 
     s3_mock.assert_called_once_with(service_id=str(sample_letter_job.service.id), job_id=str(sample_letter_job.id))
 
-    row_call = process_row_mock.mock_calls[0][1]
-    assert row_call[0].index == 0
-    assert row_call[0].recipient == ["A1", "A2", "A3", "A4", None, None, "A_POST", None]
-    assert row_call[0].personalisation == {
-        "addressline1": "A1",
-        "addressline2": "A2",
-        "addressline3": "A3",
-        "addressline4": "A4",
-        "postcode": "A_POST",
-    }
-    assert row_call[2] == sample_letter_job
-    assert row_call[3] == sample_letter_job.service
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(sample_letter_job.template.id),
+                "template_version": sample_letter_job.template.version,
+                "job": str(sample_letter_job.id),
+                "to": ["A1", "A2", "A3", "A4", None, None, "A_POST", None],
+                "row_number": 0,
+                "personalisation": {
+                    "addressline1": "A1",
+                    "addressline2": "A2",
+                    "addressline3": "A3",
+                    "addressline4": "A4",
+                    "postcode": "A_POST",
+                },
+                "client_reference": None,
+            }
+        )
+    ]
 
-    assert process_row_mock.call_count == 1
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                sample_letter_job.template.template_type,
+                [((str(sample_letter_job.service_id), "uuid", "something_encoded"), {})],
+            ),
+            queue="job-tasks",
+        )
+    ]
 
-    assert sample_letter_job.job_status == "finished"
+    job = jobs_dao.dao_get_job_by_id(sample_letter_job.id)
+    assert job.job_status == "finished"
 
 
 def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mocker, mock_celery_task):
@@ -333,45 +481,119 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
     )
-    mock_celery_task(save_sms)
-    mocker.patch("app.signing.encode", return_value="something_encoded")
-    mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+    mock_encode = mocker.patch("app.signing.encode", side_effect=(f"something-encoded-{i}" for i in count()))
+    mocker.patch("app.celery.tasks.create_uuid", side_effect=(f"uuid-{i}" for i in count()))
 
-    process_job(sample_job_with_placeholdered_template.id)
+    process_job(sample_job_with_placeholdered_template.id, shatter_batch_size=5)
 
     s3.get_job_and_metadata_from_s3.assert_called_once_with(
         service_id=str(sample_job_with_placeholdered_template.service.id),
         job_id=str(sample_job_with_placeholdered_template.id),
     )
-    assert signing.encode.call_args[0][0]["to"] == "+441234123120"
-    assert signing.encode.call_args[0][0]["template"] == str(sample_job_with_placeholdered_template.template.id)
-    assert signing.encode.call_args[0][0]["template_version"] == sample_job_with_placeholdered_template.template.version
-    assert signing.encode.call_args[0][0]["personalisation"] == {"phonenumber": "+441234123120", "name": "chris"}
-    assert tasks.save_sms.apply_async.call_count == 10
+
+    job_id = sample_job_with_placeholdered_template.id
+    template_id = sample_job_with_placeholdered_template.template_id
+    template_version = sample_job_with_placeholdered_template.template_version
+
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123121",
+                "row_number": 0,
+                "personalisation": {"phonenumber": "+441234123121", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123122",
+                "row_number": 1,
+                "personalisation": {"phonenumber": "+441234123122", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123120",
+                "row_number": 9,
+                "personalisation": {"phonenumber": "+441234123120", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+    ]
+
+    template_type = sample_job_with_placeholdered_template.template.template_type
+    service_id = sample_job_with_placeholdered_template.service_id
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-0", "something-encoded-0"), {}),
+                    ((str(service_id), "uuid-1", "something-encoded-1"), {}),
+                    ((str(service_id), "uuid-2", "something-encoded-2"), {}),
+                    ((str(service_id), "uuid-3", "something-encoded-3"), {}),
+                    ((str(service_id), "uuid-4", "something-encoded-4"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-5", "something-encoded-5"), {}),
+                    ((str(service_id), "uuid-6", "something-encoded-6"), {}),
+                    ((str(service_id), "uuid-7", "something-encoded-7"), {}),
+                    ((str(service_id), "uuid-8", "something-encoded-8"), {}),
+                    ((str(service_id), "uuid-9", "something-encoded-9"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+    ]
+
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
     assert job.job_status == "finished"
 
 
-# -------------- process_row tests -------------- #
+# -------------- get_id_task_args_kwargs_for_job_row tests -------------- #
 
 
 @pytest.mark.parametrize(
-    "template_type, expected_function",
+    "template_type",
     [
-        (SMS_TYPE, save_sms),
-        (EMAIL_TYPE, save_email),
-        (LETTER_TYPE, save_letter),
+        SMS_TYPE,
+        EMAIL_TYPE,
+        LETTER_TYPE,
     ],
 )
-def test_process_row_sends_letter_task(template_type, expected_function, mocker, mock_celery_task):
+def test_get_id_task_args_kwargs_for_job_row_handles_letter_args(template_type, mocker, mock_celery_task):
     mocker.patch("app.celery.tasks.create_uuid", return_value="noti_uuid")
-    task_mock = mock_celery_task(expected_function)
     signing_mock = mocker.patch("app.celery.tasks.signing.encode", return_value="foo")
     template = Mock(id="template_id", template_type=template_type)
     job = Mock(id="job_id", template_version="temp_vers")
     service = Mock(id="service_id")
 
-    process_row(
+    ret = get_id_task_args_kwargs_for_job_row(
         Row(
             {"foo": "bar", "to": "recip"},
             index="row_num",
@@ -397,27 +619,28 @@ def test_process_row_sends_letter_task(template_type, expected_function, mocker,
             "client_reference": None,
         }
     )
-    task_mock.assert_called_once_with(
+    assert ret == (
+        "noti_uuid",
         (
-            "service_id",
-            "noti_uuid",
-            # encoded data
-            signing_mock.return_value,
+            (
+                "service_id",
+                "noti_uuid",
+                # encoded data
+                signing_mock.return_value,
+            ),
+            {},
         ),
-        {},
-        queue="database-tasks",
     )
 
 
-def test_process_row_when_sender_id_is_provided(mocker, mock_celery_task, fake_uuid):
+def test_get_id_task_args_kwargs_for_job_row_when_sender_id_is_provided(mocker, mock_celery_task, fake_uuid):
     mocker.patch("app.celery.tasks.create_uuid", return_value="noti_uuid")
-    task_mock = mock_celery_task(save_sms)
     signing_mock = mocker.patch("app.celery.tasks.signing.encode", return_value="foo")
     template = Mock(id="template_id", template_type=SMS_TYPE)
     job = Mock(id="job_id", template_version="temp_vers")
     service = Mock(id="service_id")
 
-    process_row(
+    ret = get_id_task_args_kwargs_for_job_row(
         Row(
             {"foo": "bar", "to": "recip"},
             index="row_num",
@@ -433,27 +656,28 @@ def test_process_row_when_sender_id_is_provided(mocker, mock_celery_task, fake_u
         sender_id=fake_uuid,
     )
 
-    task_mock.assert_called_once_with(
+    assert ret == (
+        "noti_uuid",
         (
-            "service_id",
-            "noti_uuid",
-            # encoded data
-            signing_mock.return_value,
+            (
+                "service_id",
+                "noti_uuid",
+                # encoded data
+                signing_mock.return_value,
+            ),
+            {"sender_id": fake_uuid},
         ),
-        {"sender_id": fake_uuid},
-        queue="database-tasks",
     )
 
 
-def test_process_row_when_reference_is_provided(mocker, mock_celery_task, fake_uuid):
+def test_get_id_task_args_kwargs_for_job_row_when_reference_is_provided(mocker, mock_celery_task, fake_uuid):
     mocker.patch("app.celery.tasks.create_uuid", return_value="noti_uuid")
-    mock_celery_task(save_sms)
     signing_mock = mocker.patch("app.celery.tasks.signing.encode", return_value="foo")
     template = Mock(id="template_id", template_type=SMS_TYPE)
     job = Mock(id="job_id", template_version="temp_vers")
     service = Mock(id="service_id")
 
-    process_row(
+    get_id_task_args_kwargs_for_job_row(
         Row(
             {"to": "07900100100", "name": "foo", "reference": "ab1234"},
             index=0,
@@ -1272,14 +1496,14 @@ def test_should_cancel_job_if_service_is_inactive(sample_service, sample_job, mo
     sample_service.active = False
 
     mocker.patch("app.celery.tasks.s3.get_job_from_s3")
-    mocker.patch("app.celery.tasks.process_row")
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     process_job(sample_job.id)
 
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.job_status == "cancelled"
-    s3.get_job_from_s3.assert_not_called()
-    tasks.process_row.assert_not_called()
+    assert not s3.get_job_from_s3.mock_calls
+    assert not mock_shatter_job_rows.mock_calls
 
 
 def test_get_email_template_instance(mocker, mock_celery_task, sample_email_template, sample_job):
@@ -1350,12 +1574,6 @@ def test_get_letter_template_instance(mocker, mock_celery_task, sample_job):
 
 
 def test_process_incomplete_job_sms(mocker, mock_celery_task, sample_template):
-    mocker.patch(
-        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
-        return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
-    )
-    mock_save_sms = mock_celery_task(save_sms)
-
     job = create_job(
         template=sample_template,
         notification_count=10,
@@ -1370,13 +1588,96 @@ def test_process_incomplete_job_sms(mocker, mock_celery_task, sample_template):
 
     assert Notification.query.filter(Notification.job_id == job.id).count() == 2
 
-    process_incomplete_job(str(job.id))
+    mocker.patch(
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
+    )
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+    mock_encode = mocker.patch("app.signing.encode", side_effect=(f"something-encoded-{i}" for i in count()))
+    mocker.patch("app.celery.tasks.create_uuid", side_effect=(f"uuid-{i}" for i in count()))
+
+    process_incomplete_job(str(job.id), shatter_batch_size=3)
+
+    assert mock_encode.mock_calls == [
+        # first two rows already sent
+        call(
+            {
+                "template": str(job.template_id),
+                "template_version": job.template_version,
+                "job": str(job.id),
+                "to": "+441234123123",
+                "row_number": 2,
+                "personalisation": {"phonenumber": "+441234123123"},
+                "client_reference": None,
+            }
+        ),
+        call(
+            {
+                "template": str(job.template_id),
+                "template_version": job.template_version,
+                "job": str(job.id),
+                "to": "+441234123124",
+                "row_number": 3,
+                "personalisation": {"phonenumber": "+441234123124"},
+                "client_reference": None,
+            }
+        ),
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        call(
+            {
+                "template": str(job.template_id),
+                "template_version": job.template_version,
+                "job": str(job.id),
+                "to": "+441234123120",
+                "row_number": 9,
+                "personalisation": {"phonenumber": "+441234123120"},
+                "client_reference": None,
+            }
+        ),
+    ]
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                sample_template.template_type,
+                [
+                    ((str(job.service_id), "uuid-0", "something-encoded-0"), {}),
+                    ((str(job.service_id), "uuid-1", "something-encoded-1"), {}),
+                    ((str(job.service_id), "uuid-2", "something-encoded-2"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                sample_template.template_type,
+                [
+                    ((str(job.service_id), "uuid-3", "something-encoded-3"), {}),
+                    ((str(job.service_id), "uuid-4", "something-encoded-4"), {}),
+                    ((str(job.service_id), "uuid-5", "something-encoded-5"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                sample_template.template_type,
+                [
+                    ((str(job.service_id), "uuid-6", "something-encoded-6"), {}),
+                    ((str(job.service_id), "uuid-7", "something-encoded-7"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+    ]
 
     completed_job = Job.query.filter(Job.id == job.id).one()
 
     assert completed_job.job_status == JOB_STATUS_FINISHED
-
-    assert mock_save_sms.call_count == 8  # There are 10 in the file and we've added two already
 
 
 def test_process_incomplete_job_with_notifications_all_sent(mocker, mock_celery_task, sample_template):
@@ -1384,7 +1685,7 @@ def test_process_incomplete_job_with_notifications_all_sent(mocker, mock_celery_
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
     )
-    mock_save_sms = mock_celery_task(save_sms)
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     job = create_job(
         template=sample_template,
@@ -1414,16 +1715,11 @@ def test_process_incomplete_job_with_notifications_all_sent(mocker, mock_celery_
 
     assert completed_job.job_status == JOB_STATUS_FINISHED
 
-    assert mock_save_sms.call_count == 0  # There are 10 in the file and we've added 10 it should not have been called
+    # There are 10 in the file and we've added 10 it should not have been called
+    assert mock_shatter_job_rows.call_count == 0
 
 
 def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
-    mocker.patch(
-        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
-        return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
-    )
-    mock_save_sms = mock_celery_task(save_sms)
-
     job = create_job(
         template=sample_template,
         notification_count=10,
@@ -1455,8 +1751,147 @@ def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
 
     assert Notification.query.filter(Notification.job_id == job2.id).count() == 5
 
+    mocker.patch(
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
+    )
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+    mocker.patch("app.signing.encode", side_effect=lambda x: f"encoded-job-{x['job']}-row-{x['row_number']}")
+    mocker.patch("app.celery.tasks.create_uuid", side_effect=(f"uuid-{i}" for i in count()))
+
     jobs = [job.id, job2.id]
-    process_incomplete_jobs(jobs)
+    process_incomplete_jobs(jobs, shatter_batch_size=4)
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                job.template.template_type,
+                [
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-0",
+                            f"encoded-job-{job.id}-row-3",  # sent rows 0-2 inclusive already
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-1",
+                            f"encoded-job-{job.id}-row-4",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-2",
+                            f"encoded-job-{job.id}-row-5",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-3",
+                            f"encoded-job-{job.id}-row-6",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                job.template.template_type,
+                [
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-4",
+                            f"encoded-job-{job.id}-row-7",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-5",
+                            f"encoded-job-{job.id}-row-8",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-6",
+                            f"encoded-job-{job.id}-row-9",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                job2.template.template_type,
+                [
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-7",
+                            f"encoded-job-{job2.id}-row-5",  # sent rows 0-4 inclusive already
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-8",
+                            f"encoded-job-{job2.id}-row-6",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-9",
+                            f"encoded-job-{job2.id}-row-7",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-10",
+                            f"encoded-job-{job2.id}-row-8",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                job2.template.template_type,
+                [
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-11",
+                            f"encoded-job-{job2.id}-row-9",
+                        ),
+                        {},
+                    )
+                ],
+            ),
+            queue="job-tasks",
+        ),
+    ]
 
     completed_job = Job.query.filter(Job.id == job.id).one()
     completed_job2 = Job.query.filter(Job.id == job2.id).one()
@@ -1465,15 +1900,13 @@ def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
 
     assert completed_job2.job_status == JOB_STATUS_FINISHED
 
-    assert mock_save_sms.call_count == 12  # There are 20 in total over 2 jobs we've added 8 already
-
 
 def test_process_incomplete_jobs_no_notifications_added(mocker, mock_celery_task, sample_template):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
     )
-    mock_save_sms = mock_celery_task(save_sms)
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     job = create_job(
         template=sample_template,
@@ -1486,26 +1919,30 @@ def test_process_incomplete_jobs_no_notifications_added(mocker, mock_celery_task
 
     assert Notification.query.filter(Notification.job_id == job.id).count() == 0
 
-    process_incomplete_job(job.id)
+    process_incomplete_job(job.id, shatter_batch_size=6)
 
     completed_job = Job.query.filter(Job.id == job.id).one()
 
     assert completed_job.job_status == JOB_STATUS_FINISHED
 
-    assert mock_save_sms.call_count == 10  # There are 10 in the csv file
+    assert mock_shatter_job_rows.call_count == 2
+
+    assert (
+        sum(len(task_args_kwargs) for _, ((_, task_args_kwargs),), *_ in mock_shatter_job_rows.mock_calls) == 10
+    )  # There are 10 in the csv file
 
 
-def test_process_incomplete_jobs(mocker, mock_celery_task, sample_template):
+def test_process_incomplete_jobs_empty_ids_arg(mocker, mock_celery_task, sample_template):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
     )
-    mock_save_sms = mock_celery_task(save_sms)
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     jobs = []
     process_incomplete_jobs(jobs)
 
-    assert mock_save_sms.call_count == 0  # There are no jobs to process so it will not have been called
+    assert mock_shatter_job_rows.call_count == 0  # There are no jobs to process so it will not have been called
 
 
 def test_process_incomplete_job_no_job_in_database(mocker, mock_celery_task, fake_uuid):
@@ -1513,12 +1950,12 @@ def test_process_incomplete_job_no_job_in_database(mocker, mock_celery_task, fak
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
     )
-    mock_save_sms = mock_celery_task(save_sms)
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     with pytest.raises(expected_exception=Exception):
         process_incomplete_job(fake_uuid)
 
-    assert mock_save_sms.call_count == 0  # There is no job in the db it will not have been called
+    assert mock_shatter_job_rows.call_count == 0  # There is no job in the db it will not have been called
 
 
 def test_process_incomplete_job_email(mocker, mock_celery_task, sample_email_template):
@@ -1526,7 +1963,7 @@ def test_process_incomplete_job_email(mocker, mock_celery_task, sample_email_tem
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_email"), {"sender_id": None}),
     )
-    mock_email_saver = mock_celery_task(save_email)
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     job = create_job(
         template=sample_email_template,
@@ -1542,13 +1979,13 @@ def test_process_incomplete_job_email(mocker, mock_celery_task, sample_email_tem
 
     assert Notification.query.filter(Notification.job_id == job.id).count() == 2
 
-    process_incomplete_job(str(job.id))
+    process_incomplete_job(str(job.id), shatter_batch_size=1)
 
     completed_job = Job.query.filter(Job.id == job.id).one()
 
     assert completed_job.job_status == JOB_STATUS_FINISHED
 
-    assert mock_email_saver.call_count == 8  # There are 10 in the file and we've added two already
+    assert mock_shatter_job_rows.call_count == 8  # There are 10 in the file and we've added two already
 
 
 def test_process_incomplete_job_letter(mocker, mock_celery_task, sample_letter_template):
@@ -1556,7 +1993,7 @@ def test_process_incomplete_job_letter(mocker, mock_celery_task, sample_letter_t
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_letter"), {"sender_id": None}),
     )
-    mock_letter_saver = mock_celery_task(save_letter)
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
     job = create_job(
         template=sample_letter_template,
@@ -1572,9 +2009,10 @@ def test_process_incomplete_job_letter(mocker, mock_celery_task, sample_letter_t
 
     assert Notification.query.filter(Notification.job_id == job.id).count() == 2
 
-    process_incomplete_job(str(job.id))
+    process_incomplete_job(str(job.id), shatter_batch_size=100)
 
-    assert mock_letter_saver.call_count == 8
+    assert mock_shatter_job_rows.call_count == 1
+    assert len(mock_shatter_job_rows.mock_calls[0][1][0][1]) == 8
 
 
 @freeze_time("2017-01-01")
@@ -1588,7 +2026,7 @@ def test_process_incomplete_jobs_sets_status_to_in_progress_and_resets_processin
         sample_template, processing_started=datetime.utcnow() - timedelta(minutes=31), job_status=JOB_STATUS_ERROR
     )
 
-    process_incomplete_jobs([str(job1.id), str(job2.id)])
+    process_incomplete_jobs([str(job1.id), str(job2.id)], shatter_batch_size=123)
 
     assert job1.job_status == JOB_STATUS_IN_PROGRESS
     assert job1.processing_started == datetime.utcnow()
@@ -1596,7 +2034,10 @@ def test_process_incomplete_jobs_sets_status_to_in_progress_and_resets_processin
     assert job2.job_status == JOB_STATUS_IN_PROGRESS
     assert job2.processing_started == datetime.utcnow()
 
-    assert mock_process_incomplete_job.mock_calls == [call(str(job1.id)), call(str(job2.id))]
+    assert mock_process_incomplete_job.mock_calls == [
+        call(str(job1.id), shatter_batch_size=123),
+        call(str(job2.id), shatter_batch_size=123),
+    ]
 
 
 def test_process_returned_letters_list(sample_letter_template):

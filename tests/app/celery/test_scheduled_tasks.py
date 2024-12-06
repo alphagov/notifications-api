@@ -670,7 +670,8 @@ def test_check_for_missing_rows_in_completed_jobs_ignores_old_and_new_jobs(
         return_value=(load_example_csv("multiple_email"), {"sender_id": None}),
     )
     mocker.patch("app.signing.encode", return_value="something_encoded")
-    process_row = mocker.patch("app.celery.scheduled_tasks.process_row")
+    get_id_task_args_kwargs_for_job_row = mocker.patch("app.celery.scheduled_tasks.get_id_task_args_kwargs_for_job_row")
+    process_job_row = mocker.patch("app.celery.scheduled_tasks.process_job_row")
 
     job = create_job(
         template=sample_email_template,
@@ -683,17 +684,11 @@ def test_check_for_missing_rows_in_completed_jobs_ignores_old_and_new_jobs(
 
     check_for_missing_rows_in_completed_jobs()
 
-    assert process_row.called is False
+    assert get_id_task_args_kwargs_for_job_row.called is False
+    assert process_job_row.called is False
 
 
-def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template):
-    mocker.patch(
-        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
-        return_value=(load_example_csv("multiple_email"), {"sender_id": None}),
-    )
-    mocker.patch("app.signing.encode", return_value="something_encoded")
-    process_row = mocker.patch("app.celery.scheduled_tasks.process_row")
-
+def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template, mock_celery_task):
     job = create_job(
         template=sample_email_template,
         notification_count=5,
@@ -703,20 +698,37 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template)
     for i in range(4):
         create_notification(job=job, job_row_number=i)
 
-    check_for_missing_rows_in_completed_jobs()
-
-    process_row.assert_called_once_with(mock.ANY, mock.ANY, job, job.service, sender_id=None)
-
-
-def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, mock_celery_task, sample_email_template):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_email"), {"sender_id": None}),
     )
-    save_email_task = mock_celery_task(save_email)
-    mocker.patch("app.signing.encode", return_value="something_encoded")
-    mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
+    mocker.patch("app.celery.tasks.create_uuid", return_value="some-uuid")
+    mock_save_email = mock_celery_task(save_email)
 
+    check_for_missing_rows_in_completed_jobs()
+
+    assert mock_encode.mock_calls == [
+        mock.call(
+            {
+                "template": str(job.template_id),
+                "template_version": job.template_version,
+                "job": str(job.id),
+                "to": "test5@test.com",
+                "row_number": 4,
+                "personalisation": {"emailaddress": "test5@test.com"},
+                "client_reference": None,
+            }
+        )
+    ]
+    assert mock_save_email.mock_calls == [
+        mock.call((str(job.service_id), "some-uuid", "something_encoded"), {}, queue="database-tasks")
+    ]
+
+
+def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(
+    mocker, sample_email_template, fake_uuid, mock_celery_task
+):
     job = create_job(
         template=sample_email_template,
         notification_count=5,
@@ -726,36 +738,34 @@ def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, mock_
     for i in range(4):
         create_notification(job=job, job_row_number=i)
 
-    check_for_missing_rows_in_completed_jobs()
-    save_email_task.assert_called_once_with(
-        (
-            str(job.service_id),
-            "uuid",
-            "something_encoded",
-        ),
-        {},
-        queue="database-tasks",
-    )
-
-
-def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(mocker, sample_email_template, fake_uuid):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_email"), {"sender_id": fake_uuid}),
     )
-    mock_process_row = mocker.patch("app.celery.scheduled_tasks.process_row")
-
-    job = create_job(
-        template=sample_email_template,
-        notification_count=5,
-        job_status=JOB_STATUS_FINISHED,
-        processing_finished=datetime.utcnow() - timedelta(minutes=20),
-    )
-    for i in range(4):
-        create_notification(job=job, job_row_number=i)
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
+    mocker.patch("app.celery.tasks.create_uuid", return_value="some-uuid")
+    mock_save_email = mock_celery_task(save_email)
 
     check_for_missing_rows_in_completed_jobs()
-    mock_process_row.assert_called_once_with(mock.ANY, mock.ANY, job, job.service, sender_id=fake_uuid)
+
+    assert mock_encode.mock_calls == [
+        mock.call(
+            {
+                "template": str(job.template_id),
+                "template_version": job.template_version,
+                "job": str(job.id),
+                "to": "test5@test.com",
+                "row_number": 4,
+                "personalisation": {"emailaddress": "test5@test.com"},
+                "client_reference": None,
+            }
+        )
+    ]
+    assert mock_save_email.mock_calls == [
+        mock.call(
+            (str(job.service_id), "some-uuid", "something_encoded"), {"sender_id": fake_uuid}, queue="database-tasks"
+        )
+    ]
 
 
 MockServicesSendingToTVNumbers = namedtuple(
