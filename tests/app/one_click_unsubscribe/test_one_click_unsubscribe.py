@@ -1,6 +1,7 @@
 import uuid
 from unittest.mock import call
 
+import pytest
 from flask import current_app
 from notifications_utils.url_safe_token import generate_token
 
@@ -138,37 +139,19 @@ def test_invalid_one_click_unsubscribe_url_notification_id(client, sample_email_
     assert response_json_data["message"] == {"unsubscribe request": "This is not a valid unsubscribe link."}
 
 
-def test_is_duplicate_unsubscribe_request_for_non_duplicate_request_1(sample_service):
-    # Test case is when the notification_id does not exist in the unsubscribe_request table
-    result = is_duplicate_unsubscribe_request("9d328a7a-d3f4-4494-a429-63525e7338f4")
-    assert result is False
+@pytest.mark.parametrize(
+    "create_previous_unsubscribe_request,is_batched, processed_by_service, expected_result",
+    [(False, False, False, False), (True, True, True, False), (True, False, False, True), (True, True, False, True)],
+)
+def test_is_duplicate_unsubscribe_request(
+    sample_service, create_previous_unsubscribe_request, is_batched, processed_by_service, expected_result
+):
+    if create_previous_unsubscribe_request:
+        notification_id = create_unsubscribe_request_and_return_the_notification_id(
+            sample_service, is_batched, processed_by_service
+        )
+    else:
+        notification_id = uuid.uuid4()
 
-
-def test_is_duplicate_unsubscribe_request_for_non_duplicate_request_2(sample_service):
-    # Test case is an unsubscribe request that has the same notification_id as a previous request
-    # that has been processed by the service. Only sequential unprocessed unsubscribe requests with the same
-    # notification_id are being considered as duplicate requests.
-    notification_id = create_unsubscribe_request_and_return_the_notification_id(
-        sample_service, is_batched=True, processed_by_service=True
-    )
-    # Simulate a duplicate unsubscribe request with the same notification_id
     result = is_duplicate_unsubscribe_request(notification_id)
-    assert result is False
-
-
-def test_is_duplicate_unsubscribe_request_for_un_batched_request(sample_service):
-    notification_id = create_unsubscribe_request_and_return_the_notification_id(
-        sample_service, is_batched=False, processed_by_service=False
-    )
-    # Simulate a duplicate unsubscribe request with the same notification_id
-    result = is_duplicate_unsubscribe_request(notification_id)
-    assert result is True
-
-
-def test_is_duplicate_unsubscribe_request_for_batched_unprocessed_request(sample_service):
-    notification_id = create_unsubscribe_request_and_return_the_notification_id(
-        sample_service, is_batched=True, processed_by_service=False
-    )
-    # Simulate a duplicate unsubscribe request with the same notification_id
-    result = is_duplicate_unsubscribe_request(notification_id)
-    assert result is True
+    assert result == expected_result
