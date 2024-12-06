@@ -83,9 +83,14 @@ def is_duplicate_unsubscribe_request(notification_id):
     the same notification_id of a previously received unsubscribe request that has not yet been processed
     by the service that initiated the notification.
     """
-    if unsubscribe_request := get_unsubscribe_request_by_notification_id_dao(notification_id):
-        report_id = unsubscribe_request.unsubscribe_request_report_id
-        if not report_id:
-            return True
-        return False if get_unsubscribe_request_report_by_id_dao(report_id).processed_by_service_at else True
-    return False
+    unsubscribe_request = get_unsubscribe_request_by_notification_id_dao(notification_id)
+
+    if not unsubscribe_request:
+        return False
+
+    report_id = unsubscribe_request.unsubscribe_request_report_id
+
+    if report_id and get_unsubscribe_request_report_by_id_dao(report_id).processed_by_service_at:
+        return False
+
+    return True
