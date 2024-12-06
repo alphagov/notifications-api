@@ -131,8 +131,8 @@ def delete_invitations():
 def switch_current_sms_provider_on_slow_delivery():
     """
     Reduce provider's priority if at least 15% of notifications took more than 5 minutes to be delivered
-    in the last ten minutes. If both providers are slow, don't do anything. If we changed the providers in the
-    last ten minutes, then don't update them again either.
+    in the last 15 minutes. If both providers are slow, don't do anything. If we changed the providers in the
+    last 5 minutes, then don't update them again either.
     """
     slow_delivery_notifications = is_delivery_slow_for_providers(
         created_within_minutes=15,
@@ -146,7 +146,7 @@ def switch_current_sms_provider_on_slow_delivery():
         for provider_name, is_slow in slow_delivery_notifications.items():
             if is_slow:
                 current_app.logger.warning("Slow delivery notifications detected for provider %s", provider_name)
-                dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
+                dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=5))
 
 
 def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports: list[SlowProviderDeliveryReport]):
