@@ -847,9 +847,41 @@ def organisation_has_new_go_live_request_template(notify_service):
     return create_custom_template(
         service=notify_service,
         user=notify_service.users[0],
-        template_config_name="GO_LIVE_NEW_REQUEST_FOR_ORG_USERS_TEMPLATE_ID",
+        template_config_name="GO_LIVE_NEW_REQUEST_FOR_ORG_APPROVERS_TEMPLATE_ID",
         content=template_content,
         subject="Request to go live: ((service_name))",
+        template_type="email",
+    )
+
+
+@pytest.fixture(scope="function")
+def organisation_has_new_go_live_request_requester_receipt_template(notify_service):
+    template_content = textwrap.dedent(
+        """\
+        Hi ((name))
+
+        You have sent a request to go live for a GOV.​UK Notify service called ‘((service_name))’.
+
+        Your request was sent to the following members of ((organisation_name)):
+
+        ((organisation_team_member_names))
+
+        If you do not receive an update about your request in the next 2 working days,
+        please reply to this email and let us know.
+
+        Thanks
+
+        GOV.​UK Notify team
+        https://www.gov.uk/notify
+        """
+    )
+
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="GO_LIVE_NEW_REQUEST_FOR_ORG_REQUESTER_TEMPLATE_ID",
+        content=template_content,
+        subject="Your request to go live",
         template_type="email",
     )
 
