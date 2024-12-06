@@ -7,6 +7,7 @@ from flask import current_app
 from sqlalchemy.exc import NoResultFound
 
 from app.constants import (
+    CAN_ASK_TO_JOIN_SERVICE,
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
     EXTRA_LETTER_FORMATTING,
@@ -99,7 +100,7 @@ def apply_fixtures():
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
     current_app.logger.info("--> Ensure organisation exists")
-    org = _create_organiation()
+    org = _create_organiation(email_domain)
 
     current_app.logger.info("--> Ensure users exists")
     func_test_user = _create_user(
@@ -262,7 +263,7 @@ def _create_user(name, email_address, password, auth_type="sms_auth", organisati
     return user
 
 
-def _create_organiation(org_name="Functional Tests Org"):
+def _create_organiation(email_domain, org_name="Functional Tests Org"):
 
     organisations = dao_get_organisations_by_partial_name(org_name)
 
@@ -279,7 +280,8 @@ def _create_organiation(org_name="Functional Tests Org"):
 
         dao_create_organisation(org)
 
-    dao_update_organisation(org.id, can_approve_own_go_live_requests=True)
+    org.set_permissions_list([CAN_ASK_TO_JOIN_SERVICE])
+    dao_update_organisation(org.id, domains=[email_domain], can_approve_own_go_live_requests=True)
 
     return org
 
