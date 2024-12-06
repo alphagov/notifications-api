@@ -41,3 +41,14 @@ def dao_allocate_number_for_service(service_id, inbound_number_id):
     if not updated:
         raise Exception(f"Inbound number: {inbound_number_id} is not available")
     return InboundNumber.query.get(inbound_number_id)
+
+
+@autocommit
+def dao_archive_inbound_number(service_id: str):
+    # has the number been used?
+    # no:
+    # set active to false
+    return InboundNumber.filter_by(service_id=service_id, active=True).update(
+        {"service_id": None, "active": False},
+        synchronize_session="fetch",
+    )
