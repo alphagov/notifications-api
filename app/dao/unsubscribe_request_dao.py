@@ -22,7 +22,7 @@ def create_unsubscribe_request_dao(unsubscribe_data):
 
 
 def get_unsubscribe_request_by_notification_id_dao(notification_id):
-    return UnsubscribeRequest.query.filter_by(notification_id=notification_id).one_or_none()
+    return UnsubscribeRequest.query.filter_by(notification_id=notification_id).one()
 
 
 def get_unsubscribe_requests_statistics_dao(service_id):
