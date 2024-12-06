@@ -18,7 +18,9 @@ class ValidationErrorSlugs:
 
     NOTIFICATION_ID_REQUIRED = "notification_id:required_property"
 
+    # reference validation
     REFERENCE_REQUIRED = "reference:required_property"  # for precompiled letters only
+    REFERENCE_TOO_LONG = "reference:too_long"
 
     CONTENT_REQUIRED = "content:required_property"
 
