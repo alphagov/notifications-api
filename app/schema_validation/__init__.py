@@ -8,6 +8,7 @@ from jsonschema import Draft7Validator, FormatChecker, ValidationError
 from notifications_utils.recipient_validation.email_address import validate_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
+from app.v2.errors.slugs import ValidationErrorSlugs
 
 format_checker = FormatChecker()
 
@@ -147,6 +148,7 @@ def validate(json_to_validate, schema):
 def build_error_message(errors):
     fields = []
     for e in errors:
+        
         field = (
             "{} {}".format(e.path[0] if e.path else "", e.schema["validationMessage"]).strip()
             if "validationMessage" in e.schema

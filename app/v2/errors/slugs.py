@@ -32,3 +32,16 @@ class ValidationErrorSlugs:
     or do we want to be a bit more vague, for example `start_date:format`? How much resolution do we want?
 
     """
+    @classmethod
+    def get_error_slug(cls, error) -> str:
+        slug = ""
+        if error.path:
+            slug += f"{error.path}:"
+        else:
+            "see what we do for the messages"
+        if error.cause:
+            slug += str(error.cause).replace(" ", "_")
+        else:
+            slug += error.message.replace(" ", "_")
+
+        return slug
