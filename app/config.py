@@ -352,7 +352,7 @@ class Config:
             },
             "raise-alert-if-letter-notifications-still-sending": {
                 "task": "raise-alert-if-letter-notifications-still-sending",
-                "schedule": crontab(hour=17, minute=00),
+                "schedule": crontab(hour=19, minute=00),
                 "options": {"queue": QueueNames.PERIODIC},
             },
             # The check-time-to-collate-letters does assume it is called in an hour that BST does not make a
