@@ -39,13 +39,10 @@ def test_fetch_service_permissions_gets_service_permissions(service_without_perm
     assert all(sp.permission in [LETTER_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE] for sp in service_permissions)
 
 
-def test_remove_service_permission(service_without_permissions):
-    create_service_permission(service_id=service_without_permissions.id, permission=EMAIL_TYPE)
-    create_service_permission(service_id=service_without_permissions.id, permission=INBOUND_SMS_TYPE)
+def test_remove_service_permission():
+    service = create_service(service_permissions=[INBOUND_SMS_TYPE, EMAIL_TYPE])
+    dao_remove_service_permission(service.id, [INBOUND_SMS_TYPE])
+    permissions = dao_fetch_service_permissions(service.id)
 
-    dao_remove_service_permission(service_without_permissions.id, EMAIL_TYPE)
-
-    permissions = dao_fetch_service_permissions(service_without_permissions.id)
     assert len(permissions) == 1
-    assert permissions[0].permission == INBOUND_SMS_TYPE
-    assert permissions[0].service_id == service_without_permissions.id
+    assert permissions[0].permission == EMAIL_TYPE
