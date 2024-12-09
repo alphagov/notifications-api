@@ -70,6 +70,7 @@ def upgrade():
                 false,
                 false
             )
+            ON CONFLICT DO NOTHING
             """
         )
 
@@ -87,6 +88,7 @@ def upgrade():
             current_timestamp,
             '{current_app.config["NOTIFY_USER_ID"]}'
         )
+        ON CONFLICT DO NOTHING
         """
     )
 
