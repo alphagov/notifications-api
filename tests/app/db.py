@@ -1,6 +1,6 @@
 import random
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -46,7 +46,6 @@ from app.models import (
     BroadcastProviderMessageNumber,
     BroadcastStatusType,
     Complaint,
-    DailySortedLetter,
     Domain,
     EmailBranding,
     FactBilling,
@@ -665,22 +664,6 @@ def create_invited_org_user(organisation, invited_by, email_address="invite@exam
     )
     save_invited_org_user(invited_org_user)
     return invited_org_user
-
-
-def create_daily_sorted_letter(
-    billing_day=None, file_name="Notify-20180118123.rs.txt", unsorted_count=0, sorted_count=0
-):
-    daily_sorted_letter = DailySortedLetter(
-        billing_day=billing_day or date(2018, 1, 18),
-        file_name=file_name,
-        unsorted_count=unsorted_count,
-        sorted_count=sorted_count,
-    )
-
-    db.session.add(daily_sorted_letter)
-    db.session.commit()
-
-    return daily_sorted_letter
 
 
 def create_ft_billing(

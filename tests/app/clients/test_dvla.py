@@ -422,7 +422,7 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
         service_id="my_service_id",
         organisation_id="my_organisation_id",
         pdf_file=b"pdf_content",
-        callback_url=None,
+        callback_url="/my-callback",
     )
 
     assert formatted_json == {
@@ -434,6 +434,7 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
             "recipientName": "A. User",
             "address": {"unstructuredAddress": {"line1": "The road", "line2": "City", "postcode": "SW1 1AA"}},
         },
+        "callbackParams": {"retryParams": {"enabled": True, "maxRetryWindow": 10800}, "target": "/my-callback"},
         "customParams": [
             {"key": "pdfContent", "value": "cGRmX2NvbnRlbnQ="},
             {"key": "organisationIdentifier", "value": "my_organisation_id"},
@@ -602,7 +603,7 @@ def test_send_international_letter(dvla_client, dvla_authenticate, postage, desp
         service_id="service_id",
         organisation_id="org_id",
         pdf_file=b"pdf",
-        callback_url=None,
+        callback_url="/my-callback",
     )
 
     assert response == {"id": "noti_id"}
@@ -617,6 +618,7 @@ def test_send_international_letter(dvla_client, dvla_authenticate, postage, desp
             "address": {"internationalAddress": {"line1": "line1", "line2": "line2", "country": "country"}},
             "despatchMethod": despatch_method,
         },
+        "callbackParams": {"retryParams": {"enabled": True, "maxRetryWindow": 10800}, "target": "/my-callback"},
         "customParams": [
             {"key": "pdfContent", "value": "cGRm"},
             {"key": "organisationIdentifier", "value": "org_id"},
@@ -640,7 +642,7 @@ def test_send_bfpo_letter(dvla_client, dvla_authenticate, rmock):
         service_id="service_id",
         organisation_id="org_id",
         pdf_file=b"pdf",
-        callback_url=None,
+        callback_url="/my-callback",
     )
 
     assert response == {"id": "noti_id"}
@@ -654,6 +656,7 @@ def test_send_bfpo_letter(dvla_client, dvla_authenticate, rmock):
             "recipientName": "recipient",
             "address": {"bfpoAddress": {"line1": "recipient", "postcode": "BF1 1AA", "bfpoNumber": 1234}},
         },
+        "callbackParams": {"retryParams": {"enabled": True, "maxRetryWindow": 10800}, "target": "/my-callback"},
         "customParams": [
             {"key": "pdfContent", "value": "cGRm"},
             {"key": "organisationIdentifier", "value": "org_id"},

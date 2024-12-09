@@ -1,13 +1,10 @@
-from collections import defaultdict
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import datetime
 
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
-from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import create_random_identifier, create_uuid, notify_celery, signing
@@ -15,7 +12,6 @@ from app.aws import s3
 from app.celery import letters_pdf_tasks, provider_tasks
 from app.config import QueueNames
 from app.constants import (
-    DVLA_RESPONSE_STATUS_SENT,
     EMAIL_TYPE,
     JOB_STATUS_CANCELLED,
     JOB_STATUS_FINISHED,
@@ -24,19 +20,12 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
-    NOTIFICATION_DELIVERED,
     NOTIFICATION_RETURNED_LETTER,
-    NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
-)
-from app.dao.daily_sorted_letter_dao import (
-    dao_create_or_update_daily_sorted_letter,
 )
 from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
 from app.dao.notifications_dao import (
     dao_get_last_notification_added_for_job_id,
-    dao_get_notification_or_history_by_reference,
-    dao_record_letter_despatched_on,
     dao_update_notifications_by_reference,
     get_notification_by_id,
 )
@@ -44,8 +33,6 @@ from app.dao.returned_letters_dao import insert_returned_letters
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.exceptions import DVLAException
-from app.models import DailySortedLetter, LetterCostThreshold
 from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate
@@ -366,135 +353,6 @@ def handle_exception(task, notification, notification_id, exc):
             task.retry(queue=QueueNames.RETRY, exc=exc)
         except task.MaxRetriesExceededError:
             current_app.logger.error("Max retry failed %s", retry_msg)
-
-
-@notify_celery.task(bind=True, name="update-letter-notifications-statuses")
-def update_letter_notifications_statuses(self, filename):
-    current_app.logger.info("update_letter_notifications_statuses has started for filename %s", filename)
-    notification_updates = parse_dvla_file(filename)
-
-    temporary_failures = []
-
-    for update in notification_updates:
-        check_billable_units(update)
-        update_letter_notification(filename, temporary_failures, update)
-    if temporary_failures:
-        # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
-        message = f"DVLA response file: {filename} has failed letters with notification.reference {temporary_failures}"
-        raise DVLAException(message)
-    current_app.logger.info("update_letter_notifications_statuses has finished for filename %s", filename)
-
-
-@notify_celery.task(bind=True, name="record-daily-sorted-counts")
-def record_daily_sorted_counts(self, filename):
-    current_app.logger.info("record_daily_sorted_counts has started for filename %s", filename)
-    sorted_letter_counts = defaultdict(int)
-    notification_updates = parse_dvla_file(filename)
-    for update in notification_updates:
-        sorted_letter_counts[update.cost_threshold.value] += 1
-
-    billing_date = get_billing_date_in_bst_from_filename(filename)
-    persist_daily_sorted_letter_counts(day=billing_date, file_name=filename, sorted_letter_counts=sorted_letter_counts)
-    current_app.logger.info("record_daily_sorted_counts has finished for filename %s", filename)
-
-
-def parse_dvla_file(filename):
-    response_file_content = s3.get_s3_file(current_app.config["S3_BUCKET_DVLA_RESPONSE"], filename)
-    return process_updates_from_file(response_file_content, filename=filename)
-
-
-def get_billing_date_in_bst_from_filename(filename):
-    # exclude seconds from the date since we don't need it. We got a date ending in 60 second - which is not valid.
-    datetime_string = filename.split("-")[1][:-2]
-    datetime_obj = datetime.strptime(datetime_string, "%Y%m%d%H%M")
-    return convert_utc_to_bst(datetime_obj).date()
-
-
-def persist_daily_sorted_letter_counts(day, file_name, sorted_letter_counts):
-    daily_letter_count = DailySortedLetter(
-        billing_day=day,
-        file_name=file_name,
-        unsorted_count=sorted_letter_counts["unsorted"],
-        sorted_count=sorted_letter_counts["sorted"],
-    )
-    dao_create_or_update_daily_sorted_letter(daily_letter_count)
-
-
-@dataclass
-class NotificationUpdate:
-    reference: str
-    status: str
-    page_count: str
-    cost_threshold: LetterCostThreshold
-    despatch_date: str
-
-
-def process_updates_from_file(response_file, filename):
-    notification_updates = []
-    invalid_statuses = set()
-
-    for line in response_file.splitlines():
-        try:
-            reference, status, page_count, raw_cost_threshold, despatch_date = line.split("|")
-        except ValueError as e:
-            raise DVLAException(f"DVLA response file: {filename} has an invalid format") from e
-
-        try:
-            cost_threshold = LetterCostThreshold(raw_cost_threshold.lower())
-        except ValueError:
-            invalid_statuses.add(raw_cost_threshold.lower())
-            continue
-
-        notification_updates.append(
-            NotificationUpdate(
-                reference=reference,
-                status=status,
-                page_count=page_count,
-                cost_threshold=cost_threshold,
-                despatch_date=despatch_date,
-            )
-        )
-
-    if invalid_statuses:
-        raise DVLAException(f"DVLA response file: {filename} contains unknown Sorted status {invalid_statuses}")
-
-    return notification_updates
-
-
-def update_letter_notification(filename: str, temporary_failures: list, update: NotificationUpdate):
-    if update.status == DVLA_RESPONSE_STATUS_SENT:
-        status = NOTIFICATION_DELIVERED
-    else:
-        status = NOTIFICATION_TEMPORARY_FAILURE
-        temporary_failures.append(update.reference)
-
-    updated_count, _ = dao_update_notifications_by_reference(
-        references=[update.reference], update_dict={"status": status, "updated_at": datetime.utcnow()}
-    )
-    dao_record_letter_despatched_on(
-        reference=update.reference, despatched_on=update.despatch_date, cost_threshold=update.cost_threshold
-    )
-
-    if not updated_count:
-        current_app.logger.info(
-            "Update letter notification file %s failed: notification either not found "
-            "or already updated from delivered. Status %s for notification reference %s",
-            filename,
-            status,
-            update.reference,
-        )
-
-
-def check_billable_units(notification_update):
-    notification = dao_get_notification_or_history_by_reference(notification_update.reference)
-
-    if int(notification_update.page_count) != notification.billable_units:
-        current_app.logger.error(
-            "Notification with id %s has %s billable_units but DVLA says page count is %s",
-            notification.id,
-            notification.billable_units,
-            notification_update.page_count,
-        )
 
 
 @notify_celery.task(name="process-incomplete-jobs")
