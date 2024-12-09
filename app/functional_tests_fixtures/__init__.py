@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from uuid import uuid4
 
 import boto3
@@ -6,6 +7,7 @@ from flask import current_app
 from sqlalchemy.exc import NoResultFound
 
 from app.constants import (
+    CAN_ASK_TO_JOIN_SERVICE,
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
     EXTRA_LETTER_FORMATTING,
@@ -27,6 +29,7 @@ from app.dao.inbound_numbers_dao import (
     dao_get_inbound_number_for_service,
     dao_set_inbound_number_to_service,
 )
+from app.dao.inbound_sms_dao import dao_create_inbound_sms, dao_get_inbound_sms_for_service
 from app.dao.organisation_dao import (
     dao_create_organisation,
     dao_get_organisation_by_id,
@@ -39,6 +42,7 @@ from app.dao.service_email_reply_to_dao import (
     dao_get_reply_to_by_service_id,
 )
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service, save_service_inbound_api
+from app.dao.service_letter_contact_dao import add_letter_contact_for_service, dao_get_letter_contacts_by_service_id
 from app.dao.service_permissions_dao import (
     dao_add_service_permission,
     dao_fetch_service_permissions,
@@ -57,6 +61,7 @@ from app.dao.templates_dao import dao_create_template, dao_get_all_templates_for
 from app.dao.users_dao import get_user_by_email, save_model_user
 from app.models import (
     InboundNumber,
+    InboundSms,
     Organisation,
     Permission,
     Service,
@@ -95,7 +100,7 @@ def apply_fixtures():
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
     current_app.logger.info("--> Ensure organisation exists")
-    org = _create_organiation()
+    org = _create_organiation(email_domain)
 
     current_app.logger.info("--> Ensure users exists")
     func_test_user = _create_user(
@@ -135,25 +140,44 @@ def apply_fixtures():
     current_app.logger.info("--> Ensure inbound number exists")
     inbound_number_id = _create_inbound_numbers(service.id, service_admin_user.id)
 
+    current_app.logger.info("--> Ensure service letter contact exists")
+    letter_contact = _create_service_letter_contact(
+        service.id,
+        (
+            "Government Digital Service\n"
+            "The White Chapel Building\n"
+            "10 Whitechapel High Street\n"
+            "London\n"
+            "E1 8QS\n"
+            "United Kingdom"
+        ),
+        True,
+    )
+
     template1_id = _create_email_template(service, service_admin_user.id)
     template2_id = _create_sms_template(service, service_admin_user.id)
-    template3_id = _create_letter_template(service, service_admin_user.id)
+    template3_id = _create_letter_template(service, service_admin_user.id, letter_contact.id)
 
     current_app.logger.info("--> Ensure service email reply to exists")
     _create_service_email_reply_to(
         service.id, f"{test_email_username}+{environment}-reply-to-default@{email_domain}", True
     )
-    _create_service_email_reply_to(service.id, f"{test_email_username}+{environment}-reply-to@{email_domain}", False)
+    email_reply_to = _create_service_email_reply_to(
+        service.id, f"{test_email_username}+{environment}-reply-to@{email_domain}", False
+    )
 
     current_app.logger.info("--> Ensure service permissions exists")
     _create_service_permissions(service.id)
 
     current_app.logger.info("--> Ensure service sms senders exists")
     _create_service_sms_senders(service.id, "07700900500", True, inbound_number_id)
-    _create_service_sms_senders(service.id, "func tests", False, None)
+    sms_sender = _create_service_sms_senders(service.id, "func tests", False, None)
 
     current_app.logger.info("--> Ensure service inbound api exists")
     _create_service_inbound_api(service.id, service_admin_user.id)
+
+    current_app.logger.info("--> Ensure dummy inbound SMS objects exist")
+    _create_inbound_sms(service, 3)
 
     functional_test_config = f"""
 
@@ -181,6 +205,8 @@ export FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY='{function_tests_test_key_name}-{se
 export FUNCTIONAL_TESTS_API_AUTH_SECRET='{current_app.config['INTERNAL_CLIENT_API_KEYS']['notify-functional-tests'][0]}'
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO='{test_email_username}+{environment}-reply-to@{email_domain}'
+export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_ID='{email_reply_to.id}'
+export FUNCTIONAL_TESTS_SERVICE_SMS_SENDER_ID='{sms_sender.id}'
 export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER=07700900500
 
 export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={template2_id}
@@ -237,7 +263,7 @@ def _create_user(name, email_address, password, auth_type="sms_auth", organisati
     return user
 
 
-def _create_organiation(org_name="Functional Tests Org"):
+def _create_organiation(email_domain, org_name="Functional Tests Org"):
 
     organisations = dao_get_organisations_by_partial_name(org_name)
 
@@ -254,7 +280,8 @@ def _create_organiation(org_name="Functional Tests Org"):
 
         dao_create_organisation(org)
 
-    dao_update_organisation(org.id, can_approve_own_go_live_requests=True)
+    org.set_permissions_list([CAN_ASK_TO_JOIN_SERVICE])
+    dao_update_organisation(org.id, domains=[email_domain], can_approve_own_go_live_requests=True)
 
     return org
 
@@ -337,6 +364,17 @@ def _create_inbound_numbers(service_id, user_id, number="07700900500", provider=
     return inbound_number.id
 
 
+def _create_service_letter_contact(service_id, contact_block, is_default):
+
+    letter_contacts = dao_get_letter_contacts_by_service_id(service_id)
+
+    for letter_contact in letter_contacts:
+        if letter_contact.contact_block == contact_block:
+            return letter_contact
+
+    return add_letter_contact_for_service(service_id, contact_block, is_default)
+
+
 def _create_email_template(service, user_id):
     name = "Functional Tests - CSV Email Template with Build ID"
 
@@ -388,9 +426,9 @@ def _create_sms_template(service, user_id):
     return new_template.id
 
 
-def _create_letter_template(service, user_id):
+def _create_letter_template(service, user_id, letter_contact_id):
 
-    name = "Functional Tests - CSV Letter Template with Build ID"
+    name = "Functional Tests - CSV Letter Template with Build ID and Letter Contact"
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
@@ -399,7 +437,7 @@ def _create_letter_template(service, user_id):
             return template.id
 
     data = {
-        "name": "Functional Tests - CSV Letter Template with Build ID",
+        "name": name,
         "template_type": "letter",
         "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
         "subject": "Functional Tests - CSV Letter",
@@ -410,6 +448,7 @@ def _create_letter_template(service, user_id):
 
     new_template.service = service
     new_template.postage = SECOND_CLASS
+    new_template.service_letter_contact_id = letter_contact_id
 
     dao_create_template(new_template)
 
@@ -422,7 +461,7 @@ def _create_service_email_reply_to(service_id, email_address, is_default):
 
     for service_email_reply_to in service_email_reply_tos:
         if service_email_reply_to.email_address == email_address:
-            return
+            return service_email_reply_to
 
     service_email_reply_to = ServiceEmailReplyTo()
 
@@ -430,7 +469,7 @@ def _create_service_email_reply_to(service_id, email_address, is_default):
     service_email_reply_to.is_default = is_default
     service_email_reply_to.email_address = email_address
 
-    add_reply_to_email_address_for_service(service_id, email_address, is_default)
+    return add_reply_to_email_address_for_service(service_id, email_address, is_default)
 
 
 def _create_service_permissions(service_id, permissions=None):
@@ -455,9 +494,9 @@ def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_numb
 
     for service_sms_sender in service_sms_senders:
         if service_sms_sender.sms_sender == sms_sender:
-            return
+            return service_sms_sender
 
-    dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id)
+    return dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id)
 
 
 def _create_service_inbound_api(service_id, user_id):
@@ -472,3 +511,21 @@ def _create_service_inbound_api(service_id, user_id):
     inbound_api.bearer_token = "1234567890"
 
     save_service_inbound_api(inbound_api)
+
+
+def _create_inbound_sms(service, count):
+
+    num_existing = len(dao_get_inbound_sms_for_service(service.id, limit=count))
+
+    for _ in range(num_existing, count):
+        dao_create_inbound_sms(
+            InboundSms(
+                service=service,
+                notify_number=service.get_inbound_number(),
+                user_number="00000000000",
+                provider_date=datetime.utcnow(),
+                provider_reference="SOME-MMG-SPECIFIC-ID",
+                content="This is a test message",
+                provider="mmg",
+            )
+        )

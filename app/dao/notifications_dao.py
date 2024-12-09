@@ -38,7 +38,9 @@ from app.constants import (
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
+    NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
+    NOTIFICATION_STATUS_TYPES_DEPRECATED,
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
 )
@@ -242,7 +244,7 @@ def dao_get_notification_or_history_by_id(notification_id):
         return NotificationHistory.query.get(notification_id)
 
 
-def get_notifications_for_service(
+def get_notifications_for_service(  # noqa: C901
     service_id,
     filter_dict=None,
     page=1,
@@ -268,10 +270,18 @@ def get_notifications_for_service(
         filters.append(Notification.created_at >= midnight_n_days_ago(limit_days))
 
     if older_than is not None:
+        # fetching this separately and including in query as literal makes it visible to
+        # the planner
         older_than_created_at = (
-            db.session.query(Notification.created_at).filter(Notification.id == older_than).as_scalar()
+            db.session.query(Notification.created_at)
+            .filter(Notification.id == older_than, Notification.service_id == service_id)
+            .scalar()
         )
-        filters.append(Notification.created_at < older_than_created_at)
+        if older_than_created_at is None:
+            # ensure we return no results
+            filters.append(False)
+        else:
+            filters.append(Notification.created_at < older_than_created_at)
 
     if not include_jobs:
         filters.append(Notification.job_id == None)  # noqa
@@ -315,7 +325,8 @@ def _filter_query(query, filter_dict=None):
     statuses = multidict.getlist("status")
     if statuses:
         statuses = Notification.substitute_status(statuses)
-        query = query.filter(Notification.status.in_(statuses))
+        if not set(statuses).issuperset(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_DEPRECATED)):
+            query = query.filter(Notification.status.in_(statuses))
 
     # filter by template
     template_types = multidict.getlist("template_type")
@@ -815,12 +826,16 @@ def letters_missing_from_sending_bucket(seconds_to_subtract):
     return notifications
 
 
-def dao_precompiled_letters_still_pending_virus_check():
-    ten_minutes_ago = datetime.utcnow() - timedelta(seconds=600)
+def dao_precompiled_letters_still_pending_virus_check(max_minutes_ago_to_check):
+    earliest_timestamp_to_check = datetime.utcnow() - timedelta(minutes=max_minutes_ago_to_check)
+    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
 
     notifications = (
         Notification.query.filter(
-            Notification.created_at < ten_minutes_ago, Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
+            Notification.created_at > earliest_timestamp_to_check,
+            Notification.created_at < ten_minutes_ago,
+            Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK,
+            Notification.notification_type == LETTER_TYPE,
         )
         .order_by(Notification.created_at)
         .all()

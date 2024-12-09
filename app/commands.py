@@ -28,7 +28,11 @@ from app.celery.letters_pdf_tasks import (
     get_pdf_for_templated_letter,
     resanitise_pdf,
 )
-from app.celery.tasks import process_row, record_daily_sorted_counts
+from app.celery.tasks import (
+    get_id_task_args_kwargs_for_job_row,
+    process_job_row,
+    record_daily_sorted_counts,
+)
 from app.config import QueueNames
 from app.constants import KEY_TYPE_TEST, NOTIFICATION_CREATED, SMS_TYPE
 from app.dao.annual_billing_dao import (
@@ -116,7 +120,7 @@ class notify_command:
     help="""
     Functional test user email prefix. eg "notify-test-preview"
 """,
-)  # noqa
+)
 def purge_functional_test_data(user_email_prefix):
     """
     Remove non-seeded functional test data
@@ -733,7 +737,10 @@ def process_row_from_job(job_id, job_row_number):
         placeholders=template.placeholders,
     ).get_rows():
         if row.index == job_row_number:
-            notification_id = process_row(row, template, job, job.service)
+            notification_id, task_args_kwargs = get_id_task_args_kwargs_for_job_row(row, template, job, job.service)
+
+            process_job_row(template.template_type, task_args_kwargs)
+
             current_app.logger.info(
                 "Process row %s for job %s created notification_id: %s", job_row_number, job_id, notification_id
             )

@@ -53,7 +53,7 @@ def one_click_unsubscribe(notification_id, token):
 
 
 def get_unsubscribe_request_data(notification, email_address):
-    return {  # noqa
+    return {
         "notification_id": notification.id,
         "template_id": notification.template_id,
         "template_version": notification.template_version,

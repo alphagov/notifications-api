@@ -267,7 +267,7 @@ def _ses_bounce_callback(reference, bounce_type):
         "Message": json.dumps(ses_message_body),
         "Timestamp": "2017-11-17T12:14:05.149Z",
         "SignatureVersion": "1",
-        "Signature": "[REDACTED]",  # noqa
+        "Signature": "[REDACTED]",
         "SigningCertUrl": "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-[REDACTED]].pem",
         "UnsubscribeUrl": "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=[REDACTED]]",
         "MessageAttributes": {},

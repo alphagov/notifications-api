@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from app import db
 from app.dao.dao_utils import autocommit
 from app.models import ServicePermission
@@ -13,9 +15,8 @@ def dao_add_service_permission(service_id, permission):
     db.session.add(service_permission)
 
 
-def dao_remove_service_permission(service_id, permission):
-    deleted = ServicePermission.query.filter(
-        ServicePermission.service_id == service_id, ServicePermission.permission == permission
+@autocommit
+def dao_remove_service_permissions(service_id: UUID, permissions: list[str]):
+    return ServicePermission.query.filter(
+        ServicePermission.service_id == service_id, ServicePermission.permission.in_(permissions)
     ).delete()
-    db.session.commit()
-    return deleted

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -49,11 +50,14 @@ from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
+from app.utils import batched
 from app.v2.errors import TooManyRequestsError
+
+DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE = 32
 
 
 @notify_celery.task(name="process-job")
-def process_job(job_id, sender_id=None):
+def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
     current_app.logger.info("Starting process-job task for job id %s with status: %s", job_id, job.job_status)
@@ -80,10 +84,42 @@ def process_job(job_id, sender_id=None):
 
     current_app.logger.info("Starting job %s processing %s notifications", job_id, job.notification_count)
 
-    for row in recipient_csv.get_rows():
-        process_row(row, template, job, service, sender_id=sender_id)
+    for shatter_batch in batched(recipient_csv.get_rows(), n=shatter_batch_size):
+        batch_args_kwargs = [
+            get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=sender_id)[1]
+            for row in shatter_batch
+        ]
+        shatter_job_rows.apply_async(
+            (
+                template.template_type,
+                batch_args_kwargs,
+            ),
+            queue=QueueNames.JOBS,
+        )
 
     job_complete(job, start=start)
+
+
+@notify_celery.task(name="shatter-job-rows")
+def shatter_job_rows(
+    template_type: str,
+    args_kwargs_seq: Sequence,
+):
+    for task_args_kwargs in args_kwargs_seq:
+        process_job_row(template_type, task_args_kwargs)
+
+
+def process_job_row(template_type, task_args_kwargs):
+    send_fn = {
+        SMS_TYPE: save_sms,
+        EMAIL_TYPE: save_email,
+        LETTER_TYPE: save_letter,
+    }[template_type]
+
+    send_fn.apply_async(
+        *task_args_kwargs,
+        queue=QueueNames.DATABASE,
+    )
 
 
 def job_complete(job, resumed=False, start=None):
@@ -111,8 +147,7 @@ def get_recipient_csv_and_template_and_sender_id(job):
     return recipient_csv, template, meta_data.get("sender_id")
 
 
-def process_row(row, template, job, service, sender_id=None):
-    template_type = template.template_type
+def get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=None):
     encoded = signing.encode(
         {
             "template": str(template.id),
@@ -126,25 +161,18 @@ def process_row(row, template, job, service, sender_id=None):
         }
     )
 
-    send_fns = {SMS_TYPE: save_sms, EMAIL_TYPE: save_email, LETTER_TYPE: save_letter}
-
-    send_fn = send_fns[template_type]
+    notification_id = create_uuid()
+    task_args = (
+        str(service.id),
+        notification_id,
+        encoded,
+    )
 
     task_kwargs = {}
     if sender_id:
         task_kwargs["sender_id"] = sender_id
 
-    notification_id = create_uuid()
-    send_fn.apply_async(
-        (
-            str(service.id),
-            notification_id,
-            encoded,
-        ),
-        task_kwargs,
-        queue=QueueNames.DATABASE,
-    )
-    return notification_id
+    return notification_id, (task_args, task_kwargs)
 
 
 def __sending_limits_for_job_exceeded(service, job, job_id):
@@ -371,8 +399,7 @@ def record_daily_sorted_counts(self, filename):
 
 
 def parse_dvla_file(filename):
-    bucket_location = "{}-ftp".format(current_app.config["NOTIFY_EMAIL_DOMAIN"])
-    response_file_content = s3.get_s3_file(bucket_location, filename)
+    response_file_content = s3.get_s3_file(current_app.config["S3_BUCKET_DVLA_RESPONSE"], filename)
     return process_updates_from_file(response_file_content, filename=filename)
 
 
@@ -471,7 +498,7 @@ def check_billable_units(notification_update):
 
 
 @notify_celery.task(name="process-incomplete-jobs")
-def process_incomplete_jobs(job_ids):
+def process_incomplete_jobs(job_ids, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
     jobs = [dao_get_job_by_id(job_id) for job_id in job_ids]
 
     # reset the processing start time so that the check_job_status scheduled task doesn't pick this job up again
@@ -482,10 +509,10 @@ def process_incomplete_jobs(job_ids):
 
     current_app.logger.info("Resuming job(s) %s", job_ids)
     for job_id in job_ids:
-        process_incomplete_job(job_id)
+        process_incomplete_job(job_id, shatter_batch_size=shatter_batch_size)
 
 
-def process_incomplete_job(job_id):
+def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
     job = dao_get_job_by_id(job_id)
 
     last_notification_added = dao_get_last_notification_added_for_job_id(job_id)
@@ -499,9 +526,21 @@ def process_incomplete_job(job_id):
 
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
-    for row in recipient_csv.get_rows():
-        if row.index > resume_from_row:
-            process_row(row, template, job, job.service, sender_id=sender_id)
+    for shatter_batch in batched(
+        (row for row in recipient_csv.get_rows() if row.index > resume_from_row),
+        n=shatter_batch_size,
+    ):
+        batch_args_kwargs = [
+            get_id_task_args_kwargs_for_job_row(row, template, job, job.service, sender_id=sender_id)[1]
+            for row in shatter_batch
+        ]
+        shatter_job_rows.apply_async(
+            (
+                template.template_type,
+                batch_args_kwargs,
+            ),
+            queue=QueueNames.JOBS,
+        )
 
     job_complete(job, resumed=True)
 

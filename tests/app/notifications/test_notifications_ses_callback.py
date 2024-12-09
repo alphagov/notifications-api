@@ -2,6 +2,7 @@ import pytest
 from flask import json
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.dao.notifications_dao import get_notification_by_id
 from app.models import Complaint
 from app.notifications.notifications_ses_callback import (
@@ -73,10 +74,10 @@ def test_process_ses_results_in_complaint_save_complaint_with_null_complaint_typ
     assert not complaints[0].complaint_type
 
 
-def test_check_and_queue_callback_task(mocker, sample_notification):
+def test_check_and_queue_callback_task(mocker, mock_celery_task, sample_notification):
     mock_create = mocker.patch("app.notifications.notifications_ses_callback.create_delivery_status_callback_data")
 
-    mock_send = mocker.patch("app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async")
+    mock_send = mock_celery_task(send_delivery_status_to_service)
 
     callback_api = create_service_callback_api(service=sample_notification.service)
     mock_create.return_value = "encoded_status_update"
@@ -94,8 +95,8 @@ def test_check_and_queue_callback_task(mocker, sample_notification):
     )
 
 
-def test_check_and_queue_callback_task_no_callback_api(mocker, sample_notification):
-    mock_send = mocker.patch("app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async")
+def test_check_and_queue_callback_task_no_callback_api(mock_celery_task, sample_notification):
+    mock_send = mock_celery_task(send_delivery_status_to_service)
 
     check_and_queue_callback_task(sample_notification)
     mock_send.assert_not_called()

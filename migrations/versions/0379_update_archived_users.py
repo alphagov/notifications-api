@@ -49,7 +49,7 @@ def upgrade():
                     AND NOT users.email_address LIKE CONCAT('_archived_%@', :notify_email_domain)
                 ORDER BY
                     users.id;
-                """  # noqa: W605
+                """
             )
         ),
         notify_email_domain=current_app.config["NOTIFY_EMAIL_DOMAIN"],

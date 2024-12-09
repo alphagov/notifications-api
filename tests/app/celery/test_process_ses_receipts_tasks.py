@@ -10,6 +10,7 @@ from app.celery.research_mode_tasks import (
     ses_notification_callback,
     ses_soft_bounce_callback,
 )
+from app.celery.service_callback_tasks import send_complaint_to_service
 from app.dao.notifications_dao import get_notification_by_id
 from app.models import Complaint, Notification
 from app.notifications.notifications_ses_callback import (
@@ -195,8 +196,8 @@ def test_ses_callback_should_set_status_to_permanent_failure(
     assert hasattr(bounce_record, "bounce_message")
 
 
-def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email_template, mocker):
-    send_mock = mocker.patch("app.celery.service_callback_tasks.send_complaint_to_service.apply_async")
+def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email_template, mock_celery_task):
+    send_mock = mock_celery_task(send_complaint_to_service)
     create_service_callback_api(
         service=sample_email_template.service, url="https://original_url.com", callback_type="complaint"
     )

@@ -800,6 +800,32 @@ def test_get_notifications_with_a_team_api_key_type(
     assert len(all_notifications) == 1
 
 
+def test_get_notifications_by_status(sample_job):
+    notifications = partial(get_notifications_for_service, sample_job.service.id)
+
+    for status in NOTIFICATION_STATUS_TYPES:
+        create_notification(template=sample_job.template, status=status)
+
+    assert len(notifications().items) == len(NOTIFICATION_STATUS_TYPES)
+
+    for status in NOTIFICATION_STATUS_TYPES:
+        if status == "failed":
+            assert len(notifications(filter_dict={"status": status}).items) == len(NOTIFICATION_STATUS_TYPES_FAILED)
+        else:
+            assert len(notifications(filter_dict={"status": status}).items) == 1
+
+    assert len(notifications(filter_dict={"status": NOTIFICATION_STATUS_TYPES[:3]}).items) == 3
+
+    # perhaps surprising, but this is because we've detected that we're including
+    # "all" status types and omitting the filter entirely. but this causes us to
+    # also return the "failed" notification. in real life we don't have any "failed"
+    # notifications anymore so this should never be observed - we're just abusing
+    # this quirk for the test
+    assert len(notifications(filter_dict={"status": list(set(NOTIFICATION_STATUS_TYPES) - {"failed"})}).items) == len(
+        NOTIFICATION_STATUS_TYPES
+    )
+
+
 @pytest.mark.parametrize("with_personalisation", (False, True))
 @pytest.mark.parametrize("with_template", (False, True))
 def test_get_notifications_for_service_optional_loading(
@@ -1607,9 +1633,9 @@ def test_letters_to_be_printed_returns_ids(notify_db_session):
         create_notification(second_template, created_at=datetime(2020, 12, 1, 8, 30)),
     }
     # unprinted_notifications
-    create_notification(first_template, created_at=datetime(2020, 12, 1, 17, 31)),  # too late
-    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test"),  # wrong keytype
-    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test"),  # wrong keytype
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 17, 31))  # too late
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test")  # wrong keytype
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test")  # wrong keytype
     create_notification(email_template, created_at=datetime(2020, 12, 1, 9, 30))  # email
     # no billable units (probably still in virus scan/sanitsation phase)
     create_notification(template=first_template, created_at=datetime(2020, 12, 1, 9, 31), billable_units=0)

@@ -5,6 +5,7 @@ import pytest
 from flask import current_app
 from freezegun import freeze_time
 
+from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.tasks import (
     check_billable_units,
     get_billing_date_in_bst_from_filename,
@@ -108,11 +109,9 @@ def test_update_letter_notifications_statuses_raises_dvla_exception(notify_api, 
 def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
     s3_mock = mocker.patch("app.celery.tasks.s3.get_s3_object")
 
-    with set_config(notify_api, "NOTIFY_EMAIL_DOMAIN", "foo.bar"):
+    with set_config(notify_api, "S3_BUCKET_DVLA_RESPONSE", "foo.bar-ftp"):
         update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
-        s3_mock.assert_called_with(
-            "{}-ftp".format(current_app.config["NOTIFY_EMAIL_DOMAIN"]), "NOTIFY-20170823160812-RSP.TXT"
-        )
+        s3_mock.assert_called_with(current_app.config["S3_BUCKET_DVLA_RESPONSE"], "NOTIFY-20170823160812-RSP.TXT")
 
 
 def test_update_letter_notifications_statuses_builds_updates_from_content(notify_api, mocker):
@@ -196,7 +195,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
 
 
 def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(
-    notify_api, mocker, sample_letter_template
+    notify_api, mocker, sample_letter_template, mock_celery_task
 ):
     sent_letter = create_notification(
         sample_letter_template, reference="ref-foo", status=NOTIFICATION_SENDING, billable_units=0
@@ -204,7 +203,7 @@ def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(
     valid_file = f"{sent_letter.reference}|Sent|1|Unsorted|2022-08-11\n"
     mocker.patch("app.celery.tasks.s3.get_s3_file", return_value=valid_file)
 
-    send_mock = mocker.patch("app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async")
+    send_mock = mock_celery_task(send_delivery_status_to_service)
 
     update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
     send_mock.assert_not_called()

@@ -29,6 +29,7 @@ from app.celery.letters_pdf_tasks import (
     update_billable_units_for_letter,
     update_validation_failed_for_templated_letter,
 )
+from app.celery.provider_tasks import deliver_email, deliver_letter
 from app.config import QueueNames, TaskNames
 from app.constants import (
     INTERNATIONAL_LETTERS,
@@ -221,18 +222,17 @@ class TestCheckTimeToCollateLetters:
     def test_check_time_to_collate_letters_respects_print_run_deadline(
         self,
         notify_db_session,
+        mock_celery_task,
         mocker,
         frozen_time,
         expected_time_called_with,
     ):
-        mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent", return_value=[])
+        mock_collate = mock_celery_task(collate_letter_pdfs_to_be_sent)
 
         with freeze_time(frozen_time):
             check_time_to_collate_letters()
 
-        assert mock_collate.apply_async.call_args_list == [
-            mocker.call([expected_time_called_with], queue=QueueNames.PERIODIC)
-        ]
+        assert mock_collate.call_args_list == [mocker.call([expected_time_called_with], queue=QueueNames.PERIODIC)]
 
     @pytest.mark.parametrize(
         "time_to_run_task, should_run",
@@ -252,15 +252,15 @@ class TestCheckTimeToCollateLetters:
         ],
     )
     def test_collate_letter_pdfs_to_be_sent_exits_early_outside_of_expected_window(
-        self, time_to_run_task, should_run, sample_organisation, mocker, notify_api, caplog
+        self, time_to_run_task, should_run, sample_organisation, mock_celery_task, caplog
     ):
-        mock_collate = mocker.patch("app.celery.letters_pdf_tasks.collate_letter_pdfs_to_be_sent")
+        mock_collate = mock_celery_task(collate_letter_pdfs_to_be_sent)
 
         with freeze_time(time_to_run_task):
             check_time_to_collate_letters()
 
         if should_run:
-            assert mock_collate.apply_async.call_count == 1
+            assert mock_collate.call_count == 1
             assert (
                 "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window"
                 not in caplog.messages
@@ -270,7 +270,7 @@ class TestCheckTimeToCollateLetters:
             assert (
                 "Ignoring collate_letter_pdfs_to_be_sent task outside of expected celery task window" in caplog.messages
             )
-            assert mock_collate.apply_async.call_count == 0
+            assert mock_collate.call_count == 0
 
 
 class TestCollateLetterPdfsToBeSent:
@@ -316,8 +316,8 @@ class TestCollateLetterPdfsToBeSent:
         mock_send_via_api.assert_called_once_with(datetime(2021, 6, 1, 17, 30))
 
 
-def test_send_dvla_letters_via_api(sample_letter_template, mocker):
-    mock_celery = mocker.patch("app.celery.provider_tasks.deliver_letter.apply_async")
+def test_send_dvla_letters_via_api(sample_letter_template, mock_celery_task):
+    mock_celery = mock_celery_task(deliver_letter)
 
     with freeze_time("2021-06-01 16:29"):
         first_class = create_notification(sample_letter_template, postage="first")
@@ -338,7 +338,7 @@ def test_send_dvla_letters_via_api(sample_letter_template, mocker):
     )
 
 
-def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker, letter_volumes_email_template):
+def test_send_letters_volume_email_to_dvla(notify_db_session, mock_celery_task, letter_volumes_email_template):
     MockVolume = namedtuple("LettersVolume", ["postage", "letters_count", "sheets_count"])
     letters_volumes = [
         MockVolume("first", 5, 7),
@@ -346,7 +346,7 @@ def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker
         MockVolume("europe", 1, 3),
         MockVolume("rest-of-world", 1, 2),
     ]
-    send_mock = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    send_mock = mock_celery_task(deliver_email)
 
     send_letters_volume_email_to_dvla(letters_volumes, datetime(2020, 2, 17).date())
 

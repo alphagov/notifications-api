@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy import desc
 
 from app import db
@@ -109,9 +111,9 @@ def _raise_when_no_default(old_default):
 
 
 @autocommit
-def dao_remove_sms_senders(service_id: str):
+def dao_remove_inbound_sms_senders(service_id: UUID):
     return (
-        ServiceSmsSender.filter_by(service_id=service_id)
+        ServiceSmsSender.query.filter_by(service_id=service_id)
         .filter(ServiceSmsSender.inbound_number_id.isnot(None))
         .delete(synchronize_session="fetch")
     )
