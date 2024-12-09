@@ -111,7 +111,7 @@ def dao_adjust_provider_priority_back_to_resting_points():
     each towards their defined resting points (set in SMS_PROVIDER_RESTING_POINTS in config.py).
     """
     amount_to_reduce_by = 10
-    time_threshold = timedelta(hours=1)
+    time_threshold = timedelta(minutes=15)
 
     providers = _get_sms_providers_for_update(time_threshold)
 
