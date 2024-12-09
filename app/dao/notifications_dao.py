@@ -88,17 +88,26 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 ]
 
 
-def dao_get_last_date_template_was_used(template_id, service_id):
+def dao_get_last_date_template_was_used(template):
+    uniform_now = datetime.now()
+
     # first, just check if there are any rows present for this template in the notification table.
     # we can use the ix_notifications_template_id. If there are rows, then lets check to find out exactly
     # when the most recent created date was (also checking key type test too)
-    if db.session.query(Notification.query.filter(Notification.template_id == template_id).exists()).scalar():
+    if db.session.query(Notification.query.filter(Notification.template_id == template.id).exists()).scalar():
         last_date_from_notifications = (
             db.session.query(functions.max(Notification.created_at))
             .filter(
-                Notification.service_id == service_id,
-                Notification.template_id == template_id,
+                Notification.template_id == template.id,
                 Notification.key_type != KEY_TYPE_TEST,
+                # beyond last midnight we should have a record of the notification in FactNotificationStatus
+                # which is faster to query
+                Notification.created_at >= get_london_midnight_in_utc(uniform_now),
+                # filtering by notification_type and service_id is technically redundant, but postgres can't
+                # be certain of this and specifying them allows ix_notifications_service_id_ntype_created_at
+                # to be used
+                Notification.notification_type == template.template_type,
+                Notification.service_id == template.service_id,
             )
             .scalar()
         )
@@ -107,14 +116,14 @@ def dao_get_last_date_template_was_used(template_id, service_id):
             return last_date_from_notifications
 
     if db.session.query(
-        FactNotificationStatus.query.filter(FactNotificationStatus.template_id == template_id).exists()
+        FactNotificationStatus.query.filter(FactNotificationStatus.template_id == template.id).exists()
     ).scalar():
         last_date = (
             db.session.query(functions.max(FactNotificationStatus.bst_date))
             .filter(
-                FactNotificationStatus.template_id == template_id,
+                FactNotificationStatus.template_id == template.id,
                 FactNotificationStatus.key_type != KEY_TYPE_TEST,
-                FactNotificationStatus.bst_date > datetime.now() - relativedelta(years=1),
+                FactNotificationStatus.bst_date > uniform_now - relativedelta(years=1),
             )
             .scalar()
         )
