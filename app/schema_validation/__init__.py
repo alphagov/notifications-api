@@ -8,6 +8,7 @@ from jsonschema import Draft7Validator, FormatChecker, ValidationError
 from notifications_utils.recipient_validation.email_address import validate_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
+
 from app.v2.errors.slugs import ValidationErrorSlugs
 
 format_checker = FormatChecker()
@@ -141,23 +142,31 @@ def validate(json_to_validate, schema):
     validator = Draft7Validator(schema, format_checker=format_checker)
     errors = list(validator.iter_errors(json_to_validate))
     if errors.__len__() > 0:
-        raise ValidationError(build_error_message(errors))
+        raise ValidationError(build_error_objects(errors))
     return json_to_validate
 
 
-def build_error_message(errors):
-    fields = []
-    for e in errors:
-        
-        field = (
-            "{} {}".format(e.path[0] if e.path else "", e.schema["validationMessage"]).strip()
-            if "validationMessage" in e.schema
-            else __format_message(e)
-        )
-        fields.append({"error": "ValidationError", "message": field})
-    message = {"status_code": 400, "errors": unique_errors(fields)}
+def _build_error_message(e, is_a_slug: bool = False):
+    return (
+        "{path}{colon_for_slug}{}".format(
+            e.path[0] if e.path else "",
+        ).strip()
+        if "validationMessage" in e.schema
+        else __format_message(e, is_a_slug=is_a_slug)
+    )
 
-    return json.dumps(message)
+
+def build_error_objects(errors):
+    errors_details = []
+
+    for e in errors:
+        error_mesage = _build_error_message(e)
+        error_slug = _build_error_message(e, is_a_slug=True)
+        errors_details.append({"error": "ValidationError", "message": error_mesage, "id": error_slug})
+        breakpoint()
+    error_objects = {"status_code": 400, "errors": unique_errors(errors_details)}
+
+    return json.dumps(error_objects)
 
 
 def unique_errors(dups):
@@ -168,11 +177,11 @@ def unique_errors(dups):
     return unique
 
 
-def __format_message(e):
+def __format_message(e, is_a_slug: bool = False):
     def get_path(e):
         error_path = None
         try:
-            error_path = e.path.popleft()
+            error_path = e.popleft()
             # no need to catch IndexError exception explicity as
             # error_path is None if e.path has no items
         except Exception:
@@ -186,8 +195,8 @@ def __format_message(e):
         return error_message.replace("'", "")
 
     path = get_path(e)
-    message = get_error_message(e)
+    message = get_error_message(e).replace(" ", "_") if is_a_slug else get_error_message(e)
     if path:
-        return f"{path} {message}"
+        return f"{path}{ ':' if is_a_slug else ' '}{message}"
     else:
         return f"{message}"
