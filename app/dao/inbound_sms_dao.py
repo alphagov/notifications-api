@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+from uuid import UUID
+
 from flask import current_app
 from sqlalchemy import and_, desc
 from sqlalchemy.dialects.postgresql import insert
@@ -9,6 +12,7 @@ from app.dao.dao_utils import autocommit
 from app.models import (
     InboundSms,
     InboundSmsHistory,
+    Notification,
     Service,
     ServiceDataRetention,
 )
@@ -179,3 +183,47 @@ def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(service
     )
 
     return q.paginate(page=page, per_page=current_app.config["PAGE_SIZE"])
+
+
+def has_inbound_number_been_used_recently(service_id: UUID, inbound_number: str, days: int | None = 30) -> bool:
+    time_threshold = datetime.utcnow() - timedelta(days=days)
+
+    last_notification = (
+        Notification.query.filter(
+            Notification.reply_to_text == inbound_number,
+            Notification.service_id == service_id,
+        )
+        .order_by(Notification.created_at.desc())
+        .first()
+    )
+
+    last_inbound_sms = (
+        InboundSms.query.filter(
+            InboundSms.notify_number == inbound_number,
+            InboundSms.service_id == service_id,
+        )
+        .order_by(InboundSms.created_at.desc())
+        .first()
+    )
+
+    last_inbound_sms_history = (
+        InboundSmsHistory.query.filter(
+            InboundSmsHistory.notify_number == inbound_number,
+            InboundSmsHistory.service_id == service_id,
+        )
+        .order_by(InboundSmsHistory.created_at.desc())
+        .first()
+    )
+
+    most_recent_usage = max(
+        filter(
+            None,
+            [
+                last_notification.created_at if last_notification else None,
+                last_inbound_sms.created_at if last_inbound_sms else None,
+                last_inbound_sms_history.created_at if last_inbound_sms_history else None,
+            ],
+        )
+    )
+
+    return most_recent_usage and most_recent_usage >= time_threshold

@@ -2,7 +2,6 @@ from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
 from app.constants import INBOUND_SMS_TYPE
-from app.dao.inbound_numbers_dao import dao_archive_inbound_number
 from app.dao.inbound_sms_dao import (
     dao_count_inbound_sms_for_service,
     dao_get_inbound_sms_by_id,
@@ -11,7 +10,7 @@ from app.dao.inbound_sms_dao import (
 )
 from app.dao.service_data_retention_dao import fetch_service_data_retention_by_notification_type
 from app.dao.service_permissions_dao import (
-    dao_remove_service_permissions,
+    dao_remove_service_permission,
 )
 from app.dao.service_sms_sender_dao import dao_remove_inbound_sms_senders
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -76,9 +75,9 @@ def remove_inbound_sms_capability(service_id):
         return jsonify({"message": "Service not found"}), 404
 
     try:
-        dao_remove_service_permissions(service_id, [INBOUND_SMS_TYPE])
+        dao_remove_service_permission(service_id, [INBOUND_SMS_TYPE])
         dao_remove_inbound_sms_senders(service_id)
-        dao_archive_inbound_number(service_id)
+        # dao_release_or_archive_inbound_number(service_id)
 
         return jsonify({"message": "Inbound SMS capability removed successfully"}), 200
 
