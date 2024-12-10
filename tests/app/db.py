@@ -80,6 +80,7 @@ from app.models import (
     User,
     WebauthnCredential,
 )
+from app.utils import midnight_n_days_ago
 
 
 def create_user(*, mobile_number="+447700900986", email=None, state="active", id_=None, name="Test User", **kwargs):
@@ -1322,3 +1323,38 @@ def create_unsubscribe_request_report(
     )
     create_unsubscribe_request_reports_dao(report)
     return report
+
+
+def create_unsubscribe_request_and_return_the_notification_id(
+    sample_service, sample_template, is_batched, processed_by_service
+):
+    notification = create_notification(
+        template=sample_template,
+        to_field="example@example.com",
+        sent_at=datetime.now() - timedelta(days=4),
+    )
+
+    unsubscribe_request_report_id = None
+    if is_batched:
+        # Create processed unsubscribe request report
+        unsubscribe_request_report = create_unsubscribe_request_report(
+            sample_service,
+            earliest_timestamp=midnight_n_days_ago(4),
+            latest_timestamp=midnight_n_days_ago(2),
+            processed_by_service_at=midnight_n_days_ago(1) if processed_by_service else None,
+        )
+        unsubscribe_request_report_id = unsubscribe_request_report.id
+
+    # Create an unsubscribe request
+    create_unsubscribe_request_dao(
+        {
+            "notification_id": notification.id,
+            "template_id": notification.template_id,
+            "template_version": notification.template_version,
+            "service_id": sample_service.id,
+            "email_address": notification.to,
+            "created_at": datetime.now(),
+            "unsubscribe_request_report_id": unsubscribe_request_report_id,
+        }
+    )
+    return notification.id
