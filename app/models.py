@@ -2218,6 +2218,14 @@ class FactNotificationStatus(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
+    __table_args__ = (
+        Index(
+            "ix_ft_notification_status_template_id_bst_date",
+            "template_id",
+            "bst_date",
+        ),
+    )
+
     __extended_statistics__ = (
         # dependencies
         ("st_dep_ft_notification_status_service_id_job_id", ("service_id", "job_id"), ("dependencies",)),
