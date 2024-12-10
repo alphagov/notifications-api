@@ -1,5 +1,8 @@
+from uuid import UUID
+
 from app import db
 from app.dao.dao_utils import autocommit
+from app.dao.inbound_sms_dao import has_inbound_number_been_used_recently
 from app.models import InboundNumber
 
 
@@ -41,3 +44,25 @@ def dao_allocate_number_for_service(service_id, inbound_number_id):
     if not updated:
         raise Exception(f"Inbound number: {inbound_number_id} is not available")
     return InboundNumber.query.get(inbound_number_id)
+
+
+@autocommit
+def archive_or_release_inbound_number(service_id: UUID, inbound_number: str, archive: bool | None = None):
+    inbound = dao_get_inbound_number_for_service(service_id)
+
+    if not inbound:
+        return
+
+    if archive is None:
+        archive = has_inbound_number_been_used_recently(service_id, inbound_number)
+
+    update_data = {
+        "service_id": None,
+    }
+
+    if archive:
+        update_data["active"] = False
+
+    return InboundNumber.query.filter_by(service_id=service_id, active=True).update(
+        update_data, synchronize_session="fetch"
+    )
