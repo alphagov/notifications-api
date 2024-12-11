@@ -57,7 +57,12 @@ from app.dao.services_dao import (
     dao_fetch_service_by_id,
     get_services_by_partial_name,
 )
-from app.dao.templates_dao import dao_create_template, dao_get_all_templates_for_service
+from app.dao.templates_dao import (
+    dao_create_template,
+    dao_get_all_templates_for_service,
+    dao_get_template_versions,
+    dao_update_template,
+)
 from app.dao.users_dao import get_user_by_email, save_model_user
 from app.models import (
     InboundNumber,
@@ -176,6 +181,48 @@ def apply_fixtures():
         letter_contact_id=letter_contact.id,
     )
 
+    api_client_integration_test_email_template = _create_email_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Client Functional test email template",
+        subject="Functional Tests are good",
+        content="Functional test help make our world a better place",
+    )
+    api_client_integration_test_sms_template = _create_sms_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Example text message template",
+        content="Hey ((name)), I’m trying out Notify. Today is ((day of week)) and my favourite colour is ((colour)).",
+    )
+    api_client_integration_test_letter_template = _create_letter_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Untitled",
+        subject="Main heading",
+        content="Body",
+    )
+
+    if len(dao_get_template_versions(service.id, api_client_integration_test_email_template.id)) < 2:
+        _update_template(
+            api_client_integration_test_email_template,
+            content="Hello ((name))\r\n\r\nFunctional test help make our world a better place",
+        )
+
+    if len(dao_get_template_versions(service.id, api_client_integration_test_sms_template.id)) < 2:
+        _update_template(
+            api_client_integration_test_sms_template,
+            name="Client Functional test sms template",
+            content="Hello ((name))\r\n\r\nFunctional Tests make our world a better place",
+        )
+
+    if len(dao_get_template_versions(service.id, api_client_integration_test_letter_template.id)) < 2:
+        _update_template(
+            api_client_integration_test_letter_template,
+            name="Client functional letter template",
+            content="Hello ((address_line_1))",
+            letter_contact_id=letter_contact.id,
+        )
+
     current_app.logger.info("--> Ensure service email reply to exists")
     _create_service_email_reply_to(
         service.id, f"{test_email_username}+{environment}-reply-to-default@{email_domain}", True
@@ -198,6 +245,8 @@ def apply_fixtures():
     _create_inbound_sms(service, 3)
 
     functional_test_config = f"""
+
+# Functional test environment
 
 export FUNCTIONAL_TESTS_API_HOST={current_app.config['API_HOST_NAME']}
 export FUNCTIONAL_TESTS_ADMIN_HOST={current_app.config['ADMIN_BASE_URL']}
@@ -223,8 +272,6 @@ export FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY='{function_tests_test_key_name}-{se
 export FUNCTIONAL_TESTS_API_AUTH_SECRET='{current_app.config['INTERNAL_CLIENT_API_KEYS']['notify-functional-tests'][0]}'
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO='{test_email_username}+{environment}-reply-to@{email_domain}'
-export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_ID='{email_reply_to.id}'
-export FUNCTIONAL_TESTS_SERVICE_SMS_SENDER_ID='{sms_sender.id}'
 export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER=07700900500
 
 export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={sms_template.id}
@@ -235,6 +282,23 @@ export MMG_INBOUND_SMS_USERNAME={current_app.config['MMG_INBOUND_SMS_USERNAME'][
 export MMG_INBOUND_SMS_AUTH={current_app.config['MMG_INBOUND_SMS_AUTH'][0]}
 
 export REQUEST_BIN_API_TOKEN={request_bin_api_token}
+
+
+# API client integration test environment
+
+export SERVICE_ID='{service.id}'
+export FUNCTIONAL_TEST_EMAIL={func_test_user.email_address}
+export FUNCTIONAL_TEST_NUMBER=07700900500
+export EMAIL_TEMPLATE_ID={api_client_integration_test_email_template.id}
+export SMS_TEMPLATE_ID={api_client_integration_test_sms_template.id}
+export LETTER_TEMPLATE_ID={api_client_integration_test_letter_template.id}
+export EMAIL_REPLY_TO_ID='{email_reply_to.id}'
+export SMS_SENDER_ID='{sms_sender.id}'
+export NOTIFY_API_URL={current_app.config['API_HOST_NAME']}
+
+export API_KEY='{function_tests_test_key_name}-{service.id}-{api_key_test_key.secret}'
+export API_SENDING_KEY='{function_tests_live_key_name}-{service.id}-{api_key_live_key.secret}'
+export INBOUND_SMS_QUERY_KEY='{function_tests_test_key_name}-{service.id}-{api_key_test_key.secret}'
 
 """
 
@@ -441,7 +505,7 @@ def _create_sms_template(service, user_id, name, content):
     return new_template
 
 
-def _create_letter_template(service, user_id, name, subject, content, letter_contact_id):
+def _create_letter_template(service, user_id, name, subject, content, letter_contact_id=None):
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
@@ -466,6 +530,22 @@ def _create_letter_template(service, user_id, name, subject, content, letter_con
     dao_create_template(new_template)
 
     return new_template
+
+
+def _update_template(template, name=None, subject=None, content=None, letter_contact_id=None):
+    if name is not None:
+        template.name = name
+
+    if subject is not None:
+        template.subject = subject
+
+    if content is not None:
+        template.content = content
+
+    if letter_contact_id is not None:
+        template.service_letter_contact_id = letter_contact_id
+
+    dao_update_template(template)
 
 
 def _create_service_email_reply_to(service_id, email_address, is_default):
