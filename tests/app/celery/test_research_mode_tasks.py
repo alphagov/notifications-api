@@ -262,7 +262,7 @@ def test_create_fake_letter_callback_sends_letter_response(
 
 
 def test_create_fake_letter_callback_retries(notify_api, fake_uuid, mocker):
-    mocker.patch("app.celery.research_mode_tasks.send_letter_response", side_effect=Exception())
+    mocker.patch("app.celery.research_mode_tasks.send_letter_response", side_effect=requests.HTTPError())
     mock_retry = mocker.patch("app.celery.research_mode_tasks.create_fake_letter_callback.retry")
 
     create_fake_letter_callback(uuid.UUID(fake_uuid), 2, "second")
@@ -271,7 +271,7 @@ def test_create_fake_letter_callback_retries(notify_api, fake_uuid, mocker):
 
 
 def test_create_fake_letter_callback_logs_if_max_retries_exceeded(notify_api, fake_uuid, caplog, mocker):
-    mocker.patch("app.celery.research_mode_tasks.send_letter_response", side_effect=Exception())
+    mocker.patch("app.celery.research_mode_tasks.send_letter_response", side_effect=requests.HTTPError())
     mocker.patch(
         "app.celery.research_mode_tasks.create_fake_letter_callback.retry", side_effect=MaxRetriesExceededError()
     )
