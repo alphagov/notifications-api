@@ -9,7 +9,7 @@ from notifications_utils.recipient_validation.email_address import validate_emai
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
 
-from app.v2.errors.slugs import ValidationErrorSlugs
+from app.v2.error_slugs.slugs import ValidationErrorSlugs
 
 format_checker = FormatChecker()
 
