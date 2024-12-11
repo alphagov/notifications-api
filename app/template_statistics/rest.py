@@ -47,8 +47,8 @@ def get_template_statistics_for_service_by_day(service_id):
 @template_statistics.route("/last-used/<uuid:template_id>")
 def get_last_used_datetime_for_template(service_id, template_id):
     # Check the template and service exist
-    dao_get_template_by_id_and_service_id(template_id, service_id)
+    template = dao_get_template_by_id_and_service_id(template_id, service_id)
 
-    last_date_used = dao_get_last_date_template_was_used(template_id=template_id, service_id=service_id)
+    last_date_used = dao_get_last_date_template_was_used(template)
 
     return jsonify(last_date_used=last_date_used.strftime(DATETIME_FORMAT) if last_date_used else last_date_used)
