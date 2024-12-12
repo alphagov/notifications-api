@@ -30,10 +30,10 @@ from app.models import (
 from app.utils import midnight_n_days_ago
 
 
-def dao_get_notification_outcomes_for_job(service_id, job_id):
+def dao_get_notification_outcomes_for_job(job_id):
     notification_statuses = (
         db.session.query(func.count(Notification.status).label("count"), Notification.status)
-        .filter(Notification.service_id == service_id, Notification.job_id == job_id)
+        .filter(Notification.job_id == job_id)
         .group_by(Notification.status)
         .all()
     )
@@ -44,7 +44,7 @@ def dao_get_notification_outcomes_for_job(service_id, job_id):
                 FactNotificationStatus.notification_count.label("count"),
                 FactNotificationStatus.notification_status.label("status"),
             )
-            .filter(FactNotificationStatus.service_id == service_id, FactNotificationStatus.job_id == job_id)
+            .filter(FactNotificationStatus.job_id == job_id)
             .all()
         )
     return notification_statuses

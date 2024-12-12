@@ -50,7 +50,7 @@ register_errors(job_blueprint)
 @job_blueprint.route("/<job_id>", methods=["GET"])
 def get_job_by_service_and_job_id(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
-    statistics = dao_get_notification_outcomes_for_job(service_id, job_id)
+    statistics = dao_get_notification_outcomes_for_job(job_id)
     data = job_schema.dump(job)
 
     data["statistics"] = [{"status": statistic[1], "count": statistic[0]} for statistic in statistics]
@@ -227,7 +227,7 @@ def get_paginated_jobs(
             statistics = fetch_notification_statuses_for_job(job_data["id"])
         else:
             # notifications table
-            statistics = dao_get_notification_outcomes_for_job(service_id, job_data["id"])
+            statistics = dao_get_notification_outcomes_for_job(job_data["id"])
         job_data["statistics"] = [{"status": statistic.status, "count": statistic.count} for statistic in statistics]
 
     return {
