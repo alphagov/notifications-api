@@ -1466,7 +1466,6 @@ class Notification(db.Model):
         UniqueConstraint("job_id", "job_row_number", name="uq_notifications_job_row_number"),
         Index("ix_notifications_notification_type_composite", "notification_type", "status", "created_at"),
         Index("ix_notifications_service_created_at", "service_id", "created_at"),
-        Index("ix_notifications_service_id_composite", "service_id", "notification_type", "status", "created_at"),
         Index("ix_notifications_service_id_ntype_created_at", "service_id", "notification_type", "created_at"),
         # unsubscribe_link value should be null for non-email notifications
         CheckConstraint(
