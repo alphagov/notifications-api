@@ -1,18 +1,16 @@
 import uuid
-from unittest.mock import ANY, call
+from unittest.mock import ANY
 
 import pytest
 import requests
-import requests_mock
 from celery.exceptions import MaxRetriesExceededError
-from flask import current_app, json
+from flask import json
 from freezegun import freeze_time
 
 from app import signing
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.celery.research_mode_tasks import (
     create_fake_letter_callback,
-    create_fake_letter_response_file,
     firetext_callback,
     mmg_callback,
     send_email_response,
@@ -20,11 +18,6 @@ from app.celery.research_mode_tasks import (
     ses_notification_callback,
 )
 from app.config import QueueNames
-from tests.conftest import Matcher, set_config_values
-
-dvla_response_file_matcher = Matcher(
-    "dvla_response_file", lambda x: "NOTIFY-20180125140000-RSP.TXT" < x <= "NOTIFY-20180125140030-RSP.TXT"
-)
 
 
 def test_make_mmg_callback(notify_api, rmock):
@@ -119,86 +112,6 @@ def test_failure_firetext_callback(phone_number):
         "time": "2016-03-10 14:17:00",
         "reference": "1234",
     }
-
-
-@freeze_time("2018-01-25 14:00:30")
-def test_create_fake_letter_response_file_uploads_response_file_s3(notify_api, mocker):
-    mocker.patch("app.celery.research_mode_tasks.file_exists", return_value=False)
-    mock_s3upload = mocker.patch("app.celery.research_mode_tasks.s3upload")
-
-    with requests_mock.Mocker() as request_mock:
-        request_mock.post("http://localhost:6011/notifications/letter/dvla", content=b"{}", status_code=200)
-
-        create_fake_letter_response_file("random-ref")
-
-        mock_s3upload.assert_called_once_with(
-            filedata="random-ref|Sent|0|Sorted|2018-01-25",
-            region=current_app.config["AWS_REGION"],
-            bucket_name=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
-            file_location=dvla_response_file_matcher,
-        )
-
-
-@freeze_time("2018-01-25 14:00:30")
-def test_create_fake_letter_response_file_calls_dvla_callback_on_development(notify_api, mocker):
-    mocker.patch("app.celery.research_mode_tasks.file_exists", return_value=False)
-    mocker.patch("app.celery.research_mode_tasks.s3upload")
-
-    with set_config_values(notify_api, {"NOTIFY_ENVIRONMENT": "development"}):
-        with requests_mock.Mocker() as request_mock:
-            request_mock.post("http://localhost:6011/notifications/letter/dvla", content=b"{}", status_code=200)
-
-            create_fake_letter_response_file("random-ref")
-
-            assert request_mock.last_request.json() == {
-                "Type": "Notification",
-                "MessageId": "some-message-id",
-                "Message": ANY,
-            }
-            assert json.loads(request_mock.last_request.json()["Message"]) == {
-                "Records": [{"s3": {"object": {"key": dvla_response_file_matcher}}}]
-            }
-
-
-@freeze_time("2018-01-25 14:00:30")
-def test_create_fake_letter_response_file_does_not_call_dvla_callback_with_send_letters_disabled(notify_api, mocker):
-    mocker.patch("app.celery.research_mode_tasks.file_exists", return_value=False)
-    mocker.patch("app.celery.research_mode_tasks.s3upload")
-
-    with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": False}):
-        with requests_mock.Mocker() as request_mock:
-            create_fake_letter_response_file("random-ref")
-
-            assert request_mock.last_request is None
-
-
-@freeze_time("2018-01-25 14:00:30")
-def test_create_fake_letter_response_file_tries_to_create_files_with_other_filenames(notify_api, mocker):
-    mock_file_exists = mocker.patch("app.celery.research_mode_tasks.file_exists", side_effect=[True, True, False])
-    mock_s3upload = mocker.patch("app.celery.research_mode_tasks.s3upload")
-
-    create_fake_letter_response_file("random-ref")
-
-    assert mock_file_exists.mock_calls == [
-        call("test.notify.com-ftp", dvla_response_file_matcher),
-        call("test.notify.com-ftp", dvla_response_file_matcher),
-        call("test.notify.com-ftp", dvla_response_file_matcher),
-    ]
-    mock_s3upload.assert_called_once_with(
-        filedata=ANY, region=ANY, bucket_name=ANY, file_location=dvla_response_file_matcher
-    )
-
-
-@freeze_time("2018-01-25 14:00:30")
-def test_create_fake_letter_response_file_gives_up_after_thirty_times(notify_api, mocker):
-    mock_file_exists = mocker.patch("app.celery.research_mode_tasks.file_exists", return_value=True)
-    mock_s3upload = mocker.patch("app.celery.research_mode_tasks.s3upload")
-
-    with pytest.raises(ValueError):
-        create_fake_letter_response_file("random-ref")
-
-    assert len(mock_file_exists.mock_calls) == 30
-    assert not mock_s3upload.called
 
 
 @freeze_time("2024-07-26 16:30:53.321")

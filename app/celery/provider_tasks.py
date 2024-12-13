@@ -162,10 +162,7 @@ def update_letter_to_sending(notification):
     notifications_dao.dao_update_notification(notification)
 
 
-def _get_callback_url(notification_id: UUID) -> str | None:
-    if current_app.config["LETTER_DELIVERY_CALLBACKS_ENABLED"]:
-        signed_notification_id = signing.encode(str(notification_id))
+def _get_callback_url(notification_id: UUID) -> str:
+    signed_notification_id = signing.encode(str(notification_id))
 
-        return f"{current_app.config['API_HOST_NAME']}/notifications/letter/status?token={signed_notification_id}"
-
-    return None
+    return f"{current_app.config['API_HOST_NAME']}/notifications/letter/status?token={signed_notification_id}"
