@@ -5,7 +5,7 @@ import pytest
 from flask import json
 
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
-from app.celery.research_mode_tasks import create_fake_letter_response_file
+from app.celery.research_mode_tasks import create_fake_letter_callback
 from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
@@ -255,7 +255,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
     }
 
     fake_create_letter_task = mock_celery_task(get_pdf_for_templated_letter)
-    fake_create_dvla_response_task = mock_celery_task(create_fake_letter_response_file)
+    fake_create_dvla_response_task = mock_celery_task(create_fake_letter_callback)
 
     with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": True}):
         api_client_request.post(
@@ -290,7 +290,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
     }
 
     fake_create_letter_task = mock_celery_task(get_pdf_for_templated_letter)
-    fake_create_dvla_response_task = mock_celery_task(create_fake_letter_response_file)
+    fake_create_dvla_response_task = mock_celery_task(create_fake_letter_callback)
     with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": False}):
         api_client_request.post(
             sample_letter_template.service_id,

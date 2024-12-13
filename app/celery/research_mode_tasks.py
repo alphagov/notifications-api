@@ -221,7 +221,7 @@ def _fake_sns_s3_callback(filename):
 def create_fake_letter_callback(self, notification_id: uuid.UUID, billable_units: int, postage: str):
     try:
         send_letter_response(notification_id, billable_units, postage)
-    except Exception:
+    except requests.HTTPError:
         try:
             self.retry()
         except self.MaxRetriesExceededError:
