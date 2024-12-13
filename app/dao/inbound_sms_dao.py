@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import UUID
 
 from flask import current_app
@@ -185,9 +185,7 @@ def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(service
     return q.paginate(page=page, per_page=current_app.config["PAGE_SIZE"])
 
 
-def has_inbound_number_been_used_recently(service_id: UUID, inbound_number: str, days: int | None = 30) -> bool:
-    time_threshold = datetime.utcnow() - timedelta(days=days)
-
+def get_most_recent_inbound_usage_date(service_id: UUID, inbound_number: str) -> datetime | None:
     last_notification = (
         Notification.query.filter(
             Notification.reply_to_text == inbound_number,
@@ -223,7 +221,8 @@ def has_inbound_number_been_used_recently(service_id: UUID, inbound_number: str,
                 last_inbound_sms.created_at if last_inbound_sms else None,
                 last_inbound_sms_history.created_at if last_inbound_sms_history else None,
             ],
-        )
+        ),
+        default=None,
     )
 
-    return most_recent_usage and most_recent_usage >= time_threshold
+    return most_recent_usage
