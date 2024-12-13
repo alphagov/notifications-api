@@ -58,7 +58,7 @@ from app.dao.services_dao import (
 )
 from app.dao.templates_dao import dao_create_template, dao_get_template_by_id
 from app.dao.users_dao import (
-    delete_model_user,
+    delete_user_and_all_associated_db_objects,
     delete_user_verify_codes,
     get_user_by_email,
 )
@@ -149,7 +149,7 @@ def purge_functional_test_data(user_email_prefix):
 
                 print(f"Deleting user {usr.id} which is not part of any services")
                 delete_user_verify_codes(usr)
-                delete_model_user(usr)
+                delete_user_and_all_associated_db_objects(usr)
 
 
 @notify_command()
