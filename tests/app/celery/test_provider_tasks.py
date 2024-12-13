@@ -193,7 +193,9 @@ def test_should_retry_and_log_exception_for_deliver_email_task(sample_notificati
 
 
 def test_if_ses_send_rate_throttle_then_should_retry_and_log_warning(sample_notification, mocker, caplog):
-    error_response = {"Error": {"Code": "Throttling", "Message": "Maximum sending rate exceeded.", "Type": "Sender"}}
+    error_response = {
+        "Error": {"Code": "TooManyRequestsException", "Message": "Maximum sending rate exceeded.", "Type": "Sender"}
+    }
     ex = ClientError(error_response=error_response, operation_name="opname")
     mocker.patch(
         "app.delivery.send_to_providers.send_email_to_provider",
