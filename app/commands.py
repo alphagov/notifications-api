@@ -128,7 +128,7 @@ def purge_functional_test_data(user_email_prefix):
         # Make sure the full email includes a uuid in it
         # Just in case someone decides to use a similar email address.
         try:
-            uuid.UUID(usr.email_address.split("@")[0].split("+")[1])
+            uuid.UUID(usr.email_address.split("@")[0].split("+")[-1])
         except ValueError:
             print(f"Skipping {usr.email_address} as the user email doesn't contain a UUID.")
         else:
