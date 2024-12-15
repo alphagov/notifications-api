@@ -2,11 +2,15 @@ from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
 from app.constants import INBOUND_SMS_TYPE
-from app.dao.inbound_numbers_dao import archive_or_release_inbound_number_for_service
+from app.dao.inbound_numbers_dao import (
+    archive_or_release_inbound_number_for_service,
+    dao_get_inbound_number_for_service,
+)
 from app.dao.inbound_sms_dao import (
     dao_count_inbound_sms_for_service,
     dao_get_inbound_sms_by_id,
     dao_get_inbound_sms_for_service,
+    dao_get_most_recent_inbound_usage_date,
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service,
 )
 from app.dao.service_data_retention_dao import fetch_service_data_retention_by_notification_type
@@ -68,6 +72,18 @@ def get_inbound_by_id(service_id, inbound_sms_id):
     return jsonify(message.serialize()), 200
 
 
+@inbound_sms.route("/most-recent-usage", methods=["GET"])
+def get_most_recent_inbound_usage_date(service_id):
+    inbound = dao_get_inbound_number_for_service(service_id)
+
+    if not inbound:
+        return jsonify(message="inbound not found"), 404
+
+    most_recent_date = dao_get_most_recent_inbound_usage_date(service_id, inbound)
+
+    return jsonify(most_recent_date=most_recent_date), 200
+
+
 @inbound_sms.route("/remove-capability", methods=["POST"])
 def remove_inbound_sms_capability(service_id):
     data = request.get_json()
@@ -80,7 +96,7 @@ def remove_inbound_sms_capability(service_id):
         dao_remove_inbound_sms_senders(service_id)
         archive_or_release_inbound_number_for_service(service_id, archive)
 
-        return jsonify(status="ok"), 200
+        return jsonify({}), 200
     except Exception as e:
         current_app.logger.error("error removing inbound SMS capability for service %s: %s", service_id, e)
-        return jsonify(status="internal server error"), 500
+        return jsonify({}), 500
