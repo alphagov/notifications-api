@@ -2,6 +2,7 @@ from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
 from app.constants import INBOUND_SMS_TYPE
+from app.dao.inbound_numbers_dao import archive_or_release_inbound_number_for_service
 from app.dao.inbound_sms_dao import (
     dao_count_inbound_sms_for_service,
     dao_get_inbound_sms_by_id,
@@ -13,9 +14,8 @@ from app.dao.service_permissions_dao import (
     dao_remove_service_permission,
 )
 from app.dao.service_sms_sender_dao import dao_remove_inbound_sms_senders
-from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors
-from app.inbound_sms.inbound_sms_schemas import get_inbound_sms_for_service_schema
+from app.inbound_sms.inbound_sms_schemas import get_inbound_sms_for_service_schema, remove_capability_schema
 from app.schema_validation import validate
 
 inbound_sms = Blueprint("inbound_sms", __name__, url_prefix="/service/<uuid:service_id>/inbound-sms")
@@ -70,17 +70,17 @@ def get_inbound_by_id(service_id, inbound_sms_id):
 
 @inbound_sms.route("/remove-capability", methods=["POST"])
 def remove_inbound_sms_capability(service_id):
-    service = dao_fetch_service_by_id(service_id)
-    if not service:
-        return jsonify({"message": "Service not found"}), 404
+    data = request.get_json()
+    validate(data, remove_capability_schema)
+
+    archive = data["archive"]
 
     try:
-        dao_remove_service_permission(service_id, [INBOUND_SMS_TYPE])
+        dao_remove_service_permission(service_id, INBOUND_SMS_TYPE)
         dao_remove_inbound_sms_senders(service_id)
-        # dao_release_or_archive_inbound_number(service_id)
+        archive_or_release_inbound_number_for_service(service_id, archive)
 
-        return jsonify({"message": "Inbound SMS capability removed successfully"}), 200
-
+        return jsonify(status="ok"), 200
     except Exception as e:
         current_app.logger.error("error removing inbound SMS capability for service %s: %s", service_id, e)
-        return jsonify({"message": "An error occurred while removing inbound SMS capability"}), 500
+        return jsonify(status="internal server error"), 500

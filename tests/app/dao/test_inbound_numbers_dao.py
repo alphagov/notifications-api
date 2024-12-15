@@ -107,10 +107,10 @@ def test_dao_allocate_number_for_service_raises_if_invalid_inbound_number(notify
     assert "is not available" in str(exc.value)
 
 
-def test_archive_or_release_inbound_number_archive(sample_service, sample_inbound_numbers, sample_inbound_sms_history):
+def test_archive_or_release_inbound_number_for_service_archive(sample_service, sample_inbound_numbers):
     inbound = next((inbound for inbound in sample_inbound_numbers if inbound.service_id == sample_service.id), None)
 
-    archive_or_release_inbound_number_for_service(sample_service.id, inbound.number, True)
+    archive_or_release_inbound_number_for_service(sample_service.id, True)
 
     updated_inbound = InboundNumber.query.filter_by(number=inbound.number).one_or_none()
 
@@ -118,7 +118,7 @@ def test_archive_or_release_inbound_number_archive(sample_service, sample_inboun
     assert updated_inbound.active is False
 
 
-def test_archive_or_release_inbound_number_release(sample_service, sample_inbound_numbers, sample_inbound_sms_history):
+def test_archive_or_release_inbound_number_for_service_release(sample_service, sample_inbound_numbers):
     inbound = next((inbound for inbound in sample_inbound_numbers if inbound.service_id == sample_service.id), None)
 
     archive_or_release_inbound_number_for_service(sample_service.id, False)

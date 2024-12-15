@@ -9,6 +9,7 @@ from sqlalchemy.orm import aliased
 from app import db
 from app.constants import SMS_TYPE
 from app.dao.dao_utils import autocommit
+from app.dao.inbound_numbers_dao import dao_get_inbound_number_for_service
 from app.models import (
     InboundSms,
     InboundSmsHistory,
@@ -185,10 +186,16 @@ def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(service
     return q.paginate(page=page, per_page=current_app.config["PAGE_SIZE"])
 
 
-def get_most_recent_inbound_usage_date(service_id: UUID, inbound_number: str) -> datetime | None:
+def get_most_recent_inbound_usage_date(service_id: UUID) -> datetime | None:
+    inbound = dao_get_inbound_number_for_service(service_id)
+
+    if not inbound:
+        # let's log error to say there is no inbound
+        return
+
     last_notification = (
         Notification.query.filter(
-            Notification.reply_to_text == inbound_number,
+            Notification.reply_to_text == inbound.number,
             Notification.service_id == service_id,
         )
         .order_by(Notification.created_at.desc())
@@ -197,7 +204,7 @@ def get_most_recent_inbound_usage_date(service_id: UUID, inbound_number: str) ->
 
     last_inbound_sms = (
         InboundSms.query.filter(
-            InboundSms.notify_number == inbound_number,
+            InboundSms.notify_number == inbound.number,
             InboundSms.service_id == service_id,
         )
         .order_by(InboundSms.created_at.desc())
@@ -206,7 +213,7 @@ def get_most_recent_inbound_usage_date(service_id: UUID, inbound_number: str) ->
 
     last_inbound_sms_history = (
         InboundSmsHistory.query.filter(
-            InboundSmsHistory.notify_number == inbound_number,
+            InboundSmsHistory.notify_number == inbound.number,
             InboundSmsHistory.service_id == service_id,
         )
         .order_by(InboundSmsHistory.created_at.desc())
