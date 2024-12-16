@@ -285,7 +285,7 @@ def test_adjust_provider_priority_back_to_resting_points_updates_all_providers(
 
     dao_adjust_provider_priority_back_to_resting_points()
 
-    mock_get_providers.assert_called_once_with(timedelta(hours=1))
+    mock_get_providers.assert_called_once_with(timedelta(minutes=15))
     mock_adjust.assert_any_call(mmg, new_mmg)
     mock_adjust.assert_any_call(firetext, new_firetext)
 
