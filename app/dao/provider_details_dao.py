@@ -107,11 +107,11 @@ def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
 @autocommit
 def dao_adjust_provider_priority_back_to_resting_points():
     """
-    Provided that neither SMS provider has been modified in the last hour, move both providers by 10 percentage points
-    each towards their defined resting points (set in SMS_PROVIDER_RESTING_POINTS in config.py).
+    Provided that neither SMS provider has been modified in the last 15 minutes, move both providers
+    by 10 percentage points each towards their defined resting points (set in SMS_PROVIDER_RESTING_POINTS in config.py).
     """
     amount_to_reduce_by = 10
-    time_threshold = timedelta(hours=1)
+    time_threshold = timedelta(minutes=15)
 
     providers = _get_sms_providers_for_update(time_threshold)
 
