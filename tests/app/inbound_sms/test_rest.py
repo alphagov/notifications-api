@@ -1,8 +1,10 @@
+import uuid
 from datetime import datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
 
+from app.constants import INBOUND_SMS_TYPE
 from tests.app.db import (
     create_inbound_sms,
     create_service,
@@ -223,3 +225,92 @@ def test_get_inbound_sms_for_service_respects_data_retention(admin_request, samp
         "2017-04-06T12:00:00.000000Z",
         "2017-04-05T12:00:00.000000Z",
     ]
+
+
+@pytest.mark.parametrize(
+    "payload, expected_error",
+    [
+        # Missing required field
+        ({}, "archive is a required property"),
+        # Invalid field type
+        ({"archive": "not-a-boolean"}, "archive not-a-boolean is not of type boolean"),
+        # Additional fields not allowed
+        (
+            {"archive": True, "extra_field": "not allowed"},
+            "Additional properties are not allowed (extra_field was unexpected)",
+        ),
+    ],
+)
+def test_remove_inbound_sms_for_service(admin_request, sample_service, payload, expected_error):
+    response = admin_request.post(
+        "inbound_sms.remove_inbound_sms_for_service", service_id=sample_service.id, _data=payload, _expected_status=400
+    )
+
+    assert response["errors"][0]["message"] == expected_error
+
+
+@pytest.mark.parametrize(
+    "payload, archive",
+    [
+        ({"archive": True}, True),
+        ({"archive": False}, False),
+    ],
+)
+def test_remove_inbound_sms_for_service_success(
+    admin_request, sample_service_full_permissions, payload, archive, mocker
+):
+    service = sample_service_full_permissions
+    mock_remove_inbound = mocker.patch("app.inbound_sms.rest.dao_remove_inbound_sms_for_service")
+
+    with mock_remove_inbound:
+        admin_request.post(
+            "inbound_sms.remove_inbound_sms_for_service",
+            service_id=service.id,
+            _data=payload,
+            _expected_status=200,
+        )
+
+        mock_remove_inbound.assert_called_once_with(service.id, archive)
+
+
+def test_remove_inbound_sms_for_service_dao_error(admin_request, sample_service_full_permissions, mocker, caplog):
+    service = sample_service_full_permissions
+    payload = {"archive": True}
+    mock_remove_inbound = mocker.patch("app.inbound_sms.rest.dao_remove_inbound_sms_for_service")
+
+    with mock_remove_inbound("app.routes.inbound_sms.dao_remove_inbound_sms_for_service"):
+        mock_remove_inbound.side_effect = Exception("some error")
+        response = admin_request.post(
+            "inbound_sms.remove_inbound_sms_for_service",
+            service_id=service.id,
+            _data=payload,
+            _expected_status=500,
+        )
+
+        mock_remove_inbound.assert_called_with(service.id, True)
+
+        assert f"error removing inbound SMS for service {service.id}: some error" in caplog.messages
+        assert response["message"] == "some error"
+
+
+def test_remove_inbound_sms_for_service_success_without_sms_type_permission(admin_request, sample_service):
+    service = create_service_with_inbound_number(
+        inbound_number="76543953521", service_name=f"service name {uuid.uuid4()}"
+    )
+    assert service.has_permission(INBOUND_SMS_TYPE) is False
+
+    admin_request.post(
+        "inbound_sms.remove_inbound_sms_for_service",
+        service_id=service.id,
+        _data={"archive": True},
+        _expected_status=200,
+    )
+
+
+def test_remove_inbound_sms_for_service_success_without_inbound_number(admin_request, sample_service):
+    admin_request.post(
+        "inbound_sms.remove_inbound_sms_for_service",
+        service_id=sample_service.id,
+        _data={"archive": True},
+        _expected_status=200,
+    )
