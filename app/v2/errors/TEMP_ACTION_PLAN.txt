@@ -1,0 +1,5 @@
+1. make sure all tests pass as is
+2. clear up any temporary stuff, like breakpoints
+3. write and solve test: all phone validation slugs have 4 part structure, and when getting an error for those cases, the slug is there
+4. write and solve test: for schema errors where message dynamically created:
+have a test case that it returns a slug
