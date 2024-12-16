@@ -144,11 +144,11 @@ def validate(json_to_validate, schema):
     return json_to_validate
 
 
-def _build_error_message(e, is_a_slug: bool = False):
+def _build_error_message(e):
     return (
-        "{}{}{}".format(e.path[0] if e.path else "", ":" if is_a_slug else "", e.schema["validationMessage"]).strip()
+        "{} {}".format(e.path[0] if e.path else "", e.schema["validationMessage"]).strip()
         if "validationMessage" in e.schema
-        else __format_message(e, is_a_slug=is_a_slug)
+        else __format_message(e)
     )
 
 
@@ -157,8 +157,7 @@ def build_error_objects(errors):
 
     for e in errors:
         error_mesage = _build_error_message(e)
-        error_slug = _build_error_message(e, is_a_slug=True)
-        errors_details.append({"error": "ValidationError", "message": error_mesage, "id": error_slug})
+        errors_details.append({"error": "ValidationError", "message": error_mesage})
     error_objects = {"status_code": 400, "errors": unique_errors(errors_details)}
 
     return json.dumps(error_objects)
@@ -172,7 +171,7 @@ def unique_errors(dups):
     return unique
 
 
-def __format_message(e, is_a_slug: bool = False):
+def __format_message(e):
     def get_path(e):
         error_path = None
         try:
@@ -190,8 +189,8 @@ def __format_message(e, is_a_slug: bool = False):
         return error_message.replace("'", "")
 
     path = get_path(e)
-    message = get_error_message(e).replace(" ", "_") if is_a_slug else get_error_message(e)
+    message = get_error_message(e)
     if path:
-        return f"{path}{ ':' if is_a_slug else ' '}{message}"
+        return f"{path} {message}"
     else:
         return f"{message}"
