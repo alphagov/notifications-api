@@ -1,5 +1,4 @@
 class ValidationErrorSlugs:
-    
     # phone number validation
     TOO_MANY_DIGITS = "phone_number:too_many_digits"
     NOT_ENOUGH_DIGITS = "phone_number:not_enough_digits"

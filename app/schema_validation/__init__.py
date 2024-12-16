@@ -173,10 +173,9 @@ def unique_errors(dups):
 
 def __format_message(e):
     def get_path(e):
-        breakpoint()
         error_path = None
         try:
-            error_path = e.popleft()
+            error_path = e.path.popleft()
             # no need to catch IndexError exception explicity as
             # error_path is None if e.path has no items
         except Exception:
