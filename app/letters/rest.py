@@ -5,7 +5,7 @@ from app.config import QueueNames
 from app.dao.letter_rate_dao import dao_get_current_letter_rates
 from app.letters.letter_schemas import letter_references
 from app.schema_validation import validate
-from app.v2.errors import register_errors
+from app.v2.errors.errors import register_errors
 
 letter_job = Blueprint("letter-job", __name__)
 letter_rates_blueprint = Blueprint("letter_rates", __name__, url_prefix="/letter-rates")

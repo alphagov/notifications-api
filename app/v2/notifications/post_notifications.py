@@ -55,7 +55,7 @@ from app.notifications.validators import (
     validate_template,
 )
 from app.schema_validation import validate
-from app.v2.errors import BadRequestError
+from app.v2.errors.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.create_response import (
     create_post_email_response_from_notification,

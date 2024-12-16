@@ -19,7 +19,7 @@ from app.notifications.process_notifications import (
     simulated_recipient,
 )
 from app.serialised_models import SerialisedTemplate
-from app.v2.errors import BadRequestError, QrCodeTooLongError
+from app.v2.errors.errors import BadRequestError, QrCodeTooLongError
 from tests.app.db import create_api_key, create_job, create_service, create_template
 from tests.conftest import set_config
 

@@ -36,7 +36,7 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_by_id,
 )
 from app.models import Notification
-from app.v2.errors import BadRequestError, QrCodeTooLongError
+from app.v2.errors.errors import BadRequestError, QrCodeTooLongError
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
     "redis_get_and_incr_daily_limit_duration_seconds",

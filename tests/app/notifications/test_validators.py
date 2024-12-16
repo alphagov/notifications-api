@@ -40,7 +40,7 @@ from app.serialised_models import (
     SerialisedTemplate,
 )
 from app.utils import get_template_instance
-from app.v2.errors import (
+from app.v2.errors.errors import (
     BadRequestError,
     RateLimitError,
     TooManyRequestsError,

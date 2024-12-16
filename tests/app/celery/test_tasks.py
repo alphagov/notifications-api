@@ -43,7 +43,7 @@ from app.constants import (
 from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
 from app.models import Job, Notification, NotificationHistory, ReturnedLetter
 from app.serialised_models import SerialisedService, SerialisedTemplate
-from app.v2.errors import TooManyRequestsError
+from app.v2.errors.errors import TooManyRequestsError
 from tests.app import load_example_csv
 from tests.app.db import (
     create_job,

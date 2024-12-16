@@ -3,7 +3,7 @@ from flask import jsonify, request
 from app import authenticated_service
 from app.dao import templates_dao
 from app.schema_validation import validate
-from app.v2.errors import BadRequestError
+from app.v2.errors.errors import BadRequestError
 from app.v2.template import v2_template_blueprint
 from app.v2.template.template_schemas import (
     create_post_template_preview_response,

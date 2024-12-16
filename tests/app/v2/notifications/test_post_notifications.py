@@ -16,7 +16,7 @@ from app.dao import templates_dao
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import Notification
 from app.schema_validation import validate
-from app.v2.errors import RateLimitError
+from app.v2.errors.errors import RateLimitError
 from app.v2.notifications.notification_schemas import (
     post_email_response,
     post_sms_response,

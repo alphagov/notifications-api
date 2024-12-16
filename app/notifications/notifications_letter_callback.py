@@ -19,7 +19,7 @@ from app.errors import InvalidRequest
 from app.models import LetterCostThreshold
 from app.notifications.utils import autoconfirm_subscription
 from app.schema_validation import validate
-from app.v2.errors import register_errors
+from app.v2.errors.errors import register_errors
 
 letter_callback_blueprint = Blueprint("notifications_letter_callback", __name__)
 register_errors(letter_callback_blueprint)

@@ -17,7 +17,7 @@ from app.dao.service_guest_list_dao import (
 )
 from app.models import Notification, ServiceGuestList
 from app.service.send_notification import send_one_off_notification
-from app.v2.errors import BadRequestError, TooManyRequestsError
+from app.v2.errors.errors import BadRequestError, TooManyRequestsError
 from tests.app.db import (
     create_letter_contact,
     create_reply_to_email,

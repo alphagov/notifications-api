@@ -171,7 +171,7 @@ from app.utils import (
     midnight_n_days_ago,
     utc_string_to_bst_string,
 )
-from app.v2.errors import ValidationError
+from app.v2.errors.errors import ValidationError
 
 service_blueprint = Blueprint("service", __name__)
 

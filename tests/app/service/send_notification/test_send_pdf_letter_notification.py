@@ -5,7 +5,7 @@ from notifications_utils.s3 import S3ObjectNotFound
 from app.constants import EMAIL_TYPE, LETTER_TYPE, UPLOAD_LETTERS
 from app.dao.notifications_dao import get_notification_by_id
 from app.service.send_notification import send_pdf_letter_notification
-from app.v2.errors import BadRequestError, TooManyRequestsError
+from app.v2.errors.errors import BadRequestError, TooManyRequestsError
 from tests.app.db import create_service
 
 

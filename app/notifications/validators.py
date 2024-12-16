@@ -36,7 +36,7 @@ from app.notifications.process_notifications import (
 from app.serialised_models import SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
 from app.utils import get_public_notify_type_text
-from app.v2.errors import (
+from app.v2.errors.errors import (
     BadRequestError,
     RateLimitError,
     TooManyRequestsError,

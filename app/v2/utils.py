@@ -1,7 +1,7 @@
 from flask import request
 from werkzeug.exceptions import BadRequest
 
-from app.v2.errors import BadRequestError
+from app.v2.errors.errors import BadRequestError
 
 
 def get_valid_json():

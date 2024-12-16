@@ -33,7 +33,7 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
-from app.v2.errors import BadRequestError
+from app.v2.errors.errors import BadRequestError
 
 
 def validate_created_by(service, created_by_id):

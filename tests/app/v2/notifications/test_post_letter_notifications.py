@@ -22,7 +22,7 @@ from app.notifications.process_letter_notifications import (
     create_letter_notification,
 )
 from app.schema_validation import validate
-from app.v2.errors import RateLimitError
+from app.v2.errors.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_letter_response
 from tests import create_service_authorization_header
 from tests.app.db import create_letter_contact, create_service, create_template

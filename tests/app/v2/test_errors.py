@@ -11,7 +11,7 @@ def app_for_test():
 
     from app import init_app
     from app.authentication.auth import AuthError
-    from app.v2.errors import BadRequestError, TooManyRequestsError
+    from app.v2.errors.errors import BadRequestError, TooManyRequestsError
 
     app = flask.Flask(__name__)
     app.config["TESTING"] = True
@@ -20,7 +20,7 @@ def app_for_test():
 
     statsd_client.init_app(app)
 
-    from app.v2.errors import register_errors
+    from app.v2.errors.errors import register_errors
 
     blue = Blueprint("v2_under_test", __name__, url_prefix="/v2/under_test")
 

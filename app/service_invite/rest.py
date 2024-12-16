@@ -21,7 +21,7 @@ from app.notifications.process_notifications import (
     send_notification_to_queue,
 )
 from app.schemas import invited_user_schema
-from app.v2.errors import BadRequestError
+from app.v2.errors.errors import BadRequestError
 
 service_invite = Blueprint("service_invite", __name__)
 

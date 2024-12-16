@@ -9,8 +9,6 @@ from notifications_utils.recipient_validation.email_address import validate_emai
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
 
-from app.v2.error_slugs.slugs import ValidationErrorSlugs
-
 format_checker = FormatChecker()
 
 
@@ -148,9 +146,7 @@ def validate(json_to_validate, schema):
 
 def _build_error_message(e, is_a_slug: bool = False):
     return (
-        "{path}{colon_for_slug}{}".format(
-            e.path[0] if e.path else "",
-        ).strip()
+        "{}{}{}".format(e.path[0] if e.path else "", ":" if is_a_slug else "", e.schema["validationMessage"]).strip()
         if "validationMessage" in e.schema
         else __format_message(e, is_a_slug=is_a_slug)
     )
@@ -163,7 +159,6 @@ def build_error_objects(errors):
         error_mesage = _build_error_message(e)
         error_slug = _build_error_message(e, is_a_slug=True)
         errors_details.append({"error": "ValidationError", "message": error_mesage, "id": error_slug})
-        breakpoint()
     error_objects = {"status_code": 400, "errors": unique_errors(errors_details)}
 
     return json.dumps(error_objects)
