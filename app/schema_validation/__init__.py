@@ -173,6 +173,7 @@ def unique_errors(dups):
 
 def __format_message(e):
     def get_path(e):
+        breakpoint()
         error_path = None
         try:
             error_path = e.popleft()
