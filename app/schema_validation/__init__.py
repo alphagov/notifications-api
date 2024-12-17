@@ -153,10 +153,13 @@ def _build_error_message(e):
 
 
 def _build_error_slug(e):
-    slug = "validation:{}:{}:{}".format(
-        e.path[0] if e.path else "",
-        e.validator,
-        e.schema["validationMessage"].strip().replace(" ", "_")) if "validationMessage" in e.schema else _format_slug(e)
+    slug = (
+        "validation:{}:{}:{}".format(
+            e.path[0] if e.path else "", e.validator, e.schema["validationMessage"].strip().replace(" ", "_")
+        )
+        if "validationMessage" in e.schema
+        else _format_slug(e)
+    )
 
     return slug
 
