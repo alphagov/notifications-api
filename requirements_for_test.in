@@ -1,7 +1,7 @@
 -r requirements.txt
 -r requirements_for_test_common.in
 
-flaky==3.7.0
+flaky==3.8.0
 moto==5.0.11
 pytest-httpserver==1.0.8
 trustme==0.9.0
