@@ -152,12 +152,22 @@ def _build_error_message(e):
     )
 
 
+def _build_error_slug(e):
+    slug = "validation:{}:{}:{}".format(
+        e.path[0] if e.path else "",
+        e.validator,
+        e.schema["validationMessage"].strip().replace(" ", "_")) if "validationMessage" in e.schema else "empty slug"
+
+    return slug
+
+
 def build_error_objects(errors):
     errors_details = []
 
     for e in errors:
-        error_mesage = _build_error_message(e)
-        errors_details.append({"error": "ValidationError", "message": error_mesage})
+        error_slug = _build_error_slug(e)
+        error_message = _build_error_message(e)
+        errors_details.append({"error": "ValidationError", "message": error_message, "slug": error_slug})
     error_objects = {"status_code": 400, "errors": unique_errors(errors_details)}
 
     return json.dumps(error_objects)
