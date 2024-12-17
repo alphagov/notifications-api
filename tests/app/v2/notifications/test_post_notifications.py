@@ -1361,4 +1361,10 @@ def test_post_sms_notification_returns_400_with_correct_error_message_if_empty_s
     )
 
     assert error_json["status_code"] == 400
-    assert error_json["errors"] == [{"error": "ValidationError", "message": "phone_number Not enough digits"}]
+    assert error_json["errors"] == [
+        {
+            "error": "ValidationError",
+            "message": "phone_number Not enough digits",
+            "slug": "validation:phone_number:format:not_enough_digits",
+        }
+    ]
