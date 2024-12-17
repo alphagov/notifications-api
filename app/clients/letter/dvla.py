@@ -269,7 +269,7 @@ class DVLAClient:
         service_id: str,
         organisation_id: str,
         pdf_file: bytes,
-        callback_url: str | None,
+        callback_url: str,
     ):
         """
         Sends a letter to the DVLA for printing
@@ -331,11 +331,10 @@ class DVLAClient:
             ],
         }
 
-        if callback_url:
-            json_payload["callbackParams"] = {
-                "target": callback_url,
-                "retryParams": {"enabled": True, "maxRetryWindow": 10800},
-            }
+        json_payload["callbackParams"] = {
+            "target": callback_url,
+            "retryParams": {"enabled": True, "maxRetryWindow": 10800},
+        }
 
         # `despatchMethod` should not be added for second class letters
         if postage == FIRST_CLASS:

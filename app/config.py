@@ -470,7 +470,6 @@ class Config:
     S3_BUCKET_CSV_UPLOAD = os.environ.get("S3_BUCKET_CSV_UPLOAD")
     S3_BUCKET_CONTACT_LIST = os.environ.get("S3_BUCKET_CONTACT_LIST")
     S3_BUCKET_TEST_LETTERS = os.environ.get("S3_BUCKET_TEST_LETTERS")
-    S3_BUCKET_DVLA_RESPONSE = os.environ.get("S3_BUCKET_DVLA_RESPONSE")
     S3_BUCKET_LETTERS_PDF = os.environ.get("S3_BUCKET_LETTERS_PDF")
     S3_BUCKET_LETTERS_SCAN = os.environ.get("S3_BUCKET_LETTERS_SCAN")
     S3_BUCKET_INVALID_PDF = os.environ.get("S3_BUCKET_INVALID_PDF")
@@ -480,7 +479,6 @@ class Config:
     API_RATE_LIMIT_ENABLED = os.environ.get("API_RATE_LIMIT_ENABLED", "1") == "1"
 
     SEND_LETTERS_ENABLED = os.environ.get("SEND_LETTERS_ENABLED", "0") == "1"
-    LETTER_DELIVERY_CALLBACKS_ENABLED = os.environ.get("LETTER_DELIVERY_CALLBACKS_ENABLED", "0") == "1"
     REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = os.environ.get("REGISTER_FUNCTIONAL_TESTING_BLUEPRINT", "0") == "1"
     SEND_ZENDESK_ALERTS_ENABLED = os.environ.get("SEND_ZENDESK_ALERTS_ENABLED", "0") == "1"
     CHECK_SLOW_TEXT_MESSAGE_DELIVERY = os.environ.get("CHECK_SLOW_TEXT_MESSAGE_DELIVERY", "0") == "1"
@@ -502,7 +500,6 @@ class Development(Config):
     S3_BUCKET_CSV_UPLOAD = "development-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "development-contact-list"
     S3_BUCKET_TEST_LETTERS = "development-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "notify.tools-ftp"
     S3_BUCKET_LETTERS_PDF = "development-letters-pdf"
     S3_BUCKET_LETTERS_SCAN = "development-letters-scan"
     S3_BUCKET_INVALID_PDF = "development-letters-invalid-pdf"
@@ -549,7 +546,6 @@ class Test(Development):
     S3_BUCKET_CSV_UPLOAD = "test-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "test-contact-list"
     S3_BUCKET_TEST_LETTERS = "test-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "test.notify.com-ftp"
     S3_BUCKET_LETTERS_PDF = "test-letters-pdf"
     S3_BUCKET_LETTERS_SCAN = "test-letters-scan"
     S3_BUCKET_INVALID_PDF = "test-letters-invalid-pdf"
@@ -583,7 +579,6 @@ class Test(Development):
     REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = True
 
     SEND_LETTERS_ENABLED = True
-    LETTER_DELIVERY_CALLBACKS_ENABLED = True
 
     SEND_ZENDESK_ALERTS_ENABLED = True
 
@@ -600,7 +595,6 @@ class Sandbox(CloudFoundryConfig):
     S3_BUCKET_CONTACT_LIST = "cf-sandbox-contact-list"
     S3_BUCKET_LETTERS_PDF = "cf-sandbox-letters-pdf"
     S3_BUCKET_TEST_LETTERS = "cf-sandbox-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "notify.works-ftp"
     S3_BUCKET_LETTERS_SCAN = "cf-sandbox-letters-scan"
     S3_BUCKET_INVALID_PDF = "cf-sandbox-letters-invalid-pdf"
     FROM_NUMBER = "sandbox"
