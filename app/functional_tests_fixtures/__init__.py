@@ -291,9 +291,9 @@ def _create_service(org_id, user, service_name="Functional Tests"):
     services = get_services_by_partial_name(service_name)
 
     service = None
-    for service in services:
-        if service.name == service_name:
-            service = service
+    for s in services:
+        if s.name == service_name:
+            service = s
 
     if service is None:
 
