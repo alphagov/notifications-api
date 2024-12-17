@@ -156,7 +156,7 @@ def _build_error_slug(e):
     slug = "validation:{}:{}:{}".format(
         e.path[0] if e.path else "",
         e.validator,
-        e.schema["validationMessage"].strip().replace(" ", "_")) if "validationMessage" in e.schema else "empty slug"
+        e.schema["validationMessage"].strip().replace(" ", "_")) if "validationMessage" in e.schema else _format_slug(e)
 
     return slug
 
@@ -179,6 +179,29 @@ def unique_errors(dups):
         if x not in unique:
             unique.append(x)
     return unique
+
+
+def _format_slug(e):
+    def get_path(e):
+        error_path = None
+        try:
+            error_path = e.path[0]
+        except Exception:
+            pass
+        return error_path
+
+    def get_error_detail(e):
+        # e.cause is an exception (such as InvalidPhoneError). if it's not present it was a standard jsonschema error
+        # such as a required field not being present
+        error_detail = str(e.cause) if e.cause else e.message
+        return error_detail.replace("'", "").replace(" ", "_").lower()
+
+    path = get_path(e)
+    detail = get_error_detail(e)
+    if path:
+        return f"validation:{path}:{e.validator}:{detail}"
+    else:
+        return f"validation::{e.validator}:{detail}"
 
 
 def __format_message(e):
