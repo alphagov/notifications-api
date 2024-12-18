@@ -292,9 +292,7 @@ def _create_organiation(email_domain, org_name="Functional Tests Org"):
 
     if org is None:
 
-        data = {"name": org_name, "active": True, "crown": False, "organisation_type": "central"}
-
-        org = Organisation(**data)
+        org = Organisation(name=org_name, active=True, crown=False, organisation_type="central")
 
         dao_create_organisation(org)
 
@@ -315,18 +313,19 @@ def _create_service(org_id, user, service_name="Functional Tests"):
 
     if service is None:
 
-        data = {
-            "name": service_name,
-            "restricted": False,
-            "organisation_id": org_id,
-            "organisation_type": "central",
-            "created_by": user.id,
-            "sms_message_limit": 1000,
-            "letter_message_limit": 1000,
-            "email_message_limit": 1000,
-            "contact_link": current_app.config["ADMIN_BASE_URL"],
-        }
-        service = Service.from_json(data)
+        service = Service.from_json(
+            {
+                "name": service_name,
+                "restricted": False,
+                "organisation_id": org_id,
+                "organisation_type": "central",
+                "created_by": user.id,
+                "sms_message_limit": 1000,
+                "letter_message_limit": 1000,
+                "email_message_limit": 1000,
+                "contact_link": current_app.config["ADMIN_BASE_URL"],
+            }
+        )
         dao_create_service(service, user)
 
     set_default_free_allowance_for_service(service=service, year_start=None)
@@ -401,15 +400,15 @@ def _create_email_template(service, user_id, name, subject, content):
         if template.name == name:
             return template
 
-    data = {
-        "name": name,
-        "template_type": "email",
-        "content": content,
-        "subject": subject,
-        "created_by": user_id,
-    }
-
-    new_template = template_schema.load(data)
+    new_template = template_schema.load(
+        {
+            "name": name,
+            "template_type": "email",
+            "content": content,
+            "subject": subject,
+            "created_by": user_id,
+        }
+    )
 
     new_template.service = service
 
@@ -426,14 +425,14 @@ def _create_sms_template(service, user_id, name, content):
         if template.name == name:
             return template
 
-    data = {
-        "name": name,
-        "template_type": "sms",
-        "content": content,
-        "created_by": user_id,
-    }
-
-    new_template = template_schema.load(data)
+    new_template = template_schema.load(
+        {
+            "name": name,
+            "template_type": "sms",
+            "content": content,
+            "created_by": user_id,
+        }
+    )
 
     new_template.service = service
 
@@ -450,15 +449,15 @@ def _create_letter_template(service, user_id, name, subject, content, letter_con
         if template.name == name:
             return template
 
-    data = {
-        "name": name,
-        "template_type": "letter",
-        "content": content,
-        "subject": subject,
-        "created_by": user_id,
-    }
-
-    new_template = template_schema.load(data)
+    new_template = template_schema.load(
+        {
+            "name": name,
+            "template_type": "letter",
+            "content": content,
+            "subject": subject,
+            "created_by": user_id,
+        }
+    )
 
     new_template.service = service
     new_template.postage = SECOND_CLASS
