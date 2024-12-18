@@ -154,20 +154,20 @@ def apply_fixtures():
         True,
     )
 
-    template1_id = _create_email_template(
+    template1 = _create_email_template(
         service=service,
         user_id=service_admin_user.id,
         name="Functional Tests - CSV Email Template with Build ID",
         subject="Functional Tests - CSV Email",
         content="The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
     )
-    template2_id = _create_sms_template(
+    template2 = _create_sms_template(
         service=service,
         user_id=service_admin_user.id,
         name="Functional Tests - CSV SMS Template with Build ID",
         content="The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
     )
-    template3_id = _create_letter_template(
+    template3 = _create_letter_template(
         service=service,
         user_id=service_admin_user.id,
         name="Functional Tests - CSV Letter Template with Build ID and Letter Contact",
@@ -227,9 +227,9 @@ export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_ID='{email_reply_to.id}'
 export FUNCTIONAL_TESTS_SERVICE_SMS_SENDER_ID='{sms_sender.id}'
 export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER=07700900500
 
-export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={template2_id}
-export FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID={template1_id}
-export FUNCTIONAL_TEST_LETTER_TEMPLATE_ID={template3_id}
+export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={template2.id}
+export FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID={template1.id}
+export FUNCTIONAL_TEST_LETTER_TEMPLATE_ID={template3.id}
 
 export MMG_INBOUND_SMS_USERNAME={current_app.config['MMG_INBOUND_SMS_USERNAME'][0]}
 export MMG_INBOUND_SMS_AUTH={current_app.config['MMG_INBOUND_SMS_AUTH'][0]}
@@ -399,7 +399,7 @@ def _create_email_template(service, user_id, name, subject, content):
 
     for template in templates:
         if template.name == name:
-            return template.id
+            return template
 
     data = {
         "name": name,
@@ -415,7 +415,7 @@ def _create_email_template(service, user_id, name, subject, content):
 
     dao_create_template(new_template)
 
-    return new_template.id
+    return new_template
 
 
 def _create_sms_template(service, user_id, name, content):
@@ -424,7 +424,7 @@ def _create_sms_template(service, user_id, name, content):
 
     for template in templates:
         if template.name == name:
-            return template.id
+            return template
 
     data = {
         "name": name,
@@ -439,7 +439,7 @@ def _create_sms_template(service, user_id, name, content):
 
     dao_create_template(new_template)
 
-    return new_template.id
+    return new_template
 
 
 def _create_letter_template(service, user_id, name, subject, content, letter_contact_id):
@@ -448,7 +448,7 @@ def _create_letter_template(service, user_id, name, subject, content, letter_con
 
     for template in templates:
         if template.name == name:
-            return template.id
+            return template
 
     data = {
         "name": name,
@@ -466,7 +466,7 @@ def _create_letter_template(service, user_id, name, subject, content, letter_con
 
     dao_create_template(new_template)
 
-    return new_template.id
+    return new_template
 
 
 def _create_service_email_reply_to(service_id, email_address, is_default):
