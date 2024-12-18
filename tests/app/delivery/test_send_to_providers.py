@@ -132,7 +132,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(s
 
     mmg_client.send_sms.assert_called_once_with(
         to="447234123123",
-        content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
+        content="Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
         sender=current_app.config["FROM_NUMBER"],
         international=False,
