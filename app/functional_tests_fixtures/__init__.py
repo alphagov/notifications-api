@@ -154,20 +154,20 @@ def apply_fixtures():
         True,
     )
 
-    template1 = _create_email_template(
+    email_template = _create_email_template(
         service=service,
         user_id=service_admin_user.id,
         name="Functional Tests - CSV Email Template with Build ID",
         subject="Functional Tests - CSV Email",
         content="The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
     )
-    template2 = _create_sms_template(
+    sms_template = _create_sms_template(
         service=service,
         user_id=service_admin_user.id,
         name="Functional Tests - CSV SMS Template with Build ID",
         content="The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
     )
-    template3 = _create_letter_template(
+    letter_template = _create_letter_template(
         service=service,
         user_id=service_admin_user.id,
         name="Functional Tests - CSV Letter Template with Build ID and Letter Contact",
@@ -227,9 +227,9 @@ export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_ID='{email_reply_to.id}'
 export FUNCTIONAL_TESTS_SERVICE_SMS_SENDER_ID='{sms_sender.id}'
 export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER=07700900500
 
-export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={template2.id}
-export FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID={template1.id}
-export FUNCTIONAL_TEST_LETTER_TEMPLATE_ID={template3.id}
+export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={sms_template.id}
+export FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID={email_template.id}
+export FUNCTIONAL_TEST_LETTER_TEMPLATE_ID={letter_template.id}
 
 export MMG_INBOUND_SMS_USERNAME={current_app.config['MMG_INBOUND_SMS_USERNAME'][0]}
 export MMG_INBOUND_SMS_AUTH={current_app.config['MMG_INBOUND_SMS_AUTH'][0]}
