@@ -1,16 +1,14 @@
 import json
-import random
+import uuid
 from contextvars import ContextVar
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
-from flask import current_app
+from flask import current_app, jsonify
 from notifications_utils.local_vars import LazyLocalGetter
-from notifications_utils.s3 import s3upload
 from werkzeug.local import LocalProxy
 
-from app import memo_resetters, notify_celery
-from app.aws.s3 import file_exists
+from app import memo_resetters, notify_celery, signing
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.config import QueueNames
 from app.constants import SMS_TYPE
@@ -59,6 +57,69 @@ def send_email_response(reference, to):
         body = ses_notification_callback(reference)
 
     process_ses_results.apply_async([body], queue=QueueNames.RESEARCH_MODE)
+
+
+def send_letter_response(notification_id: uuid.UUID, billable_units: int, postage: str):
+    signed_notification_id = signing.encode(str(notification_id))
+    api_call = (
+        f"{current_app.config['API_HOST_NAME_INTERNAL']}/notifications/letter/status?token={signed_notification_id}"
+    )
+
+    headers = {"Content-type": "application/json"}
+    data = _create_fake_letter_callback_data(notification_id, billable_units, postage)
+
+    try:
+        response = requests_session.request("POST", api_call, headers=headers, data=json.dumps(data), timeout=30)
+        response.raise_for_status()
+    except requests.HTTPError as e:
+        current_app.logger.error("API POST request on %s failed with status %s", api_call, e.response.status_code)
+        raise e
+    finally:
+        current_app.logger.info("Mocked letter callback request for %s finished", notification_id)
+
+    return jsonify(result="success"), 200
+
+
+def _create_fake_letter_callback_data(notification_id: uuid.UUID, billable_units: int, postage: str):
+    if postage == "first":
+        postage = "1ST"
+        mailing_product = "UNCODED"
+    elif postage == "second":
+        postage = "2ND"
+        mailing_product = "MM"
+    elif postage == "europe":
+        postage = "INTERNATIONAL"
+        mailing_product = "INT EU"
+    else:
+        postage = "INTERNATIONAL"
+        mailing_product = "INT ROW"
+
+    return {
+        "id": "1234",
+        "source": "dvla:resource:osl:print:print-hub-fulfilment:5.18.0",
+        "specVersion": "1",
+        "type": "uk.gov.dvla.osl.osldatadictionaryschemas.print.messages.v2.PrintJobStatus",
+        "time": "2024-04-01T00:00:00Z",
+        "dataContentType": "application/json",
+        "dataSchema": "https://osl-data-dictionary-schemas.engineering.dvla.gov.uk/print/messages/v2/print-job-status.json",
+        "data": {
+            "despatchProperties": [
+                {"key": "totalSheets", "value": str(billable_units)},
+                {"key": "postageClass", "value": postage},
+                {"key": "mailingProduct", "value": mailing_product},
+                {"key": "productionRunDate", "value": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")},
+            ],
+            "jobId": str(notification_id),
+            "jobType": "NOTIFY",
+            "jobStatus": "DESPATCHED",
+            "templateReference": "NOTIFY",
+        },
+        "metadata": {
+            "handler": {"urn": "dvla:resource:osl:print:print-hub-fulfilment:5.18.0"},
+            "origin": {"urn": "dvla:resource:osg:dev:printhub:1.0.1"},
+            "correlationId": "b5d9b2bd-6e8f-4275-bdd3-c8086fe09c52",
+        },
+    }
 
 
 def make_request(notification_type, provider, data, headers):
@@ -114,43 +175,15 @@ def firetext_callback(notification_id, to):
     return {"mobile": to, "status": status, "time": "2016-03-10 14:17:00", "reference": notification_id}
 
 
-@notify_celery.task(bind=True, name="create-fake-letter-response-file", max_retries=5, default_retry_delay=300)
-def create_fake_letter_response_file(self, reference):
-    now = datetime.utcnow()
-    dvla_response_data = f"{reference}|Sent|0|Sorted|{now.date().isoformat()}"
-
-    # try and find a filename that hasn't been taken yet - from a random time within the last 30 seconds
-    for i in sorted(range(30), key=lambda _: random.random()):
-        upload_file_name = "NOTIFY-{}-RSP.TXT".format((now - timedelta(seconds=i)).strftime("%Y%m%d%H%M%S"))
-        if not file_exists(current_app.config["S3_BUCKET_DVLA_RESPONSE"], upload_file_name):
-            break
-    else:
-        raise ValueError(
-            f"cant create fake letter response file for {reference} - too many files for that time already exist on s3"
-        )
-
-    s3upload(
-        filedata=dvla_response_data,
-        region=current_app.config["AWS_REGION"],
-        bucket_name=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
-        file_location=upload_file_name,
-    )
-    current_app.logger.info(
-        "Fake DVLA response file %s, content [%s], uploaded to %s, created at %s",
-        upload_file_name,
-        dvla_response_data,
-        current_app.config["S3_BUCKET_DVLA_RESPONSE"],
-        now,
-    )
-
-    # on development we can't trigger SNS callbacks so we need to manually hit the DVLA callback endpoint
-    if current_app.config["NOTIFY_ENVIRONMENT"] == "development":
-        make_request("letter", "dvla", _fake_sns_s3_callback(upload_file_name), None)
-
-
-def _fake_sns_s3_callback(filename):
-    message_contents = '{"Records":[{"s3":{"object":{"key":"%s"}}}]}' % (filename)  # noqa
-    return json.dumps({"Type": "Notification", "MessageId": "some-message-id", "Message": message_contents})
+@notify_celery.task(bind=True, name="create-fake-letter-callback", max_retries=3, default_retry_delay=60)
+def create_fake_letter_callback(self, notification_id: uuid.UUID, billable_units: int, postage: str):
+    try:
+        send_letter_response(notification_id, billable_units, postage)
+    except requests.HTTPError:
+        try:
+            self.retry()
+        except self.MaxRetriesExceededError:
+            current_app.logger.warning("Fake letter callback cound not be created for %s", notification_id)
 
 
 def ses_notification_callback(reference):
@@ -267,7 +300,7 @@ def _ses_bounce_callback(reference, bounce_type):
         "Message": json.dumps(ses_message_body),
         "Timestamp": "2017-11-17T12:14:05.149Z",
         "SignatureVersion": "1",
-        "Signature": "[REDACTED]",  # noqa
+        "Signature": "[REDACTED]",
         "SigningCertUrl": "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-[REDACTED]].pem",
         "UnsubscribeUrl": "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=[REDACTED]]",
         "MessageAttributes": {},

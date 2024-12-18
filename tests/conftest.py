@@ -43,7 +43,7 @@ def notify_api():
             error_handlers[None] = {
                 exc_class: error_handler
                 for exc_class, error_handler in error_handlers[None].items()
-                if exc_class != Exception
+                if exc_class is not Exception
             }
             if error_handlers[None] == []:
                 error_handlers.pop(None)
@@ -81,7 +81,7 @@ def create_test_db(database_uri):
         postgres_db.dispose()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=True)
 def _notify_db(notify_api, worker_id):
     """
     Manages the connection to the database. Generally this shouldn't be used, instead you should use the

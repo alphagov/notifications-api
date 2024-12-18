@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import current_app
 from sqlalchemy import String, and_, desc, func, literal, text
@@ -78,13 +78,20 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
         .filter(*jobs_query_filter)
     )
 
+    letters_days_of_retention = (
+        db.session.query(ServiceDataRetention.days_of_retention)
+        .filter(ServiceDataRetention.service_id == service_id, ServiceDataRetention.notification_type == LETTER_TYPE)
+        .scalar()
+        or 7
+    )
+
     letters_query_filter = [
         Notification.service_id == service_id,
         Notification.notification_type == LETTER_TYPE,
         Notification.api_key_id == None,  # noqa
         Notification.status != NOTIFICATION_CANCELLED,
         Template.hidden == True,  # noqa
-        Notification.created_at >= today - func.coalesce(ServiceDataRetention.days_of_retention, 7),
+        Notification.created_at >= today - timedelta(days=letters_days_of_retention),
     ]
     if limit_days is not None:
         letters_query_filter.append(Notification.created_at >= midnight_n_days_ago(limit_days))
@@ -95,13 +102,6 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
             _naive_gmt_to_utc(_get_printing_datetime(Notification.created_at)).label("printing_at"),
         )
         .join(Template, Notification.template_id == Template.id)
-        .outerjoin(
-            ServiceDataRetention,
-            and_(
-                Template.service_id == ServiceDataRetention.service_id,
-                func.cast(Template.template_type, String) == func.cast(ServiceDataRetention.notification_type, String),
-            ),
-        )
         .filter(*letters_query_filter)
         .group_by("printing_at")
         .subquery()

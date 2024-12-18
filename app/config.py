@@ -189,7 +189,8 @@ class Config:
     MOU_SIGNER_RECEIPT_TEMPLATE_ID = "4fd2e43c-309b-4e50-8fb8-1955852d9d71"
     MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID = "c20206d5-bf03-4002-9a90-37d5032d9e84"
     MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID = "522b6657-5ca5-4368-a294-6b527703bd0b"
-    GO_LIVE_NEW_REQUEST_FOR_ORG_USERS_TEMPLATE_ID = "5c7cfc0f-c3f4-4bd6-9a84-5a144aad5425"
+    GO_LIVE_NEW_REQUEST_FOR_ORG_APPROVERS_TEMPLATE_ID = "5c7cfc0f-c3f4-4bd6-9a84-5a144aad5425"
+    GO_LIVE_NEW_REQUEST_FOR_ORG_REQUESTER_TEMPLATE_ID = "c7083bfe-1b9a-4ff9-bd5c-30508727df6e"
     GO_LIVE_REQUEST_NEXT_STEPS_FOR_ORG_USER_TEMPLATE_ID = "62f12a62-742b-4458-9336-741521b131c7"
     GO_LIVE_REQUEST_REJECTED_BY_ORG_USER_TEMPLATE_ID = "507d0796-9e23-4ad7-b83b-5efbd9496866"
     NOTIFY_INTERNATIONAL_SMS_SENDER = "07984404008"
@@ -202,6 +203,7 @@ class Config:
     SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID = "4d8ee728-100e-4f0e-8793-5638cfa4ffa4"
     # we only need real email in Live environment (production)
     DVLA_EMAIL_ADDRESSES = json.loads(os.environ.get("DVLA_EMAIL_ADDRESSES", "[]"))
+    NOTIFY_SUPPORT_EMAIL_ADDRESS = "gov-uk-notify-support@digital.cabinet-office.gov.uk"
 
     CELERY = {
         "broker_url": "https://sqs.eu-west-1.amazonaws.com",
@@ -331,9 +333,18 @@ class Config:
                 "schedule": crontab(day_of_week="mon-fri", hour=7, minute=0),
                 "options": {"queue": QueueNames.PERIODIC},
             },
-            "check-if-letters-still-pending-virus-check": {
+            "check-if-letters-still-pending-virus-check-ten-minutely": {
                 "task": "check-if-letters-still-pending-virus-check",
                 "schedule": crontab(minute="*/10"),
+                # check last half hour, every ten minutes
+                "kwargs": {"max_minutes_ago_to_check": 30},
+                "options": {"queue": QueueNames.PERIODIC},
+            },
+            "check-if-letters-still-pending-virus-check-nightly": {
+                "task": "check-if-letters-still-pending-virus-check",
+                "schedule": crontab(hour=20, minute=0),
+                # check back two entire days, once per day, just in case things slipped through the net somehow
+                "kwargs": {"max_minutes_ago_to_check": 60 * 24 * 2},
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "check-for-services-with-high-failure-rates-or-sending-to-tv-numbers": {
@@ -343,7 +354,7 @@ class Config:
             },
             "raise-alert-if-letter-notifications-still-sending": {
                 "task": "raise-alert-if-letter-notifications-still-sending",
-                "schedule": crontab(hour=17, minute=00),
+                "schedule": crontab(hour=19, minute=00),
                 "options": {"queue": QueueNames.PERIODIC},
             },
             # The check-time-to-collate-letters does assume it is called in an hour that BST does not make a
@@ -459,7 +470,6 @@ class Config:
     S3_BUCKET_CSV_UPLOAD = os.environ.get("S3_BUCKET_CSV_UPLOAD")
     S3_BUCKET_CONTACT_LIST = os.environ.get("S3_BUCKET_CONTACT_LIST")
     S3_BUCKET_TEST_LETTERS = os.environ.get("S3_BUCKET_TEST_LETTERS")
-    S3_BUCKET_DVLA_RESPONSE = os.environ.get("S3_BUCKET_DVLA_RESPONSE")
     S3_BUCKET_LETTERS_PDF = os.environ.get("S3_BUCKET_LETTERS_PDF")
     S3_BUCKET_LETTERS_SCAN = os.environ.get("S3_BUCKET_LETTERS_SCAN")
     S3_BUCKET_INVALID_PDF = os.environ.get("S3_BUCKET_INVALID_PDF")
@@ -469,7 +479,6 @@ class Config:
     API_RATE_LIMIT_ENABLED = os.environ.get("API_RATE_LIMIT_ENABLED", "1") == "1"
 
     SEND_LETTERS_ENABLED = os.environ.get("SEND_LETTERS_ENABLED", "0") == "1"
-    LETTER_DELIVERY_CALLBACKS_ENABLED = os.environ.get("LETTER_DELIVERY_CALLBACKS_ENABLED", "0") == "1"
     REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = os.environ.get("REGISTER_FUNCTIONAL_TESTING_BLUEPRINT", "0") == "1"
     SEND_ZENDESK_ALERTS_ENABLED = os.environ.get("SEND_ZENDESK_ALERTS_ENABLED", "0") == "1"
     CHECK_SLOW_TEXT_MESSAGE_DELIVERY = os.environ.get("CHECK_SLOW_TEXT_MESSAGE_DELIVERY", "0") == "1"
@@ -491,7 +500,6 @@ class Development(Config):
     S3_BUCKET_CSV_UPLOAD = "development-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "development-contact-list"
     S3_BUCKET_TEST_LETTERS = "development-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "notify.tools-ftp"
     S3_BUCKET_LETTERS_PDF = "development-letters-pdf"
     S3_BUCKET_LETTERS_SCAN = "development-letters-scan"
     S3_BUCKET_INVALID_PDF = "development-letters-invalid-pdf"
@@ -538,7 +546,6 @@ class Test(Development):
     S3_BUCKET_CSV_UPLOAD = "test-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "test-contact-list"
     S3_BUCKET_TEST_LETTERS = "test-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "test.notify.com-ftp"
     S3_BUCKET_LETTERS_PDF = "test-letters-pdf"
     S3_BUCKET_LETTERS_SCAN = "test-letters-scan"
     S3_BUCKET_INVALID_PDF = "test-letters-invalid-pdf"
@@ -549,7 +556,7 @@ class Test(Development):
     # but the database name is set in the _notify_db fixture
     SQLALCHEMY_RECORD_QUERIES = True
 
-    CELERY = {**Config.CELERY, "broker_url": "you-forgot-to-mock-celery-in-your-tests://"}
+    CELERY = {**Config.CELERY, "broker_url": "you-forgot-to-mock-celery-in-your-tests://", "broker_transport": None}
 
     ANTIVIRUS_ENABLED = True
 
@@ -572,7 +579,6 @@ class Test(Development):
     REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = True
 
     SEND_LETTERS_ENABLED = True
-    LETTER_DELIVERY_CALLBACKS_ENABLED = True
 
     SEND_ZENDESK_ALERTS_ENABLED = True
 
@@ -589,7 +595,6 @@ class Sandbox(CloudFoundryConfig):
     S3_BUCKET_CONTACT_LIST = "cf-sandbox-contact-list"
     S3_BUCKET_LETTERS_PDF = "cf-sandbox-letters-pdf"
     S3_BUCKET_TEST_LETTERS = "cf-sandbox-test-letters"
-    S3_BUCKET_DVLA_RESPONSE = "notify.works-ftp"
     S3_BUCKET_LETTERS_SCAN = "cf-sandbox-letters-scan"
     S3_BUCKET_INVALID_PDF = "cf-sandbox-letters-invalid-pdf"
     FROM_NUMBER = "sandbox"

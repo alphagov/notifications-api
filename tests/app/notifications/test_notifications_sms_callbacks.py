@@ -1,5 +1,6 @@
 from flask import json
 
+from app.celery.process_sms_client_response_tasks import process_sms_client_response
 from app.notifications.notifications_sms_callback import validate_callback_data
 
 
@@ -49,8 +50,8 @@ def test_firetext_callback_should_return_400_if_no_status(client):
     assert json_resp["message"] == ["Firetext callback failed: status missing"]
 
 
-def test_firetext_callback_should_return_200_and_call_task_with_valid_data(client, mocker):
-    mock_celery = mocker.patch("app.notifications.notifications_sms_callback.process_sms_client_response.apply_async")
+def test_firetext_callback_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
 
     data = "mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=notification_id"
     response = firetext_post(client, data)
@@ -64,8 +65,8 @@ def test_firetext_callback_should_return_200_and_call_task_with_valid_data(clien
     )
 
 
-def test_firetext_callback_including_a_code_should_return_200_and_call_task_with_valid_data(client, mocker):
-    mock_celery = mocker.patch("app.notifications.notifications_sms_callback.process_sms_client_response.apply_async")
+def test_firetext_callback_including_a_code_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
 
     data = "mobile=441234123123&status=1&code=101&time=2016-03-10 14:17:00&reference=notification_id"
     response = firetext_post(client, data)
@@ -115,8 +116,8 @@ def test_process_mmg_response_returns_400_for_malformed_data(client):
     assert "{} callback failed: {} missing".format("MMG", "CID") in json_data["message"]
 
 
-def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mocker):
-    mock_celery = mocker.patch("app.notifications.notifications_sms_callback.process_sms_client_response.apply_async")
+def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
     data = json.dumps(
         {
             "reference": "mmg_reference",
