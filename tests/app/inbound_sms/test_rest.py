@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
+from dateutil.parser import parse
 from freezegun import freeze_time
 
 from app.constants import INBOUND_SMS_TYPE
@@ -314,3 +315,38 @@ def test_remove_inbound_sms_for_service_success_without_inbound_number(admin_req
         _data={"archive": True},
         _expected_status=200,
     )
+
+
+def test_get_most_recent_inbound_usage_date_success(
+    admin_request, sample_service, sample_inbound_numbers, sample_inbound_sms_history
+):
+    response = admin_request.get(
+        "inbound_sms.get_most_recent_inbound_usage_date", service_id=sample_service.id, _expected_status=200
+    )
+
+    assert response is not None
+    response_date = parse(response["most_recent_date"])
+
+    assert response_date.date() == datetime.utcnow().date()
+
+
+def test_get_most_recent_inbound_usage_date_success_no_usage_found(
+    admin_request, sample_service, sample_inbound_numbers
+):
+    response = admin_request.get(
+        "inbound_sms.get_most_recent_inbound_usage_date", service_id=sample_service.id, _expected_status=200
+    )
+
+    assert response is not None
+    assert response["most_recent_date"] is None
+
+
+def test_get_most_recent_inbound_usage_date_404_no_inbound(
+    admin_request,
+    sample_service,
+):
+    response = admin_request.get(
+        "inbound_sms.get_most_recent_inbound_usage_date", service_id=sample_service.id, _expected_status=404
+    )
+
+    assert response["message"] == "inbound not found"
