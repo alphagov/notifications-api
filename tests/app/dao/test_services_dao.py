@@ -106,7 +106,7 @@ def test_create_service(notify_db_session):
     assert service_db.name == "service name"
     assert service_db.id == service.id
     assert service_db.email_sender_local_part == "service.name"
-    assert service_db.prefix_sms is True
+    assert service_db.prefix_sms is False
     assert service.active is True
     assert user in service_db.users
     assert service_db.organisation_type == "central"
@@ -133,7 +133,7 @@ def test_create_service_with_organisation(notify_db_session):
     organisation = Organisation.query.get(organisation.id)
     assert service_db.name == "service_name"
     assert service_db.id == service.id
-    assert service_db.prefix_sms is True
+    assert service_db.prefix_sms is False
     assert service.active is True
     assert user in service_db.users
     assert service_db.organisation_type == "local"

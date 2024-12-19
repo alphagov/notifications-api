@@ -14,7 +14,7 @@ from notifications_utils.recipient_validation.email_address import validate_and_
 from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, literal, or_, union
+from sqlalchemy import and_, asc, desc, func, or_, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import defer, joinedload, undefer
 from sqlalchemy.orm.exc import NoResultFound
@@ -50,7 +50,6 @@ from app.models import (
     FactNotificationStatus,
     LetterCostThreshold,
     Notification,
-    NotificationAllTimeView,
     NotificationHistory,
     NotificationLetterDespatch,
     ProviderDetails,
@@ -88,17 +87,26 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 ]
 
 
-def dao_get_last_date_template_was_used(template_id, service_id):
+def dao_get_last_date_template_was_used(template):
+    uniform_now = datetime.now()
+
     # first, just check if there are any rows present for this template in the notification table.
     # we can use the ix_notifications_template_id. If there are rows, then lets check to find out exactly
     # when the most recent created date was (also checking key type test too)
-    if db.session.query(Notification.query.filter(Notification.template_id == template_id).exists()).scalar():
+    if db.session.query(Notification.query.filter(Notification.template_id == template.id).exists()).scalar():
         last_date_from_notifications = (
             db.session.query(functions.max(Notification.created_at))
             .filter(
-                Notification.service_id == service_id,
-                Notification.template_id == template_id,
+                Notification.template_id == template.id,
                 Notification.key_type != KEY_TYPE_TEST,
+                # beyond last midnight we should have a record of the notification in FactNotificationStatus
+                # which is faster to query
+                Notification.created_at >= get_london_midnight_in_utc(uniform_now),
+                # filtering by notification_type and service_id is technically redundant, but postgres can't
+                # be certain of this and specifying them allows ix_notifications_service_id_ntype_created_at
+                # to be used
+                Notification.notification_type == template.template_type,
+                Notification.service_id == template.service_id,
             )
             .scalar()
         )
@@ -107,14 +115,14 @@ def dao_get_last_date_template_was_used(template_id, service_id):
             return last_date_from_notifications
 
     if db.session.query(
-        FactNotificationStatus.query.filter(FactNotificationStatus.template_id == template_id).exists()
+        FactNotificationStatus.query.filter(FactNotificationStatus.template_id == template.id).exists()
     ).scalar():
         last_date = (
             db.session.query(functions.max(FactNotificationStatus.bst_date))
             .filter(
-                FactNotificationStatus.template_id == template_id,
+                FactNotificationStatus.template_id == template.id,
                 FactNotificationStatus.key_type != KEY_TYPE_TEST,
-                FactNotificationStatus.bst_date > datetime.now() - relativedelta(years=1),
+                FactNotificationStatus.bst_date > uniform_now - relativedelta(years=1),
             )
             .scalar()
         )
@@ -893,27 +901,6 @@ def get_service_ids_with_notifications_on_date(notification_type, date):
         row.service_id
         for row in db.session.query(union(notification_table_query, ft_status_table_query).subquery()).distinct()
     }
-
-
-@autocommit
-def dao_record_letter_despatched_on(reference: str, despatched_on: datetime.date, cost_threshold: LetterCostThreshold):
-    stmt = (
-        insert(NotificationLetterDespatch)
-        .from_select(
-            ["notification_id", "despatched_on", "cost_threshold"],
-            NotificationAllTimeView.query.with_entities(
-                NotificationAllTimeView.id,
-                literal(despatched_on),
-                literal(cost_threshold.value),
-            ).filter(NotificationAllTimeView.reference == reference),
-        )
-        .on_conflict_do_update(
-            index_elements=["notification_id"],
-            set_={"despatched_on": despatched_on, "cost_threshold": cost_threshold.value},
-        )
-    )
-
-    db.session.execute(stmt)
 
 
 @autocommit

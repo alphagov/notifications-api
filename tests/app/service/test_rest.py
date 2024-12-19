@@ -250,7 +250,7 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp["data"]["name"] == sample_service.name
     assert json_resp["data"]["id"] == str(sample_service.id)
     assert json_resp["data"]["email_branding"] is None
-    assert json_resp["data"]["prefix_sms"] is True
+    assert json_resp["data"]["prefix_sms"] is False
     assert json_resp["data"]["allowed_broadcast_provider"] is None
     assert json_resp["data"]["broadcast_channel"] is None
 

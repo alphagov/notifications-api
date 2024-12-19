@@ -1,4 +1,4 @@
-# This file was automatically copied from notifications-utils@90.0.0
+# This file was automatically copied from notifications-utils@92.0.0
 
 [tool.black]
 line-length = 120
@@ -22,6 +22,7 @@ lint.select = [
     "ISC",  # flake8-implicit-str-concat
     "RSE",  # flake8-raise
     "PIE",  # flake8-pie
+    "N804",  # First argument of a class method should be named `cls`
 ]
 lint.ignore = []
 exclude = [
