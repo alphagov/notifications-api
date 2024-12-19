@@ -4,8 +4,9 @@ set -Eeuo pipefail
 BOLDGREEN="\033[1;32m"
 ENDCOLOR="\033[0m"
 
-FLASK_APP="application.py"
-NOTIFY_ENVIRONMENT="development"
+# need to export these for the `flask db heads` subshell to pick them up
+export FLASK_APP="application.py"
+export NOTIFY_ENVIRONMENT="development"
 MIGRATION_TEST_DATABASE_DB_NAME="migration_test"
 
 MIGRATION_TEST_DATABASE_URI=${SQLALCHEMY_DATABASE_URI:-"postgresql://postgres:postgres@localhost/"}
