@@ -39,7 +39,7 @@ def test_valid_one_click_unsubscribe_url(mocker, client, sample_email_notificati
     ]
 
 
-def test_duplicate_unsubscribe_requets(mocker, client, sample_email_notification):
+def test_duplicate_unsubscribe_requests(mocker, client, sample_email_notification):
     token = generate_token(
         sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
     )
