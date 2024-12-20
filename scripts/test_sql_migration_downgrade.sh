@@ -27,8 +27,8 @@ fi
 echo "Testing migrations on ${MIGRATION_TEST_DATABASE_URI}"
 
 # delete any existing test DB
-psql -c "drop database ${MIGRATION_TEST_DATABASE_DB_NAME}" || true
-psql -c "create database ${MIGRATION_TEST_DATABASE_DB_NAME}"
+psql $MIGRATION_TEST_DATABASE_URI -c "drop database ${MIGRATION_TEST_DATABASE_DB_NAME}" || true
+psql $MIGRATION_TEST_DATABASE_URI -c "create database ${MIGRATION_TEST_DATABASE_DB_NAME}"
 
 echo -e "${BOLDGREEN}======== running upgrade (logs hidden) ========${ENDCOLOR}"
 
@@ -42,6 +42,6 @@ SQLALCHEMY_DATABASE_URI=$MIGRATION_TEST_DATABASE_URI flask db downgrade $CURRENT
 echo -e "${BOLDGREEN}============ running upgrade again ============${ENDCOLOR}"
 SQLALCHEMY_DATABASE_URI=$MIGRATION_TEST_DATABASE_URI flask db upgrade
 
-psql -c "drop database ${MIGRATION_TEST_DATABASE_DB_NAME}"
+psql $MIGRATION_TEST_DATABASE_URI -c "drop database ${MIGRATION_TEST_DATABASE_DB_NAME}"
 
 echo -e "${BOLDGREEN}=================== success ===================${ENDCOLOR}"
