@@ -103,7 +103,7 @@ class AwsSesClient(EmailClient):
         except botocore.exceptions.ClientError as e:
             self.statsd_client.incr("clients.ses.error")
 
-            # http://docs.aws.amazon.com/ses/latest/DeveloperGuide/api-error-codes.html
+            # https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html#API_SendEmail_Errors
             if e.response["Error"]["Code"] == "InvalidParameterValue":
                 raise EmailClientNonRetryableException(e.response["Error"]["Message"]) from e
             elif e.response["Error"]["Code"] == "TooManyRequestsException":
