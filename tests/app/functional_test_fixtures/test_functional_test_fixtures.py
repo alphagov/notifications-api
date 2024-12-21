@@ -42,7 +42,7 @@ def test_function_test_fixtures_apply(notify_api, notify_db_session, notify_serv
             with open(temp_file_name) as f:
                 for line in f:
                     full_file += line
-                    if not line.strip():
+                    if not line.strip() or line.strip().startswith("#"):
                         continue
                     line = line.replace("export ", "")
                     key, value = line.strip().split("=")
