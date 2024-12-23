@@ -1,42 +1,23 @@
 import datetime
-import json
 import uuid
 from dataclasses import dataclass
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, request
 from itsdangerous import BadSignature
 from jsonschema import ValidationError
 
 from app import signing
 from app.celery.process_letter_client_response_tasks import process_letter_callback_data
-from app.celery.tasks import (
-    record_daily_sorted_counts,
-    update_letter_notifications_statuses,
-)
 from app.config import QueueNames
 from app.constants import DVLA_NOTIFICATION_DISPATCHED, DVLA_NOTIFICATION_REJECTED
 from app.errors import InvalidRequest
 from app.models import LetterCostThreshold
-from app.notifications.utils import autoconfirm_subscription
 from app.schema_validation import validate
 from app.v2.errors import register_errors
 
 letter_callback_blueprint = Blueprint("notifications_letter_callback", __name__)
 register_errors(letter_callback_blueprint)
 
-
-dvla_sns_callback_schema = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "description": "sns callback received on s3 update",
-    "type": "object",
-    "title": "dvla internal sns callback",
-    "properties": {
-        "Type": {"enum": ["Notification", "SubscriptionConfirmation"]},
-        "MessageId": {"type": "string"},
-        "Message": {"type": ["string", "object"]},
-    },
-    "required": ["Type", "MessageId", "Message"],
-}
 
 dvla_letter_callback_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -115,26 +96,6 @@ dvla_letter_callback_schema = {
     },
     "required": ["id", "time", "data", "metadata"],
 }
-
-
-@letter_callback_blueprint.route("/notifications/letter/dvla", methods=["POST"])
-def process_letter_response():
-    req_json = request.get_json(force=True)
-    validate(req_json, dvla_sns_callback_schema)
-
-    current_app.logger.debug("Received SNS callback: %s", req_json)
-    if not autoconfirm_subscription(req_json):
-        # The callback should have one record for an S3 Put Event.
-        message = json.loads(req_json["Message"])
-        filename = message["Records"][0]["s3"]["object"]["key"]
-        current_app.logger.info("Received file from DVLA: %s", filename)
-
-        if filename.lower().endswith("rs.txt") or filename.lower().endswith("rsp.txt"):
-            current_app.logger.info("DVLA callback: Calling task to update letter notifications")
-            update_letter_notifications_statuses.apply_async([filename], queue=QueueNames.NOTIFY)
-            record_daily_sorted_counts.apply_async([filename], queue=QueueNames.NOTIFY)
-
-    return jsonify(result="success", message="DVLA callback succeeded"), 200
 
 
 @letter_callback_blueprint.route("/notifications/letter/status", methods=["POST"])

@@ -1,17 +1,14 @@
 import json
-import random
 import uuid
 from contextvars import ContextVar
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
 from flask import current_app, jsonify
 from notifications_utils.local_vars import LazyLocalGetter
-from notifications_utils.s3 import s3upload
 from werkzeug.local import LocalProxy
 
 from app import memo_resetters, notify_celery, signing
-from app.aws.s3 import file_exists
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.config import QueueNames
 from app.constants import SMS_TYPE
@@ -176,45 +173,6 @@ def firetext_callback(notification_id, to):
     else:
         status = "0"
     return {"mobile": to, "status": status, "time": "2016-03-10 14:17:00", "reference": notification_id}
-
-
-@notify_celery.task(bind=True, name="create-fake-letter-response-file", max_retries=5, default_retry_delay=300)
-def create_fake_letter_response_file(self, reference):
-    now = datetime.utcnow()
-    dvla_response_data = f"{reference}|Sent|0|Sorted|{now.date().isoformat()}"
-
-    # try and find a filename that hasn't been taken yet - from a random time within the last 30 seconds
-    for i in sorted(range(30), key=lambda _: random.random()):
-        upload_file_name = "NOTIFY-{}-RSP.TXT".format((now - timedelta(seconds=i)).strftime("%Y%m%d%H%M%S"))
-        if not file_exists(current_app.config["S3_BUCKET_DVLA_RESPONSE"], upload_file_name):
-            break
-    else:
-        raise ValueError(
-            f"cant create fake letter response file for {reference} - too many files for that time already exist on s3"
-        )
-
-    s3upload(
-        filedata=dvla_response_data,
-        region=current_app.config["AWS_REGION"],
-        bucket_name=current_app.config["S3_BUCKET_DVLA_RESPONSE"],
-        file_location=upload_file_name,
-    )
-    current_app.logger.info(
-        "Fake DVLA response file %s, content [%s], uploaded to %s, created at %s",
-        upload_file_name,
-        dvla_response_data,
-        current_app.config["S3_BUCKET_DVLA_RESPONSE"],
-        now,
-    )
-
-    # on development we can't trigger SNS callbacks so we need to manually hit the DVLA callback endpoint
-    if current_app.config["NOTIFY_ENVIRONMENT"] == "development":
-        make_request("letter", "dvla", _fake_sns_s3_callback(upload_file_name), None)
-
-
-def _fake_sns_s3_callback(filename):
-    message_contents = '{"Records":[{"s3":{"object":{"key":"%s"}}}]}' % (filename)  # noqa
-    return json.dumps({"Type": "Notification", "MessageId": "some-message-id", "Message": message_contents})
 
 
 @notify_celery.task(bind=True, name="create-fake-letter-callback", max_retries=3, default_retry_delay=60)

@@ -1,5 +1,5 @@
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import boto3
 import pytest
@@ -39,7 +39,6 @@ from app.constants import (
 )
 from app.exceptions import NotificationTechnicalFailureException
 from tests.app.db import create_notification
-from tests.conftest import set_config
 
 
 def test_should_have_decorated_tasks_functions():
@@ -508,13 +507,6 @@ def test_deliver_letter_when_max_retries_are_reached(mocker, sample_letter_templ
     assert mock_retry.called is True
     assert str(letter.id) in str(e.value)
     assert letter.status == NOTIFICATION_TECHNICAL_FAILURE
-
-
-def test_get_callback_url_when_delivery_callbacks_not_enabled(notify_api):
-    with set_config(notify_api, "LETTER_DELIVERY_CALLBACKS_ENABLED", False):
-        callback_url = _get_callback_url(uuid4())
-
-    assert callback_url is None
 
 
 def test_get_callback_url_returns_unique_callback_for_notification(notify_api, fake_uuid):

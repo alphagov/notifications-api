@@ -28,11 +28,7 @@ from app.celery.letters_pdf_tasks import (
     get_pdf_for_templated_letter,
     resanitise_pdf,
 )
-from app.celery.tasks import (
-    get_id_task_args_kwargs_for_job_row,
-    process_job_row,
-    record_daily_sorted_counts,
-)
+from app.celery.tasks import get_id_task_args_kwargs_for_job_row, process_job_row
 from app.config import QueueNames
 from app.constants import KEY_TYPE_TEST, NOTIFICATION_CREATED, SMS_TYPE
 from app.dao.annual_billing_dao import (
@@ -471,18 +467,6 @@ def update_emails_to_remove_gsi(service_id):
         """
         db.session.execute(update_stmt, {"user_id": str(user.user_id)})
         db.session.commit()
-
-
-@notify_command(name="replay-daily-sorted-count-files")
-@click.option("-f", "--file_extension", required=False, help="File extension to search for, defaults to rs.txt")
-@statsd(namespace="tasks")
-def replay_daily_sorted_count_files(file_extension):
-    bucket_location = "{}-ftp".format(current_app.config["NOTIFY_EMAIL_DOMAIN"])
-    for filename in s3.get_list_of_files_by_suffix(
-        bucket_name=bucket_location, subfolder="root/dispatch", suffix=file_extension or ".rs.txt"
-    ):
-        print("Create task to record daily sorted counts for file: ", filename)
-        record_daily_sorted_counts.apply_async([filename], queue=QueueNames.NOTIFY)
 
 
 @notify_command(name="populate-organisations-from-file")
