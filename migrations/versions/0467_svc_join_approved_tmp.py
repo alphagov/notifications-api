@@ -9,10 +9,15 @@ template_id = "4d8ee728-100e-4f0e-8793-5638cfa4ffa4"
 template_content = textwrap.dedent(
     """
         Hi ((requester_name))
+
         ((approver_name)) has approved your request to join the following GOV.UK Notify service:
+
         ^[((service_name))](((dashboard_url)))
+
         Sign in to GOV.UK Notify to get started.
+
         Thanks
+
         GOV.​UK Notify
         https://www.gov.uk/notify
     """
