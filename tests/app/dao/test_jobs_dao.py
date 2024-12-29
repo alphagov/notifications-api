@@ -360,7 +360,9 @@ def test_dao_cancel_letter_job_cancels_job_and_returns_number_of_cancelled_notif
 
 @freeze_time("2019-06-13 13:00")
 def test_can_letter_job_be_cancelled_returns_true_if_job_can_be_cancelled(sample_letter_template):
-    job = create_job(template=sample_letter_template, notification_count=1, job_status="finished")
+    job = create_job(
+        template=sample_letter_template, notification_count=1, job_status="finished all notifications created"
+    )
     create_notification(template=job.template, job=job, status="created")
     result, errors = can_letter_job_be_cancelled(job)
     assert result
@@ -368,10 +370,23 @@ def test_can_letter_job_be_cancelled_returns_true_if_job_can_be_cancelled(sample
 
 
 @freeze_time("2019-06-13 13:00")
+def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_not_status_all_notifications_created_yet(
+    sample_letter_template,
+):
+    job = create_job(template=sample_letter_template, notification_count=1, job_status="finished")
+    create_notification(template=job.template, job=job, status="created")
+    result, errors = can_letter_job_be_cancelled(job)
+    assert not result
+    assert errors == "We are still processing these letters, please try again in a minute."
+
+
+@freeze_time("2019-06-13 13:00")
 def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_notification_status_sending(
     sample_letter_template,
 ):
-    job = create_job(template=sample_letter_template, notification_count=2, job_status="finished")
+    job = create_job(
+        template=sample_letter_template, notification_count=2, job_status="finished all notifications created"
+    )
     create_notification(template=job.template, job=job, status="sending")
     create_notification(template=job.template, job=job, status="created")
     result, errors = can_letter_job_be_cancelled(job)
@@ -383,7 +398,9 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_letters_
     sample_letter_template,
 ):
     with freeze_time("2019-06-13 13:00"):
-        job = create_job(template=sample_letter_template, notification_count=1, job_status="finished")
+        job = create_job(
+            template=sample_letter_template, notification_count=1, job_status="finished all notifications created"
+        )
         letter = create_notification(template=job.template, job=job, status="created")
 
     with freeze_time("2019-06-13 17:32"):
@@ -391,12 +408,12 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_letters_
     assert not result
     assert errors == "It’s too late to cancel sending, these letters have already been sent."
     assert letter.status == "created"
-    assert job.job_status == "finished"
+    assert job.job_status == "finished all notifications created"
 
 
 @freeze_time("2019-06-13 13:00")
 def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_not_a_letter_job(sample_template):
-    job = create_job(template=sample_template, notification_count=1, job_status="finished")
+    job = create_job(template=sample_template, notification_count=1, job_status="finished all notifications created")
     create_notification(template=job.template, job=job, status="created")
     result, errors = can_letter_job_be_cancelled(job)
     assert not result
@@ -412,19 +429,12 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_job_not_
     assert errors == "We are still processing these letters, please try again in a minute."
 
 
-@freeze_time("2019-06-13 13:00")
-def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_notifications_not_in_db_yet(
-    sample_letter_template,
-):
-    job = create_job(template=sample_letter_template, notification_count=2, job_status="finished")
-    create_notification(template=job.template, job=job, status="created")
-    result, errors = can_letter_job_be_cancelled(job)
-    assert not result
-    assert errors == "We are still processing these letters, please try again in a minute."
-
-
 def test_can_letter_job_be_cancelled_respects_bst(sample_letter_template):
-    job = create_job(template=sample_letter_template, created_at=datetime(2020, 4, 9, 23, 30), job_status="finished")
+    job = create_job(
+        template=sample_letter_template,
+        created_at=datetime(2020, 4, 9, 23, 30),
+        job_status="finished all notifications created",
+    )
     create_notification(template=job.template, job=job, status="created", created_at=datetime(2020, 4, 9, 23, 32))
 
     with freeze_time("2020-04-10 10:00"):
@@ -452,10 +462,10 @@ def test_find_jobs_with_missing_rows(sample_email_template):
     for i in range(4):
         create_notification(job=job_with_missing_rows, job_row_number=i)
 
-    results = find_jobs_with_missing_rows()
+    results_missing, results_nomissing = find_jobs_with_missing_rows()
 
-    assert len(results) == 1
-    assert results[0] == job_with_missing_rows
+    assert results_missing == [job_with_missing_rows]
+    assert results_nomissing == [healthy_job]
 
 
 def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_less_than_10_minutes_ago(
@@ -470,9 +480,10 @@ def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_less_th
     for i in range(4):
         create_notification(job=job, job_row_number=i)
 
-    results = find_jobs_with_missing_rows()
+    results_missing, results_nomissing = find_jobs_with_missing_rows()
 
-    assert len(results) == 0
+    assert results_missing == []
+    assert results_nomissing == []
 
 
 def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_more_that_a_day_ago(sample_email_template):
@@ -485,12 +496,15 @@ def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_more_th
     for i in range(4):
         create_notification(job=job, job_row_number=i)
 
-    results = find_jobs_with_missing_rows()
+    results_missing, results_nomissing = find_jobs_with_missing_rows()
 
-    assert len(results) == 0
+    assert results_missing == []
+    assert results_nomissing == []
 
 
-@pytest.mark.parametrize("status", ["pending", "in progress", "cancelled", "scheduled"])
+@pytest.mark.parametrize(
+    "status", ["pending", "in progress", "cancelled", "scheduled", "finished all notifications created"]
+)
 def test_find_jobs_with_missing_rows_doesnt_return_jobs_that_are_not_finished(sample_email_template, status):
     job = create_job(
         template=sample_email_template,
@@ -501,9 +515,10 @@ def test_find_jobs_with_missing_rows_doesnt_return_jobs_that_are_not_finished(sa
     for i in range(4):
         create_notification(job=job, job_row_number=i)
 
-    results = find_jobs_with_missing_rows()
+    results_missing, results_nomissing = find_jobs_with_missing_rows()
 
-    assert len(results) == 0
+    assert results_missing == []
+    assert results_nomissing == []
 
 
 def test_find_missing_row_for_job(sample_email_template):
