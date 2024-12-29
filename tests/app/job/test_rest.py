@@ -832,7 +832,7 @@ def test_get_jobs_accepts_page_parameter(admin_request, sample_template):
         ("", JOB_STATUS_TYPES),
         ("pending", [JOB_STATUS_PENDING]),
         (
-            "pending, in progress, finished, sending limits exceeded, scheduled, cancelled, ready to send, sent to dvla, error",  # noqa
+            "pending, in progress, finished, finished all notifications created, sending limits exceeded, scheduled, cancelled, ready to send, sent to dvla, error",  # noqa
             JOB_STATUS_TYPES,
         ),
         # bad statuses are accepted, just return no data
@@ -843,6 +843,7 @@ def test_get_jobs_can_filter_on_statuses(admin_request, sample_template, statuse
     create_job(sample_template, job_status="pending")
     create_job(sample_template, job_status="in progress")
     create_job(sample_template, job_status="finished")
+    create_job(sample_template, job_status="finished all notifications created")
     create_job(sample_template, job_status="sending limits exceeded")
     create_job(sample_template, job_status="scheduled")
     create_job(sample_template, job_status="cancelled")
