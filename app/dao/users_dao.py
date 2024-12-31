@@ -15,7 +15,7 @@ from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import dao_get_service_users_by_user_id
 from app.dao.services_dao import dao_remove_user_from_service
 from app.errors import InvalidRequest
-from app.models import User, VerifyCode
+from app.models import ApiKey, User, VerifyCode
 from app.utils import escape_special_characters, get_archived_db_column_value
 
 
@@ -86,6 +86,13 @@ def use_user_code(id):
 
 
 def delete_user_and_all_associated_db_objects(user):
+    # if the user has created api keys, we need to delete them. this will fail if the api key is still linked
+    # to notifications in the database - if you encounter foreign key violations here you'll need to make sure
+    # delete_service_and_all_associated_db_objects was run for the correct services that the user might have
+    # created api keys for
+    for api_key in ApiKey.query.filter_by(created_by=user):
+        db.session.delete(api_key)
+
     for org in user.organisations:
         organisation_user_permissions_dao.remove_user_organisation_permissions(user, org)
     user.organisations = []

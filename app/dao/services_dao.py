@@ -349,6 +349,10 @@ def dao_remove_user_from_service(service, user):
 
 
 def delete_service_and_all_associated_db_objects(service):
+    """
+    To be used with functional test services only! This irrevocably deletes data, use with extreme caution!
+    """
+
     def _delete(query):
         query.delete(synchronize_session=False)
 
@@ -360,6 +364,7 @@ def delete_service_and_all_associated_db_objects(service):
     _delete(ServiceInboundApi.query.filter_by(service=service))
 
     _delete(ServiceSmsSender.query.filter_by(service=service))
+    _delete(InboundNumber.query.filter_by(service=service))
     _delete(ServiceEmailReplyTo.query.filter_by(service=service))
     _delete(ServiceContactList.query.filter_by(service=service))
     _delete(InvitedUser.query.filter_by(service=service))
@@ -381,8 +386,10 @@ def delete_service_and_all_associated_db_objects(service):
     for user in users:
         user.organisations = []
         service.users.remove(user)
+
     _delete(Service.get_history_model().query.filter_by(id=service.id))
-    db.session.delete(service)
+    _delete(Service.query.filter_by(id=service.id))
+
     db.session.commit()
 
 
