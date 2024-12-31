@@ -153,6 +153,33 @@ def purge_functional_test_data(user_email_prefix):
 
 
 @notify_command()
+@click.option(
+    "-s",
+    "--service-id",
+    required=True,
+    help="""
+    Service id of the functional test seeded service
+""",
+)
+def delete_functional_test_service(service_id):
+    """
+    Removes a service, designed to be used on the functional tests seeded service.
+    After the services is deleted, also deletes any users who are now orphaned
+    """
+    service = dao_fetch_service_by_id(service_id)
+    users = list(service.users)
+    print(f"Deleting service {service.id} {service.name}")
+    delete_service_and_all_associated_db_objects(service)
+
+    for user in users:
+        print(len(user.services), user.services)
+        if not user.services:
+            print(f"Deleting user {user.id} {user.email_address}")
+            delete_user_verify_codes(user)
+            delete_user_and_all_associated_db_objects(user)
+
+
+@notify_command()
 def backfill_notification_statuses():
     """
     DEPRECATED. Populates notification_status.
