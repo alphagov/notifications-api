@@ -32,6 +32,8 @@ from app.models import (
     ApiKey,
     FactBilling,
     InboundNumber,
+    InboundSms,
+    InboundSmsHistory,
     InvitedUser,
     Job,
     Notification,
@@ -41,6 +43,7 @@ from app.models import (
     Service,
     ServiceContactList,
     ServiceEmailReplyTo,
+    ServiceInboundApi,
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
@@ -353,9 +356,12 @@ def delete_service_and_all_associated_db_objects(service):
     subq = db.session.query(Template.id).filter_by(service=service).subquery()
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
 
+    _delete_commit(InboundSms.query.filter_by(service=service))
+    _delete_commit(InboundSmsHistory.query.filter_by(service=service))
+    _delete_commit(ServiceInboundApi.query.filter_by(service=service))
+
     _delete_commit(ServiceSmsSender.query.filter_by(service=service))
     _delete_commit(ServiceEmailReplyTo.query.filter_by(service=service))
-    _delete_commit(ServiceLetterContact.query.filter_by(service=service))
     _delete_commit(ServiceContactList.query.filter_by(service=service))
     _delete_commit(InvitedUser.query.filter_by(service=service))
     _delete_commit(Permission.query.filter_by(service=service))
@@ -364,6 +370,7 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(Job.query.filter_by(service=service))
     _delete_commit(Template.query.filter_by(service=service))
     _delete_commit(TemplateHistory.query.filter_by(service_id=service.id))
+    _delete_commit(ServiceLetterContact.query.filter_by(service=service))
     _delete_commit(ServicePermission.query.filter_by(service_id=service.id))
     _delete_commit(ApiKey.query.filter_by(service=service))
     _delete_commit(ApiKey.get_history_model().query.filter_by(service_id=service.id))
