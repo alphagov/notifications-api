@@ -60,7 +60,7 @@ receipt_for_request_invite_to_a_service_template_content = textwrap.dedent(
 
         ((service_admin_names))
 
-        If they do not reply, you can [ask a different team member to approve your request]((url_ask_to_join_page)).
+        If they do not reply, you can [ask a different team member to approve your request](((url_ask_to_join_page))).
 
         Thanks
 
@@ -146,7 +146,7 @@ def upgrade():
                 'You have asked to join a GOV.UK Notify service',
                 'email',
                 current_timestamp,
-                '',
+                'You have asked to join a GOV.UK Notify service',
                 '{receipt_for_request_invite_to_a_service_template_content}',
                 false,
                 '{current_app.config["NOTIFY_SERVICE_ID"]}',
