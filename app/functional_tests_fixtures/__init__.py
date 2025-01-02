@@ -57,7 +57,12 @@ from app.dao.services_dao import (
     dao_fetch_service_by_id,
     get_services_by_partial_name,
 )
-from app.dao.templates_dao import dao_create_template, dao_get_all_templates_for_service
+from app.dao.templates_dao import (
+    dao_create_template,
+    dao_get_all_templates_for_service,
+    dao_get_template_versions,
+    dao_update_template,
+)
 from app.dao.users_dao import get_user_by_email, save_model_user
 from app.models import (
     InboundNumber,
@@ -154,9 +159,69 @@ def apply_fixtures():
         True,
     )
 
-    template1_id = _create_email_template(service, service_admin_user.id)
-    template2_id = _create_sms_template(service, service_admin_user.id)
-    template3_id = _create_letter_template(service, service_admin_user.id, letter_contact.id)
+    email_template = _create_email_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Functional Tests - CSV Email Template with Build ID",
+        subject="Functional Tests - CSV Email",
+        content="The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
+    )
+    sms_template = _create_sms_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Functional Tests - CSV SMS Template with Build ID",
+        content="The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
+    )
+    letter_template = _create_letter_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Functional Tests - CSV Letter Template with Build ID and Letter Contact",
+        subject="Functional Tests - CSV Letter",
+        content="The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
+        letter_contact_id=letter_contact.id,
+    )
+
+    api_client_integration_test_email_template = _create_email_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Client Functional test email template",
+        subject="Functional Tests are good",
+        content="Functional test help make our world a better place",
+    )
+    api_client_integration_test_sms_template = _create_sms_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Example text message template",
+        content="Hey ((name)), I’m trying out Notify. Today is ((day of week)) and my favourite colour is ((colour)).",
+    )
+    api_client_integration_test_letter_template = _create_letter_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Untitled",
+        subject="Main heading",
+        content="Body",
+    )
+
+    if len(dao_get_template_versions(service.id, api_client_integration_test_email_template.id)) < 2:
+        _update_template(
+            api_client_integration_test_email_template,
+            content="Hello ((name))\r\n\r\nFunctional test help make our world a better place",
+        )
+
+    if len(dao_get_template_versions(service.id, api_client_integration_test_sms_template.id)) < 2:
+        _update_template(
+            api_client_integration_test_sms_template,
+            name="Client Functional test sms template",
+            content="Hello ((name))\r\n\r\nFunctional Tests make our world a better place",
+        )
+
+    if len(dao_get_template_versions(service.id, api_client_integration_test_letter_template.id)) < 2:
+        _update_template(
+            api_client_integration_test_letter_template,
+            name="Client functional letter template",
+            content="Hello ((address_line_1))",
+            letter_contact_id=letter_contact.id,
+        )
 
     current_app.logger.info("--> Ensure service email reply to exists")
     _create_service_email_reply_to(
@@ -181,21 +246,23 @@ def apply_fixtures():
 
     functional_test_config = f"""
 
-export FUNCTIONAL_TESTS_API_HOST={current_app.config['API_HOST_NAME']}
-export FUNCTIONAL_TESTS_ADMIN_HOST={current_app.config['ADMIN_BASE_URL']}
+# Functional test environment
 
-export ENVIRONMENT={current_app.config['NOTIFY_ENVIRONMENT']}
+export FUNCTIONAL_TESTS_API_HOST='{current_app.config['API_HOST_NAME']}'
+export FUNCTIONAL_TESTS_ADMIN_HOST='{current_app.config['ADMIN_BASE_URL']}'
 
-export FUNCTIONAL_TEST_EMAIL={func_test_user.email_address}
-export FUNCTIONAL_TEST_PASSWORD={functional_test_password}
-export TEST_NUMBER=07700900001
+export ENVIRONMENT='{current_app.config['NOTIFY_ENVIRONMENT']}'
+
+export FUNCTIONAL_TEST_EMAIL='{func_test_user.email_address}'
+export FUNCTIONAL_TEST_PASSWORD='{functional_test_password}'
+export TEST_NUMBER='07700900001'
 
 export NOTIFY_SERVICE_API_KEY='{function_tests_govuk_key_name}-{govuk_service_id}-{api_key_notify.secret}'
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL='{service_admin_user.email_address}'
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_AUTH_ACCOUNT='{email_auth_user.email_address}'
-export FUNCTIONAL_TESTS_SERVICE_EMAIL_PASSWORD={functional_test_password}
-export FUNCTIONAL_TESTS_SERVICE_NUMBER=07700900501
+export FUNCTIONAL_TESTS_SERVICE_EMAIL_PASSWORD='{functional_test_password}'
+export FUNCTIONAL_TESTS_SERVICE_NUMBER='07700900501'
 
 export FUNCTIONAL_TESTS_SERVICE_ID='{service.id}'
 export FUNCTIONAL_TESTS_SERVICE_NAME='{service.name}'
@@ -205,18 +272,33 @@ export FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY='{function_tests_test_key_name}-{se
 export FUNCTIONAL_TESTS_API_AUTH_SECRET='{current_app.config['INTERNAL_CLIENT_API_KEYS']['notify-functional-tests'][0]}'
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO='{test_email_username}+{environment}-reply-to@{email_domain}'
-export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_ID='{email_reply_to.id}'
-export FUNCTIONAL_TESTS_SERVICE_SMS_SENDER_ID='{sms_sender.id}'
-export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER=07700900500
+export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER='07700900500'
 
-export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={template2_id}
-export FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID={template1_id}
-export FUNCTIONAL_TEST_LETTER_TEMPLATE_ID={template3_id}
+export FUNCTIONAL_TEST_SMS_TEMPLATE_ID='{sms_template.id}'
+export FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID='{email_template.id}'
+export FUNCTIONAL_TEST_LETTER_TEMPLATE_ID='{letter_template.id}'
 
-export MMG_INBOUND_SMS_USERNAME={current_app.config['MMG_INBOUND_SMS_USERNAME'][0]}
-export MMG_INBOUND_SMS_AUTH={current_app.config['MMG_INBOUND_SMS_AUTH'][0]}
+export MMG_INBOUND_SMS_USERNAME='{current_app.config['MMG_INBOUND_SMS_USERNAME'][0]}'
+export MMG_INBOUND_SMS_AUTH='{current_app.config['MMG_INBOUND_SMS_AUTH'][0]}'
 
-export REQUEST_BIN_API_TOKEN={request_bin_api_token}
+export REQUEST_BIN_API_TOKEN='{request_bin_api_token}'
+
+
+# API client integration test environment
+
+export SERVICE_ID='{service.id}'
+export FUNCTIONAL_TEST_EMAIL='{func_test_user.email_address}'
+export FUNCTIONAL_TEST_NUMBER='07700900500'
+export EMAIL_TEMPLATE_ID='{api_client_integration_test_email_template.id}'
+export SMS_TEMPLATE_ID='{api_client_integration_test_sms_template.id}'
+export LETTER_TEMPLATE_ID='{api_client_integration_test_letter_template.id}'
+export EMAIL_REPLY_TO_ID='{email_reply_to.id}'
+export SMS_SENDER_ID='{sms_sender.id}'
+export NOTIFY_API_URL='{current_app.config['API_HOST_NAME']}'
+
+export API_KEY='{function_tests_test_key_name}-{service.id}-{api_key_test_key.secret}'
+export API_SENDING_KEY='{function_tests_live_key_name}-{service.id}-{api_key_live_key.secret}'
+export INBOUND_SMS_QUERY_KEY='{function_tests_test_key_name}-{service.id}-{api_key_test_key.secret}'
 
 """
 
@@ -274,9 +356,7 @@ def _create_organiation(email_domain, org_name="Functional Tests Org"):
 
     if org is None:
 
-        data = {"name": org_name, "active": True, "crown": False, "organisation_type": "central"}
-
-        org = Organisation(**data)
+        org = Organisation(name=org_name, active=True, crown=False, organisation_type="central")
 
         dao_create_organisation(org)
 
@@ -291,24 +371,25 @@ def _create_service(org_id, user, service_name="Functional Tests"):
     services = get_services_by_partial_name(service_name)
 
     service = None
-    for service in services:
-        if service.name == service_name:
-            service = service
+    for s in services:
+        if s.name == service_name:
+            service = s
 
     if service is None:
 
-        data = {
-            "name": service_name,
-            "restricted": False,
-            "organisation_id": org_id,
-            "organisation_type": "central",
-            "created_by": user.id,
-            "sms_message_limit": 1000,
-            "letter_message_limit": 1000,
-            "email_message_limit": 1000,
-            "contact_link": current_app.config["ADMIN_BASE_URL"],
-        }
-        service = Service.from_json(data)
+        service = Service.from_json(
+            {
+                "name": service_name,
+                "restricted": False,
+                "organisation_id": org_id,
+                "organisation_type": "central",
+                "created_by": user.id,
+                "sms_message_limit": 1000,
+                "letter_message_limit": 1000,
+                "email_message_limit": 1000,
+                "contact_link": current_app.config["ADMIN_BASE_URL"],
+            }
+        )
         dao_create_service(service, user)
 
     set_default_free_allowance_for_service(service=service, year_start=None)
@@ -375,76 +456,72 @@ def _create_service_letter_contact(service_id, contact_block, is_default):
     return add_letter_contact_for_service(service_id, contact_block, is_default)
 
 
-def _create_email_template(service, user_id):
-    name = "Functional Tests - CSV Email Template with Build ID"
+def _create_email_template(service, user_id, name, subject, content):
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
     for template in templates:
         if template.name == name:
-            return template.id
+            return template
 
-    data = {
-        "name": name,
-        "template_type": "email",
-        "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
-        "subject": "Functional Tests - CSV Email",
-        "created_by": user_id,
-    }
-
-    new_template = template_schema.load(data)
+    new_template = template_schema.load(
+        {
+            "name": name,
+            "template_type": "email",
+            "content": content,
+            "subject": subject,
+            "created_by": user_id,
+        }
+    )
 
     new_template.service = service
 
     dao_create_template(new_template)
 
-    return new_template.id
+    return new_template
 
 
-def _create_sms_template(service, user_id):
-    name = "Functional Tests - CSV SMS Template with Build ID"
+def _create_sms_template(service, user_id, name, content):
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
     for template in templates:
         if template.name == name:
-            return template.id
+            return template
 
-    data = {
-        "name": "Functional Tests - CSV SMS Template with Build ID",
-        "template_type": "sms",
-        "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
-        "created_by": user_id,
-    }
-
-    new_template = template_schema.load(data)
+    new_template = template_schema.load(
+        {
+            "name": name,
+            "template_type": "sms",
+            "content": content,
+            "created_by": user_id,
+        }
+    )
 
     new_template.service = service
 
     dao_create_template(new_template)
 
-    return new_template.id
+    return new_template
 
 
-def _create_letter_template(service, user_id, letter_contact_id):
-
-    name = "Functional Tests - CSV Letter Template with Build ID and Letter Contact"
+def _create_letter_template(service, user_id, name, subject, content, letter_contact_id=None):
 
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
     for template in templates:
         if template.name == name:
-            return template.id
+            return template
 
-    data = {
-        "name": name,
-        "template_type": "letter",
-        "content": "The quick brown fox jumped over the lazy dog. Build id: ((build_id)).",
-        "subject": "Functional Tests - CSV Letter",
-        "created_by": user_id,
-    }
-
-    new_template = template_schema.load(data)
+    new_template = template_schema.load(
+        {
+            "name": name,
+            "template_type": "letter",
+            "content": content,
+            "subject": subject,
+            "created_by": user_id,
+        }
+    )
 
     new_template.service = service
     new_template.postage = SECOND_CLASS
@@ -452,7 +529,23 @@ def _create_letter_template(service, user_id, letter_contact_id):
 
     dao_create_template(new_template)
 
-    return new_template.id
+    return new_template
+
+
+def _update_template(template, name=None, subject=None, content=None, letter_contact_id=None):
+    if name is not None:
+        template.name = name
+
+    if subject is not None:
+        template.subject = subject
+
+    if content is not None:
+        template.content = content
+
+    if letter_contact_id is not None:
+        template.service_letter_contact_id = letter_contact_id
+
+    dao_update_template(template)
 
 
 def _create_service_email_reply_to(service_id, email_address, is_default):
