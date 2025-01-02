@@ -248,21 +248,21 @@ def apply_fixtures():
 
 # Functional test environment
 
-export FUNCTIONAL_TESTS_API_HOST={current_app.config['API_HOST_NAME']}
-export FUNCTIONAL_TESTS_ADMIN_HOST={current_app.config['ADMIN_BASE_URL']}
+export FUNCTIONAL_TESTS_API_HOST='{current_app.config['API_HOST_NAME']}'
+export FUNCTIONAL_TESTS_ADMIN_HOST='{current_app.config['ADMIN_BASE_URL']}'
 
-export ENVIRONMENT={current_app.config['NOTIFY_ENVIRONMENT']}
+export ENVIRONMENT='{current_app.config['NOTIFY_ENVIRONMENT']}'
 
-export FUNCTIONAL_TEST_EMAIL={func_test_user.email_address}
-export FUNCTIONAL_TEST_PASSWORD={functional_test_password}
-export TEST_NUMBER=07700900001
+export FUNCTIONAL_TEST_EMAIL='{func_test_user.email_address}'
+export FUNCTIONAL_TEST_PASSWORD='{functional_test_password}'
+export TEST_NUMBER='07700900001'
 
 export NOTIFY_SERVICE_API_KEY='{function_tests_govuk_key_name}-{govuk_service_id}-{api_key_notify.secret}'
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL='{service_admin_user.email_address}'
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_AUTH_ACCOUNT='{email_auth_user.email_address}'
-export FUNCTIONAL_TESTS_SERVICE_EMAIL_PASSWORD={functional_test_password}
-export FUNCTIONAL_TESTS_SERVICE_NUMBER=07700900501
+export FUNCTIONAL_TESTS_SERVICE_EMAIL_PASSWORD='{functional_test_password}'
+export FUNCTIONAL_TESTS_SERVICE_NUMBER='07700900501'
 
 export FUNCTIONAL_TESTS_SERVICE_ID='{service.id}'
 export FUNCTIONAL_TESTS_SERVICE_NAME='{service.name}'
@@ -272,29 +272,29 @@ export FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY='{function_tests_test_key_name}-{se
 export FUNCTIONAL_TESTS_API_AUTH_SECRET='{current_app.config['INTERNAL_CLIENT_API_KEYS']['notify-functional-tests'][0]}'
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO='{test_email_username}+{environment}-reply-to@{email_domain}'
-export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER=07700900500
+export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER='07700900500'
 
-export FUNCTIONAL_TEST_SMS_TEMPLATE_ID={sms_template.id}
-export FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID={email_template.id}
-export FUNCTIONAL_TEST_LETTER_TEMPLATE_ID={letter_template.id}
+export FUNCTIONAL_TEST_SMS_TEMPLATE_ID='{sms_template.id}'
+export FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID='{email_template.id}'
+export FUNCTIONAL_TEST_LETTER_TEMPLATE_ID='{letter_template.id}'
 
-export MMG_INBOUND_SMS_USERNAME={current_app.config['MMG_INBOUND_SMS_USERNAME'][0]}
-export MMG_INBOUND_SMS_AUTH={current_app.config['MMG_INBOUND_SMS_AUTH'][0]}
+export MMG_INBOUND_SMS_USERNAME='{current_app.config['MMG_INBOUND_SMS_USERNAME'][0]}'
+export MMG_INBOUND_SMS_AUTH='{current_app.config['MMG_INBOUND_SMS_AUTH'][0]}'
 
-export REQUEST_BIN_API_TOKEN={request_bin_api_token}
+export REQUEST_BIN_API_TOKEN='{request_bin_api_token}'
 
 
 # API client integration test environment
 
 export SERVICE_ID='{service.id}'
-export FUNCTIONAL_TEST_EMAIL={func_test_user.email_address}
-export FUNCTIONAL_TEST_NUMBER=07700900500
-export EMAIL_TEMPLATE_ID={api_client_integration_test_email_template.id}
-export SMS_TEMPLATE_ID={api_client_integration_test_sms_template.id}
-export LETTER_TEMPLATE_ID={api_client_integration_test_letter_template.id}
+export FUNCTIONAL_TEST_EMAIL='{func_test_user.email_address}'
+export FUNCTIONAL_TEST_NUMBER='07700900500'
+export EMAIL_TEMPLATE_ID='{api_client_integration_test_email_template.id}'
+export SMS_TEMPLATE_ID='{api_client_integration_test_sms_template.id}'
+export LETTER_TEMPLATE_ID='{api_client_integration_test_letter_template.id}'
 export EMAIL_REPLY_TO_ID='{email_reply_to.id}'
 export SMS_SENDER_ID='{sms_sender.id}'
-export NOTIFY_API_URL={current_app.config['API_HOST_NAME']}
+export NOTIFY_API_URL='{current_app.config['API_HOST_NAME']}'
 
 export API_KEY='{function_tests_test_key_name}-{service.id}-{api_key_test_key.secret}'
 export API_SENDING_KEY='{function_tests_live_key_name}-{service.id}-{api_key_live_key.secret}'
