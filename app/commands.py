@@ -133,23 +133,21 @@ def purge_functional_test_data(user_email_prefix):
             print(f"Skipping {usr.email_address} as the user email doesn't contain a UUID.")
         else:
             services = dao_fetch_all_services_by_user(usr.id)
-            if services:
-                print(f"Deleting user {usr.id} which is part of services")
-                for service in services:
-                    delete_service_and_all_associated_db_objects(service)
-            else:
-                services_created_by_this_user = dao_fetch_all_services_created_by_user(usr.id)
-                if services_created_by_this_user:
-                    # user is not part of any services but may still have been the one to create the service
-                    # sometimes things get in this state if the tests fail half way through
-                    # Remove the service they created (but are not a part of) so we can then remove the user
-                    print(f"Deleting services created by {usr.id}")
-                    for service in services_created_by_this_user:
-                        delete_service_and_all_associated_db_objects(service)
+            for service in services:
+                print(f"Deleting service {service.id=} {service.name=} that {usr.id} belongs to")
+                delete_service_and_all_associated_db_objects(service)
 
-                print(f"Deleting user {usr.id} which is not part of any services")
-                delete_user_verify_codes(usr)
-                delete_user_and_all_associated_db_objects(usr)
+            services_created_by_this_user = dao_fetch_all_services_created_by_user(usr.id)
+            for service in services_created_by_this_user:
+                # user may still have been the one to create the service
+                # sometimes things get in this state if the tests fail half way through
+                # Remove the service they created (but are not a part of) so we can then remove the user
+                print(f"Deleting service {service.id=} {service.name=} created by {usr.id}")
+                delete_service_and_all_associated_db_objects(service)
+
+            print(f"Deleting user {usr.id} which is not part of any services")
+            delete_user_verify_codes(usr)
+            delete_user_and_all_associated_db_objects(usr)
 
 
 @notify_command()
