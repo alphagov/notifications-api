@@ -9,9 +9,11 @@ export FLASK_APP="application.py"
 export NOTIFY_ENVIRONMENT="development"
 MIGRATION_TEST_DATABASE_DB_NAME="migration_test"
 
-MIGRATION_TEST_DATABASE_URI=${SQLALCHEMY_DATABASE_URI:-"postgresql://postgres:postgres@localhost/"}
-# replace whatever database name the outside env has with the test database's db
-MIGRATION_TEST_DATABASE_URI="${MIGRATION_TEST_DATABASE_URI%/*}/${MIGRATION_TEST_DATABASE_DB_NAME}"
+# default to localhost
+POSTGRES_SERVER_URI=${SQLALCHEMY_DATABASE_URI:-"postgresql://postgres:postgres@localhost/"}
+# remove any existing db name, and replace with migration_test
+POSTGRES_SERVER_URI="${POSTGRES_SERVER_URI%/*}/"
+MIGRATION_TEST_DATABASE_URI="$POSTGRES_SERVER_URI$MIGRATION_TEST_DATABASE_DB_NAME"
 
 # what is the database currently pointing at on main?
 CURRENT_VERSION=$(curl -s https://raw.githubusercontent.com/alphagov/notifications-api/main/migrations/.current-alembic-head)
@@ -26,9 +28,10 @@ fi
 
 echo "Testing migrations on ${MIGRATION_TEST_DATABASE_URI}"
 
-# delete any existing test DB
-psql $MIGRATION_TEST_DATABASE_URI -c "drop database ${MIGRATION_TEST_DATABASE_DB_NAME}" || true
-psql $MIGRATION_TEST_DATABASE_URI -c "create database ${MIGRATION_TEST_DATABASE_DB_NAME}"
+
+# when creating/dropping any existing test DB, we need to connect to the default database
+psql $POSTGRES_SERVER_URI -c "drop database ${MIGRATION_TEST_DATABASE_DB_NAME}" || true
+psql $POSTGRES_SERVER_URI -c "create database ${MIGRATION_TEST_DATABASE_DB_NAME}"
 
 echo -e "${BOLDGREEN}======== running upgrade (logs hidden) ========${ENDCOLOR}"
 
@@ -42,6 +45,6 @@ SQLALCHEMY_DATABASE_URI=$MIGRATION_TEST_DATABASE_URI flask db downgrade $CURRENT
 echo -e "${BOLDGREEN}============ running upgrade again ============${ENDCOLOR}"
 SQLALCHEMY_DATABASE_URI=$MIGRATION_TEST_DATABASE_URI flask db upgrade
 
-psql $MIGRATION_TEST_DATABASE_URI -c "drop database ${MIGRATION_TEST_DATABASE_DB_NAME}"
+psql $POSTGRES_SERVER_URI -c "drop database ${MIGRATION_TEST_DATABASE_DB_NAME}"
 
 echo -e "${BOLDGREEN}=================== success ===================${ENDCOLOR}"
