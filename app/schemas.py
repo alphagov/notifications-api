@@ -676,7 +676,6 @@ class NotificationsFilterSchema(ma.Schema):
     limit_days = fields.Int(required=False)
     include_jobs = fields.Boolean(required=False)
     include_from_test_key = fields.Boolean(required=False)
-    paginate_by_older_than = fields.Boolean(required=False)
     older_than = fields.UUID(required=False)
     format_for_csv = fields.String()
     to = fields.String()
