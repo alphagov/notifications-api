@@ -157,7 +157,9 @@ def test_send_email_raises_invalid_parameter_value_error_as_EmailClientNonRetrya
 def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRateException(mocker):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
     mocker.patch.object(aws_ses_client, "statsd_client", create=True)
-    error_response = {"Error": {"Code": "Throttling", "Message": "Maximum sending rate exceeded.", "Type": "Sender"}}
+    error_response = {
+        "Error": {"Code": "TooManyRequestsException", "Message": "Maximum sending rate exceeded.", "Type": "Sender"}
+    }
     boto_mock.send_email.side_effect = botocore.exceptions.ClientError(error_response, "opname")
 
     with pytest.raises(AwsSesClientThrottlingSendRateException):
@@ -175,7 +177,9 @@ def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRat
 def test_send_email_does_not_raise_AwsSesClientThrottlingSendRateException_if_non_send_rate_throttling(mocker):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
     mocker.patch.object(aws_ses_client, "statsd_client", create=True)
-    error_response = {"Error": {"Code": "Throttling", "Message": "Daily message quota exceeded", "Type": "Sender"}}
+    error_response = {
+        "Error": {"Code": "TooManyRequestsException", "Message": "Daily message quota exceeded", "Type": "Sender"}
+    }
     boto_mock.send_email.side_effect = botocore.exceptions.ClientError(error_response, "opname")
 
     with pytest.raises(AwsSesClientException):
