@@ -13,12 +13,13 @@ from app.dao.service_user_dao import (
     dao_get_service_user,
     dao_update_service_user,
 )
+from app.dao.services_dao import dao_add_user_to_service
 from app.dao.users_dao import (
     count_user_verify_codes,
     create_secret_code,
     dao_archive_user,
     delete_codes_older_created_more_than_a_day_ago,
-    delete_model_user,
+    delete_user_and_all_associated_db_objects,
     get_user_by_email,
     get_user_by_id,
     get_users_for_research,
@@ -30,7 +31,7 @@ from app.dao.users_dao import (
     user_can_be_archived,
 )
 from app.errors import InvalidRequest
-from app.models import OrganisationUserPermissions, User, VerifyCode
+from app.models import OrganisationUserPermissions, Permission, User, VerifyCode
 from tests.app.db import (
     create_permissions,
     create_service,
@@ -77,10 +78,23 @@ def test_get_user_invalid_id(notify_db_session):
         get_user_by_id(user_id="blah")
 
 
-def test_delete_users(sample_user):
+def test_delete_user_and_all_associated_db_objects(notify_db_session, sample_service, sample_organisation):
+    # note: doesn't delete verify codes or services that user created, need to do that separately first
+    id_to_delete = uuid.uuid4()
+    user = create_user(id_=id_to_delete, name="to delete")
+    user.services = [sample_service]
+    user.organisations = [sample_organisation]
+
+    dao_add_user_to_service(
+        sample_service, user, permissions=[Permission(service=sample_service, user=user, permission="manage_users")]
+    )
+
+    assert User.query.count() == 2
+
+    delete_user_and_all_associated_db_objects(user)
+
     assert User.query.count() == 1
-    delete_model_user(sample_user)
-    assert User.query.count() == 0
+    assert not User.query.get(id_to_delete)
 
 
 def test_increment_failed_login_should_increment_failed_logins(sample_user):

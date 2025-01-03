@@ -742,11 +742,12 @@ def test_delete_service_and_associated_objects(notify_db_session):
     assert Job.query.count() == 0
     assert Notification.query.count() == 0
     assert Permission.query.count() == 0
-    assert User.query.count() == 0
     assert InvitedUser.query.count() == 0
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
     assert ServicePermission.query.count() == 0
+    # we don't delete users as part of this function (see delete_user_and_all_associated_db_objects)
+    assert User.query.count() == 1
     # the organisation hasn't been deleted
     assert Organisation.query.count() == 1
 
