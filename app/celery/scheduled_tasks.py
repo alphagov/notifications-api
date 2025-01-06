@@ -22,10 +22,11 @@ from app import db, dvla_client, notify_celery, redis_store, statsd_client, zend
 from app.aws import s3
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
+    get_id_task_args_kwargs_for_job_row,
     get_recipient_csv_and_template_and_sender_id,
     process_incomplete_jobs,
     process_job,
-    process_row,
+    process_job_row,
 )
 from app.clients.letter.dvla import DvlaRetryableException
 from app.config import QueueNames, TaskNames
@@ -131,8 +132,8 @@ def delete_invitations():
 def switch_current_sms_provider_on_slow_delivery():
     """
     Reduce provider's priority if at least 15% of notifications took more than 5 minutes to be delivered
-    in the last ten minutes. If both providers are slow, don't do anything. If we changed the providers in the
-    last ten minutes, then don't update them again either.
+    in the last 15 minutes. If both providers are slow, don't do anything. If we changed the providers in the
+    last 5 minutes, then don't update them again either.
     """
     slow_delivery_notifications = is_delivery_slow_for_providers(
         created_within_minutes=15,
@@ -146,7 +147,7 @@ def switch_current_sms_provider_on_slow_delivery():
         for provider_name, is_slow in slow_delivery_notifications.items():
             if is_slow:
                 current_app.logger.warning("Slow delivery notifications detected for provider %s", provider_name)
-                dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
+                dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=5))
 
 
 def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports: list[SlowProviderDeliveryReport]):
@@ -316,10 +317,11 @@ def replay_created_notifications():
 
 
 @notify_celery.task(name="check-if-letters-still-pending-virus-check")
-def check_if_letters_still_pending_virus_check():
+def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 30):
+    # this task runs every ten minutes, so allowing a couple of runs
+    # if this task doesn't run for some reason, we may need to manually trigger it with a longer max_minutes_ago value
     letters = []
-
-    for letter in dao_precompiled_letters_still_pending_virus_check():
+    for letter in dao_precompiled_letters_still_pending_virus_check(max_minutes_ago_to_check):
         # find letter in the scan bucket
         filename = generate_letter_pdf_filename(
             letter.reference, letter.created_at, ignore_folder=True, postage=letter.postage
@@ -396,8 +398,11 @@ def check_for_missing_rows_in_completed_jobs():
         missing_rows = find_missing_row_for_job(job.id, job.notification_count)
         for row_to_process in missing_rows:
             row = recipient_csv[row_to_process.missing_row]
+            _, task_args_kwargs = get_id_task_args_kwargs_for_job_row(
+                row, template, job, job.service, sender_id=sender_id
+            )
             current_app.logger.info("Processing missing row: %s for job: %s", row_to_process.missing_row, job.id)
-            process_row(row, template, job, job.service, sender_id=sender_id)
+            process_job_row(template.template_type, task_args_kwargs)
 
 
 @notify_celery.task(name="check-for-services-with-high-failure-rates-or-sending-to-tv-numbers")
@@ -453,8 +458,8 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         if current_app.should_send_zendesk_alerts:
             message += (
                 "\nYou can find instructions for this ticket in our manual:\n"
-                "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
-            )  # noqa
+                "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"
+            )
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] High failure rates for sms spotted for services",
                 message=message,

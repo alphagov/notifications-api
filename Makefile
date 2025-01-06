@@ -15,7 +15,7 @@ PYTHON_EXECUTABLE_PREFIX := $(shell test -d "$${VIRTUALENV_ROOT}" && echo "$${VI
 
 .PHONY: bootstrap
 bootstrap: generate-version-file ## Set up everything to run the app
-	pip3 install -r requirements_for_test.txt
+	uv pip install -r requirements_for_test.txt
 	createdb notification_api || true
 	(. environment.sh && flask db upgrade) || true
 
@@ -99,10 +99,11 @@ watch-tests: ## Watch tests and run on change
 
 .PHONY: freeze-requirements
 freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt
-	pip install --upgrade pip-tools
-	pip-compile requirements.in
+	uv pip compile requirements.in -o requirements.txt
+	uv pip sync requirements.txt
 	python -c "from notifications_utils.version_tools import copy_config; copy_config()"
-	pip-compile requirements_for_test.in
+	uv pip compile requirements_for_test.in -o requirements_for_test.txt
+	uv pip sync requirements_for_test.txt
 
 .PHONY: bump-utils
 bump-utils:  # Bump notifications-utils package to latest version

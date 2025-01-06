@@ -18,6 +18,8 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 from redis.exceptions import LockError
 
 from app.celery import scheduled_tasks
+from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
+from app.celery.provider_tasks import deliver_email, deliver_sms
 from app.celery.scheduled_tasks import (
     _check_slow_text_message_delivery_reports_and_raise_error_if_needed,
     change_dvla_api_key,
@@ -41,6 +43,7 @@ from app.celery.scheduled_tasks import (
     weekly_user_research_email,
     zendesk_new_email_branding_report,
 )
+from app.celery.tasks import process_incomplete_jobs, process_job, save_email
 from app.clients.letter.dvla import (
     DvlaNonRetryableException,
     DvlaThrottlingException,
@@ -83,8 +86,8 @@ def test_should_call_delete_invotations_on_delete_invitations_task(notify_db_ses
     assert scheduled_tasks.delete_invitations_created_more_than_two_days_ago.call_count == 1
 
 
-def test_should_update_scheduled_jobs_and_put_on_queue(mocker, sample_template):
-    mocked = mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_should_update_scheduled_jobs_and_put_on_queue(mock_celery_task, sample_template):
+    mocked = mock_celery_task(process_job)
 
     one_minute_in_the_past = datetime.utcnow() - timedelta(minutes=1)
     job = create_job(sample_template, job_status="scheduled", scheduled_for=one_minute_in_the_past)
@@ -96,8 +99,8 @@ def test_should_update_scheduled_jobs_and_put_on_queue(mocker, sample_template):
     mocked.assert_called_with([str(job.id)], queue="job-tasks")
 
 
-def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mocker):
-    mocked = mocker.patch("app.celery.tasks.process_job.apply_async")
+def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock_celery_task):
+    mocked = mock_celery_task(process_job)
 
     one_minute_in_the_past = datetime.utcnow() - timedelta(minutes=1)
     ten_minutes_in_the_past = datetime.utcnow() - timedelta(minutes=10)
@@ -136,7 +139,7 @@ def test_switch_current_sms_provider_on_slow_delivery_switches_when_one_provider
     switch_current_sms_provider_on_slow_delivery()
 
     mock_is_slow.assert_called_once_with(created_within_minutes=15, delivered_within_minutes=5, threshold=0.15)
-    mock_reduce.assert_called_once_with("firetext", time_threshold=timedelta(minutes=10))
+    mock_reduce.assert_called_once_with("firetext", time_threshold=timedelta(minutes=5))
 
 
 @freeze_time("2017-05-01 14:00:00")
@@ -257,8 +260,8 @@ def test_check_slow_text_message_delivery_reports_and_raise_error_if_needed(
             assert mock_incr.call_args_list == [mocker.call("slow-sms-delivery:number-of-times-over-threshold")]
 
 
-def test_check_job_status_task_calls_process_incomplete_jobs(mocker, sample_template):
-    mock_celery = mocker.patch("app.celery.tasks.process_incomplete_jobs.apply_async")
+def test_check_job_status_task_calls_process_incomplete_jobs(mock_celery_task, sample_template):
+    mock_celery = mock_celery_task(process_incomplete_jobs)
     job = create_job(
         template=sample_template,
         notification_count=3,
@@ -273,9 +276,9 @@ def test_check_job_status_task_calls_process_incomplete_jobs(mocker, sample_temp
 
 
 def test_check_job_status_task_calls_process_incomplete_jobs_when_scheduled_job_is_not_complete(
-    mocker, sample_template
+    mock_celery_task, sample_template
 ):
-    mock_celery = mocker.patch("app.celery.tasks.process_incomplete_jobs.apply_async")
+    mock_celery = mock_celery_task(process_incomplete_jobs)
     job = create_job(
         template=sample_template,
         notification_count=3,
@@ -289,8 +292,10 @@ def test_check_job_status_task_calls_process_incomplete_jobs_when_scheduled_job_
     mock_celery.assert_called_once_with([[str(job.id)]], queue=QueueNames.JOBS)
 
 
-def test_check_job_status_task_calls_process_incomplete_jobs_for_pending_scheduled_jobs(mocker, sample_template):
-    mock_celery = mocker.patch("app.celery.tasks.process_incomplete_jobs.apply_async")
+def test_check_job_status_task_calls_process_incomplete_jobs_for_pending_scheduled_jobs(
+    mock_celery_task, sample_template
+):
+    mock_celery = mock_celery_task(process_incomplete_jobs)
     job = create_job(
         template=sample_template,
         notification_count=3,
@@ -305,10 +310,10 @@ def test_check_job_status_task_calls_process_incomplete_jobs_for_pending_schedul
 
 
 def test_check_job_status_task_does_not_call_process_incomplete_jobs_for_non_scheduled_pending_jobs(
-    mocker,
+    mock_celery_task,
     sample_template,
 ):
-    mock_celery = mocker.patch("app.celery.tasks.process_incomplete_jobs.apply_async")
+    mock_celery = mock_celery_task(process_incomplete_jobs)
     create_job(
         template=sample_template,
         notification_count=3,
@@ -320,8 +325,8 @@ def test_check_job_status_task_does_not_call_process_incomplete_jobs_for_non_sch
     assert not mock_celery.called
 
 
-def test_check_job_status_task_calls_process_incomplete_jobs_for_multiple_jobs(mocker, sample_template):
-    mock_celery = mocker.patch("app.celery.tasks.process_incomplete_jobs.apply_async")
+def test_check_job_status_task_calls_process_incomplete_jobs_for_multiple_jobs(mock_celery_task, sample_template):
+    mock_celery = mock_celery_task(process_incomplete_jobs)
     job = create_job(
         template=sample_template,
         notification_count=3,
@@ -343,8 +348,8 @@ def test_check_job_status_task_calls_process_incomplete_jobs_for_multiple_jobs(m
     mock_celery.assert_called_once_with([[str(job.id), str(job_2.id)]], queue=QueueNames.JOBS)
 
 
-def test_check_job_status_task_only_sends_old_tasks(mocker, sample_template):
-    mock_celery = mocker.patch("app.celery.tasks.process_incomplete_jobs.apply_async")
+def test_check_job_status_task_only_sends_old_tasks(mock_celery_task, sample_template):
+    mock_celery = mock_celery_task(process_incomplete_jobs)
     job = create_job(
         template=sample_template,
         notification_count=3,
@@ -373,8 +378,8 @@ def test_check_job_status_task_only_sends_old_tasks(mocker, sample_template):
     mock_celery.assert_called_once_with([[str(job.id)]], queue=QueueNames.JOBS)
 
 
-def test_check_job_status_task_sets_jobs_to_error(mocker, sample_template):
-    mock_celery = mocker.patch("app.celery.tasks.process_incomplete_jobs.apply_async")
+def test_check_job_status_task_sets_jobs_to_error(mock_celery_task, sample_template):
+    mock_celery = mock_celery_task(process_incomplete_jobs)
     job = create_job(
         template=sample_template,
         notification_count=3,
@@ -398,9 +403,9 @@ def test_check_job_status_task_sets_jobs_to_error(mocker, sample_template):
     assert job_2.job_status == JOB_STATUS_IN_PROGRESS
 
 
-def test_replay_created_notifications(notify_db_session, sample_service, mocker):
-    email_delivery_queue = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
-    sms_delivery_queue = mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
+def test_replay_created_notifications(sample_service, mock_celery_task):
+    email_delivery_queue = mock_celery_task(deliver_email)
+    sms_delivery_queue = mock_celery_task(deliver_sms)
 
     sms_template = create_template(service=sample_service, template_type="sms")
     email_template = create_template(service=sample_service, template_type="email")
@@ -428,9 +433,9 @@ def test_replay_created_notifications(notify_db_session, sample_service, mocker)
 
 
 def test_replay_created_notifications_get_pdf_for_templated_letter_tasks_for_letters_not_ready_to_send(
-    sample_letter_template, mocker
+    sample_letter_template, mock_celery_task
 ):
-    mock_task = mocker.patch("app.celery.scheduled_tasks.get_pdf_for_templated_letter.apply_async")
+    mock_task = mock_celery_task(get_pdf_for_templated_letter)
     create_notification(
         template=sample_letter_template, billable_units=0, created_at=datetime.utcnow() - timedelta(hours=4)
     )
@@ -483,14 +488,20 @@ def test_check_if_letters_still_pending_virus_check_restarts_scan_for_stuck_lett
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=601),
+        created_at=datetime.utcnow() - timedelta(minutes=10, seconds=1),
         reference="one",
     )
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=599),
+        created_at=datetime.utcnow() - timedelta(minutes=9, seconds=59),
         reference="still has time to send",
+    )
+    create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(minutes=30, seconds=1),
+        reference="too old for us to bother with",
     )
     expected_filename = "NOTIFY.ONE.D.2.C.20190530134959.PDF"
 
@@ -659,7 +670,8 @@ def test_check_for_missing_rows_in_completed_jobs_ignores_old_and_new_jobs(
         return_value=(load_example_csv("multiple_email"), {"sender_id": None}),
     )
     mocker.patch("app.signing.encode", return_value="something_encoded")
-    process_row = mocker.patch("app.celery.scheduled_tasks.process_row")
+    get_id_task_args_kwargs_for_job_row = mocker.patch("app.celery.scheduled_tasks.get_id_task_args_kwargs_for_job_row")
+    process_job_row = mocker.patch("app.celery.scheduled_tasks.process_job_row")
 
     job = create_job(
         template=sample_email_template,
@@ -672,17 +684,11 @@ def test_check_for_missing_rows_in_completed_jobs_ignores_old_and_new_jobs(
 
     check_for_missing_rows_in_completed_jobs()
 
-    assert process_row.called is False
+    assert get_id_task_args_kwargs_for_job_row.called is False
+    assert process_job_row.called is False
 
 
-def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template):
-    mocker.patch(
-        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
-        return_value=(load_example_csv("multiple_email"), {"sender_id": None}),
-    )
-    mocker.patch("app.signing.encode", return_value="something_encoded")
-    process_row = mocker.patch("app.celery.scheduled_tasks.process_row")
-
+def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template, mock_celery_task):
     job = create_job(
         template=sample_email_template,
         notification_count=5,
@@ -692,20 +698,37 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template)
     for i in range(4):
         create_notification(job=job, job_row_number=i)
 
-    check_for_missing_rows_in_completed_jobs()
-
-    process_row.assert_called_once_with(mock.ANY, mock.ANY, job, job.service, sender_id=None)
-
-
-def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, sample_email_template):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_email"), {"sender_id": None}),
     )
-    save_email_task = mocker.patch("app.celery.tasks.save_email.apply_async")
-    mocker.patch("app.signing.encode", return_value="something_encoded")
-    mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
+    mocker.patch("app.celery.tasks.create_uuid", return_value="some-uuid")
+    mock_save_email = mock_celery_task(save_email)
 
+    check_for_missing_rows_in_completed_jobs()
+
+    assert mock_encode.mock_calls == [
+        mock.call(
+            {
+                "template": str(job.template_id),
+                "template_version": job.template_version,
+                "job": str(job.id),
+                "to": "test5@test.com",
+                "row_number": 4,
+                "personalisation": {"emailaddress": "test5@test.com"},
+                "client_reference": None,
+            }
+        )
+    ]
+    assert mock_save_email.mock_calls == [
+        mock.call((str(job.service_id), "some-uuid", "something_encoded"), {}, queue="database-tasks")
+    ]
+
+
+def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(
+    mocker, sample_email_template, fake_uuid, mock_celery_task
+):
     job = create_job(
         template=sample_email_template,
         notification_count=5,
@@ -715,36 +738,34 @@ def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, sampl
     for i in range(4):
         create_notification(job=job, job_row_number=i)
 
-    check_for_missing_rows_in_completed_jobs()
-    save_email_task.assert_called_once_with(
-        (
-            str(job.service_id),
-            "uuid",
-            "something_encoded",
-        ),
-        {},
-        queue="database-tasks",
-    )
-
-
-def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(mocker, sample_email_template, fake_uuid):
     mocker.patch(
         "app.celery.tasks.s3.get_job_and_metadata_from_s3",
         return_value=(load_example_csv("multiple_email"), {"sender_id": fake_uuid}),
     )
-    mock_process_row = mocker.patch("app.celery.scheduled_tasks.process_row")
-
-    job = create_job(
-        template=sample_email_template,
-        notification_count=5,
-        job_status=JOB_STATUS_FINISHED,
-        processing_finished=datetime.utcnow() - timedelta(minutes=20),
-    )
-    for i in range(4):
-        create_notification(job=job, job_row_number=i)
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
+    mocker.patch("app.celery.tasks.create_uuid", return_value="some-uuid")
+    mock_save_email = mock_celery_task(save_email)
 
     check_for_missing_rows_in_completed_jobs()
-    mock_process_row.assert_called_once_with(mock.ANY, mock.ANY, job, job.service, sender_id=fake_uuid)
+
+    assert mock_encode.mock_calls == [
+        mock.call(
+            {
+                "template": str(job.template_id),
+                "template_version": job.template_version,
+                "job": str(job.id),
+                "to": "test5@test.com",
+                "row_number": 4,
+                "personalisation": {"emailaddress": "test5@test.com"},
+                "client_reference": None,
+            }
+        )
+    ]
+    assert mock_save_email.mock_calls == [
+        mock.call(
+            (str(job.service_id), "some-uuid", "something_encoded"), {"sender_id": fake_uuid}, queue="database-tasks"
+        )
+    ]
 
 
 MockServicesSendingToTVNumbers = namedtuple(

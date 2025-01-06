@@ -1466,7 +1466,7 @@ class Notification(db.Model):
         UniqueConstraint("job_id", "job_row_number", name="uq_notifications_job_row_number"),
         Index("ix_notifications_notification_type_composite", "notification_type", "status", "created_at"),
         Index("ix_notifications_service_created_at", "service_id", "created_at"),
-        Index("ix_notifications_service_id_composite", "service_id", "notification_type", "status", "created_at"),
+        Index("ix_notifications_service_id_ntype_created_at", "service_id", "notification_type", "created_at"),
         # unsubscribe_link value should be null for non-email notifications
         CheckConstraint(
             "notification_type = 'email' OR unsubscribe_link is null",
@@ -2216,6 +2216,14 @@ class FactNotificationStatus(db.Model):
     notification_count = db.Column(db.Integer(), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        Index(
+            "ix_ft_notification_status_template_id_bst_date",
+            "template_id",
+            "bst_date",
+        ),
+    )
 
     __extended_statistics__ = (
         # dependencies

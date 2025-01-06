@@ -1,19 +1,24 @@
 import collections.abc
 import copy
+import inspect
 import json
 import textwrap
 import uuid
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
+import celery
 import pytest
 import pytz
 import requests_mock
 from flask import current_app, url_for
+from kombu.serialization import dumps
 from sqlalchemy.orm.session import make_transient
 
 from app import db
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -842,9 +847,41 @@ def organisation_has_new_go_live_request_template(notify_service):
     return create_custom_template(
         service=notify_service,
         user=notify_service.users[0],
-        template_config_name="GO_LIVE_NEW_REQUEST_FOR_ORG_USERS_TEMPLATE_ID",
+        template_config_name="GO_LIVE_NEW_REQUEST_FOR_ORG_APPROVERS_TEMPLATE_ID",
         content=template_content,
         subject="Request to go live: ((service_name))",
+        template_type="email",
+    )
+
+
+@pytest.fixture(scope="function")
+def organisation_has_new_go_live_request_requester_receipt_template(notify_service):
+    template_content = textwrap.dedent(
+        """\
+        Hi ((name))
+
+        You have sent a request to go live for a GOV.​UK Notify service called ‘((service_name))’.
+
+        Your request was sent to the following members of ((organisation_name)):
+
+        ((organisation_team_member_names))
+
+        If you do not receive an update about your request in the next 2 working days,
+        please reply to this email and let us know.
+
+        Thanks
+
+        GOV.​UK Notify team
+        https://www.gov.uk/notify
+        """
+    )
+
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="GO_LIVE_NEW_REQUEST_FOR_ORG_REQUESTER_TEMPLATE_ID",
+        content=template_content,
+        subject="Your request to go live",
         template_type="email",
     )
 
@@ -887,7 +924,7 @@ def organisation_reject_go_live_request_template(notify_service):
 
         GOV.​UK Notify team
         https://www.gov.uk/notify
-        """  # noqa
+        """
     )
 
     return create_custom_template(
@@ -1260,3 +1297,66 @@ def mock_dvla_callback_data():
         return data
 
     return _mock_dvla_callback_data
+
+
+@pytest.fixture
+def mock_celery_task(mocker):
+
+    def celery_mocker(celery_task: celery.local.PromiseProxy, assert_types=True) -> MagicMock:
+
+        def _assert_types_match(
+            args: tuple | list | None = None,
+            kwargs: dict | None = None,
+        ):
+            """
+            Checks all the args/kwargs provided match type hints if necessary by using the inspect module to introspect
+            the params and extract annotations. Handles partial args and kwargs, parameters without type hints, etc
+            """
+            args = args or []
+            kwargs = kwargs or {}
+            # get an iterator so we can loop through args in step with inspect
+            args = iter(args)
+
+            # try and check types are correct
+            for parameter_signature in inspect.signature(celery_task).parameters.values():
+                # skip if there's no type hint
+                if parameter_signature.annotation == inspect._empty:
+                    continue
+
+                # try and match with a provided arg - if there are no more args, then we must be calling with a kwarg
+                # instead. if there's no kwarg, then we're just falling back on a provided default
+                try:
+                    param_value = next(args)
+                except StopIteration:
+                    if parameter_signature.name in kwargs:
+                        param_value = kwargs[parameter_signature.name]
+                    else:
+                        # skip this param if we're not calling it as an arg or a kwarg - must be relying on a default
+                        # (the `celery_task.__header__` call would have failed if we needed to supply something)
+                        continue
+
+                assert isinstance(param_value, parameter_signature.annotation)
+
+        def check_apply_async(
+            args: tuple | list | None = None,
+            kwargs: dict | None = None,
+            queue=None,
+            **options,
+        ):
+            assert queue in QueueNames.all_queues()
+            # this'll raise an exception if the args/kwargs don't match the function definition
+            celery_task.__header__(*(args or ()), **(kwargs or {}))
+
+            if assert_types:
+                _assert_types_match(args, kwargs)
+
+            # make sure the values are all json serializable
+
+            dumps(args, serializer="json")
+            dumps(kwargs, serializer="json")
+
+        mock_apply_async = MagicMock(side_effect=check_apply_async)
+
+        return mocker.patch.object(celery_task, "apply_async", new=mock_apply_async)
+
+    return celery_mocker

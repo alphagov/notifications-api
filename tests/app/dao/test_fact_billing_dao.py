@@ -25,7 +25,7 @@ from app.dao.fact_billing_dao import (
     get_rates_for_billing,
     update_ft_billing_letter_despatch,
 )
-from app.dao.notifications_dao import dao_record_letter_despatched_on
+from app.dao.notifications_dao import dao_record_letter_despatched_on_by_id
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.models import FactBilling, FactBillingLetterDespatch, LetterCostThreshold
 from tests.app.db import (
@@ -1322,47 +1322,33 @@ class TestUpdateFtBillingLetterDespatch:
 
         # Send 1x 1st class (1 page), 1x 2nd class (1 page), 2x 2nd class (2 pages), 1x europe (3 pages)
         letter_template = create_template(service=sample_service, template_type="letter")
-        create_notification(
-            template=letter_template, postage="first", billable_units=1, status="delivered", reference="first1s"
+        noti_1 = create_notification(template=letter_template, postage="first", billable_units=1, status="delivered")
+        noti_2 = create_notification(template=letter_template, postage="first", billable_units=1, status="delivered")
+        noti_3 = create_notification(template=letter_template, postage="second", billable_units=2, status="delivered")
+        noti_4 = create_notification(template=letter_template, postage="second", billable_units=3, status="delivered")
+        noti_5 = create_notification(template=letter_template, postage="second", billable_units=3, status="delivered")
+        noti_6 = create_notification(template=letter_template, postage="second", billable_units=3, status="delivered")
+        noti_7 = create_notification(template=letter_template, postage="europe", billable_units=4, status="delivered")
+        dao_record_letter_despatched_on_by_id(
+            notification_id=noti_1.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )
-        create_notification(
-            template=letter_template, postage="first", billable_units=1, status="delivered", reference="first1u"
+        dao_record_letter_despatched_on_by_id(
+            notification_id=noti_2.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.unsorted
         )
-        create_notification(
-            template=letter_template, postage="second", billable_units=2, status="delivered", reference="second2s"
+        dao_record_letter_despatched_on_by_id(
+            notification_id=noti_3.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )
-        create_notification(
-            template=letter_template, postage="second", billable_units=3, status="delivered", reference="second3s"
+        dao_record_letter_despatched_on_by_id(
+            notification_id=noti_4.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )
-        create_notification(
-            template=letter_template, postage="second", billable_units=3, status="delivered", reference="second3s2"
+        dao_record_letter_despatched_on_by_id(
+            notification_id=noti_5.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )
-        create_notification(
-            template=letter_template, postage="second", billable_units=3, status="delivered", reference="second3u"
+        dao_record_letter_despatched_on_by_id(
+            notification_id=noti_6.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.unsorted
         )
-        create_notification(
-            template=letter_template, postage="europe", billable_units=4, status="delivered", reference="europe4s"
-        )
-        dao_record_letter_despatched_on(
-            reference="first1s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
-        )
-        dao_record_letter_despatched_on(
-            reference="first1u", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.unsorted
-        )
-        dao_record_letter_despatched_on(
-            reference="second2s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
-        )
-        dao_record_letter_despatched_on(
-            reference="second3s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
-        )
-        dao_record_letter_despatched_on(
-            reference="second3s2", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
-        )
-        dao_record_letter_despatched_on(
-            reference="second3u", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.unsorted
-        )
-        dao_record_letter_despatched_on(
-            reference="europe4s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        dao_record_letter_despatched_on_by_id(
+            notification_id=noti_7.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )
 
         assert FactBillingLetterDespatch.query.count() == 0
@@ -1427,11 +1413,11 @@ class TestUpdateFtBillingLetterDespatch:
         despatch_date = date(2020, 1, 1)
         letter_template = create_template(service=sample_service, template_type="letter")
         create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=1, sheet_count=1, post_class="first")
-        create_notification(
+        notification = create_notification(
             template=letter_template, postage="first", billable_units=1, status="delivered", reference="first1s"
         )
-        dao_record_letter_despatched_on(
-            reference="first1s", despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        dao_record_letter_despatched_on_by_id(
+            notification_id=notification.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )
 
         # We have an outdated billing fact that says 3 notifications were sent but there's actually only 1, so

@@ -14,7 +14,7 @@ from notifications_utils.recipient_validation.email_address import validate_and_
 from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, literal, or_, union
+from sqlalchemy import and_, asc, desc, func, or_, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import defer, joinedload, undefer
 from sqlalchemy.orm.exc import NoResultFound
@@ -38,7 +38,9 @@ from app.constants import (
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
+    NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
+    NOTIFICATION_STATUS_TYPES_DEPRECATED,
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
 )
@@ -48,7 +50,6 @@ from app.models import (
     FactNotificationStatus,
     LetterCostThreshold,
     Notification,
-    NotificationAllTimeView,
     NotificationHistory,
     NotificationLetterDespatch,
     ProviderDetails,
@@ -86,17 +87,26 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 ]
 
 
-def dao_get_last_date_template_was_used(template_id, service_id):
+def dao_get_last_date_template_was_used(template):
+    uniform_now = datetime.now()
+
     # first, just check if there are any rows present for this template in the notification table.
     # we can use the ix_notifications_template_id. If there are rows, then lets check to find out exactly
     # when the most recent created date was (also checking key type test too)
-    if db.session.query(Notification.query.filter(Notification.template_id == template_id).exists()).scalar():
+    if db.session.query(Notification.query.filter(Notification.template_id == template.id).exists()).scalar():
         last_date_from_notifications = (
             db.session.query(functions.max(Notification.created_at))
             .filter(
-                Notification.service_id == service_id,
-                Notification.template_id == template_id,
+                Notification.template_id == template.id,
                 Notification.key_type != KEY_TYPE_TEST,
+                # beyond last midnight we should have a record of the notification in FactNotificationStatus
+                # which is faster to query
+                Notification.created_at >= get_london_midnight_in_utc(uniform_now),
+                # filtering by notification_type and service_id is technically redundant, but postgres can't
+                # be certain of this and specifying them allows ix_notifications_service_id_ntype_created_at
+                # to be used
+                Notification.notification_type == template.template_type,
+                Notification.service_id == template.service_id,
             )
             .scalar()
         )
@@ -105,14 +115,14 @@ def dao_get_last_date_template_was_used(template_id, service_id):
             return last_date_from_notifications
 
     if db.session.query(
-        FactNotificationStatus.query.filter(FactNotificationStatus.template_id == template_id).exists()
+        FactNotificationStatus.query.filter(FactNotificationStatus.template_id == template.id).exists()
     ).scalar():
         last_date = (
             db.session.query(functions.max(FactNotificationStatus.bst_date))
             .filter(
-                FactNotificationStatus.template_id == template_id,
+                FactNotificationStatus.template_id == template.id,
                 FactNotificationStatus.key_type != KEY_TYPE_TEST,
-                FactNotificationStatus.bst_date > datetime.now() - relativedelta(years=1),
+                FactNotificationStatus.bst_date > uniform_now - relativedelta(years=1),
             )
             .scalar()
         )
@@ -242,7 +252,7 @@ def dao_get_notification_or_history_by_id(notification_id):
         return NotificationHistory.query.get(notification_id)
 
 
-def get_notifications_for_service(
+def get_notifications_for_service(  # noqa: C901
     service_id,
     filter_dict=None,
     page=1,
@@ -268,10 +278,18 @@ def get_notifications_for_service(
         filters.append(Notification.created_at >= midnight_n_days_ago(limit_days))
 
     if older_than is not None:
+        # fetching this separately and including in query as literal makes it visible to
+        # the planner
         older_than_created_at = (
-            db.session.query(Notification.created_at).filter(Notification.id == older_than).as_scalar()
+            db.session.query(Notification.created_at)
+            .filter(Notification.id == older_than, Notification.service_id == service_id)
+            .scalar()
         )
-        filters.append(Notification.created_at < older_than_created_at)
+        if older_than_created_at is None:
+            # ensure we return no results
+            filters.append(False)
+        else:
+            filters.append(Notification.created_at < older_than_created_at)
 
     if not include_jobs:
         filters.append(Notification.job_id == None)  # noqa
@@ -315,7 +333,8 @@ def _filter_query(query, filter_dict=None):
     statuses = multidict.getlist("status")
     if statuses:
         statuses = Notification.substitute_status(statuses)
-        query = query.filter(Notification.status.in_(statuses))
+        if not set(statuses).issuperset(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_DEPRECATED)):
+            query = query.filter(Notification.status.in_(statuses))
 
     # filter by template
     template_types = multidict.getlist("template_type")
@@ -815,12 +834,16 @@ def letters_missing_from_sending_bucket(seconds_to_subtract):
     return notifications
 
 
-def dao_precompiled_letters_still_pending_virus_check():
-    ten_minutes_ago = datetime.utcnow() - timedelta(seconds=600)
+def dao_precompiled_letters_still_pending_virus_check(max_minutes_ago_to_check):
+    earliest_timestamp_to_check = datetime.utcnow() - timedelta(minutes=max_minutes_ago_to_check)
+    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
 
     notifications = (
         Notification.query.filter(
-            Notification.created_at < ten_minutes_ago, Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
+            Notification.created_at > earliest_timestamp_to_check,
+            Notification.created_at < ten_minutes_ago,
+            Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK,
+            Notification.notification_type == LETTER_TYPE,
         )
         .order_by(Notification.created_at)
         .all()
@@ -878,27 +901,6 @@ def get_service_ids_with_notifications_on_date(notification_type, date):
         row.service_id
         for row in db.session.query(union(notification_table_query, ft_status_table_query).subquery()).distinct()
     }
-
-
-@autocommit
-def dao_record_letter_despatched_on(reference: str, despatched_on: datetime.date, cost_threshold: LetterCostThreshold):
-    stmt = (
-        insert(NotificationLetterDespatch)
-        .from_select(
-            ["notification_id", "despatched_on", "cost_threshold"],
-            NotificationAllTimeView.query.with_entities(
-                NotificationAllTimeView.id,
-                literal(despatched_on),
-                literal(cost_threshold.value),
-            ).filter(NotificationAllTimeView.reference == reference),
-        )
-        .on_conflict_do_update(
-            index_elements=["notification_id"],
-            set_={"despatched_on": despatched_on, "cost_threshold": cost_threshold.value},
-        )
-    )
-
-    db.session.execute(stmt)
 
 
 @autocommit

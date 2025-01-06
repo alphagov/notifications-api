@@ -262,7 +262,7 @@ def test_post_email_schema_invalid_email_address(email_address, err_msg):
     ],
 )
 def test_post_email_schema_invalid_unsubscribe_link(unsubscribe_link, err_msg):
-    j_son = valid_post_email_json_with_optionals
+    j_son = valid_post_email_json_with_optionals.copy()
     j_son["one_click_unsubscribe_url"] = unsubscribe_link
     with pytest.raises(ValidationError) as e:
         validate(j_son, post_email_request_schema)
