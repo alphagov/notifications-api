@@ -19,7 +19,7 @@ def validate_uuid(instance):
     return True
 
 
-@format_checker.checks("phone_number", raises=ValidationError)
+@format_checker.checks("phone_number", raises=InvalidPhoneError)
 def validate_schema_phone_number(instance):
 
     if isinstance(instance, str):
@@ -30,8 +30,9 @@ def validate_schema_phone_number(instance):
                 allow_uk_landline=True,
             )
         except InvalidPhoneError as e:
-            legacy_message = e.get_legacy_v2_api_error_message()
-            raise ValidationError(legacy_message) from None
+            # legacy_message = e.get_legacy_v2_api_error_message()
+            # raise ValidationError(legacy_message) from None
+            raise e
     return True
 
 
@@ -180,7 +181,13 @@ def __format_message(e):
     def get_error_message(e):
         # e.cause is an exception (such as InvalidPhoneError). if it's not present it was a standard jsonschema error
         # such as a required field not being present
-        error_message = str(e.cause) if e.cause else e.message
+        if e.cause:
+            try:
+                error_message = e.cause.get_legacy_v2_api_error_message()
+            except AttributeError:
+                error_message = str(e.cause)
+        else:
+            error_message = e.message
         return error_message.replace("'", "")
 
     path = get_path(e)
