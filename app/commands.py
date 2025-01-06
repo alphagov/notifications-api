@@ -58,7 +58,7 @@ from app.dao.services_dao import (
 )
 from app.dao.templates_dao import dao_create_template, dao_get_template_by_id
 from app.dao.users_dao import (
-    delete_model_user,
+    delete_user_and_all_associated_db_objects,
     delete_user_verify_codes,
     get_user_by_email,
 )
@@ -128,28 +128,53 @@ def purge_functional_test_data(user_email_prefix):
         # Make sure the full email includes a uuid in it
         # Just in case someone decides to use a similar email address.
         try:
-            uuid.UUID(usr.email_address.split("@")[0].split("+")[1])
+            uuid.UUID(usr.email_address.split("@")[0].split("+")[-1])
         except ValueError:
             print(f"Skipping {usr.email_address} as the user email doesn't contain a UUID.")
         else:
             services = dao_fetch_all_services_by_user(usr.id)
-            if services:
-                print(f"Deleting user {usr.id} which is part of services")
-                for service in services:
-                    delete_service_and_all_associated_db_objects(service)
-            else:
-                services_created_by_this_user = dao_fetch_all_services_created_by_user(usr.id)
-                if services_created_by_this_user:
-                    # user is not part of any services but may still have been the one to create the service
-                    # sometimes things get in this state if the tests fail half way through
-                    # Remove the service they created (but are not a part of) so we can then remove the user
-                    print(f"Deleting services created by {usr.id}")
-                    for service in services_created_by_this_user:
-                        delete_service_and_all_associated_db_objects(service)
+            for service in services:
+                print(f"Deleting service {service.id=} {service.name=} that {usr.id} belongs to")
+                delete_service_and_all_associated_db_objects(service)
 
-                print(f"Deleting user {usr.id} which is not part of any services")
-                delete_user_verify_codes(usr)
-                delete_model_user(usr)
+            services_created_by_this_user = dao_fetch_all_services_created_by_user(usr.id)
+            for service in services_created_by_this_user:
+                # user may still have been the one to create the service
+                # sometimes things get in this state if the tests fail half way through
+                # Remove the service they created (but are not a part of) so we can then remove the user
+                print(f"Deleting service {service.id=} {service.name=} created by {usr.id}")
+                delete_service_and_all_associated_db_objects(service)
+
+            print(f"Deleting user {usr.id} which is not part of any services")
+            delete_user_verify_codes(usr)
+            delete_user_and_all_associated_db_objects(usr)
+
+
+@notify_command()
+@click.option(
+    "-s",
+    "--service-id",
+    required=True,
+    help="""
+    Service id of the functional test seeded service
+""",
+)
+def delete_functional_test_service(service_id):
+    """
+    Removes a service, designed to be used on the functional tests seeded service.
+    After the services is deleted, also deletes any users who are now orphaned
+    """
+    service = dao_fetch_service_by_id(service_id)
+    users = list(service.users)
+    print(f"Deleting service {service.id} {service.name}")
+    delete_service_and_all_associated_db_objects(service)
+
+    for user in users:
+        print(len(user.services), user.services)
+        if not user.services:
+            print(f"Deleting user {user.id} {user.email_address}")
+            delete_user_verify_codes(user)
+            delete_user_and_all_associated_db_objects(user)
 
 
 @notify_command()

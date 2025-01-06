@@ -1,14 +1,19 @@
 import pytest
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from app.constants import INBOUND_SMS_TYPE
 from app.dao.inbound_numbers_dao import (
+    archive_or_release_inbound_number_for_service,
     dao_allocate_number_for_service,
     dao_get_available_inbound_numbers,
+    dao_get_inbound_number,
     dao_get_inbound_number_for_service,
     dao_get_inbound_numbers,
+    dao_remove_inbound_sms_for_service,
     dao_set_inbound_number_active_flag,
     dao_set_inbound_number_to_service,
 )
+from app.dao.service_sms_sender_dao import dao_add_sms_sender_for_service, dao_get_sms_senders_by_service_id
 from app.models import InboundNumber
 from tests.app.db import create_inbound_number, create_service
 
@@ -104,3 +109,87 @@ def test_dao_allocate_number_for_service_raises_if_invalid_inbound_number(notify
     with pytest.raises(Exception) as exc:
         dao_allocate_number_for_service(service_id=service.id, inbound_number_id=fake_uuid)
     assert "is not available" in str(exc.value)
+
+
+def test_archive_or_release_inbound_number_for_service_archive(sample_service, sample_inbound_numbers):
+    inbound = next((inbound for inbound in sample_inbound_numbers if inbound.service_id == sample_service.id), None)
+
+    archive_or_release_inbound_number_for_service(sample_service.id, True)
+
+    updated_inbound = InboundNumber.query.filter_by(number=inbound.number).one_or_none()
+
+    assert updated_inbound.service_id is None
+    assert updated_inbound.active is False
+
+
+def test_archive_or_release_inbound_number_for_service_release(sample_service, sample_inbound_numbers):
+    inbound = next((inbound for inbound in sample_inbound_numbers if inbound.service_id == sample_service.id), None)
+
+    archive_or_release_inbound_number_for_service(sample_service.id, False)
+
+    updated_inbound = InboundNumber.query.filter_by(number=inbound.number).one_or_none()
+
+    assert updated_inbound.service_id is None
+    assert updated_inbound.active is True
+
+
+@pytest.mark.parametrize(
+    "archive, inbound_number, expected_active_status",
+    [
+        (True, "7654321", False),
+        (False, "1234567", True),
+    ],
+)
+def test_dao_remove_inbound_sms_for_service_success(
+    admin_request, sample_service_full_permissions, archive, inbound_number, expected_active_status
+):
+    service = sample_service_full_permissions
+    service_inbound = dao_get_inbound_number_for_service(service.id)
+    dao_add_sms_sender_for_service(service.id, inbound_number, is_default=True, inbound_number_id=service_inbound.id)
+    sms_senders = dao_get_sms_senders_by_service_id(service.id)
+
+    assert (service.has_permission(INBOUND_SMS_TYPE)) is True
+    assert any(x.inbound_number_id is not None and x.sms_sender == inbound_number for x in sms_senders) is True
+    assert service_inbound.active is True
+    assert service_inbound.service_id is not None
+
+    dao_remove_inbound_sms_for_service(service.id, archive=archive)
+
+    sms_senders = dao_get_sms_senders_by_service_id(service.id)
+    updated_service_inbound = dao_get_inbound_number_for_service(service.id)
+    inbound = dao_get_inbound_number(service_inbound.id)
+
+    assert (service.has_permission(INBOUND_SMS_TYPE)) is False
+    assert any(x.inbound_number_id is not None and x.sms_sender == inbound_number for x in sms_senders) is False
+    assert updated_service_inbound is None
+    assert inbound.service_id is None
+    assert inbound.active is expected_active_status
+
+
+def test_dao_remove_inbound_sms_for_service_failure(sample_service_full_permissions, mocker, notify_db_session):
+    inbound_number = "76543953521"
+    service = sample_service_full_permissions
+    service_inbound = dao_get_inbound_number_for_service(service.id)
+    dao_add_sms_sender_for_service(service.id, inbound_number, is_default=True, inbound_number_id=service_inbound.id)
+
+    sms_senders = dao_get_sms_senders_by_service_id(service.id)
+    assert service.has_permission(INBOUND_SMS_TYPE) is True
+    assert any(x.inbound_number_id is not None and x.sms_sender == inbound_number for x in sms_senders) is True
+    assert service_inbound.active is True
+    assert service_inbound.service_id is not None
+
+    with mocker.patch(
+        "app.dao.inbound_numbers_dao.archive_or_release_inbound_number_for_service", side_effect=SQLAlchemyError
+    ):
+        with pytest.raises(SQLAlchemyError):
+            dao_remove_inbound_sms_for_service(service.id, archive=True)
+
+    sms_senders_after = dao_get_sms_senders_by_service_id(service.id)
+    updated_service_inbound = dao_get_inbound_number_for_service(service.id)
+    inbound = dao_get_inbound_number(service_inbound.id)
+
+    assert service.has_permission(INBOUND_SMS_TYPE) is True
+    assert any(x.inbound_number_id is not None and x.sms_sender == inbound_number for x in sms_senders_after) is True
+    assert updated_service_inbound is not None
+    assert inbound.service_id == service.id
+    assert inbound.active is True

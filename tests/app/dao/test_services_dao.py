@@ -106,7 +106,7 @@ def test_create_service(notify_db_session):
     assert service_db.name == "service name"
     assert service_db.id == service.id
     assert service_db.email_sender_local_part == "service.name"
-    assert service_db.prefix_sms is True
+    assert service_db.prefix_sms is False
     assert service.active is True
     assert user in service_db.users
     assert service_db.organisation_type == "central"
@@ -133,7 +133,7 @@ def test_create_service_with_organisation(notify_db_session):
     organisation = Organisation.query.get(organisation.id)
     assert service_db.name == "service_name"
     assert service_db.id == service.id
-    assert service_db.prefix_sms is True
+    assert service_db.prefix_sms is False
     assert service.active is True
     assert user in service_db.users
     assert service_db.organisation_type == "local"
@@ -742,11 +742,12 @@ def test_delete_service_and_associated_objects(notify_db_session):
     assert Job.query.count() == 0
     assert Notification.query.count() == 0
     assert Permission.query.count() == 0
-    assert User.query.count() == 0
     assert InvitedUser.query.count() == 0
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
     assert ServicePermission.query.count() == 0
+    # we don't delete users as part of this function (see delete_user_and_all_associated_db_objects)
+    assert User.query.count() == 1
     # the organisation hasn't been deleted
     assert Organisation.query.count() == 1
 

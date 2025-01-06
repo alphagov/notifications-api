@@ -13,9 +13,11 @@ def dao_add_service_permission(service_id, permission):
     db.session.add(service_permission)
 
 
-def dao_remove_service_permission(service_id, permission):
-    deleted = ServicePermission.query.filter(
+def dao_remove_service_permission(service_id, permission, commit=True):
+    result = ServicePermission.query.filter(
         ServicePermission.service_id == service_id, ServicePermission.permission == permission
     ).delete()
-    db.session.commit()
-    return deleted
+
+    if commit:
+        db.session.commit()
+    return result
