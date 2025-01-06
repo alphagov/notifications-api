@@ -2148,19 +2148,6 @@ class AuthType(db.Model):
     name = db.Column(db.String, primary_key=True)
 
 
-class DailySortedLetter(db.Model):
-    __tablename__ = "daily_sorted_letter"
-
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    billing_day = db.Column(db.Date, nullable=False, index=True)
-    file_name = db.Column(db.String, nullable=True)
-    unsorted_count = db.Column(db.Integer, nullable=False, default=0)
-    sorted_count = db.Column(db.Integer, nullable=False, default=0)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
-
-    __table_args__ = (UniqueConstraint("file_name", "billing_day", name="uix_file_name_billing_day"),)
-
-
 class FactBillingLetterDespatch(db.Model):
     __tablename__ = "ft_billing_letter_despatch"
 
