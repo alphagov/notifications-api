@@ -194,8 +194,6 @@ kombu==5.3.7
     # via
     #   -r requirements.txt
     #   celery
-lxml==4.9.3
-    # via -r requirements.txt
 mako==1.2.3
     # via
     #   -r requirements.txt
