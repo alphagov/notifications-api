@@ -1,7 +1,6 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements.in
 
-cffi==1.15.1
 celery[sqs]==5.4.0
 Flask-Bcrypt==1.0.1
 flask-marshmallow==0.14.0
