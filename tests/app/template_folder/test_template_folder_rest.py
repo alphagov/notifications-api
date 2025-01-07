@@ -232,7 +232,7 @@ def test_update_template_folder_users(admin_request, sample_service):
     [
         ({}, "name is a required property"),
         ({"name": None}, "name None is not of type string"),
-        ({"name": ""}, "name  is too short"),
+        ({"name": ""}, "name  should be non-empty"),
     ],
 )
 def test_update_template_folder_fails_if_missing_name(admin_request, sample_service, data, err):

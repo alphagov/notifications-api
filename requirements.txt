@@ -8,8 +8,10 @@ arrow==1.2.3
     # via isoduration
 async-timeout==4.0.3
     # via redis
-attrs==22.1.0
-    # via jsonschema
+attrs==24.3.0
+    # via
+    #   jsonschema
+    #   referencing
 awscrt==0.20.9
     # via botocore
 bcrypt==4.0.0
@@ -78,7 +80,7 @@ flask==3.1.0
     #   sentry-sdk
 flask-bcrypt==1.0.1
     # via -r requirements.in
-flask-marshmallow==0.14.0
+flask-marshmallow==1.3.0
     # via -r requirements.in
 flask-migrate==3.1.0
     # via -r requirements.in
@@ -104,7 +106,7 @@ idna==3.7
     # via
     #   jsonschema
     #   requests
-iso8601==1.1.0
+iso8601==2.1.0
     # via -r requirements.in
 isoduration==20.11.0
     # via jsonschema
@@ -122,8 +124,10 @@ jmespath==1.0.1
     #   botocore
 jsonpointer==2.3
     # via jsonschema
-jsonschema==4.16.0
+jsonschema==4.23.0
     # via -r requirements.in
+jsonschema-specifications==2024.10.1
+    # via jsonschema
 kombu==5.3.7
     # via celery
 mako==1.2.3
@@ -143,7 +147,7 @@ marshmallow-sqlalchemy==0.28.1
     # via -r requirements.in
 mistune==0.8.4
     # via notifications-utils
-notifications-python-client==8.0.1
+notifications-python-client==10.0.1
     # via -r requirements.in
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@7793546055d819904c76da73628b64d3eda255c4
     # via -r requirements.in
@@ -161,7 +165,7 @@ prometheus-client==0.14.1
     #   gds-metrics
 prompt-toolkit==3.0.31
     # via click-repl
-psycopg2-binary==2.9.6
+psycopg2-binary==2.9.10
     # via -r requirements.in
 pycparser==2.21
     # via cffi
@@ -169,14 +173,12 @@ pycurl==7.44.1
     # via
     #   celery
     #   kombu
-pyjwt==2.5.0
+pyjwt==2.10.0
     # via
     #   -r requirements.in
     #   notifications-python-client
 pypdf==3.17.0
     # via notifications-utils
-pyrsistent==0.18.1
-    # via jsonschema
 python-dateutil==2.8.2
     # via
     #   arrow
@@ -190,6 +192,10 @@ pyyaml==6.0.2
     # via notifications-utils
 redis==4.5.4
     # via flask-redis
+referencing==0.35.1
+    # via
+    #   jsonschema
+    #   jsonschema-specifications
 requests==2.32.2
     # via
     #   -r requirements.in
@@ -200,6 +206,10 @@ rfc3339-validator==0.1.4
     # via jsonschema
 rfc3987==1.3.8
     # via jsonschema
+rpds-py==0.22.3
+    # via
+    #   jsonschema
+    #   referencing
 s3transfer==0.10.1
     # via boto3
 segno==1.6.1
@@ -211,7 +221,6 @@ setuptools==75.6.0
 six==1.16.0
     # via
     #   click-repl
-    #   flask-marshmallow
     #   python-dateutil
     #   rfc3339-validator
 smartypants==2.0.1

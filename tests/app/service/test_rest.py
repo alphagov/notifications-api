@@ -3991,7 +3991,7 @@ ServiceJoinRequestTestCase = namedtuple(
             service_id=uuid.uuid4(),
             contacted_user_ids=[],
             expected_status_code=400,
-            expected_response="contacted_user_ids [] is too short",
+            expected_response="contacted_user_ids [] should be non-empty",
         ),
         ServiceJoinRequestTestCase(
             requester_id=None,
