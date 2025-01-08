@@ -19,7 +19,6 @@ requests==2.32.2
 psycopg2-binary==2.9.6
 PyJWT==2.5.0
 SQLAlchemy==1.4.41
-lxml==4.9.3
 
 notifications-python-client==8.0.1
 

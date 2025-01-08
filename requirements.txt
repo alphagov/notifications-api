@@ -126,8 +126,6 @@ jsonschema==4.16.0
     # via -r requirements.in
 kombu==5.3.7
     # via celery
-lxml==4.9.3
-    # via -r requirements.in
 mako==1.2.3
     # via alembic
 markupsafe==2.1.1
