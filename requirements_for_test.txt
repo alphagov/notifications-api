@@ -366,6 +366,8 @@ sqlalchemy==1.4.41
     #   alembic
     #   flask-sqlalchemy
     #   marshmallow-sqlalchemy
+squawk-cli==1.4.0
+    # via -r requirements_for_test.in
 statsd==4.0.1
     # via
     #   -r requirements.txt
