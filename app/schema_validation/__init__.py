@@ -6,7 +6,7 @@ from uuid import UUID
 from iso8601 import ParseError, iso8601
 from jsonschema import Draft7Validator, FormatChecker, ValidationError
 from notifications_utils.recipient_validation.email_address import validate_email_address
-from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
+from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError, InvalidRecipientError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
 
 format_checker = FormatChecker()
@@ -30,8 +30,6 @@ def validate_schema_phone_number(instance):
                 allow_uk_landline=True,
             )
         except InvalidPhoneError as e:
-            # legacy_message = e.get_legacy_v2_api_error_message()
-            # raise ValidationError(legacy_message) from None
             raise e
     return True
 
@@ -43,46 +41,46 @@ def validate_schema_email_address(instance):
     return True
 
 
-@format_checker.checks("postage", raises=ValidationError)
+@format_checker.checks("postage", raises=InvalidRecipientError)
 def validate_schema_postage(instance):
     """
     For validating postage on templates and user requests, where postage can only be `first` or `second`
     """
     if isinstance(instance, str):
         if instance not in ["first", "second"]:
-            raise ValidationError("invalid. It must be either first or second.")
+            raise InvalidRecipientError(message="invalid. It must be either first or second.")
     return True
 
 
-@format_checker.checks("postage_including_international", raises=ValidationError)
+@format_checker.checks("postage_including_international", raises=InvalidRecipientError)
 def validate_schema_postage_including_international(instance):
     """
     For validating postage sent by admin when sending a precompiled letter, where postage can include international
     """
     if isinstance(instance, str):
         if instance not in ["first", "second", "europe", "rest-of-world"]:
-            raise ValidationError("invalid. It must be first, second, europe or rest-of-world.")
+            raise InvalidRecipientError(message="invalid. It must be first, second, europe or rest-of-world.")
     return True
 
 
-@format_checker.checks("datetime_within_next_day", raises=ValidationError)
+@format_checker.checks("datetime_within_next_day", raises=InvalidRecipientError)
 def validate_schema_date_with_hour(instance):
     if isinstance(instance, str):
         try:
             dt = iso8601.parse_date(instance).replace(tzinfo=None)
             if dt < datetime.utcnow():
-                raise ValidationError("datetime can not be in the past")
+                raise InvalidRecipientError(message="datetime can not be in the past")
             if dt > datetime.utcnow() + timedelta(hours=24):
-                raise ValidationError("datetime can only be 24 hours in the future")
+                raise InvalidRecipientError(message="datetime can only be 24 hours in the future")
         except ParseError as e:
-            raise ValidationError(
-                "datetime format is invalid. It must be a valid ISO8601 date time format, "
+            raise InvalidRecipientError(
+                message="datetime format is invalid. It must be a valid ISO8601 date time format, "
                 "https://en.wikipedia.org/wiki/ISO_8601"
             ) from e
     return True
 
 
-@format_checker.checks("send_a_file_retention_period", raises=ValidationError)
+@format_checker.checks("send_a_file_retention_period", raises=InvalidRecipientError)
 def validate_schema_retention_period(instance):
     if instance is None:
         return True
@@ -93,12 +91,12 @@ def validate_schema_retention_period(instance):
         if match and 1 <= int(match.group(1)) <= 78:
             return True
 
-    raise ValidationError(
-        f"Unsupported value for retention_period: {instance}. Supported periods are from 1 to 78 weeks."
+    raise InvalidRecipientError(
+        message=f"Unsupported value for retention_period: {instance}. Supported periods are from 1 to 78 weeks."
     )
 
 
-@format_checker.checks("send_a_file_filename", raises=ValidationError)
+@format_checker.checks("send_a_file_filename", raises=InvalidRecipientError)
 def validate_send_a_file_filename(instance):
     if instance is None:
         return True
@@ -107,34 +105,34 @@ def validate_send_a_file_filename(instance):
         if "." in instance:
             return True
 
-    raise ValidationError("`filename` must end with a file extension. For example, filename.csv")
+    raise ValidationError(message="`filename` must end with a file extension. For example, filename.csv")
 
 
-@format_checker.checks("send_a_file_is_csv", raises=ValidationError)
+@format_checker.checks("send_a_file_is_csv", raises=InvalidRecipientError)
 def send_a_file_is_csv(instance):
     if instance is None or isinstance(instance, bool):
         return True
 
-    raise ValidationError(f"Unsupported value for is_csv: {instance}. Use a boolean true or false value.")
+    raise ValidationError(message=f"Unsupported value for is_csv: {instance}. Use a boolean true or false value.")
 
 
-@format_checker.checks("send_a_file_confirm_email_before_download", raises=ValidationError)
+@format_checker.checks("send_a_file_confirm_email_before_download", raises=InvalidRecipientError)
 def send_a_file_confirm_email_before_download(instance):
     if instance is None or isinstance(instance, bool):
         return True
 
-    raise ValidationError(
-        f"Unsupported value for confirm_email_before_download: {instance}. Use a boolean true or false value."
+    raise InvalidRecipientError(
+        message=f"Unsupported value for confirm_email_before_download: {instance}. Use a boolean true or false value."
     )
 
 
-@format_checker.checks("letter_production_run_date", raises=ValidationError)
+@format_checker.checks("letter_production_run_date", raises=InvalidRecipientError)
 def validate_letter_production_run_date(instance):
     if isinstance(instance, str):
         if re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+", instance):
             return True
 
-    raise ValidationError("Datetime format is invalid. It must be in the format %Y-%m-%d %H:%M:%S.%f")
+    raise InvalidRecipientError(message="Datetime format is invalid. It must be in the format %Y-%m-%d %H:%M:%S.%f")
 
 
 def validate(json_to_validate, schema):
@@ -183,7 +181,7 @@ def __format_message(e):
         # such as a required field not being present
         if e.cause:
             try:
-                error_message = e.cause.get_legacy_v2_api_error_message()
+                error_message = e.cause.get_v2_message()
             except AttributeError:
                 error_message = str(e.cause)
         else:

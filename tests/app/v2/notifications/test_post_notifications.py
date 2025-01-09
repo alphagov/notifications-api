@@ -673,7 +673,6 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
         "template_id": template.id,
         "personalisation": personalisation,
     }
-
     response = api_client_request.post(
         template.service_id,
         "v2_notifications.post_notification",
