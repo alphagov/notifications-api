@@ -84,7 +84,7 @@ flask-migrate==3.1.0
     # via -r requirements.in
 flask-redis==0.4.0
     # via notifications-utils
-flask-sqlalchemy==3.0.2
+flask-sqlalchemy==3.0.5
     # via
     #   -r requirements.in
     #   flask-migrate
