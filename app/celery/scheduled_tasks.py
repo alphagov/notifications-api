@@ -33,6 +33,7 @@ from app.config import QueueNames, TaskNames
 from app.constants import (
     EMAIL_TYPE,
     JOB_STATUS_ERROR,
+    JOB_STATUS_FINISHED_ALL_NOTIFICATIONS_CREATED,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
     KEY_TYPE_NORMAL,
@@ -392,8 +393,13 @@ def check_if_letters_still_in_created():
 
 @notify_celery.task(name="check-for-missing-rows-in-completed-jobs")
 def check_for_missing_rows_in_completed_jobs():
-    jobs = find_jobs_with_missing_rows()
-    for job in jobs:
+    jobs_missing, jobs_nomissing = find_jobs_with_missing_rows()
+
+    for job in jobs_nomissing:
+        job.job_status = JOB_STATUS_FINISHED_ALL_NOTIFICATIONS_CREATED
+        dao_update_job(job)
+
+    for job in jobs_missing:
         recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
         missing_rows = find_missing_row_for_job(job.id, job.notification_count)
         for row_to_process in missing_rows:
