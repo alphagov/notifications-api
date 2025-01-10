@@ -16,10 +16,11 @@ async-timeout==4.0.3
     # via
     #   -r requirements.txt
     #   redis
-attrs==22.1.0
+attrs==24.3.0
     # via
     #   -r requirements.txt
     #   jsonschema
+    #   referencing
 awscrt==0.20.9
     # via
     #   -r requirements.txt
@@ -127,7 +128,7 @@ flask==3.1.0
     #   notifications-utils
 flask-bcrypt==1.0.1
     # via -r requirements.txt
-flask-marshmallow==0.14.0
+flask-marshmallow==1.3.0
     # via -r requirements.txt
 flask-migrate==3.1.0
     # via -r requirements.txt
@@ -165,7 +166,7 @@ idna==3.7
     #   trustme
 iniconfig==2.0.0
     # via pytest
-iso8601==1.1.0
+iso8601==2.1.0
     # via -r requirements.txt
 isoduration==20.11.0
     # via -r requirements.txt
@@ -187,8 +188,12 @@ jmespath==1.0.1
     #   botocore
 jsonpointer==2.3
     # via -r requirements.txt
-jsonschema==4.16.0
+jsonschema==4.23.0
     # via -r requirements.txt
+jsonschema-specifications==2024.10.1
+    # via
+    #   -r requirements.txt
+    #   jsonschema
 kombu==5.3.7
     # via
     #   -r requirements.txt
@@ -218,7 +223,7 @@ moto==5.0.11
     # via -r requirements_for_test.in
 mypy-extensions==1.0.0
     # via black
-notifications-python-client==8.0.1
+notifications-python-client==10.0.1
     # via -r requirements.txt
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@7322d3573eb54285166cae84da22edfae8067f02
     # via -r requirements.txt
@@ -251,13 +256,13 @@ prompt-toolkit==3.0.31
     # via
     #   -r requirements.txt
     #   click-repl
-psycopg2-binary==2.9.6
+psycopg2-binary==2.9.10
     # via -r requirements.txt
 pycparser==2.21
     # via cffi
 pycurl==7.44.1
     # via -r requirements.txt
-pyjwt==2.5.0
+pyjwt==2.10.0
     # via
     #   -r requirements.txt
     #   notifications-python-client
@@ -265,10 +270,6 @@ pypdf==3.17.0
     # via
     #   -r requirements.txt
     #   notifications-utils
-pyrsistent==0.18.1
-    # via
-    #   -r requirements.txt
-    #   jsonschema
 pytest==8.3.4
     # via
     #   -r requirements_for_test_common.in
@@ -311,6 +312,11 @@ redis==4.5.4
     # via
     #   -r requirements.txt
     #   flask-redis
+referencing==0.35.1
+    # via
+    #   -r requirements.txt
+    #   jsonschema
+    #   jsonschema-specifications
 requests==2.32.2
     # via
     #   -r requirements.txt
@@ -328,6 +334,11 @@ rfc3339-validator==0.1.4
     # via -r requirements.txt
 rfc3987==1.3.8
     # via -r requirements.txt
+rpds-py==0.22.3
+    # via
+    #   -r requirements.txt
+    #   jsonschema
+    #   referencing
 ruff==0.8.2
     # via -r requirements_for_test_common.in
 s3transfer==0.10.1
@@ -348,7 +359,6 @@ six==1.16.0
     # via
     #   -r requirements.txt
     #   click-repl
-    #   flask-marshmallow
     #   python-dateutil
     #   rfc3339-validator
 smartypants==2.0.1
