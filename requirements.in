@@ -16,7 +16,7 @@ marshmallow==3.18.0
 # Requests pinned to 2.32.2 until https://github.com/psf/requests/issues/6730 is fixed. Once so, we can remove this pin
 requests==2.32.2
 psycopg2-binary==2.9.10
-PyJWT==2.10.0
+PyJWT==2.10.1
 SQLAlchemy==1.4.41
 
 notifications-python-client==10.0.1

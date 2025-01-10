@@ -95,9 +95,7 @@ gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6
 govuk-bank-holidays==0.15
     # via notifications-utils
 greenlet==3.0.3
-    # via
-    #   eventlet
-    #   sqlalchemy
+    # via eventlet
 gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via
     #   -r requirements.in
@@ -171,7 +169,7 @@ pycurl==7.44.1
     # via
     #   celery
     #   kombu
-pyjwt==2.10.0
+pyjwt==2.10.1
     # via
     #   -r requirements.in
     #   notifications-python-client
