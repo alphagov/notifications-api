@@ -21,7 +21,7 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from gds_metrics import GDSMetrics
 from gds_metrics.metrics import Gauge, Histogram
-from notifications_utils import logging, request_helper
+from notifications_utils import request_helper
 from notifications_utils.celery import NotifyCelery
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.signing.signing_client import Signing
@@ -29,6 +29,7 @@ from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.eventlet import EventletTimeout
 from notifications_utils.local_vars import LazyLocalGetter
+from notifications_utils.logging import flask as utils_logging
 from sqlalchemy import event
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
@@ -176,7 +177,7 @@ def create_app(application):
     migrate.init_app(application, db=db)
     ma.init_app(application)
     statsd_client.init_app(application)
-    logging.init_app(application, statsd_client)
+    utils_logging.init_app(application, statsd_client)
 
     notify_celery.init_app(application)
     signing.init_app(application)
