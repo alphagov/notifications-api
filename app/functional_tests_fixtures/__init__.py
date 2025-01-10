@@ -272,6 +272,8 @@ export FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY='{function_tests_test_key_name}-{se
 export FUNCTIONAL_TESTS_API_AUTH_SECRET='{current_app.config['INTERNAL_CLIENT_API_KEYS']['notify-functional-tests'][0]}'
 
 export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO='{test_email_username}+{environment}-reply-to@{email_domain}'
+export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_2='{test_email_username}+{environment}-reply-to+2@{email_domain}'
+export FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_3='{test_email_username}+{environment}-reply-to+3@{email_domain}'
 export FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER='07700900500'
 
 export FUNCTIONAL_TEST_SMS_TEMPLATE_ID='{sms_template.id}'
