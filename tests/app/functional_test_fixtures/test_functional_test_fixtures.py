@@ -77,6 +77,14 @@ def test_function_test_fixtures_apply(notify_api, notify_db_session, notify_serv
                 variables["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO"]
                 == "notify-tests-preview+dev-env-reply-to@digital.cabinet-office.gov.uk"
             )
+            assert (
+                variables["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_2"]
+                == "notify-tests-preview+dev-env-reply-to+2@digital.cabinet-office.gov.uk"
+            )
+            assert (
+                variables["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_3"]
+                == "notify-tests-preview+dev-env-reply-to+3@digital.cabinet-office.gov.uk"
+            )
             assert variables["FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER"] == "07700900500"
             assert "FUNCTIONAL_TEST_SMS_TEMPLATE_ID" in variables
             assert "FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID" in variables
