@@ -105,6 +105,10 @@ def requires_auth():
 
     api_key = _decode_jwt_token(auth_token, service.api_keys, service.id)
 
+    g.api_user = api_key
+    g.service_id = service_id
+    g.authenticated_service = service
+
     current_app.logger.info(
         "API authorised for service %s with api key %s, using issuer %s for URL: %s",
         service_id,
@@ -112,10 +116,6 @@ def requires_auth():
         request.headers.get("User-Agent"),
         request.base_url,
     )
-
-    g.api_user = api_key
-    g.service_id = service_id
-    g.authenticated_service = service
 
 
 def _decode_jwt_token(auth_token, api_keys, service_id=None):
