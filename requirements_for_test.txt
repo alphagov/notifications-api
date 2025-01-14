@@ -154,7 +154,6 @@ greenlet==3.0.3
     # via
     #   -r requirements.txt
     #   eventlet
-    #   sqlalchemy
 gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via
     #   -r requirements.txt
@@ -262,7 +261,7 @@ pycparser==2.21
     # via cffi
 pycurl==7.44.1
     # via -r requirements.txt
-pyjwt==2.10.0
+pyjwt==2.10.1
     # via
     #   -r requirements.txt
     #   notifications-python-client
