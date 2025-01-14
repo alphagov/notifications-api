@@ -12,6 +12,7 @@ from app import db
 from app.constants import (
     JOB_STATUS_CANCELLED,
     JOB_STATUS_FINISHED,
+    JOB_STATUS_FINISHED_ALL_NOTIFICATIONS_CREATED,
     JOB_STATUS_PENDING,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
@@ -214,26 +215,30 @@ def can_letter_job_be_cancelled(job):
     if template.template_type != LETTER_TYPE:
         return False, "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
 
-    notifications = Notification.query.filter(Notification.job_id == job.id).all()
-    count_notifications = len(notifications)
-    if job.job_status != JOB_STATUS_FINISHED or count_notifications != job.notification_count:
+    if job.job_status != JOB_STATUS_FINISHED_ALL_NOTIFICATIONS_CREATED:
         return False, "We are still processing these letters, please try again in a minute."
-    count_cancellable_notifications = len([n for n in notifications if n.status in CANCELLABLE_JOB_LETTER_STATUSES])
-    if count_cancellable_notifications != job.notification_count or not letter_can_be_cancelled(
-        NOTIFICATION_CREATED, job.created_at
-    ):
+
+    if (not letter_can_be_cancelled(NOTIFICATION_CREATED, job.created_at)) or db.session.query(
+        Notification.query.filter(
+            Notification.job_id == job.id, Notification.status.not_in(CANCELLABLE_JOB_LETTER_STATUSES)
+        ).exists()
+    ).scalar():
         return False, "It’s too late to cancel sending, these letters have already been sent."
 
     return True, None
 
 
-def find_jobs_with_missing_rows():
+def find_jobs_with_missing_rows() -> (list[Job], list[Job]):
+    """
+    Returns a tuple of two lists of "finished" jobs, the first with missing rows, the
+    second with all rows created
+    """
     # Jobs can be a maximum of 100,000 rows. It typically takes 10 minutes to create all those notifications.
     # Using 20 minutes as a condition seems reasonable.
     ten_minutes_ago = datetime.utcnow() - timedelta(minutes=20)
     yesterday = datetime.utcnow() - timedelta(days=1)
-    jobs_with_rows_missing = (
-        db.session.query(Job)
+    jobs_has_all_notifications = (
+        db.session.query(Job, (func.count(Notification.id) == Job.notification_count).label("has_all_notifications"))
         .filter(
             Job.job_status == JOB_STATUS_FINISHED,
             Job.processing_finished < ten_minutes_ago,
@@ -241,10 +246,12 @@ def find_jobs_with_missing_rows():
             Job.id == Notification.job_id,
         )
         .group_by(Job)
-        .having(func.count(Notification.id) != Job.notification_count)
+        .all()
     )
 
-    return jobs_with_rows_missing.all()
+    return [job for job, has_all in jobs_has_all_notifications if not has_all], [
+        job for job, has_all in jobs_has_all_notifications if has_all
+    ]
 
 
 def find_missing_row_for_job(job_id, job_size):
