@@ -268,7 +268,15 @@ VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
 # Service callbacks
 DELIVERY_STATUS_CALLBACK_TYPE = "delivery_status"
 COMPLAINT_CALLBACK_TYPE = "complaint"
-SERVICE_CALLBACK_TYPES = [DELIVERY_STATUS_CALLBACK_TYPE, COMPLAINT_CALLBACK_TYPE]
+RETURNED_LETTERS_CALLBACK = "returned_letters"
+SERVICE_CALLBACK_TYPES = [DELIVERY_STATUS_CALLBACK_TYPE, COMPLAINT_CALLBACK_TYPE, RETURNED_LETTERS_CALLBACK]
+
+
+class ServiceCallbackTypes(enum.StrEnum):
+    delivery_status = "delivery_status"
+    complaint = "complaint"
+    returned_letters = "returned_letters"
+
 
 # Branding values
 BRANDING_GOVUK = "govuk"  # Deprecated outside migrations
