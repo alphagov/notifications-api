@@ -97,15 +97,15 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
 def test_function_test_fixtures_saves_to_disk_and_ssm(notify_api, os_environ, mocker):
     mocker.patch("app.functional_tests_fixtures._create_db_objects", return_value={"FOO": "BAR", "BAZ": "WAZ"})
 
-    with NamedTemporaryFile(delete=False) as temp_file:
+    with NamedTemporaryFile() as temp_file:
         temp_file_name = temp_file.name
 
-    os.environ["FUNCTIONAL_TEST_ENV_FILE"] = temp_file_name
-    os.environ["SSM_UPLOAD_PATH"] = "/test/ssm/environment"
-    # AWS are changing from AWS_DEFAULT_REGION to AWS_REGION for v2 clients. Set both for now.
-    os.environ["AWS_REGION"] = "eu-west-1"
-    os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
-    try:
+        os.environ["FUNCTIONAL_TEST_ENV_FILE"] = temp_file_name
+        os.environ["SSM_UPLOAD_PATH"] = "/test/ssm/environment"
+        # AWS are changing from AWS_DEFAULT_REGION to AWS_REGION for v2 clients. Set both for now.
+        os.environ["AWS_REGION"] = "eu-west-1"
+        os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
+
         apply_fixtures()
 
         variables = {}
@@ -121,6 +121,3 @@ def test_function_test_fixtures_saves_to_disk_and_ssm(notify_api, os_environ, mo
         ssm = boto3.client("ssm")
         response = ssm.get_parameter(Name="/test/ssm/environment", WithDecryption=True)
         assert response["Parameter"]["Value"] == full_file
-
-    finally:
-        os.remove(temp_file_name)
