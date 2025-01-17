@@ -59,7 +59,7 @@ cachetools==5.5.0
     #   notifications-utils
 celery==5.4.0
     # via -r requirements.txt
-certifi==2023.7.22
+certifi==2024.7.4
     # via
     #   -r requirements.txt
     #   requests
@@ -154,7 +154,6 @@ greenlet==3.0.3
     # via
     #   -r requirements.txt
     #   eventlet
-    #   sqlalchemy
 gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via
     #   -r requirements.txt
