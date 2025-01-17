@@ -24,3 +24,4 @@ if utils_eventlet.using_eventlet:
         import greenlet
 
         greenlet.settrace(utils_eventlet.account_greenlet_times)
+        application._server_greenlet = greenlet.getcurrent()

@@ -225,7 +225,7 @@ mypy-extensions==1.0.0
     # via black
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@b5935835e099ef0cfcd099029e39f3eaca2b50a2
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@206f008ef017f8b5ec9b870df04bf35780b7717b
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
