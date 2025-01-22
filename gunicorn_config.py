@@ -25,6 +25,7 @@ timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
 if debug_post_threshold:
     debug_post_threshold_float = float(debug_post_threshold)
+    profiler = None
 
     def pre_request(worker, req):
         # using os.times() to avoid additional imports before eventlet monkeypatching
@@ -42,12 +43,34 @@ if debug_post_threshold:
         if elapsed > debug_post_threshold_float:
             import json
             import time
+            from io import StringIO
+            from pstats import Stats
 
             import psutil
+            from eventlet.green import profile
 
             # consume this iterator to give cpu_percent calculation a "start time" to work with
             list(psutil.process_iter(["cpu_percent"]))
-            time.sleep(0.1)  # period over which to calculate cpu_percent
+
+            global profiler
+            if profiler is None:
+                profiler = profile.Profile()
+
+            should_profile = not getattr(profiler, "running", False)
+            if should_profile:
+                profiler.start()
+
+            time.sleep(0.1)  # period over which to profile and calculate cpu_percent
+
+            if should_profile:
+                profiler.stop()
+                prof_out_sio = StringIO()
+                s = Stats(profiler, stream=prof_out_sio)
+                s.sort_stats("cumulative")
+                s.print_stats(0.1)
+                prof_out_str = prof_out_sio.getvalue()
+            else:
+                prof_out_str = "profiler already running - no profile collected"
 
             attrs = ["pid", "name", "cpu_percent", "status", "memory_info"]
 
@@ -59,6 +82,7 @@ if debug_post_threshold:
                         [[_tuples_to_lists(p.info[a]) for a in attrs] for p in psutil.process_iter(attrs)],
                     ]
                 ),
+                "profile": prof_out_str,
             }
             worker.log.info(
                 "post-request diagnostics for request of %(request_time)ss",
