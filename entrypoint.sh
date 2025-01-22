@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PROMETHEUS_MULTIPROC_DIR="/tmp"
+
 CONCURRENCY=${CONCURRENCY:-4}
 
 # Define a common command prefix
