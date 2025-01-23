@@ -86,7 +86,7 @@ class TestFindByUUID:
             create_service_inbound_api(sample_service)
         elif model == ServiceCallbackApi:
             sample_service = request.getfixturevalue("sample_service")
-            create_service_callback_api(sample_service)
+            create_service_callback_api("delivery_status", sample_service)
         elif model == Complaint:
             create_complaint()
         elif model == InboundSms:

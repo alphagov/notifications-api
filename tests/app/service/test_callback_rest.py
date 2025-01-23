@@ -96,7 +96,10 @@ def test_create_delivery_receipt_callback_api(admin_request, sample_service):
     }
 
     resp_json = admin_request.post(
-        "service_callback.create_service_callback_api", service_id=sample_service.id, _data=data, _expected_status=201
+        "service_callback.create_delivery_receipt_callback_api",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=201,
     )
 
     resp_json = resp_json["data"]
@@ -142,11 +145,13 @@ def test_update_delivery_receipt_callback_api_updates_url(admin_request, sample_
 
 
 def test_update_service_callback_api_updates_bearer_token(admin_request, sample_service):
-    service_callback_api = create_service_callback_api(service=sample_service, bearer_token="some_super_secret")
+    service_callback_api = create_service_callback_api(
+        callback_type="delivery_status", service=sample_service, bearer_token="some_super_secret"
+    )
     data = {"bearer_token": "different_token", "updated_by_id": str(sample_service.users[0].id)}
 
     admin_request.post(
-        "service_callback.update_service_callback_api",
+        "service_callback.update_delivery_receipt_callback_api",
         service_id=sample_service.id,
         callback_api_id=service_callback_api.id,
         _data=data,
@@ -155,7 +160,7 @@ def test_update_service_callback_api_updates_bearer_token(admin_request, sample_
 
 
 def test_fetch_service_callback_api(admin_request, sample_service):
-    service_callback_api = create_service_callback_api(service=sample_service)
+    service_callback_api = create_service_callback_api(callback_type="delivery_status", service=sample_service)
 
     response = admin_request.get(
         "service_callback.fetch_service_callback_api",
@@ -167,7 +172,7 @@ def test_fetch_service_callback_api(admin_request, sample_service):
 
 
 def test_delete_service_callback_api(admin_request, sample_service):
-    service_callback_api = create_service_callback_api(sample_service)
+    service_callback_api = create_service_callback_api("delivery_status", sample_service)
 
     response = admin_request.delete(
         "service_callback.remove_service_callback_api",

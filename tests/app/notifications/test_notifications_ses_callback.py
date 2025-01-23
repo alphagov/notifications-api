@@ -79,7 +79,7 @@ def test_check_and_queue_callback_task(mocker, mock_celery_task, sample_notifica
 
     mock_send = mock_celery_task(send_delivery_status_to_service)
 
-    callback_api = create_service_callback_api(service=sample_notification.service)
+    callback_api = create_service_callback_api(callback_type="delivery_status", service=sample_notification.service)
     mock_create.return_value = "encoded_status_update"
 
     check_and_queue_callback_task(sample_notification)

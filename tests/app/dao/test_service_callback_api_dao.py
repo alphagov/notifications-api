@@ -189,7 +189,7 @@ def test_get_service_callback_api(sample_service):
 
 
 def test_get_service_delivery_status_callback_api_for_service(sample_service):
-    service_callback_api = create_service_callback_api(service=sample_service)
+    service_callback_api = create_service_callback_api(callback_type="delivery_status", service=sample_service)
     result = get_service_delivery_status_callback_api_for_service(sample_service.id)
     assert result.id == service_callback_api.id
     assert result.url == service_callback_api.url
