@@ -95,20 +95,10 @@ def fetch_delivery_receipt_callback_api(service_id, callback_api_id):
     return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
 
 
-def _fetch_service_callback_api(callback_api_id, service_id, callback_type):
-    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
-    return jsonify(data=callback_api.serialize()), 200
-
-
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["DELETE"])
 def remove_service_callback_api(service_id, callback_api_id):
-    callback_api = get_service_callback_api(callback_api_id, service_id, DELIVERY_STATUS_CALLBACK_TYPE)
-
-    if not callback_api:
-        error = "Service delivery receipt callback API not found"
-        raise InvalidRequest(error, status_code=404)
-
-    delete_service_callback_api(callback_api)
+    callback_type = DELIVERY_STATUS_CALLBACK_TYPE
+    _remove_service_callback_api(callback_api_id, service_id, callback_type)
     return "", 204
 
 
@@ -137,6 +127,19 @@ def _update_service_callback_api(callback_api_id, service_id, callback_type):
         bearer_token=data.get("bearer_token", None),
     )
     return to_update
+
+
+def _fetch_service_callback_api(callback_api_id, service_id, callback_type):
+    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+    return jsonify(data=callback_api.serialize()), 200
+
+
+def _remove_service_callback_api(callback_api_id, service_id, callback_type):
+    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+    if not callback_api:
+        error = "Service delivery receipt callback API not found"
+        raise InvalidRequest(error, status_code=404)
+    delete_service_callback_api(callback_api)
 
 
 def handle_sql_error(e, table_name):
