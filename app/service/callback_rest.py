@@ -82,32 +82,10 @@ def create_delivery_receipt_callback_api(service_id):
     return _create_service_callback_api(service_id, callback_type)
 
 
-def _create_service_callback_api(service_id, callback_type):
-    data = request.get_json()
-    validate(data, create_service_callback_api_schema)
-    data["service_id"] = service_id
-    data["callback_type"] = callback_type
-    callback_api = ServiceCallbackApi(**data)
-    try:
-        save_service_callback_api(callback_api)
-    except SQLAlchemyError as e:
-        return handle_sql_error(e, "service_callback_api")
-    return jsonify(data=callback_api.serialize()), 201
-
-
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["POST"])
-def update_service_callback_api(service_id, callback_api_id):
-    data = request.get_json()
-    validate(data, update_service_callback_api_schema)
-
-    to_update = get_service_callback_api(callback_api_id, service_id, DELIVERY_STATUS_CALLBACK_TYPE)
-
-    reset_service_callback_api(
-        service_callback_api=to_update,
-        updated_by_id=data["updated_by_id"],
-        url=data.get("url", None),
-        bearer_token=data.get("bearer_token", None),
-    )
+def update_delivery_receipt_callback_api(service_id, callback_api_id):
+    callback_type = DELIVERY_STATUS_CALLBACK_TYPE
+    to_update = _update_service_callback_api(callback_api_id, service_id, callback_type)
     return jsonify(data=to_update.serialize()), 200
 
 
@@ -128,6 +106,33 @@ def remove_service_callback_api(service_id, callback_api_id):
 
     delete_service_callback_api(callback_api)
     return "", 204
+
+
+# helper callback methods
+def _create_service_callback_api(service_id, callback_type):
+    data = request.get_json()
+    validate(data, create_service_callback_api_schema)
+    data["service_id"] = service_id
+    data["callback_type"] = callback_type
+    callback_api = ServiceCallbackApi(**data)
+    try:
+        save_service_callback_api(callback_api)
+    except SQLAlchemyError as e:
+        return handle_sql_error(e, "service_callback_api")
+    return jsonify(data=callback_api.serialize()), 201
+
+
+def _update_service_callback_api(callback_api_id, service_id, callback_type):
+    data = request.get_json()
+    validate(data, update_service_callback_api_schema)
+    to_update = get_service_callback_api(callback_api_id, service_id, callback_type)
+    reset_service_callback_api(
+        service_callback_api=to_update,
+        updated_by_id=data["updated_by_id"],
+        url=data.get("url", None),
+        bearer_token=data.get("bearer_token", None),
+    )
+    return to_update
 
 
 def handle_sql_error(e, table_name):
