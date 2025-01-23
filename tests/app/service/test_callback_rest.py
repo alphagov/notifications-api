@@ -171,11 +171,11 @@ def test_fetch_delivery_receipt_callback_api(admin_request, sample_service):
     assert response["data"] == service_callback_api.serialize()
 
 
-def test_delete_service_callback_api(admin_request, sample_service):
+def test_delete_delivery_receipt_callback_api(admin_request, sample_service):
     service_callback_api = create_service_callback_api("delivery_status", sample_service)
 
     response = admin_request.delete(
-        "service_callback.remove_service_callback_api",
+        "service_callback.remove_delivery_receipt_callback_api",
         service_id=sample_service.id,
         callback_api_id=service_callback_api.id,
     )

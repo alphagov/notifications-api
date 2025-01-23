@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.constants import DELIVERY_STATUS_CALLBACK_TYPE
+from app.constants import ServiceCallbackTypes
 from app.dao.service_callback_api_dao import (
     delete_service_callback_api,
     get_service_callback_api,
@@ -76,28 +76,29 @@ def remove_service_inbound_api(service_id, inbound_api_id):
     return "", 204
 
 
+# delivery-receipt callback endpoints
 @service_callback_blueprint.route("/delivery-receipt-api", methods=["POST"])
 def create_delivery_receipt_callback_api(service_id):
-    callback_type = DELIVERY_STATUS_CALLBACK_TYPE
+    callback_type = ServiceCallbackTypes.delivery_status.value
     return _create_service_callback_api(service_id, callback_type)
 
 
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["POST"])
 def update_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = DELIVERY_STATUS_CALLBACK_TYPE
+    callback_type = ServiceCallbackTypes.delivery_status.value
     to_update = _update_service_callback_api(callback_api_id, service_id, callback_type)
     return jsonify(data=to_update.serialize()), 200
 
 
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
 def fetch_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = DELIVERY_STATUS_CALLBACK_TYPE
+    callback_type = ServiceCallbackTypes.delivery_status.value
     return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
 
 
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["DELETE"])
-def remove_service_callback_api(service_id, callback_api_id):
-    callback_type = DELIVERY_STATUS_CALLBACK_TYPE
+def remove_delivery_receipt_callback_api(service_id, callback_api_id):
+    callback_type = ServiceCallbackTypes.delivery_status.value
     _remove_service_callback_api(callback_api_id, service_id, callback_type)
     return "", 204
 
