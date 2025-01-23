@@ -159,11 +159,11 @@ def test_update_service_callback_api_updates_bearer_token(admin_request, sample_
     assert service_callback_api.bearer_token == "different_token"
 
 
-def test_fetch_service_callback_api(admin_request, sample_service):
+def test_fetch_delivery_receipt_callback_api(admin_request, sample_service):
     service_callback_api = create_service_callback_api(callback_type="delivery_status", service=sample_service)
 
     response = admin_request.get(
-        "service_callback.fetch_service_callback_api",
+        "service_callback.fetch_delivery_receipt_callback_api",
         service_id=sample_service.id,
         callback_api_id=service_callback_api.id,
     )
