@@ -77,7 +77,7 @@ def remove_service_inbound_api(service_id, inbound_api_id):
 
 
 @service_callback_blueprint.route("/delivery-receipt-api", methods=["POST"])
-def create_service_callback_api(service_id):
+def create_delivery_receipt_callback_api(service_id):
     callback_type = DELIVERY_STATUS_CALLBACK_TYPE
     return _create_service_callback_api(service_id, callback_type)
 
