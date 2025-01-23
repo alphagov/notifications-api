@@ -78,16 +78,20 @@ def remove_service_inbound_api(service_id, inbound_api_id):
 
 @service_callback_blueprint.route("/delivery-receipt-api", methods=["POST"])
 def create_service_callback_api(service_id):
+    callback_type = DELIVERY_STATUS_CALLBACK_TYPE
+    return _create_service_callback_api(service_id, callback_type)
+
+
+def _create_service_callback_api(service_id, callback_type):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
     data["service_id"] = service_id
-    data["callback_type"] = DELIVERY_STATUS_CALLBACK_TYPE
+    data["callback_type"] = callback_type
     callback_api = ServiceCallbackApi(**data)
     try:
         save_service_callback_api(callback_api)
     except SQLAlchemyError as e:
         return handle_sql_error(e, "service_callback_api")
-
     return jsonify(data=callback_api.serialize()), 201
 
 
