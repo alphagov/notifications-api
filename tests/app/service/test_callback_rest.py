@@ -144,7 +144,7 @@ def test_update_delivery_receipt_callback_api_updates_url(admin_request, sample_
     assert service_callback_api.url == "https://another_url.com"
 
 
-def test_update_service_callback_api_updates_bearer_token(admin_request, sample_service):
+def test_update_delivery_receipt_callback_api_updates_bearer_token(admin_request, sample_service):
     service_callback_api = create_service_callback_api(
         callback_type="delivery_status", service=sample_service, bearer_token="some_super_secret"
     )
@@ -238,3 +238,18 @@ def test_update_returned_letter_callback_api_updates_url(admin_request, sample_s
     )
     assert resp_json["data"]["url"] == "https://another_url.com"
     assert service_callback_api.url == "https://another_url.com"
+
+
+def test_update_returned_letter_callback_api_updates_bearer_token(admin_request, sample_service):
+    service_callback_api = create_service_callback_api(
+        callback_type="returned_letter", service=sample_service, bearer_token="some_super_secret"
+    )
+    data = {"bearer_token": "different_token", "updated_by_id": str(sample_service.users[0].id)}
+
+    admin_request.post(
+        "service_callback.update_returned_letter_callback_api",
+        service_id=sample_service.id,
+        callback_api_id=service_callback_api.id,
+        _data=data,
+    )
+    assert service_callback_api.bearer_token == "different_token"
