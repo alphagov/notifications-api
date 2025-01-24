@@ -110,6 +110,13 @@ def create_returned_letter_callback_api(service_id):
     return _create_service_callback_api(service_id, callback_type)
 
 
+@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["POST"])
+def update_returned_letter_callback_api(service_id, callback_api_id):
+    callback_type = ServiceCallbackTypes.returned_letter.value
+    to_update = _update_service_callback_api(callback_api_id, service_id, callback_type)
+    return jsonify(data=to_update.serialize()), 200
+
+
 # helper callback methods
 def _create_service_callback_api(service_id, callback_type):
     data = request.get_json()
