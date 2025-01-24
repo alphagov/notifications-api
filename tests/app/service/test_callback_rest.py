@@ -209,7 +209,7 @@ def test_create_returned_letter_callback_api(admin_request, sample_service):
 
 def test_set_returned_letter_callback_api_raises_404_when_service_does_not_exist(admin_request, notify_db_session):
     data = {
-        "url": "https://some_service/letter-callback-endpoint",
+        "url": "https://some_service/returned-letter-callback-endpoint",
         "bearer_token": "some-unique-string",
         "updated_by_id": str(uuid.uuid4()),
     }
@@ -221,3 +221,20 @@ def test_set_returned_letter_callback_api_raises_404_when_service_does_not_exist
         _expected_status=404,
     )
     assert resp_json["message"] == "No result found"
+
+
+def test_update_returned_letter_callback_api_updates_url(admin_request, sample_service):
+    service_callback_api = create_service_callback_api(
+        callback_type="returned_letter", service=sample_service, url="https://original_url.com"
+    )
+
+    data = {"url": "https://another_url.com", "updated_by_id": str(sample_service.users[0].id)}
+
+    resp_json = admin_request.post(
+        "service_callback.update_returned_letter_callback_api",
+        service_id=sample_service.id,
+        callback_api_id=service_callback_api.id,
+        _data=data,
+    )
+    assert resp_json["data"]["url"] == "https://another_url.com"
+    assert service_callback_api.url == "https://another_url.com"
