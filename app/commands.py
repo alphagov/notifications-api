@@ -135,7 +135,12 @@ def purge_functional_test_data(user_email_prefix):
             services = dao_fetch_all_services_by_user(usr.id)
             for service in services:
                 print(f"Deleting service {service.id=} {service.name=} that {usr.id} belongs to")
-                delete_service_and_all_associated_db_objects(service)
+                # This also deletes the functional if the test users are associated
+                # It may require to create essential db object to run functional tests
+                if str(service.id) != current_app.config["NOTIFY_SERVICE_ID"]:
+                    delete_service_and_all_associated_db_objects(service)
+                else:
+                    print(f"Skipping service {service.id=} {service.name=}")
 
             services_created_by_this_user = dao_fetch_all_services_created_by_user(usr.id)
             for service in services_created_by_this_user:
