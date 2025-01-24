@@ -205,3 +205,19 @@ def test_create_returned_letter_callback_api(admin_request, sample_service):
     assert resp_json["updated_by_id"] == str(sample_service.users[0].id)
     assert resp_json["created_at"]
     assert not resp_json["updated_at"]
+
+
+def test_set_returned_letter_callback_api_raises_404_when_service_does_not_exist(admin_request, notify_db_session):
+    data = {
+        "url": "https://some_service/letter-callback-endpoint",
+        "bearer_token": "some-unique-string",
+        "updated_by_id": str(uuid.uuid4()),
+    }
+
+    resp_json = admin_request.post(
+        "service_callback.create_returned_letter_callback_api",
+        service_id=uuid.uuid4(),
+        _data=data,
+        _expected_status=404,
+    )
+    assert resp_json["message"] == "No result found"
