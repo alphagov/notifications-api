@@ -182,3 +182,26 @@ def test_delete_delivery_receipt_callback_api(admin_request, sample_service):
 
     assert response is None
     assert ServiceCallbackApi.query.count() == 0
+
+
+def test_create_returned_letter_callback_api(admin_request, sample_service):
+    data = {
+        "url": "https://some_service/returned-letter-endpoint",
+        "bearer_token": "some-unique-string",
+        "updated_by_id": str(sample_service.users[0].id),
+    }
+
+    resp_json = admin_request.post(
+        "service_callback.create_returned_letter_callback_api",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=201,
+    )
+
+    resp_json = resp_json["data"]
+    assert resp_json["id"]
+    assert resp_json["service_id"] == str(sample_service.id)
+    assert resp_json["url"] == "https://some_service/returned-letter-endpoint"
+    assert resp_json["updated_by_id"] == str(sample_service.users[0].id)
+    assert resp_json["created_at"]
+    assert not resp_json["updated_at"]
