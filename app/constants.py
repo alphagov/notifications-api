@@ -270,6 +270,7 @@ VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
 class ServiceCallbackTypes(enum.StrEnum):
     delivery_status = "delivery_status"
     complaint = "complaint"
+    returned_letter = "returned_letter"
 
 
 # Branding values
