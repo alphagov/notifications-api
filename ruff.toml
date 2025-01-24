@@ -1,0 +1,35 @@
+# This file was automatically copied from notifications-utils@94.0.1
+
+exclude = [
+    "migrations/versions/",
+    "venv*",
+    "__pycache__",
+    "node_modules",
+    "cache",
+    "migrations",
+    "build",
+    "sample_cap_xml_documents.py",
+]
+
+line-length = 120
+
+target-version = "py311"
+
+[lint]
+select = [
+    "E",  # pycodestyle
+    "W",  # pycodestyle
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C90",  # mccabe cyclomatic complexity
+    "G",  # flake8-logging-format
+    "T20", # flake8-print
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "ISC",  # flake8-implicit-str-concat
+    "RSE",  # flake8-raise
+    "PIE",  # flake8-pie
+    "N804",  # First argument of a class method should be named `cls`
+]
+ignore = []
