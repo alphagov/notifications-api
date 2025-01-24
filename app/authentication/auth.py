@@ -36,8 +36,7 @@ class AuthError(Exception):
 
     def __str__(self):
         return (
-            f"AuthError({self.short_message}, {self.code}, "
-            f"service_id={self.service_id}, api_key_id={self.api_key_id})"
+            f"AuthError({self.short_message}, {self.code}, service_id={self.service_id}, api_key_id={self.api_key_id})"
         )
 
     def to_dict_v2(self):

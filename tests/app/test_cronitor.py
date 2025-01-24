@@ -68,9 +68,10 @@ def test_cronitor_does_nothing_if_cronitor_not_enabled(notify_api, rmock):
 
 
 def test_cronitor_does_nothing_if_name_not_recognised(notify_api, rmock, caplog):
-    with set_config_values(
-        notify_api, {"CRONITOR_ENABLED": True, "CRONITOR_KEYS": {"not-hello": "other"}}
-    ), caplog.at_level("ERROR"):
+    with (
+        set_config_values(notify_api, {"CRONITOR_ENABLED": True, "CRONITOR_KEYS": {"not-hello": "other"}}),
+        caplog.at_level("ERROR"),
+    ):
         assert successful_task() == 1
 
     assert "Cronitor enabled but task_name hello not found in environment" in caplog.messages

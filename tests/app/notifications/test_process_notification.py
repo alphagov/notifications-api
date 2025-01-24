@@ -451,7 +451,6 @@ def test_persist_notification_without_send_to_landline_raises_invalidphoneerror(
 
 
 def test_persist_notification_with_international_info_does_not_store_for_email(sample_job, sample_api_key):
-
     persist_notification(
         template_id=sample_job.template.id,
         template_version=sample_job.template.version,

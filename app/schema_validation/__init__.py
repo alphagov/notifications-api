@@ -21,7 +21,6 @@ def validate_uuid(instance):
 
 @format_checker.checks("phone_number", raises=ValidationError)
 def validate_schema_phone_number(instance):
-
     if isinstance(instance, str):
         try:
             number = PhoneNumber(instance)

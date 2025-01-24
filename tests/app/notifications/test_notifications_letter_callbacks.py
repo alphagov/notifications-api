@@ -104,9 +104,9 @@ def test_process_letter_callback_validation_for_required_fields(
     errors = response_json_data["errors"]
 
     assert response.status_code == 400
-    assert any(
-        expected_error_message in error["message"] for error in errors
-    ), f"Expected error message '{expected_error_message}' not found in {errors}"
+    assert any(expected_error_message in error["message"] for error in errors), (
+        f"Expected error message '{expected_error_message}' not found in {errors}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -170,9 +170,9 @@ def test_process_letter_callback_validation_for_despatch_properties(
     errors = response_json_data["errors"]
 
     assert response.status_code == 400
-    assert any(
-        expected_error_message in error["message"] for error in errors
-    ), f"Expected error message '{expected_error_message}' not found in {errors}"
+    assert any(expected_error_message in error["message"] for error in errors), (
+        f"Expected error message '{expected_error_message}' not found in {errors}"
+    )
 
 
 def test_process_letter_callback_raises_error_if_token_and_notification_id_in_data_do_not_match(

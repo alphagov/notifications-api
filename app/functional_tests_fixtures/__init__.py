@@ -146,7 +146,6 @@ def _create_db_objects(
     function_tests_test_key_name,
     govuk_service_id,
 ) -> dict[str, str]:
-
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
     current_app.logger.info("--> Ensure organisation exists")
@@ -361,7 +360,6 @@ def _create_user(name, email_address, password, auth_type="sms_auth", organisati
 
 
 def _create_organiation(email_domain, org_name="Functional Tests Org"):
-
     organisations = dao_get_organisations_by_partial_name(org_name)
 
     org = None
@@ -370,7 +368,6 @@ def _create_organiation(email_domain, org_name="Functional Tests Org"):
             org = organisation
 
     if org is None:
-
         org = Organisation(name=org_name, active=True, crown=False, organisation_type="central")
 
         dao_create_organisation(org)
@@ -382,7 +379,6 @@ def _create_organiation(email_domain, org_name="Functional Tests Org"):
 
 
 def _create_service(org_id, user, service_name="Functional Tests"):
-
     services = get_services_by_partial_name(service_name)
 
     service = None
@@ -391,7 +387,6 @@ def _create_service(org_id, user, service_name="Functional Tests"):
             service = s
 
     if service is None:
-
         service = Service.from_json(
             {
                 "name": service_name,
@@ -413,7 +408,6 @@ def _create_service(org_id, user, service_name="Functional Tests"):
 
 
 def _grant_permissions(service, user):
-
     permission_list = [
         Permission(service_id=service.id, user_id=user.id, permission=SEND_LETTERS),
         Permission(service_id=service.id, user_id=user.id, permission=VIEW_ACTIVITY),
@@ -425,7 +419,6 @@ def _grant_permissions(service, user):
 
 
 def _create_api_key(name, service_id, user_id, key_type="normal"):
-
     api_keys = get_model_api_keys(service_id=service_id)
     for key in api_keys:
         if key.name == name:
@@ -442,7 +435,6 @@ def _create_api_key(name, service_id, user_id, key_type="normal"):
 
 
 def _create_inbound_numbers(service_id, user_id, number="07700900500", provider="mmg"):
-
     inbound_number = dao_get_inbound_number_for_service(service_id=service_id)
 
     if inbound_number is not None:
@@ -461,7 +453,6 @@ def _create_inbound_numbers(service_id, user_id, number="07700900500", provider=
 
 
 def _create_service_letter_contact(service_id, contact_block, is_default):
-
     letter_contacts = dao_get_letter_contacts_by_service_id(service_id)
 
     for letter_contact in letter_contacts:
@@ -472,7 +463,6 @@ def _create_service_letter_contact(service_id, contact_block, is_default):
 
 
 def _create_email_template(service, user_id, name, subject, content):
-
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
     for template in templates:
@@ -497,7 +487,6 @@ def _create_email_template(service, user_id, name, subject, content):
 
 
 def _create_sms_template(service, user_id, name, content):
-
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
     for template in templates:
@@ -521,7 +510,6 @@ def _create_sms_template(service, user_id, name, content):
 
 
 def _create_letter_template(service, user_id, name, subject, content, letter_contact_id=None):
-
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
     for template in templates:
@@ -564,7 +552,6 @@ def _update_template(template, name=None, subject=None, content=None, letter_con
 
 
 def _create_service_email_reply_to(service_id, email_address, is_default):
-
     service_email_reply_tos = dao_get_reply_to_by_service_id(service_id=service_id)
 
     for service_email_reply_to in service_email_reply_tos:
@@ -597,7 +584,6 @@ def _create_service_permissions(service_id, permissions=None):
 
 
 def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_number_id):
-
     service_sms_senders = dao_get_sms_senders_by_service_id(service_id)
 
     for service_sms_sender in service_sms_senders:
@@ -608,7 +594,6 @@ def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_numb
 
 
 def _create_service_inbound_api(service_id, user_id):
-
     inbound_api = get_service_inbound_api_for_service(service_id)
 
     if inbound_api is None:
@@ -622,7 +607,6 @@ def _create_service_inbound_api(service_id, user_id):
 
 
 def _create_inbound_sms(service, count):
-
     num_existing = len(dao_get_inbound_sms_for_service(service.id, limit=count))
 
     for _ in range(num_existing, count):

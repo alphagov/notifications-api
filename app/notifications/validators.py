@@ -173,8 +173,7 @@ def check_if_service_can_send_to_number(service, number):
 
     if (
         # if number is international and not a crown dependency
-        international_phone_info.international
-        and not international_phone_info.crown_dependency
+        international_phone_info.international and not international_phone_info.crown_dependency
     ) and INTERNATIONAL_SMS_TYPE not in permissions:
         raise BadRequestError(message="Cannot send to international mobile numbers")
     else:

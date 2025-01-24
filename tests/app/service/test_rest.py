@@ -3259,8 +3259,7 @@ def test_cancel_notification_for_service_raises_invalid_request_when_letter_is_i
         assert response["message"] == "This letter has already been cancelled."
     else:
         assert response["message"] == (
-            f"We could not cancel this letter. "
-            f"Letter status: {notification_status}, created_at: 2018-07-07 12:00:00"
+            f"We could not cancel this letter. Letter status: {notification_status}, created_at: 2018-07-07 12:00:00"
         )
     assert response["result"] == "error"
     assert not mock_adjust_redis.called

@@ -230,9 +230,9 @@ def test_generate_password_creates_passwords_that_meet_dvla_criteria(_execution_
     for character_set in (string.ascii_uppercase, string.ascii_lowercase, string.digits, string.punctuation):
         # assert the intersection of the character class, and the chars in the password is not empty to make sure
         # that all character classes are represented
-        assert any(
-            character in character_set for character in password
-        ), f"{password} missing character from {character_set}"
+        assert any(character in character_set for character in password), (
+            f"{password} missing character from {character_set}"
+        )
     assert len(password) > 8
 
 
@@ -747,8 +747,7 @@ def test_send_letter_when_conflict_error_is_raised(dvla_authenticate, dvla_clien
                     "code": "11",
                     "title": "Print job cannot be created",
                     "detail": (
-                        "The supplied identifier 1 conflicts with another print job. "
-                        "Please supply a unique identifier."
+                        "The supplied identifier 1 conflicts with another print job. Please supply a unique identifier."
                     ),
                 }
             ]
