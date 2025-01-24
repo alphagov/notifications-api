@@ -253,3 +253,15 @@ def test_update_returned_letter_callback_api_updates_bearer_token(admin_request,
         _data=data,
     )
     assert service_callback_api.bearer_token == "different_token"
+
+
+def test_fetch_returned_letter_callback_api(admin_request, sample_service):
+    service_callback_api = create_service_callback_api(callback_type="returned_letter", service=sample_service)
+
+    response = admin_request.get(
+        "service_callback.fetch_returned_letter_callback_api",
+        service_id=sample_service.id,
+        callback_api_id=service_callback_api.id,
+    )
+
+    assert response["data"] == service_callback_api.serialize()
