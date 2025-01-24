@@ -265,3 +265,17 @@ def test_fetch_returned_letter_callback_api(admin_request, sample_service):
     )
 
     assert response["data"] == service_callback_api.serialize()
+
+
+def test_delete_returned_letter_callback_api(admin_request, sample_service):
+    service_callback_api = create_service_callback_api(callback_type="returned_letter",
+                                                       service=sample_service)
+
+    response = admin_request.delete(
+        "service_callback.remove_returned_letter_callback_api",
+        service_id=sample_service.id,
+        callback_api_id=service_callback_api.id,
+    )
+
+    assert response is None
+    assert ServiceCallbackApi.query.count() == 0
