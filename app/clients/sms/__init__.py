@@ -1,9 +1,4 @@
-import platform
-import socket
 from time import monotonic
-
-import requests
-from urllib3.connection import HTTPConnection
 
 from app.clients import Client, ClientException
 
@@ -29,20 +24,6 @@ class SmsClient(Client):
         super().__init__()
         self.current_app = current_app
         self.statsd_client = statsd_client
-
-        self.requests_session = requests.Session()
-        if platform.system() == "Linux":  # these are linux-specific socket options enabling tcp keepalive
-            for adapter in self.requests_session.adapters.values():
-                adapter.poolmanager.connection_pool_kw = {
-                    "socket_options": HTTPConnection.default_socket_options
-                    + [
-                        (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
-                        (socket.SOL_TCP, socket.TCP_KEEPIDLE, 4),
-                        (socket.SOL_TCP, socket.TCP_KEEPINTVL, 2),
-                        (socket.SOL_TCP, socket.TCP_KEEPCNT, 8),
-                    ],
-                    **adapter.poolmanager.connection_pool_kw,
-                }
 
     def record_outcome(self, success):
         if success:
