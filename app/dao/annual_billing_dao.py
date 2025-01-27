@@ -71,33 +71,41 @@ def set_default_free_allowance_for_service(service, year_start=None):
     if get_sms_fragments_sent_last_financial_year(service.id) >= HIGH_VOLUME_SERVICE_THRESHOLD:
         free_sms_fragment_allowance = 0
         high_volume_service_last_year = True
-
-    # If the service had 0 allowance for the previous year, let's pull that forward.
-    if (
-        AnnualBilling.query.filter_by(
-            service_id=service.id, financial_year_start=year_start - 1, free_sms_fragment_limit=0
-        ).count()
-        == 1
-    ):
-        free_sms_fragment_allowance = 0
+        # high volume overrides any custom stuff
+        # this could mean that if we have a custom allowance, then that service becomes high volume,
+        # we'll lose knowledge of what their custom allowance was and they'll default back to their
+        # org settings in future years if they stop being high volume
+        has_custom_allowance = False
 
     else:
-        # Find the default annual allowance for the service's org type with the most recent
-        # valid_from_financial_year_start.
-        default_free_sms_fragment_allowance = (
-            DefaultAnnualAllowance.query.filter(
-                DefaultAnnualAllowance.valid_from_financial_year_start <= year_start,
-                DefaultAnnualAllowance.organisation_type == org_type,
-                DefaultAnnualAllowance.notification_type == SMS_TYPE,
+        high_volume_service_last_year = False
+
+        # get last year's row if it exists
+        last_years_allowance = AnnualBilling.query.filter_by(service_id=service.id, financial_year_start=year_start - 1)
+        if last_years_allowance and last_years_allowance.has_custom_allowance:
+            # carry over the allowance from last year
+            free_sms_fragment_allowance = last_years_allowance.free_sms_fragment_allowance
+            has_custom_allowance = True
+        else:
+            has_custom_allowance = False
+
+            # get the default for the org
+            # Find the default annual allowance for the service's org type with the most recent
+            # valid_from_financial_year_start.
+            default_free_sms_fragment_allowance = (
+                DefaultAnnualAllowance.query.filter(
+                    DefaultAnnualAllowance.valid_from_financial_year_start <= year_start,
+                    DefaultAnnualAllowance.organisation_type == org_type,
+                    DefaultAnnualAllowance.notification_type == SMS_TYPE,
+                )
+                .order_by(desc(DefaultAnnualAllowance.valid_from_financial_year_start))
+                .first()
             )
-            .order_by(desc(DefaultAnnualAllowance.valid_from_financial_year_start))
-            .first()
-        )
-        if not default_free_sms_fragment_allowance:
-            raise RuntimeError(
-                f"No default annual allowance for {org_type=} with valid_from_financial_year_start<={year_start}"
-            )
-        free_sms_fragment_allowance = default_free_sms_fragment_allowance.allowance
+            if not default_free_sms_fragment_allowance:
+                raise RuntimeError(
+                    f"No default annual allowance for {org_type=} with valid_from_financial_year_start<={year_start}"
+                )
+            free_sms_fragment_allowance = default_free_sms_fragment_allowance.allowance
 
     current_app.logger.info(
         (
@@ -113,4 +121,5 @@ def set_default_free_allowance_for_service(service, year_start=None):
         free_sms_fragment_allowance,
         year_start,
         high_volume_service_last_year=high_volume_service_last_year,
+        has_custom_allowance=has_custom_allowance,
     )
