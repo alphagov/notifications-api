@@ -2,23 +2,34 @@ from flask import current_app
 from sqlalchemy import desc
 
 from app import db
-from app.constants import ORG_TYPE_OTHER, SMS_TYPE
+from app.constants import HIGH_VOLUME_SERVICE_THRESHOLD, ORG_TYPE_OTHER, SMS_TYPE
 from app.dao.dao_utils import autocommit
 from app.dao.date_util import get_current_financial_year_start_year
+from app.dao.fact_billing_dao import get_sms_fragments_sent_last_financial_year
 from app.models import AnnualBilling, DefaultAnnualAllowance
 
 
 @autocommit
-def dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_limit, financial_year_start):
+def dao_create_or_update_annual_billing_for_year(
+    service_id,
+    free_sms_fragment_limit,
+    financial_year_start,
+    high_volume_service_last_year=False,
+    has_custom_allowance=False,
+):
     result = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
 
     if result:
         result.free_sms_fragment_limit = free_sms_fragment_limit
+        result.high_volume_service_last_year = high_volume_service_last_year
+        result.has_custom_allowance = has_custom_allowance
     else:
         result = AnnualBilling(
             service_id=service_id,
             financial_year_start=financial_year_start,
             free_sms_fragment_limit=free_sms_fragment_limit,
+            high_volume_service_last_year=high_volume_service_last_year,
+            has_custom_allowance=has_custom_allowance,
         )
     db.session.add(result)
     return result
@@ -49,6 +60,10 @@ def set_default_free_allowance_for_service(service, year_start=None):
             "No organisation type for service %s. Using default for `other` org type.", service.id
         )
         org_type = ORG_TYPE_OTHER
+
+    if get_sms_fragments_sent_last_financial_year(service.id) >= HIGH_VOLUME_SERVICE_THRESHOLD:
+        free_sms_fragment_allowance = 0
+        high_volume_service_last_year = True
 
     # If the service had 0 allowance for the previous year, let's pull that forward.
     if (
@@ -86,4 +101,9 @@ def set_default_free_allowance_for_service(service, year_start=None):
         year_start,
         free_sms_fragment_allowance,
     )
-    return dao_create_or_update_annual_billing_for_year(service.id, free_sms_fragment_allowance, year_start)
+    return dao_create_or_update_annual_billing_for_year(
+        service.id,
+        free_sms_fragment_allowance,
+        year_start,
+        high_volume_service_last_year=high_volume_service_last_year,
+    )

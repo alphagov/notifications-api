@@ -23,6 +23,7 @@ from app.dao.fact_billing_dao import (
     get_count_of_notifications_sent,
     get_rate,
     get_rates_for_billing,
+    get_sms_fragments_sent_last_financial_year,
     update_ft_billing_letter_despatch,
 )
 from app.dao.notifications_dao import dao_record_letter_despatched_on_by_id
@@ -1516,3 +1517,16 @@ def test_get_count_of_notifications_sent(sample_service, test_case):
     )
 
     assert count == test_case.expected_count
+
+
+@freeze_time("2019-04-01")
+def test_get_sms_fragments_sent_last_financial_year_when_no_messages_sent(sample_service):
+    assert get_sms_fragments_sent_last_financial_year(str(sample_service.id)) == 0
+
+
+@freeze_time("2019-04-01")
+def test_get_sms_fragments_sent_last_financial_year_accounts_for_rate_multiplier_and_billable_units(
+    sample_service,
+    sample_service_billing_fy_2018_variable_rates,
+):
+    assert get_sms_fragments_sent_last_financial_year(str(sample_service.id)) == 9
