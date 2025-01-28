@@ -1759,7 +1759,6 @@ class Notification(db.Model):
         return False
 
     def _get_sms_rate(self):
-
         created_at_date = self.created_at.date()
 
         if rate := redis_store.get(f"sms-rate-for-{created_at_date}"):

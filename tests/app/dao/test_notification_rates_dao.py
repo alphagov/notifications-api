@@ -6,7 +6,6 @@ from tests.app.db import create_letter_rate, create_rate
 
 
 def test_dao_get_sms_rate_for_timestamp(notify_db_session):
-
     # create a rate valid from 01.06
     create_rate(start_date=datetime(2024, 6, 1), value=0.0221, notification_type="sms")
     # create a rate valid from 02.06

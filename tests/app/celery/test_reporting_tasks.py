@@ -49,8 +49,8 @@ def mocker_get_rate(
 @pytest.mark.parametrize(
     "day_start, expected_kwargs",
     [
-        (None, [f"2019-07-{31-i}" for i in range(10)]),
-        ("2019-07-21", [f"2019-07-{21-i}" for i in range(10)]),
+        (None, [f"2019-07-{31 - i}" for i in range(10)]),
+        ("2019-07-21", [f"2019-07-{21 - i}" for i in range(10)]),
     ],
 )
 def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mock_celery_task, day_start, expected_kwargs):

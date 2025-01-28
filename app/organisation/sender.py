@@ -20,7 +20,7 @@ def send_notification_to_organisation_users(
     reply_to_text,
     with_permission: OrganisationUserPermissionTypes | None,
     personalisation=None,
-    include_user_fields=None
+    include_user_fields=None,
 ):
     org_id = str(organisation.id)
     personalisation = personalisation or {}

@@ -10,7 +10,6 @@ from tests.conftest import set_config_values
 
 
 def test_create_db_objects_sets_db_up(notify_api, notify_service):
-
     functional_test_password = "fake password"
     request_bin_api_token = "test_request_bin_token"
     environment = "dev-env"

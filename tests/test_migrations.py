@@ -28,6 +28,6 @@ def test_revision_matches_filename(notify_db_session):
 
     results = notify_db_session.execute("select version_num from alembic_version").fetchall()
     assert len(results) == 1
-    assert (
-        results[0].version_num == head_migration_id
-    ), 'alembic head filename {head_migration_filename} does not match "revision" {results[0].version}'
+    assert results[0].version_num == head_migration_id, (
+        'alembic head filename {head_migration_filename} does not match "revision" {results[0].version}'
+    )

@@ -26,4 +26,4 @@ for line in reader:
 
 
 joined_sender_ids = "'),('".join(sender_ids)
-print(f"INSERT INTO protected_sender_ids VALUES ('{ joined_sender_ids}') ON CONFLICT DO NOTHING;")
+print(f"INSERT INTO protected_sender_ids VALUES ('{joined_sender_ids}') ON CONFLICT DO NOTHING;")

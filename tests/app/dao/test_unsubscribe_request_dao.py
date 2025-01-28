@@ -38,7 +38,6 @@ def test_create_unsubscribe_request_dao(sample_email_notification):
 
 
 def test_get_unsubscribe_requests_statistics_dao(sample_service):
-
     # Create 2 un-batched unsubscribe requests
     create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(1))
     create_unsubscribe_request(sample_service, created_at=midnight_n_days_ago(2))

@@ -90,7 +90,7 @@ drop-test-dbs-in-docker:
 .PHONY: test
 test: ## Run tests
 	ruff check .
-	black --check .
+	ruff format --check .
 	pytest -n auto --maxfail=10 -v
 
 .PHONY: watch-tests

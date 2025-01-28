@@ -1318,9 +1318,7 @@ def mock_dvla_callback_data():
 
 @pytest.fixture
 def mock_celery_task(mocker):
-
     def celery_mocker(celery_task: celery.local.PromiseProxy, assert_types=True) -> MagicMock:
-
         def _assert_types_match(
             args: tuple | list | None = None,
             kwargs: dict | None = None,

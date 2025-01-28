@@ -1,14 +1,22 @@
-# This file was automatically copied from notifications-utils@93.2.1
+# This file was automatically copied from notifications-utils@94.0.1
 
-[tool.black]
-line-length = 120
+exclude = [
+    "migrations/versions/",
+    "venv*",
+    "__pycache__",
+    "node_modules",
+    "cache",
+    "migrations",
+    "build",
+    "sample_cap_xml_documents.py",
+]
 
-[tool.ruff]
 line-length = 120
 
 target-version = "py311"
 
-lint.select = [
+[lint]
+select = [
     "E",  # pycodestyle
     "W",  # pycodestyle
     "F",  # pyflakes
@@ -24,14 +32,4 @@ lint.select = [
     "PIE",  # flake8-pie
     "N804",  # First argument of a class method should be named `cls`
 ]
-lint.ignore = []
-exclude = [
-    "migrations/versions/",
-    "venv*",
-    "__pycache__",
-    "node_modules",
-    "cache",
-    "migrations",
-    "build",
-    "sample_cap_xml_documents.py",
-]
+ignore = []

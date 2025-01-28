@@ -26,7 +26,7 @@ def test_get_template_statistics_for_service_by_day_with_bad_arg_returns_400(adm
         "template_statistics.get_template_statistics_for_service_by_day",
         service_id=uuid.uuid4(),
         **query_string,
-        _expected_status=400
+        _expected_status=400,
     )
     assert json_resp["result"] == "error"
     assert "whole_days" in json_resp["message"]
@@ -55,7 +55,7 @@ def test_get_template_statistics_for_service_by_day_accepts_old_query_string(
     json_resp = admin_request.get(
         "template_statistics.get_template_statistics_for_service_by_day",
         service_id=sample_notification.service_id,
-        **{var_name: 1}
+        **{var_name: 1},
     )
 
     assert len(json_resp["data"]) == 1
