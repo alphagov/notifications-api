@@ -59,7 +59,7 @@ cachetools==5.5.0
     #   notifications-utils
 celery==5.4.0
     # via -r requirements.txt
-certifi==2023.7.22
+certifi==2024.7.4
     # via
     #   -r requirements.txt
     #   requests
