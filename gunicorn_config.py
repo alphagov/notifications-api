@@ -61,7 +61,11 @@ if debug_post_threshold:
             if should_profile:
                 profiler.start()
 
+            perf_counter_before = time.perf_counter()
+
             time.sleep(0.1)  # period over which to profile and calculate cpu_percent
+
+            perf_counter_after = time.perf_counter()
 
             if should_profile:
                 profiler.stop()
@@ -76,6 +80,7 @@ if debug_post_threshold:
             attrs = ["pid", "name", "cpu_percent", "status", "memory_info"]
 
             context = {
+                "actual_profile_period": perf_counter_after - perf_counter_before,
                 "request_time": elapsed,
                 "processes": json.dumps(
                     [
