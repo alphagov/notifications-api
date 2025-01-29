@@ -78,14 +78,13 @@ def create_or_update_free_sms_fragment_limit(service_id):
     update_free_sms_fragment_limit_data(
         service_id,
         free_sms_fragment_limit=form.get("free_sms_fragment_limit"),
-        financial_year_start=form.get("financial_year_start"),
     )
     return jsonify(form), 201
 
 
-def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, financial_year_start):
+def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, financial_year_start=None):
+    # TODO: `financial_year_start` parameter can be removed, but has been kept temporarily so nothing breaks
+    # during deployment
     current_year = get_current_financial_year_start_year()
-    if not financial_year_start:
-        financial_year_start = current_year
 
-    dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_limit, financial_year_start)
+    dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_limit, current_year)
