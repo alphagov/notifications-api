@@ -17,9 +17,9 @@ def child_exit(server, worker):
 
 workers = 4
 worker_class = "eventlet"
-worker_connections = 256
+worker_connections = 8  # limit runaway greenthread creation
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
-keepalive = 90
+keepalive = 0  # disable temporarily for diagnosing issues
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
