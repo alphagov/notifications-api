@@ -44,6 +44,7 @@ if debug_post_threshold:
             import json
             import time
             from io import StringIO
+            from os import getpid
             from pstats import Stats
 
             import psutil
@@ -83,6 +84,7 @@ if debug_post_threshold:
                     ]
                 ),
                 "profile": prof_out_str,
+                "process_": getpid(),
             }
             worker.log.info(
                 "post-request diagnostics for request of %(request_time)ss",
