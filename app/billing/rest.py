@@ -8,7 +8,6 @@ from app.billing.billing_schemas import (
 from app.dao.annual_billing_dao import (
     dao_create_or_update_annual_billing_for_year,
     dao_get_free_sms_fragment_limit_for_year,
-    dao_update_annual_billing_for_future_years,
     set_default_free_allowance_for_service,
 )
 from app.dao.date_util import get_current_financial_year_start_year
@@ -90,7 +89,3 @@ def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, fin
         financial_year_start = current_year
 
     dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_limit, financial_year_start)
-    # if we're trying to update historical data, don't touch other rows.
-    # Otherwise, make sure that future years will get the new updated value.
-    if financial_year_start >= current_year:
-        dao_update_annual_billing_for_future_years(service_id, free_sms_fragment_limit, financial_year_start)
