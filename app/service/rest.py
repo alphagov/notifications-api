@@ -274,7 +274,6 @@ def create_service():
     if not data.get("user_id"):
         errors = {"user_id": ["Missing data for required field."]}
         raise InvalidRequest(errors, status_code=400)
-    data.pop("service_domain", None)
 
     # validate json with marshmallow
     service_schema.load(data)

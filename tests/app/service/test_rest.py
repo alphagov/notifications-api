@@ -412,58 +412,6 @@ def test_create_service(
     assert service_sms_senders[0].sms_sender == current_app.config["FROM_NUMBER"]
 
 
-@pytest.mark.parametrize(
-    "domain, expected_org",
-    (
-        (None, False),
-        ("", False),
-        ("unknown.gov.uk", False),
-        ("unknown-example.gov.uk", False),
-        ("example.gov.uk", True),
-        ("test.gov.uk", True),
-        ("test.example.gov.uk", True),
-    ),
-)
-def test_create_service_with_domain_sets_organisation(
-    admin_request,
-    sample_user,
-    domain,
-    expected_org,
-):
-    red_herring_org = create_organisation(name="Sub example")
-    create_domain("specific.example.gov.uk", red_herring_org.id)
-    create_domain("aaaaaaaa.example.gov.uk", red_herring_org.id)
-
-    org = create_organisation()
-    create_domain("example.gov.uk", org.id)
-    create_domain("test.gov.uk", org.id)
-
-    another_org = create_organisation(name="Another")
-    create_domain("cabinet-office.gov.uk", another_org.id)
-    create_domain("cabinetoffice.gov.uk", another_org.id)
-
-    sample_user.email_address = f"test@{domain}"
-
-    data = {
-        "name": "created service",
-        "user_id": str(sample_user.id),
-        "email_message_limit": 1000,
-        "sms_message_limit": 1000,
-        "letter_message_limit": 1000,
-        "restricted": False,
-        "active": False,
-        "created_by": str(sample_user.id),
-        "service_domain": domain,
-    }
-
-    json_resp = admin_request.post("service.create_service", _data=data, _expected_status=201)
-
-    if expected_org:
-        assert json_resp["data"]["organisation"] == str(org.id)
-    else:
-        assert json_resp["data"]["organisation"] is None
-
-
 def test_create_service_should_create_annual_billing_for_service(admin_request, sample_user):
     data = {
         "name": "created service",

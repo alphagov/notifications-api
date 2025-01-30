@@ -1,6 +1,5 @@
 from datetime import date, datetime
 
-import pytest
 from freezegun import freeze_time
 
 from app.billing.rest import update_free_sms_fragment_limit_data
@@ -28,9 +27,10 @@ def test_create_update_free_sms_fragment_limit_invalid_schema(admin_request, sam
     assert "errors" in json_response
 
 
-def test_create_free_sms_fragment_limit_current_year_updates_future_years(admin_request, sample_service):
+def test_create_or_update_free_sms_fragment_limit_past_year_doesnt_update_other_years(admin_request, sample_service):
     current_year = get_current_financial_year_start_year()
-    future_billing = create_annual_billing(sample_service.id, 1, current_year + 1)
+    create_annual_billing(sample_service.id, 1, current_year)
+    create_annual_billing(sample_service.id, 1, current_year - 1)
 
     admin_request.post(
         "billing.create_or_update_free_sms_fragment_limit",
@@ -39,31 +39,8 @@ def test_create_free_sms_fragment_limit_current_year_updates_future_years(admin_
         _expected_status=201,
     )
 
-    current_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
-    assert future_billing.free_sms_fragment_limit == 9999
-    assert current_billing.financial_year_start == current_year
-    assert current_billing.free_sms_fragment_limit == 9999
-
-
-@pytest.mark.parametrize("update_existing", [True, False])
-def test_create_or_update_free_sms_fragment_limit_past_year_doenst_update_other_years(
-    admin_request, sample_service, update_existing
-):
-    current_year = get_current_financial_year_start_year()
-    create_annual_billing(sample_service.id, 1, current_year)
-    if update_existing:
-        create_annual_billing(sample_service.id, 1, current_year - 1)
-
-    data = {"financial_year_start": current_year - 1, "free_sms_fragment_limit": 9999}
-    admin_request.post(
-        "billing.create_or_update_free_sms_fragment_limit",
-        service_id=sample_service.id,
-        _data=data,
-        _expected_status=201,
-    )
-
-    assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year - 1).free_sms_fragment_limit == 9999
-    assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year).free_sms_fragment_limit == 1
+    assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year - 1).free_sms_fragment_limit == 1
+    assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year).free_sms_fragment_limit == 9999
 
 
 def test_create_free_sms_fragment_limit_updates_existing_year(admin_request, sample_service):
@@ -73,7 +50,7 @@ def test_create_free_sms_fragment_limit_updates_existing_year(admin_request, sam
     admin_request.post(
         "billing.create_or_update_free_sms_fragment_limit",
         service_id=sample_service.id,
-        _data={"financial_year_start": current_year, "free_sms_fragment_limit": 2},
+        _data={"free_sms_fragment_limit": 2},
         _expected_status=201,
     )
 
