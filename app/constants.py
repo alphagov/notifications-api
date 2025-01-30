@@ -265,10 +265,12 @@ WEBAUTHN_AUTH_TYPE = "webauthn_auth"
 USER_AUTH_TYPES = [SMS_AUTH_TYPE, EMAIL_AUTH_TYPE, WEBAUTHN_AUTH_TYPE]
 VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
 
+
 # Service callbacks
-DELIVERY_STATUS_CALLBACK_TYPE = "delivery_status"
-COMPLAINT_CALLBACK_TYPE = "complaint"
-SERVICE_CALLBACK_TYPES = [DELIVERY_STATUS_CALLBACK_TYPE, COMPLAINT_CALLBACK_TYPE]
+class ServiceCallbackTypes(enum.StrEnum):
+    delivery_status = "delivery_status"
+    complaint = "complaint"
+
 
 # Branding values
 BRANDING_GOVUK = "govuk"  # Deprecated outside migrations

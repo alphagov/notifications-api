@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import signing
-from app.constants import COMPLAINT_CALLBACK_TYPE, DELIVERY_STATUS_CALLBACK_TYPE
+from app.constants import ServiceCallbackTypes
 from app.dao.service_callback_api_dao import (
     get_service_callback_api,
     get_service_delivery_status_callback_api_for_service,
@@ -152,7 +152,7 @@ def test_get_service_callback_api(sample_service):
         url="https://some_service/delivery_callback_endpoint",
         bearer_token="delivery_unique_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type=DELIVERY_STATUS_CALLBACK_TYPE,
+        callback_type=ServiceCallbackTypes.delivery_status,
     )
     save_service_callback_api(service_delivery_callback_api)
 
@@ -161,12 +161,12 @@ def test_get_service_callback_api(sample_service):
         url="https://some_service/complaint_callback_endpoint",
         bearer_token="complaint_unique_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type=COMPLAINT_CALLBACK_TYPE,
+        callback_type=ServiceCallbackTypes.complaint.value,
     )
     save_service_callback_api(service_complaint_callback_api)
 
     delivery_callback_api = get_service_callback_api(
-        service_delivery_callback_api.id, sample_service.id, DELIVERY_STATUS_CALLBACK_TYPE
+        service_delivery_callback_api.id, sample_service.id, ServiceCallbackTypes.delivery_status.value
     )
     assert delivery_callback_api.id is not None
     assert delivery_callback_api.service_id == sample_service.id
@@ -177,7 +177,7 @@ def test_get_service_callback_api(sample_service):
     assert delivery_callback_api.updated_at is None
 
     complaint_callback_api = get_service_callback_api(
-        service_complaint_callback_api.id, sample_service.id, COMPLAINT_CALLBACK_TYPE
+        service_complaint_callback_api.id, sample_service.id, ServiceCallbackTypes.complaint.value
     )
     assert complaint_callback_api.id is not None
     assert complaint_callback_api.service_id == sample_service.id
@@ -189,7 +189,7 @@ def test_get_service_callback_api(sample_service):
 
 
 def test_get_service_delivery_status_callback_api_for_service(sample_service):
-    service_callback_api = create_service_callback_api(service=sample_service)
+    service_callback_api = create_service_callback_api(callback_type="delivery_status", service=sample_service)
     result = get_service_delivery_status_callback_api_for_service(sample_service.id)
     assert result.id == service_callback_api.id
     assert result.url == service_callback_api.url

@@ -232,7 +232,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
         return [
             callback.id
             for callback in service.service_callback_api
-            if callback.callback_type == app.constants.DELIVERY_STATUS_CALLBACK_TYPE
+            if callback.callback_type == app.constants.ServiceCallbackTypes.delivery_status.value
         ]
 
     def _get_allowed_broadcast_provider(self, service):
@@ -337,7 +337,7 @@ class DetailedServiceSchema(BaseSchema):
         return [
             callback.id
             for callback in service.service_callback_api
-            if callback.callback_type == app.constants.DELIVERY_STATUS_CALLBACK_TYPE
+            if callback.callback_type == app.constants.ServiceCallbackTypes.delivery_status.value
         ]
 
     class Meta(BaseSchema.Meta):

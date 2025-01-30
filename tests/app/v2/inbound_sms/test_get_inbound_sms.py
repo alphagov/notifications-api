@@ -34,6 +34,7 @@ def test_get_inbound_sms_returns_200_when_service_has_callbacks(api_client_reque
         url="https://inbound.example.com",
     )
     create_service_callback_api(
+        callback_type="delivery_status",
         service=sample_service,
         url="https://inbound.example.com",
     )
