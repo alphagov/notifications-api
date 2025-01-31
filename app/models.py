@@ -705,6 +705,8 @@ class AnnualBilling(db.Model):
     free_sms_fragment_limit = db.Column(db.Integer, nullable=False, index=False, unique=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    high_volume_service_last_year = db.Column(db.Boolean, unique=False, default=False, nullable=False)
+    has_custom_allowance = db.Column(db.Boolean, unique=False, default=False, nullable=False)
     UniqueConstraint("financial_year_start", "service_id", name="ix_annual_billing_service_id")
     service = db.relationship(Service, backref=db.backref("annual_billing", uselist=True))
 
