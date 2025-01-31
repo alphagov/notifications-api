@@ -74,7 +74,10 @@ def set_default_free_allowance_for_service(service, year_start=None):
         high_volume_service_last_year = False
 
         # get last year's row if it exists
-        last_years_allowance = AnnualBilling.query.filter_by(service_id=service.id, financial_year_start=year_start - 1)
+        last_years_allowance = AnnualBilling.query.filter_by(
+            service_id=service.id,
+            financial_year_start=year_start - 1,
+        ).first()
         if last_years_allowance and last_years_allowance.has_custom_allowance:
             # carry over the allowance from last year
             free_sms_fragment_allowance = last_years_allowance.free_sms_fragment_allowance
