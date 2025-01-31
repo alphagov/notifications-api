@@ -31,7 +31,18 @@ if debug_post_threshold:
         # using os.times() to avoid additional imports before eventlet monkeypatching
         req._pre_request_elapsed = os.times().elapsed
 
-    def _tuples_to_lists(value):
+    def _process_item(process, attr, process_times_before):
+        value = process.info[attr]
+        if attr == "cpu_times":
+            if process.pid in process_times_before:
+                value = [
+                    after - before
+                    for before, after in zip(process_times_before[process.pid], process.info["cpu_times"], strict=False)
+                ]
+            else:
+                # we have no way of giving a sensible value
+                value = None
+
         if isinstance(value, tuple):
             # convert to list for more compact (and json-able) representation
             return list(value)
@@ -44,13 +55,16 @@ if debug_post_threshold:
             import json
             import time
             from io import StringIO
+            from os import getpid
             from pstats import Stats
 
             import psutil
             from eventlet.green import profile
 
-            # consume this iterator to give cpu_percent calculation a "start time" to work with
-            list(psutil.process_iter(["cpu_percent"]))
+            # include cpu_percent to give later call a "start time" to work with
+            process_times_before = {
+                p.pid: p.info["cpu_times"] for p in psutil.process_iter(["cpu_percent", "cpu_times"])
+            }
 
             global profiler
             if profiler is None:
@@ -60,7 +74,11 @@ if debug_post_threshold:
             if should_profile:
                 profiler.start()
 
+            perf_counter_before = time.perf_counter()
+
             time.sleep(0.1)  # period over which to profile and calculate cpu_percent
+
+            perf_counter_after = time.perf_counter()
 
             if should_profile:
                 profiler.stop()
@@ -72,17 +90,22 @@ if debug_post_threshold:
             else:
                 prof_out_str = "profiler already running - no profile collected"
 
-            attrs = ["pid", "name", "cpu_percent", "status", "memory_info"]
+            attrs = ["pid", "name", "cpu_percent", "cpu_times", "status", "memory_info"]
 
             context = {
+                "actual_profile_period": perf_counter_after - perf_counter_before,
                 "request_time": elapsed,
                 "processes": json.dumps(
                     [
                         attrs,
-                        [[_tuples_to_lists(p.info[a]) for a in attrs] for p in psutil.process_iter(attrs)],
+                        [
+                            [_process_item(p, a, process_times_before) for a in attrs]
+                            for p in psutil.process_iter(attrs)
+                        ],
                     ]
                 ),
                 "profile": prof_out_str,
+                "process_": getpid(),
             }
             worker.log.info(
                 "post-request diagnostics for request of %(request_time)ss",
