@@ -14,4 +14,11 @@ def upgrade():
 
 
 def downgrade():
-    pass
+    delete_returned_letter_callback = "DELETE FROM service_callback_api WHERE callback_type='returned_letter'"
+    delete_returned_letter_callback_history = \
+        "DELETE FROM service_callback_api_history WHERE callback_type='returned_letter'"
+    delete_returned_letter_callback_type = "DELETE FROM service_callback_type WHERE name='returned_letter'"
+
+    op.execute(delete_returned_letter_callback)
+    op.execute(delete_returned_letter_callback_history)
+    op.execute(delete_returned_letter_callback_type)
