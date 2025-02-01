@@ -41,7 +41,7 @@ class ContextRecyclingEventletWorker(EventletWorker):
         ret = super().handle(*args, **kwargs)
 
         self.context_pool.append(g.gr_context)
-        g.gr_context = Context()
+        g.gr_context = contextvars.Context()
 
         return ret
 worker_class = "gunicorn_config.ContextRecyclingEventletWorker"
