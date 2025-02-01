@@ -1,5 +1,5 @@
+from collections import deque
 import contextvars
-import deque
 import os
 
 import greenlet
