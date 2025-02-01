@@ -44,7 +44,7 @@ class ContextRecyclingEventletWorker(EventletWorker):
         g.gr_context = Context()
 
         return ret
-worker_class = ContextRecyclingEventletWorker
+worker_class = "gunicorn_config.ContextRecyclingEventletWorker"
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
 if debug_post_threshold:
