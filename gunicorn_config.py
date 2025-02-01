@@ -1,4 +1,9 @@
+import contextvars
+import deque
 import os
+
+import greenlet
+from gunicorn.workers.geventlet import EventletWorker
 
 from notifications_utils.gunicorn_defaults import set_gunicorn_defaults
 
@@ -16,11 +21,30 @@ def child_exit(server, worker):
 
 
 workers = 4
-worker_class = "eventlet"
+#worker_class = "eventlet"
 worker_connections = 8  # limit runaway greenthread creation
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 0  # disable temporarily for diagnosing issues
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
+
+
+class ContextRecyclingEventletWorker(EventletWorker):
+    def __init__(self, *args, **kwargs):
+        self.context_pool = deque()
+        super().__init__(*args, **kwargs)
+
+    def handle(self, *args, **kwargs):
+        g = greenlet.getcurrent()
+        if self.context_pool:
+            g.gr_context = self.context_pool.pop()
+
+        ret = super().handle(*args, **kwargs)
+
+        self.context_pool.append(g.gr_context)
+        g.gr_context = Context()
+
+        return ret
+worker_class = ContextRecyclingEventletWorker
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
 if debug_post_threshold:
