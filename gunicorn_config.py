@@ -21,7 +21,7 @@ def child_exit(server, worker):
 
 
 workers = 2
-worker_class = "eventlet"
+# worker_class = "eventlet"
 worker_connections = 4  # limit runaway greenthread creation
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 0  # disable temporarily for diagnosing issues
@@ -44,7 +44,7 @@ class ContextRecyclingEventletWorker(EventletWorker):
         g.gr_context = contextvars.Context()
 
         return ret
-#worker_class = "gunicorn_config.ContextRecyclingEventletWorker"
+worker_class = "gunicorn_config.ContextRecyclingEventletWorker"
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
 if debug_post_threshold:
