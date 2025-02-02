@@ -20,7 +20,7 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
-workers = 4
+workers = 2
 #worker_class = "eventlet"
 worker_connections = 4  # limit runaway greenthread creation
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
