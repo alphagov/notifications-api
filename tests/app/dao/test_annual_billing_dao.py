@@ -14,21 +14,98 @@ from app.models import AnnualBilling
 from tests.app.db import create_service
 
 
-def test_dao_update_free_sms_fragment_limit(notify_db_session, sample_service):
+def test_dao_update_free_sms_fragment_limit(sample_service):
+    old_limit = 5000
     new_limit = 9999
     year = get_current_financial_year_start_year()
-    dao_create_or_update_annual_billing_for_year(sample_service.id, new_limit, year)
-    new_free_limit = dao_get_free_sms_fragment_limit_for_year(sample_service.id, year)
 
-    assert new_free_limit.free_sms_fragment_limit == new_limit
+    # create initial entry in annual billing table with old limit
+    dao_create_or_update_annual_billing_for_year(sample_service.id, old_limit, year)
+
+    # update row to have new limit
+    dao_create_or_update_annual_billing_for_year(sample_service.id, new_limit, year)
+
+    annual_billing_row = dao_get_free_sms_fragment_limit_for_year(sample_service.id, year)
+
+    assert annual_billing_row.free_sms_fragment_limit == new_limit
+    # these rows don't get changed if they are not passed through to the function
+    assert annual_billing_row.high_volume_service_last_year is False
+    assert annual_billing_row.has_custom_allowance is False
+
+
+@pytest.mark.parametrize(
+    "high_volume_service_last_year, has_custom_allowance",
+    [
+        (True, True),
+        (True, False),
+        (False, True),
+        (False, False),
+    ],
+)
+def test_dao_update_free_sms_fragment_limit_can_update_high_volume_and_custom_sender_attributes(
+    sample_service,
+    high_volume_service_last_year,
+    has_custom_allowance,
+):
+    old_limit = 5000
+    new_limit = 9999
+    year = get_current_financial_year_start_year()
+
+    # create initial entry in annual billing table with old limit
+    dao_create_or_update_annual_billing_for_year(sample_service.id, old_limit, year)
+
+    dao_create_or_update_annual_billing_for_year(
+        sample_service.id,
+        new_limit,
+        year,
+        high_volume_service_last_year,
+        has_custom_allowance,
+    )
+
+    annual_billing_row = dao_get_free_sms_fragment_limit_for_year(sample_service.id, year)
+
+    assert annual_billing_row.free_sms_fragment_limit == new_limit
+    assert annual_billing_row.high_volume_service_last_year is high_volume_service_last_year
+    assert annual_billing_row.has_custom_allowance is has_custom_allowance
 
 
 def test_create_annual_billing(sample_service):
     dao_create_or_update_annual_billing_for_year(sample_service.id, 9999, 2016)
 
-    free_limit = dao_get_free_sms_fragment_limit_for_year(sample_service.id, 2016)
+    annual_billing_row = dao_get_free_sms_fragment_limit_for_year(sample_service.id, 2016)
 
-    assert free_limit.free_sms_fragment_limit == 9999
+    assert annual_billing_row.free_sms_fragment_limit == 9999
+    assert annual_billing_row.high_volume_service_last_year is False
+    assert annual_billing_row.has_custom_allowance is False
+
+
+@pytest.mark.parametrize(
+    "high_volume_service_last_year, has_custom_allowance",
+    [
+        (True, True),
+        (True, False),
+        (False, True),
+        (False, False),
+    ],
+)
+def test_create_annual_billing_when_high_volume_and_custom_sender_attributes_are_provided(
+    sample_service,
+    high_volume_service_last_year,
+    has_custom_allowance,
+):
+    dao_create_or_update_annual_billing_for_year(
+        sample_service.id,
+        9999,
+        2016,
+        high_volume_service_last_year,
+        has_custom_allowance,
+    )
+
+    annual_billing_row = dao_get_free_sms_fragment_limit_for_year(sample_service.id, 2016)
+
+    assert annual_billing_row.free_sms_fragment_limit == 9999
+    assert annual_billing_row.high_volume_service_last_year is high_volume_service_last_year
+    assert annual_billing_row.has_custom_allowance is has_custom_allowance
 
 
 def test_dao_get_default_annual_allowance_for_service_uses_org_default(sample_service, caplog):

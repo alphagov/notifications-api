@@ -9,7 +9,13 @@ from app.models import AnnualBilling, DefaultAnnualAllowance
 
 
 @autocommit
-def dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_limit, financial_year_start):
+def dao_create_or_update_annual_billing_for_year(
+    service_id,
+    free_sms_fragment_limit,
+    financial_year_start,
+    high_volume_service_last_year=None,
+    has_custom_allowance=None,
+):
     result = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
 
     if result:
@@ -20,6 +26,13 @@ def dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_l
             financial_year_start=financial_year_start,
             free_sms_fragment_limit=free_sms_fragment_limit,
         )
+
+    if high_volume_service_last_year is not None:
+        result.high_volume_service_last_year = high_volume_service_last_year
+
+    if has_custom_allowance is not None:
+        result.has_custom_allowance = has_custom_allowance
+
     db.session.add(result)
     return result
 
