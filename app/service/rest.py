@@ -45,7 +45,6 @@ from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
     fetch_returned_letter_summary,
-    fetch_returned_letters,
 )
 from app.dao.service_contact_list_dao import (
     dao_archive_contact_list,
@@ -118,6 +117,7 @@ from app.dao.unsubscribe_request_dao import (
 )
 from app.dao.users_dao import get_user_by_id, save_user_attribute
 from app.errors import InvalidRequest, register_errors
+from app.letters.rest import fetch_returned_letter_data
 from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters, letter_print_day
 from app.models import (
     EmailBranding,
@@ -1115,28 +1115,8 @@ def returned_letter_summary(service_id):
 
 @service_blueprint.route("/<uuid:service_id>/returned-letters", methods=["GET"])
 def get_returned_letters(service_id):
-    results = fetch_returned_letters(service_id=service_id, report_date=request.args.get("reported_at"))
-
-    json_results = [
-        {
-            "notification_id": x.notification_id,
-            # client reference can only be added on API letters
-            "client_reference": x.client_reference if x.api_key_id else None,
-            "reported_at": x.reported_at.strftime(DATE_FORMAT),
-            "created_at": x.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
-            # it doesn't make sense to show hidden/precompiled templates
-            "template_name": x.template_name if not x.hidden else None,
-            "template_id": x.template_id if not x.hidden else None,
-            "template_version": x.template_version if not x.hidden else None,
-            "user_name": x.user_name or "API",
-            "email_address": x.email_address or "API",
-            "original_file_name": x.original_file_name,
-            "job_row_number": x.job_row_number,
-            # the file name for a letter uploaded via the UI
-            "uploaded_letter_file_name": x.client_reference if x.hidden and not x.api_key_id else None,
-        }
-        for x in results
-    ]
+    report_date = request.args.get("reported_at")
+    json_results = fetch_returned_letter_data(service_id, report_date)
 
     return jsonify(sorted(json_results, key=lambda i: i["created_at"], reverse=True))
 

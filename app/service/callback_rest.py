@@ -103,6 +103,33 @@ def remove_delivery_receipt_callback_api(service_id, callback_api_id):
     return "", 204
 
 
+# returned letter callback endpoints
+@service_callback_blueprint.route("/returned-letter-api", methods=["POST"])
+def create_returned_letter_callback_api(service_id):
+    callback_type = ServiceCallbackTypes.returned_letter.value
+    return _create_service_callback_api(service_id, callback_type)
+
+
+@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["POST"])
+def update_returned_letter_callback_api(service_id, callback_api_id):
+    callback_type = ServiceCallbackTypes.returned_letter.value
+    to_update = _update_service_callback_api(callback_api_id, service_id, callback_type)
+    return jsonify(data=to_update.serialize()), 200
+
+
+@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
+def fetch_returned_letter_callback_api(service_id, callback_api_id):
+    callback_type = ServiceCallbackTypes.returned_letter.value
+    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
+
+
+@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["DELETE"])
+def remove_returned_letter_callback_api(service_id, callback_api_id):
+    callback_type = ServiceCallbackTypes.returned_letter.value
+    _remove_service_callback_api(callback_api_id, service_id, callback_type)
+    return "", 204
+
+
 # helper callback methods
 def _create_service_callback_api(service_id, callback_type):
     data = request.get_json()
