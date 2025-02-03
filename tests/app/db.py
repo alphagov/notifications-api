@@ -599,11 +599,19 @@ def create_letter_contact(service, contact_block, is_default=True, archived=Fals
     return letter_content
 
 
-def create_annual_billing(service_id, free_sms_fragment_limit, financial_year_start):
+def create_annual_billing(
+    service_id,
+    free_sms_fragment_limit,
+    financial_year_start,
+    high_volume_service_last_year=False,
+    has_custom_allowance=False,
+):
     annual_billing = AnnualBilling(
         service_id=service_id,
         free_sms_fragment_limit=free_sms_fragment_limit,
         financial_year_start=financial_year_start,
+        high_volume_service_last_year=high_volume_service_last_year,
+        has_custom_allowance=has_custom_allowance,
     )
     db.session.add(annual_billing)
     db.session.commit()
