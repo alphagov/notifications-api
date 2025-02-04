@@ -3,6 +3,7 @@ FROM python:3.11-slim-bookworm AS base
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
+ENV VIRTUAL_ENV="/opt/venv"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
