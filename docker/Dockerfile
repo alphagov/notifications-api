@@ -28,7 +28,7 @@ RUN echo "Install OS dependencies for python app requirements" &&  \
 
 COPY requirements.txt .
 
-RUN pip install uv
+RUN pip install uv==0.5.26
 
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN echo "Installing python requirements" && \
@@ -85,7 +85,7 @@ RUN mkdir -p app
 COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
-RUN pip install uv
+RUN pip install uv==0.5.26
 COPY --chown=notify:notify Makefile requirements_for_test.txt ./
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN make bootstrap
@@ -124,7 +124,7 @@ COPY --chown=notify:notify . .
 
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
 
-RUN pip3 install uv
+RUN pip3 install uv==0.5.26
 
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN uv pip sync requirements_for_test.txt
