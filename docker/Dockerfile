@@ -33,7 +33,7 @@ RUN pip install uv
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN echo "Installing python requirements" && \
     python3 -m venv /opt/venv && \
-    uv pip sync --python /opt/venv/bin/python requirements.txt
+    /opt/venv/bin/pip install -r requirements.txt
 
 COPY . .
 RUN make generate-version-file  # This file gets copied across
@@ -127,7 +127,7 @@ ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
 RUN pip3 install uv
 
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
-RUN uv pip sync requirements_for_test.txt
+RUN pip3 install -r requirements_for_test.txt
 
 USER root
 
