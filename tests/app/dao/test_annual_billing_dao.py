@@ -11,7 +11,7 @@ from app.dao.annual_billing_dao import (
 )
 from app.dao.date_util import get_current_financial_year_start_year
 from app.models import AnnualBilling
-from tests.app.db import create_service
+from tests.app.db import create_annual_billing, create_service
 
 
 def test_dao_update_free_sms_fragment_limit(sample_service):
@@ -186,6 +186,8 @@ def test_set_default_free_allowance_for_service(notify_db_session, org_type, yea
     assert annual_billing[0].service_id == service.id
     assert annual_billing[0].financial_year_start == year
     assert annual_billing[0].free_sms_fragment_limit == expected_default
+    assert annual_billing[0].high_volume_service_last_year is False
+    assert annual_billing[0].has_custom_allowance is False
 
 
 def test_set_default_free_allowance_for_service_fails_before_2016(notify_db_session):
@@ -211,7 +213,72 @@ def test_set_default_free_allowance_for_service_using_correct_year(sample_servic
     mock_dao = mocker.patch("app.dao.annual_billing_dao.dao_create_or_update_annual_billing_for_year")
     set_default_free_allowance_for_service(service=sample_service, year_start=None)
 
-    mock_dao.assert_called_once_with(sample_service.id, 25000, 2020)
+    mock_dao.assert_called_once_with(
+        sample_service.id,
+        25000,
+        2020,
+        high_volume_service_last_year=False,
+        has_custom_allowance=False,
+    )
+
+
+@freeze_time("2021-03-29 14:02:00")
+def test_set_default_free_allowance_for_high_volume_service(sample_service, mocker):
+    mocker.patch("app.dao.annual_billing_dao._is_high_volume_service", return_value=True)
+    mock_dao = mocker.patch("app.dao.annual_billing_dao.dao_create_or_update_annual_billing_for_year")
+    set_default_free_allowance_for_service(service=sample_service)
+
+    mock_dao.assert_called_once_with(
+        sample_service.id,
+        0,
+        2020,
+        high_volume_service_last_year=True,
+        has_custom_allowance=False,
+    )
+
+
+@freeze_time("2021-03-29 14:02:00")
+@pytest.mark.parametrize(
+    "previous_custom_allowance",
+    [
+        0,
+        1,
+        5000,
+        250000,  # default for the current year
+    ],
+)
+def test_set_default_free_allowance_for_service_with_custom_allowance(
+    sample_service,
+    previous_custom_allowance,
+    mocker,
+):
+    mock_dao = mocker.patch("app.dao.annual_billing_dao.dao_create_or_update_annual_billing_for_year")
+    create_annual_billing(sample_service.id, previous_custom_allowance, 2019, has_custom_allowance=True)
+
+    set_default_free_allowance_for_service(service=sample_service)
+
+    mock_dao.assert_called_once_with(
+        sample_service.id,
+        previous_custom_allowance,
+        2020,
+        high_volume_service_last_year=False,
+        has_custom_allowance=True,
+    )
+
+
+@freeze_time("2021-03-29 14:02:00")
+def test_set_default_free_allowance_for_service_for_service_with_previous_default_allowance(sample_service, mocker):
+    mock_dao = mocker.patch("app.dao.annual_billing_dao.dao_create_or_update_annual_billing_for_year")
+    create_annual_billing(sample_service.id, 10000, 2019, has_custom_allowance=False)
+    set_default_free_allowance_for_service(service=sample_service)
+
+    mock_dao.assert_called_once_with(
+        sample_service.id,
+        25000,
+        2020,
+        high_volume_service_last_year=False,
+        has_custom_allowance=False,
+    )
 
 
 @freeze_time("2021-04-01 14:02:00")
@@ -222,6 +289,8 @@ def test_set_default_free_allowance_for_service_updates_existing_year(sample_ser
     assert len(annual_billing) == 1
     assert annual_billing[0].service_id == sample_service.id
     assert annual_billing[0].free_sms_fragment_limit == 10000
+    assert annual_billing[0].high_volume_service_last_year is False
+    assert annual_billing[0].has_custom_allowance is False
 
     sample_service.organisation_type = "central"
 
@@ -230,3 +299,53 @@ def test_set_default_free_allowance_for_service_updates_existing_year(sample_ser
     assert len(annual_billing) == 1
     assert annual_billing[0].service_id == sample_service.id
     assert annual_billing[0].free_sms_fragment_limit == 150000
+    assert annual_billing[0].high_volume_service_last_year is False
+    assert annual_billing[0].has_custom_allowance is False
+
+
+@freeze_time("2021-04-01 14:02:00")
+def test_set_default_free_allowance_for_service_updates_existing_year_high_volume_service(sample_service, mocker):
+    mocker.patch("app.dao.annual_billing_dao._is_high_volume_service", return_value=True)
+
+    set_default_free_allowance_for_service(service=sample_service)
+    annual_billing = AnnualBilling.query.all()
+    assert not sample_service.organisation_type
+    assert len(annual_billing) == 1
+    assert annual_billing[0].service_id == sample_service.id
+    assert annual_billing[0].free_sms_fragment_limit == 0
+    assert annual_billing[0].high_volume_service_last_year is True
+    assert annual_billing[0].has_custom_allowance is False
+
+    sample_service.organisation_type = "central"
+
+    set_default_free_allowance_for_service(service=sample_service)
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 1
+    assert annual_billing[0].service_id == sample_service.id
+    assert annual_billing[0].free_sms_fragment_limit == 0
+    assert annual_billing[0].high_volume_service_last_year is True
+    assert annual_billing[0].has_custom_allowance is False
+
+
+@freeze_time("2021-04-01 14:02:00")
+def test_set_default_free_allowance_for_service_updates_existing_year_custom_allowance(sample_service, mocker):
+    create_annual_billing(sample_service.id, 10, 2019, has_custom_allowance=True)
+
+    set_default_free_allowance_for_service(service=sample_service)
+    annual_billing = AnnualBilling.query.all()
+    assert not sample_service.organisation_type
+    assert len(annual_billing) == 2
+    assert annual_billing[0].service_id == sample_service.id
+    assert annual_billing[0].free_sms_fragment_limit == 10
+    assert annual_billing[0].high_volume_service_last_year is False
+    assert annual_billing[0].has_custom_allowance is True
+
+    sample_service.organisation_type = "central"
+
+    set_default_free_allowance_for_service(service=sample_service)
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 2
+    assert annual_billing[0].service_id == sample_service.id
+    assert annual_billing[0].free_sms_fragment_limit == 10
+    assert annual_billing[0].high_volume_service_last_year is False
+    assert annual_billing[0].has_custom_allowance is True

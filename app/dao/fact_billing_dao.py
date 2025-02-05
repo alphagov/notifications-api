@@ -20,6 +20,7 @@ from app.constants import (
     SMS_TYPE,
 )
 from app.dao.date_util import (
+    get_current_financial_year_start_year,
     get_financial_year_dates,
     get_financial_year_for_datetime,
 )
@@ -1170,3 +1171,19 @@ def get_count_of_notifications_sent(
     notifications_count = query.with_entities(func.sum(FactBilling.notifications_sent)).scalar()
 
     return notifications_count or 0
+
+
+def get_sms_fragments_sent_last_financial_year(service_id: str) -> int:
+    last_financial_year = get_current_financial_year_start_year() - 1
+    year_start, year_end = get_financial_year_dates(last_financial_year)
+
+    return (
+        db.session.query(func.coalesce(func.sum(FactBilling.billable_units * FactBilling.rate_multiplier), 0))
+        .filter(
+            FactBilling.service_id == service_id,
+            FactBilling.notification_type == "sms",
+            FactBilling.bst_date >= year_start,
+            FactBilling.bst_date <= year_end,
+        )
+        .scalar()
+    )

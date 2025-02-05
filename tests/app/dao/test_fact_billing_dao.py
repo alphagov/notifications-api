@@ -23,6 +23,7 @@ from app.dao.fact_billing_dao import (
     get_count_of_notifications_sent,
     get_rate,
     get_rates_for_billing,
+    get_sms_fragments_sent_last_financial_year,
     update_ft_billing_letter_despatch,
 )
 from app.dao.notifications_dao import dao_record_letter_despatched_on_by_id
@@ -1516,3 +1517,13 @@ def test_get_count_of_notifications_sent(sample_service, test_case):
     )
 
     assert count == test_case.expected_count
+
+
+@freeze_time("2019-04-02 01:20:00")
+def test_get_sms_fragments_sent_last_financial_year(sample_service, sample_service_billing_fy_2018_variable_rates):
+    sms_template = create_template(sample_service, "sms")
+    # These rows should not get counted since they are before the last fy
+    create_ft_billing("2018-01-01", sms_template)
+    create_ft_billing("2017-08-01", sms_template)
+
+    assert get_sms_fragments_sent_last_financial_year(sample_service.id) == 9
