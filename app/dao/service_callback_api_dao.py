@@ -38,6 +38,12 @@ def get_service_delivery_status_callback_api_for_service(service_id):
     ).first()
 
 
+def get_service_returned_letter_callback_api_for_service(service_id):
+    return ServiceCallbackApi.query.filter_by(
+        service_id=service_id, callback_type=ServiceCallbackTypes.returned_letter.value
+    ).first()
+
+
 def get_service_complaint_callback_api_for_service(service_id):
     return ServiceCallbackApi.query.filter_by(
         service_id=service_id, callback_type=ServiceCallbackTypes.complaint.value
