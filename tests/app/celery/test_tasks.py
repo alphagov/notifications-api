@@ -17,8 +17,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import signing
 from app.celery import provider_tasks, tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
+from app.celery.service_callback_tasks import send_returned_letter_to_service
 from app.celery.tasks import (
-    _process_returned_letters_callback,
+    _check_and_queue_returned_letter_callback_task,
     get_id_task_args_kwargs_for_job_row,
     get_recipient_csv_and_template_and_sender_id,
     process_incomplete_job,
@@ -40,6 +41,7 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     SMS_TYPE,
+    ServiceCallbackTypes,
 )
 from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
 from app.models import Job, Notification, NotificationHistory, ReturnedLetter
@@ -53,6 +55,7 @@ from tests.app.db import (
     create_notification_history,
     create_reply_to_email,
     create_service,
+    create_service_callback_api,
     create_service_with_defined_sms_sender,
     create_template,
     create_user,
@@ -2148,12 +2151,34 @@ def test_save_tasks_use_cached_service_and_template(
     assert len(delivery_mock.call_args_list) == 3
 
 
-def test__process_returned_letters_callback(sample_letter_template, mocker):
-    history_1 = create_notification_history(sample_letter_template, reference="ref1")
-    history_2 = create_notification_history(sample_letter_template, reference="ref2")
+def test_check_and_queue_returned_letter_callback_task_existing_callback_api(mocker, mock_celery_task, sample_service):
+    notification_id = "088557f2-2b7c-4ec0-981a-ac124103081f"
 
-    task_mock = mocker.patch("app.celery.tasks._check_and_queue_returned_letter_callback_task")
+    create_service_callback_api(
+        callback_type=ServiceCallbackTypes.returned_letter.value, service=sample_service, url="https://original_url.com"
+    )
 
-    _process_returned_letters_callback([history_1.reference, history_2.reference])
+    encoded_returned_letter = "encoded-returned-letter"
+    mocker.patch(
+        "app.celery.tasks.create_returned_letter_callback_data",
+        return_value=encoded_returned_letter,
+    )
 
-    task_mock.assert_has_calls([call(history_1.id, history_1.service_id), call(history_2.id, history_2.service_id)])
+    mock_send = mock_celery_task(send_returned_letter_to_service)
+
+    _check_and_queue_returned_letter_callback_task(notification_id, sample_service.id)
+
+    mock_send.assert_called_once_with([encoded_returned_letter], queue="service-callbacks")
+
+
+def test_check_and_queue_returned_letter_callback_task_for_no_existing_callback_api(
+    mocker, mock_celery_task, sample_service
+):
+    notification_id = "9d7750a8-469f-40e9-99e0-aa3a3af4c575"
+    mocker.patch("app.celery.tasks.get_service_returned_letter_callback_api_for_service", return_value=None)
+
+    mock_send = mock_celery_task(send_returned_letter_to_service)
+
+    _check_and_queue_returned_letter_callback_task(notification_id, sample_service.id)
+
+    mock_send.assert_not_called()
