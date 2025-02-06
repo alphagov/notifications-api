@@ -29,7 +29,7 @@ from app.dao.notifications_dao import (
     dao_update_notifications_by_reference,
     get_notification_by_id,
 )
-from app.dao.returned_letters_dao import insert_returned_letters
+from app.dao.returned_letters_dao import _get_notification_ids_for_references, insert_returned_letters
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
@@ -417,3 +417,15 @@ def process_returned_letters_list(notification_references):
         updated_history,
         len(notification_references),
     )
+
+    _process_returned_letters_callback(notification_references)
+
+
+def _process_returned_letters_callback(notification_references):
+    data = _get_notification_ids_for_references(notification_references)
+    for row in data:
+        _check_and_queue_returned_letter_callback_task(row.id, row.service_id)
+
+
+def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
+    pass

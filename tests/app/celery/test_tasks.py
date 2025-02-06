@@ -18,6 +18,7 @@ from app import signing
 from app.celery import provider_tasks, tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
+    _process_returned_letters_callback,
     get_id_task_args_kwargs_for_job_row,
     get_recipient_csv_and_template_and_sender_id,
     process_incomplete_job,
@@ -2064,6 +2065,17 @@ def test_process_returned_letters_list_updates_history_if_notification_is_alread
     assert all(n.updated_at for n in notifications)
 
 
+def test_process_returned_letters_list_processes_returned_letters_callback(sample_letter_template, mocker):
+    history_1 = create_notification_history(sample_letter_template, reference="ref1")
+    history_2 = create_notification_history(sample_letter_template, reference="ref2")
+
+    letter_callback_mock = mocker.patch("app.celery.tasks._process_returned_letters_callback")
+
+    process_returned_letters_list([history_1.reference, history_2.reference])
+
+    letter_callback_mock.assert_called_with([history_1.reference, history_2.reference])
+
+
 def test_process_returned_letters_populates_returned_letters_table(sample_letter_template):
     create_notification_history(sample_letter_template, reference="ref1")
     create_notification_history(sample_letter_template, reference="ref2")
@@ -2134,3 +2146,14 @@ def test_save_tasks_use_cached_service_and_template(
     # But we save 3 notifications and enqueue 3 tasks
     assert len(Notification.query.all()) == 3
     assert len(delivery_mock.call_args_list) == 3
+
+
+def test__process_returned_letters_callback(sample_letter_template, mocker):
+    history_1 = create_notification_history(sample_letter_template, reference="ref1")
+    history_2 = create_notification_history(sample_letter_template, reference="ref2")
+
+    task_mock = mocker.patch("app.celery.tasks._check_and_queue_returned_letter_callback_task")
+
+    _process_returned_letters_callback([history_1.reference, history_2.reference])
+
+    task_mock.assert_has_calls([call(history_1.id, history_1.service_id), call(history_2.id, history_2.service_id)])
