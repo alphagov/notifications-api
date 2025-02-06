@@ -93,8 +93,7 @@ def delete_user_and_all_associated_db_objects(user):
     for api_key in ApiKey.query.filter_by(created_by=user):
         db.session.delete(api_key)
 
-    for org in user.organisations:
-        organisation_user_permissions_dao.remove_user_organisation_permissions(user, org)
+    organisation_user_permissions_dao.remove_user_organisation_permissions_by_user(user)
     user.organisations = []
     for service in user.services:
         dao_remove_user_from_service(user=user, service=service)

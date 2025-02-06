@@ -42,14 +42,20 @@ from app.models import (
     Permission,
     Service,
     ServiceContactList,
+    ServiceDataRetention,
     ServiceEmailReplyTo,
     ServiceInboundApi,
+    ServiceJoinRequest,
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
     Template,
+    TemplateFolder,
     TemplateHistory,
     TemplateRedacted,
+    UnsubscribeRequest,
+    UnsubscribeRequestHistory,
+    UnsubscribeRequestReport,
     User,
     VerifyCode,
 )
@@ -363,6 +369,15 @@ def delete_service_and_all_associated_db_objects(service):
     _delete(InboundSmsHistory.query.filter_by(service=service))
     _delete(ServiceInboundApi.query.filter_by(service=service))
 
+    _delete(UnsubscribeRequest.query.filter_by(service_id=service.id))
+    _delete(UnsubscribeRequestReport.query.filter_by(service_id=service.id))
+    _delete(UnsubscribeRequestHistory.query.filter_by(service_id=service.id))
+
+    service_join_requests = ServiceJoinRequest.query.filter_by(service_id=service.id)
+    for service_join_request in service_join_requests:
+        service_join_request.contacted_service_users = []
+    _delete(service_join_requests)
+
     _delete(ServiceSmsSender.query.filter_by(service=service))
     _delete(InboundNumber.query.filter_by(service=service))
     _delete(ServiceEmailReplyTo.query.filter_by(service=service))
@@ -372,8 +387,21 @@ def delete_service_and_all_associated_db_objects(service):
     _delete(NotificationHistory.query.filter_by(service=service))
     _delete(Notification.query.filter_by(service=service))
     _delete(Job.query.filter_by(service=service))
-    _delete(Template.query.filter_by(service=service))
-    _delete(TemplateHistory.query.filter_by(service_id=service.id))
+    _delete(ServiceDataRetention.query.filter_by(service=service))
+
+    templates = Template.query.filter_by(service=service)
+    for template in templates:
+        template.folder = None
+        # Deleting TemplateHistory by Template could be inefficient
+        # DB connection timeout when filtering and deleting by Service
+        _delete(TemplateHistory.query.filter_by(id=template.id))
+    _delete(templates)
+
+    template_folders = TemplateFolder.query.filter_by(service=service)
+    for template_folder in template_folders:
+        template_folder.users = []
+    _delete(template_folders)
+
     _delete(ServiceLetterContact.query.filter_by(service=service))
     _delete(ServicePermission.query.filter_by(service_id=service.id))
     _delete(ApiKey.query.filter_by(service=service))
@@ -387,6 +415,8 @@ def delete_service_and_all_associated_db_objects(service):
         user.organisations = []
         service.users.remove(user)
 
+    service.letter_branding = None
+    service.email_branding = None
     _delete(Service.get_history_model().query.filter_by(id=service.id))
     _delete(Service.query.filter_by(id=service.id))
 

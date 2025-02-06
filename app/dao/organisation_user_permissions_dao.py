@@ -11,6 +11,10 @@ class OrganisationUserPermissionsDao(DAOClass):
         query = self.Meta.model.query.filter_by(user=user, organisation=organisation)
         query.delete()
 
+    def remove_user_organisation_permissions_by_user(self, user: User):
+        query = self.Meta.model.query.filter_by(user=user)
+        query.delete()
+
     def set_user_organisation_permission(
         self,
         user: User,
