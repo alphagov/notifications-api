@@ -9,6 +9,7 @@ from werkzeug.local import LocalProxy
 from app import memo_resetters, notify_celery, signing
 from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
+from app.dao.returned_letters_dao import fetch_returned_letter_callback_data_dao
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.utils import DATETIME_FORMAT
 
@@ -164,6 +165,29 @@ def create_complaint_callback_data(complaint, notification, service_callback_api
         "reference": notification.client_reference,
         "to": recipient,
         "complaint_date": complaint.complaint_date.strftime(DATETIME_FORMAT),
+        "service_callback_api_url": service_callback_api.url,
+        "service_callback_api_bearer_token": service_callback_api.bearer_token,
+    }
+    return signing.encode(data)
+
+
+def create_returned_letter_callback_data(notification_id, service_id, service_callback_api):
+    returned_letter_data = fetch_returned_letter_callback_data_dao(notification_id, service_id)
+
+    # The data mirrors that which is included in the returned letter report
+    data = {
+        "notification_id": str(returned_letter_data["notification_id"]),
+        "reference": returned_letter_data["client_reference"] if returned_letter_data["api_key_id"] else None,
+        "created_at": returned_letter_data["created_at"],
+        "email_address": returned_letter_data["email_address"] or "API",
+        # it doesn't make sense to show hidden/precompiled templates
+        "template_name": returned_letter_data["template_name"] if not returned_letter_data["hidden"] else None,
+        "template_id": str(returned_letter_data["template_id"] if not returned_letter_data["hidden"] else None),
+        "template_version": returned_letter_data["template_version"] if not returned_letter_data["hidden"] else None,
+        "original_file_name": returned_letter_data["original_file_name"],
+        "job_row_number": returned_letter_data["job_row_number"],
+        "upload_letter_file_name": returned_letter_data["client_reference"] if returned_letter_data["hidden"]
+                              and not returned_letter_data["api_key_id"] else None,
         "service_callback_api_url": service_callback_api.url,
         "service_callback_api_bearer_token": service_callback_api.bearer_token,
     }
