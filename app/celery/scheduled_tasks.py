@@ -628,6 +628,12 @@ def weekly_user_research_email():
     Runs every Wednesday and finds all active users who were created the week starting on Monday 16 days ago.
     These users get emailed inviting them to give feedback on how they have found getting started with Notify.
     """
+    if not current_app.should_send_weekly_user_research_email:
+        current_app.logger.info(
+            "Skipping weekly user research email run in %s", current_app.config["NOTIFY_ENVIRONMENT"]
+        )
+        return
+
     start_date = date.today() - timedelta(days=16)
     end_date = date.today() - timedelta(days=9)
 
