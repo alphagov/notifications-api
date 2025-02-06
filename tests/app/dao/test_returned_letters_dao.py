@@ -9,14 +9,14 @@ from app.dao.returned_letters_dao import (
     fetch_recent_returned_letter_count,
     fetch_returned_letter_summary,
     fetch_returned_letters,
-    insert_returned_letters,
+    insert_returned_letters, fetch_returned_letter_callback_data_dao,
 )
 from app.models import ReturnedLetter
 from tests.app.db import (
     create_notification,
     create_notification_history,
     create_returned_letter,
-    create_service,
+    create_service, create_job, create_user,
 )
 
 
@@ -305,3 +305,55 @@ def test_fetch_returned_letters_with_create_by_user(sample_letter_template):
         None,
         None,
     )
+
+
+def test_fetch_returned_letter_callback_data_dao(sample_letter_template):
+    today = datetime.now()
+    job = create_job(template=sample_letter_template)
+    notification_1 = create_notification_history(
+        template=sample_letter_template,
+        client_reference="letter_1",
+        status=NOTIFICATION_RETURNED_LETTER,
+        created_at=datetime.utcnow() - timedelta(days=1),
+        created_by_id=sample_letter_template.service.users[0].id,
+        job=job,
+    )
+    returned_letter_1 = create_returned_letter(
+        service=sample_letter_template.service, reported_at=today, notification_id=notification_1.id
+    )
+    notification_2 = create_notification_history(
+        template=sample_letter_template,
+        client_reference="letter_1",
+        status=NOTIFICATION_RETURNED_LETTER,
+        created_at=datetime.utcnow() - timedelta(days=2),
+        created_by_id=sample_letter_template.service.users[0].id,
+        job=job,
+    )
+    returned_letter_2 = create_returned_letter(
+        service=sample_letter_template.service, reported_at=today, notification_id=notification_2.id
+    )
+
+    expected_result = {
+        "notification_id": notification_1.id,
+        "client_reference": notification_1.client_reference,
+        "created_at": notification_1.created_at,
+        "email_address": sample_letter_template.service.users[0].email_address,
+        "template_name": sample_letter_template.name,
+        "template_id": sample_letter_template.id,
+        "template_version": sample_letter_template.version,
+        "original_file_name": job.original_file_name,
+        "job_row_number": notification_1.job_row_number,
+        "upload_letter_file_name": notification_1.client_reference
+    }
+    result = fetch_returned_letter_callback_data_dao(notification_1.id, notification_1.service_id)
+
+    assert expected_result["notification_id"] == result["notification_id"]
+    assert expected_result["client_reference"] == result["client_reference"]
+    assert expected_result["created_at"] == result["created_at"]
+    assert expected_result["email_address"] == result["email_address"]
+    assert expected_result["template_name"] == result["template_name"]
+    assert expected_result["template_id"] == result["template_id"]
+    assert expected_result["template_version"] == result["template_version"]
+    assert expected_result["original_file_name"] == result["original_file_name"]
+    assert expected_result["job_row_number"] == result["job_row_number"]
+    assert expected_result["upload_letter_file_name"] == result["client_reference"]

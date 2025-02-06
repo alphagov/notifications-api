@@ -12,19 +12,27 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import signing
 from app.celery.service_callback_tasks import (
     _send_data_to_service_callback_api,
+    create_returned_letter_callback_data,
     send_complaint_to_service,
     send_delivery_status_to_service,
     send_inbound_sms_to_service,
+    send_returned_letter_to_service,
 )
-from app.utils import DATETIME_FORMAT
+from app.constants import JOB_STATUS_FINISHED, KEY_TYPE_NORMAL, LETTER_TYPE, ServiceCallbackTypes
+from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
 from tests.app.db import (
+    create_api_key,
     create_complaint,
     create_inbound_sms,
+    create_job,
     create_notification,
+    create_returned_letter,
     create_service,
     create_service_callback_api,
+    create_service_contact_list,
     create_service_inbound_api,
     create_template,
+    create_user,
 )
 
 
