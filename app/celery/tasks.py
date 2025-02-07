@@ -432,5 +432,5 @@ def _process_returned_letters_callback(notification_references):
 def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
     # queue callback task only if the service_callback_api exists
     if service_callback_api := get_service_returned_letter_callback_api_for_service(service_id=service_id):
-        returned_letter_data = create_returned_letter_callback_data(notification_id, service_callback_api)
+        returned_letter_data = create_returned_letter_callback_data(notification_id, service_id, service_callback_api)
         send_returned_letter_to_service.apply_async([returned_letter_data], queue=QueueNames.CALLBACKS)

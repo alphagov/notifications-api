@@ -2154,12 +2154,12 @@ def test_save_tasks_use_cached_service_and_template(
 def test_check_and_queue_returned_letter_callback_task_existing_callback_api(mocker, mock_celery_task, sample_service):
     notification_id = "088557f2-2b7c-4ec0-981a-ac124103081f"
 
-    create_service_callback_api(
+    service_callback_api = create_service_callback_api(
         callback_type=ServiceCallbackTypes.returned_letter.value, service=sample_service, url="https://original_url.com"
     )
 
     encoded_returned_letter = "encoded-returned-letter"
-    mocker.patch(
+    returned_letter_data_mock = mocker.patch(
         "app.celery.tasks.create_returned_letter_callback_data",
         return_value=encoded_returned_letter,
     )
@@ -2168,6 +2168,7 @@ def test_check_and_queue_returned_letter_callback_task_existing_callback_api(moc
 
     _check_and_queue_returned_letter_callback_task(notification_id, sample_service.id)
 
+    returned_letter_data_mock.assert_called_once_with(notification_id, sample_service.id, service_callback_api)
     mock_send.assert_called_once_with([encoded_returned_letter], queue="service-callbacks")
 
 

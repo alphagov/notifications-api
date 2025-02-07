@@ -11,7 +11,7 @@ from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.returned_letters_dao import fetch_returned_letter_callback_data_dao
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
-from app.utils import DATETIME_FORMAT
+from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
 
 # thread-local copies of persistent requests.Session
 _requests_session_context_var: ContextVar[requests.Session] = ContextVar("service_callback_requests_session")
@@ -21,6 +21,32 @@ get_requests_session: LazyLocalGetter[requests.Session] = LazyLocalGetter(
 )
 memo_resetters.append(lambda: get_requests_session.clear())
 requests_session = LocalProxy(get_requests_session)
+
+
+@notify_celery.task(bind=True, name="send-returned-letter", max_retries=5, default_retry_delay=300)
+def send_returned_letter_to_service(self, encoded_returned_letter):
+    returned_letter = signing.decode(encoded_returned_letter)
+
+    data = {
+        "notification_id": returned_letter["notification_id"],
+        "reference": returned_letter["reference"],
+        "date_sent": returned_letter["created_at"],
+        "sent_by": returned_letter["email_address"],
+        "template_name": returned_letter["template_name"],
+        "template_id": returned_letter["template_id"],
+        "template_version": returned_letter["template_version"],
+        "spreadsheet_file_name": returned_letter["original_file_name"],
+        "spreadsheet_row_number": returned_letter["job_row_number"],
+        "upload_letter_file_name": returned_letter["upload_letter_file_name"],
+    }
+
+    _send_data_to_service_callback_api(
+        self,
+        data,
+        returned_letter["service_callback_api_url"],
+        returned_letter["service_callback_api_bearer_token"],
+        "send_returned_letter_to_service",
+    )
 
 
 @notify_celery.task(bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300)
@@ -173,12 +199,11 @@ def create_complaint_callback_data(complaint, notification, service_callback_api
 
 def create_returned_letter_callback_data(notification_id, service_id, service_callback_api):
     returned_letter_data = fetch_returned_letter_callback_data_dao(notification_id, service_id)
-
     # The data mirrors that which is included in the returned letter report
     data = {
         "notification_id": str(returned_letter_data["notification_id"]),
         "reference": returned_letter_data["client_reference"] if returned_letter_data["api_key_id"] else None,
-        "created_at": returned_letter_data["created_at"],
+        "created_at": returned_letter_data["created_at"].strftime(DATETIME_FORMAT_NO_TIMEZONE),
         "email_address": returned_letter_data["email_address"] or "API",
         # it doesn't make sense to show hidden/precompiled templates
         "template_name": returned_letter_data["template_name"] if not returned_letter_data["hidden"] else None,
@@ -186,8 +211,9 @@ def create_returned_letter_callback_data(notification_id, service_id, service_ca
         "template_version": returned_letter_data["template_version"] if not returned_letter_data["hidden"] else None,
         "original_file_name": returned_letter_data["original_file_name"],
         "job_row_number": returned_letter_data["job_row_number"],
-        "upload_letter_file_name": returned_letter_data["client_reference"] if returned_letter_data["hidden"]
-                              and not returned_letter_data["api_key_id"] else None,
+        "upload_letter_file_name": returned_letter_data["client_reference"]
+        if returned_letter_data["hidden"] and not returned_letter_data["api_key_id"]
+        else None,
         "service_callback_api_url": service_callback_api.url,
         "service_callback_api_bearer_token": service_callback_api.bearer_token,
     }
