@@ -127,7 +127,6 @@ def fetch_returned_letters(service_id, report_date):
 
 
 def fetch_returned_letter_callback_data_dao(notification_id, service_id):
-
     for table in [Notification, NotificationHistory]:
         result = (
             db.session.query(
@@ -142,7 +141,6 @@ def fetch_returned_letter_callback_data_dao(notification_id, service_id):
                 table.api_key_id,
                 table.created_by_id,
                 User.name.label("user_name"),
-
                 Job.original_file_name,
                 # row numbers in notifications db table start at 0, but in spreadsheet uploaded by service user
                 # the recipient rows would start at row 2 (row 1 is column headers).
