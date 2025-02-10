@@ -1098,8 +1098,8 @@ def test_check_for_low_available_inbound_sms_numbers_does_not_proceed_if_enough_
 
 
 @freeze_time("2024-08-14T10:00:00")
-def test_weekly_user_research_email(mocker, user_research_email_for_new_users_template, notify_db_session):
-    mocker_send_email = mocker.patch("app.celery.scheduled_tasks.send_notification_to_queue")
+def test_weekly_user_research_email(notify_api, user_research_email_for_new_users_template, notify_db_session, mocker):
+    mock_send_email = mocker.patch("app.celery.scheduled_tasks.send_notification_to_queue")
 
     create_user(email="user1@gov.uk", take_part_in_research=True, created_at=datetime(2024, 7, 29, 12, 0))
     create_user(email="user2@gov.uk", take_part_in_research=True, created_at=datetime(2024, 8, 1, 14))
@@ -1108,9 +1108,10 @@ def test_weekly_user_research_email(mocker, user_research_email_for_new_users_te
     # user does not receive email
     create_user(email="user4@gov.uk", take_part_in_research=True, created_at=datetime(2024, 8, 5))
 
-    weekly_user_research_email()
+    with set_config(notify_api, "WEEKLY_USER_RESEARCH_EMAIL_ENABLED", True):
+        weekly_user_research_email()
 
-    assert mocker_send_email.call_args_list == [
+    assert mock_send_email.call_args_list == [
         call(ANY, queue="notify-internal-tasks"),
         call(ANY, queue="notify-internal-tasks"),
         call(ANY, queue="notify-internal-tasks"),
@@ -1118,6 +1119,24 @@ def test_weekly_user_research_email(mocker, user_research_email_for_new_users_te
 
     notifications = Notification.query.all()
     assert {email.to for email in notifications} == {"user1@gov.uk", "user2@gov.uk", "user3@gov.uk"}
+
+
+@freeze_time("2024-08-14T10:00:00")
+def test_weekly_user_research_email_skips_environments_with_setting_disabled(
+    notify_api, user_research_email_for_new_users_template, notify_db_session, caplog, mocker
+):
+    mock_send_email = mocker.patch("app.celery.scheduled_tasks.send_notification_to_queue")
+
+    create_user(email="user1@gov.uk", take_part_in_research=True, created_at=datetime(2024, 7, 29, 12, 0))
+    create_user(email="user2@gov.uk", take_part_in_research=True, created_at=datetime(2024, 8, 1, 14))
+    create_user(email="user3@gov.uk", take_part_in_research=True, created_at=datetime(2024, 8, 4, 23, 59))
+    create_user(email="user4@gov.uk", take_part_in_research=True, created_at=datetime(2024, 8, 5))
+
+    with set_config(notify_api, "WEEKLY_USER_RESEARCH_EMAIL_ENABLED", False):
+        weekly_user_research_email()
+
+    assert "Skipping weekly user research email run in test" in caplog.messages
+    assert not mock_send_email.called
 
 
 class TestChangeDvlaPasswordTask:
