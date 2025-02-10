@@ -21,6 +21,7 @@ from app.dao.fact_billing_dao import (
     fetch_usage_for_service_by_month,
     fetch_volumes_by_service,
     get_count_of_notifications_sent,
+    get_organisation_live_services_and_their_free_allowance,
     get_rate,
     get_rates_for_billing,
     get_sms_fragments_sent_last_financial_year,
@@ -28,7 +29,7 @@ from app.dao.fact_billing_dao import (
 )
 from app.dao.notifications_dao import dao_record_letter_despatched_on_by_id
 from app.dao.organisation_dao import dao_add_service_to_organisation
-from app.models import FactBilling, FactBillingLetterDespatch, LetterCostThreshold
+from app.models import FactBilling, FactBillingLetterDespatch, LetterCostThreshold, Service
 from tests.app.db import (
     create_annual_billing,
     create_ft_billing,
@@ -1527,3 +1528,27 @@ def test_get_sms_fragments_sent_last_financial_year(sample_service, sample_servi
     create_ft_billing("2017-08-01", sms_template)
 
     assert get_sms_fragments_sent_last_financial_year(sample_service.id) == 9
+
+
+def test_get_organisation_live_services_with_free_allowance(sample_service, sample_organisation):
+    service_with_no_free_allowance = create_service(service_name="service 2")
+
+    create_annual_billing(sample_service.id, free_sms_fragment_limit=10, financial_year_start=2015)
+    create_annual_billing(sample_service.id, free_sms_fragment_limit=20, financial_year_start=2016)
+
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+    dao_add_service_to_organisation(service_with_no_free_allowance, sample_organisation.id)
+
+    org_services = (
+        get_organisation_live_services_and_their_free_allowance(sample_organisation.id, 2015)
+        .order_by(Service.name)
+        .all()
+    )
+
+    assert len(org_services) == 2
+
+    assert org_services[0].id == sample_service.id
+    assert org_services[0].free_sms_fragment_limit == 10
+
+    assert org_services[1].id == service_with_no_free_allowance.id
+    assert org_services[1].free_sms_fragment_limit == 0
