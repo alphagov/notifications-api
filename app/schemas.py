@@ -226,13 +226,12 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     custom_email_sender_name = fields.String(allow_none=True)
     # this can only be set via custom_email_sender_name or name
     email_sender_local_part = fields.String(dump_only=True)
-    service_callback_api = fields.Method("service_delivery_status_callback_api")
+    service_callback_api = fields.Method("service_callback_api_details")
 
-    def service_delivery_status_callback_api(self, service):
+    def service_callback_api_details(self, service):
         return [
-            callback.id
+            {"callback_id": str(callback.id), "callback_type": callback.callback_type}
             for callback in service.service_callback_api
-            if callback.callback_type == app.constants.ServiceCallbackTypes.delivery_status.value
         ]
 
     def _get_allowed_broadcast_provider(self, service):
@@ -331,13 +330,12 @@ class DetailedServiceSchema(BaseSchema):
     name = fields.String()
     custom_email_sender_name = fields.String(required=False)
     email_sender_local_part = fields.String()
-    service_callback_api = fields.Method("service_delivery_status_callback_api")
+    service_callback_api = fields.Method("service_callback_api_details")
 
-    def service_delivery_status_callback_api(self, service):
+    def service_callback_api_details(self, service):
         return [
-            callback.id
+            {"callback_id": str(callback.id), "callback_type": callback.callback_type}
             for callback in service.service_callback_api
-            if callback.callback_type == app.constants.ServiceCallbackTypes.delivery_status.value
         ]
 
     class Meta(BaseSchema.Meta):
