@@ -20,7 +20,6 @@ from app.dao.organisation_dao import (
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
-    dao_get_organisation_live_services_and_their_free_allowance,
     dao_get_organisation_services,
     dao_get_organisations,
     dao_get_users_for_organisation,
@@ -31,7 +30,6 @@ from app.dao.organisation_dao import (
 from app.errors import InvalidRequest
 from app.models import AnnualBilling, Organisation, Service
 from tests.app.db import (
-    create_annual_billing,
     create_domain,
     create_email_branding,
     create_letter_branding,
@@ -536,30 +534,6 @@ def test_dao_add_email_branding_list_to_organisation_pool(sample_organisation):
     assert branding_1 in sample_organisation.email_branding_pool
     assert branding_2 in sample_organisation.email_branding_pool
     assert branding_3 in sample_organisation.email_branding_pool
-
-
-def test_dao_get_organisation_live_services_with_free_allowance(sample_service, sample_organisation):
-    service_with_no_free_allowance = create_service(service_name="service 2")
-
-    create_annual_billing(sample_service.id, free_sms_fragment_limit=10, financial_year_start=2015)
-    create_annual_billing(sample_service.id, free_sms_fragment_limit=20, financial_year_start=2016)
-
-    dao_add_service_to_organisation(sample_service, sample_organisation.id)
-    dao_add_service_to_organisation(service_with_no_free_allowance, sample_organisation.id)
-
-    org_services = (
-        dao_get_organisation_live_services_and_their_free_allowance(sample_organisation.id, 2015)
-        .order_by(Service.name)
-        .all()
-    )
-
-    assert len(org_services) == 2
-
-    assert org_services[0].id == sample_service.id
-    assert org_services[0].free_sms_fragment_limit == 10
-
-    assert org_services[1].id == service_with_no_free_allowance.id
-    assert org_services[1].free_sms_fragment_limit == 0
 
 
 def test_dao_remove_email_branding_from_organisation_pool(sample_organisation):

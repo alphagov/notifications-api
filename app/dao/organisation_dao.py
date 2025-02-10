@@ -1,5 +1,4 @@
 from flask import current_app
-from sqlalchemy import and_
 from sqlalchemy.sql.expression import func
 
 from app import db
@@ -10,7 +9,6 @@ from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_id
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.models import (
-    AnnualBilling,
     Domain,
     EmailBranding,
     Organisation,
@@ -41,25 +39,6 @@ def dao_count_organisations_with_live_services():
 
 def dao_get_organisation_services(organisation_id):
     return Organisation.query.filter_by(id=organisation_id).one().services
-
-
-def dao_get_organisation_live_services_and_their_free_allowance(organisation_id, financial_year):
-    return (
-        db.session.query(
-            Service.id,
-            Service.name,
-            Service.active,
-            func.coalesce(AnnualBilling.free_sms_fragment_limit, 0).label("free_sms_fragment_limit"),
-        )
-        .outerjoin(
-            AnnualBilling,
-            and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year),
-        )
-        .filter(
-            Service.organisation_id == organisation_id,
-            Service.restricted.is_(False),
-        )
-    )
 
 
 def dao_get_organisation_by_id(organisation_id):
