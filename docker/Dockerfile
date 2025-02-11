@@ -1,8 +1,11 @@
 FROM python:3.11-slim-bookworm AS base
 
+COPY --from=ghcr.io/astral-sh/uv:0.5.28 /uv /uvx /bin/
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
+ENV VIRTUAL_ENV="/opt/venv"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -27,9 +30,6 @@ RUN echo "Install OS dependencies for python app requirements" &&  \
     rm -rf /var/lib/apt/lists/* /tmp/*
 
 COPY requirements.txt .
-
-RUN pip install uv==0.5.26
-
 
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN echo "Installing python requirements" && \
@@ -86,7 +86,6 @@ RUN mkdir -p app
 COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
-RUN pip install uv==0.5.26
 COPY --chown=notify:notify Makefile requirements_for_test.txt ./
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN make bootstrap
@@ -124,8 +123,6 @@ COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app
 COPY --chown=notify:notify . .
 
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
-
-RUN pip3 install uv==0.5.26
 
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN uv pip sync requirements_for_test.txt
