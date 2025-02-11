@@ -323,6 +323,7 @@ LETTER_TEST_API_FILENAME = "test letter submitted via api"
 
 # Miscellaneous
 MOBILE_TYPE = "mobile"
+HIGH_VOLUME_SERVICE_THRESHOLD = 400_000
 
 # Guest lists
 GUEST_LIST_RECIPIENT_TYPE = [MOBILE_TYPE, EMAIL_TYPE]
