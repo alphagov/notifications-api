@@ -9,6 +9,7 @@ from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.constants import INVITE_ACCEPTED, INVITE_CANCELLED
+from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_id
 from app.dao.organisation_dao import (
@@ -352,6 +353,43 @@ def test_post_update_organisation_updates_fields(
     assert organisation[0].domains == []
     assert organisation[0].organisation_type == "central"
     assert organisation[0].can_approve_own_go_live_requests == can_approve_own_go_live_requests
+
+
+def test_post_update_organisation_updates_fields_rollback_if_update_service_free_allows_fails(
+    admin_request,
+    notify_db_session,
+    sample_service,
+    mocker,
+):
+    org = create_organisation(organisation_type="local")
+    data = {
+        "organisation_type": "central",
+    }
+
+    organisation = Organisation.query.all()
+    assert len(organisation) == 1
+    assert organisation[0].id == org.id
+    assert organisation[0].organisation_type == "local"
+
+    set_default_free_allowance_for_service(service=sample_service, year_start=None)
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 1
+    assert annual_billing[0].service_id == sample_service.id
+    assert annual_billing[0].free_sms_fragment_limit == 5000
+
+    mocker.patch("app.dao.organisation_dao._update_organisation_services_free_allowance", side_effect=SQLAlchemyError)
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        admin_request.post("organisation.update_organisation", _data=data, organisation_id=org.id)
+
+    organisation = Organisation.query.all()
+    assert len(organisation) == 1
+    assert organisation[0].id == org.id
+    assert organisation[0].organisation_type == "local"
+
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 1
+    assert annual_billing[0].service_id == sample_service.id
+    assert annual_billing[0].free_sms_fragment_limit == 5000
 
 
 @pytest.mark.parametrize(

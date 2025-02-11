@@ -20,11 +20,9 @@ from app.constants import (
     SMS_TYPE,
 )
 from app.dao.date_util import (
+    get_current_financial_year_start_year,
     get_financial_year_dates,
     get_financial_year_for_datetime,
-)
-from app.dao.organisation_dao import (
-    dao_get_organisation_live_services_and_their_free_allowance,
 )
 from app.models import (
     AnnualBilling,
@@ -927,7 +925,7 @@ def fetch_usage_for_organisation(organisation_id, year) -> tuple[Any, str | None
     """
     year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
-    services = dao_get_organisation_live_services_and_their_free_allowance(organisation_id, year)
+    services = get_organisation_live_services_and_their_free_allowance(organisation_id, year)
     service_with_usage = {}
     # initialise results
     for service in services:
@@ -1170,3 +1168,38 @@ def get_count_of_notifications_sent(
     notifications_count = query.with_entities(func.sum(FactBilling.notifications_sent)).scalar()
 
     return notifications_count or 0
+
+
+def get_sms_fragments_sent_last_financial_year(service_id: str) -> int:
+    last_financial_year = get_current_financial_year_start_year() - 1
+    year_start, year_end = get_financial_year_dates(last_financial_year)
+
+    return (
+        db.session.query(func.coalesce(func.sum(FactBilling.billable_units * FactBilling.rate_multiplier), 0))
+        .filter(
+            FactBilling.service_id == service_id,
+            FactBilling.notification_type == "sms",
+            FactBilling.bst_date >= year_start,
+            FactBilling.bst_date <= year_end,
+        )
+        .scalar()
+    )
+
+
+def get_organisation_live_services_and_their_free_allowance(organisation_id, financial_year):
+    return (
+        db.session.query(
+            Service.id,
+            Service.name,
+            Service.active,
+            func.coalesce(AnnualBilling.free_sms_fragment_limit, 0).label("free_sms_fragment_limit"),
+        )
+        .outerjoin(
+            AnnualBilling,
+            and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year),
+        )
+        .filter(
+            Service.organisation_id == organisation_id,
+            Service.restricted.is_(False),
+        )
+    )
