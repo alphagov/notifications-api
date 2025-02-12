@@ -438,16 +438,31 @@ def move_notifications_to_notification_history(
     )
 
 
-def delete_test_notifications(notification_type, service_id, timestamp_to_delete_backwards_from):
-    # Deleting test Notifications, test notifications are not persisted to NotificationHistory
-    Notification.query.filter(
-        Notification.notification_type == notification_type,
-        Notification.service_id == service_id,
-        Notification.created_at < timestamp_to_delete_backwards_from,
-        Notification.key_type == KEY_TYPE_TEST,
-    ).delete(synchronize_session=False)
+def delete_test_notifications(notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit=50000):
+    if notification_type == LETTER_TYPE:
+        # reduced query limit so we don't run into issues trying to loop through 50k letters in python deleting from s3
+        # use `min` so we can reduce query limit artificially during unit tests
+        qry_limit = min(qry_limit, 5_000)
+        _delete_test_letters_from_s3(service_id, timestamp_to_delete_backwards_from, qry_limit)
 
+    # Deleting test Notifications, test notifications are not persisted to NotificationHistory
+    subquery = (
+        db.session.query(Notification.id)
+        .filter(
+            Notification.notification_type == notification_type,
+            Notification.service_id == service_id,
+            Notification.created_at < timestamp_to_delete_backwards_from,
+            Notification.key_type == KEY_TYPE_TEST,
+        )
+        .order_by(Notification.created_at)
+        .limit(qry_limit)
+        .subquery()
+    )
+
+    count_of_deleted = Notification.query.filter(Notification.id.in_(subquery)).delete(synchronize_session=False)
     db.session.commit()
+
+    return count_of_deleted
 
 
 def _delete_letters_from_s3(notification_type, service_id, date_to_delete_from, query_limit):
@@ -461,6 +476,29 @@ def _delete_letters_from_s3(notification_type, service_id, date_to_delete_from, 
             # production-letters-pdf bucket as they never made it that far so we do not try and delete
             # them from it
             Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED),
+        )
+        .order_by(Notification.created_at)
+        .limit(query_limit)
+        .all()
+    )
+    for letter in letters_to_delete_from_s3:
+        try:
+            letter_pdf = find_letter_pdf_in_s3(letter)
+            letter_pdf.delete()
+        except ClientError:
+            current_app.logger.exception("Error deleting S3 object for letter: %s", letter.id)
+        except LetterPDFNotFound:
+            current_app.logger.warning("No S3 object to delete for letter: %s", letter.id)
+
+
+def _delete_test_letters_from_s3(service_id, date_to_delete_from, query_limit):
+    letters_to_delete_from_s3 = (
+        db.session.query(Notification)
+        .filter(
+            Notification.notification_type == LETTER_TYPE,
+            Notification.created_at < date_to_delete_from,
+            Notification.service_id == service_id,
+            Notification.key_type == KEY_TYPE_TEST,
         )
         .order_by(Notification.created_at)
         .limit(query_limit)

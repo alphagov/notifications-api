@@ -315,6 +315,106 @@ def test_delete_test_notifications(sample_template, sample_email_template):
     assert Notification.query.get(expected_deleted_id) is None
 
 
+@mock_aws
+@freeze_time("2024-09-01 04:30")
+def test_delete_test_notifications_deletes_letters_from_s3(sample_letter_template):
+    s3 = boto3.client("s3", region_name="eu-west-1")
+    bucket_name = current_app.config["S3_BUCKET_TEST_LETTERS"]
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    create_notification(
+        template=sample_letter_template,
+        status="delivered",
+        reference="LETTER_REF",
+        key_type=KEY_TYPE_TEST,
+        created_at=eight_days_ago,
+        sent_at=eight_days_ago,
+    )
+    filename = f"NOTIFY.LETTER_REF.D.2.C.{eight_days_ago.strftime('%Y%m%d%H%M%S')}.PDF"
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=b"foo")
+
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    delete_test_notifications("letter", sample_letter_template.service_id, seven_days_ago)
+
+    with pytest.raises(s3.exceptions.NoSuchKey):
+        s3.get_object(Bucket=bucket_name, Key=filename)
+
+
+@mock_aws
+@freeze_time("2019-09-01 04:30")
+def test_delete_test_notifications_deletes_same_letter_from_s3_as_notifications(sample_letter_template):
+    s3 = boto3.client("s3", region_name="eu-west-1")
+    bucket_name = current_app.config["S3_BUCKET_TEST_LETTERS"]
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+
+    noti_a_timestamp = datetime.utcnow() - timedelta(days=8)
+    noti_b_timestamp = datetime.utcnow() - timedelta(days=8, seconds=1)
+    noti_a = create_notification(
+        template=sample_letter_template,
+        status="delivered",
+        reference="REF_A",
+        key_type=KEY_TYPE_TEST,
+        created_at=noti_a_timestamp,
+        sent_at=noti_a_timestamp,
+    )
+    create_notification(
+        template=sample_letter_template,
+        status="delivered",
+        reference="REF_B",
+        key_type=KEY_TYPE_TEST,
+        created_at=noti_b_timestamp,
+        sent_at=noti_b_timestamp,
+    )
+    filename_a = f"NOTIFY.REF_A.D.2.C.{noti_a_timestamp.strftime('%Y%m%d%H%M%S')}.PDF"
+    filename_b = f"NOTIFY.REF_B.D.2.C.{noti_b_timestamp.strftime('%Y%m%d%H%M%S')}.PDF"
+
+    s3.put_object(Bucket=bucket_name, Key=filename_a, Body=b"foo")
+    s3.put_object(Bucket=bucket_name, Key=filename_b, Body=b"foo")
+
+    delete_test_notifications(
+        "letter",
+        sample_letter_template.service_id,
+        datetime(2020, 1, 2),
+        qry_limit=1,
+    )
+
+    # only notification B has been deleted, as it's one second older
+    assert Notification.query.all() == [noti_a]
+    assert s3.get_object(Bucket=bucket_name, Key=filename_a) is not None
+
+    with pytest.raises(s3.exceptions.NoSuchKey):
+        s3.get_object(Bucket=bucket_name, Key=filename_b)
+
+
+@mock_aws
+@freeze_time("2019-09-01 04:30")
+def test_delete_test_notifications_copes_if_letter_not_in_s3(sample_letter_template, caplog):
+    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3.create_bucket(
+        Bucket=current_app.config["S3_BUCKET_TEST_LETTERS"],
+        CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+    )
+
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    letter = create_notification(
+        template=sample_letter_template,
+        status="delivered",
+        key_type=KEY_TYPE_TEST,
+        sent_at=eight_days_ago,
+    )
+
+    notification_id = letter.id
+
+    delete_test_notifications(
+        "letter",
+        sample_letter_template.service_id,
+        datetime(2020, 1, 2),
+    )
+
+    assert f"No S3 object to delete for letter: {notification_id}" in caplog.messages
+
+
 @freeze_time("2020-03-20 14:00")
 def test_insert_notification_history_delete_notifications(sample_email_template):
     # should be deleted
