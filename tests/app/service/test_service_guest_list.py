@@ -25,7 +25,7 @@ def test_get_guest_list_separates_emails_and_phones(client, sample_service):
         [
             ServiceGuestList.from_string(sample_service.id, EMAIL_TYPE, "service@example.com"),
             ServiceGuestList.from_string(sample_service.id, MOBILE_TYPE, "07123456789"),
-            ServiceGuestList.from_string(sample_service.id, MOBILE_TYPE, "+1800-555-555"),
+            ServiceGuestList.from_string(sample_service.id, MOBILE_TYPE, "+1415-771-1401"),
         ]
     )
 
@@ -33,7 +33,7 @@ def test_get_guest_list_separates_emails_and_phones(client, sample_service):
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp["email_addresses"] == ["service@example.com"]
-    assert sorted(json_resp["phone_numbers"]) == sorted(["+1800-555-555", "07123456789"])
+    assert sorted(json_resp["phone_numbers"]) == sorted(["+1415-771-1401", "07123456789"])
 
 
 def test_get_guest_list_404s_with_unknown_service_id(client):
