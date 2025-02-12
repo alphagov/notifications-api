@@ -17,15 +17,14 @@ from marshmallow_sqlalchemy import field_for
 from notifications_utils.recipient_validation.email_address import validate_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import (
-    validate_and_format_phone_number,
-    validate_phone_number,
+    PhoneNumber,
 )
 
 import app.constants
 from app import db, ma, models
 from app.dao.permissions_dao import permission_dao
 from app.models import ServicePermission
-from app.utils import DATETIME_FORMAT_NO_TIMEZONE
+from app.utils import DATETIME_FORMAT_NO_TIMEZONE, parse_and_format_phone_number
 
 
 def _validate_positive_number(value, msg="Not a positive integer"):
@@ -131,7 +130,8 @@ class UserSchema(BaseSchema):
     def validate_mobile_number(self, value):
         try:
             if value is not None:
-                validate_phone_number(value, international=True)
+                number = PhoneNumber(value)
+                number.validate(allow_international_number=True)
         except InvalidPhoneError as error:
             raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
 
@@ -171,7 +171,8 @@ class UserUpdateAttributeSchema(BaseSchema):
     def validate_mobile_number(self, value):
         try:
             if value is not None:
-                validate_phone_number(value, international=True)
+                number = PhoneNumber(value)
+                number.validate(allow_international_number=True)
         except InvalidPhoneError as error:
             raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
 
@@ -571,13 +572,14 @@ class SmsNotificationSchema(NotificationSchema):
     @validates("to")
     def validate_to(self, value):
         try:
-            validate_phone_number(value, international=True)
+            number = PhoneNumber(value)
+            number.validate(allow_international_number=True)
         except InvalidPhoneError as error:
             raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
 
     @post_load
     def format_phone_number(self, item, **kwargs):
-        item["to"] = validate_and_format_phone_number(item["to"], international=True)
+        item["to"] = parse_and_format_phone_number(item["to"])
         return item
 
 

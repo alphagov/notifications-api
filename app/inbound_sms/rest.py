@@ -1,5 +1,4 @@
 from flask import Blueprint, current_app, jsonify, request
-from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
 from app.dao.inbound_numbers_dao import (
     dao_get_inbound_number_for_service,
@@ -12,13 +11,16 @@ from app.dao.inbound_sms_dao import (
     dao_get_most_recent_inbound_usage_date,
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service,
 )
-from app.dao.service_data_retention_dao import fetch_service_data_retention_by_notification_type
+from app.dao.service_data_retention_dao import (
+    fetch_service_data_retention_by_notification_type,
+)
 from app.errors import register_errors
 from app.inbound_sms.inbound_sms_schemas import (
     get_inbound_sms_for_service_schema,
     remove_inbound_sms_for_service_schema,
 )
 from app.schema_validation import validate
+from app.utils import try_parse_and_format_phone_number
 
 inbound_sms = Blueprint("inbound_sms", __name__, url_prefix="/service/<uuid:service_id>/inbound-sms")
 
@@ -32,7 +34,7 @@ def post_inbound_sms_for_service(service_id):
 
     if user_number:
         # we use this to normalise to an international phone number - but this may fail if it's an alphanumeric
-        user_number = try_validate_and_format_phone_number(user_number, international=True)
+        user_number = try_parse_and_format_phone_number(user_number)
 
     inbound_data_retention = fetch_service_data_retention_by_notification_type(service_id, "sms")
     limit_days = inbound_data_retention.days_of_retention if inbound_data_retention else 7
@@ -60,7 +62,10 @@ def get_inbound_sms_summary_for_service(service_id):
     count = dao_count_inbound_sms_for_service(service_id, limit_days=7)
     most_recent = dao_get_inbound_sms_for_service(service_id, limit=1)
 
-    return jsonify(count=count, most_recent=most_recent[0].created_at.isoformat() if most_recent else None)
+    return jsonify(
+        count=count,
+        most_recent=most_recent[0].created_at.isoformat() if most_recent else None,
+    )
 
 
 @inbound_sms.route("/<uuid:inbound_sms_id>", methods=["GET"])
