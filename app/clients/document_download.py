@@ -1,3 +1,6 @@
+import logging
+import os
+
 import requests
 from flask import current_app, request
 from flask.ctx import has_request_context
@@ -21,6 +24,7 @@ class DocumentDownloadClient:
         self.api_host_internal = app.config["DOCUMENT_DOWNLOAD_API_HOST_INTERNAL"]
         self.auth_token = app.config["DOCUMENT_DOWNLOAD_API_KEY"]
         self.requests_session = requests.Session()
+        logging.getLogger("app").info("Constructing DocumentDownloadClient", extra={"process_": os.getpid()})
 
     def get_upload_url_for_simulated_email(self, service_id):
         """
