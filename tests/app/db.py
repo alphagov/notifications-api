@@ -207,6 +207,7 @@ def create_template(
     postage=None,
     process_type="normal",
     contact_block_id=None,
+    version=None,
 ):
     data = {
         "name": template_name or f"{template_type} Template Name",
