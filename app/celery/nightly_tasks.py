@@ -220,9 +220,22 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
             queue=QueueNames.REPORTING,
         )
     else:
-        # now we've deleted all the real notifications, clean up the test notifications - this doesnt have a limit so
-        # is only run once per service/day/type
-        delete_test_notifications(notification_type, service_id, datetime_to_delete_before)
+        # now we've deleted all the real notifications, clean up the test notifications
+        delete_test_notifications_for_service_and_type.apply_async(
+            args=(service_id, notification_type, datetime_to_delete_before),
+            queue=QueueNames.REPORTING,
+        )
+
+
+@notify_celery.task(name="delete-test-notifications-for-service-and-type")
+def delete_test_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before):
+    num_deleted = delete_test_notifications(notification_type, service_id, datetime_to_delete_before)
+
+    if num_deleted:
+        delete_test_notifications_for_service_and_type.apply_async(
+            args=(service_id, notification_type, datetime_to_delete_before),
+            queue=QueueNames.REPORTING,
+        )
 
 
 @notify_celery.task(name="timeout-sending-notifications")

@@ -21,6 +21,7 @@ from app.celery.nightly_tasks import (
     delete_letter_notifications_older_than_retention,
     delete_notifications_for_service_and_type,
     delete_sms_notifications_older_than_retention,
+    delete_test_notifications_for_service_and_type,
     delete_unneeded_notification_history_by_hour,
     delete_unneeded_notification_history_for_specific_hour,
     get_letter_notifications_still_sending_when_they_shouldnt_be,
@@ -707,9 +708,9 @@ def test_delete_notifications_for_service_and_type_removes_test_notifications_if
     mocker, mock_celery_task
 ):
     mock_move = mocker.patch("app.celery.nightly_tasks.move_notifications_to_notification_history", return_value=0)
-    mock_task_call = mock_celery_task(delete_notifications_for_service_and_type)
+    mock_delete_live_notis_task_call = mock_celery_task(delete_notifications_for_service_and_type)
+    mock_delete_tests_task_call = mock_celery_task(delete_test_notifications_for_service_and_type)
 
-    mock_delete_tests = mocker.patch("app.celery.nightly_tasks.delete_test_notifications")
     service_id = uuid.uuid4()
     notification_type = "some-str"
     datetime_to_delete_before = datetime.utcnow()
@@ -718,5 +719,39 @@ def test_delete_notifications_for_service_and_type_removes_test_notifications_if
 
     mock_move.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
     # the next task is not queued up
+    assert not mock_delete_live_notis_task_call.called
+    mock_delete_tests_task_call.assert_called_once_with(
+        args=(service_id, notification_type, datetime_to_delete_before), queue="reporting-tasks"
+    )
+
+
+def test_delete_test_notifications_for_service_and_type_queues_up_second_task_if_things_deleted(
+    mocker, mock_celery_task
+):
+    mock_delete = mocker.patch("app.celery.nightly_tasks.delete_test_notifications", return_value=1)
+    mock_task_call = mock_celery_task(delete_test_notifications_for_service_and_type)
+
+    service_id = uuid.uuid4()
+    notification_type = "some-str"
+    datetime_to_delete_before = datetime.utcnow()
+
+    delete_test_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before)
+
+    mock_delete.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
+    mock_task_call.assert_called_once_with(
+        args=(service_id, notification_type, datetime_to_delete_before), queue="reporting-tasks"
+    )
+
+
+def test_delete_test_notifications_for_service_and_type_stops_if_nothing_deleted(mocker, mock_celery_task):
+    mock_delete = mocker.patch("app.celery.nightly_tasks.delete_test_notifications", return_value=0)
+    mock_task_call = mock_celery_task(delete_test_notifications_for_service_and_type)
+
+    service_id = uuid.uuid4()
+    notification_type = "some-str"
+    datetime_to_delete_before = datetime.utcnow()
+
+    delete_test_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before)
+
+    mock_delete.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
     assert not mock_task_call.called
-    mock_delete_tests.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
