@@ -61,6 +61,9 @@ case "$1" in
   api-worker-service-callbacks)
     exec $COMMON_CMD service-callbacks,service-callbacks-retry
     ;;
+  api-worker-report-requests-notifications)
+    exec $COMMON_CMD report-requests-notifications-tasks
+    ;;
   celery-beat)
     exec celery -A run_celery.notify_celery beat --loglevel=INFO
     ;;

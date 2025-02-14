@@ -26,6 +26,7 @@ class QueueNames:
     LETTER_CALLBACKS = "letter-callbacks"
     ANTIVIRUS = "antivirus-tasks"
     SANITISE_LETTERS = "sanitise-letter-tasks"
+    REPORT_REQUESTS_NOTIFICATIONS = "report-requests-notifications-tasks"
     BROADCASTS = "broadcast-tasks"
     GOVUK_ALERTS = "govuk-alerts"
 
@@ -50,6 +51,7 @@ class QueueNames:
             QueueNames.SMS_CALLBACKS,
             QueueNames.LETTER_CALLBACKS,
             QueueNames.BROADCASTS,
+            QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
         ]
 
 
