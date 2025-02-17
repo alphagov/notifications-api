@@ -86,7 +86,7 @@ def set_default_free_allowance_for_service(service, year_start=None):
         raise ValueError("year_start cannot be in a future financial year")
 
     if _is_high_volume_service(service):
-        free_sms_fragment_allowance = 0
+        next_free_sms_fragment_allowance = 0
         high_volume_service_last_year = True
         has_custom_allowance = False
 
@@ -101,12 +101,12 @@ def set_default_free_allowance_for_service(service, year_start=None):
 
         if last_years_allowance and last_years_allowance.has_custom_allowance:
             # carry over the allowance from last year
-            free_sms_fragment_allowance = last_years_allowance.free_sms_fragment_limit
+            next_free_sms_fragment_allowance = last_years_allowance.free_sms_fragment_limit
             has_custom_allowance = True
         else:
             # get the default for the org
             default_free_sms_fragment_allowance = dao_get_default_annual_allowance_for_service(service, year_start)
-            free_sms_fragment_allowance = default_free_sms_fragment_allowance.allowance
+            next_free_sms_fragment_allowance = default_free_sms_fragment_allowance.allowance
             has_custom_allowance = False
 
     current_app.logger.info(
@@ -116,11 +116,11 @@ def set_default_free_allowance_for_service(service, year_start=None):
         ),
         service.id,
         year_start,
-        free_sms_fragment_allowance,
+        next_free_sms_fragment_allowance,
     )
     return dao_create_or_update_annual_billing_for_year(
         service.id,
-        free_sms_fragment_allowance,
+        next_free_sms_fragment_allowance,
         year_start,
         high_volume_service_last_year=high_volume_service_last_year,
         has_custom_allowance=has_custom_allowance,
