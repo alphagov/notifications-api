@@ -151,7 +151,7 @@ def test_provider_details_history_schema_returns_user_details(
     assert sorted(data["created_by"].keys()) == sorted(["id", "email_address", "name"])
 
 
-def test_service_schema_only_returns_delivery_status_callback_api(sample_service):
+def test_service_schema_only_returns_both_delivery_status_and_returned_letter_callback_api(sample_service):
     from app.schemas import service_schema
 
     service_delivery_callback_api = ServiceCallbackApi(
@@ -172,6 +172,28 @@ def test_service_schema_only_returns_delivery_status_callback_api(sample_service
     )
     save_service_callback_api(service_complaint_callback_api)
 
+    service_returned_letter_callback_api = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/returned_letter_callback_endpoint",
+        bearer_token="complaint_unique_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type=ServiceCallbackTypes.returned_letter.value,
+    )
+    save_service_callback_api(service_returned_letter_callback_api)
+
     data = service_schema.dump(sample_service)
 
-    assert data["service_callback_api"] == [str(service_delivery_callback_api.id)]
+    assert data["service_callback_api"] == [
+        {
+            "callback_id": str(service_delivery_callback_api.id),
+            "callback_type": service_delivery_callback_api.callback_type,
+        },
+        {
+            "callback_id": str(service_complaint_callback_api.id),
+            "callback_type": service_complaint_callback_api.callback_type,
+        },
+        {
+            "callback_id": str(service_returned_letter_callback_api.id),
+            "callback_type": service_returned_letter_callback_api.callback_type,
+        },
+    ]
