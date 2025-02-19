@@ -2161,7 +2161,7 @@ def test_check_and_queue_returned_letter_callback_task_for_no_existing_callback_
     mocker, mock_celery_task, sample_service
 ):
     notification_id = "9d7750a8-469f-40e9-99e0-aa3a3af4c575"
-    mocker.patch("app.celery.tasks.get_service_returned_letter_callback_api_for_service", return_value=None)
+    mocker.patch("app.celery.tasks.get_returned_letter_callback_api_for_service", return_value=None)
 
     mock_send = mock_celery_task(send_returned_letter_to_service)
 

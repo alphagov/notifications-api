@@ -31,7 +31,7 @@ from app.dao.notifications_dao import (
     get_notification_by_id,
 )
 from app.dao.returned_letters_dao import _get_notification_ids_for_references, insert_returned_letters
-from app.dao.service_callback_api_dao import get_service_returned_letter_callback_api_for_service
+from app.dao.service_callback_api_dao import get_returned_letter_callback_api_for_service
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
@@ -431,6 +431,6 @@ def _process_returned_letters_callback(notification_references):
 
 def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
     # queue callback task only if the service_callback_api exists
-    if service_callback_api := get_service_returned_letter_callback_api_for_service(service_id=service_id):
+    if service_callback_api := get_returned_letter_callback_api_for_service(service_id=service_id):
         returned_letter_data = create_returned_letter_callback_data(notification_id, service_id, service_callback_api)
         send_returned_letter_to_service.apply_async([returned_letter_data], queue=QueueNames.CALLBACKS)

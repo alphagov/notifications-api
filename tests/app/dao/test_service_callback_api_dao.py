@@ -6,9 +6,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import signing
 from app.constants import ServiceCallbackTypes
 from app.dao.service_callback_api_dao import (
+    get_delivery_status_callback_api_for_service,
+    get_returned_letter_callback_api_for_service,
     get_service_callback_api,
-    get_service_delivery_status_callback_api_for_service,
-    get_service_returned_letter_callback_api_for_service,
     reset_service_callback_api,
     save_service_callback_api,
 )
@@ -189,9 +189,9 @@ def test_get_service_callback_api(sample_service):
     assert complaint_callback_api.updated_at is None
 
 
-def test_get_service_delivery_status_callback_api_for_service(sample_service):
+def test_get_delivery_status_callback_api_for_service(sample_service):
     service_callback_api = create_service_callback_api(callback_type="delivery_status", service=sample_service)
-    result = get_service_delivery_status_callback_api_for_service(sample_service.id)
+    result = get_delivery_status_callback_api_for_service(sample_service.id)
     assert result.id == service_callback_api.id
     assert result.url == service_callback_api.url
     assert result.bearer_token == service_callback_api.bearer_token
@@ -200,9 +200,9 @@ def test_get_service_delivery_status_callback_api_for_service(sample_service):
     assert result.updated_by_id == service_callback_api.updated_by_id
 
 
-def test_get_service_returned_letter_callback_api_for_service(sample_service):
+def test_get_returned_letter_callback_api_for_service(sample_service):
     service_callback_api = create_service_callback_api(callback_type="returned_letter", service=sample_service)
-    result = get_service_returned_letter_callback_api_for_service(sample_service.id)
+    result = get_returned_letter_callback_api_for_service(sample_service.id)
     assert result.id == service_callback_api.id
     assert result.url == service_callback_api.url
     assert result.bearer_token == service_callback_api.bearer_token
