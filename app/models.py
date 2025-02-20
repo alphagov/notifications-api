@@ -3004,9 +3004,7 @@ class ReportRequest(db.Model):
     )
     _parameter = db.Column("parameter", JSONB, nullable=False, default={})
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow
-    )
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
     _schema = {
         "type": "object",
