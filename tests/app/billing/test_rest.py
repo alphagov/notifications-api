@@ -1,5 +1,6 @@
 from datetime import date, datetime
 
+import pytest
 from freezegun import freeze_time
 
 from app.billing.rest import update_free_sms_fragment_limit_data
@@ -39,8 +40,13 @@ def test_create_or_update_free_sms_fragment_limit_past_year_doesnt_update_other_
         _expected_status=201,
     )
 
-    assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year - 1).free_sms_fragment_limit == 1
-    assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year).free_sms_fragment_limit == 9999
+    annual_billing_last_year = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year - 1)
+    assert annual_billing_last_year.free_sms_fragment_limit == 1
+    assert annual_billing_last_year.has_custom_allowance is False
+
+    annual_billing_this_year = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
+    assert annual_billing_this_year.free_sms_fragment_limit == 9999
+    assert annual_billing_this_year.has_custom_allowance is True
 
 
 def test_create_free_sms_fragment_limit_updates_existing_year(admin_request, sample_service):
@@ -55,6 +61,7 @@ def test_create_free_sms_fragment_limit_updates_existing_year(admin_request, sam
     )
 
     assert annual_billing.free_sms_fragment_limit == 2
+    assert annual_billing.has_custom_allowance is True
 
 
 @freeze_time("2021-04-02 13:00")
@@ -95,14 +102,41 @@ def test_get_free_sms_fragment_limit_current_year_creates_new_row_if_annual_bill
     assert json_response["free_sms_fragment_limit"] == 10000  # based on other organisation type
 
 
-def test_update_free_sms_fragment_limit_data(client, sample_service):
+@pytest.mark.parametrize("high_volume_service_last_year", [True, False])
+def test_update_free_sms_fragment_limit_data(client, sample_service, high_volume_service_last_year):
     current_year = get_current_financial_year_start_year()
-    create_annual_billing(sample_service.id, free_sms_fragment_limit=250000, financial_year_start=current_year - 1)
+    create_annual_billing(
+        sample_service.id,
+        free_sms_fragment_limit=250000,
+        financial_year_start=current_year,
+        high_volume_service_last_year=high_volume_service_last_year,
+    )
 
-    update_free_sms_fragment_limit_data(sample_service.id, 9999, current_year)
+    update_free_sms_fragment_limit_data(sample_service.id, 9999)
 
     annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
     assert annual_billing.free_sms_fragment_limit == 9999
+    assert annual_billing.high_volume_service_last_year is high_volume_service_last_year
+    assert annual_billing.has_custom_allowance is True
+
+
+def test_update_free_sms_fragment_limit_data_when_updating_to_default(sample_service, mocker):
+    mocker.patch("app.billing.rest.dao_get_default_annual_allowance_for_service", return_value=50)
+
+    current_year = get_current_financial_year_start_year()
+    create_annual_billing(
+        sample_service.id,
+        free_sms_fragment_limit=250000,
+        financial_year_start=current_year - 1,
+        has_custom_allowance=True,
+    )
+
+    update_free_sms_fragment_limit_data(sample_service.id, 50)
+
+    annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
+    assert annual_billing.free_sms_fragment_limit == 50
+    assert annual_billing.high_volume_service_last_year is False
+    assert annual_billing.has_custom_allowance is False
 
 
 def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_session):

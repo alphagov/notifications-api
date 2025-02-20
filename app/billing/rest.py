@@ -7,6 +7,7 @@ from app.billing.billing_schemas import (
 )
 from app.dao.annual_billing_dao import (
     dao_create_or_update_annual_billing_for_year,
+    dao_get_default_annual_allowance_for_service,
     dao_get_free_sms_fragment_limit_for_year,
     set_default_free_allowance_for_service,
 )
@@ -15,6 +16,7 @@ from app.dao.fact_billing_dao import (
     fetch_usage_for_service_annual,
     fetch_usage_for_service_by_month,
 )
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors
 from app.models import Service
 from app.schema_validation import validate
@@ -82,9 +84,20 @@ def create_or_update_free_sms_fragment_limit(service_id):
     return jsonify(form), 201
 
 
-def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, financial_year_start=None):
-    # TODO: `financial_year_start` parameter can be removed, but has been kept temporarily so nothing breaks
-    # during deployment
-    current_year = get_current_financial_year_start_year()
+def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit):
+    """
+    Update the free allowance for a service for this year.
 
-    dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_limit, current_year)
+    If updating the free allowance now means that a service has the default allowance for its
+    org type, we set `has_custom_allowance` to False, otherwise it is True.
+    """
+    current_year = get_current_financial_year_start_year()
+    service = dao_fetch_service_by_id(service_id, with_users=False)
+    default_free_allowance = dao_get_default_annual_allowance_for_service(service, current_year)
+
+    dao_create_or_update_annual_billing_for_year(
+        service_id,
+        free_sms_fragment_limit,
+        current_year,
+        has_custom_allowance=default_free_allowance != free_sms_fragment_limit,
+    )
