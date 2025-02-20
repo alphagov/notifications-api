@@ -103,7 +103,7 @@ def _set_up_test_data_for_returned_letter_callback(template):
     )
     job = create_job(template=template, contact_list_id=contact_list.id)
 
-    notification_1 = create_notification_history(
+    notification_1 = create_notification(
         template=template,
         client_reference="letter_1",
         status=NOTIFICATION_RETURNED_LETTER,

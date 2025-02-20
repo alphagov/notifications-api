@@ -156,5 +156,5 @@ def fetch_returned_letter_callback_data_dao(notification_id, service_id):
             )
             .one_or_none()
         )
-
-    return result
+        if result:
+            return result
