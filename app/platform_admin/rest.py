@@ -4,6 +4,8 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import NoResultFound
 
 from app import db
+from app.dao.date_util import parse_date_range
+from app.dao.users_dao import get_users_list
 from app.errors import register_errors
 from app.models import (
     ApiKey,
@@ -27,6 +29,8 @@ from app.models import (
     TemplateFolder,
     User,
 )
+from app.platform_admin.platform_admin_schemas import get_users_list_schema
+from app.schema_validation import validate
 
 platform_admin_blueprint = Blueprint("platform_admin", __name__)
 register_errors(platform_admin_blueprint)
@@ -102,3 +106,19 @@ def find_by_uuid():
         ),
         200,
     )
+
+
+@platform_admin_blueprint.route("/users-list", methods=["POST"])
+def fetch_users_list():
+    data = request.get_json()
+    validate(data, get_users_list_schema)
+
+    users = get_users_list(
+        logged_in_start=parse_date_range(data.get("logged_in_start")),
+        logged_in_end=parse_date_range(data.get("logged_in_end"), is_end=True),
+        created_start=parse_date_range(data.get("created_start")),
+        created_end=parse_date_range(data.get("created_end"), is_end=True),
+        take_part_in_research=data.get("take_part_in_research"),
+    )
+
+    return jsonify(data=[user.serialize(service_filter_keys=["name"]) for user in users]), 200

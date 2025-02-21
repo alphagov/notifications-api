@@ -1,6 +1,7 @@
 import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import call
+from uuid import UUID
 
 import pytest
 from freezegun import freeze_time
@@ -23,6 +24,7 @@ from app.constants import (
     PRECOMPILED_TEMPLATE_NAME,
     SMS_TYPE,
 )
+from app.dao.services_dao import dao_add_user_to_service
 from app.models import (
     FactNotificationStatus,
     Job,
@@ -590,3 +592,31 @@ def test_user_can_use_webauthn_if_in_notify_team(notify_service):
 
 def test_letter_cost_threshold_is_json_serializable():
     assert json.dumps(LetterCostThreshold.sorted) == '"sorted"'
+
+
+@pytest.mark.parametrize(
+    "service_filter_keys, expected_keys",
+    [
+        (None, None),  # Default to ID only
+        (["id"], ["id"]),  # Explicitly passing "id" creates a list of dictionaries
+        (["name"], ["id", "name"]),
+        (["created_at"], ["id", "created_at"]),
+        (["name", "created_at", "organisation_id"], ["id", "name", "created_at", "organisation_id"]),
+    ],
+)
+def test_serialize_service_filter_keys(
+    notify_db_session, sample_service, sample_user, service_filter_keys, expected_keys
+):
+    dao_add_user_to_service(sample_service, sample_user)
+    serialized_data = sample_user.serialize(service_filter_keys=service_filter_keys)
+
+    assert "services" in serialized_data
+
+    if service_filter_keys is None:
+        # If None is passed, expect a flat list of IDs
+        assert isinstance(serialized_data["services"], list)
+        assert all(isinstance(service_id, UUID) for service_id in serialized_data["services"])
+    else:
+        # Otherwise, expect a list of dictionaries
+        for service in serialized_data["services"]:
+            assert set(service.keys()) == set(expected_keys)

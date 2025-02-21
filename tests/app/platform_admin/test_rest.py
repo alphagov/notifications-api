@@ -1,7 +1,10 @@
 import uuid
+from datetime import datetime
 
 import pytest
 
+from app.dao.organisation_dao import dao_add_user_to_organisation
+from app.dao.permissions_dao import default_service_permissions
 from app.models import (
     ApiKey,
     Complaint,
@@ -28,6 +31,7 @@ from app.platform_admin.rest import (
     FIND_BY_UUID_EXTRA_CONTEXT,
     FIND_BY_UUID_MODELS,
 )
+from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_complaint,
     create_email_branding,
@@ -115,3 +119,81 @@ class TestFindByUUID:
         admin_request,
     ):
         admin_request.post("platform_admin.find_by_uuid", _data={"uuid": str(uuid.uuid4())}, _expected_status=404)
+
+
+@pytest.mark.parametrize(
+    "payload, expected_error, expected_status",
+    [
+        ({}, "{} should be non-empty", 400),
+        (
+            {"logged_in_start": "invalid-date"},
+            "logged_in_start invalid-date is not a date",
+            400,
+        ),
+        (
+            {"extra_field": "should_not_be_here"},
+            "Additional properties are not allowed (extra_field was unexpected)",
+            400,
+        ),
+        (
+            {
+                "logged_in_start": None,
+                "created_start": None,
+                "take_part_in_research": None,
+            },
+            None,
+            200,
+        ),
+        (
+            {
+                "logged_in_start": "2024-08-01",
+                "created_start": "2023-01-01",
+                "take_part_in_research": False,
+            },
+            None,
+            200,
+        ),
+    ],
+)
+def test_fetch_users_list_validation_errors(
+    client, notify_db_session, admin_request, payload, expected_error, expected_status
+):
+    response = admin_request.post(
+        "platform_admin.fetch_users_list",
+        _data=payload,
+        _expected_status=expected_status,
+    )
+
+    if expected_error is not None:
+        assert expected_error in response["errors"][0]["message"]
+
+
+def test_fetch_users_list_returns_correct_fields(
+    admin_request,
+    notify_db_session,
+    sample_user,
+    sample_service,
+    sample_organisation,
+):
+    fixed_date = datetime(2024, 8, 2)
+    sample_user.created_at = fixed_date
+    sample_user.logged_in_at = fixed_date
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=sample_user.id, permissions=[])
+
+    response = admin_request.post(
+        "platform_admin.fetch_users_list",
+        _data={
+            "logged_in_start": "2024-08-01",
+            "created_start": "2023-01-01",
+            "take_part_in_research": True,
+        },
+    )
+
+    users = response["data"]
+    user = users[0]
+
+    assert len(users) == 1
+    assert user["created_at"] == fixed_date.strftime(DATETIME_FORMAT)
+    assert user["permissions"] == {str(sample_service.id): default_service_permissions}
+    assert user["take_part_in_research"] is True
+    assert user["services"] == [{"id": str(sample_service.id), "name": sample_service.name}]

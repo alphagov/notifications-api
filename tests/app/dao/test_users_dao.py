@@ -8,6 +8,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
 from app.constants import EMAIL_AUTH_TYPE, OrganisationUserPermissionTypes
+from app.dao.date_util import parse_date_range
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.dao.service_user_dao import (
     dao_get_service_user,
@@ -23,6 +24,7 @@ from app.dao.users_dao import (
     get_user_by_email,
     get_user_by_id,
     get_users_for_research,
+    get_users_list,
     increment_failed_login_count,
     reset_failed_login_count,
     save_model_user,
@@ -349,3 +351,134 @@ def test_get_users_for_research(notify_db_session):
     assert returned_user_1 in users
     assert returned_user_2 in users
     assert returned_user_3 in users
+
+
+@pytest.mark.parametrize(
+    "state, expected_count",
+    [
+        ("active", 2),  # Should return only active users
+        ("pending", 1),  # Should return only pending users
+        ("inactive", 1),  # Should return only pending users
+        (None, 4),  # Should return all users regardless of state
+    ],
+)
+def test_get_users_list_active_filter(notify_db_session, state, expected_count):
+    create_user(state="active")
+    create_user(state="inactive")
+    create_user(state="pending")
+    create_user(state="active")
+
+    users = get_users_list(state=state)
+    assert len(users) == expected_count
+
+
+@pytest.mark.parametrize(
+    "take_part_in_research, expected_count",
+    [
+        (True, 2),  # Should return only users opted into research
+        (False, 1),  # Should return only users who didn't opt in
+        (None, 3),  # Should return all users regardless of research opt-in
+    ],
+)
+def test_get_users_list_research_filter(notify_db_session, take_part_in_research, expected_count):
+    create_user(take_part_in_research=True)
+    create_user(take_part_in_research=True)
+    create_user(take_part_in_research=False)
+
+    users = get_users_list(take_part_in_research=take_part_in_research)
+    assert len(users) == expected_count
+
+
+@pytest.mark.parametrize(
+    "logged_in_start, logged_in_end, expected_count",
+    [
+        (
+            parse_date_range("2024-08-01"),
+            parse_date_range("2024-08-10", is_end=True),
+            3,
+        ),  # Users logged in within range
+        (
+            parse_date_range("2024-08-05"),
+            parse_date_range("2024-08-05", is_end=True),
+            1,
+        ),  # Only users logged in on 8-5-2024
+        (
+            parse_date_range("2024-09-01"),
+            parse_date_range("2024-09-10", is_end=True),
+            0,
+        ),  # No matching users
+        (
+            parse_date_range("2024-08-10"),
+            parse_date_range("2024-08-10", is_end=True),
+            1,
+        ),  # Ensure inclusion of exact date
+    ],
+)
+def test_get_users_list_logged_in_filter(notify_db_session, logged_in_start, logged_in_end, expected_count):
+    create_user(logged_in_at=datetime(2024, 8, 1))
+    create_user(logged_in_at=datetime(2024, 8, 5))
+    create_user(logged_in_at=datetime(2024, 8, 10, 23, 59, 59))  # Edge case: logged in at the last second
+
+    users = get_users_list(logged_in_start=logged_in_start, logged_in_end=logged_in_end)
+    assert len(users) == expected_count
+
+
+@pytest.mark.parametrize(
+    "created_start, created_end, logged_in_start, logged_in_end, expected_count",
+    [
+        (
+            date(2024, 8, 1),
+            date(2024, 8, 10),
+            None,
+            None,
+            3,
+        ),  # Only created date fields
+        (
+            None,
+            None,
+            datetime(2024, 8, 1),
+            datetime(2024, 8, 10),
+            3,
+        ),  # Only logged in fields
+        (
+            date(2024, 8, 1),
+            date(2024, 8, 10),
+            datetime(2024, 8, 5),
+            datetime(2024, 8, 5),
+            1,
+        ),  # Both fields
+        (date(2024, 9, 1), date(2024, 9, 10), None, None, 0),  # No matching users
+    ],
+)
+def test_get_users_list_multiple_filters(
+    notify_db_session,
+    created_start,
+    created_end,
+    logged_in_start,
+    logged_in_end,
+    expected_count,
+):
+    create_user(
+        state="active",
+        created_at=datetime(2024, 8, 1),
+        logged_in_at=datetime(2024, 8, 1),
+    )
+    create_user(
+        state="active",
+        created_at=datetime(2024, 8, 5),
+        logged_in_at=datetime(2024, 8, 5),
+    )
+    create_user(
+        state="active",
+        created_at=datetime(2024, 8, 10),
+        logged_in_at=datetime(2024, 8, 10),
+    )
+
+    users = get_users_list(
+        created_start=created_start,
+        created_end=created_end,
+        logged_in_start=logged_in_start,
+        logged_in_end=logged_in_end,
+    )
+
+    assert len(users) == expected_count

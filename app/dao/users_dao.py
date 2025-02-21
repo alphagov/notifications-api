@@ -218,3 +218,32 @@ def get_users_for_research(start_date: date, end_date: date) -> list[User]:
         User.created_at >= start_date,
         User.created_at < end_date,
     ).all()
+
+
+def get_users_list(
+    logged_in_start: datetime | None = None,
+    logged_in_end: datetime | None = None,
+    created_start: datetime | None = None,
+    created_end: datetime | None = None,
+    take_part_in_research: bool | None = None,
+    state: str | None = "active",
+) -> list[User]:
+    filters = []
+
+    if state is not None:
+        filters.append(User.state == state)
+
+    if logged_in_start:
+        filters.append(User.logged_in_at >= logged_in_start)
+    if logged_in_end:
+        filters.append(User.logged_in_at <= logged_in_end)
+
+    if created_start:
+        filters.append(User.created_at >= created_start)
+    if created_end:
+        filters.append(User.created_at <= created_end)
+
+    if take_part_in_research is not None:
+        filters.append(User.take_part_in_research == take_part_in_research)
+
+    return User.query.filter(*filters).all()
