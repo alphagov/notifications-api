@@ -15,6 +15,7 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
+loglevel = "debug"
 workers = 4
 worker_class = "eventlet"
 worker_connections = 256  # re-enabling the problem 
