@@ -15,7 +15,7 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
-workers = 4
+workers = 2
 worker_class = "notifications_utils.gunicorn.eventlet.NotifyEventletWorker"
 worker_connections = 8  # limit runaway greenthread creation
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
