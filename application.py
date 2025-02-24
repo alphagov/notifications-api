@@ -1,6 +1,6 @@
 ##!/usr/bin/env python
 import os
-from werkzeug.middleware.profiler import ProfilerMiddleware
+from profiler_notify import ProfilerMiddleware
 from app.performance import init_performance_monitoring
 
 init_performance_monitoring()
