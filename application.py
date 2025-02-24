@@ -22,7 +22,6 @@ os.makedirs(profile_dir, exist_ok=True)
 
 application.wsgi_app = ProfilerMiddleware(
             application.wsgi_app,
-            restrictions=[30],
             profile_dir=profile_dir,
             filename_format="{method}-{path}-{time:.0f}-{elapsed:.0f}ms.prof",
         )
