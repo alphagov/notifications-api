@@ -1,10 +1,7 @@
 ##!/usr/bin/env python
 import os
-import cProfile
-import pstats
 from werkzeug.middleware.profiler import ProfilerMiddleware
 from app.performance import init_performance_monitoring
-import sys
 
 init_performance_monitoring()
 
