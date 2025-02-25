@@ -124,3 +124,37 @@ def fetch_returned_letters(service_id, report_date):
         results = results + query.all()
     results = sorted(results, key=lambda i: i.created_at, reverse=True)
     return results
+
+
+def fetch_returned_letter_callback_data_dao(notification_id, service_id):
+    for table in [Notification, NotificationHistory]:
+        result = (
+            db.session.query(
+                ReturnedLetter.notification_id,
+                table.client_reference,
+                table.created_at,
+                User.email_address,
+                Template.name.label("template_name"),
+                table.template_id,
+                table.template_version,
+                Template.hidden,
+                table.api_key_id,
+                table.created_by_id,
+                User.name.label("user_name"),
+                Job.original_file_name,
+                # row numbers in notifications db table start at 0, but in spreadsheet uploaded by service user
+                # the recipient rows would start at row 2 (row 1 is column headers).
+                (table.job_row_number + 2).label("job_row_number"),
+            )
+            .outerjoin(User, table.created_by_id == User.id)
+            .outerjoin(Job, table.job_id == Job.id)
+            .filter(
+                ReturnedLetter.notification_id == notification_id,
+                ReturnedLetter.service_id == service_id,
+                ReturnedLetter.notification_id == table.id,
+                table.template_id == Template.id,
+            )
+            .one_or_none()
+        )
+        if result:
+            return result

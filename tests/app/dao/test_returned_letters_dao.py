@@ -7,11 +7,13 @@ from app.constants import NOTIFICATION_RETURNED_LETTER
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
+    fetch_returned_letter_callback_data_dao,
     fetch_returned_letter_summary,
     fetch_returned_letters,
     insert_returned_letters,
 )
 from app.models import ReturnedLetter
+from tests.app.celery.test_service_callback_tasks import _set_up_test_data_for_returned_letter_callback
 from tests.app.db import (
     create_notification,
     create_notification_history,
@@ -305,3 +307,31 @@ def test_fetch_returned_letters_with_create_by_user(sample_letter_template):
         None,
         None,
     )
+
+
+def test_fetch_returned_letter_callback_data_dao(sample_letter_template):
+    callback_api, job, notification = _set_up_test_data_for_returned_letter_callback(sample_letter_template)
+    expected_result = {
+        "notification_id": notification.id,
+        "client_reference": notification.client_reference,
+        "created_at": notification.created_at,
+        "email_address": sample_letter_template.service.users[0].email_address,
+        "template_name": sample_letter_template.name,
+        "template_id": sample_letter_template.id,
+        "template_version": sample_letter_template.version,
+        "original_file_name": job.original_file_name,
+        "job_row_number": notification.job_row_number + 2,
+        "upload_letter_file_name": notification.client_reference,
+    }
+    result = fetch_returned_letter_callback_data_dao(notification.id, notification.service_id)
+
+    assert expected_result["notification_id"] == result["notification_id"]
+    assert expected_result["client_reference"] == result["client_reference"]
+    assert expected_result["created_at"] == result["created_at"]
+    assert expected_result["email_address"] == result["email_address"]
+    assert expected_result["template_name"] == result["template_name"]
+    assert expected_result["template_id"] == result["template_id"]
+    assert expected_result["template_version"] == result["template_version"]
+    assert expected_result["original_file_name"] == result["original_file_name"]
+    assert expected_result["job_row_number"] == result["job_row_number"]
+    assert expected_result["upload_letter_file_name"] == result["client_reference"]

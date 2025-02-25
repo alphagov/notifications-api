@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest import mock
 
 import pytest
@@ -12,17 +12,28 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import signing
 from app.celery.service_callback_tasks import (
     _send_data_to_service_callback_api,
+    create_returned_letter_callback_data,
     send_complaint_to_service,
     send_delivery_status_to_service,
     send_inbound_sms_to_service,
+    send_returned_letter_to_service,
 )
-from app.utils import DATETIME_FORMAT
+from app.constants import (
+    KEY_TYPE_NORMAL,
+    NOTIFICATION_RETURNED_LETTER,
+)
+from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
 from tests.app.db import (
+    create_api_key,
     create_complaint,
     create_inbound_sms,
+    create_job,
     create_notification,
+    create_notification_history,
+    create_returned_letter,
     create_service,
     create_service_callback_api,
+    create_service_contact_list,
     create_service_inbound_api,
     create_template,
 )
@@ -73,6 +84,49 @@ def _set_up_data_for_complaint(callback_api, complaint, notification):
     }
     obscured_status_update = signing.encode(data)
     return obscured_status_update
+
+
+def _set_up_test_data_for_returned_letter_callback(template):
+    today = datetime.now()
+    callback_api = create_service_callback_api(
+        service=template.service,
+        url="https://some.service.gov.uk/",
+        bearer_token="unique_bearer_token",
+        callback_type="returned_letter",
+    )
+    api_key = create_api_key(
+        template.service,
+        key_type=KEY_TYPE_NORMAL,
+    )
+    contact_list = create_service_contact_list(
+        service=template.service, row_count=5, template_type=template.template_type
+    )
+    job = create_job(template=template, contact_list_id=contact_list.id)
+
+    notification_1 = create_notification(
+        template=template,
+        client_reference="letter_1",
+        status=NOTIFICATION_RETURNED_LETTER,
+        created_at=datetime.utcnow() - timedelta(days=1),
+        created_by_id=template.service.users[0].id,
+        job=job,
+        api_key=api_key,
+        job_row_number=2,
+        sent_at=datetime.utcnow() - timedelta(days=1),
+        sent_by=template.service.users[0].email_address,
+    )
+    create_returned_letter(service=template.service, reported_at=today, notification_id=notification_1.id)
+    notification_2 = create_notification_history(
+        template=template,
+        client_reference="letter_2",
+        status=NOTIFICATION_RETURNED_LETTER,
+        created_at=datetime.utcnow() - timedelta(days=2),
+        created_by_id=template.service.users[0].id,
+        job=job,
+    )
+    create_returned_letter(service=template.service, reported_at=today, notification_id=notification_2.id)
+
+    return callback_api, job, notification_1
 
 
 @pytest.mark.parametrize("notification_type", ["email", "sms"])
@@ -186,6 +240,44 @@ def test_send_inbound_sms_to_service_does_not_sent_callback_when_inbound_api_doe
     assert send_callback_mock.call_count == 0
 
 
+def test_send_returned_letter_to_service_sends_callback_to_service(
+    notify_db_session, sample_letter_template, sample_service, mocker
+):
+    callback_api, job, notification = _set_up_test_data_for_returned_letter_callback(sample_letter_template)
+
+    encoded_returned_letter = create_returned_letter_callback_data(
+        notification.id, notification.service_id, callback_api
+    )
+
+    expected_data = {
+        "notification_id": str(notification.id),
+        "reference": notification.client_reference,
+        "date_sent": notification.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
+        "sent_by": sample_letter_template.service.users[0].email_address,
+        "template_name": sample_letter_template.name,
+        "template_id": str(sample_letter_template.id),
+        "template_version": sample_letter_template.version,
+        "spreadsheet_file_name": job.original_file_name,
+        "spreadsheet_row_number": notification.job_row_number + 2,
+        "upload_letter_file_name": None,
+    }
+
+    send_callback_mock = mocker.patch("app.celery.service_callback_tasks._send_data_to_service_callback_api")
+    send_returned_letter_to_service(encoded_returned_letter=encoded_returned_letter)
+    send_callback_mock.assert_called_once_with(
+        mock.ANY, expected_data, callback_api.url, callback_api.bearer_token, "send_returned_letter_to_service"
+    )
+
+
+@pytest.mark.parametrize("data", [{"id": "hello"}, {"notification_id": "hello"}])
+def test__send_data_to_service_callback_api_handles_data_with_notification_id_or_id(notify_db_session, mocker, data):
+    callback_url = "https://www.example.com/callback"
+
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post(callback_url, json={}, status_code=200)
+        _send_data_to_service_callback_api(mock.MagicMock(), data, callback_url, "my-token", "my_function_name")
+
+
 def test__send_data_to_service_callback_api_posts_https_request_to_service(notify_db_session, mocker):
     data = {"id": "hello"}
     callback_url = "https://www.example.com/callback"
@@ -248,12 +340,3 @@ def test__send_data_to_service_callback_api_doesnt_retry_if_non_retry_status_cod
         _send_data_to_service_callback_api(celery_task_mock, data, callback_url, "my-token", "my_function_name")
 
     celery_task_mock.retry.assert_not_called()
-
-
-@pytest.mark.parametrize("data", [{"id": "hello"}, {"notification_id": "hello"}])
-def test__send_data_to_service_callback_api_handles_data_with_notification_id_or_id(notify_db_session, mocker, data):
-    callback_url = "https://www.example.com/callback"
-
-    with requests_mock.Mocker() as request_mock:
-        request_mock.post(callback_url, json={}, status_code=200)
-        _send_data_to_service_callback_api(mock.MagicMock(), data, callback_url, "my-token", "my_function_name")

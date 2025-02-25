@@ -12,8 +12,8 @@ from app.dao.notifications_dao import (
     dao_get_notification_or_history_by_reference,
 )
 from app.dao.service_callback_api_dao import (
-    get_service_complaint_callback_api_for_service,
-    get_service_delivery_status_callback_api_for_service,
+    get_complaint_callback_api_for_service,
+    get_delivery_status_callback_api_for_service,
 )
 from app.models import Complaint
 
@@ -70,7 +70,7 @@ def remove_emails_from_complaint(complaint_dict):
 
 def check_and_queue_callback_task(notification):
     # queue callback task only if the service_callback_api exists
-    service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
+    service_callback_api = get_delivery_status_callback_api_for_service(service_id=notification.service_id)
     if service_callback_api:
         notification_data = create_delivery_status_callback_data(notification, service_callback_api)
         send_delivery_status_to_service.apply_async(
@@ -80,7 +80,7 @@ def check_and_queue_callback_task(notification):
 
 def _check_and_queue_complaint_callback_task(complaint, notification, recipient):
     # queue callback task only if the service_callback_api exists
-    service_callback_api = get_service_complaint_callback_api_for_service(service_id=notification.service_id)
+    service_callback_api = get_complaint_callback_api_for_service(service_id=notification.service_id)
     if service_callback_api:
         complaint_data = create_complaint_callback_data(complaint, notification, service_callback_api, recipient)
         send_complaint_to_service.apply_async([complaint_data], queue=QueueNames.CALLBACKS)
