@@ -78,3 +78,18 @@ def get_financial_year_for_datetime(start_date):
         return year - 1
     else:
         return year
+
+
+def parse_date_range(date_str: str | None, is_end: bool = False, date_format: str = "%Y-%m-%d") -> datetime | None:
+    """
+    Converts a date string to a datetime object.
+    If `is_end` is True, the time is set to 23:59:59 to include the full day.
+    Otherwise, it defaults to 00:00:00 (midnight).
+    If the input is None, returns None.
+    """
+    if not date_str:
+        return None
+
+    dt = datetime.strptime(date_str, date_format)
+
+    return datetime.combine(dt.date(), time.max if is_end else time.min)  # Start at 00:00:00, end at 23:59:59

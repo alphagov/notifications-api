@@ -77,6 +77,7 @@ from app.history_meta import Versioned
 from app.utils import (
     DATETIME_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
+    dict_filter,
     get_dt_string_or_none,
     get_london_midnight_in_utc,
     get_uuid_string_or_none,
@@ -179,7 +180,13 @@ class User(db.Model):
 
         return retval
 
-    def serialize(self):
+    def serialize(self, service_filter_keys=None):
+        if service_filter_keys is None:
+            services_data = [x.id for x in self.services if x.active]
+        else:
+            service_filter_keys = list(set(service_filter_keys) | {"id"})
+            services_data = [dict_filter(x, service_filter_keys) for x in self.services if x.active]
+
         return {
             "id": self.id,
             "name": self.name,
@@ -196,7 +203,7 @@ class User(db.Model):
             "permissions": self.get_permissions(),
             "organisation_permissions": self.get_organisation_permissions(),
             "platform_admin": self.platform_admin,
-            "services": [x.id for x in self.services if x.active],
+            "services": services_data,
             "can_use_webauthn": self.can_use_webauthn,
             "state": self.state,
             "take_part_in_research": self.take_part_in_research,

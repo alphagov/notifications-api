@@ -7,6 +7,7 @@ from app.dao.date_util import (
     get_financial_year,
     get_financial_year_for_datetime,
     get_month_start_and_end_date_in_utc,
+    parse_date_range,
 )
 
 
@@ -51,3 +52,83 @@ def test_get_month_start_and_end_date_in_utc(month, year, expected_start, expect
 )
 def test_get_financial_year_for_datetime(dt, fy):
     assert get_financial_year_for_datetime(dt) == fy
+
+
+@pytest.mark.parametrize(
+    "date_str, is_end, expected_datetime",
+    [
+        ("2025-02-19", False, datetime(2025, 2, 19, 0, 0, 0)),  # Start of the day
+        (
+            "2025-02-19",
+            True,
+            datetime(2025, 2, 19, 23, 59, 59, 999999),
+        ),  # End of the day
+        ("2023-01-01", False, datetime(2023, 1, 1, 0, 0, 0)),  # Start of the year
+        (
+            "2023-01-01",
+            True,
+            datetime(2023, 1, 1, 23, 59, 59, 999999),
+        ),  # End of the year
+        (
+            "1999-12-31",
+            False,
+            datetime(1999, 12, 31, 0, 0, 0),
+        ),  # Start of the millennium
+        (
+            "1999-12-31",
+            True,
+            datetime(1999, 12, 31, 23, 59, 59, 999999),
+        ),  # End of the millennium
+        (None, False, None),  # None should return None
+        (None, True, None),  # None should return None (even with is_end=True)
+    ],
+)
+def test_parse_date_range_1(date_str, is_end, expected_datetime):
+    assert parse_date_range(date_str, is_end) == expected_datetime
+
+
+@pytest.mark.parametrize(
+    "date_str, date_format, is_end, expected_datetime",
+    [
+        (
+            "19-02-2025",
+            "%d-%m-%Y",
+            False,
+            datetime(2025, 2, 19, 0, 0, 0),
+        ),  # Custom format (DD-MM-YYYY)
+        (
+            "19-02-2025",
+            "%d-%m-%Y",
+            True,
+            datetime(2025, 2, 19, 23, 59, 59, 999999),
+        ),  # Custom format end of day
+        (
+            "31/12/1999",
+            "%d/%m/%Y",
+            False,
+            datetime(1999, 12, 31, 0, 0, 0),
+        ),  # Slash-separated format start of day
+        (
+            "31/12/1999",
+            "%d/%m/%Y",
+            True,
+            datetime(1999, 12, 31, 23, 59, 59, 999999),
+        ),  # Slash-separated format end of day
+    ],
+)
+def test_parse_date_range_with_different_formats(date_str, date_format, is_end, expected_datetime):
+    assert parse_date_range(date_str, is_end, date_format) == expected_datetime
+
+
+@pytest.mark.parametrize(
+    "invalid_date, date_format",
+    [
+        ("2025-13-01", "%Y-%m-%d"),  # Invalid month
+        ("2025-02-30", "%Y-%m-%d"),  # Invalid day
+        ("02-31-2025", "%m-%d-%Y"),  # February has no 31st
+        ("invalid-date", "%Y-%m-%d"),  # Completely invalid string
+    ],
+)
+def test_parse_date_range_invalid_dates(invalid_date, date_format):
+    with pytest.raises(ValueError):
+        parse_date_range(invalid_date, date_format=date_format)
