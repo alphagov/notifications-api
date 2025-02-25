@@ -26,6 +26,7 @@ from app.celery.letters_pdf_tasks import (
     sanitise_letter,
     send_dvla_letters_via_api,
     send_letters_volume_email_to_dvla,
+    shatter_deliver_letter_tasks,
     update_billable_units_for_letter,
     update_validation_failed_for_templated_letter,
 )
@@ -317,7 +318,7 @@ class TestCollateLetterPdfsToBeSent:
 
 
 def test_send_dvla_letters_via_api(sample_letter_template, mock_celery_task):
-    mock_celery = mock_celery_task(deliver_letter)
+    mock_celery = mock_celery_task(shatter_deliver_letter_tasks)
 
     with freeze_time("2021-06-01 16:29"):
         first_class = create_notification(sample_letter_template, postage="first")
@@ -331,9 +332,44 @@ def test_send_dvla_letters_via_api(sample_letter_template, mock_celery_task):
 
     mock_celery.assert_has_calls(
         [
-            call(kwargs={"notification_id": first_class.id}, queue="send-letter-tasks"),
-            call(kwargs={"notification_id": second_class.id}, queue="send-letter-tasks"),
+            call([(first_class.id, second_class.id)], queue="periodic-tasks"),
         ],
+        any_order=True,
+    )
+
+
+def test_batching_of_send_letter_celery_tasks(sample_letter_template, mock_celery_task):
+    mock_celery = mock_celery_task(shatter_deliver_letter_tasks)
+
+    with freeze_time("2021-06-01 16:29"):
+        for _ in range(201):
+            create_notification(sample_letter_template, postage="second")
+
+    # note print_run_deadline is in local time
+    send_dvla_letters_via_api(datetime(2021, 6, 1, 17, 30))
+
+    assert [len(call.args[0][0]) for call in mock_celery.call_args_list] == [100, 100, 1]
+
+
+def test_shatter_deliver_letter_tasks(sample_letter_template, mock_celery_task):
+    mock_celery = mock_celery_task(deliver_letter)
+
+    with freeze_time("2021-06-01 16:29"):
+        notification_1 = create_notification(sample_letter_template)
+        notification_2 = create_notification(sample_letter_template)
+
+    shatter_deliver_letter_tasks(
+        (
+            notification_1.id,
+            notification_2.id,
+        )
+    )
+
+    mock_celery.assert_has_calls(
+        (
+            call(kwargs={"notification_id": notification_1.id}, queue="send-letter-tasks"),
+            call(kwargs={"notification_id": notification_2.id}, queue="send-letter-tasks"),
+        ),
         any_order=True,
     )
 
