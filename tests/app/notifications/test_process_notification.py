@@ -5,11 +5,20 @@ from collections import namedtuple
 import pytest
 from boto3.exceptions import Boto3Error
 from freezegun import freeze_time
-from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
+from notifications_utils.recipient_validation.email_address import (
+    validate_and_format_email_address,
+)
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, LETTER_TYPE, SMS_TO_UK_LANDLINES, SMS_TYPE
+from app.constants import (
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    NOTIFICATION_PERMANENT_FAILURE,
+    SMS_TO_UK_LANDLINES,
+    SMS_TYPE,
+)
 from app.models import Notification, NotificationHistory, ServicePermission
 from app.notifications.process_notifications import (
     create_content_for_notification,
@@ -30,31 +39,42 @@ def test_create_content_for_notification_passes(sample_email_template):
     assert str(content) == template.content + "\n"
 
 
-def test_create_content_for_notification_with_placeholders_passes(sample_template_with_placeholders):
+def test_create_content_for_notification_with_placeholders_passes(
+    sample_template_with_placeholders,
+):
     template = SerialisedTemplate.from_id_and_service_id(
-        sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
+        sample_template_with_placeholders.id,
+        sample_template_with_placeholders.service_id,
     )
     content = create_content_for_notification(template, {"name": "Bobby"})
     assert content.content == template.content
     assert "Bobby" in str(content)
 
 
-def test_create_content_for_notification_fails_with_missing_personalisation(sample_template_with_placeholders):
+def test_create_content_for_notification_fails_with_missing_personalisation(
+    sample_template_with_placeholders,
+):
     template = SerialisedTemplate.from_id_and_service_id(
-        sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
+        sample_template_with_placeholders.id,
+        sample_template_with_placeholders.service_id,
     )
     with pytest.raises(BadRequestError):
         create_content_for_notification(template, None)
 
 
-def test_create_content_for_notification_allows_additional_personalisation(sample_template_with_placeholders):
+def test_create_content_for_notification_allows_additional_personalisation(
+    sample_template_with_placeholders,
+):
     template = SerialisedTemplate.from_id_and_service_id(
-        sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
+        sample_template_with_placeholders.id,
+        sample_template_with_placeholders.service_id,
     )
     create_content_for_notification(template, {"name": "Bobby", "Additional placeholder": "Data"})
 
 
-def test_create_content_for_notification_raises_error_on_qr_code_too_long(sample_service):
+def test_create_content_for_notification_raises_error_on_qr_code_too_long(
+    sample_service,
+):
     db_template = create_template(sample_service, template_type="letter", content="qr: ((code))")
     template = SerialisedTemplate.from_id_and_service_id(db_template.id, db_template.service_id)
 
@@ -274,11 +294,35 @@ def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
         (None, "sms", "normal", "send-sms-tasks", "provider_tasks.deliver_sms"),
         (None, "email", "normal", "send-email-tasks", "provider_tasks.deliver_email"),
         (None, "sms", "team", "send-sms-tasks", "provider_tasks.deliver_sms"),
-        (None, "letter", "normal", "create-letters-pdf-tasks", "letters_pdf_tasks.get_pdf_for_templated_letter"),
+        (
+            None,
+            "letter",
+            "normal",
+            "create-letters-pdf-tasks",
+            "letters_pdf_tasks.get_pdf_for_templated_letter",
+        ),
         (None, "sms", "test", "research-mode-tasks", "provider_tasks.deliver_sms"),
-        ("notify-internal-tasks", "sms", "normal", "notify-internal-tasks", "provider_tasks.deliver_sms"),
-        ("notify-internal-tasks", "email", "normal", "notify-internal-tasks", "provider_tasks.deliver_email"),
-        ("notify-internal-tasks", "sms", "test", "research-mode-tasks", "provider_tasks.deliver_sms"),
+        (
+            "notify-internal-tasks",
+            "sms",
+            "normal",
+            "notify-internal-tasks",
+            "provider_tasks.deliver_sms",
+        ),
+        (
+            "notify-internal-tasks",
+            "email",
+            "normal",
+            "notify-internal-tasks",
+            "provider_tasks.deliver_email",
+        ),
+        (
+            "notify-internal-tasks",
+            "sms",
+            "test",
+            "research-mode-tasks",
+            "provider_tasks.deliver_sms",
+        ),
     ],
 )
 def test_send_notification_to_queue(
@@ -305,10 +349,13 @@ def test_send_notification_to_queue(
 
 
 def test_send_notification_to_queue_throws_exception_deletes_notification(sample_notification, mocker):
-    mocked = mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async", side_effect=Boto3Error("EXPECTED"))
+    mocked = mocker.patch(
+        "app.celery.provider_tasks.deliver_sms.apply_async",
+        side_effect=Boto3Error("EXPECTED"),
+    )
     with pytest.raises(Boto3Error):
         send_notification_to_queue(sample_notification)
-    mocked.assert_called_once_with([(str(sample_notification.id))], queue="send-sms-tasks")
+    mocked.assert_called_once_with([str(sample_notification.id)], queue="send-sms-tasks")
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
@@ -363,7 +410,13 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
     ],  # Hungary
 )
 def test_persist_notification_with_international_info_stores_correct_info(
-    sample_job, sample_api_key, mocker, recipient, expected_international, expected_prefix, expected_units
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+    expected_international,
+    expected_prefix,
+    expected_units,
 ):
     persist_notification(
         template_id=sample_job.template.id,
@@ -474,13 +527,28 @@ def test_persist_notification_with_international_info_does_not_store_for_email(s
     "recipient, expected_recipient_normalised",
     [
         ("7900900123", "447900900123"),  # uk number adding country code correctly
-        ("+447900   900 123", "447900900123"),  # uk number stripping whitespace and leading plus
-        ("  07700900222", "447700900222"),  # uk number stripping whitespace and adding country code
-        ("07700900222", "447700900222"),  # uk number stripping leading zero and adding country code
+        (
+            "+447900   900 123",
+            "447900900123",
+        ),  # uk number stripping whitespace and leading plus
+        (
+            "  07700900222",
+            "447700900222",
+        ),  # uk number stripping whitespace and adding country code
+        (
+            "07700900222",
+            "447700900222",
+        ),  # uk number stripping leading zero and adding country code
         (" 74952122020", "74952122020"),  # russian number that looks like a uk mobile
-        ("36705450911", "36705450911"),  # hungarian number to test international numbers
+        (
+            "36705450911",
+            "36705450911",
+        ),  # hungarian number to test international numbers
         ("-077-00900222-", "447700900222"),  # uk mobile test stripping hyphens
-        ("(3670545(0911))", "36705450911"),  # hungarian number to test international numbers (stripping brackets)
+        (
+            "(3670545(0911))",
+            "36705450911",
+        ),  # hungarian number to test international numbers (stripping brackets)
     ],
 )
 def test_persist_sms_notification_stores_normalised_number(
@@ -504,7 +572,8 @@ def test_persist_sms_notification_stores_normalised_number(
 
 
 @pytest.mark.parametrize(
-    "recipient, expected_recipient_normalised", [("FOO@bar.com", "foo@bar.com"), ("BAR@foo.com", "bar@foo.com")]
+    "recipient, expected_recipient_normalised",
+    [("FOO@bar.com", "foo@bar.com"), ("BAR@foo.com", "bar@foo.com")],
 )
 def test_persist_email_notification_stores_normalised_email(
     sample_job, sample_api_key, recipient, expected_recipient_normalised
@@ -528,7 +597,11 @@ def test_persist_email_notification_stores_normalised_email(
 
 @pytest.mark.parametrize(
     "postage_argument, template_postage, expected_postage",
-    [("second", "first", "second"), ("first", "first", "first"), ("first", "second", "first")],
+    [
+        ("second", "first", "second"),
+        ("first", "first", "first"),
+        ("first", "second", "first"),
+    ],
 )
 def test_persist_letter_notification_finds_correct_postage(
     mocker,
@@ -538,7 +611,11 @@ def test_persist_letter_notification_finds_correct_postage(
     sample_service_full_permissions,
     sample_api_key,
 ):
-    template = create_template(sample_service_full_permissions, template_type=LETTER_TYPE, postage=template_postage)
+    template = create_template(
+        sample_service_full_permissions,
+        template_type=LETTER_TYPE,
+        postage=template_postage,
+    )
     mocker.patch("app.dao.templates_dao.dao_get_template_by_id", return_value=template)
     persist_notification(
         template_id=template.id,
@@ -628,7 +705,10 @@ def test_persist_notification_when_template_has_unsubscribe_link_is_false(unsubs
 @pytest.mark.parametrize(
     "unsubscribe_link, expected_unsubscribe_link",
     [
-        ("https://please-unsubscribe-me.com/unsubscribe", "https://please-unsubscribe-me.com/unsubscribe"),
+        (
+            "https://please-unsubscribe-me.com/unsubscribe",
+            "https://please-unsubscribe-me.com/unsubscribe",
+        ),
         # We don’t persist template-level unsubscribe links – they are generated at time of sending
         (None, None),
     ],
@@ -668,3 +748,46 @@ def test_persist_notification_when_template_has_unsubscribe_link_is_true(
 
     persisted_notification = Notification.query.first()
     assert persisted_notification.unsubscribe_link == expected_unsubscribe_link
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_creates_and_save_to_db_with_permenant_failure_if_invalid_number_from_job(
+    sample_template, sample_api_key, sample_job
+):
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 0
+    notification = persist_notification(
+        template_id=sample_template.id,
+        template_version=sample_template.version,
+        recipient="+1-800-555-555",
+        service=sample_template.service,
+        personalisation={},
+        notification_type="sms",
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+        job_row_number=100,
+        reference="ref",
+        reply_to_text=sample_template.service.get_default_sms_sender(),
+        from_job=True,
+    )
+
+    assert Notification.query.get(notification.id) is not None
+    notification_from_db = Notification.query.one()
+    assert notification.status == NOTIFICATION_PERMANENT_FAILURE
+    assert notification_from_db.id == notification.id
+    assert notification_from_db.template_id == notification.template_id
+    assert notification_from_db.template_version == notification.template_version
+    assert notification_from_db.api_key_id == notification.api_key_id
+    assert notification_from_db.key_type == notification.key_type
+    assert notification_from_db.key_type == notification.key_type
+    assert notification_from_db.billable_units == notification.billable_units
+    assert notification_from_db.notification_type == notification.notification_type
+    assert notification_from_db.created_at == notification.created_at
+    assert not notification_from_db.sent_at
+    assert notification_from_db.updated_at == notification.updated_at
+    assert notification_from_db.status == notification.status
+    assert notification_from_db.reference == notification.reference
+    assert notification_from_db.client_reference == notification.client_reference
+    assert notification_from_db.created_by_id == notification.created_by_id
+    assert notification_from_db.reply_to_text == sample_template.service.get_default_sms_sender()
