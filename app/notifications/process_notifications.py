@@ -7,6 +7,7 @@ from notifications_utils.clients import redis
 from notifications_utils.recipient_validation.email_address import (
     format_email_address,
 )
+from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import (
     PhoneNumber,
 )
@@ -26,6 +27,7 @@ from app.constants import (
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
+    NOTIFICATION_PERMANENT_FAILURE,
     SMS_TO_UK_LANDLINES,
     SMS_TYPE,
 )
@@ -118,6 +120,7 @@ def persist_notification(
     postage=None,
     document_download_count=None,
     updated_at=None,
+    from_job=False,
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -147,16 +150,31 @@ def persist_notification(
         updated_at=updated_at,
     )
     if notification_type == SMS_TYPE:
-        phonenumber = PhoneNumber(recipient)
-        phonenumber.validate(
-            allow_international_number=True, allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES)
-        )
-        formatted_recipient = phonenumber.get_normalised_format()
-        recipient_info = phonenumber.get_international_phone_info()
-        notification.normalised_to = formatted_recipient
-        notification.international = recipient_info.international
-        notification.phone_prefix = recipient_info.country_prefix
-        notification.rate_multiplier = recipient_info.rate_multiplier
+        if from_job:
+            try:
+                phonenumber = PhoneNumber(recipient)
+                phonenumber.validate(
+                    allow_international_number=True, allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES)
+                )
+            except InvalidPhoneError:
+                formatted_recipient = recipient
+                notification.normalised_to = formatted_recipient
+                notification.international = False
+                notification.phone_prefix = "+44"
+                notification.rate_multiplier = 0
+                notification.status = NOTIFICATION_PERMANENT_FAILURE
+
+        else:
+            phonenumber = PhoneNumber(recipient)
+            phonenumber.validate(
+                allow_international_number=True, allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES)
+            )
+            formatted_recipient = phonenumber.get_normalised_format()
+            recipient_info = phonenumber.get_international_phone_info()
+            notification.normalised_to = formatted_recipient
+            notification.international = recipient_info.international
+            notification.phone_prefix = recipient_info.country_prefix
+            notification.rate_multiplier = recipient_info.rate_multiplier
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:
