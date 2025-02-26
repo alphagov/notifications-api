@@ -235,10 +235,7 @@ def send_dvla_letters_via_api(print_run_deadline_local, batch_size=100):
         (row.id for row in dao_get_letters_to_be_printed(print_run_deadline_local)),
         batch_size,
     ):
-        current_app.logger.info("triggered tasks for %i letters", batch_size)
         shatter_deliver_letter_tasks.apply_async([batch], queue=QueueNames.PERIODIC)
-
-    current_app.logger.info("send-dvla-letters-for-day-via-api - finished queuing")
 
 
 @notify_celery.task(name="shatter-deliver-letters-tasks")
