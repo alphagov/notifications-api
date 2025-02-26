@@ -49,6 +49,7 @@ from app.letters.utils import (
     move_scan_to_invalid_pdf_bucket,
 )
 from app.models import Service
+from app.utils import batched
 
 
 @notify_celery.task(bind=True, name="get-pdf-for-templated-letter", max_retries=15, default_retry_delay=300)
@@ -228,14 +229,22 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
         send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
 
-def send_dvla_letters_via_api(print_run_deadline_local):
+def send_dvla_letters_via_api(print_run_deadline_local, batch_size=100):
     current_app.logger.info("send-dvla-letters-for-day-via-api - starting queuing")
-    for i, row in enumerate(dao_get_letters_to_be_printed(print_run_deadline_local)):
-        if i % 10000 == 0:
-            current_app.logger.info("triggered tasks for %i letters", i)
-        deliver_letter.apply_async(kwargs={"notification_id": row.id}, queue=QueueNames.SEND_LETTER)
+    for batch in batched(
+        (row.id for row in dao_get_letters_to_be_printed(print_run_deadline_local)),
+        batch_size,
+    ):
+        shatter_deliver_letter_tasks.apply_async([batch], queue=QueueNames.PERIODIC)
 
-    current_app.logger.info("send-dvla-letters-for-day-via-api - finished queuing")
+
+@notify_celery.task(name="shatter-deliver-letters-tasks")
+def shatter_deliver_letter_tasks(notification_ids):
+    # If the number or size of arguments to this function change, then the default
+    # `batch_size` argument of `send_dvla_letters_via_api` needs updating to keep
+    # within SQS’s maximum message size
+    for id in notification_ids:
+        deliver_letter.apply_async(kwargs={"notification_id": id}, queue=QueueNames.SEND_LETTER)
 
 
 @notify_celery.task(bind=True, name="sanitise-letter", max_retries=15, default_retry_delay=300)
