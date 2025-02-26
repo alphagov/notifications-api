@@ -19,8 +19,8 @@ from flask import (
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from gds_metrics import GDSMetrics
-from gds_metrics.metrics import Gauge, Histogram
+# from gds_metrics import GDSMetrics
+# from gds_metrics.metrics import Gauge, Histogram
 from notifications_utils import request_helper
 from notifications_utils.celery import NotifyCelery
 from notifications_utils.clients.redis.redis_client import RedisClient
@@ -51,7 +51,7 @@ signing = Signing()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
 cbc_proxy_client = CBCProxyClient()
-metrics = GDSMetrics()
+# metrics = GDSMetrics()
 
 api_user = LocalProxy(lambda: g.api_user)
 authenticated_service = LocalProxy(lambda: g.authenticated_service)
@@ -171,7 +171,7 @@ def create_app(application):
     init_app(application)
 
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
-    metrics.init_app(application)
+    # metrics.init_app(application)
     request_helper.init_app(application)
     db.init_app(application)
     migrate.init_app(application, db=db)
