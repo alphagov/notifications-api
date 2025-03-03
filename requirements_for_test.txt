@@ -340,7 +340,7 @@ segno==1.6.1
     # via
     #   -r requirements.txt
     #   notifications-utils
-sentry-sdk==1.38.0
+sentry-sdk==1.45.1
     # via -r requirements.txt
 setuptools==75.6.0
     # via
