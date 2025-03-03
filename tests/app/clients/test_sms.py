@@ -11,6 +11,9 @@ def fake_client(notify_api):
         def name(self):
             return "fake"
 
+        def try_send_sms(self):
+            pass
+
     fake_client = FakeSmsClient(notify_api, statsd_client)
     return fake_client
 

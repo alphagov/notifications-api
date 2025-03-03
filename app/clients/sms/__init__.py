@@ -1,5 +1,6 @@
 import platform
 import socket
+from abc import abstractmethod
 from time import monotonic
 
 import requests
@@ -80,9 +81,11 @@ class SmsClient(Client):
 
         return response
 
-    def try_send_sms(self, *args, **kwargs):
-        raise NotImplementedError("TODO Need to implement.")
+    @abstractmethod
+    def try_send_sms(self):
+        pass
 
     @property
+    @abstractmethod
     def name(self):
-        raise NotImplementedError("TODO Need to implement.")
+        pass
