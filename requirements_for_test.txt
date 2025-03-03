@@ -93,7 +93,7 @@ click-repl==0.2.0
     #   celery
 coverage==7.6.4
     # via pytest-testmon
-cryptography==43.0.3
+cryptography==44.0.1
     # via
     #   moto
     #   trustme
