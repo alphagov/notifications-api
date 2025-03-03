@@ -212,7 +212,7 @@ s3transfer==0.10.1
     # via boto3
 segno==1.6.1
     # via notifications-utils
-sentry-sdk==1.38.0
+sentry-sdk==1.45.1
     # via -r requirements.in
 setuptools==75.6.0
     # via gunicorn
