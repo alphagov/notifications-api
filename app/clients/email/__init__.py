@@ -28,8 +28,3 @@ class EmailClient(Client):
     @abstractmethod
     def send_email(self):
         pass
-
-    @property
-    @abstractmethod
-    def name(self):
-        pass

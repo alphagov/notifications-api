@@ -84,8 +84,3 @@ class SmsClient(Client):
     @abstractmethod
     def try_send_sms(self):
         pass
-
-    @property
-    @abstractmethod
-    def name(self):
-        pass

@@ -7,9 +7,7 @@ from app.clients.sms import SmsClient, SmsClientResponseException
 @pytest.fixture
 def fake_client(notify_api):
     class FakeSmsClient(SmsClient):
-        @property
-        def name(self):
-            return "fake"
+        name = "fake"
 
         def try_send_sms(self):
             pass
