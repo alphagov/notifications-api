@@ -818,7 +818,7 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
         "app.celery.scheduled_tasks.dao_find_services_sending_to_tv_numbers", return_value=sms_to_tv_numbers
     )
 
-    zendesk_actions = "\nYou can find instructions for this ticket in our manual:\nhttps://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
+    zendesk_actions = "\nYou can find instructions for this ticket in our manual:\nhttps://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"
 
     with caplog.at_level("WARNING"):
         check_for_services_with_high_failure_rates_or_sending_to_tv_numbers()

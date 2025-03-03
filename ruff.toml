@@ -1,4 +1,4 @@
-# This file was automatically copied from notifications-utils@94.0.1
+# This file was automatically copied from notifications-utils@95.1.1
 
 exclude = [
     "migrations/versions/",
@@ -31,5 +31,6 @@ select = [
     "RSE",  # flake8-raise
     "PIE",  # flake8-pie
     "N804",  # First argument of a class method should be named `cls`
+    "RUF100",  # Checks for noqa directives that are no longer applicable
 ]
 ignore = []

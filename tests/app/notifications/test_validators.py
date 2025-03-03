@@ -296,10 +296,10 @@ def test_service_can_send_to_recipient_fails_when_ignoring_guest_list(
         ("team", "Can’t send to this recipient using a team-only API key"),
         (
             "normal",
-            "Can’t send to this recipient when service is in trial mode – see https://www.notifications.service.gov.uk/trial-mode",  # noqa
+            "Can’t send to this recipient when service is in trial mode – see https://www.notifications.service.gov.uk/trial-mode",
         ),
     ],
-)  # noqa
+)
 def test_service_can_send_to_recipient_fails_when_recipient_is_not_on_team(
     recipient,
     key_type,

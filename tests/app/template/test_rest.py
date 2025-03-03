@@ -214,7 +214,7 @@ def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_u
             BROADCAST_TYPE,
             None,
             {"template_type": ["Creating broadcast message templates is not allowed"]},
-        ),  # noqa
+        ),
         ([EMAIL_TYPE], SMS_TYPE, None, {"template_type": ["Creating text message templates is not allowed"]}),
         ([SMS_TYPE], EMAIL_TYPE, "subject", {"template_type": ["Creating email templates is not allowed"]}),
         ([SMS_TYPE], LETTER_TYPE, "subject", {"template_type": ["Creating letter templates is not allowed"]}),
