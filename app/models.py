@@ -4,6 +4,7 @@ import uuid
 from dataclasses import dataclass
 
 from flask import current_app, url_for
+from jsonschema import ValidationError, validate
 from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.letter_timings import get_letter_timings
 from notifications_utils.recipient_validation.email_address import validate_email_address
@@ -63,6 +64,9 @@ from app.constants import (
     ORGANISATION_PERMISSION_TYPES,
     PERMISSION_LIST,
     PRECOMPILED_TEMPLATE_NAME,
+    REPORT_REQUEST_PENDING,
+    REPORT_REQUEST_REPORT_TYPES,
+    REPORT_REQUEST_STATUS_TYPES,
     SERVICE_JOIN_REQUEST_PENDING,
     SERVICE_JOIN_REQUEST_STATUS_TYPES,
     SMS_AUTH_TYPE,
@@ -2968,4 +2972,69 @@ class ServiceJoinRequest(db.Model):
             status_changed_at=get_dt_string_or_none(self.status_changed_at),
             reason=self.reason,
             contacted_service_users=[get_uuid_string_or_none(user.id) for user in self.contacted_service_users],
+        )
+
+
+@dataclass
+class SerializedReportRequest:
+    id: str
+    user_id: str
+    service_id: str
+    report_type: str
+    status: str
+    parameter: dict
+    created_at: str
+    updated_at: str
+
+
+class ReportRequest(db.Model):
+    __tablename__ = "report_requests"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    report_type = db.Column(
+        db.Enum(*REPORT_REQUEST_REPORT_TYPES, name="report_request_report_type"),
+        nullable=False,
+    )
+    status = db.Column(
+        db.Enum(*REPORT_REQUEST_STATUS_TYPES, name="report_request_status_type"),
+        nullable=False,
+        default=REPORT_REQUEST_PENDING,
+    )
+    _parameter = db.Column("parameter", JSONB, nullable=False, default={})
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    _schema = {
+        "type": "object",
+        "properties": {
+            "notification_type": {"enum": ["email", "sms", "letter", "all"]},
+            "notification_status": {"enum": ["all", "sending", "delivered", "failed"]},
+        },
+        "additionalProperties": False,
+    }
+
+    @hybrid_property
+    def parameter(self):
+        return self._parameter
+
+    @parameter.setter
+    def parameter(self, data):
+        try:
+            validate(instance=data, schema=self._schema)
+            self._parameter = data
+        except ValidationError as e:
+            raise ValueError(f"Invalid parameter: {e.message}") from e
+
+    def serialize(self) -> SerializedReportRequest:
+        return SerializedReportRequest(
+            id=str(self.id),
+            user_id=get_uuid_string_or_none(self.user_id),
+            service_id=get_uuid_string_or_none(self.service_id),
+            report_type=self.report_type,
+            status=self.status,
+            parameter=self.parameter,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
         )

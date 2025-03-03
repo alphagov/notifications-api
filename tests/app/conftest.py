@@ -25,6 +25,8 @@ from app.constants import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    REPORT_REQUEST_IN_PROGRESS,
+    REPORT_REQUEST_NOTIFICATIONS,
     SERVICE_PERMISSION_TYPES,
     SMS_TYPE,
 )
@@ -33,6 +35,7 @@ from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.organisation_dao import dao_create_organisation
+from app.dao.report_requests_dao import dao_create_report_request
 from app.dao.services_dao import dao_add_user_to_service, dao_create_service
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import create_secret_code, create_user_code
@@ -48,6 +51,7 @@ from app.models import (
     Permission,
     ProviderDetails,
     ProviderDetailsHistory,
+    ReportRequest,
     Service,
     ServiceEmailReplyTo,
     ServiceGuestList,
@@ -1375,3 +1379,19 @@ def mock_celery_task(mocker):
         return mocker.patch.object(celery_task, "apply_async", new=mock_apply_async)
 
     return celery_mocker
+
+
+@pytest.fixture(scope="function")
+def sample_report_request(sample_user, sample_service):
+    sample_parameter = {"notification_type": "all", "notification_status": "failed"}
+
+    report_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_IN_PROGRESS,
+        parameter=sample_parameter,
+    )
+    dao_create_report_request(report_request)
+
+    return report_request

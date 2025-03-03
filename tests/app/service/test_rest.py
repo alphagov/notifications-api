@@ -4379,3 +4379,20 @@ def test_update_service_join_request_cancels_pending_requests(
 
     assert request_status_map[pending_request_2.id] == SERVICE_JOIN_REQUEST_APPROVED
     assert request_status_map[pending_request_1.id] == SERVICE_JOIN_REQUEST_CANCELLED
+
+
+def test_get_report_request_by_id(admin_request, sample_service, sample_report_request):
+    json_resp = admin_request.get(
+        "service.get_report_request_by_id",
+        service_id=sample_service.id,
+        request_id=sample_report_request.id,
+    )
+
+    assert json_resp["data"]["id"] == str(sample_report_request.id)
+    assert json_resp["data"]["parameter"] == sample_report_request.parameter
+    assert json_resp["data"]["report_type"] == sample_report_request.report_type
+    assert json_resp["data"]["status"] == sample_report_request.status
+    assert json_resp["data"]["service_id"] == str(sample_report_request.service_id)
+    assert json_resp["data"]["user_id"] == str(sample_report_request.user_id)
+    assert json_resp["data"]["updated_at"] is None
+    assert json_resp["data"]["created_at"] is not None

@@ -41,6 +41,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range,
 )
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
+from app.dao.report_requests_dao import dao_get_report_request_by_id
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -1412,3 +1413,9 @@ def _fetch_returned_letter_data(service_id, report_date):
         for x in results
     ]
     return json_results
+
+
+@service_blueprint.route("/<uuid:service_id>/report-request/<uuid:request_id>", methods=["GET"])
+def get_report_request_by_id(service_id, request_id):
+    request = dao_get_report_request_by_id(service_id, request_id)
+    return jsonify(data=request.serialize())
