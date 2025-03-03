@@ -1059,7 +1059,6 @@ class TemplateBase(db.Model):
         default=letter_languages_default,
     )
 
-    # TODO: migrate this to be nullable=False
     has_unsubscribe_link = db.Column(db.Boolean, default=False, nullable=False)
 
     @declared_attr
