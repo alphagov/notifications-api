@@ -110,17 +110,19 @@ def test_upload_document_retention_period(
         assert "retention_period" not in request_json
 
 
-def test_should_raise_400s_as_DocumentDownloadErrors(document_download, mock_onwards_request_headers):
+@pytest.mark.parametrize("status", [400, 413])
+def test_should_raise_user_errors_as_DocumentDownloadErrors(document_download, mock_onwards_request_headers, status):
     with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
             json={"error": "Invalid mime type"},
-            status_code=400,
+            status_code=status,
         )
 
         document_download.upload_document("service-id", "abababab")
 
     assert excinfo.value.message == "Invalid mime type"
+    # 413 gets converted to 400 as well
     assert excinfo.value.status_code == 400
 
 
