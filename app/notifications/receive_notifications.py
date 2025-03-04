@@ -4,7 +4,6 @@ from urllib.parse import unquote
 import iso8601
 from flask import Blueprint, abort, current_app, jsonify, request
 from gds_metrics.metrics import Counter
-from notifications_utils.recipient_validation.phone_number import try_validate_and_format_phone_number
 
 from app.celery import service_callback_tasks
 from app.config import QueueNames
@@ -13,6 +12,7 @@ from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.services_dao import dao_fetch_service_by_inbound_number
 from app.errors import register_errors
 from app.models import InboundSms
+from app.utils import try_parse_and_format_phone_number
 
 receive_notifications_blueprint = Blueprint("receive_notifications", __name__)
 register_errors(receive_notifications_blueprint)
@@ -135,8 +135,8 @@ def format_mmg_datetime(date):
 
 
 def create_inbound_sms_object(service, content, from_number, provider_ref, date_received, provider_name):
-    user_number = try_validate_and_format_phone_number(
-        from_number, international=True, log_msg=f'Invalid from_number received for service "{service.id}"'
+    user_number = try_parse_and_format_phone_number(
+        from_number, log_msg=f'Invalid from_number received for service "{service.id}"'
     )
 
     provider_date = date_received
