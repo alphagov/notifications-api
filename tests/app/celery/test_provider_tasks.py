@@ -392,7 +392,9 @@ def test_deliver_letter_logs_a_warning_when_the_print_request_is_duplicate(
         deliver_letter(letter.id)
 
     assert not mock_retry.called
-    assert letter.status == NOTIFICATION_CREATED
+    assert letter.status == NOTIFICATION_SENDING
+    assert letter.updated_at is not None
+    assert letter.sent_by == "dvla"
     assert f"Duplicate deliver_letter task called for notification {letter.id}" in caplog.messages
 
 
