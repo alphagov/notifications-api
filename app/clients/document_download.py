@@ -9,7 +9,7 @@ class DocumentDownloadError(Exception):
         self.status_code = status_code
 
     @classmethod
-    def from_exception(cls, e):
+    def from_exception(cls, e: requests.RequestException):
         message = e.response.json()["error"]
         status_code = e.response.status_code
         return cls(message, status_code)
