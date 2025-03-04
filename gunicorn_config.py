@@ -1,6 +1,6 @@
 import os
 
-from notifications_utils.gunicorn_defaults import set_gunicorn_defaults
+from notifications_utils.gunicorn.defaults import set_gunicorn_defaults
 
 set_gunicorn_defaults(globals())
 
@@ -15,8 +15,8 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
-workers = 4
-worker_class = "eventlet"
+workers = 2
+worker_class = "notifications_utils.gunicorn.eventlet.NotifyEventletWorker"
 worker_connections = 8  # limit runaway greenthread creation
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 0  # disable temporarily for diagnosing issues
