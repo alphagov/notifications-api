@@ -18,7 +18,6 @@ from app.celery.letters_pdf_tasks import (
     sanitise_letter,
 )
 from app.celery.research_mode_tasks import create_fake_letter_callback
-from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.constants import (
     DEFAULT_DOCUMENT_DOWNLOAD_RETENTION_PERIOD,
@@ -271,17 +270,14 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
 
             filename = personalisation_data[key].get("filename")
 
-            try:
-                personalisation_data[key] = document_download_client.upload_document(
-                    service.id,
-                    personalisation_data[key]["file"],
-                    personalisation_data[key].get("is_csv"),
-                    confirmation_email=send_to if confirm_email is not False else None,
-                    retention_period=retention_period,
-                    filename=filename,
-                )
-            except DocumentDownloadError as e:
-                raise BadRequestError(message=e.message, status_code=e.status_code) from e
+            personalisation_data[key] = document_download_client.upload_document(
+                service.id,
+                personalisation_data[key]["file"],
+                personalisation_data[key].get("is_csv"),
+                confirmation_email=send_to if confirm_email is not False else None,
+                retention_period=retention_period,
+                filename=filename,
+            )
 
     return personalisation_data, len(file_keys)
 

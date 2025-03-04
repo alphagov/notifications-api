@@ -3,6 +3,8 @@ from flask import url_for
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from sqlalchemy.exc import DataError
 
+from app.clients.document_download import DocumentDownloadError
+
 
 @pytest.fixture(scope="function")
 def app_for_test():
@@ -50,6 +52,10 @@ def app_for_test():
     @blue.route("raise_phone_error/<error_id>", methods=["GET"])
     def raising_invalid_phone_error(error_id):
         raise InvalidPhoneError(code=error_id)
+
+    @blue.route("/raise_document_download_error", methods=["GET"])
+    def raising_document_download_error():
+        raise DocumentDownloadError(message="your document download file is bad", status_code=400)
 
     @blue.route("raise_exception", methods=["GET"])
     def raising_exception():
@@ -114,6 +120,17 @@ def test_data_errors(app_for_test):
             assert response.status_code == 404
             error = response.json
             assert error == {"status_code": 404, "errors": [{"error": "DataError", "message": "No result found"}]}
+
+
+def test_document_download_error(app_for_test):
+    with app_for_test.test_request_context(), app_for_test.test_client() as client:
+        response = client.get(url_for("v2_under_test.raising_document_download_error"))
+        assert response.status_code == 400
+        error = response.json
+        assert error == {
+            "status_code": 400,
+            "errors": [{"error": "BadRequestError", "message": "your document download file is bad"}],
+        }
 
 
 def test_internal_server_error_handler(app_for_test):

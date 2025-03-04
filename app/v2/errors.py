@@ -8,6 +8,7 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.authentication.auth import AuthError
+from app.clients.document_download import DocumentDownloadError
 from app.errors import InvalidRequest
 
 
@@ -112,6 +113,14 @@ def register_errors(blueprint):
     def invalid_data(error):
         current_app.logger.info(error)
         response = jsonify(error.to_dict_v2()), error.status_code
+        return response
+
+    @blueprint.errorhandler(DocumentDownloadError)
+    def document_download_error(error: DocumentDownloadError):
+        current_app.logger.info(error)
+        # cast it to a BadRequestError to ensure we format the error well
+        bad_request_exc = BadRequestError(message=error.message)
+        response = jsonify(bad_request_exc.to_dict_v2()), error.status_code
         return response
 
     @blueprint.errorhandler(JsonSchemaValidationError)

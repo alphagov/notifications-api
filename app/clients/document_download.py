@@ -9,9 +9,9 @@ class DocumentDownloadError(Exception):
         self.status_code = status_code
 
     @classmethod
-    def from_exception(cls, e):
+    def from_exception(cls, e: requests.RequestException, status_code: int | None = None):
         message = e.response.json()["error"]
-        status_code = e.response.status_code
+        status_code = status_code or e.response.status_code
         return cls(message, status_code)
 
 
@@ -73,11 +73,11 @@ class DocumentDownloadClient:
         except requests.RequestException as e:
             # if doc dl responds with a non-400, (eg 403) it's referring to credentials that the API and Doc DL use.
             # we don't want to tell users about that, so anything that isn't a 400 (virus scan failed or file type
-            # unrecognised) should be raised as a 500 internal server error here.
+            # unrecognised) or 413 (file too big) should be raised as a 500 internal server error here.
             if e.response is None:
                 raise Exception(f"Unhandled document download error: {repr(e)}") from e
-            elif e.response.status_code == 400:
-                error = DocumentDownloadError.from_exception(e)
+            elif e.response.status_code in {400, 413}:
+                error = DocumentDownloadError.from_exception(e, status_code=400)
                 current_app.logger.info("Document download request failed with error: %s", error.message)
                 raise error from e
             else:
