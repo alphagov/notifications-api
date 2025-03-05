@@ -958,7 +958,7 @@ def user_research_email_for_new_users_template(notify_service):
 
         ---
 
-        If you do not want to take part in user research, you can [unsubscribe from these emails](https://www.notifications.service.gov.uk/user-profile/take-part-in-user-research).
+        If you do not want to take part in user research, you can [unsubscribe from these emails](https://www.notifications.service.gov.uk/your-account/take-part-in-user-research).
         """  # noqa
     )
 
