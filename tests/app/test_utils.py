@@ -84,10 +84,10 @@ def test_url_with_token_unsubscribe_link(sample_email_notification, hostnames, n
 def test_url_with_token__create_confirmation_url(hostnames, notify_api):
     data = json.dumps({"user_id": str(uuid.uuid4()), "email": "foo@bar.com"})
     base_url = hostnames.admin
-    url = "/user-profile/email/confirm/"
+    url = "/your-account/email/confirm/"
     token = generate_token(str(data), notify_api.config["SECRET_KEY"], notify_api.config["DANGEROUS_SALT"])
 
-    expected_unsubscribe_link = f"{base_url}/user-profile/email/confirm/{token}"
+    expected_unsubscribe_link = f"{base_url}/your-account/email/confirm/{token}"
     generated_unsubscribe_link = url_with_token(data, url=url, base_url=base_url)
 
     assert generated_unsubscribe_link == expected_unsubscribe_link
