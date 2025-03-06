@@ -171,7 +171,7 @@ itsdangerous==2.2.0
     #   -r requirements.txt
     #   flask
     #   notifications-utils
-jinja2==3.1.5
+jinja2==3.1.6
     # via
     #   -r requirements.txt
     #   flask
