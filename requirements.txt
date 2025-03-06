@@ -149,7 +149,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@2706b603dea5cb29913e63c098d19502f4b91987
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@3f31ae8ecf80936244e6f419f2247c9126e5b48d
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
