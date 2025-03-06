@@ -16,7 +16,7 @@ def child_exit(server, worker):
 
 
 workers = 4
-worker_class = "eventlet"
+worker_class = "notifications_utils.gunicorn.eventlet.NotifyEventletWorker"
 worker_connections = 8  # limit runaway greenthread creation
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 0  # disable temporarily for diagnosing issues
