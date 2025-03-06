@@ -25,7 +25,7 @@ psutil>=6.0.0,<7.0.0
 notifications-python-client==10.0.1
 
 # Run `make bump-utils` to update to the latest version
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@4ac08167d81468af12bff1aa012c9a0a695bbda3
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@2706b603dea5cb29913e63c098d19502f4b91987
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
 prometheus-client==0.14.1
