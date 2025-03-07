@@ -11,9 +11,7 @@ from app.dao.inbound_sms_dao import (
     dao_get_most_recent_inbound_usage_date,
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service,
 )
-from app.dao.service_data_retention_dao import (
-    fetch_service_data_retention_by_notification_type,
-)
+from app.dao.service_data_retention_dao import fetch_service_data_retention_by_notification_type
 from app.errors import register_errors
 from app.inbound_sms.inbound_sms_schemas import (
     get_inbound_sms_for_service_schema,

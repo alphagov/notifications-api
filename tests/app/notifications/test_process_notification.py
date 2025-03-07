@@ -479,25 +479,22 @@ def test_persist_notification_with_send_to_landline_stores_correct_info(
 
 
 def test_persist_notification_without_send_to_landline_raises_invalidphoneerror(
-    sample_job,
-    sample_api_key,
+    sample_service, sample_api_key, sample_sms_template
 ):
     recipient = "+442077091002"
-    sample_job.service.permissions = [
-        ServicePermission(service_id=sample_job.service.id, permission=SMS_TYPE),
+    sample_sms_template.service.permissions = [
+        ServicePermission(service_id=sample_sms_template.service_id, permission=SMS_TYPE),
     ]
     with pytest.raises(InvalidPhoneError):
         persist_notification(
-            template_id=sample_job.template.id,
-            template_version=sample_job.template.version,
+            template_id=sample_sms_template.id,
+            template_version=sample_sms_template.version,
             recipient=recipient,
-            service=sample_job.service,
+            service=sample_sms_template.service,
             personalisation=None,
             notification_type="sms",
             api_key_id=sample_api_key.id,
             key_type=sample_api_key.key_type,
-            job_id=sample_job.id,
-            job_row_number=10,
             client_reference="ref from client",
         )
 
@@ -769,13 +766,19 @@ def test_persist_notification_creates_and_save_to_db_with_permenant_failure_if_i
         job_row_number=100,
         reference="ref",
         reply_to_text=sample_template.service.get_default_sms_sender(),
-        from_job=True,
     )
 
     assert Notification.query.get(notification.id) is not None
     notification_from_db = Notification.query.one()
-    assert notification.status == NOTIFICATION_PERMANENT_FAILURE
+
+    # check specific attributes for the failed notification
     assert notification_from_db.id == notification.id
+    assert notification_from_db.status == NOTIFICATION_PERMANENT_FAILURE
+    assert notification_from_db.to == "+1-800-555-555"
+    assert notification_from_db.rate_multiplier == 0
+    assert notification_from_db.billable_units == 0
+
+    # check everything else is as expected
     assert notification_from_db.template_id == notification.template_id
     assert notification_from_db.template_version == notification.template_version
     assert notification_from_db.api_key_id == notification.api_key_id

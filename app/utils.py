@@ -180,7 +180,6 @@ def utc_string_to_bst_string(utc_string):
     return utc_string_to_aware_gmt_datetime(utc_string).strftime("%Y-%m-%d %H:%M:%S")
 
 
-
 def dict_filter(data_obj, keys):
     return {key: getattr(data_obj, key, None) for key in keys}
 

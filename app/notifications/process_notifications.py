@@ -120,7 +120,6 @@ def persist_notification(
     postage=None,
     document_download_count=None,
     updated_at=None,
-    from_job=False,
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -150,21 +149,7 @@ def persist_notification(
         updated_at=updated_at,
     )
     if notification_type == SMS_TYPE:
-        if from_job:
-            try:
-                phonenumber = PhoneNumber(recipient)
-                phonenumber.validate(
-                    allow_international_number=True, allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES)
-                )
-            except InvalidPhoneError:
-                formatted_recipient = recipient
-                notification.normalised_to = formatted_recipient
-                notification.international = False
-                notification.phone_prefix = "+44"
-                notification.rate_multiplier = 0
-                notification.status = NOTIFICATION_PERMANENT_FAILURE
-
-        else:
+        try:
             phonenumber = PhoneNumber(recipient)
             phonenumber.validate(
                 allow_international_number=True, allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES)
@@ -175,6 +160,18 @@ def persist_notification(
             notification.international = recipient_info.international
             notification.phone_prefix = recipient_info.country_prefix
             notification.rate_multiplier = recipient_info.rate_multiplier
+        except InvalidPhoneError as e:
+            if job_id:
+                formatted_recipient = recipient
+                notification.normalised_to = formatted_recipient
+                notification.international = False
+                notification.phone_prefix = "+44"
+                notification.rate_multiplier = 0
+                notification.billable_units = 0
+                notification.status = NOTIFICATION_PERMANENT_FAILURE
+            else:
+                raise e
+
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:
