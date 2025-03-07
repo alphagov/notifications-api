@@ -1080,10 +1080,10 @@ def test_search_for_users_by_email_handles_incorrect_data_format(notify_db_sessi
 @pytest.mark.parametrize(
     "number, expected_reply_to",
     [
-        ("1-403-123-4567", "notify_international_sender"),
-        ("27 123 4569 2312", "notify_international_sender"),
-        ("30 123 4567 7890", "Notify"),
-        ("+20 123 4567 7890", "Notify"),
+        ("1 415-771-1401", "notify_international_sender"),
+        ("27 21 404 0571", "notify_international_sender"),
+        ("+30 21 0889 4501", "Notify"),
+        ("+20 65 3615756", "Notify"),
     ],
 )
 def test_get_sms_reply_to_for_notify_service(team_member_mobile_edit_template, number, expected_reply_to):
