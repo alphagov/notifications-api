@@ -276,6 +276,8 @@ def create_notification(
 
     if status not in ("created", "validation-failed", "virus-scan-failed", "pending-virus-check"):
         sent_at = sent_at or datetime.utcnow()
+
+    if status not in ("created", "pending-virus-check"):
         updated_at = updated_at or datetime.utcnow()
 
     if not one_off and (job is None and api_key is None):

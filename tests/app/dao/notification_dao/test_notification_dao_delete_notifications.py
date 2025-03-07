@@ -160,7 +160,7 @@ def test_move_notifications_deletes_letters_not_sent_and_in_final_state_from_tab
 @mock_aws
 @freeze_time("2020-12-24 04:30")
 @pytest.mark.parametrize("notification_status", ["delivered", "returned-letter", "technical-failure"])
-def test_move_notifications_deletes_letters_sent_and_in_final_state_from_table_and_s3(
+def test_move_notifications_deletes_letters_sent_and_in_final_state_from_table_and_s3_valid_bucket(
     sample_service, notification_status
 ):
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
@@ -182,6 +182,37 @@ def test_move_notifications_deletes_letters_sent_and_in_final_state_from_table_a
     filename = "{}/NOTIFY.LETTER_REF.D.2.C.{}.PDF".format(
         str(eight_days_ago.date()), eight_days_ago.strftime("%Y%m%d%H%M%S")
     )
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=b"foo")
+
+    move_notifications_to_notification_history("letter", sample_service.id, datetime.utcnow())
+
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 1
+
+    with pytest.raises(s3.exceptions.NoSuchKey):
+        s3.get_object(Bucket=bucket_name, Key=filename)
+
+
+@mock_aws
+@freeze_time("2020-12-24 04:30")
+def test_move_notifications_deletes_letters_that_failed_validation_from_table_and_s3_invalid_bucket(sample_service):
+    bucket_name = current_app.config["S3_BUCKET_INVALID_PDF"]
+    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+
+    letter_template = create_template(service=sample_service, template_type="letter")
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    create_notification(
+        template=letter_template,
+        status="validation-failed",
+        reference="LETTER_REF",
+        created_at=eight_days_ago,
+        sent_at=eight_days_ago,
+    )
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
+
+    filename = f"NOTIFY.LETTER_REF.D.2.C.{eight_days_ago.strftime('%Y%m%d%H%M%S')}.PDF"
     s3.put_object(Bucket=bucket_name, Key=filename, Body=b"foo")
 
     move_notifications_to_notification_history("letter", sample_service.id, datetime.utcnow())

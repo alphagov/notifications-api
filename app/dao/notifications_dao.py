@@ -466,15 +466,18 @@ def delete_test_notifications(notification_type, service_id, timestamp_to_delete
 
 
 def _delete_letters_from_s3(notification_type, service_id, date_to_delete_from, query_limit):
+    """
+    Deletes all letters with a status in NOTIFICATION_STATUS_TYPES_COMPLETED, which includes those
+    which failed validation.
+
+    `find_letter_pdf_in_s3` finds the bucket to delete the letter from.
+    """
     letters_to_delete_from_s3 = (
         db.session.query(Notification)
         .filter(
             Notification.notification_type == notification_type,
             Notification.created_at < date_to_delete_from,
             Notification.service_id == service_id,
-            # although letters in non completed statuses do have PDFs in s3, they do not exist in the
-            # production-letters-pdf bucket as they never made it that far so we do not try and delete
-            # them from it
             Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED),
         )
         .order_by(Notification.created_at)
