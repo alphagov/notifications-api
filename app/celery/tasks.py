@@ -10,10 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import create_random_identifier, create_uuid, notify_celery, signing
 from app.aws import s3
 from app.celery import letters_pdf_tasks, provider_tasks
-from app.celery.service_callback_tasks import (
-    create_returned_letter_callback_data,
-    send_returned_letter_to_service,
-)
+from app.celery.service_callback_tasks import create_returned_letter_callback_data, send_returned_letter_to_service
 from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
@@ -24,6 +21,7 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
+    NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_RETURNED_LETTER,
     SMS_TYPE,
 )
@@ -33,13 +31,8 @@ from app.dao.notifications_dao import (
     dao_update_notifications_by_reference,
     get_notification_by_id,
 )
-from app.dao.returned_letters_dao import (
-    _get_notification_ids_for_references,
-    insert_returned_letters,
-)
-from app.dao.service_callback_api_dao import (
-    get_returned_letter_callback_api_for_service,
-)
+from app.dao.returned_letters_dao import _get_notification_ids_for_references, insert_returned_letters
+from app.dao.service_callback_api_dao import get_returned_letter_callback_api_for_service
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
@@ -116,17 +109,11 @@ def process_job_row(template_type, task_args_kwargs):
         EMAIL_TYPE: save_email,
         LETTER_TYPE: save_letter,
     }[template_type]
-    if template_type == SMS_TYPE:
-        send_fn.apply_async(
-            *task_args_kwargs,
-            from_job=True,
-            queue=QueueNames.DATABASE,
-        )
-    else:
-        send_fn.apply_async(
-            *task_args_kwargs,
-            queue=QueueNames.DATABASE,
-        )
+
+    send_fn.apply_async(
+        *task_args_kwargs,
+        queue=QueueNames.DATABASE,
+    )
 
 
 def job_complete(job, resumed=False, start=None):
@@ -218,7 +205,6 @@ def save_sms(
     notification_id,
     encoded_notification,
     sender_id=None,
-    from_job=False,
 ):
     notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(service_id)
@@ -253,13 +239,13 @@ def save_sms(
             notification_id=notification_id,
             reply_to_text=reply_to_text,
             client_reference=notification.get("client_reference", None),
-            from_job=from_job,
         )
 
-        provider_tasks.deliver_sms.apply_async(
-            [str(saved_notification.id)],
-            queue=QueueNames.SEND_SMS,
-        )
+        if saved_notification.status != NOTIFICATION_PERMANENT_FAILURE:
+            provider_tasks.deliver_sms.apply_async(
+                [str(saved_notification.id)],
+                queue=QueueNames.SEND_SMS,
+            )
 
         current_app.logger.debug(
             "SMS %s created at %s for job %s",
@@ -347,7 +333,7 @@ def save_letter(
         saved_notification = persist_notification(
             template_id=notification["template"],
             template_version=notification["template_version"],
-            postage=(postal_address.postage if postal_address.international else template.postage),
+            postage=postal_address.postage if postal_address.international else template.postage,
             recipient=postal_address.normalised,
             service=service,
             personalisation=notification["personalisation"],

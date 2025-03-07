@@ -777,45 +777,23 @@ def test_shatter_job_rows(template_type, send_fn, mock_celery_task, mocker):
             ),
         ],
     )
-    if template_type == SMS_TYPE:
-        assert mock_send_fn.mock_calls == [
-            call(
-                ("service-id-0", "notification-id-0", "encoded-0"),
-                {} if template_type == LETTER_TYPE else {"sender_id": "0"},
-                from_job=True,
-                queue="database-tasks",
-            ),
-            call(
-                ("service-id-1", "notification-id-1", "encoded-1"),
-                {} if template_type == LETTER_TYPE else {"sender_id": "1"},
-                from_job=True,
-                queue="database-tasks",
-            ),
-            call(
-                ("service-id-2", "notification-id-2", "encoded-2"),
-                {} if template_type == LETTER_TYPE else {"sender_id": "2"},
-                from_job=True,
-                queue="database-tasks",
-            ),
-        ]
-    else:
-        assert mock_send_fn.mock_calls == [
-            call(
-                ("service-id-0", "notification-id-0", "encoded-0"),
-                {} if template_type == LETTER_TYPE else {"sender_id": "0"},
-                queue="database-tasks",
-            ),
-            call(
-                ("service-id-1", "notification-id-1", "encoded-1"),
-                {} if template_type == LETTER_TYPE else {"sender_id": "1"},
-                queue="database-tasks",
-            ),
-            call(
-                ("service-id-2", "notification-id-2", "encoded-2"),
-                {} if template_type == LETTER_TYPE else {"sender_id": "2"},
-                queue="database-tasks",
-            ),
-        ]
+    assert mock_send_fn.mock_calls == [
+        call(
+            ("service-id-0", "notification-id-0", "encoded-0"),
+            {} if template_type == LETTER_TYPE else {"sender_id": "0"},
+            queue="database-tasks",
+        ),
+        call(
+            ("service-id-1", "notification-id-1", "encoded-1"),
+            {} if template_type == LETTER_TYPE else {"sender_id": "1"},
+            queue="database-tasks",
+        ),
+        call(
+            ("service-id-2", "notification-id-2", "encoded-2"),
+            {} if template_type == LETTER_TYPE else {"sender_id": "2"},
+            queue="database-tasks",
+        ),
+    ]
 
 
 # -------- save_sms and save_email tests -------- #
@@ -857,32 +835,28 @@ def test_should_send_template_to_correct_sms_task_and_persist(
 
 
 @pytest.mark.parametrize("client_reference", [None, "ab1234"])
-def test_invalid_number_should_go_to_failure(sample_template_with_placeholders, mock_celery_task, client_reference):
+def test_notification_belonging_to_a_job_with_incorrect_number_should_go_to_personal_failure(
+    sample_template_with_placeholders, mock_celery_task, sample_job, client_reference
+):
     notification = _notification_json(
         sample_template_with_placeholders,
         to="+447234123122343253243425324233",
         personalisation={"name": "Jo"},
         client_reference=client_reference,
+        job_id=sample_job.id,
     )
 
-    mocked_task = mock_celery_task(provider_tasks.deliver_sms)
+    mock_deliver_sms_task = mock_celery_task(provider_tasks.deliver_sms)
 
-    save_sms(sample_template_with_placeholders.service_id, uuid.uuid4(), signing.encode(notification), from_job=True)
+    save_sms(sample_template_with_placeholders.service_id, uuid.uuid4(), signing.encode(notification))
 
     persisted_notification = Notification.query.one()
     assert persisted_notification.to == "+447234123122343253243425324233"
-    assert persisted_notification.template_id == sample_template_with_placeholders.id
-    assert persisted_notification.template_version == sample_template_with_placeholders.version
     assert persisted_notification.status == "permanent-failure"
-    assert persisted_notification.created_at <= datetime.utcnow()
-    assert not persisted_notification.sent_at
-    assert not persisted_notification.sent_by
-    assert not persisted_notification.job_id
-    assert persisted_notification.personalisation == {"name": "Jo"}
-    assert persisted_notification._personalisation == signing.encode({"name": "Jo"})
-    assert persisted_notification.notification_type == "sms"
-    assert persisted_notification.client_reference == client_reference
-    mocked_task.assert_called_once_with([str(persisted_notification.id)], queue="send-sms-tasks")
+    assert persisted_notification.rate_multiplier == 0
+    assert persisted_notification.billable_units == 0
+
+    mock_deliver_sms_task.assert_not_called()
 
 
 def test_should_save_sms_if_restricted_service_and_valid_number(notify_db_session, mock_celery_task):
