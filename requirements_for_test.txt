@@ -151,6 +151,7 @@ greenlet==3.0.3
     # via
     #   -r requirements.txt
     #   eventlet
+    #   sqlalchemy
 gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via
     #   -r requirements.txt
@@ -219,7 +220,7 @@ moto==5.0.11
     # via -r requirements_for_test.in
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@d6311c3ab83b8225265277f781157c48f9318ae9
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@2d56aef11c9d34acf15176a1b2b20cc874b4deec
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
