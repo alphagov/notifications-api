@@ -202,7 +202,7 @@ def test_get_monthly_notification_stats_combines_todays_data_and_historic_stats(
     create_ft_notification_status(datetime(2016, 5, 1), template=sample_template, count=1)
     create_ft_notification_status(
         datetime(2016, 6, 1), template=sample_template, notification_status="created", count=2
-    )  # noqa
+    )
 
     create_notification(sample_template, created_at=datetime(2016, 6, 5), status="created")
     create_notification(sample_template, created_at=datetime(2016, 6, 5), status="delivered")
