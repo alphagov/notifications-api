@@ -40,6 +40,7 @@ from app.constants import (
     JOB_STATUS_IN_PROGRESS,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
+    NOTIFICATION_VALIDATION_FAILED,
     SMS_TYPE,
 )
 from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
@@ -852,7 +853,7 @@ def test_notification_belonging_to_a_job_with_incorrect_number_should_go_to_pers
 
     persisted_notification = Notification.query.one()
     assert persisted_notification.to == "+447234123122343253243425324233"
-    assert persisted_notification.status == "permanent-failure"
+    assert persisted_notification.status == NOTIFICATION_VALIDATION_FAILED
     assert persisted_notification.rate_multiplier == 0
     assert persisted_notification.billable_units == 0
 

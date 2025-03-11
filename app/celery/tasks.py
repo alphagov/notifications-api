@@ -21,8 +21,8 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
-    NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_RETURNED_LETTER,
+    NOTIFICATION_VALIDATION_FAILED,
     SMS_TYPE,
 )
 from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
@@ -241,7 +241,7 @@ def save_sms(
             client_reference=notification.get("client_reference", None),
         )
 
-        if saved_notification.status != NOTIFICATION_PERMANENT_FAILURE:
+        if saved_notification.status != NOTIFICATION_VALIDATION_FAILED:
             provider_tasks.deliver_sms.apply_async(
                 [str(saved_notification.id)],
                 queue=QueueNames.SEND_SMS,

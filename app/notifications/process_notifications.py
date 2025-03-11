@@ -27,7 +27,7 @@ from app.constants import (
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
-    NOTIFICATION_PERMANENT_FAILURE,
+    NOTIFICATION_VALIDATION_FAILED,
     SMS_TO_UK_LANDLINES,
     SMS_TYPE,
 )
@@ -168,7 +168,7 @@ def persist_notification(
                 notification.phone_prefix = "+44"
                 notification.rate_multiplier = 0
                 notification.billable_units = 0
-                notification.status = NOTIFICATION_PERMANENT_FAILURE
+                notification.status = NOTIFICATION_VALIDATION_FAILED
             else:
                 raise e
 

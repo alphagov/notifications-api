@@ -15,7 +15,7 @@ from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
-    NOTIFICATION_PERMANENT_FAILURE,
+    NOTIFICATION_VALIDATION_FAILED,
     SMS_TO_UK_LANDLINES,
     SMS_TYPE,
 )
@@ -773,7 +773,7 @@ def test_persist_notification_creates_and_save_to_db_with_permenant_failure_if_i
 
     # check specific attributes for the failed notification
     assert notification_from_db.id == notification.id
-    assert notification_from_db.status == NOTIFICATION_PERMANENT_FAILURE
+    assert notification_from_db.status == NOTIFICATION_VALIDATION_FAILED
     assert notification_from_db.to == "+1-800-555-555"
     assert notification_from_db.rate_multiplier == 0
     assert notification_from_db.billable_units == 0
