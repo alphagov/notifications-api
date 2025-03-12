@@ -246,6 +246,12 @@ def save_sms(
                 [str(saved_notification.id)],
                 queue=QueueNames.SEND_SMS,
             )
+        else:
+            current_app.logger.debug(
+                "SMS %s for job %s has failed validation and will not be sent.",
+                saved_notification.id,
+                notification.get("job", None),
+            )
 
         current_app.logger.debug(
             "SMS %s created at %s for job %s",
