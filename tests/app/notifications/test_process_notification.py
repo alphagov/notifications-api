@@ -747,7 +747,7 @@ def test_persist_notification_when_template_has_unsubscribe_link_is_true(
     assert persisted_notification.unsubscribe_link == expected_unsubscribe_link
 
 
-@freeze_time("2016-01-01 11:09:00.061258")
+@freeze_time("2025-03-14 03:14:15.926535")
 def test_persist_notification_creates_and_save_to_db_with_permenant_failure_if_invalid_number_from_job(
     sample_template, sample_api_key, sample_job
 ):
@@ -774,6 +774,7 @@ def test_persist_notification_creates_and_save_to_db_with_permenant_failure_if_i
     # check specific attributes for the failed notification
     assert notification_from_db.id == notification.id
     assert notification_from_db.status == NOTIFICATION_VALIDATION_FAILED
+    assert notification_from_db.updated_at == datetime.datetime(2025, 3, 14, 3, 14, 15, 926535)
     assert notification_from_db.to == "+1-800-555-555"
     assert notification_from_db.rate_multiplier == 0
     assert notification_from_db.billable_units == 0
