@@ -78,6 +78,8 @@ POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
 
 @v2_notification_blueprint.route(f"/{LETTER_TYPE}", methods=["POST"])
 def post_precompiled_letter_notification():
+    check_rate_limiting(authenticated_service, api_user, notification_type=LETTER_TYPE)
+
     request_json = get_valid_json()
     if "content" not in (request_json or {}):
         return post_notification(LETTER_TYPE)
@@ -85,8 +87,6 @@ def post_precompiled_letter_notification():
     form = validate(request_json, post_precompiled_letter_request)
 
     check_service_has_permission(authenticated_service, LETTER_TYPE)
-
-    check_rate_limiting(authenticated_service, api_user, notification_type=LETTER_TYPE)
 
     template = get_precompiled_letter_template(authenticated_service.id)
 
@@ -109,6 +109,8 @@ def post_precompiled_letter_notification():
 
 @v2_notification_blueprint.route("/<notification_type>", methods=["POST"])
 def post_notification(notification_type):
+    check_rate_limiting(authenticated_service, api_user, notification_type=notification_type)
+
     with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
         request_json = get_valid_json()
 
@@ -122,8 +124,6 @@ def post_notification(notification_type):
             abort(404)
 
     check_service_has_permission(authenticated_service, notification_type)
-
-    check_rate_limiting(authenticated_service, api_user, notification_type=notification_type)
 
     template, template_with_content = validate_template(
         form["template_id"],
