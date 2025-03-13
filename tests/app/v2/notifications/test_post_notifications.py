@@ -769,6 +769,36 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     assert not deliver_mock.called
 
 
+def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded_even_if_would_fail_validation(
+    api_client_request, mocker, sample_email_template
+):
+    persist_mock = mocker.patch("app.v2.notifications.post_notifications.persist_notification")
+    deliver_mock = mocker.patch("app.v2.notifications.post_notifications.send_notification_to_queue_detached")
+    mocker.patch(
+        "app.v2.notifications.post_notifications.check_rate_limiting",
+        side_effect=RateLimitError("LIMIT", "INTERVAL", "TYPE"),
+    )
+
+    data = {"email_address": "invalid email address", "template_id": str(sample_email_template.id)}
+
+    resp_json = api_client_request.post(
+        sample_email_template.service_id,
+        "v2_notifications.post_notification",
+        notification_type="email",
+        _data=data,
+        _expected_status=429,
+    )
+
+    assert resp_json["errors"][0]["error"] == "RateLimitError"
+    assert resp_json["errors"][0]["message"] == (
+        "Exceeded rate limit for key type TYPE of LIMIT requests per INTERVAL seconds"
+    )
+    assert resp_json["status_code"] == 429
+
+    assert not persist_mock.called
+    assert not deliver_mock.called
+
+
 @pytest.mark.parametrize(
     "permissions",
     [
