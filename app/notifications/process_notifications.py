@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from flask import current_app
 from gds_metrics import Histogram
@@ -169,7 +169,7 @@ def persist_notification(
                 notification.rate_multiplier = 0
                 notification.billable_units = 0
                 notification.status = NOTIFICATION_VALIDATION_FAILED
-                notification.updated_at = datetime.now(UTC)
+                notification.updated_at = datetime.utcnow()
             else:
                 raise e
 
