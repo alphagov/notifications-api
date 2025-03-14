@@ -7,7 +7,6 @@ from unittest.mock import ANY, call
 import pytest
 from flask import current_app
 from freezegun import freeze_time
-from notifications_utils.recipient_validation.phone_number import validate_and_format_phone_number
 from requests import HTTPError
 
 import app
@@ -29,6 +28,7 @@ from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import EmailBranding, Notification
 from app.serialised_models import SerialisedService
+from app.utils import parse_and_format_phone_number
 from tests.app.db import (
     create_email_branding,
     create_notification,
@@ -236,7 +236,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(sampl
     send_to_providers.send_sms_to_provider(db_notification)
 
     mmg_client.send_sms.assert_called_once_with(
-        to=validate_and_format_phone_number("+447234123123"),
+        to=parse_and_format_phone_number("+447234123123"),
         content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=current_app.config["FROM_NUMBER"],

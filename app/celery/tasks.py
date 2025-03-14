@@ -22,6 +22,7 @@ from app.constants import (
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_RETURNED_LETTER,
+    NOTIFICATION_VALIDATION_FAILED,
     SMS_TYPE,
 )
 from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
@@ -49,7 +50,11 @@ DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE = 32
 def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
-    current_app.logger.info("Starting process-job task for job id %s with status: %s", job_id, job.job_status)
+    current_app.logger.info(
+        "Starting process-job task for job id %s with status: %s",
+        job_id,
+        job.job_status,
+    )
 
     if job.job_status != JOB_STATUS_PENDING:
         return
@@ -122,7 +127,11 @@ def job_complete(job, resumed=False, start=None):
         current_app.logger.info("Resumed Job %s completed at %s", job.id, job.processing_finished)
     else:
         current_app.logger.info(
-            "Job %s created at %s started at %s finished at %s", job.id, job.created_at, start, finished
+            "Job %s created at %s started at %s finished at %s",
+            job.id,
+            job.created_at,
+            start,
+            finished,
         )
 
 
@@ -190,7 +199,13 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
 
 
 @notify_celery.task(bind=True, name="save-sms", max_retries=5, default_retry_delay=300)
-def save_sms(self, service_id, notification_id, encoded_notification, sender_id=None):
+def save_sms(
+    self,
+    service_id,
+    notification_id,
+    encoded_notification,
+    sender_id=None,
+):
     notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_and_service_id(
@@ -226,10 +241,17 @@ def save_sms(self, service_id, notification_id, encoded_notification, sender_id=
             client_reference=notification.get("client_reference", None),
         )
 
-        provider_tasks.deliver_sms.apply_async(
-            [str(saved_notification.id)],
-            queue=QueueNames.SEND_SMS,
-        )
+        if saved_notification.status != NOTIFICATION_VALIDATION_FAILED:
+            provider_tasks.deliver_sms.apply_async(
+                [str(saved_notification.id)],
+                queue=QueueNames.SEND_SMS,
+            )
+        else:
+            current_app.logger.debug(
+                "SMS %s for job %s has failed validation and will not be sent.",
+                saved_notification.id,
+                notification.get("job", None),
+            )
 
         current_app.logger.debug(
             "SMS %s created at %s for job %s",
@@ -286,7 +308,11 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             queue=QueueNames.SEND_EMAIL,
         )
 
-        current_app.logger.debug("Email %s created at %s", saved_notification.id, saved_notification.created_at)
+        current_app.logger.debug(
+            "Email %s created at %s",
+            saved_notification.id,
+            saved_notification.created_at,
+        )
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 
@@ -334,7 +360,11 @@ def save_letter(
             [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
         )
 
-        current_app.logger.debug("Letter %s created at %s", saved_notification.id, saved_notification.created_at)
+        current_app.logger.debug(
+            "Letter %s created at %s",
+            saved_notification.id,
+            saved_notification.created_at,
+        )
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 

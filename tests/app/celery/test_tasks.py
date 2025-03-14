@@ -40,6 +40,7 @@ from app.constants import (
     JOB_STATUS_IN_PROGRESS,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
+    NOTIFICATION_VALIDATION_FAILED,
     SMS_TYPE,
 )
 from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
@@ -47,7 +48,9 @@ from app.models import Job, Notification, NotificationHistory, ReturnedLetter
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.v2.errors import TooManyRequestsError
 from tests.app import load_example_csv
-from tests.app.celery.test_service_callback_tasks import _set_up_test_data_for_returned_letter_callback
+from tests.app.celery.test_service_callback_tasks import (
+    _set_up_test_data_for_returned_letter_callback,
+)
 from tests.app.db import (
     create_job,
     create_letter_contact,
@@ -102,7 +105,8 @@ def email_job_with_placeholders(notify_db_session, sample_email_template_with_pl
 
 def test_should_process_sms_job(sample_job, mocker, mock_celery_task):
     mocker.patch(
-        "app.celery.tasks.s3.get_job_and_metadata_from_s3", return_value=(load_example_csv("sms"), {"sender_id": None})
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(load_example_csv("sms"), {"sender_id": None}),
     )
     mock_task = mock_celery_task(shatter_job_rows)
     mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
@@ -239,7 +243,8 @@ def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(
     )
     mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
     mock_check_message_limit = mocker.patch(
-        "app.celery.tasks.check_service_over_daily_message_limit", side_effect=TooManyRequestsError("total", 9)
+        "app.celery.tasks.check_service_over_daily_message_limit",
+        side_effect=TooManyRequestsError("total", 9),
     )
     process_job(job.id)
 
@@ -344,7 +349,10 @@ def test_should_process_email_job(email_job_with_placeholders, mocker, mock_cele
     email_csv = """email_address,name
     test@test.com,foo
     """
-    mocker.patch("app.celery.tasks.s3.get_job_and_metadata_from_s3", return_value=(email_csv, {"sender_id": None}))
+    mocker.patch(
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(email_csv, {"sender_id": None}),
+    )
     mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
     mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
     mocker.patch("app.celery.tasks.create_uuid", return_value="some_uuid")
@@ -352,50 +360,8 @@ def test_should_process_email_job(email_job_with_placeholders, mocker, mock_cele
     process_job(email_job_with_placeholders.id)
 
     s3.get_job_and_metadata_from_s3.assert_called_once_with(
-        service_id=str(email_job_with_placeholders.service.id), job_id=str(email_job_with_placeholders.id)
-    )
-
-    assert mock_encode.mock_calls == [
-        call(
-            {
-                "template": str(email_job_with_placeholders.template.id),
-                "template_version": email_job_with_placeholders.template.version,
-                "job": str(email_job_with_placeholders.id),
-                "to": "test@test.com",
-                "row_number": 0,
-                "personalisation": {"emailaddress": "test@test.com", "name": "foo"},
-                "client_reference": None,
-            }
-        )
-    ]
-
-    assert mock_shatter_job_rows.mock_calls == [
-        call(
-            (
-                email_job_with_placeholders.template.template_type,
-                [((str(email_job_with_placeholders.service_id), "some_uuid", "something_encoded"), {})],
-            ),
-            queue="job-tasks",
-        )
-    ]
-
-    job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
-    assert job.job_status == "finished"
-
-
-def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mocker, mock_celery_task, fake_uuid):
-    email_csv = """email_address,name
-    test@test.com,foo
-    """
-    mocker.patch("app.celery.tasks.s3.get_job_and_metadata_from_s3", return_value=(email_csv, {"sender_id": fake_uuid}))
-    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
-    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
-    mocker.patch("app.celery.tasks.create_uuid", return_value="some_uuid")
-
-    process_job(email_job_with_placeholders.id, sender_id=fake_uuid)
-
-    s3.get_job_and_metadata_from_s3.assert_called_once_with(
-        service_id=str(email_job_with_placeholders.service.id), job_id=str(email_job_with_placeholders.id)
+        service_id=str(email_job_with_placeholders.service.id),
+        job_id=str(email_job_with_placeholders.id),
     )
 
     assert mock_encode.mock_calls == [
@@ -418,7 +384,67 @@ def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mo
                 email_job_with_placeholders.template.template_type,
                 [
                     (
-                        (str(email_job_with_placeholders.service_id), "some_uuid", "something_encoded"),
+                        (
+                            str(email_job_with_placeholders.service_id),
+                            "some_uuid",
+                            "something_encoded",
+                        ),
+                        {},
+                    )
+                ],
+            ),
+            queue="job-tasks",
+        )
+    ]
+
+    job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
+    assert job.job_status == "finished"
+
+
+def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mocker, mock_celery_task, fake_uuid):
+    email_csv = """email_address,name
+    test@test.com,foo
+    """
+    mocker.patch(
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(email_csv, {"sender_id": fake_uuid}),
+    )
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+    mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
+    mocker.patch("app.celery.tasks.create_uuid", return_value="some_uuid")
+
+    process_job(email_job_with_placeholders.id, sender_id=fake_uuid)
+
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(email_job_with_placeholders.service.id),
+        job_id=str(email_job_with_placeholders.id),
+    )
+
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(email_job_with_placeholders.template.id),
+                "template_version": email_job_with_placeholders.template.version,
+                "job": str(email_job_with_placeholders.id),
+                "to": "test@test.com",
+                "row_number": 0,
+                "personalisation": {"emailaddress": "test@test.com", "name": "foo"},
+                "client_reference": None,
+            }
+        )
+    ]
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                email_job_with_placeholders.template.template_type,
+                [
+                    (
+                        (
+                            str(email_job_with_placeholders.service_id),
+                            "some_uuid",
+                            "something_encoded",
+                        ),
                         {"sender_id": fake_uuid},
                     )
                 ],
@@ -436,7 +462,10 @@ def test_should_process_letter_job(sample_letter_job, mocker, mock_celery_task):
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
     """
-    s3_mock = mocker.patch("app.celery.tasks.s3.get_job_and_metadata_from_s3", return_value=(csv, {"sender_id": None}))
+    s3_mock = mocker.patch(
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(csv, {"sender_id": None}),
+    )
     mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
     mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
     mocker.patch("app.celery.tasks.create_uuid", return_value="uuid")
@@ -469,7 +498,16 @@ def test_should_process_letter_job(sample_letter_job, mocker, mock_celery_task):
         call(
             (
                 sample_letter_job.template.template_type,
-                [((str(sample_letter_job.service_id), "uuid", "something_encoded"), {})],
+                [
+                    (
+                        (
+                            str(sample_letter_job.service_id),
+                            "uuid",
+                            "something_encoded",
+                        ),
+                        {},
+                    )
+                ],
             ),
             queue="job-tasks",
         )
@@ -740,7 +778,6 @@ def test_shatter_job_rows(template_type, send_fn, mock_celery_task, mocker):
             ),
         ],
     )
-
     assert mock_send_fn.mock_calls == [
         call(
             ("service-id-0", "notification-id-0", "encoded-0"),
@@ -796,6 +833,31 @@ def test_should_send_template_to_correct_sms_task_and_persist(
     assert persisted_notification.notification_type == "sms"
     assert persisted_notification.client_reference == client_reference
     mocked_task.assert_called_once_with([str(persisted_notification.id)], queue="send-sms-tasks")
+
+
+@pytest.mark.parametrize("client_reference", [None, "ab1234"])
+def test_notification_belonging_to_a_job_with_incorrect_number_should_go_to_personal_failure(
+    sample_template_with_placeholders, mock_celery_task, sample_job, client_reference
+):
+    notification = _notification_json(
+        sample_template_with_placeholders,
+        to="+447234123122343253243425324233",
+        personalisation={"name": "Jo"},
+        client_reference=client_reference,
+        job_id=sample_job.id,
+    )
+
+    mock_deliver_sms_task = mock_celery_task(provider_tasks.deliver_sms)
+
+    save_sms(sample_template_with_placeholders.service_id, uuid.uuid4(), signing.encode(notification))
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.to == "+447234123122343253243425324233"
+    assert persisted_notification.status == NOTIFICATION_VALIDATION_FAILED
+    assert persisted_notification.rate_multiplier == 0
+    assert persisted_notification.billable_units == 0
+
+    mock_deliver_sms_task.assert_not_called()
 
 
 def test_should_save_sms_if_restricted_service_and_valid_number(notify_db_session, mock_celery_task):
@@ -954,7 +1016,10 @@ def test_should_not_save_sms_if_team_key_and_recipient_not_in_team(notify_db_ses
 
 @pytest.mark.parametrize("client_reference", [None, "ab1234"])
 def test_should_use_email_template_and_persist(
-    sample_email_template_with_placeholders, sample_api_key, mock_celery_task, client_reference
+    sample_email_template_with_placeholders,
+    sample_api_key,
+    mock_celery_task,
+    client_reference,
 ):
     mock_celery_task(provider_tasks.deliver_email)
 
@@ -1133,7 +1198,10 @@ def test_save_sms_should_go_to_retry_queue_if_database_errors(sample_template, m
 
     mock_celery_task(provider_tasks.deliver_sms)
     mocker.patch("app.celery.tasks.save_sms.retry", side_effect=Retry)
-    mocker.patch("app.notifications.process_notifications.dao_create_notification", side_effect=expected_exception)
+    mocker.patch(
+        "app.notifications.process_notifications.dao_create_notification",
+        side_effect=expected_exception,
+    )
 
     notification_id = uuid.uuid4()
 
@@ -1156,7 +1224,10 @@ def test_save_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
 
     mock_celery_task(provider_tasks.deliver_email)
     mocker.patch("app.celery.tasks.save_email.retry", side_effect=Retry)
-    mocker.patch("app.notifications.process_notifications.dao_create_notification", side_effect=expected_exception)
+    mocker.patch(
+        "app.notifications.process_notifications.dao_create_notification",
+        side_effect=expected_exception,
+    )
 
     notification_id = uuid.uuid4()
 
@@ -1175,7 +1246,12 @@ def test_save_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
 def test_save_email_does_not_send_duplicate_and_does_not_put_in_retry_queue(
     sample_notification, mocker, mock_celery_task
 ):
-    json = _notification_json(sample_notification.template, sample_notification.to, job_id=uuid.uuid4(), row_number=1)
+    json = _notification_json(
+        sample_notification.template,
+        sample_notification.to,
+        job_id=uuid.uuid4(),
+        row_number=1,
+    )
     mock_task = mock_celery_task(provider_tasks.deliver_email)
     retry = mocker.patch("app.celery.tasks.save_email.retry", side_effect=Exception())
 
@@ -1194,7 +1270,12 @@ def test_save_email_does_not_send_duplicate_and_does_not_put_in_retry_queue(
 def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(
     sample_notification, mocker, mock_celery_task
 ):
-    json = _notification_json(sample_notification.template, sample_notification.to, job_id=uuid.uuid4(), row_number=1)
+    json = _notification_json(
+        sample_notification.template,
+        sample_notification.to,
+        job_id=uuid.uuid4(),
+        row_number=1,
+    )
     mock_task = mock_celery_task(provider_tasks.deliver_sms)
     retry = mocker.patch("app.celery.tasks.save_sms.retry", side_effect=Exception())
 
@@ -1243,14 +1324,23 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(
     ),
 )
 def test_save_letter_saves_letter_to_database(
-    mocker, mock_celery_task, notify_db_session, personalisation, expected_to, expected_normalised, client_reference
+    mocker,
+    mock_celery_task,
+    notify_db_session,
+    personalisation,
+    expected_to,
+    expected_normalised,
+    client_reference,
 ):
     service = create_service()
     contact_block = create_letter_contact(service=service, contact_block="Address contact", is_default=True)
     template = create_template(service=service, template_type=LETTER_TYPE, reply_to=contact_block.id)
     job = create_job(template=template)
 
-    mocker.patch("app.celery.tasks.create_random_identifier", return_value="this-is-random-in-real-life")
+    mocker.patch(
+        "app.celery.tasks.create_random_identifier",
+        return_value="this-is-random-in-real-life",
+    )
     mock_celery_task(get_pdf_for_templated_letter)
 
     notification_json = _notification_json(
@@ -1298,7 +1388,13 @@ def test_save_letter_saves_letter_to_database(
     ],
 )
 def test_save_letter_saves_letter_to_database_with_correct_postage(
-    mocker, mock_celery_task, notify_db_session, last_line_of_address, postage, expected_postage, expected_international
+    mocker,
+    mock_celery_task,
+    notify_db_session,
+    last_line_of_address,
+    postage,
+    expected_postage,
+    expected_international,
 ):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service=service, template_type=LETTER_TYPE, postage=postage)
@@ -1308,7 +1404,11 @@ def test_save_letter_saves_letter_to_database_with_correct_postage(
     notification_json = _notification_json(
         template=letter_job.template,
         to="Foo",
-        personalisation={"addressline1": "Foo", "addressline2": "Bar", "postcode": last_line_of_address},
+        personalisation={
+            "addressline1": "Foo",
+            "addressline2": "Bar",
+            "postcode": last_line_of_address,
+        },
         job_id=letter_job.id,
         row_number=1,
     )
@@ -1334,7 +1434,11 @@ def test_save_letter_saves_letter_to_database_with_formatted_postcode(mocker, mo
     notification_json = _notification_json(
         template=letter_job.template,
         to="Foo",
-        personalisation={"addressline1": "Foo", "addressline2": "Bar", "postcode": "se1 64sa"},
+        personalisation={
+            "addressline1": "Foo",
+            "addressline2": "Bar",
+            "postcode": "se1 64sa",
+        },
         job_id=letter_job.id,
         row_number=1,
     )
@@ -1356,7 +1460,10 @@ def test_save_letter_saves_letter_to_database_right_reply_to(mocker, mock_celery
     template = create_template(service=service, template_type=LETTER_TYPE, reply_to=None)
     job = create_job(template=template)
 
-    mocker.patch("app.celery.tasks.create_random_identifier", return_value="this-is-random-in-real-life")
+    mocker.patch(
+        "app.celery.tasks.create_random_identifier",
+        return_value="this-is-random-in-real-life",
+    )
     mock_celery_task(get_pdf_for_templated_letter)
 
     personalisation = {
@@ -1369,7 +1476,11 @@ def test_save_letter_saves_letter_to_database_right_reply_to(mocker, mock_celery
         "postcode": "SE1 3WS",
     }
     notification_json = _notification_json(
-        template=job.template, to="Foo", personalisation=personalisation, job_id=job.id, row_number=1
+        template=job.template,
+        to="Foo",
+        personalisation=personalisation,
+        job_id=job.id,
+        row_number=1,
     )
     notification_id = uuid.uuid4()
     created_at = datetime.utcnow()
@@ -1406,7 +1517,10 @@ def test_save_letter_uses_template_reply_to_text(mocker, mock_celery_task, notif
 
     job = create_job(template=template)
 
-    mocker.patch("app.celery.tasks.create_random_identifier", return_value="this-is-random-in-real-life")
+    mocker.patch(
+        "app.celery.tasks.create_random_identifier",
+        return_value="this-is-random-in-real-life",
+    )
     mock_celery_task(get_pdf_for_templated_letter)
 
     personalisation = {
@@ -1415,7 +1529,11 @@ def test_save_letter_uses_template_reply_to_text(mocker, mock_celery_task, notif
         "postcode": "Flob",
     }
     notification_json = _notification_json(
-        template=job.template, to="Foo", personalisation=personalisation, job_id=job.id, row_number=1
+        template=job.template,
+        to="Foo",
+        personalisation=personalisation,
+        job_id=job.id,
+        row_number=1,
     )
 
     save_letter(
@@ -1759,7 +1877,10 @@ def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
         return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
     )
     mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
-    mocker.patch("app.signing.encode", side_effect=lambda x: f"encoded-job-{x['job']}-row-{x['row_number']}")
+    mocker.patch(
+        "app.signing.encode",
+        side_effect=lambda x: f"encoded-job-{x['job']}-row-{x['row_number']}",
+    )
     mocker.patch("app.celery.tasks.create_uuid", side_effect=(f"uuid-{i}" for i in count()))
 
     jobs = [job.id, job2.id]
@@ -2023,10 +2144,14 @@ def test_process_incomplete_jobs_sets_status_to_in_progress_and_resets_processin
     mock_process_incomplete_job = mocker.patch("app.celery.tasks.process_incomplete_job")
 
     job1 = create_job(
-        sample_template, processing_started=datetime.utcnow() - timedelta(minutes=30), job_status=JOB_STATUS_ERROR
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(minutes=30),
+        job_status=JOB_STATUS_ERROR,
     )
     job2 = create_job(
-        sample_template, processing_started=datetime.utcnow() - timedelta(minutes=31), job_status=JOB_STATUS_ERROR
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(minutes=31),
+        job_status=JOB_STATUS_ERROR,
     )
 
     process_incomplete_jobs([str(job1.id), str(job2.id)], shatter_batch_size=123)
@@ -2055,7 +2180,9 @@ def test_process_returned_letters_list(sample_letter_template):
     assert all(n.updated_at for n in notifications)
 
 
-def test_process_returned_letters_list_updates_history_if_notification_is_already_purged(sample_letter_template):
+def test_process_returned_letters_list_updates_history_if_notification_is_already_purged(
+    sample_letter_template,
+):
     create_notification_history(sample_letter_template, reference="ref1")
     create_notification_history(sample_letter_template, reference="ref2")
 
@@ -2078,7 +2205,9 @@ def test_process_returned_letters_list_processes_returned_letters_callback(sampl
     letter_callback_mock.assert_called_with([history_1.reference, history_2.reference])
 
 
-def test_process_returned_letters_populates_returned_letters_table(sample_letter_template):
+def test_process_returned_letters_populates_returned_letters_table(
+    sample_letter_template,
+):
     create_notification_history(sample_letter_template, reference="ref1")
     create_notification_history(sample_letter_template, reference="ref2")
 
@@ -2097,7 +2226,12 @@ def test_process_returned_letters_populates_returned_letters_table(sample_letter
             "test@example.com",
             {"template_type": "email", "subject": "Hello"},
         ),
-        (save_sms, provider_tasks.deliver_sms, "07700 900890", {"template_type": "sms"}),
+        (
+            save_sms,
+            provider_tasks.deliver_sms,
+            "07700 900890",
+            {"template_type": "sms"},
+        ),
         (
             save_letter,
             get_pdf_for_templated_letter,
@@ -2161,7 +2295,10 @@ def test_check_and_queue_returned_letter_callback_task_for_no_existing_callback_
     mocker, mock_celery_task, sample_service
 ):
     notification_id = "9d7750a8-469f-40e9-99e0-aa3a3af4c575"
-    mocker.patch("app.celery.tasks.get_returned_letter_callback_api_for_service", return_value=None)
+    mocker.patch(
+        "app.celery.tasks.get_returned_letter_callback_api_for_service",
+        return_value=None,
+    )
 
     mock_send = mock_celery_task(send_returned_letter_to_service)
 
