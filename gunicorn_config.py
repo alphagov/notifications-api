@@ -1,6 +1,6 @@
 import os
 
-from notifications_utils.gunicorn_defaults import set_gunicorn_defaults
+from notifications_utils.gunicorn.defaults import set_gunicorn_defaults
 
 set_gunicorn_defaults(globals())
 
@@ -16,10 +16,12 @@ def child_exit(server, worker):
 
 
 workers = 4
-worker_class = "eventlet"
-worker_connections = 8  # limit runaway greenthread creation
+worker_class = "notifications_utils.gunicorn.eventlet.NotifyEventletWorker"
+#worker_connections = 8  # limit runaway greenthread creation
+worker_connections = 256  # re-enabling the problem 
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
-keepalive = 0  # disable temporarily for diagnosing issues
+keepalive = 35 # re-enabling the problem
+#keepalive = 0  # disable temporarily for diagnosing issues
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
