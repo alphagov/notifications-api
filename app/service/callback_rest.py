@@ -147,14 +147,20 @@ def _create_service_callback_api(service_id, callback_type):
 def _update_service_callback_api(callback_api_id, service_id, callback_type):
     data = request.get_json()
     validate(data, update_service_callback_api_schema)
-    to_update = get_service_callback_api(callback_api_id, service_id, callback_type)
-    reset_service_callback_api(
-        service_callback_api=to_update,
-        updated_by_id=data["updated_by_id"],
-        url=data.get("url", None),
-        bearer_token=data.get("bearer_token", None),
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        to_update = get_service_inbound_api(callback_api_id, service_id)
+        reset_callback_api_method = reset_service_inbound_api
+    else:
+        to_update = get_service_callback_api(callback_api_id, service_id, callback_type)
+        reset_callback_api_method = reset_service_callback_api
+
+    reset_callback_api_method(
+        to_update,
+        data["updated_by_id"],
+        data.get("url", None),
+        data.get("bearer_token", None),
     )
-    return to_update
+    return jsonify(data=to_update.serialize()), 200
 
 
 def _fetch_service_callback_api(callback_api_id, service_id, callback_type):
