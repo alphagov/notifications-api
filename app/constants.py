@@ -272,6 +272,7 @@ class ServiceCallbackTypes(enum.StrEnum):
     delivery_status = "delivery_status"
     complaint = "complaint"
     returned_letter = "returned_letter"
+    inbound_sms = "inbound_sms"
 
 
 # Branding values
