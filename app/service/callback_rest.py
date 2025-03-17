@@ -149,7 +149,10 @@ def _update_service_callback_api(callback_api_id, service_id, callback_type):
 
 
 def _fetch_service_callback_api(callback_api_id, service_id, callback_type):
-    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        callback_api = get_service_inbound_api(callback_api_id, service_id)
+    else:
+        callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
     return jsonify(data=callback_api.serialize()), 200
 
 
