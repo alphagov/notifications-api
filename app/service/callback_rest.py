@@ -34,18 +34,7 @@ def create_service_inbound_api(service_id):
 
 @service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["POST"])
 def update_service_inbound_api(service_id, inbound_api_id):
-    data = request.get_json()
-    validate(data, update_service_callback_api_schema)
-
-    to_update = get_service_inbound_api(inbound_api_id, service_id)
-
-    reset_service_inbound_api(
-        service_inbound_api=to_update,
-        updated_by_id=data["updated_by_id"],
-        url=data.get("url", None),
-        bearer_token=data.get("bearer_token", None),
-    )
-    return jsonify(data=to_update.serialize()), 200
+    return _update_service_callback_api(inbound_api_id, service_id, ServiceCallbackTypes.inbound_sms.value)
 
 
 @service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["GET"])
@@ -76,9 +65,7 @@ def create_delivery_receipt_callback_api(service_id):
 
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["POST"])
 def update_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.delivery_status.value
-    to_update = _update_service_callback_api(callback_api_id, service_id, callback_type)
-    return jsonify(data=to_update.serialize()), 200
+    return _update_service_callback_api(callback_api_id, service_id, ServiceCallbackTypes.delivery_status.value)
 
 
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
@@ -103,9 +90,7 @@ def create_returned_letter_callback_api(service_id):
 
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["POST"])
 def update_returned_letter_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.returned_letter.value
-    to_update = _update_service_callback_api(callback_api_id, service_id, callback_type)
-    return jsonify(data=to_update.serialize()), 200
+    return _update_service_callback_api(callback_api_id, service_id, ServiceCallbackTypes.returned_letter.value)
 
 
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
