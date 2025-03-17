@@ -29,16 +29,7 @@ register_errors(service_callback_blueprint)
 
 @service_callback_blueprint.route("/inbound-api", methods=["POST"])
 def create_service_inbound_api(service_id):
-    data = request.get_json()
-    validate(data, create_service_callback_api_schema)
-    data["service_id"] = service_id
-    inbound_api = ServiceInboundApi(**data)
-    try:
-        save_service_inbound_api(inbound_api)
-    except SQLAlchemyError as e:
-        return handle_sql_error(e, "service_inbound_api")
-
-    return jsonify(data=inbound_api.serialize()), 201
+    return _create_service_callback_api(service_id, ServiceCallbackTypes.inbound_sms.value)
 
 
 @service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["POST"])
