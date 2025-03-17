@@ -44,14 +44,7 @@ def fetch_service_inbound_api(service_id, inbound_api_id):
 
 @service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["DELETE"])
 def remove_service_inbound_api(service_id, inbound_api_id):
-    inbound_api = get_service_inbound_api(inbound_api_id, service_id)
-
-    if not inbound_api:
-        error = "Service inbound API not found"
-        raise InvalidRequest(error, status_code=404)
-
-    delete_service_inbound_api(inbound_api)
-    return "", 204
+    return _remove_service_callback_api(inbound_api_id, service_id, ServiceCallbackTypes.inbound_sms.value)
 
 
 # delivery-receipt callback endpoints
@@ -73,9 +66,7 @@ def fetch_delivery_receipt_callback_api(service_id, callback_api_id):
 
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["DELETE"])
 def remove_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.delivery_status.value
-    _remove_service_callback_api(callback_api_id, service_id, callback_type)
-    return "", 204
+    return _remove_service_callback_api(callback_api_id, service_id, ServiceCallbackTypes.delivery_status.value)
 
 
 # returned letter callback endpoints
@@ -97,9 +88,7 @@ def fetch_returned_letter_callback_api(service_id, callback_api_id):
 
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["DELETE"])
 def remove_returned_letter_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.returned_letter.value
-    _remove_service_callback_api(callback_api_id, service_id, callback_type)
-    return "", 204
+    return _remove_service_callback_api(callback_api_id, service_id, ServiceCallbackTypes.returned_letter.value)
 
 
 # helper callback methods
@@ -162,7 +151,7 @@ def _remove_service_callback_api(callback_api_id, service_id, callback_type):
 
     error_message = {
         ServiceCallbackTypes.inbound_sms.value: "Service inbound API not found",
-        ServiceCallbackTypes.delivery_status.value: "Service delivery receipt callback API not found",
+        ServiceCallbackTypes.delivery_status.value: "Service delivery receipt API not found",
         ServiceCallbackTypes.returned_letter.value: "Service returned letter API not found",
     }
 

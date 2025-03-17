@@ -88,6 +88,16 @@ def test_delete_service_inbound_api(admin_request, sample_service):
     assert ServiceInboundApi.query.count() == 0
 
 
+def test_delete_service_inbound_api_when_there_is_no_callback_api(admin_request, sample_service):
+    json_response = admin_request.delete(
+        "service_callback.remove_service_inbound_api",
+        service_id=sample_service.id,
+        inbound_api_id="56d6a425-b26e-4a86-bbf3-bdea8a925a9c",
+        _expected_status=404,
+    )
+    assert json_response["message"] == "Service inbound API not found"
+
+
 def test_create_delivery_receipt_callback_api(admin_request, sample_service):
     data = {
         "url": "https://some_service/delivery-receipt-endpoint",
@@ -184,6 +194,16 @@ def test_delete_delivery_receipt_callback_api(admin_request, sample_service):
     assert ServiceCallbackApi.query.count() == 0
 
 
+def test_service_delete_delivery_receipt_callback_api_when_there_is_no_callback_api(admin_request, sample_service):
+    json_response = admin_request.delete(
+        "service_callback.remove_delivery_receipt_callback_api",
+        service_id=sample_service.id,
+        callback_api_id="56d6a425-b26e-4a86-bbf3-bdea8a925a9c",
+        _expected_status=404,
+    )
+    assert json_response["message"] == "Service delivery receipt API not found"
+
+
 def test_create_returned_letter_callback_api(admin_request, sample_service):
     data = {
         "url": "https://some_service/returned-letter-endpoint",
@@ -278,3 +298,13 @@ def test_delete_returned_letter_callback_api(admin_request, sample_service):
 
     assert response is None
     assert ServiceCallbackApi.query.count() == 0
+
+
+def test_service_delete_returned_letter_callback_api_when_there_is_no_callback_api(admin_request, sample_service):
+    json_response = admin_request.delete(
+        "service_callback.remove_returned_letter_callback_api",
+        service_id=sample_service.id,
+        callback_api_id="56d6a425-b26e-4a86-bbf3-bdea8a925a9c",
+        _expected_status=404,
+    )
+    assert json_response["message"] == "Service returned letter API not found"
