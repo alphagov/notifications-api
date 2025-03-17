@@ -39,9 +39,7 @@ def update_service_inbound_api(service_id, inbound_api_id):
 
 @service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["GET"])
 def fetch_service_inbound_api(service_id, inbound_api_id):
-    inbound_api = get_service_inbound_api(inbound_api_id, service_id)
-
-    return jsonify(data=inbound_api.serialize()), 200
+    return _fetch_service_callback_api(inbound_api_id, service_id, ServiceCallbackTypes.inbound_sms.value)
 
 
 @service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["DELETE"])
@@ -70,8 +68,7 @@ def update_delivery_receipt_callback_api(service_id, callback_api_id):
 
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
 def fetch_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.delivery_status.value
-    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
+    return _fetch_service_callback_api(callback_api_id, service_id, ServiceCallbackTypes.delivery_status.value)
 
 
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["DELETE"])
@@ -95,8 +92,7 @@ def update_returned_letter_callback_api(service_id, callback_api_id):
 
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
 def fetch_returned_letter_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.returned_letter.value
-    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
+    return _fetch_service_callback_api(callback_api_id, service_id, ServiceCallbackTypes.returned_letter.value)
 
 
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["DELETE"])
