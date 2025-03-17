@@ -135,12 +135,21 @@ def _create_service_callback_api(service_id, callback_type):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
     data["service_id"] = service_id
-    data["callback_type"] = callback_type
-    callback_api = ServiceCallbackApi(**data)
+
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        callback_api = ServiceInboundApi(**data)
+        save_callback_api_method = save_service_inbound_api
+        error_message = "service_inbound_api"
+    else:
+        data["callback_type"] = callback_type
+        callback_api = ServiceCallbackApi(**data)
+        save_callback_api_method = save_service_callback_api
+        error_message = "service_callback_api"
+
     try:
-        save_service_callback_api(callback_api)
+        save_callback_api_method(callback_api)
     except SQLAlchemyError as e:
-        return handle_sql_error(e, "service_callback_api")
+        return handle_sql_error(e, error_message)
     return jsonify(data=callback_api.serialize()), 201
 
 
