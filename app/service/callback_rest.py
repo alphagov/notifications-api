@@ -153,11 +153,25 @@ def _fetch_service_callback_api(callback_api_id, service_id, callback_type):
 
 
 def _remove_service_callback_api(callback_api_id, service_id, callback_type):
-    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        callback_api = get_service_inbound_api(callback_api_id, service_id)
+        delete_callback_api_method = delete_service_inbound_api
+    else:
+        callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+        delete_callback_api_method = delete_service_callback_api
+
+    error_message = {
+        ServiceCallbackTypes.inbound_sms.value: "Service inbound API not found",
+        ServiceCallbackTypes.delivery_status.value: "Service delivery receipt callback API not found",
+        ServiceCallbackTypes.returned_letter.value: "Service returned letter API not found",
+    }
+
     if not callback_api:
-        error = "Service delivery receipt callback API not found"
+        error = error_message[callback_type]
         raise InvalidRequest(error, status_code=404)
-    delete_service_callback_api(callback_api)
+
+    delete_callback_api_method(callback_api)
+    return "", 204
 
 
 def handle_sql_error(e, table_name):
