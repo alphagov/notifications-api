@@ -4,6 +4,7 @@ from itertools import count
 from unittest.mock import ANY, Mock, call
 
 import pytest
+from botocore.exceptions import ClientError as BotoClientError
 from celery.exceptions import Retry
 from freezegun import freeze_time
 from notifications_utils.recipients import Row
@@ -19,6 +20,7 @@ from app.celery import provider_tasks, tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.service_callback_tasks import send_returned_letter_to_service
 from app.celery.tasks import (
+    UnprocessableJobRow,
     _check_and_queue_returned_letter_callback_task,
     get_id_task_args_kwargs_for_job_row,
     get_recipient_csv_and_template_and_sender_id,
@@ -610,6 +612,310 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
             ),
             queue="job-tasks",
         ),
+    ]
+
+    job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
+    assert job.job_status == "finished"
+
+
+def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered_template, mocker, mock_celery_task):
+    mocker.patch(
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
+    )
+
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+
+    def shatter_job_rows_side_effect(*args, **kwargs):
+        if any((notification_id == "uuid-3" for (service_id, notification_id, enc), _ in args[0][1])):
+            raise BotoClientError({"Error": {"Code": "InvalidParameterValue"}}, "blah")
+
+    mock_shatter_job_rows.side_effect = shatter_job_rows_side_effect
+
+    mock_encode = mocker.patch("app.signing.encode", side_effect=(f"something-encoded-{i}" for i in count()))
+    mocker.patch("app.celery.tasks.create_uuid", side_effect=(f"uuid-{i}" for i in count()))
+
+    with pytest.raises(UnprocessableJobRow):
+        process_job(sample_job_with_placeholdered_template.id, shatter_batch_size=5)
+
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(sample_job_with_placeholdered_template.service.id),
+        job_id=str(sample_job_with_placeholdered_template.id),
+    )
+
+    job_id = sample_job_with_placeholdered_template.id
+    template_id = sample_job_with_placeholdered_template.template_id
+    template_version = sample_job_with_placeholdered_template.template_version
+
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123121",
+                "row_number": 0,
+                "personalisation": {"phonenumber": "+441234123121", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123122",
+                "row_number": 1,
+                "personalisation": {"phonenumber": "+441234123122", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+        ANY,
+        ANY,
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123125",
+                "row_number": 4,
+                "personalisation": {"phonenumber": "+441234123125", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+    ]
+
+    template_type = sample_job_with_placeholdered_template.template.template_type
+    service_id = sample_job_with_placeholdered_template.service_id
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-0", "something-encoded-0"), {}),
+                    ((str(service_id), "uuid-1", "something-encoded-1"), {}),
+                    ((str(service_id), "uuid-2", "something-encoded-2"), {}),
+                    ((str(service_id), "uuid-3", "something-encoded-3"), {}),
+                    ((str(service_id), "uuid-4", "something-encoded-4"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails - splits & retries first half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-0", "something-encoded-0"), {}),
+                    ((str(service_id), "uuid-1", "something-encoded-1"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # succeeds - retries second half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-2", "something-encoded-2"), {}),
+                    ((str(service_id), "uuid-3", "something-encoded-3"), {}),
+                    ((str(service_id), "uuid-4", "something-encoded-4"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails - splits & retries first half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-2", "something-encoded-2"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # succeeds - retries second half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-3", "something-encoded-3"), {}),
+                    ((str(service_id), "uuid-4", "something-encoded-4"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails - splits & retries first half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-3", "something-encoded-3"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails & gives up because we can't split any further.
+        # doesn't proceed to second top-level batch.
+    ]
+
+    job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
+    assert job.job_status == "in progress"
+
+
+def test_should_split_shatter_tasks_if_too_big_together(
+    sample_job_with_placeholdered_template, mocker, mock_celery_task
+):
+    mocker.patch(
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
+    )
+
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+
+    def shatter_job_rows_side_effect(*args, **kwargs):
+        # notifications "uuid-0" and "uuid-1" are both large - putting them in a batch
+        # together will fail
+        if any((notification_id == "uuid-0" for (service_id, notification_id, enc), _ in args[0][1])) and any(
+            (notification_id == "uuid-1" for (service_id, notification_id, enc), _ in args[0][1])
+        ):
+            raise BotoClientError({"Error": {"Code": "InvalidParameterValue"}}, "blah")
+
+    mock_shatter_job_rows.side_effect = shatter_job_rows_side_effect
+
+    mock_encode = mocker.patch("app.signing.encode", side_effect=(f"something-encoded-{i}" for i in count()))
+    mocker.patch("app.celery.tasks.create_uuid", side_effect=(f"uuid-{i}" for i in count()))
+
+    process_job(sample_job_with_placeholdered_template.id, shatter_batch_size=5)
+
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(sample_job_with_placeholdered_template.service.id),
+        job_id=str(sample_job_with_placeholdered_template.id),
+    )
+
+    job_id = sample_job_with_placeholdered_template.id
+    template_id = sample_job_with_placeholdered_template.template_id
+    template_version = sample_job_with_placeholdered_template.template_version
+
+    assert mock_encode.mock_calls == [
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123121",
+                "row_number": 0,
+                "personalisation": {"phonenumber": "+441234123121", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123122",
+                "row_number": 1,
+                "personalisation": {"phonenumber": "+441234123122", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        ANY,
+        call(
+            {
+                "template": str(template_id),
+                "template_version": template_version,
+                "job": str(job_id),
+                "to": "+441234123120",
+                "row_number": 9,
+                "personalisation": {"phonenumber": "+441234123120", "name": "chris"},
+                "client_reference": None,
+            }
+        ),
+    ]
+
+    template_type = sample_job_with_placeholdered_template.template.template_type
+    service_id = sample_job_with_placeholdered_template.service_id
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-0", "something-encoded-0"), {}),
+                    ((str(service_id), "uuid-1", "something-encoded-1"), {}),
+                    ((str(service_id), "uuid-2", "something-encoded-2"), {}),
+                    ((str(service_id), "uuid-3", "something-encoded-3"), {}),
+                    ((str(service_id), "uuid-4", "something-encoded-4"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails - splits & retries first half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-0", "something-encoded-0"), {}),
+                    ((str(service_id), "uuid-1", "something-encoded-1"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails - splits & retries first half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-0", "something-encoded-0"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # succeeds - retries second half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-1", "something-encoded-1"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # succeeds - unwinds and retries second half
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-2", "something-encoded-2"), {}),
+                    ((str(service_id), "uuid-3", "something-encoded-3"), {}),
+                    ((str(service_id), "uuid-4", "something-encoded-4"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # succeeds, proceeds to second top-level batch
+        call(
+            (
+                template_type,
+                [
+                    ((str(service_id), "uuid-5", "something-encoded-5"), {}),
+                    ((str(service_id), "uuid-6", "something-encoded-6"), {}),
+                    ((str(service_id), "uuid-7", "something-encoded-7"), {}),
+                    ((str(service_id), "uuid-8", "something-encoded-8"), {}),
+                    ((str(service_id), "uuid-9", "something-encoded-9"), {}),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # succeeds
     ]
 
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
@@ -2021,6 +2327,219 @@ def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
     completed_job2 = Job.query.filter(Job.id == job2.id).one()
 
     assert completed_job.job_status == JOB_STATUS_FINISHED
+
+    assert completed_job2.job_status == JOB_STATUS_FINISHED
+
+
+def test_process_incomplete_jobs_raises_exception_if_row_too_big(mocker, mock_celery_task, sample_template):
+    job = create_job(
+        template=sample_template,
+        notification_count=10,
+        created_at=datetime.utcnow() - timedelta(hours=2),
+        scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+        processing_started=datetime.utcnow() - timedelta(minutes=31),
+        job_status=JOB_STATUS_ERROR,
+    )
+    create_notification(sample_template, job, 0)
+    create_notification(sample_template, job, 1)
+    create_notification(sample_template, job, 2)
+
+    assert Notification.query.filter(Notification.job_id == job.id).count() == 3
+
+    job2 = create_job(
+        template=sample_template,
+        notification_count=10,
+        created_at=datetime.utcnow() - timedelta(hours=2),
+        scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+        processing_started=datetime.utcnow() - timedelta(minutes=31),
+        job_status=JOB_STATUS_ERROR,
+    )
+
+    create_notification(sample_template, job2, 0)
+    create_notification(sample_template, job2, 1)
+    create_notification(sample_template, job2, 2)
+    create_notification(sample_template, job2, 3)
+    create_notification(sample_template, job2, 4)
+
+    assert Notification.query.filter(Notification.job_id == job2.id).count() == 5
+
+    mocker.patch(
+        "app.celery.tasks.s3.get_job_and_metadata_from_s3",
+        return_value=(load_example_csv("multiple_sms"), {"sender_id": None}),
+    )
+
+    mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
+
+    def shatter_job_rows_side_effect(*args, **kwargs):
+        if any((notification_id == "uuid-1" for (service_id, notification_id, enc), _ in args[0][1])):
+            raise BotoClientError({"Error": {"Code": "InvalidParameterValue"}}, "blah")
+
+    mock_shatter_job_rows.side_effect = shatter_job_rows_side_effect
+
+    mocker.patch(
+        "app.signing.encode",
+        side_effect=lambda x: f"encoded-job-{x['job']}-row-{x['row_number']}",
+    )
+    mocker.patch("app.celery.tasks.create_uuid", side_effect=(f"uuid-{i}" for i in count()))
+
+    jobs = [job.id, job2.id]
+    process_incomplete_jobs(jobs, shatter_batch_size=3)
+
+    assert mock_shatter_job_rows.mock_calls == [
+        call(
+            (
+                job.template.template_type,
+                [
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-0",
+                            f"encoded-job-{job.id}-row-3",  # sent rows 0-2 inclusive already
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-1",
+                            f"encoded-job-{job.id}-row-4",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-2",
+                            f"encoded-job-{job.id}-row-5",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails - splits & retries first half
+        call(
+            (
+                job.template.template_type,
+                [
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-0",
+                            f"encoded-job-{job.id}-row-3",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # succeeds - retries second half
+        call(
+            (
+                job.template.template_type,
+                [
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-1",
+                            f"encoded-job-{job.id}-row-4",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-2",
+                            f"encoded-job-{job.id}-row-5",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails - splits & retries first half
+        call(
+            (
+                job.template.template_type,
+                [
+                    (
+                        (
+                            str(job.service_id),
+                            "uuid-1",
+                            f"encoded-job-{job.id}-row-4",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        # fails - gives up on this job & proceeds to next
+        call(
+            (
+                job2.template.template_type,
+                [
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-3",
+                            f"encoded-job-{job2.id}-row-5",  # sent rows 0-4 inclusive already
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-4",
+                            f"encoded-job-{job2.id}-row-6",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-5",
+                            f"encoded-job-{job2.id}-row-7",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+        call(
+            (
+                job2.template.template_type,
+                [
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-6",
+                            f"encoded-job-{job2.id}-row-8",
+                        ),
+                        {},
+                    ),
+                    (
+                        (
+                            str(job2.service_id),
+                            "uuid-7",
+                            f"encoded-job-{job2.id}-row-9",
+                        ),
+                        {},
+                    ),
+                ],
+            ),
+            queue="job-tasks",
+        ),
+    ]
+
+    completed_job = Job.query.filter(Job.id == job.id).one()
+    completed_job2 = Job.query.filter(Job.id == job2.id).one()
+
+    assert completed_job.job_status == JOB_STATUS_IN_PROGRESS
 
     assert completed_job2.job_status == JOB_STATUS_FINISHED
 
