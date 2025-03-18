@@ -79,19 +79,42 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
     current_app.logger.info("Starting job %s processing %s notifications", job_id, job.notification_count)
 
     for shatter_batch in batched(recipient_csv.get_rows(), n=shatter_batch_size):
-        batch_args_kwargs = [
-            get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=sender_id)[1]
-            for row in shatter_batch
-        ]
-        shatter_job_rows.apply_async(
-            (
-                template.template_type,
-                batch_args_kwargs,
-            ),
-            queue=QueueNames.JOBS,
-        )
+        _shatter_job_rows_with_subdivision(shatter_batch, template, job, service, sender_id)
 
     job_complete(job, start=start)
+
+
+def _shatter_job_rows_with_subdivision(shatter_batch, template, job, service, sender_id):
+    unsent = shatter_batch[:]
+    sub_batch_size = len(unsent)
+
+    while unsent:
+        try:
+            batch_args_kwargs = [
+                get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=sender_id)[1]
+                for row in unsent[:sub_batch_size]
+            ]
+            shatter_job_rows.apply_async(
+                (
+                    template.template_type,
+                    batch_args_kwargs,
+                ),
+                queue=QueueNames.JOBS,
+            )
+            # apparent success: remove sent messages from unsent
+            unsent[:sub_batch_size] = []
+            # and optimistically reset sub_batch_size
+            sub_batch_size = len(unsent)
+        except ClientError:
+            # if not targeted ClientError: re-raise
+
+            # useful log message?
+
+            if sub_batch_size == 1:
+                # can't divide any more
+                raise ohgod
+
+            sub_batch_size = -(-sub_batch_size // 2)  # integer division, but rounded "up"
 
 
 @notify_celery.task(name="shatter-job-rows")
