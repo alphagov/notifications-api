@@ -43,7 +43,7 @@ from app.service.utils import service_allowed_to_send_to
 from app.utils import batched
 from app.v2.errors import TooManyRequestsError
 
-DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE = 32
+DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE = 8
 
 
 @notify_celery.task(name="process-job")
