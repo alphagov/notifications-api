@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from datetime import datetime
 
+from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.recipient_validation.postal_address import PostalAddress
@@ -43,7 +44,11 @@ from app.service.utils import service_allowed_to_send_to
 from app.utils import batched
 from app.v2.errors import TooManyRequestsError
 
-DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE = 8
+DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE = 32
+
+
+class UnprocessableJobRow(Exception):
+    pass
 
 
 @notify_celery.task(name="process-job")
@@ -83,15 +88,44 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
             get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=sender_id)[1]
             for row in shatter_batch
         ]
+        _shatter_job_rows_with_subdivision(template.template_type, batch_args_kwargs)
+
+    job_complete(job, start=start)
+
+
+def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level=True):
+    try:
         shatter_job_rows.apply_async(
             (
-                template.template_type,
-                batch_args_kwargs,
+                template_type,
+                args_kwargs_seq,
             ),
             queue=QueueNames.JOBS,
         )
+    except BotoClientError as e:
+        # this information is helpfully not preserved outside the message string of the exception, so
+        # we don't really have any option but to sniff it
+        if "InvalidParameterValue" not in str(e):
+            # this is not the exception we are looking for
+            raise
 
-    job_complete(job, start=start)
+        # else we'll assume this is a failure to send the SQS message due to its size, so split the
+        # batch in two and try again with each half
+
+        split_batch_size = len(args_kwargs_seq) // 2
+        if split_batch_size < 1:
+            # can't divide any further
+            raise UnprocessableJobRow from e
+
+        for sub_batch in (args_kwargs_seq[:split_batch_size], args_kwargs_seq[split_batch_size:]):
+            _shatter_job_rows_with_subdivision(template_type, sub_batch, top_level=False)
+
+    else:
+        if not top_level:
+            log_context = {"shatter_batch_size": len(args_kwargs_seq)}
+            current_app.logger.info(
+                "Job shatter batch sent with reduced size of %(shatter_batch_size)s", log_context, extra=log_context
+            )
 
 
 @notify_celery.task(name="shatter-job-rows")
@@ -399,7 +433,11 @@ def process_incomplete_jobs(job_ids, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS
 
     current_app.logger.info("Resuming job(s) %s", job_ids)
     for job_id in job_ids:
-        process_incomplete_job(job_id, shatter_batch_size=shatter_batch_size)
+        try:
+            process_incomplete_job(job_id, shatter_batch_size=shatter_batch_size)
+        except UnprocessableJobRow as e:
+            current_app.logger.exception(str(e))
+            # but continue to next job
 
 
 def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
@@ -424,13 +462,7 @@ def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_B
             get_id_task_args_kwargs_for_job_row(row, template, job, job.service, sender_id=sender_id)[1]
             for row in shatter_batch
         ]
-        shatter_job_rows.apply_async(
-            (
-                template.template_type,
-                batch_args_kwargs,
-            ),
-            queue=QueueNames.JOBS,
-        )
+        _shatter_job_rows_with_subdivision(template.template_type, batch_args_kwargs)
 
     job_complete(job, resumed=True)
 
