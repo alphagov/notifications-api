@@ -90,38 +90,31 @@ def fetch_service_callback_api(callback_api_id, service_id):
     return jsonify(data=callback_api.serialize()), 200
 
 
-@service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["DELETE"])
-def remove_service_inbound_api(service_id, inbound_api_id):
-    inbound_api = get_service_inbound_api(inbound_api_id, service_id)
-
-    if not inbound_api:
-        error = "Service inbound API not found"
-        raise InvalidRequest(error, status_code=404)
-
-    delete_service_inbound_api(inbound_api)
-    return "", 204
+REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES = {
+    ServiceCallbackTypes.inbound_sms.value: "Service inbound API not found",
+    ServiceCallbackTypes.delivery_status.value: "Service delivery receipt API not found",
+    ServiceCallbackTypes.returned_letter.value: "Service returned letter API not found",
+}
 
 
+@service_callback_blueprint.route("/inbound-api/<uuid:callback_api_id>", methods=["DELETE"])
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["DELETE"])
-def remove_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.delivery_status.value
-    _remove_service_callback_api(callback_api_id, service_id, callback_type)
-    return "", 204
-
-
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["DELETE"])
-def remove_returned_letter_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.returned_letter.value
-    _remove_service_callback_api(callback_api_id, service_id, callback_type)
-    return "", 204
+def remove_service_callback_api(callback_api_id, service_id):
+    callback_type = request.args.get("callback_type")
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        callback_api = get_service_inbound_api(callback_api_id, service_id)
+        delete_callback_api_method = delete_service_inbound_api
+    else:
+        callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+        delete_callback_api_method = delete_service_callback_api
 
-
-def _remove_service_callback_api(callback_api_id, service_id, callback_type):
-    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
     if not callback_api:
-        error = "Service delivery receipt callback API not found"
+        error = REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES[callback_type]
         raise InvalidRequest(error, status_code=404)
-    delete_service_callback_api(callback_api)
+
+    delete_callback_api_method(callback_api)
+    return "", 204
 
 
 def handle_sql_error(e, table_name):

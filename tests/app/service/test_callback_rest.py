@@ -130,66 +130,32 @@ def test_fetch_service_inbound_api(admin_request, sample_service):
     assert response["data"] == service_inbound_api.serialize()
 
 
-def test_delete_service_inbound_api(admin_request, sample_service):
-    service_inbound_api = create_service_inbound_api(sample_service)
-
-    response = admin_request.delete(
-        "service_callback.remove_service_inbound_api",
-        service_id=sample_service.id,
-        inbound_api_id=service_inbound_api.id,
-    )
-
-    assert response is None
-    assert ServiceInboundApi.query.count() == 0
-
-
-def test_fetch_delivery_receipt_callback_api(admin_request, sample_service):
-    service_callback_api = create_service_callback_api(callback_type="delivery_status", service=sample_service)
-
-    response = admin_request.get(
-        "service_callback.fetch_service_callback_api",
-        service_id=sample_service.id,
-        callback_api_id=service_callback_api.id,
-        callback_type="delivery_status",
-    )
-
-    assert response["data"] == service_callback_api.serialize()
-
-
-def test_delete_delivery_receipt_callback_api(admin_request, sample_service):
-    service_callback_api = create_service_callback_api("delivery_status", sample_service)
-
-    response = admin_request.delete(
-        "service_callback.remove_delivery_receipt_callback_api",
-        service_id=sample_service.id,
-        callback_api_id=service_callback_api.id,
-    )
-
-    assert response is None
-    assert ServiceCallbackApi.query.count() == 0
-
-
-def test_fetch_returned_letter_callback_api(admin_request, sample_service):
-    service_callback_api = create_service_callback_api(callback_type="returned_letter", service=sample_service)
-
-    response = admin_request.get(
-        "service_callback.fetch_service_callback_api",
-        service_id=sample_service.id,
-        callback_api_id=service_callback_api.id,
-        callback_type="returned_letter",
-    )
-
-    assert response["data"] == service_callback_api.serialize()
-
-
-def test_delete_returned_letter_callback_api(admin_request, sample_service):
-    service_callback_api = create_service_callback_api(callback_type="returned_letter", service=sample_service)
-
-    response = admin_request.delete(
-        "service_callback.remove_returned_letter_callback_api",
-        service_id=sample_service.id,
-        callback_api_id=service_callback_api.id,
-    )
-
-    assert response is None
-    assert ServiceCallbackApi.query.count() == 0
+@pytest.mark.parametrize(
+    "callback_type",
+    [
+        ServiceCallbackTypes.inbound_sms.value,
+        ServiceCallbackTypes.delivery_status.value,
+        ServiceCallbackTypes.returned_letter.value,
+    ],
+)
+def test_delete_service_callback_api(admin_request, sample_service, callback_type):
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        service_callback_api = create_service_inbound_api(sample_service)
+        response = admin_request.delete(
+            "service_callback.remove_service_callback_api",
+            service_id=sample_service.id,
+            callback_api_id=service_callback_api.id,
+            callback_type=callback_type,
+        )
+        assert response is None
+        assert ServiceInboundApi.query.count() == 0
+    else:
+        service_callback_api = create_service_callback_api(callback_type=callback_type, service=sample_service)
+        response = admin_request.delete(
+            "service_callback.remove_service_callback_api",
+            service_id=sample_service.id,
+            callback_api_id=service_callback_api.id,
+            callback_type=callback_type,
+        )
+        assert response is None
+        assert ServiceCallbackApi.query.count() == 0
