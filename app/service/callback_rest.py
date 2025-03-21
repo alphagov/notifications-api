@@ -32,6 +32,10 @@ def create_service_inbound_api(service_id):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
     data["service_id"] = service_id
+
+    if data.get("callback_type"):
+        del data["callback_type"]
+
     inbound_api = ServiceInboundApi(**data)
     try:
         save_service_inbound_api(inbound_api)
@@ -135,7 +139,12 @@ def _create_service_callback_api(service_id, callback_type):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
     data["service_id"] = service_id
-    data["callback_type"] = callback_type
+
+    # This is a temporary hack that will be removed in a future update once the admin
+    # app has been updated to include callback_type during callback API calls.
+    if not data.get("callback_type"):
+        data["callback_type"] = callback_type
+
     callback_api = ServiceCallbackApi(**data)
     try:
         save_service_callback_api(callback_api)
