@@ -1,36 +1,57 @@
 import uuid
 
+import pytest
+
+from app.constants import ServiceCallbackTypes
 from app.models import ServiceCallbackApi, ServiceInboundApi
 from tests.app.db import create_service_callback_api, create_service_inbound_api
 
 
-def test_create_service_inbound_api(admin_request, sample_service):
+@pytest.mark.parametrize(
+    "callback_type, path",
+    [
+        (ServiceCallbackTypes.inbound_sms.value, "inbound-sms"),
+        (ServiceCallbackTypes.delivery_status.value, "delivery-status"),
+        (ServiceCallbackTypes.returned_letter.value, "returned-letter"),
+    ],
+)
+def test_create_service_callback_api(admin_request, sample_service, callback_type, path):
     data = {
-        "url": "https://some_service/inbound-sms",
+        "url": f"https://some_service/{path}",
         "bearer_token": "some-unique-string",
         "updated_by_id": str(sample_service.users[0].id),
+        "callback_type": callback_type,
     }
     resp_json = admin_request.post(
-        "service_callback.create_service_inbound_api", service_id=sample_service.id, _data=data, _expected_status=201
+        "service_callback.create_service_callback_api", service_id=sample_service.id, _data=data, _expected_status=201
     )
 
     resp_json = resp_json["data"]
     assert resp_json["id"]
     assert resp_json["service_id"] == str(sample_service.id)
-    assert resp_json["url"] == "https://some_service/inbound-sms"
+    assert resp_json["url"] == f"https://some_service/{path}"
     assert resp_json["updated_by_id"] == str(sample_service.users[0].id)
     assert resp_json["created_at"]
     assert not resp_json["updated_at"]
 
 
-def test_set_service_inbound_api_raises_404_when_service_does_not_exist(admin_request):
+@pytest.mark.parametrize(
+    "callback_type, path",
+    [
+        (ServiceCallbackTypes.inbound_sms.value, "inbound-sms"),
+        (ServiceCallbackTypes.delivery_status.value, "delivery-status"),
+        (ServiceCallbackTypes.returned_letter.value, "returned-letter"),
+    ],
+)
+def test_set_service_callback_api_raises_404_when_service_does_not_exist(admin_request, callback_type, path):
     data = {
-        "url": "https://some_service/inbound-sms",
+        "url": f"https://some_service/{path}",
         "bearer_token": "some-unique-string",
         "updated_by_id": str(uuid.uuid4()),
+        "callback_type": callback_type,
     }
     response = admin_request.post(
-        "service_callback.create_service_inbound_api", service_id=uuid.uuid4(), _data=data, _expected_status=404
+        "service_callback.create_service_callback_api", service_id=uuid.uuid4(), _data=data, _expected_status=404
     )
     assert response["message"] == "No result found"
 
@@ -88,45 +109,6 @@ def test_delete_service_inbound_api(admin_request, sample_service):
     assert ServiceInboundApi.query.count() == 0
 
 
-def test_create_delivery_receipt_callback_api(admin_request, sample_service):
-    data = {
-        "url": "https://some_service/delivery-receipt-endpoint",
-        "bearer_token": "some-unique-string",
-        "updated_by_id": str(sample_service.users[0].id),
-    }
-
-    resp_json = admin_request.post(
-        "service_callback.create_delivery_receipt_callback_api",
-        service_id=sample_service.id,
-        _data=data,
-        _expected_status=201,
-    )
-
-    resp_json = resp_json["data"]
-    assert resp_json["id"]
-    assert resp_json["service_id"] == str(sample_service.id)
-    assert resp_json["url"] == "https://some_service/delivery-receipt-endpoint"
-    assert resp_json["updated_by_id"] == str(sample_service.users[0].id)
-    assert resp_json["created_at"]
-    assert not resp_json["updated_at"]
-
-
-def test_set_delivery_receipt_callback_api_raises_404_when_service_does_not_exist(admin_request, notify_db_session):
-    data = {
-        "url": "https://some_service/delivery-receipt-endpoint",
-        "bearer_token": "some-unique-string",
-        "updated_by_id": str(uuid.uuid4()),
-    }
-
-    resp_json = admin_request.post(
-        "service_callback.create_delivery_receipt_callback_api",
-        service_id=uuid.uuid4(),
-        _data=data,
-        _expected_status=404,
-    )
-    assert resp_json["message"] == "No result found"
-
-
 def test_update_delivery_receipt_callback_api_updates_url(admin_request, sample_service):
     service_callback_api = create_service_callback_api(
         callback_type="delivery_status", service=sample_service, url="https://original_url.com"
@@ -182,45 +164,6 @@ def test_delete_delivery_receipt_callback_api(admin_request, sample_service):
 
     assert response is None
     assert ServiceCallbackApi.query.count() == 0
-
-
-def test_create_returned_letter_callback_api(admin_request, sample_service):
-    data = {
-        "url": "https://some_service/returned-letter-endpoint",
-        "bearer_token": "some-unique-string",
-        "updated_by_id": str(sample_service.users[0].id),
-    }
-
-    resp_json = admin_request.post(
-        "service_callback.create_returned_letter_callback_api",
-        service_id=sample_service.id,
-        _data=data,
-        _expected_status=201,
-    )
-
-    resp_json = resp_json["data"]
-    assert resp_json["id"]
-    assert resp_json["service_id"] == str(sample_service.id)
-    assert resp_json["url"] == "https://some_service/returned-letter-endpoint"
-    assert resp_json["updated_by_id"] == str(sample_service.users[0].id)
-    assert resp_json["created_at"]
-    assert not resp_json["updated_at"]
-
-
-def test_set_returned_letter_callback_api_raises_404_when_service_does_not_exist(admin_request, notify_db_session):
-    data = {
-        "url": "https://some_service/returned-letter-callback-endpoint",
-        "bearer_token": "some-unique-string",
-        "updated_by_id": str(uuid.uuid4()),
-    }
-
-    resp_json = admin_request.post(
-        "service_callback.create_returned_letter_callback_api",
-        service_id=uuid.uuid4(),
-        _data=data,
-        _expected_status=404,
-    )
-    assert resp_json["message"] == "No result found"
 
 
 def test_update_returned_letter_callback_api_updates_url(admin_request, sample_service):
