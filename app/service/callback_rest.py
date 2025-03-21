@@ -28,21 +28,29 @@ register_errors(service_callback_blueprint)
 
 
 @service_callback_blueprint.route("/inbound-api", methods=["POST"])
-def create_service_inbound_api(service_id):
+@service_callback_blueprint.route("/delivery-receipt-api", methods=["POST"])
+@service_callback_blueprint.route("/returned-letter-api", methods=["POST"])
+def create_service_callback_api(service_id):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
+    callback_type = data["callback_type"]
     data["service_id"] = service_id
 
-    if data.get("callback_type"):
-        del data["callback_type"]
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        del data["callback_type"]  # ServiceInboundApi doesn't have this attribute
+        callback_api = ServiceInboundApi(**data)
+        save_callback_api_method = save_service_inbound_api
+        error_message = "service_inbound_api"
+    else:
+        callback_api = ServiceCallbackApi(**data)
+        save_callback_api_method = save_service_callback_api
+        error_message = "service_callback_api"
 
-    inbound_api = ServiceInboundApi(**data)
     try:
-        save_service_inbound_api(inbound_api)
+        save_callback_api_method(callback_api)
     except SQLAlchemyError as e:
-        return handle_sql_error(e, "service_inbound_api")
-
-    return jsonify(data=inbound_api.serialize()), 201
+        return handle_sql_error(e, error_message)
+    return jsonify(data=callback_api.serialize()), 201
 
 
 @service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["POST"])
@@ -80,13 +88,6 @@ def remove_service_inbound_api(service_id, inbound_api_id):
     return "", 204
 
 
-# delivery-receipt callback endpoints
-@service_callback_blueprint.route("/delivery-receipt-api", methods=["POST"])
-def create_delivery_receipt_callback_api(service_id):
-    callback_type = ServiceCallbackTypes.delivery_status.value
-    return _create_service_callback_api(service_id, callback_type)
-
-
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["POST"])
 def update_delivery_receipt_callback_api(service_id, callback_api_id):
     callback_type = ServiceCallbackTypes.delivery_status.value
@@ -107,13 +108,6 @@ def remove_delivery_receipt_callback_api(service_id, callback_api_id):
     return "", 204
 
 
-# returned letter callback endpoints
-@service_callback_blueprint.route("/returned-letter-api", methods=["POST"])
-def create_returned_letter_callback_api(service_id):
-    callback_type = ServiceCallbackTypes.returned_letter.value
-    return _create_service_callback_api(service_id, callback_type)
-
-
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["POST"])
 def update_returned_letter_callback_api(service_id, callback_api_id):
     callback_type = ServiceCallbackTypes.returned_letter.value
@@ -132,25 +126,6 @@ def remove_returned_letter_callback_api(service_id, callback_api_id):
     callback_type = ServiceCallbackTypes.returned_letter.value
     _remove_service_callback_api(callback_api_id, service_id, callback_type)
     return "", 204
-
-
-# helper callback methods
-def _create_service_callback_api(service_id, callback_type):
-    data = request.get_json()
-    validate(data, create_service_callback_api_schema)
-    data["service_id"] = service_id
-
-    # This is a temporary hack that will be removed in a future update once the admin
-    # app has been updated to include callback_type during callback API calls.
-    if not data.get("callback_type"):
-        data["callback_type"] = callback_type
-
-    callback_api = ServiceCallbackApi(**data)
-    try:
-        save_service_callback_api(callback_api)
-    except SQLAlchemyError as e:
-        return handle_sql_error(e, "service_callback_api")
-    return jsonify(data=callback_api.serialize()), 201
 
 
 def _update_service_callback_api(callback_api_id, service_id, callback_type):
