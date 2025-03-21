@@ -56,33 +56,66 @@ def test_set_service_callback_api_raises_404_when_service_does_not_exist(admin_r
     assert response["message"] == "No result found"
 
 
-def test_update_service_inbound_api_updates_url(admin_request, sample_service):
-    service_inbound_api = create_service_inbound_api(service=sample_service, url="https://original_url.com")
-
-    data = {"url": "https://another_url.com", "updated_by_id": str(sample_service.users[0].id)}
+@pytest.mark.parametrize(
+    "callback_type, path",
+    [
+        (ServiceCallbackTypes.inbound_sms.value, "inbound-sms"),
+        (
+            ServiceCallbackTypes.delivery_status.value,
+            "delivery-status",
+        ),
+        (ServiceCallbackTypes.returned_letter.value, "returned-letter"),
+    ],
+)
+def test_update_service_callback_api_updates_url(admin_request, sample_service, callback_type, path):
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        callback_api = create_service_inbound_api(service=sample_service, url="https://original_url.com")
+    else:
+        callback_api = create_service_callback_api(
+            callback_type=callback_type, service=sample_service, url="https://original_url.com"
+        )
+    new_url = f"https://another_url.com/{path}"
+    data = {"url": new_url, "updated_by_id": str(sample_service.users[0].id), "callback_type": callback_type}
 
     response = admin_request.post(
-        "service_callback.update_service_inbound_api",
+        "service_callback.update_service_callback_api",
         service_id=sample_service.id,
-        inbound_api_id=service_inbound_api.id,
+        callback_api_id=callback_api.id,
         _data=data,
     )
 
-    assert response["data"]["url"] == "https://another_url.com"
-    assert service_inbound_api.url == "https://another_url.com"
+    assert response["data"]["url"] == new_url
+    assert callback_api.url == new_url
 
 
-def test_update_service_inbound_api_updates_bearer_token(admin_request, sample_service):
-    service_inbound_api = create_service_inbound_api(service=sample_service, bearer_token="some_super_secret")
-    data = {"bearer_token": "different_token", "updated_by_id": str(sample_service.users[0].id)}
+@pytest.mark.parametrize(
+    "callback_type, path",
+    [
+        (ServiceCallbackTypes.inbound_sms.value, "inbound-sms"),
+        (ServiceCallbackTypes.delivery_status.value, "delivery-status"),
+        (ServiceCallbackTypes.returned_letter.value, "returned-letter"),
+    ],
+)
+def test_update_service_callback_api_updates_bearer_token(admin_request, sample_service, callback_type, path):
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        callback_api = create_service_inbound_api(service=sample_service, url="https://original_url.com")
+    else:
+        callback_api = create_service_callback_api(
+            callback_type=callback_type, service=sample_service, bearer_token=f"some_{callback_type}super_secret"
+        )
+    data = {
+        "bearer_token": f"different_token_{callback_type}",
+        "updated_by_id": str(sample_service.users[0].id),
+        "callback_type": callback_type,
+    }
 
     admin_request.post(
-        "service_callback.update_service_inbound_api",
+        "service_callback.update_service_callback_api",
         service_id=sample_service.id,
-        inbound_api_id=service_inbound_api.id,
+        callback_api_id=callback_api.id,
         _data=data,
     )
-    assert service_inbound_api.bearer_token == "different_token"
+    assert callback_api.bearer_token == f"different_token_{callback_type}"
 
 
 def test_fetch_service_inbound_api(admin_request, sample_service):

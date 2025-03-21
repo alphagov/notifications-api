@@ -53,27 +53,58 @@ def create_service_callback_api(service_id):
     return jsonify(data=callback_api.serialize()), 201
 
 
-@service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["POST"])
-def update_service_inbound_api(service_id, inbound_api_id):
+@service_callback_blueprint.route("/inbound-api/<uuid:callback_api_id>", methods=["POST"])
+@service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["POST"])
+@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["POST"])
+def update_service_callback_api(callback_api_id, service_id):
     data = request.get_json()
     validate(data, update_service_callback_api_schema)
+    callback_type = data["callback_type"]
 
-    to_update = get_service_inbound_api(inbound_api_id, service_id)
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        to_update = get_service_inbound_api(callback_api_id, service_id)
+        reset_callback_api_method = reset_service_inbound_api
+    else:
+        to_update = get_service_callback_api(callback_api_id, service_id, callback_type)
+        reset_callback_api_method = reset_service_callback_api
 
-    reset_service_inbound_api(
-        service_inbound_api=to_update,
-        updated_by_id=data["updated_by_id"],
-        url=data.get("url", None),
-        bearer_token=data.get("bearer_token", None),
+    reset_callback_api_method(
+        to_update,
+        data["updated_by_id"],
+        data.get("url", None),
+        data.get("bearer_token", None),
     )
     return jsonify(data=to_update.serialize()), 200
 
 
-@service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["GET"])
-def fetch_service_inbound_api(service_id, inbound_api_id):
-    inbound_api = get_service_inbound_api(inbound_api_id, service_id)
+@service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
+def fetch_delivery_receipt_callback_api(service_id, callback_api_id):
+    callback_type = ServiceCallbackTypes.delivery_status.value
+    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
 
-    return jsonify(data=inbound_api.serialize()), 200
+
+@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
+def fetch_returned_letter_callback_api(service_id, callback_api_id):
+    callback_type = ServiceCallbackTypes.returned_letter.value
+    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
+
+
+def _fetch_service_callback_api(callback_api_id, service_id, callback_type):
+    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+    return jsonify(data=callback_api.serialize()), 200
+
+
+@service_callback_blueprint.route("/inbound-api/<uuid:callback_api_id>", methods=["GET"])
+@service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
+@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
+def fetch_service_callback_api(callback_api_id, service_id):
+    callback_type = request.args.get("callback_type")
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        callback_api = get_service_inbound_api(callback_api_id, service_id)
+    else:
+        callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+
+    return jsonify(data=callback_api.serialize()), 200
 
 
 @service_callback_blueprint.route("/inbound-api/<uuid:inbound_api_id>", methods=["DELETE"])
@@ -88,19 +119,6 @@ def remove_service_inbound_api(service_id, inbound_api_id):
     return "", 204
 
 
-@service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["POST"])
-def update_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.delivery_status.value
-    to_update = _update_service_callback_api(callback_api_id, service_id, callback_type)
-    return jsonify(data=to_update.serialize()), 200
-
-
-@service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
-def fetch_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.delivery_status.value
-    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
-
-
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["DELETE"])
 def remove_delivery_receipt_callback_api(service_id, callback_api_id):
     callback_type = ServiceCallbackTypes.delivery_status.value
@@ -108,42 +126,11 @@ def remove_delivery_receipt_callback_api(service_id, callback_api_id):
     return "", 204
 
 
-@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["POST"])
-def update_returned_letter_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.returned_letter.value
-    to_update = _update_service_callback_api(callback_api_id, service_id, callback_type)
-    return jsonify(data=to_update.serialize()), 200
-
-
-@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
-def fetch_returned_letter_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.returned_letter.value
-    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
-
-
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["DELETE"])
 def remove_returned_letter_callback_api(service_id, callback_api_id):
     callback_type = ServiceCallbackTypes.returned_letter.value
     _remove_service_callback_api(callback_api_id, service_id, callback_type)
     return "", 204
-
-
-def _update_service_callback_api(callback_api_id, service_id, callback_type):
-    data = request.get_json()
-    validate(data, update_service_callback_api_schema)
-    to_update = get_service_callback_api(callback_api_id, service_id, callback_type)
-    reset_service_callback_api(
-        service_callback_api=to_update,
-        updated_by_id=data["updated_by_id"],
-        url=data.get("url", None),
-        bearer_token=data.get("bearer_token", None),
-    )
-    return to_update
-
-
-def _fetch_service_callback_api(callback_api_id, service_id, callback_type):
-    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
-    return jsonify(data=callback_api.serialize()), 200
 
 
 def _remove_service_callback_api(callback_api_id, service_id, callback_type):
