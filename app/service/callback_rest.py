@@ -77,23 +77,6 @@ def update_service_callback_api(callback_api_id, service_id):
     return jsonify(data=to_update.serialize()), 200
 
 
-@service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
-def fetch_delivery_receipt_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.delivery_status.value
-    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
-
-
-@service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
-def fetch_returned_letter_callback_api(service_id, callback_api_id):
-    callback_type = ServiceCallbackTypes.returned_letter.value
-    return _fetch_service_callback_api(callback_api_id, service_id, callback_type)
-
-
-def _fetch_service_callback_api(callback_api_id, service_id, callback_type):
-    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
-    return jsonify(data=callback_api.serialize()), 200
-
-
 @service_callback_blueprint.route("/inbound-api/<uuid:callback_api_id>", methods=["GET"])
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
