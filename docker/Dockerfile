@@ -1,18 +1,41 @@
-FROM python:3.11-slim-bookworm AS base
+ARG UV_VERSION=0.5.28
+ARG DEBIAN_BASE_TAG=bookworm-20250317-slim
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.28 /uv /uvx /bin/
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} as uv
+
+######
+FROM debian:${DEBIAN_BASE_TAG} AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ARG SOURCE_DATE_EPOCH=1742835647
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 ENV VIRTUAL_ENV="/opt/venv"
+ENV LANG=C.UTF-8
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN set -eux; \
+  SOURCE_DATE_EPOCH_ISO=`date --date=@$SOURCE_DATE_EPOCH +%Y%m%dT%H%M%SZ`; \
+  ! sed -E "/^# (http:.*snapshot.debian.org.*)([0-9]{6}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
+  sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1$SOURCE_DATE_EPOCH_ISO/g" /etc/apt/sources.list.d/debian.sources; \ 
+  ! sed -E "/^URIs: http:.*deb.debian.org.*$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
+  sed -i -E "s/^URIs: http:.*deb.debian.org.*$/# \\0/g" /etc/apt/sources.list.d/debian.sources; \
+  mkdir -p /etc/apt/apt.conf.d; \
+  echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/10-nocheckvalid
+
+RUN set -eux; \
+  apt update; \  
+  apt upgrade; \  
+  apt install -y --no-install-recommends \
     libcurl4 \
-    curl \
-    && apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
+    curl; \
+  apt -y clean; \
+  rm -rf /var/lib/apt/lists/* /tmp/*
+
+COPY --from=uv /uv /uvx /bin/
 
 WORKDIR /home/vcap/app
 
