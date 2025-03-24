@@ -1,3 +1,6 @@
+from app.dao.notifications_dao import get_notifications_for_service
+
+
 def convert_notifications_to_csv(serialized_notifications):
     values = []
     for notification in serialized_notifications:
@@ -17,3 +20,21 @@ def convert_notifications_to_csv(serialized_notifications):
             )
         )
     return values
+
+
+def get_notifications_by_batch(service_id, status, template_type, page, page_size, limit_days):
+    statuses = [status] if status != "all" else ["sending", "delivered", "created"]
+
+    notifications = get_notifications_for_service(
+        service_id=service_id,
+        filter_dict={
+            "template_type": template_type,
+            "status": statuses,
+        },
+        page=page,
+        page_size=page_size,
+        limit_days=limit_days,
+    )
+
+    serialized_notifications = [notification.serialize_for_csv() for notification in notifications]
+    return serialized_notifications

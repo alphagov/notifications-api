@@ -1,3 +1,4 @@
+import pytest
 from freezegun import freeze_time
 
 from app.constants import (
@@ -8,11 +9,13 @@ from app.dao.notifications_dao import (
 )
 from app.report_requests.process_notifications_report import (
     convert_notifications_to_csv,
+    get_notifications_by_batch,
 )
 from tests.app.db import (
     create_api_key,
     create_notification,
     create_service,
+    create_service_data_retention,
 )
 
 
@@ -103,3 +106,33 @@ def test_convert_notifications_to_csv_values(sample_sms_template):
     ]
 
     assert expected_csv == csv_data
+
+
+@pytest.mark.parametrize(
+    "page_size, page, expected_notifications, status",
+    [
+        (5, 1, 5, "all"),
+        (2, 2, 1, "sending"),
+        (2, 1, 2, "delivered"),
+    ],
+)
+def test_get_notifications_by_batch(
+    page_size, page, status, expected_notifications, sample_email_template, sample_sms_template
+):
+    service = create_service(check_if_service_exists=True)
+    create_service_data_retention(service=service)
+    api_key = create_api_key(service=service, key_type=KEY_TYPE_NORMAL, id="8e33368c-3965-4ae1-ab55-4f9d3275f84d")
+
+    create_notification(template=sample_email_template, status="sending", api_key=api_key)
+    create_notification(template=sample_sms_template, status="sending", api_key=api_key)
+    create_notification(template=sample_email_template, status="delivered", api_key=api_key)
+    create_notification(template=sample_email_template, status="delivered", api_key=api_key)
+    create_notification(template=sample_email_template, status="sending", api_key=api_key)
+    create_notification(template=sample_email_template, status="sending", api_key=api_key)
+    create_notification(template=sample_email_template, status="created", api_key=api_key)
+    create_notification(template=sample_email_template, status="sent", api_key=api_key)
+
+    notifications = get_notifications_by_batch(
+        service_id=service.id, status=status, template_type="email", page=page, page_size=page_size, limit_days=2
+    )
+    assert len(notifications) == expected_notifications
