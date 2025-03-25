@@ -8,19 +8,21 @@ FROM debian:${DEBIAN_BASE_TAG} AS base
 
 SHELL ["/bin/bash", "-c"]
 
-ARG SOURCE_DATE_EPOCH=1742835647
+ARG NEW_SNAPSHOT_TIMESTAMP=20250325T000000Z
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 ENV VIRTUAL_ENV="/opt/venv"
 ENV LANG=C.UTF-8
-ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
+ENV BASH_ENV=/etc/bash.env
 
 RUN set -eux; \
-  SOURCE_DATE_EPOCH_ISO=`date --date=@$SOURCE_DATE_EPOCH +%Y%m%dT%H%M%SZ`; \
-  ! sed -E "/^# (http:.*snapshot.debian.org.*)([0-9]{6}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
-  sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1$SOURCE_DATE_EPOCH_ISO/g" /etc/apt/sources.list.d/debian.sources; \ 
+  ! sed -E "/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
+  SOURCE_DATE_EPOCH_ISO=`sed -n -E "s/^# http:.*snapshot.debian.org.*?([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z\$/\\1-\\2-\\3T\\4:\\5:\\6/p" /etc/apt/sources.list.d/debian.sources | sed -n 1p`; \
+  SOURCE_DATE_EPOCH=`date -u "--date=$SOURCE_DATE_EPOCH_ISO" +%s`; \
+  echo "export SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" >> /etc/bash.env; \
+  sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1${NEW_SNAPSHOT_TIMESTAMP}/g" /etc/apt/sources.list.d/debian.sources; \ 
   ! sed -E "/^URIs: http:.*deb.debian.org.*$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
   sed -i -E "s/^URIs: http:.*deb.debian.org.*$/# \\0/g" /etc/apt/sources.list.d/debian.sources; \
   mkdir -p /etc/apt/apt.conf.d; \
