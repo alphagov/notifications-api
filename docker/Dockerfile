@@ -1,5 +1,9 @@
-ARG UV_VERSION=0.5.28
-ARG DEBIAN_BASE_TAG=bookworm-20250317-slim
+ARG UV_VERSION=0.5.28  # auto-update
+ARG DEBIAN_BASE_TAG=bookworm-20250317-slim  # auto-update
+ARG NEW_SNAPSHOT_TIMESTAMP=20250325T000000Z  # auto-update
+# SOURCE_DATE_EPOCH needs to be explicitly listed in build command to have desired effect, included
+# here for reference
+ARG SOURCE_DATE_EPOCH=1742169600  # auto-update: should match that of debian base image's original snapshot
 
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} as uv
 
@@ -8,34 +12,34 @@ FROM debian:${DEBIAN_BASE_TAG} AS base
 
 SHELL ["/bin/bash", "-c"]
 
-ARG NEW_SNAPSHOT_TIMESTAMP=20250325T000000Z
+ARG SOURCE_DATE_EPOCH
+ARG NEW_SNAPSHOT_TIMESTAMP
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 ENV VIRTUAL_ENV="/opt/venv"
 ENV LANG=C.UTF-8
-ENV BASH_ENV=/etc/bash.env
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 
 RUN set -eux; \
-  ! sed -E "/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
-  SOURCE_DATE_EPOCH_ISO=`sed -n -E "s/^# http:.*snapshot.debian.org.*?([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})Z\$/\\1-\\2-\\3T\\4:\\5:\\6/p" /etc/apt/sources.list.d/debian.sources | sed -n 1p`; \
-  SOURCE_DATE_EPOCH=`date -u "--date=$SOURCE_DATE_EPOCH_ISO" +%s`; \
-  echo "export SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" >> /etc/bash.env; \
+  ! sed -E "/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources; \ 
   sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1${NEW_SNAPSHOT_TIMESTAMP}/g" /etc/apt/sources.list.d/debian.sources; \ 
   ! sed -E "/^URIs: http:.*deb.debian.org.*$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
   sed -i -E "s/^URIs: http:.*deb.debian.org.*$/# \\0/g" /etc/apt/sources.list.d/debian.sources; \
   mkdir -p /etc/apt/apt.conf.d; \
-  echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/10-nocheckvalid
+  echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/10-nocheckvalid; \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/log/* /var/cache/ldconfig/aux-cache 
 
 RUN set -eux; \
   apt update; \  
-  apt upgrade; \  
+  apt upgrade; \
   apt install -y --no-install-recommends \
+    ca-certificates \
     libcurl4 \
     curl; \
   apt -y clean; \
-  rm -rf /var/lib/apt/lists/* /tmp/*
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/log/* /var/cache/ldconfig/aux-cache 
 
 COPY --from=uv /uv /uvx /bin/
 
@@ -44,22 +48,24 @@ WORKDIR /home/vcap/app
 ##### Python Build Image #####################################################
 FROM base AS python_build
 
-RUN echo "Install OS dependencies for python app requirements" &&  \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN set -eux; \
+  echo "Install OS dependencies for python app requirements"; \
+  apt update; \
+  apt install -y --no-install-recommends \
     build-essential \
     git \
     libcurl4-openssl-dev \
-    libssl-dev && \
-    apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
+    libssl-dev;  \
+  apt -y clean; \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/log/* /var/cache/ldconfig/aux-cache 
 
-COPY requirements.txt .
+COPY .python-version requirements.txt .
 
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
-RUN echo "Installing python requirements" && \
-    python3 -m venv /opt/venv && \
-    uv pip sync --python /opt/venv/bin/python requirements.txt
+RUN set -eux; \
+  echo "Installing python requirements"; \
+  uv venv /opt/venv; \
+  uv pip sync requirements.txt
 
 COPY . .
 RUN make generate-version-file  # This file gets copied across
