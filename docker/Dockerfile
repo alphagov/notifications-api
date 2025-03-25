@@ -36,6 +36,8 @@ RUN set -eux; \
   apt upgrade; \
   apt install -y --no-install-recommends \
     ca-certificates \
+    netbase \
+    tzdata \
     libcurl4 \
     curl; \
   apt -y clean; \
@@ -47,6 +49,8 @@ WORKDIR /home/vcap/app
 
 ##### Python Build Image #####################################################
 FROM base AS python_build
+
+ARG SOURCE_DATE_EPOCH
 
 RUN set -eux; \
   echo "Install OS dependencies for python app requirements"; \
@@ -65,7 +69,8 @@ ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN set -eux; \
   echo "Installing python requirements"; \
   uv venv /opt/venv; \
-  uv pip sync requirements.txt
+  uv pip sync requirements.txt; \
+  rm -rf /tmp/uv-cache/*
 
 COPY . .
 RUN make generate-version-file  # This file gets copied across
