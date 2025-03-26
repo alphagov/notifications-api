@@ -17,22 +17,29 @@ ARG NEW_SNAPSHOT_TIMESTAMP
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV UV_COMPILE_BYTECODE=1
 ENV VIRTUAL_ENV="/opt/venv"
 ENV LANG=C.UTF-8
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 
-RUN set -eux; \
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
   ! sed -E "/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources; \ 
   sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1${NEW_SNAPSHOT_TIMESTAMP}/g" /etc/apt/sources.list.d/debian.sources; \ 
   ! sed -E "/^URIs: http:.*deb.debian.org.*$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
   sed -i -E "s/^URIs: http:.*deb.debian.org.*$/# \\0/g" /etc/apt/sources.list.d/debian.sources; \
   mkdir -p /etc/apt/apt.conf.d; \
   echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/10-nocheckvalid; \
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/log/* /var/cache/ldconfig/aux-cache 
+  echo "Binary::apt::APT::Keep-Downloaded-Packages true;" >> /etc/apt/apt.conf.d/20-keepcache
 
-RUN set -eux; \
-  apt update; \  
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  apt update; \
   apt upgrade; \
   apt install -y --no-install-recommends \
     ca-certificates \
@@ -41,9 +48,13 @@ RUN set -eux; \
     libcurl4 \
     curl; \
   apt -y clean; \
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/log/* /var/cache/ldconfig/aux-cache 
+  rm -rf /var/lib/apt/lists/* 
 
 COPY --from=uv /uv /uvx /bin/
+ENV UV_CACHE_DIR='/tmp/uv-cache/'
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV UV_NO_INSTALLER_METADATA=1
 
 WORKDIR /home/vcap/app
 
@@ -52,7 +63,11 @@ FROM base AS python_build
 
 ARG SOURCE_DATE_EPOCH
 
-RUN set -eux; \
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
   echo "Install OS dependencies for python app requirements"; \
   apt update; \
   apt install -y --no-install-recommends \
@@ -61,16 +76,18 @@ RUN set -eux; \
     libcurl4-openssl-dev \
     libssl-dev;  \
   apt -y clean; \
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/log/* /var/cache/ldconfig/aux-cache 
+  rm -rf /var/lib/apt/lists/* 
 
 COPY .python-version requirements.txt .
 
-ENV UV_CACHE_DIR='/tmp/uv-cache/'
-RUN set -eux; \
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
   echo "Installing python requirements"; \
   uv venv /opt/venv; \
-  uv pip sync requirements.txt; \
-  rm -rf /tmp/uv-cache/*
+  uv pip sync requirements.txt
 
 COPY . .
 RUN make generate-version-file  # This file gets copied across
