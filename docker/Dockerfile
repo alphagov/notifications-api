@@ -16,8 +16,6 @@ ARG SOURCE_DATE_EPOCH
 ARG NEW_SNAPSHOT_TIMESTAMP
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV VIRTUAL_ENV="/opt/venv"
 ENV LANG=C.UTF-8
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 
@@ -26,9 +24,9 @@ RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/lib/apt,sharing=private \
     --mount=type=tmpfs,target=/var/log \
   set -eux; \
-  ! sed -E "/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources; \ 
-  sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1${NEW_SNAPSHOT_TIMESTAMP}/g" /etc/apt/sources.list.d/debian.sources; \ 
-  ! sed -E "/^URIs: http:.*deb.debian.org.*$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \ 
+  ! sed -E "/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources; \
+  sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1${NEW_SNAPSHOT_TIMESTAMP}/g" /etc/apt/sources.list.d/debian.sources; \
+  ! sed -E "/^URIs: http:.*deb.debian.org.*$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \
   sed -i -E "s/^URIs: http:.*deb.debian.org.*$/# \\0/g" /etc/apt/sources.list.d/debian.sources; \
   mkdir -p /etc/apt/apt.conf.d; \
   echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/10-nocheckvalid; \
@@ -46,15 +44,27 @@ RUN --mount=type=tmpfs,target=/tmp \
     netbase \
     tzdata \
     libcurl4 \
-    curl; \
-  apt -y clean; \
-  rm -rf /var/lib/apt/lists/* 
+    curl
 
 COPY --from=uv /uv /uvx /bin/
-ENV UV_CACHE_DIR='/tmp/uv-cache/'
+ENV UV_CACHE_DIR="/tmp/uv-cache/"
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 ENV UV_NO_INSTALLER_METADATA=1
+ENV UV_PYTHON_INSTALL_DIR="/usr/local/python"
+
+ENV PYTHONUNBUFFERED=1
+ENV VIRTUAL_ENV="/opt/venv"
+ENV PATH="${UV_PYTHON_INSTALL_DIR}/bin:${VIRTUAL_ENV}/bin:${PATH}"
+
+COPY .python-version .
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Installing python"; \
+  uv python install
 
 WORKDIR /home/vcap/app
 
@@ -74,11 +84,11 @@ RUN --mount=type=tmpfs,target=/tmp \
     build-essential \
     git \
     libcurl4-openssl-dev \
-    libssl-dev;  \
-  apt -y clean; \
-  rm -rf /var/lib/apt/lists/* 
+    libssl-dev
 
 COPY .python-version requirements.txt .
+
+ENV CFLAGS="-frandom-seed=1234"
 
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/cache,sharing=private \
@@ -86,7 +96,7 @@ RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/log \
   set -eux; \
   echo "Installing python requirements"; \
-  uv venv /opt/venv; \
+  uv venv $VIRTUAL_ENV; \
   uv pip sync requirements.txt
 
 COPY . .
@@ -95,13 +105,18 @@ RUN make generate-version-file  # This file gets copied across
 ##### Production Image #######################################################
 FROM base AS production
 
-RUN groupadd -r notify && useradd -r -g notify notify && chown -R notify:notify /home/vcap
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  groupadd -r notify; \
+  useradd -r -g notify notify; \
+  chown -R notify:notify /home/vcap
+
 USER notify
 
-RUN mkdir /home/vcap/logs
-
 COPY --from=python_build --chown=root:root /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
 
 COPY --chown=notify:notify app app
 COPY --chown=notify:notify migrations migrations
@@ -109,9 +124,14 @@ COPY --chown=notify:notify templates templates
 COPY --chown=notify:notify run_celery.py gunicorn_config.py application.py entrypoint.sh ./
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 
-RUN python -m compileall . && \
-    chown -R notify:notify /home/vcap/app && \
-    chmod +x /home/vcap/app/entrypoint.sh
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  uv run -m compileall . -j1; \
+  chown -R notify:notify /home/vcap/app; \
+  chmod +x /home/vcap/app/entrypoint.sh
 
 ENTRYPOINT [ "/home/vcap/app/entrypoint.sh" ]
 
