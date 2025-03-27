@@ -7,7 +7,7 @@ ARG SOURCE_DATE_EPOCH=1742169600  # auto-update: should match that of debian bas
 
 FROM ghcr.io/astral-sh/uv:${UV_IMAGE_TAG} AS uv
 
-######
+##### Base Image #############################################################
 FROM debian:${DEBIAN_BASE_IMAGE_TAG} AS base
 
 SHELL ["/bin/bash", "-c"]
@@ -197,22 +197,25 @@ RUN --mount=type=tmpfs,target=/tmp \
 # abandon hopes of reproducibility past this point
 
 # Add the gpg key for postgresql package repository
-RUN set -x \
-    && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$POSTGRES_REPO_KEY" \
-    && gpg --batch --export "$POSTGRES_REPO_KEY" > /etc/apt/trusted.gpg.d/postgres.gpg \
-    && command -v gpgconf > /dev/null && gpgconf --kill all \
-    &&rm -rf "$GNUPGHOME" \
-    && apt-key list
-
-# Install postgres
-RUN \
-    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main $POSTGRES_VERSION" > /etc/apt/sources.list.d/pgdg.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        postgresql-$POSTGRES_VERSION \
-    && rm -rf /var/lib/apt/lists/* /tmp/*
-
-RUN \
-    service postgresql start \
-    && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\""
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Add the gpg key for postgresql package repository"; \
+  export GNUPGHOME="$(mktemp -d)"; \
+  gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$POSTGRES_REPO_KEY"; \
+  gpg --batch --export "$POSTGRES_REPO_KEY" > /etc/apt/trusted.gpg.d/postgres.gpg; \
+  command -v gpgconf > /dev/null; \
+  gpgconf --kill all; \
+  apt-key list; \
+  \
+  echo "Install postgresql"; \
+  echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main $POSTGRES_VERSION" > /etc/apt/sources.list.d/pgdg.list; \
+  apt update; \
+  apt install -y --no-install-recommends \
+    postgresql-$POSTGRES_VERSION; \
+  \
+  echo "Setup postgresql user"; \
+  service postgresql start; \
+  su - postgres -c "psql -c \"alter user postgres with password 'postgres';\""
