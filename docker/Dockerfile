@@ -1,6 +1,6 @@
 ARG UV_IMAGE_TAG=0.5.28  # auto-update
 ARG DEBIAN_BASE_IMAGE_TAG=bookworm-20250317-slim  # auto-update
-ARG UPDATED_SNAPSHOT_TIMESTAMP=20250325T000000Z  # auto-update
+ARG UPDATED_SNAPSHOT_TIMESTAMP=20250327T000000Z  # auto-update
 # SOURCE_DATE_EPOCH needs to be explicitly listed in build command to have desired effect, included
 # here for reference
 ARG SOURCE_DATE_EPOCH=1742169600  # auto-update: should match that of debian base image's original snapshot
