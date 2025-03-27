@@ -1,19 +1,19 @@
-ARG UV_VERSION=0.5.28  # auto-update
-ARG DEBIAN_BASE_TAG=bookworm-20250317-slim  # auto-update
-ARG NEW_SNAPSHOT_TIMESTAMP=20250325T000000Z  # auto-update
+ARG UV_IMAGE_TAG=0.5.28  # auto-update
+ARG DEBIAN_BASE_IMAGE_TAG=bookworm-20250317-slim  # auto-update
+ARG UPDATED_SNAPSHOT_TIMESTAMP=20250325T000000Z  # auto-update
 # SOURCE_DATE_EPOCH needs to be explicitly listed in build command to have desired effect, included
 # here for reference
 ARG SOURCE_DATE_EPOCH=1742169600  # auto-update: should match that of debian base image's original snapshot
 
-FROM ghcr.io/astral-sh/uv:${UV_VERSION} as uv
+FROM ghcr.io/astral-sh/uv:${UV_IMAGE_TAG} AS uv
 
 ######
-FROM debian:${DEBIAN_BASE_TAG} AS base
+FROM debian:${DEBIAN_BASE_IMAGE_TAG} AS base
 
 SHELL ["/bin/bash", "-c"]
 
 ARG SOURCE_DATE_EPOCH
-ARG NEW_SNAPSHOT_TIMESTAMP
+ARG UPDATED_SNAPSHOT_TIMESTAMP
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
@@ -25,7 +25,7 @@ RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=tmpfs,target=/var/log \
   set -eux; \
   ! sed -E "/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources; \
-  sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1${NEW_SNAPSHOT_TIMESTAMP}/g" /etc/apt/sources.list.d/debian.sources; \
+  sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1${UPDATED_SNAPSHOT_TIMESTAMP}/g" /etc/apt/sources.list.d/debian.sources; \
   ! sed -E "/^URIs: http:.*deb.debian.org.*$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \
   sed -i -E "s/^URIs: http:.*deb.debian.org.*$/# \\0/g" /etc/apt/sources.list.d/debian.sources; \
   mkdir -p /etc/apt/apt.conf.d; \
@@ -139,79 +139,62 @@ ENTRYPOINT [ "/home/vcap/app/entrypoint.sh" ]
 FROM production AS test
 
 USER root
-RUN echo "Install OS dependencies for test build" && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-      sudo \
-      make \
-      curl \
-      git && \
-    apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
-RUN usermod -aG sudo notify
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-USER notify
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Install OS dependencies for test build"; \
+  apt update; \
+  apt install -y --no-install-recommends \
+    sudo \
+    make \
+    curl \
+    git; \
+  usermod -aG sudo notify; \
+  echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# Make sure the app/ directory is there so that "make bootstrap" can create app/version.py
-RUN mkdir -p app
+USER notify
 
 # Copying to overwrite is faster than RUN chown notify:notify ...
 COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
 COPY --chown=notify:notify Makefile requirements_for_test.txt ./
-ENV UV_CACHE_DIR='/tmp/uv-cache/'
-RUN make bootstrap
+
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Installing python requirements for test"; \
+  uv pip sync requirements_for_test.txt
 
 COPY --chown=notify:notify . .
 
 ##### Concourse Test Image ##############################################################
-FROM production AS concourse_tests
-
-SHELL ["/bin/bash", "-c"]
-
-USER root
-RUN echo "Install OS dependencies for test build" && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-      sudo \
-      libcurl4-openssl-dev \
-      libssl-dev \
-      make \
-      git && \
-    apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
-RUN usermod -aG sudo notify
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-USER notify
-
-# Make sure the app/ directory is there so that "make bootstrap" can create app/version.py
-RUN mkdir -p app
-
-# Copying to overwrite is faster than RUN chown notify:notify ...
-COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
-
-# Install dev/test requirements
-COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
-COPY --chown=notify:notify . .
+FROM test AS concourse_tests
 
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
-
-ENV UV_CACHE_DIR='/tmp/uv-cache/'
-RUN uv pip sync requirements_for_test.txt
+ENV POSTGRES_VERSION=15
+ENV POSTGRES_REPO_KEY=B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
 
 USER root
-
-ENV POSTGRES_VERSION=15 \
-    POSTGRES_REPO_KEY=B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
-
-RUN \
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
-        gnupg \
-        lsb-release
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Install postgresql dependencies"; \
+  apt update; \
+  apt install -y --no-install-recommends \
+    gnupg \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    lsb-release
 
 # Installation of postgres is based on https://github.com/docker-library/postgres/blob/0d0485cb02e526f5a240b7740b46c35404aaf13f/9.6/Dockerfile
+# abandon hopes of reproducibility past this point
 
 # Add the gpg key for postgresql package repository
 RUN set -x \
