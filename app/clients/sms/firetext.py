@@ -56,6 +56,7 @@ class FiretextClient(SmsClient):
         self.international_api_key = self.current_app.config.get("FIRETEXT_INTERNATIONAL_API_KEY")
         self.url = self.current_app.config.get("FIRETEXT_URL")
         self.receipt_url = self.current_app.config.get("FIRETEXT_RECEIPT_URL")
+        self.requests_session = requests.Session()
 
     def try_send_sms(self, to, content, reference, international, sender):
         data = {
