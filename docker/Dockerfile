@@ -4,6 +4,7 @@ ARG UPDATED_SNAPSHOT_TIMESTAMP=20250327T000000Z  # auto-update
 # SOURCE_DATE_EPOCH needs to be explicitly listed in build command to have desired effect, included
 # here for reference
 ARG SOURCE_DATE_EPOCH=1742169600  # auto-update: should match that of debian base image's original snapshot
+ARG CONCOURSE_TESTS_POSTGRES_VERSION=15
 
 FROM ghcr.io/astral-sh/uv:${UV_IMAGE_TAG} AS uv
 
@@ -105,6 +106,8 @@ RUN make generate-version-file  # This file gets copied across
 ##### Production Image #######################################################
 FROM base AS production
 
+ARG SOURCE_DATE_EPOCH
+
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/cache,sharing=private \
     --mount=type=cache,target=/var/lib/apt,sharing=private \
@@ -137,6 +140,8 @@ ENTRYPOINT [ "/home/vcap/app/entrypoint.sh" ]
 
 ##### Test Image ##############################################################
 FROM production AS test
+
+ARG SOURCE_DATE_EPOCH
 
 USER root
 RUN --mount=type=tmpfs,target=/tmp \
@@ -175,8 +180,11 @@ COPY --chown=notify:notify . .
 ##### Concourse Test Image ##############################################################
 FROM test AS concourse_tests
 
+ARG CONCOURSE_TESTS_POSTGRES_VERSION
+ARG SOURCE_DATE_EPOCH
+
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
-ENV POSTGRES_VERSION=15
+ENV POSTGRES_VERSION=${CONCOURSE_TESTS_POSTGRES_VERSION}
 ENV POSTGRES_REPO_KEY=B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
 
 USER root
