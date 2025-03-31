@@ -27,10 +27,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 
-# debian images are built from debian snapshots, but in the final build stage the original snapshot
-# repo is commented out and replaced with the "rolling" repo url. reverse this and also update the
-# snapshot timestamp to UPDATED_SNAPSHOT_TIMESTAMP, first checking each pattern we're looking for
-# can actually be found.
+# official debian images are built from debian snapshots, but in their final build stage the original
+# snapshot repo is commented out and replaced with the "rolling" repo url. reverse this and also update
+# the snapshot timestamp to UPDATED_SNAPSHOT_TIMESTAMP, first checking each pattern we're looking for
+# can actually be found to avoid silent failures.
 # also flip a couple of apt options we will need/want.
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/cache,sharing=private \
