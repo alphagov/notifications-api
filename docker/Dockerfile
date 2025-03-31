@@ -74,7 +74,7 @@ ENV VIRTUAL_ENV="/opt/venv"
 ENV PATH="${UV_PYTHON_INSTALL_DIR}/bin:${VIRTUAL_ENV}/bin:${PATH}"
 
 # use uv to provide our python distribution - this is probably our best bet of getting a reproducible
-# python, though there are no guarantees
+# python outside a real distribution package, though there are no guarantees
 COPY .python-version .
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/cache,sharing=private \
