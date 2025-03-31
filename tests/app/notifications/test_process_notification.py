@@ -404,9 +404,9 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
     [
         ("7900900123", False, "44", 1),  # UK
         ("+447900900123", False, "44", 1),  # UK
-        ("07797292290", True, "44", 1),  # UK (Jersey)
-        ("74957108855", True, "7", 4),  # Russia
-        ("360623400400", True, "36", 3),
+        ("07797292290", True, "44", 2),  # UK (Jersey)
+        ("74957108855", True, "7", 10),  # Russia
+        ("360623400400", True, "36", 2),
     ],  # Hungary
 )
 def test_persist_notification_with_international_info_stores_correct_info(
