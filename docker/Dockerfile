@@ -1,8 +1,15 @@
+# arguably these image tags could instead be exposed as full image reference strings, allowing customization
+# of repo url and also flexibility to specify strongly pinned images via @sha256:... syntax, but the result
+# may be less readable
 ARG UV_IMAGE_TAG=0.5.28  # auto-update
 ARG DEBIAN_BASE_IMAGE_TAG=bookworm-20250317-slim  # auto-update
+# debian releases new base images a bit too slow for our liking so we'll probably want to upgrade
+# each one to a slightly more recent snapshot timestamp
 ARG UPDATED_SNAPSHOT_TIMESTAMP=20250327T000000Z  # auto-update
 # SOURCE_DATE_EPOCH needs to be explicitly listed in build command to have desired effect, included
-# here for reference
+# here for reference. this is widely recognized as an environment variable telling built tools to
+# any embedded fields that would contain timestamps to use this as that timestamp, docker uses it
+# to set a layer's file timestamps when building in rewrite-timestamp mode
 ARG SOURCE_DATE_EPOCH=1742169600  # auto-update: should match that of debian base image's original snapshot
 ARG CONCOURSE_TESTS_POSTGRES_VERSION=15
 
@@ -20,6 +27,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 
+# debian images are built from debian snapshots, but in the final build stage the original snapshot
+# repo is commented out and replaced with the "rolling" repo url. reverse this and also update the
+# snapshot timestamp to UPDATED_SNAPSHOT_TIMESTAMP.
+# also flip a couple of apt options we will need/want.
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/cache,sharing=private \
     --mount=type=cache,target=/var/lib/apt,sharing=private \
@@ -33,6 +44,8 @@ RUN --mount=type=tmpfs,target=/tmp \
   echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/10-nocheckvalid; \
   echo "Binary::apt::APT::Keep-Downloaded-Packages true;" >> /etc/apt/apt.conf.d/20-keepcache
 
+# first upgrade the base snapshot's packages to UPDATED_SNAPSHOT_TIMESTAMP then install a few
+# dependencies we're going to need
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/cache,sharing=private \
     --mount=type=cache,target=/var/lib/apt,sharing=private \
@@ -47,6 +60,7 @@ RUN --mount=type=tmpfs,target=/tmp \
     libcurl4 \
     curl
 
+# install uv from its image and set related options we'll need
 COPY --from=uv /uv /uvx /bin/
 ENV UV_CACHE_DIR="/tmp/uv-cache/"
 ENV UV_COMPILE_BYTECODE=1
@@ -58,6 +72,8 @@ ENV PYTHONUNBUFFERED=1
 ENV VIRTUAL_ENV="/opt/venv"
 ENV PATH="${UV_PYTHON_INSTALL_DIR}/bin:${VIRTUAL_ENV}/bin:${PATH}"
 
+# use uv to provide our python distribution - this is probably our best bet of getting a reproducible
+# python, though there are no guarantees
 COPY .python-version .
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/cache,sharing=private \
@@ -127,6 +143,8 @@ COPY --chown=notify:notify templates templates
 COPY --chown=notify:notify run_celery.py gunicorn_config.py application.py entrypoint.sh ./
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 
+# compile the bytecode of our own app code (using compileall's -j1 for reproducibility)
+# and ensuring permisssions are set up correctly
 RUN --mount=type=tmpfs,target=/tmp \
     --mount=type=cache,target=/var/cache,sharing=private \
     --mount=type=cache,target=/var/lib/apt,sharing=private \
