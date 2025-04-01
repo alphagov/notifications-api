@@ -386,3 +386,6 @@ REPORT_REQUEST_STATUS_TYPES = [
     REPORT_REQUEST_FAILED,
     REPORT_REQUEST_DELETED,
 ]
+
+# Request report types
+NOTIFICATION_REPORT = "notifications_report"

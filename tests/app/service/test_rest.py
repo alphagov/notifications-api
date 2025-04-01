@@ -22,6 +22,8 @@ from app.constants import (
     LETTER_TYPE,
     NOTIFICATION_RETURNED_LETTER,
     NOTIFICATION_TYPES,
+    REPORT_REQUEST_NOTIFICATIONS,
+    REPORT_REQUEST_PENDING,
     SERVICE_JOIN_REQUEST_APPROVED,
     SERVICE_JOIN_REQUEST_CANCELLED,
     SERVICE_JOIN_REQUEST_PENDING,
@@ -4396,3 +4398,84 @@ def test_get_report_request_by_id(admin_request, sample_service, sample_report_r
     assert json_resp["data"]["user_id"] == str(sample_report_request.user_id)
     assert json_resp["data"]["updated_at"] is None
     assert json_resp["data"]["created_at"] is not None
+
+
+@pytest.mark.parametrize(
+    "data, error_type, error_message",
+    [
+        (
+            {},
+            "ValidationError",
+            "user_id is a required property",
+        ),
+        (
+            {"user_id": "test_id"},
+            "ValidationError",
+            "user_id badly formed hexadecimal UUID string",
+        ),
+        (
+            {"user_id": str(uuid.uuid4())},
+            "ValidationError",
+            "report_type is a required property",
+        ),
+        (
+            {"user_id": str(uuid.uuid4()), "report_type": "test_report"},
+            "ValidationError",
+            "report_type test_report is not one of [notifications_report]",
+        ),
+        (
+            {"user_id": str(uuid.uuid4()), "report_type": "notifications_report", "notification_type": "test_type"},
+            "ValidationError",
+            "notification_type test_type is not one of [email, sms, letter]",
+        ),
+        (
+            {"user_id": str(uuid.uuid4()), "report_type": "notifications_report", "notification_status": "test_status"},
+            "ValidationError",
+            "notification_status test_status is not one of [all, sending, delivered, failed]",
+        ),
+    ],
+)
+def test_create_report_request_should_return_validation_error(
+    admin_request, sample_service, data, error_type, error_message
+):
+    json_resp = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=str(sample_service.id),
+        _data=data,
+        _expected_status=400,
+    )
+
+    assert json_resp["errors"][0]["error"] == error_type
+    assert json_resp["errors"][0]["message"] == error_message
+
+
+@pytest.mark.parametrize(
+    "notification_type, notification_status",
+    [
+        ("email", "all"),
+        ("sms", "failed"),
+        ("letter", "sending"),
+    ],
+)
+def test_create_report_request(admin_request, sample_service, notification_type, notification_status):
+    json_resp = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=str(sample_service.id),
+        _data={
+            "user_id": str(sample_service.created_by_id),
+            "report_type": "notifications_report",
+            "notification_type": notification_type,
+            "notification_status": notification_status,
+        },
+        _expected_status=201,
+    )
+
+    assert json_resp["data"]["id"]
+    assert json_resp["data"]["parameter"]["notification_type"] == notification_type
+    assert json_resp["data"]["parameter"]["notification_status"] == notification_status
+    assert json_resp["data"]["report_type"] == REPORT_REQUEST_NOTIFICATIONS
+    assert json_resp["data"]["status"] == REPORT_REQUEST_PENDING
+    assert json_resp["data"]["user_id"] == str(sample_service.created_by_id)
+    assert json_resp["data"]["service_id"] == str(sample_service.id)
+    assert not json_resp["data"]["updated_at"]
+    assert json_resp["data"]["created_at"]
