@@ -30,6 +30,7 @@ register_errors(service_callback_blueprint)
 @service_callback_blueprint.route("/inbound-api", methods=["POST"])
 @service_callback_blueprint.route("/delivery-receipt-api", methods=["POST"])
 @service_callback_blueprint.route("/returned-letter-api", methods=["POST"])
+@service_callback_blueprint.route("/callback-api", methods=["POST"])
 def create_service_callback_api(service_id):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
@@ -56,6 +57,7 @@ def create_service_callback_api(service_id):
 @service_callback_blueprint.route("/inbound-api/<uuid:callback_api_id>", methods=["POST"])
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["POST"])
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["POST"])
+@service_callback_blueprint.route("/callback-api/<uuid:callback_api_id>", methods=["POST"])
 def update_service_callback_api(callback_api_id, service_id):
     data = request.get_json()
     validate(data, update_service_callback_api_schema)
@@ -80,6 +82,7 @@ def update_service_callback_api(callback_api_id, service_id):
 @service_callback_blueprint.route("/inbound-api/<uuid:callback_api_id>", methods=["GET"])
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["GET"])
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["GET"])
+@service_callback_blueprint.route("/callback-api/<uuid:callback_api_id>", methods=["GET"])
 def fetch_service_callback_api(callback_api_id, service_id):
     callback_type = request.args.get("callback_type")
     if callback_type == ServiceCallbackTypes.inbound_sms.value:
@@ -100,6 +103,7 @@ REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES = {
 @service_callback_blueprint.route("/inbound-api/<uuid:callback_api_id>", methods=["DELETE"])
 @service_callback_blueprint.route("/delivery-receipt-api/<uuid:callback_api_id>", methods=["DELETE"])
 @service_callback_blueprint.route("/returned-letter-api/<uuid:callback_api_id>", methods=["DELETE"])
+@service_callback_blueprint.route("/callback-api/<uuid:callback_api_id>", methods=["DELETE"])
 def remove_service_callback_api(callback_api_id, service_id):
     callback_type = request.args.get("callback_type")
     if callback_type == ServiceCallbackTypes.inbound_sms.value:
