@@ -1,13 +1,21 @@
+from abc import ABC, abstractmethod
+
+
 class ClientException(Exception):
     """
     Base Exceptions for sending notifications that fail
     """
 
 
-class Client:
+class Client(ABC):
     """
     Base client for sending notifications.
     """
+
+    @property
+    @abstractmethod
+    def name(self):
+        pass
 
 
 STATISTICS_REQUESTED = "requested"
