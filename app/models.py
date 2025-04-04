@@ -369,6 +369,7 @@ class OrganisationPermission(db.Model):
         unique=False,
         nullable=False,
     )
+    __table_args__ = (UniqueConstraint("organisation_id", "permission", name="uix_organisation_permission"),)
 
 
 class OrganisationUserPermissions(db.Model):
