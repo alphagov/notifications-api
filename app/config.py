@@ -54,6 +54,13 @@ class QueueNames:
             QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
         ]
 
+    @staticmethod
+    def predefined_queues(aws_region, aws_account_id):
+        return {
+            queue: {"url": f"https://sqs.{aws_region}.amazonaws.com/{aws_account_id}/{queue}"}
+            for queue in QueueNames.all_queues()
+        }
+
 
 class BroadcastProvider:
     EE = "ee"
@@ -212,6 +219,7 @@ class Config:
     DVLA_EMAIL_ADDRESSES = json.loads(os.environ.get("DVLA_EMAIL_ADDRESSES", "[]"))
     NOTIFY_SUPPORT_EMAIL_ADDRESS = "gov-uk-notify-support@digital.cabinet-office.gov.uk"
 
+    AWS_ACCOUNT_ID = os.environ.get("AWS_ACCOUNT_ID", "123456789012")
     CELERY = {
         "broker_url": "https://sqs.eu-west-1.amazonaws.com",
         "broker_transport": "sqs",
@@ -220,6 +228,7 @@ class Config:
             "visibility_timeout": 310,
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
             "is_secure": True,
+            "predefined_queues": QueueNames.predefined_queues(AWS_REGION, AWS_ACCOUNT_ID),
         },
         "result_expires": 0,
         "timezone": "UTC",
@@ -501,6 +510,14 @@ class Development(Config):
     DEBUG = True
     SQLALCHEMY_ECHO = False
 
+    CELERY = {
+        **Config.CELERY,
+        "broker_transport_options": {
+            **Config.CELERY["broker_transport_options"],
+            "predefined_queues": None,
+        },
+    }
+
     SERVER_NAME = os.getenv("SERVER_NAME")
 
     REDIS_ENABLED = os.getenv("REDIS_ENABLED") == "1"
@@ -564,7 +581,15 @@ class Test(Development):
     # but the database name is set in the _notify_db fixture
     SQLALCHEMY_RECORD_QUERIES = True
 
-    CELERY = {**Config.CELERY, "broker_url": "you-forgot-to-mock-celery-in-your-tests://", "broker_transport": None}
+    CELERY = {
+        **Config.CELERY,
+        "broker_url": "you-forgot-to-mock-celery-in-your-tests://",
+        "broker_transport": None,
+        "broker_transport_options": {
+            **Config.CELERY["broker_transport_options"],
+            "predefined_queues": None,
+        },
+    }
 
     ANTIVIRUS_ENABLED = True
 
