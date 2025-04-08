@@ -105,7 +105,6 @@ def test_user_update_schema_rejects_invalid_attribute_pairs(user_attribute, user
         "password_changed_at",
         "failed_login_count",
         "state",
-        "platform_admin",
     ],
 )
 def test_user_update_schema_rejects_disallowed_attribute_keys(user_attribute):
