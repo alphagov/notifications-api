@@ -21,6 +21,8 @@ from app.constants import (
     MOBILE_TYPE,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_TYPES,
+    REPORT_REQUEST_NOTIFICATIONS,
+    REPORT_REQUEST_PENDING,
     SERVICE_JOIN_REQUEST_APPROVED,
 )
 from app.dao import fact_billing_dao, fact_notification_status_dao, notifications_dao
@@ -41,7 +43,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range,
 )
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
-from app.dao.report_requests_dao import dao_get_report_request_by_id
+from app.dao.report_requests_dao import dao_create_report_request, dao_get_report_request_by_id
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -124,6 +126,7 @@ from app.models import (
     EmailBranding,
     LetterBranding,
     Permission,
+    ReportRequest,
     Service,
     ServiceContactList,
     Template,
@@ -144,6 +147,7 @@ from app.schemas import (
     service_schema,
 )
 from app.service import statistics
+from app.service.report_request_schema import add_report_request_schema
 from app.service.send_notification import (
     send_one_off_notification,
     send_pdf_letter_notification,
@@ -1419,3 +1423,31 @@ def _fetch_returned_letter_data(service_id, report_date):
 def get_report_request_by_id(service_id, request_id):
     request = dao_get_report_request_by_id(service_id, request_id)
     return jsonify(data=request.serialize())
+
+
+@service_blueprint.route("/<uuid:service_id>/report-request", methods=["POST"])
+def create_report_request_by_type(service_id):
+    req_json = request.get_json()
+    form = validate(request.get_json(), add_report_request_schema)
+    report_type = req_json.get("report_type", None)
+
+    if report_type == "notifications_report":
+        notification_status = form.get("notification_status")
+        notification_type = form.get("notification_type")
+        parameter = {"notification_type": notification_type, "notification_status": notification_status}
+        report_type = REPORT_REQUEST_NOTIFICATIONS
+
+    try:
+        user_id = req_json.get("user_id")
+        report_request = ReportRequest(
+            user_id=user_id,
+            service_id=service_id,
+            report_type=report_type,
+            status=REPORT_REQUEST_PENDING,
+            parameter=parameter,
+        )
+        dao_create_report_request(report_request)
+        return jsonify(data=report_request.serialize()), 201
+
+    except ValueError as err:
+        raise InvalidRequest(message=f"{err}", status_code=400) from err
