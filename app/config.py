@@ -54,11 +54,18 @@ class QueueNames:
             QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
         ]
 
+    def non_api_queues():
+        return [
+            QueueNames.ANTIVIRUS,
+            QueueNames.SANITISE_LETTERS,
+            QueueNames.GOVUK_ALERTS,
+        ]
+
     @staticmethod
     def predefined_queues(prefix, aws_region, aws_account_id):
         return {
             f"{prefix}{queue}": {"url": f"https://sqs.{aws_region}.amazonaws.com/{aws_account_id}/{prefix}{queue}"}
-            for queue in QueueNames.all_queues()
+            for queue in list(set(QueueNames.all_queues() + QueueNames.non_api_queues()))
         }
 
 
