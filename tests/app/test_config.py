@@ -53,8 +53,8 @@ def test_no_celery_beat_tasks_scheduled_over_midnight_between_timezones(notify_a
 
 
 def test_sqlalchemy_config(notify_api, notify_db_session):
-    timeout = notify_db_session.execute("show statement_timeout").scalar()
-    assert timeout == "20min"
+    assert notify_db_session.execute("show transaction_timeout").scalar() == "20min"
+    assert notify_db_session.execute("show statement_timeout").scalar() == "20min"
     assert notify_api.config["SQLALCHEMY_ENGINE_OPTIONS"]["connect_args"]["options"] == "-c statement_timeout=1200000"
 
     assert db.engine.pool.size() == notify_api.config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_size"]
