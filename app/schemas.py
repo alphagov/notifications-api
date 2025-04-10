@@ -149,7 +149,6 @@ class UserUpdateAttributeSchema(BaseSchema):
             "id",
             "logged_in_at",
             "password_changed_at",
-            "platform_admin",
             "state",
             "updated_at",
             "verify_codes",
@@ -175,6 +174,11 @@ class UserUpdateAttributeSchema(BaseSchema):
                 number.validate(allow_international_number=True)
         except InvalidPhoneError as error:
             raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
+
+    @validates("platform_admin")
+    def validate_platform_admin(self, value):
+        if value is not False:
+            raise ValidationError(f"Cannot set platform_admin to {value}")
 
     @validates_schema(pass_original=True)
     def check_unknown_fields(self, data, original_data, **kwargs):
