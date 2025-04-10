@@ -543,9 +543,6 @@ class Service(db.Model, Versioned):
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
-    letter_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
-    sms_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
-    email_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
     created_by = db.relationship("User", foreign_keys=[created_by_id])
@@ -559,10 +556,20 @@ class Service(db.Model, Versioned):
     crown = db.Column(db.Boolean, index=False, nullable=True)
     rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
     contact_link = db.Column(db.String(255), nullable=True, unique=False)
+
+    letter_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
+    sms_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
+    international_sms_message_limit = db.Column(
+        db.BigInteger, index=False, unique=False, nullable=False, default=250_000
+    )
+    email_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
+
     volume_sms = db.Column(db.Integer(), nullable=True, unique=False)
     volume_email = db.Column(db.Integer(), nullable=True, unique=False)
     volume_letter = db.Column(db.Integer(), nullable=True, unique=False)
+
     consent_to_research = db.Column(db.Boolean, nullable=True)
+
     count_as_live = db.Column(db.Boolean, nullable=False, default=True)
     go_live_user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
     go_live_user = db.relationship("User", foreign_keys=[go_live_user_id])
