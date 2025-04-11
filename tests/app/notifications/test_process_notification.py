@@ -261,7 +261,7 @@ def test_persist_notification_increments_cache_for_trial_or_live_service(
 
 @pytest.mark.parametrize("restricted_service", [True, False])
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
+def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exist(
     notify_api, notify_db_session, mocker, restricted_service
 ):
     service = create_service(restricted=restricted_service)
@@ -285,6 +285,62 @@ def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
         assert mock_set.call_args_list == [
             mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400),
             mocker.call(f"{service.id}-sms-2016-01-01-count", 1, ex=86400),
+        ]
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_increments_cache_for_international_sms(notify_api, notify_db_session, mocker):
+    service = create_service()
+    template = create_template(service=service, template_type="sms")
+    api_key = create_api_key(service=service)
+    mocker.patch("app.notifications.process_notifications.redis_store.get", return_value=1)
+    mock_incr = mocker.patch("app.notifications.process_notifications.redis_store.incr")
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient="+48697894064",
+            service=template.service,
+            personalisation={},
+            notification_type="sms",
+            api_key_id=api_key.id,
+            key_type=api_key.key_type,
+            reference="ref2",
+        )
+
+        assert mock_incr.call_args_list == [
+            mocker.call(f"{service.id}-2016-01-01-count"),
+            mocker.call(f"{service.id}-sms-2016-01-01-count"),
+            mocker.call(f"{service.id}-international-sms-2016-01-01-count"),
+        ]
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_increments_cache_for_international_sms_if_the_cache_does_not_exist(
+    notify_api, notify_db_session, mocker
+):
+    service = create_service()
+    template = create_template(service=service, template_type="sms")
+    api_key = create_api_key(service=service)
+    mocker.patch("app.notifications.process_notifications.redis_store.get", return_value=None)
+    mock_set = mocker.patch("app.notifications.process_notifications.redis_store.set")
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient="+48697894064",
+            service=template.service,
+            personalisation={},
+            notification_type="sms",
+            api_key_id=api_key.id,
+            key_type=api_key.key_type,
+            reference="ref2",
+        )
+
+        assert mock_set.call_args_list == [
+            mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400),
+            mocker.call(f"{service.id}-sms-2016-01-01-count", 1, ex=86400),
+            mocker.call(f"{service.id}-international-sms-2016-01-01-count", 1, ex=86400),
         ]
 
 
