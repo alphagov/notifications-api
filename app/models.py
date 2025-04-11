@@ -77,7 +77,6 @@ from app.hashing import check_hash, hashpw
 from app.history_meta import Versioned
 from app.utils import (
     DATETIME_FORMAT,
-    DATETIME_FORMAT_NO_TIMEZONE,
     dict_filter,
     get_dt_string_or_none,
     get_london_midnight_in_utc,
@@ -201,7 +200,7 @@ class User(db.Model):
             "logged_in_at": get_dt_string_or_none(self.logged_in_at),
             "mobile_number": self.mobile_number,
             "organisations": [x.id for x in self.organisations if x.active],
-            "password_changed_at": self.password_changed_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
+            "password_changed_at": self.password_changed_at.strftime(DATETIME_FORMAT),
             "permissions": self.get_permissions(),
             "organisation_permissions": self.get_organisation_permissions(),
             "platform_admin": self.platform_admin,

@@ -9,7 +9,7 @@ from app.dao.uploads_dao import (
 )
 from app.errors import register_errors
 from app.schemas import notification_with_template_schema
-from app.utils import pagination_links
+from app.utils import DATETIME_FORMAT, pagination_links
 
 upload_blueprint = Blueprint("upload", __name__, url_prefix="/service/<uuid:service_id>/upload")
 
@@ -37,9 +37,9 @@ def get_paginated_uploads(service_id, limit_days, page):
             "original_file_name": upload.original_file_name,
             "notification_count": upload.notification_count,
             "created_at": (
-                upload.scheduled_for.strftime("%Y-%m-%d %H:%M:%S")
+                upload.scheduled_for.strftime(DATETIME_FORMAT)
                 if upload.scheduled_for
-                else upload.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                else upload.created_at.strftime(DATETIME_FORMAT)
             ),
             "upload_type": upload.upload_type,
             "template_type": upload.template_type,

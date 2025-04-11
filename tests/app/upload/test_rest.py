@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from freezegun import freeze_time
 
 from app.constants import JOB_STATUS_FINISHED, JOB_STATUS_PENDING, LETTER_TYPE
+from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_ft_notification_status,
     create_job,
@@ -81,7 +82,7 @@ def test_get_uploads(admin_request, sample_template, mocker):
         "recipient": None,
         "notification_count": 10,
         "template_type": "sms",
-        "created_at": upload_5.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": upload_5.created_at.strftime(DATETIME_FORMAT),
         "statistics": [],
         "upload_type": "job",
     }
@@ -91,7 +92,7 @@ def test_get_uploads(admin_request, sample_template, mocker):
         "recipient": None,
         "notification_count": 2,
         "template_type": "letter",
-        "created_at": upload_4.created_at.replace(hour=17, minute=30).strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": upload_4.created_at.replace(hour=17, minute=30).strftime(DATETIME_FORMAT),
         "statistics": [],
         "upload_type": "letter_day",
     }
@@ -101,7 +102,7 @@ def test_get_uploads(admin_request, sample_template, mocker):
         "recipient": None,
         "notification_count": 1,
         "template_type": "sms",
-        "created_at": upload_2.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": upload_2.created_at.strftime(DATETIME_FORMAT),
         "statistics": [],
         "upload_type": "job",
     }
