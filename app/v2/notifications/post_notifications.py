@@ -177,7 +177,7 @@ def process_sms_or_email_notification(
         send_to=form_send_to, key_type=api_user.key_type, service=service, notification_type=notification_type
     )
 
-    # Do not persist or send notification to the queue if it is a simulated recipient
+    # Do not send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
 
     personalisation, document_download_count = process_document_uploads(
