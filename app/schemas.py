@@ -24,7 +24,7 @@ import app.constants
 from app import db, ma, models
 from app.dao.permissions_dao import permission_dao
 from app.models import ServicePermission
-from app.utils import DATETIME_FORMAT_NO_TIMEZONE, parse_and_format_phone_number
+from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, parse_and_format_phone_number
 
 
 def _validate_positive_number(value, msg="Not a positive integer"):
@@ -39,16 +39,15 @@ def _validate_positive_number(value, msg="Not a positive integer"):
 class FlexibleDateTime(fields.DateTime):
     """
     Allows input data to not contain tz info.
-    Outputs data using the output format that marshmallow version 2 used to use, OLD_MARSHMALLOW_FORMAT
+    Outputs data using our standard format
     """
 
     DEFAULT_FORMAT = "flexible"
-    OLD_MARSHMALLOW_FORMAT = "%Y-%m-%dT%H:%M:%S+00:00"
 
     def __init__(self, *args, allow_none=True, **kwargs):
         super().__init__(*args, allow_none=allow_none, **kwargs)
         self.DESERIALIZATION_FUNCS["flexible"] = parse
-        self.SERIALIZATION_FUNCS["flexible"] = lambda x: x.strftime(self.OLD_MARSHMALLOW_FORMAT)
+        self.SERIALIZATION_FUNCS["flexible"] = lambda x: x.strftime(DATETIME_FORMAT)
 
 
 class UUIDsAsStringsMixin:
