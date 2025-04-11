@@ -138,22 +138,27 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
     service_can_send_to_recipient(send_to, key_type, service, allow_guest_list_recipients)
 
     if notification_type == SMS_TYPE:
-        try:
-            phone_number = PhoneNumber(send_to)
-            phone_number.validate(
-                allow_international_number=service.has_permission(INTERNATIONAL_SMS_TYPE),
-                allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
-            )
-            return phone_number.get_normalised_format()
-        except InvalidPhoneError as e:
-            # only show "Not a UK mobile" error when a service tries to send to landline and is not allowed
-            # in all other cases show "Cannot send to international mobile numbers"
-            if e.code == InvalidPhoneError.Codes.NOT_A_UK_MOBILE and is_international_number(phone_number):
-                raise BadRequestError(message="Cannot send to international mobile numbers") from e
-            else:
-                raise
+        return validate_and_return_extended_phone_number_info(service, send_to)
     elif notification_type == EMAIL_TYPE:
         return validate_and_format_email_address(email_address=send_to)
+
+
+def validate_and_return_extended_phone_number_info(service, send_to):
+    try:
+        phone_number = PhoneNumber(send_to)
+        phone_number.validate(
+            allow_international_number=service.has_permission(INTERNATIONAL_SMS_TYPE),
+            allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
+        )
+
+        return phone_number.get_normalised_format()
+    except InvalidPhoneError as e:
+        # only show "Not a UK mobile" error when a service tries to send to landline and is not allowed
+        # in all other cases show "Cannot send to international mobile numbers"
+        if e.code == InvalidPhoneError.Codes.NOT_A_UK_MOBILE and is_international_number(phone_number):
+            raise BadRequestError(message="Cannot send to international mobile numbers") from e
+        else:
+            raise
 
 
 def is_international_number(phone_number):
