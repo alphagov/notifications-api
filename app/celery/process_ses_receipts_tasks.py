@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 import iso8601
@@ -18,7 +19,9 @@ from app.notifications.notifications_ses_callback import (
 )
 
 
-@notify_celery.task(bind=True, name="process-ses-result", max_retries=5, default_retry_delay=300)
+@notify_celery.task(
+    bind=True, name="process-ses-result", max_retries=5, default_retry_delay=300, early_log_level=logging.DEBUG
+)
 def process_ses_results(self, response):
     try:
         ses_message = json.loads(response["Message"])
