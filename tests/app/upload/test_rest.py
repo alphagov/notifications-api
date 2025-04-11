@@ -268,10 +268,10 @@ def test_get_uploaded_letters_by_print_date(admin_request, sample_template):
     assert len(resp_json["notifications"]) == 2
 
     assert resp_json["notifications"][0]["id"] == str(letter_1.id)
-    assert resp_json["notifications"][0]["created_at"] == letter_1.created_at.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    assert resp_json["notifications"][0]["created_at"] == letter_1.created_at.strftime("%Y-%m-%dT%H:%M:%S.000000Z")
 
     assert resp_json["notifications"][1]["id"] == str(letter_2.id)
-    assert resp_json["notifications"][1]["created_at"] == letter_2.created_at.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    assert resp_json["notifications"][1]["created_at"] == letter_2.created_at.strftime("%Y-%m-%dT%H:%M:%S.000000Z")
 
 
 @freeze_time("2020-02-02 14:00")

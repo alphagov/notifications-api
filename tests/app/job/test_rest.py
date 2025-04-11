@@ -4,7 +4,6 @@ from datetime import date, datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
-import pytz
 from freezegun import freeze_time
 
 import app.celery.tasks
@@ -228,7 +227,7 @@ def test_create_scheduled_job(client, sample_template, mocker, mock_celery_task,
     resp_json = json.loads(response.get_data(as_text=True))
 
     assert resp_json["data"]["id"] == fake_uuid
-    assert resp_json["data"]["scheduled_for"] == datetime(2016, 1, 5, 11, 59, 0, tzinfo=pytz.UTC).isoformat()
+    assert resp_json["data"]["scheduled_for"] == "2016-01-05T11:59:00.000000Z"
     assert resp_json["data"]["job_status"] == "scheduled"
     assert resp_json["data"]["template"] == str(sample_template.id)
     assert resp_json["data"]["original_file_name"] == "thisisatest.csv"
@@ -714,7 +713,7 @@ def test_get_jobs(admin_request, sample_template, mocker):
     assert len(resp_json["data"]) == 5
     assert resp_json["data"][0] == {
         "archived": False,
-        "created_at": "2017-07-17T07:17:00+00:00",
+        "created_at": "2017-07-17T07:17:00.000000Z",
         "created_by": {
             "id": ANY,
             "name": "Test User",
@@ -841,8 +840,8 @@ def test_get_jobs_should_paginate(admin_request, sample_template, mocker):
     with set_config(admin_request.app, "PAGE_SIZE", 2):
         resp_json = admin_request.get("job.get_jobs_by_service", service_id=sample_template.service_id)
 
-    assert resp_json["data"][0]["created_at"] == "2015-01-01T10:00:00+00:00"
-    assert resp_json["data"][1]["created_at"] == "2015-01-01T09:00:00+00:00"
+    assert resp_json["data"][0]["created_at"] == "2015-01-01T10:00:00.000000Z"
+    assert resp_json["data"][1]["created_at"] == "2015-01-01T09:00:00.000000Z"
     assert resp_json["page_size"] == 2
     assert resp_json["total"] == 10
     assert "links" in resp_json
@@ -859,8 +858,8 @@ def test_get_jobs_accepts_page_parameter(admin_request, sample_template, mocker)
     with set_config(admin_request.app, "PAGE_SIZE", 2):
         resp_json = admin_request.get("job.get_jobs_by_service", service_id=sample_template.service_id, page=2)
 
-    assert resp_json["data"][0]["created_at"] == "2015-01-01T08:00:00+00:00"
-    assert resp_json["data"][1]["created_at"] == "2015-01-01T07:00:00+00:00"
+    assert resp_json["data"][0]["created_at"] == "2015-01-01T08:00:00.000000Z"
+    assert resp_json["data"][1]["created_at"] == "2015-01-01T07:00:00.000000Z"
     assert resp_json["page_size"] == 2
     assert resp_json["total"] == 10
     assert "links" in resp_json
