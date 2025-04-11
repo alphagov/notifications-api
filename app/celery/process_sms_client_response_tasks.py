@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 
@@ -21,7 +22,9 @@ sms_response_mapper = {
 }
 
 
-@notify_celery.task(bind=True, name="process-sms-client-response", max_retries=5, default_retry_delay=300)
+@notify_celery.task(
+    bind=True, name="process-sms-client-response", max_retries=5, default_retry_delay=300, early_log_level=logging.DEBUG
+)
 def process_sms_client_response(self, status, provider_reference, client_name, detailed_status_code=None):
     # validate reference
     try:
