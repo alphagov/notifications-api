@@ -45,7 +45,7 @@ dvla_letter_callback_schema = {
                             {
                                 "properties": {
                                     "key": {"const": "postageClass"},
-                                    "value": {"enum": ["1ST", "2ND", "INTERNATIONAL"]},
+                                    "value": {"enum": ["1ST", "2ND", "ECONOMY", "INTERNATIONAL"]},
                                 }
                             },
                             {
@@ -182,6 +182,8 @@ def extract_properties_from_request(request_data) -> LetterUpdate:
 def _get_cost_threshold(mailing_product: str, postage: str) -> LetterCostThreshold:
     if mailing_product == "MM" and postage == "2ND":
         return LetterCostThreshold("sorted")
+
+    # TODO: verify economy mail mailing product
 
     return LetterCostThreshold("unsorted")
 
