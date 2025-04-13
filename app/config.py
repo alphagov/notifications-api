@@ -491,6 +491,8 @@ class Config:
     CHECK_SLOW_TEXT_MESSAGE_DELIVERY = os.environ.get("CHECK_SLOW_TEXT_MESSAGE_DELIVERY", "0") == "1"
     WEEKLY_USER_RESEARCH_EMAIL_ENABLED = os.environ.get("WEEKLY_USER_RESEARCH_EMAIL_ENABLED", "0") == "1"
 
+    REPORT_REQUEST_NOTIFICATIONS_TIMEOUT_MINUTES = 30
+
 
 ######################
 # Config overrides ###
