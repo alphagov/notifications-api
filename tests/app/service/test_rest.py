@@ -4014,10 +4014,20 @@ def test_get_service_join_request_success(admin_request):
         _expected_status=200,
     )
 
-    assert resp["contacted_service_users"] is not None
-    assert resp["status"] == SERVICE_JOIN_REQUEST_PENDING
     assert resp["id"] == request_id
+    assert resp["service_id"] == str(service_id)
     assert resp["created_at"] is not None
+    assert resp["status"] == SERVICE_JOIN_REQUEST_PENDING
+    assert resp["status_changed_by"] is None
+    assert resp["requester"] == {
+        "id": str(requester_id),
+        "name": "Requester User",
+        "belongs_to_service": [],
+        "email_address": f"{requester_id}@digital.cabinet-office.gov.uk",
+    }
+    assert resp["status_changed_at"] is None
+    assert resp["reason"] is None
+    assert resp["contacted_service_users"] == [str(contacted_user)]
 
 
 @pytest.mark.parametrize(

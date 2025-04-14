@@ -141,8 +141,6 @@ def request_invite_to_service(service_id, user_to_invite_id):
     if user_requesting_invite.services and service in user_requesting_invite.services:
         raise BadRequestError(400, "user-already-in-service")
 
-    # Temporary logic to capture the request
-    # Once the join service request flow is completed this needs to be refactored
     created_service_join_request = dao_create_service_join_request(
         requester_id=user_to_invite_id,
         service_id=service_id,

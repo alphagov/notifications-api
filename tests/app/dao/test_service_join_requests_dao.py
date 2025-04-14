@@ -20,7 +20,7 @@ from tests.app.db import create_service, create_user
 
 
 def setup_service_join_request_test_data(
-    service_id: uuid4(), requester_id: uuid4(), contacted_user_ids: list[uuid4()]
+    service_id: uuid4, requester_id: uuid4, contacted_user_ids: list[uuid4]
 ) -> tuple[User, list[User]]:
     """Helper function to create service, requester, and contacted users."""
     create_service(service_id=service_id, service_name=f"Service Requester Wants To Join {service_id}")
