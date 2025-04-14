@@ -11,7 +11,7 @@ from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.returned_letters_dao import fetch_returned_letter_callback_data_dao
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
-from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
+from app.utils import DATETIME_FORMAT
 
 # thread-local copies of persistent requests.Session
 _requests_session_context_var: ContextVar[requests.Session] = ContextVar("service_callback_requests_session")
@@ -203,7 +203,7 @@ def create_returned_letter_callback_data(notification_id, service_id, service_ca
     data = {
         "notification_id": str(returned_letter_data["notification_id"]),
         "reference": returned_letter_data["client_reference"] if returned_letter_data["api_key_id"] else None,
-        "created_at": returned_letter_data["created_at"].strftime(DATETIME_FORMAT_NO_TIMEZONE),
+        "created_at": returned_letter_data["created_at"].strftime(DATETIME_FORMAT),
         "email_address": returned_letter_data["email_address"] or "API",
         # it doesn't make sense to show hidden/precompiled templates
         "template_name": returned_letter_data["template_name"] if not returned_letter_data["hidden"] else None,

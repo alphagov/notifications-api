@@ -365,7 +365,7 @@ def test_get_service_by_id_returns_go_live_user_and_go_live_at(admin_request, sa
     service = create_service(user=sample_user, go_live_user=sample_user, go_live_at=now)
     json_resp = admin_request.get("service.get_service_by_id", service_id=service.id)
     assert json_resp["data"]["go_live_user"] == str(sample_user.id)
-    assert json_resp["data"]["go_live_at"] == str(now)
+    assert json_resp["data"]["go_live_at"] == now.strftime(DATETIME_FORMAT)
 
 
 @pytest.mark.parametrize(
@@ -3317,7 +3317,7 @@ def test_get_returned_letter_statistics(admin_request, sample_service):
 
     response = admin_request.get("service.returned_letter_statistics", service_id=sample_service.id)
 
-    assert response == {"returned_letter_count": 3, "most_recent_report": "2019-12-10 00:00:00.000000"}
+    assert response == {"returned_letter_count": 3, "most_recent_report": "2019-12-10T00:00:00.000000Z"}
 
 
 @freeze_time("2019-12-11 13:30")
@@ -3335,7 +3335,7 @@ def test_get_returned_letter_statistics_with_old_returned_letters(
 
     assert admin_request.get("service.returned_letter_statistics", service_id=sample_service.id) == {
         "returned_letter_count": 0,
-        "most_recent_report": "2019-12-03 00:00:00.000000",
+        "most_recent_report": "2019-12-03T00:00:00.000000Z",
     }
 
     assert count_mock.called is False
@@ -3449,7 +3449,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[0]["notification_id"] == str(letter_from_job.id)
     assert not response[0]["client_reference"]
     assert response[0]["reported_at"] == "2019-12-11"
-    assert response[0]["created_at"] == "2019-12-10 13:30:00.000000"
+    assert response[0]["created_at"] == "2019-12-10T13:30:00.000000Z"
     assert response[0]["template_name"] == sample_letter_template.name
     assert response[0]["template_id"] == str(sample_letter_template.id)
     assert response[0]["template_version"] == sample_letter_template.version
@@ -3461,7 +3461,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[1]["notification_id"] == str(one_off_letter.id)
     assert not response[1]["client_reference"]
     assert response[1]["reported_at"] == "2019-12-11"
-    assert response[1]["created_at"] == "2019-12-09 13:30:00.000000"
+    assert response[1]["created_at"] == "2019-12-09T13:30:00.000000Z"
     assert response[1]["template_name"] == sample_letter_template.name
     assert response[1]["template_id"] == str(sample_letter_template.id)
     assert response[1]["template_version"] == sample_letter_template.version
@@ -3473,7 +3473,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[2]["notification_id"] == str(api_letter.id)
     assert response[2]["client_reference"] == "api_letter"
     assert response[2]["reported_at"] == "2019-12-11"
-    assert response[2]["created_at"] == "2019-12-08 13:30:00.000000"
+    assert response[2]["created_at"] == "2019-12-08T13:30:00.000000Z"
     assert response[2]["template_name"] == sample_letter_template.name
     assert response[2]["template_id"] == str(sample_letter_template.id)
     assert response[2]["template_version"] == sample_letter_template.version
@@ -3485,7 +3485,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[3]["notification_id"] == str(precompiled_letter.id)
     assert response[3]["client_reference"] == "precompiled letter"
     assert response[3]["reported_at"] == "2019-12-11"
-    assert response[3]["created_at"] == "2019-12-07 13:30:00.000000"
+    assert response[3]["created_at"] == "2019-12-07T13:30:00.000000Z"
     assert not response[3]["template_name"]
     assert not response[3]["template_id"]
     assert not response[3]["template_version"]
@@ -3497,7 +3497,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[4]["notification_id"] == str(uploaded_letter.id)
     assert not response[4]["client_reference"]
     assert response[4]["reported_at"] == "2019-12-11"
-    assert response[4]["created_at"] == "2019-12-06 13:30:00.000000"
+    assert response[4]["created_at"] == "2019-12-06T13:30:00.000000Z"
     assert not response[4]["template_name"]
     assert not response[4]["template_id"]
     assert not response[4]["template_version"]
