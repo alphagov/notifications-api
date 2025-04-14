@@ -1488,6 +1488,7 @@ def test_get_service_and_api_key_history(notify_api, sample_service, sample_api_
             assert json_resp["data"]["api_key_history"][0]["id"] == str(sample_api_key.id)
 
 
+@freeze_time("2025-01-02T03:04:05")
 def test_get_all_notifications_for_service_in_order(client, notify_db_session):
     service_1 = create_service(service_name="1")
     service_2 = create_service(service_name="2")
@@ -1511,6 +1512,9 @@ def test_get_all_notifications_for_service_in_order(client, notify_db_session):
     assert resp["notifications"][0]["to"] == notification_3.to
     assert resp["notifications"][1]["to"] == notification_2.to
     assert resp["notifications"][2]["to"] == notification_1.to
+    assert resp["notifications"][0]["created_at"] == "2025-01-02T03:04:05.000000Z"
+    assert resp["notifications"][1]["created_at"] == "2025-01-02T03:04:05.000000Z"
+    assert resp["notifications"][2]["created_at"] == "2025-01-02T03:04:05.000000Z"
     assert response.status_code == 200
 
 
