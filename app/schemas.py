@@ -24,7 +24,7 @@ import app.constants
 from app import db, ma, models
 from app.dao.permissions_dao import permission_dao
 from app.models import ServicePermission
-from app.utils import DATETIME_FORMAT, parse_and_format_phone_number
+from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, parse_and_format_phone_number
 
 
 def _validate_positive_number(value, msg="Not a positive integer"):
@@ -87,8 +87,8 @@ class BaseSchema(ma.SQLAlchemyAutoSchema):
 
 class UserSchema(BaseSchema):
     permissions = fields.Method("user_permissions", dump_only=True)
-    password_changed_at = field_for(models.User, "password_changed_at", format=DATETIME_FORMAT)
-    created_at = field_for(models.User, "created_at", format=DATETIME_FORMAT)
+    password_changed_at = field_for(models.User, "password_changed_at", format=DATETIME_FORMAT_NO_TIMEZONE)
+    created_at = field_for(models.User, "created_at", format=DATETIME_FORMAT_NO_TIMEZONE)
     updated_at = FlexibleDateTime()
     logged_in_at = FlexibleDateTime()
     auth_type = field_for(models.User, "auth_type")
@@ -223,7 +223,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     email_message_limit = field_for(models.Service, "email_message_limit", required=True)
     sms_message_limit = field_for(models.Service, "sms_message_limit", required=True)
     letter_message_limit = field_for(models.Service, "letter_message_limit", required=True)
-    go_live_at = field_for(models.Service, "go_live_at", format=DATETIME_FORMAT)
+    go_live_at = field_for(models.Service, "go_live_at", format=DATETIME_FORMAT_NO_TIMEZONE)
     allowed_broadcast_provider = fields.Method(dump_only=True, serialize="_get_allowed_broadcast_provider")
     broadcast_channel = fields.Method(dump_only=True, serialize="_get_broadcast_channel")
     name = fields.String(required=True)
@@ -484,7 +484,7 @@ class TemplateHistorySchema(BaseSchema):
     letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
 
     created_by = fields.Nested(UserSchema, only=["id", "name", "email_address"], dump_only=True)
-    created_at = field_for(models.Template, "created_at", format=DATETIME_FORMAT)
+    created_at = field_for(models.Template, "created_at", format=DATETIME_FORMAT_NO_TIMEZONE)
     updated_at = FlexibleDateTime()
 
     def get_reply_to(self, template):

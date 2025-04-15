@@ -4,7 +4,6 @@ from datetime import date, datetime
 from flask import url_for
 
 from app.dao.templates_dao import dao_update_template
-from app.utils import DATETIME_FORMAT
 from tests import create_admin_authorization_header
 from tests.app.db import create_letter_contact
 
@@ -28,7 +27,7 @@ def test_template_history_version(notify_api, sample_user, sample_template):
             assert json_resp["data"]["process_type"] == "normal"
             assert json_resp["data"]["created_by"]["name"] == sample_user.name
             assert json_resp["data"]["is_precompiled_letter"] is False
-            assert datetime.strptime(json_resp["data"]["created_at"], DATETIME_FORMAT).date() == date.today()
+            assert datetime.strptime(json_resp["data"]["created_at"], "%Y-%m-%d %H:%M:%S.%f").date() == date.today()
 
 
 def test_previous_template_history_version(notify_api, sample_template):

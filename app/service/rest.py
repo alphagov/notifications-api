@@ -171,7 +171,7 @@ from app.service.utils import get_guest_list_objects
 from app.user.users_schema import post_set_permissions_schema
 from app.utils import (
     DATE_FORMAT,
-    DATETIME_FORMAT,
+    DATETIME_FORMAT_NO_TIMEZONE,
     get_prev_next_pagination_links,
     midnight_n_days_ago,
     utc_string_to_bst_string,
@@ -1092,7 +1092,7 @@ def returned_letter_statistics(service_id):
         return jsonify(
             {
                 "returned_letter_count": 0,
-                "most_recent_report": most_recent.reported_at.strftime(DATETIME_FORMAT),
+                "most_recent_report": most_recent.reported_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
             }
         )
 
@@ -1101,7 +1101,7 @@ def returned_letter_statistics(service_id):
     return jsonify(
         {
             "returned_letter_count": count.returned_letter_count,
-            "most_recent_report": most_recent.reported_at.strftime(DATETIME_FORMAT),
+            "most_recent_report": most_recent.reported_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
         }
     )
 
@@ -1402,7 +1402,7 @@ def _fetch_returned_letter_data(service_id, report_date):
             # client reference can only be added on API letters
             "client_reference": x.client_reference if x.api_key_id else None,
             "reported_at": x.reported_at.strftime(DATE_FORMAT),
-            "created_at": x.created_at.strftime(DATETIME_FORMAT),
+            "created_at": x.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
             # it doesn't make sense to show hidden/precompiled templates
             "template_name": x.template_name if not x.hidden else None,
             "template_id": x.template_id if not x.hidden else None,
