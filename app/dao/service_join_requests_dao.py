@@ -14,12 +14,9 @@ from app.models import ServiceJoinRequest, User
 
 @autocommit
 def dao_create_service_join_request(
-    requester_id: UUID, service_id: UUID, contacted_user_ids: list[UUID]
+    requester_id: UUID, service_id: UUID, contacted_user_ids: list[UUID], reason: str | None
 ) -> ServiceJoinRequest:
-    new_request = ServiceJoinRequest(
-        requester_id=requester_id,
-        service_id=service_id,
-    )
+    new_request = ServiceJoinRequest(requester_id=requester_id, service_id=service_id, reason=reason)
 
     contacted_users = User.query.filter(User.id.in_(contacted_user_ids)).all()
     new_request.contacted_service_users.extend(contacted_users)

@@ -7,7 +7,7 @@ from freezegun import freeze_time
 from notifications_utils.url_safe_token import generate_token
 
 from app.celery.provider_tasks import deliver_email
-from app.constants import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE
+from app.constants import EMAIL_AUTH_TYPE, SERVICE_JOIN_REQUEST_PENDING, SMS_AUTH_TYPE
 from app.models import Notification, ServiceJoinRequest
 from tests import create_admin_authorization_header
 from tests.app.db import create_invited_user, create_permissions, create_service, create_user
@@ -292,6 +292,43 @@ def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, fake_uuid):
     assert json_resp["result"] == "error"
 
 
+@pytest.mark.parametrize("reason", [None, "I need access"])
+def test_request_invite_to_service_saves_join_request(admin_request, sample_service, reason, mocker):
+    mocker.patch("app.service_invite.rest.send_service_invite_request")
+    mocker.patch("app.service_invite.rest.send_receipt_after_sending_request_invite_letter")
+
+    user_requesting_invite = create_user(email_address="requester@example.gov.uk")
+
+    service_manager_1 = create_user(name="Manager 1", email_address="manager.1@example.gov.uk")
+    service_manager_2 = create_user(name="Manager 2", email_address="manager.2@example.gov.uk")
+    service_manager_1.services = [sample_service]
+    service_manager_2.services = [sample_service]
+    create_permissions(service_manager_1, sample_service, "manage_settings")
+    create_permissions(service_manager_2, sample_service, "manage_settings")
+
+    data = {
+        "service_managers_ids": [str(service_manager_1.id), str(service_manager_2.id)],
+        "reason": reason,
+        "invite_link_host": current_app.config["ADMIN_BASE_URL"],
+    }
+    admin_request.post(
+        "service_invite.request_invite_to_service",
+        service_id=sample_service.id,
+        user_to_invite_id=user_requesting_invite.id,
+        _data=data,
+        _expected_status=204,
+    )
+    join_request = ServiceJoinRequest.query.one()
+
+    assert join_request.requester_id == user_requesting_invite.id
+    assert join_request.service_id == sample_service.id
+    assert join_request.created_at
+    assert join_request.status == SERVICE_JOIN_REQUEST_PENDING
+    assert not join_request.status_changed_at
+    assert not join_request.status_changed_by_id
+    assert join_request.reason == reason
+
+
 @pytest.mark.parametrize(
     "reason, expected_reason_given, expected_reason",
     (
@@ -380,6 +417,7 @@ def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
 
     assert join_request.service_id == sample_service.id
     assert len(join_request.contacted_service_users) == 3
+    assert join_request.reason == reason
 
     # Request invite notification
     assert len(service_manager_1_notification.personalisation) == 7

@@ -1298,6 +1298,7 @@ def create_service_join_request(service_id: uuid.UUID):
         requester_id=data["requester_id"],
         service_id=service_id,
         contacted_user_ids=data["contacted_user_ids"],
+        reason=data.get("reason"),
     )
 
     return jsonify({"service_join_request_id": str(new_request.id)}), 201
