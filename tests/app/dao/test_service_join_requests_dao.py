@@ -2,6 +2,7 @@ from collections import namedtuple
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.constants import (
     SERVICE_JOIN_REQUEST_APPROVED,
@@ -13,6 +14,7 @@ from app.dao.service_join_requests_dao import (
     dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
     dao_get_service_join_request_by_id,
+    dao_get_service_join_request_by_id_and_service_id,
     dao_update_service_join_request,
 )
 from app.models import ServiceJoinRequest, User
@@ -20,7 +22,7 @@ from tests.app.db import create_service, create_user
 
 
 def setup_service_join_request_test_data(
-    service_id: uuid4(), requester_id: uuid4(), contacted_user_ids: list[uuid4()]
+    service_id: uuid4, requester_id: uuid4, contacted_user_ids: list[uuid4]
 ) -> tuple[User, list[User]]:
     """Helper function to create service, requester, and contacted users."""
     create_service(service_id=service_id, service_name=f"Service Requester Wants To Join {service_id}")
@@ -151,6 +153,59 @@ def test_get_service_join_request_by_id_not_found(notify_db_session):
     retrieved_request = dao_get_service_join_request_by_id(non_existent_id)
 
     assert retrieved_request is None
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        ServiceJoinRequestTestCase(
+            requester_id=uuid4(),
+            service_id=uuid4(),
+            contacted_user_ids=[],
+            expected_num_contacts=0,
+        ),
+        ServiceJoinRequestTestCase(
+            requester_id=uuid4(),
+            service_id=uuid4(),
+            contacted_user_ids=[uuid4(), uuid4()],
+            expected_num_contacts=2,
+        ),
+        ServiceJoinRequestTestCase(
+            requester_id=uuid4(),
+            service_id=uuid4(),
+            contacted_user_ids=[uuid4()],
+            expected_num_contacts=1,
+        ),
+    ],
+    ids=["no_contacts", "two_contacts", "one_contact"],
+)
+def test_dao_get_service_join_request_by_id_and_service_id(notify_db_session, test_case):
+    contacted_user = setup_service_join_request_test_data(
+        test_case.service_id, test_case.requester_id, test_case.contacted_user_ids
+    )
+
+    request = dao_create_service_join_request(
+        requester_id=test_case.requester_id,
+        service_id=test_case.service_id,
+        contacted_user_ids=test_case.contacted_user_ids,
+    )
+
+    retrieved_request = dao_get_service_join_request_by_id_and_service_id(
+        request_id=request.id, service_id=test_case.service_id
+    )
+
+    assert retrieved_request.id == request.id
+    assert retrieved_request.requester.id == test_case.requester_id
+    assert retrieved_request.service_id == test_case.service_id
+    assert len(retrieved_request.contacted_service_users) == test_case.expected_num_contacts
+
+    for user in contacted_user:
+        assert user in retrieved_request.contacted_service_users
+
+
+def test_dao_get_service_join_request_by_id_and_service_id_raise_error_if_no_result_found(sample_service):
+    with pytest.raises(SQLAlchemyError):
+        dao_get_service_join_request_by_id_and_service_id(request_id=uuid4(), service_id=sample_service.created_by_id)
 
 
 @pytest.mark.parametrize(

@@ -4024,6 +4024,47 @@ def test_get_service_join_request_success(admin_request):
     assert resp["created_at"] is not None
 
 
+def test_get_service_join_request_by_id(admin_request, sample_service):
+    requester = create_user(email="requester@gov.uk")
+    approver = create_user()
+
+    join_request = dao_create_service_join_request(requester.id, sample_service.id, [approver.id])
+
+    response = admin_request.get(
+        "service.get_service_join_request_by_id",
+        service_id=sample_service.id,
+        request_id=join_request.id,
+    )
+
+    assert response["id"] == str(join_request.id)
+    assert response["service_id"] == str(sample_service.id)
+    assert response["created_at"] is not None
+    assert response["status"] == "pending"
+    assert response["status_changed_by"] is None
+    assert response["requester"] == {
+        "id": str(requester.id),
+        "name": "Test User",
+        "belongs_to_service": [],
+        "email_address": "requester@gov.uk",
+    }
+    assert response["status_changed_at"] is None
+    assert response["reason"] is None
+    assert response["contacted_service_users"] == [str(approver.id)]
+
+
+def test_get_service_join_request_by_id_when_request_is_not_found(admin_request, sample_service, fake_uuid):
+    create_user(email="requester@gov.uk")
+
+    response = admin_request.get(
+        "service.get_service_join_request_by_id",
+        service_id=sample_service.id,
+        request_id=fake_uuid,
+        _expected_status=404,
+    )
+
+    assert response["message"] == "No result found"
+
+
 @pytest.mark.parametrize(
     "status_changed_by_id, permissions, status, reason, expected_error",
     [

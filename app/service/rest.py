@@ -79,6 +79,7 @@ from app.dao.service_join_requests_dao import (
     dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
     dao_get_service_join_request_by_id,
+    dao_get_service_join_request_by_id_and_service_id,
     dao_update_service_join_request,
 )
 from app.dao.service_letter_contact_dao import (
@@ -1309,6 +1310,15 @@ def get_service_join_request(request_id: uuid.UUID):
 
     if not service_join_request:
         raise InvalidRequest(message=f"Service join request with ID {request_id} not found.", status_code=404)
+
+    return jsonify(service_join_request.serialize()), 200
+
+
+@service_blueprint.route("/<uuid:service_id>/service-join-request/<uuid:request_id>", methods=["GET"])
+def get_service_join_request_by_id(service_id: uuid.UUID, request_id: uuid.UUID):
+    service_join_request = dao_get_service_join_request_by_id_and_service_id(
+        request_id=request_id, service_id=service_id
+    )
 
     return jsonify(service_join_request.serialize()), 200
 
