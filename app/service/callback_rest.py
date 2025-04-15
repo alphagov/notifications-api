@@ -34,21 +34,24 @@ def create_service_callback_api(service_id):
     callback_type = data["callback_type"]
     data["service_id"] = service_id
 
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        del data["callback_type"]  # ServiceInboundApi doesn't have this attribute
-        callback_api = ServiceInboundApi(**data)
-        save_callback_api_method = save_service_inbound_api
-        error_message = "service_inbound_api"
-    else:
-        callback_api = ServiceCallbackApi(**data)
-        save_callback_api_method = save_service_callback_api
-        error_message = "service_callback_api"
-
+    service_callback_api = ServiceCallbackApi(**data)
+    error_message = "service_callback_api"
     try:
-        save_callback_api_method(callback_api)
+        save_service_callback_api(service_callback_api)
     except SQLAlchemyError as e:
         return handle_sql_error(e, error_message)
-    return jsonify(data=callback_api.serialize()), 201
+
+    # TODO remove this if statement once service_inbound_api has been merged into service_callback_api
+    if callback_type == ServiceCallbackTypes.inbound_sms.value:
+        del data["callback_type"]  # ServiceInboundApi doesn't have this attribute
+        error_message = "service_inbound_api"
+        inbound_sms_callback_api = ServiceInboundApi(**data)
+        try:
+            save_service_inbound_api(inbound_sms_callback_api)
+        except SQLAlchemyError as e:
+            return handle_sql_error(e, error_message)
+
+    return jsonify(data=service_callback_api.serialize()), 201
 
 
 @service_callback_blueprint.route("/callback-api/<uuid:callback_api_id>", methods=["POST"])

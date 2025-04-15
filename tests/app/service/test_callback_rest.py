@@ -35,6 +35,26 @@ def test_create_service_callback_api(admin_request, sample_service, callback_typ
     assert not resp_json["updated_at"]
 
 
+def test_create_service_callback_api_writes_to_both_callback_tables_for_inbound_sms(admin_request, sample_service):
+    data = {
+        "url": "https://some_service/inbound-sms",
+        "bearer_token": "some-unique-string",
+        "updated_by_id": str(sample_service.users[0].id),
+        "callback_type": ServiceCallbackTypes.inbound_sms.value,
+    }
+
+    admin_request.post(
+        "service_callback.create_service_callback_api", service_id=sample_service.id, _data=data, _expected_status=201
+    )
+
+    service_inbound_api_object = ServiceInboundApi.query.one()
+    service_callback_api_object = ServiceCallbackApi.query.one()
+
+    assert service_inbound_api_object.url == service_callback_api_object.url
+    assert service_inbound_api_object.bearer_token == service_callback_api_object.bearer_token
+    assert service_callback_api_object.callback_type == ServiceCallbackTypes.inbound_sms.value
+
+
 @pytest.mark.parametrize(
     "callback_type, path",
     [
