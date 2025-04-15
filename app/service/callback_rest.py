@@ -115,18 +115,26 @@ REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES = {
 def remove_service_callback_api(callback_api_id, service_id):
     callback_type = request.args.get("callback_type")
     if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        callback_api = get_service_inbound_api(callback_api_id, service_id)
-        delete_callback_api_method = delete_service_inbound_api
+        service_inbound_api = get_service_inbound_api(callback_api_id, service_id)
+        if not service_inbound_api:
+            error = REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES[callback_type]
+            raise InvalidRequest(error, status_code=404)
+        delete_service_inbound_api(service_inbound_api)
+
+        service_callback_api = get_service_callback_api_by_callback_type(service_id, callback_type)
+        if service_callback_api:
+            # It is possible there would be no inbound_sms callback data in the service_callback_api table,
+            # during this transition stage. In such a case we do not want to raise an error. At this stage we
+            # are more interested in service_inbound_api errors.
+            delete_service_callback_api(service_callback_api)
+        return "", 204
     else:
         callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
-        delete_callback_api_method = delete_service_callback_api
-
-    if not callback_api:
-        error = REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES[callback_type]
-        raise InvalidRequest(error, status_code=404)
-
-    delete_callback_api_method(callback_api)
-    return "", 204
+        if not callback_api:
+            error = REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES[callback_type]
+            raise InvalidRequest(error, status_code=404)
+        delete_service_callback_api(callback_api)
+        return "", 204
 
 
 def handle_sql_error(e, table_name):

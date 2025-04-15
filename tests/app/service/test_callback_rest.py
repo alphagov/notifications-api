@@ -222,6 +222,7 @@ def test_fetch_service_inbound_api(admin_request, sample_service):
 def test_delete_service_callback_api(admin_request, sample_service, callback_type):
     if callback_type == ServiceCallbackTypes.inbound_sms.value:
         service_callback_api = create_service_inbound_api(sample_service)
+        create_service_callback_api(callback_type=callback_type, service=sample_service)
         response = admin_request.delete(
             "service_callback.remove_service_callback_api",
             service_id=sample_service.id,
@@ -230,6 +231,7 @@ def test_delete_service_callback_api(admin_request, sample_service, callback_typ
         )
         assert response is None
         assert ServiceInboundApi.query.count() == 0
+        assert ServiceCallbackApi.query.count() == 0
     else:
         service_callback_api = create_service_callback_api(callback_type=callback_type, service=sample_service)
         response = admin_request.delete(
@@ -240,3 +242,20 @@ def test_delete_service_callback_api(admin_request, sample_service, callback_typ
         )
         assert response is None
         assert ServiceCallbackApi.query.count() == 0
+
+
+def test_delete_service_callback_api_for_inbound_sms_when_callback_data_not_in_service_callback_api_table(
+    admin_request, sample_service
+):
+    # Test case for when the callback data is only present in the service_inbound_api table and not
+    # in the service_callback_api table. This test confirms that no errors are raised and that the callback
+    # data in the service_inbound_api table is deleted successfully.
+    callback_api = create_service_inbound_api(sample_service)
+
+    admin_request.delete(
+        "service_callback.remove_service_callback_api",
+        service_id=sample_service.id,
+        callback_api_id=callback_api.id,
+        callback_type=ServiceCallbackTypes.inbound_sms.value,
+    )
+    assert ServiceInboundApi.query.count() == 0
