@@ -5,6 +5,7 @@ from app.constants import ServiceCallbackTypes
 from app.dao.service_callback_api_dao import (
     delete_service_callback_api,
     get_service_callback_api,
+    get_service_callback_api_by_callback_type,
     reset_service_callback_api,
     save_service_callback_api,
 )
@@ -61,19 +62,35 @@ def update_service_callback_api(callback_api_id, service_id):
     callback_type = data["callback_type"]
 
     if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        to_update = get_service_inbound_api(callback_api_id, service_id)
-        reset_callback_api_method = reset_service_inbound_api
+        inbound_sms_update = get_service_inbound_api(callback_api_id, service_id)
+        reset_service_inbound_api(
+            inbound_sms_update,
+            data["updated_by_id"],
+            data.get("url", None),
+            data.get("bearer_token", None),
+        )
+        # The callback_api_id for inbound_sms is retrieved from the service_inbound_api table and
+        # won't be applicable to the service_callback_api table. Since both tables are being written to
+        # the callback_api entry in the service_callback_api is also retrieved and updated. However, there will
+        # callback_data in the service_inbound_api table that won't exist in the service_callback_api table
+        if service_callback_update := get_service_callback_api_by_callback_type(service_id, callback_type):
+            reset_service_callback_api(
+                service_callback_update,
+                data["updated_by_id"],
+                data.get("url", None),
+                data.get("bearer_token", None),
+            )
+        return jsonify(data=inbound_sms_update.serialize()), 200
+
     else:
         to_update = get_service_callback_api(callback_api_id, service_id, callback_type)
-        reset_callback_api_method = reset_service_callback_api
-
-    reset_callback_api_method(
-        to_update,
-        data["updated_by_id"],
-        data.get("url", None),
-        data.get("bearer_token", None),
-    )
-    return jsonify(data=to_update.serialize()), 200
+        reset_service_callback_api(
+            to_update,
+            data["updated_by_id"],
+            data.get("url", None),
+            data.get("bearer_token", None),
+        )
+        return jsonify(data=to_update.serialize()), 200
 
 
 @service_callback_blueprint.route("/callback-api/<uuid:callback_api_id>", methods=["GET"])
