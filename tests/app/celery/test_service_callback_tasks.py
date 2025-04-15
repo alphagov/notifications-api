@@ -22,7 +22,7 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     NOTIFICATION_RETURNED_LETTER,
 )
-from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
+from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_api_key,
     create_complaint,
@@ -252,7 +252,7 @@ def test_send_returned_letter_to_service_sends_callback_to_service(
     expected_data = {
         "notification_id": str(notification.id),
         "reference": notification.client_reference,
-        "date_sent": notification.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
+        "date_sent": notification.created_at.strftime(DATETIME_FORMAT),
         "sent_by": sample_letter_template.service.users[0].email_address,
         "template_name": sample_letter_template.name,
         "template_id": str(sample_letter_template.id),
