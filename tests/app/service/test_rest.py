@@ -75,6 +75,7 @@ from tests.app.db import (
     create_notification,
     create_notification_history,
     create_organisation,
+    create_permissions,
     create_reply_to_email,
     create_returned_letter,
     create_service,
@@ -3975,25 +3976,216 @@ def test_create_service_join_request_when_there_is_a_validation_error(
     assert resp["errors"][0]["message"] == test_case.expected_response
 
 
-def test_create_service_join_request_creates_join_request(admin_request, notify_db_session, mocker):
-    service_id = uuid.uuid4()
-    requester_id = uuid.uuid4()
-    contacted_user_id = uuid.uuid4()
+def test_create_service_join_request_creates_join_request(admin_request, sample_service, mocker):
+    mock_send_invite = mocker.patch("app.service.rest.send_service_invite_request")
+    mock_send_receipt = mocker.patch("app.service.rest.send_receipt_after_sending_request_invite_letter")
 
-    setup_service_join_request_test_data(service_id, requester_id, [contacted_user_id])
+    requester = create_user(name="Requester", email_address="requester@gov.uk")
+    contacted_user = create_user(name="Service Manager", email_address="manager@gov.uk")
+    invite_host = "www"
 
     response = admin_request.post(
         "service.create_service_join_request",
-        service_id=str(service_id),
+        service_id=str(sample_service.id),
         _data={
-            "requester_id": str(requester_id),
-            "contacted_user_ids": [str(contacted_user_id)],
-            "invite_link_host": "www",
+            "requester_id": str(requester.id),
+            "contacted_user_ids": [str(contacted_user.id)],
+            "invite_link_host": invite_host,
         },
         _expected_status=201,
     )
 
     assert response == {"service_join_request_id": mocker.ANY}
+    mock_send_invite.assert_called_once_with(
+        requester,
+        [contacted_user],
+        sample_service,
+        None,
+        f"{invite_host}/services/{sample_service.id}/join-request/{response['service_join_request_id']}/approve",
+    )
+    mock_send_receipt.assert_called_once_with(
+        requester,
+        service=sample_service,
+        recipients_of_invite_request=[contacted_user],
+        request_again_url=f"{invite_host}/services/{sample_service.id}/join/ask",
+    )
+
+
+@pytest.mark.parametrize(
+    "reason, expected_reason_given, expected_reason",
+    (
+        (
+            "",
+            "no",
+            "",
+        ),
+        (
+            "One reason given",
+            "yes",
+            "^ One reason given",
+        ),
+        (
+            "Lots of reasons\n\nIncluding more in a new paragraph",
+            "yes",
+            "^ Lots of reasons\n^ \n^ Including more in a new paragraph",
+        ),
+    ),
+)
+def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
+    admin_request,
+    sample_service,
+    request_invite_email_template,
+    receipt_for_request_invite_email_template,
+    reason,
+    expected_reason_given,
+    expected_reason,
+    mock_celery_task,
+):
+    # This test also covers a scenario where a list that contains valid service managers also contains an invalid
+    # service manager. Expected behaviour is that notifications will be sent only to the valid service managers.
+    mock_celery = mock_celery_task(deliver_email)
+    user_requesting_invite = create_user(email_address="requester@example.gov.uk")
+    service_manager_1 = create_user(name="Manager 1", email_address="manager.1@example.gov.uk")
+    service_manager_2 = create_user(name="Manager 2", email_address="manager.2@example.gov.uk")
+    service_manager_3 = create_user(name="Manager 3", email_address="manager.3@example.gov.uk")
+    another_service = create_service(service_name="Another Service")
+    service_manager_1.services = [sample_service]
+    service_manager_2.services = [sample_service]
+    service_manager_3.services = [another_service]
+    create_permissions(service_manager_1, sample_service, "manage_settings")
+    create_permissions(service_manager_2, sample_service, "manage_settings")
+    create_permissions(service_manager_3, another_service, "manage_settings")
+    recipients_of_invite_request = [service_manager_1.id, service_manager_2.id, service_manager_3.id]
+    invite_link_host = current_app.config["ADMIN_BASE_URL"]
+
+    data = {
+        "requester_id": str(user_requesting_invite.id),
+        "contacted_user_ids": [str(x) for x in recipients_of_invite_request],
+        "reason": reason,
+        "invite_link_host": invite_link_host,
+    }
+    admin_request.post(
+        "service.create_service_join_request",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=201,
+    )
+
+    # Two sets of notifications are sent:
+    # 1.request invite notifications to the service manager(s)
+    # 2.receipt for request invite notification to the user that initiated the invite request.
+
+    notifications = Notification.query.all()
+    service_manager_1_notification = [
+        n
+        for n in notifications
+        if n.personalisation.get("approver_name") == service_manager_1.name
+        and n.template_id == request_invite_email_template.id
+    ][0]
+
+    user_notification = [
+        n
+        for n in notifications
+        if n.personalisation.get("requester_name") == user_requesting_invite.name
+        and n.template_id == receipt_for_request_invite_email_template.id
+    ][0]
+
+    assert mock_celery.call_count == 3
+    assert len(notifications) == 3
+
+    # One join service request is created
+    join_request = ServiceJoinRequest.query.one()
+
+    assert join_request.service_id == sample_service.id
+    assert len(join_request.contacted_service_users) == 3
+
+    # Request invite notification
+    assert len(service_manager_1_notification.personalisation.keys()) == 7
+    assert service_manager_1_notification.personalisation["requester_name"] == user_requesting_invite.name
+    assert service_manager_1_notification.personalisation["service_name"] == sample_service.name
+    assert service_manager_1_notification.personalisation["reason_given"] == expected_reason_given
+    assert service_manager_1_notification.personalisation["reason"] == expected_reason
+    assert service_manager_1_notification.to == service_manager_1.email_address
+    assert (
+        service_manager_1_notification.personalisation["url"]
+        == f"{invite_link_host}/services/{sample_service.id}/join-request/{join_request.id}/approve"
+    )
+    assert service_manager_1_notification.reply_to_text == user_requesting_invite.email_address
+
+    # Receipt for request invite notification
+    assert user_notification.personalisation == {
+        "requester_name": user_requesting_invite.name,
+        "service_name": "Sample service",
+        "service_admin_names": [
+            "Manager 1 – manager.1@example.gov.uk",
+            "Manager 2 – manager.2@example.gov.uk",
+            "Manager 3 – manager.3@example.gov.uk",
+        ],
+        "url_ask_to_join_page": f"{invite_link_host}/services/{sample_service.id}/join/ask",
+    }
+    assert user_notification.reply_to_text == "notify@gov.uk"
+
+
+def test_request_invite_to_service_email_is_not_sent_if_requester_is_already_part_of_service(
+    admin_request, sample_service, mocker
+):
+    mock_invite_request = mocker.patch("app.service_invite.rest.send_service_invite_request")
+    mock_receipt = mocker.patch("app.service_invite.rest.send_receipt_after_sending_request_invite_letter")
+
+    user_requesting_invite = create_user()
+    user_requesting_invite.services = [sample_service]
+    service_manager_1 = create_user()
+    create_permissions(service_manager_1, sample_service)
+    service_managers = [service_manager_1]
+
+    data = {
+        "requester_id": str(user_requesting_invite.id),
+        "contacted_user_ids": [str(x.id) for x in service_managers],
+        "reason": "Lots of reasons",
+        "invite_link_host": current_app.config["ADMIN_BASE_URL"],
+    }
+
+    response = admin_request.post(
+        "service.create_service_join_request",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=400,
+    )
+    assert response["message"] == "user-already-in-service"
+    assert not mock_invite_request.called
+    assert not mock_receipt.called
+
+
+def test_request_invite_to_service_raises_exception_if_no_service_managers_to_send_email_to(
+    admin_request,
+    sample_service,
+    request_invite_email_template,
+    mocker,
+):
+    mock_receipt = mocker.patch("app.service_invite.rest.send_receipt_after_sending_request_invite_letter")
+
+    user_requesting_invite = create_user()
+    service_manager = create_user()
+    another_service = create_service(service_name="Another Service")
+    service_manager.services = [another_service]
+    create_permissions(service_manager, another_service, "manage_settings")
+    recipients_of_invite_request = [service_manager.id]
+
+    data = {
+        "requester_id": str(user_requesting_invite.id),
+        "contacted_user_ids": [str(x) for x in recipients_of_invite_request],
+        "reason": "Lots of reasons",
+        "invite_link_host": current_app.config["ADMIN_BASE_URL"],
+    }
+
+    response = admin_request.post(
+        "service.create_service_join_request",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=400,
+    )
+    assert response["message"] == "no-valid-service-managers-ids"
+    assert not mock_receipt.called
 
 
 def test_get_service_join_request_not_found(admin_request):
@@ -4008,7 +4200,10 @@ def test_get_service_join_request_not_found(admin_request):
     assert resp["message"] == f"Service join request with ID {request_id} not found."
 
 
-def test_get_service_join_request_success(admin_request, notify_db_session):
+def test_get_service_join_request_success(admin_request, notify_db_session, mocker):
+    mocker.patch("app.service.rest.send_service_invite_request")
+    mocker.patch("app.service.rest.send_receipt_after_sending_request_invite_letter")
+
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     contacted_user = uuid.uuid4()
