@@ -9,6 +9,7 @@ from flask import current_app, url_for
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.celery.provider_tasks import deliver_email
 from app.constants import (
     BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
@@ -3967,6 +3968,7 @@ ServiceJoinRequestTestCase = namedtuple(
 )
 def test_create_service_join_request(
     admin_request,
+    notify_db_session,
     test_case,
 ):
     setup_service_join_request_test_data(test_case.service_id, test_case.requester_id, test_case.contacted_user_ids)
@@ -3996,7 +3998,7 @@ def test_get_service_join_request_not_found(admin_request):
     assert resp["message"] == f"Service join request with ID {request_id} not found."
 
 
-def test_get_service_join_request_success(admin_request):
+def test_get_service_join_request_success(admin_request, notify_db_session):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     contacted_user = uuid.uuid4()
@@ -4098,12 +4100,13 @@ def test_get_service_join_request_by_id_when_request_is_not_found(admin_request,
         ),
     ],
 )
-def test_update_service_join_request_validation_errors(
-    admin_request, status_changed_by_id, permissions, status, reason, expected_error
+def test_update_service_join_request_by_id_validation_errors(
+    admin_request, notify_db_session, status_changed_by_id, permissions, status, reason, expected_error
 ):
     resp = admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(uuid.uuid4()),
+        service_id=str(uuid.uuid4()),
         _data={
             "permissions": permissions,
             "status_changed_by_id": str(status_changed_by_id),
@@ -4124,7 +4127,7 @@ def test_update_service_join_request_validation_errors(
         (uuid.uuid4(), ["manage_users"], "rejected", "user is not part of company anymore"),
     ],
 )
-def test_update_service_join_request_updates_service_join_request_table(
+def test_update_service_join_request_by_id_updates_service_join_request_table(
     admin_request,
     status_changed_by_id,
     permissions,
@@ -4136,35 +4139,49 @@ def test_update_service_join_request_updates_service_join_request_table(
 ):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
-    user_id = status_changed_by_id
 
-    setup_service_join_request_test_data(service_id, requester_id, [user_id])
+    setup_service_join_request_test_data(service_id, requester_id, [status_changed_by_id])
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
 
     request = dao_create_service_join_request(
         requester_id=requester_id,
         service_id=service_id,
-        contacted_user_ids=[user_id],
+        contacted_user_ids=[status_changed_by_id],
     )
 
     resp = admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=str(service_id),
         _data={
             "permissions": permissions,
             "status_changed_by_id": str(status_changed_by_id),
             "status": status,
             "reason": reason,
         },
-        _expected_status=200,
     )
 
+    assert resp["id"] == str(request.id)
+    assert resp["service_id"] == str(service_id)
+    assert resp["created_at"]
     assert resp["status"] == status
+    assert resp["status_changed_by"] == {
+        "id": str(status_changed_by_id),
+        "name": f"User Within Existing Service {status_changed_by_id}",
+    }
     assert resp["reason"] == reason
-    assert resp["status_changed_by"]["id"] == str(status_changed_by_id)
+    assert resp["contacted_service_users"] == [str(status_changed_by_id)]
+
+    expected_belongs_to_service = [str(service_id)] if status == "approved" else []
+    assert resp["requester"] == {
+        "belongs_to_service": expected_belongs_to_service,
+        "email_address": f"{requester_id}@digital.cabinet-office.gov.uk",
+        "id": str(requester_id),
+        "name": "Requester User",
+    }
 
 
-def test_update_service_join_request_request_not_found(admin_request):
+def test_update_service_join_request_by_id_request_not_found(admin_request, notify_db_session):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     user_id = uuid.uuid4()
@@ -4172,8 +4189,9 @@ def test_update_service_join_request_request_not_found(admin_request):
     setup_service_join_request_test_data(service_id, requester_id, [user_id])
 
     resp = admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(uuid.uuid4()),
+        service_id=(str(uuid.uuid4())),
         _data={
             "permissions": ["manage_users"],
             "status_changed_by_id": str(user_id),
@@ -4183,23 +4201,22 @@ def test_update_service_join_request_request_not_found(admin_request):
         _expected_status=404,
     )
 
-    assert resp["message"] == "Service join request not found"
+    assert resp["message"] == "No result found"
 
 
 @pytest.mark.parametrize(
-    "status_changed_by_id, set_permissions, with_folder_permissions, status, reason",
+    "status_changed_by_id, set_permissions, with_folder_permissions, status",
     [
-        (uuid.uuid4(), ["manage_users"], False, "approved", None),
-        (uuid.uuid4(), [], True, "approved", None),
+        (uuid.uuid4(), ["manage_users"], False, "approved"),
+        (uuid.uuid4(), [], True, "approved"),
     ],
 )
-def test_update_service_join_request_add_user_to_service(
+def test_update_service_join_request_by_id_add_user_to_service(
     admin_request,
     status_changed_by_id,
     set_permissions,
     with_folder_permissions,
     status,
-    reason,
     notify_service,
     service_join_request_approved_template,
     mocker,
@@ -4227,17 +4244,17 @@ def test_update_service_join_request_add_user_to_service(
         folder_permissions = [str(folder_1.id), str(folder_2.id)]
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=str(service_id),
         _data={
             "permissions": set_permissions,
             "folder_permissions": folder_permissions,
             "status_changed_by_id": str(status_changed_by_id),
             "status": status,
-            "reason": reason,
+            "reason": None,
             "auth_type": "sms_auth",
         },
-        _expected_status=200,
     )
 
     user = get_user_by_id(requester_id)
@@ -4266,7 +4283,7 @@ def test_update_service_join_request_add_user_to_service(
         ("email_auth", None, "email_auth", "email_auth"),
     ],
 )
-def test_update_service_join_request_updates_user_auth_type(
+def test_update_service_join_request_by_id_updates_user_auth_type(
     admin_request,
     sample_user_service_permission,
     notify_service,
@@ -4288,8 +4305,9 @@ def test_update_service_join_request_updates_user_auth_type(
     )
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=sample_user_service_permission.service.id,
         _data={
             "permissions": ["manage_users"],
             "folder_permissions": [],
@@ -4303,18 +4321,18 @@ def test_update_service_join_request_updates_user_auth_type(
     assert requester.auth_type == expected_auth_type
 
 
-def test_update_service_join_request_notification_sent(
+def test_update_service_join_request_by_id_notification_sent(
     admin_request,
     notify_service,
     service_join_request_approved_template,
-    mocker,
+    mock_celery_task,
 ):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     approver_id = uuid.uuid4()
 
     setup_service_join_request_test_data(service_id, requester_id, [approver_id])
-    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    mock_deliver_email_task = mock_celery_task(deliver_email)
 
     request = dao_create_service_join_request(
         requester_id=requester_id,
@@ -4323,19 +4341,19 @@ def test_update_service_join_request_notification_sent(
     )
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=str(service_id),
         _data={
             "permissions": ["manage_users"],
             "status_changed_by_id": str(approver_id),
             "status": "approved",
             "auth_type": "email_auth",
         },
-        _expected_status=200,
     )
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mock_deliver_email_task.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
 
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
     assert notification.to == f"{requester_id}@digital.cabinet-office.gov.uk"
@@ -4351,9 +4369,10 @@ def test_update_service_join_request_get_template(
     notify_service,
     service_join_request_approved_template,
     mocker,
+    mock_celery_task,
 ):
     template = service_join_request_approved_template
-    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    mock_deliver_email_task = mock_celery_task(deliver_email)
     mocker.patch("app.dao.templates_dao.dao_get_template_by_id", return_value=template)
 
     requester_id = uuid.uuid4()
@@ -4369,24 +4388,24 @@ def test_update_service_join_request_get_template(
     )
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=str(service_id),
         _data={
             "permissions": ["manage_users"],
             "status_changed_by_id": str(approver_id),
             "status": "approved",
         },
-        _expected_status=200,
     )
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mock_deliver_email_task.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
 
     assert notification.template.version == template.version
     assert notification.template_id == template.id
 
 
-def test_update_service_join_request_cancels_pending_requests(
+def test_update_service_join_request_by_id_cancels_pending_requests(
     admin_request,
     notify_service,
     service_join_request_approved_template,
@@ -4408,15 +4427,15 @@ def test_update_service_join_request_cancels_pending_requests(
     )
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(pending_request_2.id),
+        service_id=str(service_id),
         _data={
             "permissions": ["manage_users"],
             "status_changed_by_id": str(approver_id),
             "status": "approved",
             "auth_type": "sms_auth",
         },
-        _expected_status=200,
     )
 
     all_user_requests = ServiceJoinRequest.query.filter_by(requester_id=requester_id, service_id=service_id).all()
