@@ -20,6 +20,7 @@ from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_POSTAGE_TYPES,
+    INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
@@ -189,7 +190,7 @@ def increment_daily_limit_cache(service_id, notification_type, key_type, interna
 
 
 def _increment_international_sms_daily_limit_cache(service_id):
-    cache_key = redis.daily_limit_cache_key(service_id, notification_type="international-sms")
+    cache_key = redis.daily_limit_cache_key(service_id, notification_type=INTERNATIONAL_SMS_TYPE)
     if redis_store.get(cache_key) is None:
         # if cache does not exist set the cache to 1 with an expiry of 24 hours,
         # The cache should be set by the time we create the notification

@@ -355,7 +355,7 @@ def test_persist_notification_increments_cache_for_international_sms(notify_api,
         assert mock_incr.call_args_list == [
             mocker.call(f"{service.id}-2016-01-01-count"),
             mocker.call(f"{service.id}-sms-2016-01-01-count"),
-            mocker.call(f"{service.id}-international-sms-2016-01-01-count"),
+            mocker.call(f"{service.id}-international_sms-2016-01-01-count"),
         ]
 
 
@@ -390,7 +390,7 @@ def test_persist_notification_increments_cache_for_international_sms_if_the_cach
         assert mock_set.call_args_list == [
             mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400),
             mocker.call(f"{service.id}-sms-2016-01-01-count", 1, ex=86400),
-            mocker.call(f"{service.id}-international-sms-2016-01-01-count", 1, ex=86400),
+            mocker.call(f"{service.id}-international_sms-2016-01-01-count", 1, ex=86400),
         ]
 
 
