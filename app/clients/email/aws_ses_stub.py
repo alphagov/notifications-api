@@ -39,7 +39,7 @@ class AwsSesStubClient(EmailClient):
     ) -> str:
         try:
             start_time = monotonic()
-            response = self.session.request("POST", self.url, data={"id": "dummy-data"}, timeout=60)
+            response = self.requests_session.request("POST", self.url, data={"id": "dummy-data"}, timeout=60)
             response.raise_for_status()
             response_json = json.loads(response.text)
 
