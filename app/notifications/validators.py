@@ -64,6 +64,7 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
     rate_limits = {
         EMAIL_TYPE: service.email_message_limit,
         SMS_TYPE: service.sms_message_limit,
+        INTERNATIONAL_SMS_TYPE: service.international_sms_message_limit,
         LETTER_TYPE: service.letter_message_limit,
     }
 
@@ -138,13 +139,13 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
     service_can_send_to_recipient(send_to, key_type, service, allow_guest_list_recipients)
 
     if notification_type == SMS_TYPE:
-        return validate_and_return_extended_phone_number_info(service, send_to)
+        return validate_and_return_extended_phone_number_info(service, send_to, key_type)
 
     elif notification_type == EMAIL_TYPE:
         return validate_and_format_email_address(email_address=send_to)
 
 
-def validate_and_return_extended_phone_number_info(service, send_to):
+def validate_and_return_extended_phone_number_info(service, send_to, key_type):
     try:
         phone_number = PhoneNumber(send_to)
         phone_number.validate(
@@ -152,7 +153,12 @@ def validate_and_return_extended_phone_number_info(service, send_to):
             allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
         )
 
-        return _get_extended_phone_number_info(phone_number, send_to)
+        recipient_data = _get_extended_phone_number_info(phone_number, send_to)
+
+        if recipient_data["international"]:
+            check_service_over_daily_message_limit(service, key_type, notification_type=INTERNATIONAL_SMS_TYPE)
+
+        return recipient_data
 
     except InvalidPhoneError as e:
         # only show "Not a UK mobile" error when a service tries to send to landline and is not allowed
