@@ -3,16 +3,21 @@ from flask import current_app
 from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.clients.redis import daily_limit_cache_key
+from notifications_utils.recipient_validation.errors import InvalidPhoneError
 
 import app
 from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_TYPES,
+    SMS_TO_UK_LANDLINES,
     SMS_TYPE,
 )
 from app.dao import templates_dao
+from app.models import ServicePermission
 from app.notifications.process_notifications import (
     create_content_for_notification,
 )
@@ -525,13 +530,119 @@ def test_validate_and_format_recipient_fails_when_international_number_and_servi
     assert e.value.fields == []
 
 
-@pytest.mark.parametrize("key_type", ["test", "normal"])
+@pytest.mark.parametrize("key_type", [KEY_TYPE_TEST, KEY_TYPE_NORMAL])
 def test_validate_and_format_recipient_succeeds_with_international_numbers_if_service_does_allow_int_sms(
     key_type, sample_service_full_permissions
 ):
     service_model = SerialisedService.from_id(sample_service_full_permissions.id)
     result = validate_and_format_recipient("20-12-1234-1234", key_type, service_model, SMS_TYPE)
-    assert result == "201212341234"
+    assert result == {
+        "international": True,
+        "normalised_to": "201212341234",
+        "unformatted_recipient": "20-12-1234-1234",
+        "phone_prefix": "20",
+        "rate_multiplier": 7,
+    }
+
+
+@pytest.mark.parametrize(
+    "recipient, expected_normalised, expected_international, expected_prefix, expected_rate_multiplier",
+    [
+        ("7900900123", "447900900123", False, "44", 1),  # UK
+        ("+447900900123", "447900900123", False, "44", 1),  # UK
+        ("07797292290", "447797292290", True, "44", 2),  # UK (Jersey)
+        ("74957108855", "74957108855", True, "7", 10),  # Russia
+        ("360623400400", "3623400400", True, "36", 2),
+    ],  # Hungary
+)
+def test_validate_and_format_recipient_gets_correct_info_for_international_numbers(
+    sample_job,
+    recipient,
+    expected_normalised,
+    expected_international,
+    expected_prefix,
+    expected_rate_multiplier,
+):
+    result = validate_and_format_recipient(recipient, KEY_TYPE_NORMAL, sample_job.service, SMS_TYPE)
+    assert result == {
+        "unformatted_recipient": recipient,
+        "international": expected_international,
+        "normalised_to": expected_normalised,
+        "phone_prefix": expected_prefix,
+        "rate_multiplier": expected_rate_multiplier,
+    }
+
+
+@pytest.mark.parametrize(
+    "recipient, expected_recipient_normalised",
+    [
+        ("02077091001", "442077091001"),  # UK
+        ("+442077091002", "442077091002"),  # UK
+        ("020 7709 1000", "442077091000"),  # UK
+    ],
+)
+def test_validate_and_format_recipient_gets_correct_info_for_landline_numbers(
+    sample_job,
+    recipient,
+    expected_recipient_normalised,
+):
+    sample_job.service.permissions = [
+        ServicePermission(service_id=sample_job.service.id, permission=SMS_TYPE),
+        ServicePermission(service_id=sample_job.service.id, permission=SMS_TO_UK_LANDLINES),
+    ]
+
+    result = validate_and_format_recipient(recipient, KEY_TYPE_NORMAL, sample_job.service, SMS_TYPE)
+    assert result == {
+        "unformatted_recipient": recipient,
+        "international": False,
+        "normalised_to": expected_recipient_normalised,
+        "phone_prefix": "44",
+        "rate_multiplier": 1,
+    }
+
+
+@pytest.mark.parametrize(
+    "recipient, expected_recipient_normalised",
+    [
+        ("7900900123", "447900900123"),  # uk number adding country code correctly
+        (
+            "+447900   900 123",
+            "447900900123",
+        ),  # uk number stripping whitespace and leading plus
+        (
+            "  07700900222",
+            "447700900222",
+        ),  # uk number stripping whitespace and adding country code
+        (
+            "07700900222",
+            "447700900222",
+        ),  # uk number stripping leading zero and adding country code
+        (" 74952122020", "74952122020"),  # russian number that looks like a uk mobile
+        (
+            "36705450911",
+            "36705450911",
+        ),  # hungarian number to test international numbers
+        ("-077-00900222-", "447700900222"),  # uk mobile test stripping hyphens
+        (
+            "(3670545(0911))",
+            "36705450911",
+        ),  # hungarian number to test international numbers (stripping brackets)
+    ],
+)
+def test_validate_and_format_recipient_normalises_numbers(sample_job, recipient, expected_recipient_normalised):
+    result = validate_and_format_recipient(recipient, KEY_TYPE_NORMAL, sample_job.service, SMS_TYPE)
+    assert result["normalised_to"] == expected_recipient_normalised
+
+
+def test_validate_and_format_recipient_without_send_to_landline_permission_raises_InvalidPhoneError(
+    sample_service, sample_sms_template
+):
+    recipient = "+442077091002"
+    sample_sms_template.service.permissions = [
+        ServicePermission(service_id=sample_sms_template.service_id, permission=SMS_TYPE),
+    ]
+    with pytest.raises(InvalidPhoneError):
+        validate_and_format_recipient(recipient, KEY_TYPE_NORMAL, sample_service, SMS_TYPE)
 
 
 def test_validate_and_format_recipient_fails_when_no_recipient():
