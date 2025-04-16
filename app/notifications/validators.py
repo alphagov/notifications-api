@@ -139,6 +139,7 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
 
     if notification_type == SMS_TYPE:
         return validate_and_return_extended_phone_number_info(service, send_to)
+
     elif notification_type == EMAIL_TYPE:
         return validate_and_format_email_address(email_address=send_to)
 
@@ -151,7 +152,8 @@ def validate_and_return_extended_phone_number_info(service, send_to):
             allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
         )
 
-        return phone_number.get_normalised_format()
+        return _get_extended_phone_number_info(phone_number, send_to)
+
     except InvalidPhoneError as e:
         # only show "Not a UK mobile" error when a service tries to send to landline and is not allowed
         # in all other cases show "Cannot send to international mobile numbers"
@@ -159,6 +161,19 @@ def validate_and_return_extended_phone_number_info(service, send_to):
             raise BadRequestError(message="Cannot send to international mobile numbers") from e
         else:
             raise
+
+
+def _get_extended_phone_number_info(phone_number, send_to):
+    formatted_recipient = phone_number.get_normalised_format()
+    recipient_info = phone_number.get_international_phone_info()
+
+    return {
+        "unformatted_recipient": send_to,
+        "normalised_to": formatted_recipient,
+        "international": recipient_info.international,
+        "phone_prefix": recipient_info.country_prefix,
+        "rate_multiplier": recipient_info.rate_multiplier,
+    }
 
 
 def is_international_number(phone_number):
