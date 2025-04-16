@@ -178,7 +178,6 @@ from app.utils import (
     midnight_n_days_ago,
     utc_string_to_bst_string,
 )
-from app.v2.errors import ValidationError
 
 service_blueprint = Blueprint("service", __name__)
 
@@ -1291,10 +1290,7 @@ def create_contact_list(service_id):
 def create_service_join_request(service_id: uuid.UUID):
     data = request.get_json()
 
-    try:
-        validate(data, service_join_request_schema)
-    except ValidationError as err:
-        raise InvalidRequest(message=err.messages, status_code=400) from err
+    validate(data, service_join_request_schema)
 
     new_request = dao_create_service_join_request(
         requester_id=data["requester_id"],

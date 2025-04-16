@@ -3952,21 +3952,13 @@ ServiceJoinRequestTestCase = namedtuple(
             expected_status_code=400,
             expected_response="requester_id badly formed hexadecimal UUID string",
         ),
-        ServiceJoinRequestTestCase(
-            requester_id=uuid.uuid4(),
-            service_id=uuid.uuid4(),
-            contacted_user_ids=[str(uuid.uuid4())],
-            expected_status_code=201,
-            expected_response={"service_join_request_id": "some-uuid-here"},
-        ),
     ],
     ids=[
         "Validation Error - No contacts",
         "Validation Error - Invalid Type for Requester ID (None)",
-        "Created Request Successfully",
     ],
 )
-def test_create_service_join_request(
+def test_create_service_join_request_when_there_is_a_validation_error(
     admin_request,
     notify_db_session,
     test_case,
@@ -3980,10 +3972,28 @@ def test_create_service_join_request(
         _expected_status=test_case.expected_status_code,
     )
 
-    if test_case.expected_status_code == 400:
-        assert resp["errors"][0]["message"] == test_case.expected_response
-    elif test_case.expected_status_code == 201:
-        assert "service_join_request_id" in resp
+    assert resp["errors"][0]["message"] == test_case.expected_response
+
+
+def test_create_service_join_request_creates_join_request(admin_request, notify_db_session, mocker):
+    service_id = uuid.uuid4()
+    requester_id = uuid.uuid4()
+    contacted_user_id = uuid.uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [contacted_user_id])
+
+    response = admin_request.post(
+        "service.create_service_join_request",
+        service_id=str(service_id),
+        _data={
+            "requester_id": str(requester_id),
+            "contacted_user_ids": [str(contacted_user_id)],
+            "invite_link_host": "www",
+        },
+        _expected_status=201,
+    )
+
+    assert response == {"service_join_request_id": mocker.ANY}
 
 
 def test_get_service_join_request_not_found(admin_request):
@@ -4008,7 +4018,11 @@ def test_get_service_join_request_success(admin_request, notify_db_session):
     resp = admin_request.post(
         "service.create_service_join_request",
         service_id=str(service_id),
-        _data={"requester_id": str(requester_id), "contacted_user_ids": [str(contacted_user)]},
+        _data={
+            "requester_id": str(requester_id),
+            "contacted_user_ids": [str(contacted_user)],
+            "invite_link_host": "www",
+        },
         _expected_status=201,
     )
 
