@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from uuid import UUID
 
@@ -33,7 +34,9 @@ from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 
 
-@notify_celery.task(bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300)
+@notify_celery.task(
+    bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300, early_log_level=logging.DEBUG
+)
 def deliver_sms(self, notification_id):
     try:
         current_app.logger.info("Start sending SMS for notification id: %s", notification_id)
@@ -61,7 +64,9 @@ def deliver_sms(self, notification_id):
             raise NotificationTechnicalFailureException(message) from e
 
 
-@notify_celery.task(bind=True, name="deliver_email", max_retries=48, default_retry_delay=300)
+@notify_celery.task(
+    bind=True, name="deliver_email", max_retries=48, default_retry_delay=300, early_log_level=logging.DEBUG
+)
 def deliver_email(self, notification_id):
     try:
         current_app.logger.info("Start sending email for notification id: %s", notification_id)
