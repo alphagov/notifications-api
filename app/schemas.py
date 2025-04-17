@@ -221,6 +221,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     email_branding = field_for(models.Service, "email_branding")
     organisation = field_for(models.Service, "organisation")
     email_message_limit = field_for(models.Service, "email_message_limit", required=True)
+    international_sms_message_limit = field_for(models.Service, "international_sms_message_limit", required=False)
     sms_message_limit = field_for(models.Service, "sms_message_limit", required=True)
     letter_message_limit = field_for(models.Service, "letter_message_limit", required=True)
     go_live_at = field_for(models.Service, "go_live_at", format=DATETIME_FORMAT_NO_TIMEZONE)
