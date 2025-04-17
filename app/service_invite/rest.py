@@ -147,6 +147,7 @@ def request_invite_to_service(service_id, user_to_invite_id):
         requester_id=user_to_invite_id,
         service_id=service_id,
         contacted_user_ids=recipients_of_invite_request_ids,
+        reason=reason_for_request,
     )
 
     approve_request_url = (

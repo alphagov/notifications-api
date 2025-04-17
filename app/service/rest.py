@@ -1306,6 +1306,7 @@ def create_service_join_request(service_id: uuid.UUID):
         requester_id=data["requester_id"],
         service_id=service_id,
         contacted_user_ids=data["contacted_user_ids"],
+        reason=reason_for_request,
     )
 
     approve_request_url = f"{invite_link_host}/services/{service.id}/join-request/{new_request.id}/approve"
@@ -1427,7 +1428,7 @@ def update_service_join_request(request_id: uuid.UUID):
 
     status = data["status"]
     status_changed_by_id = data["status_changed_by_id"]
-    reason = data.get("reason", None)
+    reason = data.get("reason")
 
     updated_request = dao_update_service_join_request(request_id, status, status_changed_by_id, reason)
 
