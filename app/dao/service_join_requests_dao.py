@@ -36,6 +36,14 @@ def dao_get_service_join_request_by_id(request_id: UUID) -> ServiceJoinRequest |
     )
 
 
+def dao_get_service_join_request_by_id_and_service_id(*, request_id: UUID, service_id: UUID):
+    return (
+        ServiceJoinRequest.query.filter_by(id=request_id, service_id=service_id)
+        .options(db.joinedload("contacted_service_users"))
+        .one()
+    )
+
+
 @autocommit
 def dao_update_service_join_request(
     request_id: UUID,
@@ -47,6 +55,30 @@ def dao_update_service_join_request(
 
     if not service_join_request:
         return None
+
+    if status:
+        service_join_request.status = status
+        service_join_request.status_changed_by_id = status_changed_by_id
+        service_join_request.status_changed_at = datetime.utcnow()
+
+    if reason is not None:
+        service_join_request.reason = reason
+
+    db.session.add(service_join_request)
+    return service_join_request
+
+
+@autocommit
+def dao_update_service_join_request_by_id(
+    request_id: UUID,
+    service_id: UUID,
+    status: Literal["approved", "rejected", "pending", "cancelled"],
+    status_changed_by_id: UUID,
+    reason: str = None,
+) -> ServiceJoinRequest:
+    service_join_request = dao_get_service_join_request_by_id_and_service_id(
+        request_id=request_id, service_id=service_id
+    )
 
     if status:
         service_join_request.status = status
