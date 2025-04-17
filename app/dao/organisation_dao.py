@@ -2,7 +2,7 @@ from flask import current_app
 from sqlalchemy.sql.expression import func
 
 from app import db
-from app.constants import NHS_ORGANISATION_TYPES
+from app.constants import CAN_ASK_TO_JOIN_SERVICE, NHS_ORGANISATION_TYPES
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
@@ -12,6 +12,7 @@ from app.models import (
     Domain,
     EmailBranding,
     Organisation,
+    OrganisationPermission,
     OrganisationUserPermissions,
     Service,
     User,
@@ -71,6 +72,11 @@ def dao_create_organisation(organisation):
     if organisation.organisation_type in NHS_ORGANISATION_TYPES:
         organisation.email_branding_id = current_app.config["NHS_EMAIL_BRANDING_ID"]
         organisation.letter_branding_id = current_app.config["NHS_LETTER_BRANDING_ID"]
+
+    join_a_service_permission = OrganisationPermission(
+        organisation_id=organisation.id, permission=CAN_ASK_TO_JOIN_SERVICE
+    )
+    organisation.permissions.append(join_a_service_permission)
 
     db.session.add(organisation)
     db.session.commit()

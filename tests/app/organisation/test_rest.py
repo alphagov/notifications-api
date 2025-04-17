@@ -8,7 +8,7 @@ from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.constants import INVITE_ACCEPTED, INVITE_CANCELLED
+from app.constants import CAN_ASK_TO_JOIN_SERVICE, INVITE_ACCEPTED, INVITE_CANCELLED
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_id
@@ -207,16 +207,18 @@ def test_post_create_organisation(admin_request, notify_db_session, crown):
 
     response = admin_request.post("organisation.create_organisation", _data=data, _expected_status=201)
 
-    organisations = Organisation.query.all()
+    organisation = Organisation.query.one()
 
     assert data["name"] == response["name"]
     assert data["active"] == response["active"]
     assert data["crown"] == response["crown"]
     assert data["organisation_type"] == response["organisation_type"]
 
-    assert len(organisations) == 1
     # check that for non-nhs orgs, default branding is not set
-    assert organisations[0].email_branding_id is None
+    assert organisation.email_branding_id is None
+
+    assert len(organisation.permissions) == 1
+    assert organisation.permissions[0].permission == CAN_ASK_TO_JOIN_SERVICE
 
 
 @pytest.mark.parametrize("org_type", ["nhs_central", "nhs_local", "nhs_gp"])

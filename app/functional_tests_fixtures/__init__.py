@@ -7,7 +7,6 @@ from flask import current_app
 from sqlalchemy.exc import NoResultFound
 
 from app.constants import (
-    CAN_ASK_TO_JOIN_SERVICE,
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
     EXTRA_LETTER_FORMATTING,
@@ -372,7 +371,6 @@ def _create_organiation(email_domain, org_name="Functional Tests Org"):
 
         dao_create_organisation(org)
 
-    org.set_permissions_list([CAN_ASK_TO_JOIN_SERVICE])
     dao_update_organisation(org.id, domains=[email_domain], can_approve_own_go_live_requests=True)
 
     return org
