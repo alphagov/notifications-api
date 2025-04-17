@@ -120,6 +120,7 @@ def test_failure_firetext_callback(phone_number):
     [
         ("1", "first", "1ST", "UNCODED"),
         ("3", "second", "2ND", "MM"),
+        ("4", "economy", "2ND", "UNSORTEDE"),
         ("5", "europe", "INTERNATIONAL", "INT EU"),
         ("2", "rest-of-world", "INTERNATIONAL", "INT ROW"),
     ],
