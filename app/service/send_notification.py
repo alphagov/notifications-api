@@ -65,7 +65,7 @@ def send_one_off_notification(service_id, post_data):
 
     check_service_over_daily_message_limit(service, KEY_TYPE_NORMAL, notification_type=template.template_type)
 
-    validate_and_format_recipient(
+    recipient_data = validate_and_format_recipient(
         send_to=post_data["to"],
         key_type=KEY_TYPE_NORMAL,
         service=service,
@@ -89,11 +89,12 @@ def send_one_off_notification(service_id, post_data):
     reply_to = get_reply_to_text(
         notification_type=template.template_type, sender_id=sender_id, service=service, template=template
     )
+
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         template_has_unsubscribe_link=template.has_unsubscribe_link,
-        recipient=post_data["to"],
+        recipient=recipient_data or post_data["to"],
         service=service,
         personalisation=personalisation,
         notification_type=template.template_type,

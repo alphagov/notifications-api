@@ -48,6 +48,7 @@ from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
 )
+from app.notifications.validators import validate_and_format_recipient
 from app.schema_validation import validate
 from app.schemas import (
     create_user_schema,
@@ -105,6 +106,7 @@ def update_user_attribute(user_id):
     update_dct = user_update_schema_load_json.load(req_json)
 
     save_user_attribute(user_to_update, update_dict=update_dct)
+    service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
     if updated_by:
         if "email_address" in update_dct:
             template = dao_get_template_by_id(current_app.config["TEAM_MEMBER_EDIT_EMAIL_TEMPLATE_ID"])
@@ -112,11 +114,10 @@ def update_user_attribute(user_id):
             reply_to = template.service.get_default_reply_to_email_address()
         elif "mobile_number" in update_dct:
             template = dao_get_template_by_id(current_app.config["TEAM_MEMBER_EDIT_MOBILE_TEMPLATE_ID"])
-            recipient = user_to_update.mobile_number
-            reply_to = get_sms_reply_to_for_notify_service(recipient, template)
+            recipient = validate_and_format_recipient(user_to_update.mobile_number, KEY_TYPE_NORMAL, service, SMS_TYPE)
+            reply_to = get_sms_reply_to_for_notify_service(user_to_update.mobile_number, template)
         else:
             return jsonify(data=user_to_update.serialize()), 200
-        service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
 
         saved_notification = persist_notification(
             template_id=template.id,
@@ -330,7 +331,13 @@ def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, person
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
-        recipient=recipient,
+        recipient=validate_and_format_recipient(
+            send_to=recipient,
+            key_type=KEY_TYPE_NORMAL,
+            service=template.service,
+            notification_type=template.template_type,
+            allow_guest_list_recipients=False,
+        ),
         service=template.service,
         personalisation=personalisation,
         notification_type=template.template_type,

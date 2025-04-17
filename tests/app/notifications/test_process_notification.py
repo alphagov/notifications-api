@@ -8,18 +8,14 @@ from freezegun import freeze_time
 from notifications_utils.recipient_validation.email_address import (
     validate_and_format_email_address,
 )
-from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
-    NOTIFICATION_VALIDATION_FAILED,
-    SMS_TO_UK_LANDLINES,
-    SMS_TYPE,
 )
-from app.models import Notification, NotificationHistory, ServicePermission
+from app.models import Notification, NotificationHistory
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
@@ -94,7 +90,13 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
     notification = persist_notification(
         template_id=sample_template.id,
         template_version=sample_template.version,
-        recipient="+447111111111",
+        recipient={
+            "unformatted_recipient": "+447111111111",
+            "normalised_to": "447111111111",
+            "international": False,
+            "phone_prefix": "44",
+            "rate_multiplier": 1,
+        },
         service=sample_template.service,
         personalisation={},
         notification_type="sms",
@@ -135,7 +137,13 @@ def test_persist_notification_throws_exception_when_missing_template(sample_api_
         persist_notification(
             template_id=None,
             template_version=None,
-            recipient="+447111111111",
+            recipient={
+                "unformatted_recipient": "+447111111111",
+                "normalised_to": "447111111111",
+                "international": False,
+                "phone_prefix": "44",
+                "rate_multiplier": 1,
+            },
             service=sample_api_key.service,
             personalisation=None,
             notification_type="sms",
@@ -155,7 +163,13 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key):
     persist_notification(
         template_id=sample_job.template.id,
         template_version=sample_job.template.version,
-        recipient="+447111111111",
+        recipient={
+            "unformatted_recipient": "+447111111111",
+            "normalised_to": "447111111111",
+            "international": False,
+            "phone_prefix": "44",
+            "rate_multiplier": 1,
+        },
         service=sample_job.service,
         personalisation=None,
         notification_type="sms",
@@ -193,7 +207,13 @@ def test_persist_notification_cache_is_not_incremented_on_failure_to_create_noti
         persist_notification(
             template_id=None,
             template_version=None,
-            recipient="+447111111111",
+            recipient={
+                "unformatted_recipient": "+447111111111",
+                "normalised_to": "447111111111",
+                "international": False,
+                "phone_prefix": "44",
+                "rate_multiplier": 1,
+            },
             service=sample_api_key.service,
             personalisation=None,
             notification_type="sms",
@@ -214,7 +234,13 @@ def test_persist_notification_does_not_increment_cache_if_test_key(
         persist_notification(
             template_id=sample_template.id,
             template_version=sample_template.version,
-            recipient="+447111111111",
+            recipient={
+                "unformatted_recipient": "+447111111111",
+                "normalised_to": "447111111111",
+                "international": False,
+                "phone_prefix": "44",
+                "rate_multiplier": 1,
+            },
             service=sample_template.service,
             personalisation={},
             notification_type="sms",
@@ -244,7 +270,13 @@ def test_persist_notification_increments_cache_for_trial_or_live_service(
         persist_notification(
             template_id=template.id,
             template_version=template.version,
-            recipient="+447111111122",
+            recipient={
+                "unformatted_recipient": "+447111111111",
+                "normalised_to": "447111111111",
+                "international": False,
+                "phone_prefix": "44",
+                "rate_multiplier": 1,
+            },
             service=template.service,
             personalisation={},
             notification_type="sms",
@@ -261,7 +293,7 @@ def test_persist_notification_increments_cache_for_trial_or_live_service(
 
 @pytest.mark.parametrize("restricted_service", [True, False])
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
+def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exist(
     notify_api, notify_db_session, mocker, restricted_service
 ):
     service = create_service(restricted=restricted_service)
@@ -273,7 +305,13 @@ def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
         persist_notification(
             template_id=template.id,
             template_version=template.version,
-            recipient="+447111111122",
+            recipient={
+                "unformatted_recipient": "+447111111111",
+                "normalised_to": "447111111111",
+                "international": False,
+                "phone_prefix": "44",
+                "rate_multiplier": 1,
+            },
             service=template.service,
             personalisation={},
             notification_type="sms",
@@ -285,6 +323,74 @@ def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
         assert mock_set.call_args_list == [
             mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400),
             mocker.call(f"{service.id}-sms-2016-01-01-count", 1, ex=86400),
+        ]
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_increments_cache_for_international_sms(notify_api, notify_db_session, mocker):
+    service = create_service()
+    template = create_template(service=service, template_type="sms")
+    api_key = create_api_key(service=service)
+    mocker.patch("app.notifications.process_notifications.redis_store.get", return_value=1)
+    mock_incr = mocker.patch("app.notifications.process_notifications.redis_store.incr")
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient={
+                "unformatted_recipient": "+48697894064",
+                "normalised_to": "48697894064",
+                "international": True,
+                "phone_prefix": "48",
+                "rate_multiplier": 2,
+            },
+            service=template.service,
+            personalisation={},
+            notification_type="sms",
+            api_key_id=api_key.id,
+            key_type=api_key.key_type,
+            reference="ref2",
+        )
+
+        assert mock_incr.call_args_list == [
+            mocker.call(f"{service.id}-2016-01-01-count"),
+            mocker.call(f"{service.id}-sms-2016-01-01-count"),
+            mocker.call(f"{service.id}-international_sms-2016-01-01-count"),
+        ]
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_increments_cache_for_international_sms_if_the_cache_does_not_exist(
+    notify_api, notify_db_session, mocker
+):
+    service = create_service()
+    template = create_template(service=service, template_type="sms")
+    api_key = create_api_key(service=service)
+    mocker.patch("app.notifications.process_notifications.redis_store.get", return_value=None)
+    mock_set = mocker.patch("app.notifications.process_notifications.redis_store.set")
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient={
+                "unformatted_recipient": "+48697894064",
+                "normalised_to": "48697894064",
+                "international": True,
+                "phone_prefix": "48",
+                "rate_multiplier": 2,
+            },
+            service=template.service,
+            personalisation={},
+            notification_type="sms",
+            api_key_id=api_key.id,
+            key_type=api_key.key_type,
+            reference="ref2",
+        )
+
+        assert mock_set.call_args_list == [
+            mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400),
+            mocker.call(f"{service.id}-sms-2016-01-01-count", 1, ex=86400),
+            mocker.call(f"{service.id}-international_sms-2016-01-01-count", 1, ex=86400),
         ]
 
 
@@ -399,106 +505,6 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
     assert is_simulated_address == expected
 
 
-@pytest.mark.parametrize(
-    "recipient, expected_international, expected_prefix, expected_units",
-    [
-        ("7900900123", False, "44", 1),  # UK
-        ("+447900900123", False, "44", 1),  # UK
-        ("07797292290", True, "44", 2),  # UK (Jersey)
-        ("74957108855", True, "7", 10),  # Russia
-        ("360623400400", True, "36", 2),
-    ],  # Hungary
-)
-def test_persist_notification_with_international_info_stores_correct_info(
-    sample_job,
-    sample_api_key,
-    mocker,
-    recipient,
-    expected_international,
-    expected_prefix,
-    expected_units,
-):
-    persist_notification(
-        template_id=sample_job.template.id,
-        template_version=sample_job.template.version,
-        recipient=recipient,
-        service=sample_job.service,
-        personalisation=None,
-        notification_type="sms",
-        api_key_id=sample_api_key.id,
-        key_type=sample_api_key.key_type,
-        job_id=sample_job.id,
-        job_row_number=10,
-        client_reference="ref from client",
-    )
-    persisted_notification = Notification.query.all()[0]
-
-    assert persisted_notification.international is expected_international
-    assert persisted_notification.phone_prefix == expected_prefix
-    assert persisted_notification.rate_multiplier == expected_units
-
-
-@pytest.mark.parametrize(
-    "recipient, expected_recipient_normalised, expected_prefix, expected_units",
-    [
-        ("02077091001", "442077091001", "44", 1),  # UK
-        ("+442077091002", "442077091002", "44", 1),  # UK
-        ("020 7709 1000", "442077091000", "44", 1),  # UK
-    ],
-)
-def test_persist_notification_with_send_to_landline_stores_correct_info(
-    sample_job,
-    sample_api_key,
-    recipient,
-    expected_recipient_normalised,
-    expected_prefix,
-    expected_units,
-):
-    sample_job.service.permissions = [
-        # and any other permissions we need
-        ServicePermission(service_id=sample_job.service.id, permission=SMS_TYPE),
-        ServicePermission(service_id=sample_job.service.id, permission=SMS_TO_UK_LANDLINES),
-    ]
-    persist_notification(
-        template_id=sample_job.template.id,
-        template_version=sample_job.template.version,
-        recipient=recipient,
-        service=sample_job.service,
-        personalisation=None,
-        notification_type="sms",
-        api_key_id=sample_api_key.id,
-        key_type=sample_api_key.key_type,
-        job_id=sample_job.id,
-        job_row_number=10,
-        client_reference="ref from client",
-    )
-    persisted_notification = Notification.query.all()[0]
-    assert persisted_notification.phone_prefix == expected_prefix
-    assert persisted_notification.normalised_to == expected_recipient_normalised
-    assert persisted_notification.rate_multiplier == expected_units
-
-
-def test_persist_notification_without_send_to_landline_raises_invalidphoneerror(
-    sample_service, sample_api_key, sample_sms_template
-):
-    recipient = "+442077091002"
-    sample_sms_template.service.permissions = [
-        ServicePermission(service_id=sample_sms_template.service_id, permission=SMS_TYPE),
-    ]
-    with pytest.raises(InvalidPhoneError):
-        persist_notification(
-            template_id=sample_sms_template.id,
-            template_version=sample_sms_template.version,
-            recipient=recipient,
-            service=sample_sms_template.service,
-            personalisation=None,
-            notification_type="sms",
-            api_key_id=sample_api_key.id,
-            key_type=sample_api_key.key_type,
-            client_reference="ref from client",
-        )
-
-
 def test_persist_notification_with_international_info_does_not_store_for_email(sample_job, sample_api_key):
     persist_notification(
         template_id=sample_job.template.id,
@@ -518,54 +524,6 @@ def test_persist_notification_with_international_info_does_not_store_for_email(s
     assert persisted_notification.international is False
     assert persisted_notification.phone_prefix is None
     assert persisted_notification.rate_multiplier is None
-
-
-@pytest.mark.parametrize(
-    "recipient, expected_recipient_normalised",
-    [
-        ("7900900123", "447900900123"),  # uk number adding country code correctly
-        (
-            "+447900   900 123",
-            "447900900123",
-        ),  # uk number stripping whitespace and leading plus
-        (
-            "  07700900222",
-            "447700900222",
-        ),  # uk number stripping whitespace and adding country code
-        (
-            "07700900222",
-            "447700900222",
-        ),  # uk number stripping leading zero and adding country code
-        (" 74952122020", "74952122020"),  # russian number that looks like a uk mobile
-        (
-            "36705450911",
-            "36705450911",
-        ),  # hungarian number to test international numbers
-        ("-077-00900222-", "447700900222"),  # uk mobile test stripping hyphens
-        (
-            "(3670545(0911))",
-            "36705450911",
-        ),  # hungarian number to test international numbers (stripping brackets)
-    ],
-)
-def test_persist_sms_notification_stores_normalised_number(
-    sample_job, sample_api_key, recipient, expected_recipient_normalised
-):
-    persist_notification(
-        template_id=sample_job.template.id,
-        template_version=sample_job.template.version,
-        recipient=recipient,
-        service=sample_job.service,
-        personalisation=None,
-        notification_type="sms",
-        api_key_id=sample_api_key.id,
-        key_type=sample_api_key.key_type,
-        job_id=sample_job.id,
-    )
-    persisted_notification = Notification.query.all()[0]
-
-    assert persisted_notification.to == recipient
-    assert persisted_notification.normalised_to == expected_recipient_normalised
 
 
 @pytest.mark.parametrize(
@@ -745,53 +703,3 @@ def test_persist_notification_when_template_has_unsubscribe_link_is_true(
 
     persisted_notification = Notification.query.first()
     assert persisted_notification.unsubscribe_link == expected_unsubscribe_link
-
-
-@freeze_time("2025-03-14 03:14:15.926535")
-def test_persist_notification_creates_and_save_to_db_with_permenant_failure_if_invalid_number_from_job(
-    sample_template, sample_api_key, sample_job
-):
-    assert Notification.query.count() == 0
-    assert NotificationHistory.query.count() == 0
-    notification = persist_notification(
-        template_id=sample_template.id,
-        template_version=sample_template.version,
-        recipient="+1-800-555-555",
-        service=sample_template.service,
-        personalisation={},
-        notification_type="sms",
-        api_key_id=sample_api_key.id,
-        key_type=sample_api_key.key_type,
-        job_id=sample_job.id,
-        job_row_number=100,
-        reference="ref",
-        reply_to_text=sample_template.service.get_default_sms_sender(),
-    )
-
-    assert Notification.query.get(notification.id) is not None
-    notification_from_db = Notification.query.one()
-
-    # check specific attributes for the failed notification
-    assert notification_from_db.id == notification.id
-    assert notification_from_db.status == NOTIFICATION_VALIDATION_FAILED
-    assert notification_from_db.updated_at == datetime.datetime(2025, 3, 14, 3, 14, 15, 926535)
-    assert notification_from_db.to == "+1-800-555-555"
-    assert notification_from_db.rate_multiplier == 0
-    assert notification_from_db.billable_units == 0
-
-    # check everything else is as expected
-    assert notification_from_db.template_id == notification.template_id
-    assert notification_from_db.template_version == notification.template_version
-    assert notification_from_db.api_key_id == notification.api_key_id
-    assert notification_from_db.key_type == notification.key_type
-    assert notification_from_db.key_type == notification.key_type
-    assert notification_from_db.billable_units == notification.billable_units
-    assert notification_from_db.notification_type == notification.notification_type
-    assert notification_from_db.created_at == notification.created_at
-    assert not notification_from_db.sent_at
-    assert notification_from_db.updated_at == notification.updated_at
-    assert notification_from_db.status == notification.status
-    assert notification_from_db.reference == notification.reference
-    assert notification_from_db.client_reference == notification.client_reference
-    assert notification_from_db.created_by_id == notification.created_by_id
-    assert notification_from_db.reply_to_text == sample_template.service.get_default_sms_sender()
