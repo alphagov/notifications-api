@@ -14,11 +14,15 @@ from app.models import ServiceJoinRequest, User
 
 @autocommit
 def dao_create_service_join_request(
-    requester_id: UUID, service_id: UUID, contacted_user_ids: list[UUID]
+    requester_id: UUID,
+    service_id: UUID,
+    contacted_user_ids: list[UUID],
+    reason: str | None = None,
 ) -> ServiceJoinRequest:
     new_request = ServiceJoinRequest(
         requester_id=requester_id,
         service_id=service_id,
+        reason=reason,
     )
 
     contacted_users = User.query.filter(User.id.in_(contacted_user_ids)).all()
@@ -49,7 +53,7 @@ def dao_update_service_join_request(
     request_id: UUID,
     status: Literal[*SERVICE_JOIN_REQUEST_STATUS_TYPES],
     status_changed_by_id: UUID,
-    reason: str = None,
+    reason: str | None = None,
 ) -> ServiceJoinRequest | None:
     service_join_request = dao_get_service_join_request_by_id(request_id)
 
@@ -103,5 +107,4 @@ def dao_cancel_pending_service_join_requests(requester_id: UUID, approver_id: UU
                 request_id=request.id,
                 status=SERVICE_JOIN_REQUEST_CANCELLED,
                 status_changed_by_id=approver_id,
-                reason="system update due to cancellation",
             )
