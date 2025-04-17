@@ -32,6 +32,10 @@ def get_service_callback_api(service_callback_api_id, service_id, callback_type)
     ).first()
 
 
+def get_service_callback_api_by_callback_type(service_id, callback_type):
+    return ServiceCallbackApi.query.filter_by(service_id=service_id, callback_type=callback_type).first()
+
+
 def get_delivery_status_callback_api_for_service(service_id):
     return ServiceCallbackApi.query.filter_by(
         service_id=service_id, callback_type=ServiceCallbackTypes.delivery_status.value
