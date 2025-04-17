@@ -204,8 +204,9 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     postage_order = case(
         (formatted_postage == "second", 1),
         (formatted_postage == "first", 2),
-        (formatted_postage == "international", 3),
-        else_=0,  # assumes never get 0 as a result
+        (formatted_postage == "economy", 3),  # TODO: verify with team
+        (formatted_postage == "international", 4),
+        else_=0,
     )
 
     return (

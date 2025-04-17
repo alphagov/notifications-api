@@ -252,13 +252,14 @@ def test_fetch_billing_data_for_day_groups_by_postage(notify_db_session):
     create_notification(template=letter_template, status="delivered", postage="first")
     create_notification(template=letter_template, status="delivered", postage="first")
     create_notification(template=letter_template, status="delivered", postage="second")
+    create_notification(template=letter_template, status="delivered", postage="economy")
     create_notification(template=letter_template, status="delivered", postage="europe")
     create_notification(template=letter_template, status="delivered", postage="rest-of-world")
     create_notification(template=email_template, status="delivered")
 
     today = convert_utc_to_bst(datetime.utcnow())
     results = fetch_billing_data_for_day(today.date())
-    assert len(results) == 5
+    assert len(results) == 6
 
 
 def test_fetch_billing_data_for_day_groups_by_sent_by(notify_db_session):
@@ -1330,7 +1331,8 @@ class TestUpdateFtBillingLetterDespatch:
         noti_4 = create_notification(template=letter_template, postage="second", billable_units=3, status="delivered")
         noti_5 = create_notification(template=letter_template, postage="second", billable_units=3, status="delivered")
         noti_6 = create_notification(template=letter_template, postage="second", billable_units=3, status="delivered")
-        noti_7 = create_notification(template=letter_template, postage="europe", billable_units=4, status="delivered")
+        noti_7 = create_notification(template=letter_template, postage="economy", billable_units=3, status="delivered")
+        noti_8 = create_notification(template=letter_template, postage="europe", billable_units=4, status="delivered")
         dao_record_letter_despatched_on_by_id(
             notification_id=noti_1.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )

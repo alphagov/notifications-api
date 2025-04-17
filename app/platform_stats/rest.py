@@ -257,6 +257,7 @@ def volumes_by_service_report():
     return jsonify(report)
 
 
+# TODO: verify with the team
 def postage_description(postage):
     if postage in UK_POSTAGE_TYPES:
         return f"{postage} class"
