@@ -113,13 +113,15 @@ def test_validation_error(app_for_test):
             assert {"error": "ValidationError", "message": "template_id is not a valid UUID"} in error["errors"]
 
 
-def test_data_errors(app_for_test):
+def test_data_errors(app_for_test, caplog):
     with app_for_test.test_request_context():
         with app_for_test.test_client() as client:
-            response = client.get(url_for("v2_under_test.raising_data_error"))
+            with caplog.at_level("INFO"):
+                response = client.get(url_for("v2_under_test.raising_data_error"))
             assert response.status_code == 404
             error = response.json
             assert error == {"status_code": 404, "errors": [{"error": "DataError", "message": "No result found"}]}
+            assert caplog.records[0].exc_info is not None
 
 
 def test_document_download_error(app_for_test):

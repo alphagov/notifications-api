@@ -131,7 +131,7 @@ def register_errors(blueprint):
     @blueprint.errorhandler(NoResultFound)
     @blueprint.errorhandler(DataError)
     def no_result_found(e):
-        current_app.logger.info(e)
+        current_app.logger.info(e, exc_info=True)
         return jsonify(status_code=404, errors=[{"error": e.__class__.__name__, "message": "No result found"}]), 404
 
     @blueprint.errorhandler(AuthError)
