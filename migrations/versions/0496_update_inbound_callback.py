@@ -4,8 +4,8 @@ Create Date: 2025-04-07 14:22:20.057922
 
 from alembic import op
 
-revision = '0495_update_inbound_callback'
-down_revision = '0494_add_intl_sms_limit_column'
+revision = '0496_update_inbound_callback'
+down_revision = '0495_economy_rates_april_2025'
 
 
 def upgrade():
