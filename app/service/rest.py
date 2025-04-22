@@ -78,7 +78,6 @@ from app.dao.service_guest_list_dao import (
 from app.dao.service_join_requests_dao import (
     dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
-    dao_get_service_join_request_by_id,
     dao_get_service_join_request_by_id_and_service_id,
     dao_update_service_join_request,
     dao_update_service_join_request_by_id,
@@ -1399,16 +1398,6 @@ def send_receipt_after_sending_request_invite_letter(
         reply_to_text=notify_service.get_default_reply_to_email_address(),
     )
     send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
-
-
-@service_blueprint.route("/service-join-request/<uuid:request_id>", methods=["GET"])
-def get_service_join_request(request_id: uuid.UUID):
-    service_join_request = dao_get_service_join_request_by_id(request_id)
-
-    if not service_join_request:
-        raise InvalidRequest(message=f"Service join request with ID {request_id} not found.", status_code=404)
-
-    return jsonify(service_join_request.serialize()), 200
 
 
 @service_blueprint.route("/<uuid:service_id>/service-join-request/<uuid:request_id>", methods=["GET"])
