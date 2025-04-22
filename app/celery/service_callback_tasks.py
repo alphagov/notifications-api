@@ -1,4 +1,5 @@
 import json
+import logging
 from contextvars import ContextVar
 
 import requests
@@ -49,7 +50,9 @@ def send_returned_letter_to_service(self, encoded_returned_letter):
     )
 
 
-@notify_celery.task(bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300)
+@notify_celery.task(
+    bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300, early_log_level=logging.DEBUG
+)
 def send_delivery_status_to_service(self, notification_id, encoded_status_update):
     status_update = signing.decode(encoded_status_update)
 

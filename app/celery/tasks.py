@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 from datetime import datetime
 
@@ -299,7 +300,7 @@ def save_sms(
 
 
 @notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
-def save_email(self, service_id, notification_id, encoded_notification, sender_id=None):
+def save_email(self, service_id, notification_id, encoded_notification, sender_id=None, early_log_level=logging.DEBUG):
     notification = signing.decode(encoded_notification)
 
     service = SerialisedService.from_id(service_id)

@@ -1,10 +1,8 @@
-# This file was automatically copied from notifications-utils@98.0.0
+# This file was automatically copied from notifications-utils@99.0.0
 
-exclude = [
+extend-exclude = [
     "migrations/versions/",
-    "venv*",
     "__pycache__",
-    "node_modules",
     "cache",
     "migrations",
     "build",
