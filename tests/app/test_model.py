@@ -310,41 +310,52 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_letter_rate(
     other_rate = create_letter_rate(
         start_date=datetime.now(UTC) - timedelta(days=1), rate=0.85, post_class="first", sheet_count=2
     )
-    # two letters that are 1 sheet of paper each 2nd class, and one letter that is two sheets long 1st class
+    # economy rate for 1 sheet of paper
+    economy_rate = create_letter_rate(
+        start_date=datetime.now(UTC) - timedelta(days=1), rate=0.59, post_class="economy", sheet_count=1
+    )
+    # two letters that are 1 sheet of paper each 2nd class,
+    # one letter that is two sheets long 1st class
+    # and one letter that is 1 sheet of paper economy class
     notification_1 = create_notification(sample_letter_template, billable_units=1, postage="second")
     notification_2 = create_notification(sample_letter_template, billable_units=1, postage="second")
     notification_3 = create_notification(sample_letter_template, billable_units=2, postage="first")
+    notification_4 = create_notification(sample_letter_template, billable_units=1, postage="economy")
 
     mock_get_letter_rates = mocker.patch(
         "app.dao.letter_rate_dao.dao_get_letter_rates_for_timestamp",
-        side_effect=[[letter_rate, other_rate], [letter_rate, other_rate]],
+        side_effect=[[letter_rate, other_rate], [letter_rate, other_rate], [economy_rate, letter_rate]],
     )
     mock_redis_get = mocker.patch(
         "app.RedisClient.get",
-        side_effect=[None, b"0.54", None],
+        side_effect=[None, b"0.54", None, None],
     )
     mock_redis_set = mocker.patch(
         "app.RedisClient.set",
     )
 
-    # we serialize three times - two times for one rate, and once for the other rate
+    # we serialize four times - two times for one rate, and twice for the following rates
     notification_1.serialize_with_cost_data()
     response = notification_2.serialize_with_cost_data()
     notification_3.serialize_with_cost_data()
+    notification_4.serialize_with_cost_data()
 
     # redis is called
     assert mock_redis_get.call_args_list == [
         call("letter-rate-for-date-2024-07-10-sheets-1-postage-second"),
         call("letter-rate-for-date-2024-07-10-sheets-1-postage-second"),
         call("letter-rate-for-date-2024-07-10-sheets-2-postage-first"),
+        call("letter-rate-for-date-2024-07-10-sheets-1-postage-economy"),
     ]
     assert mock_redis_set.call_args_list == [
         call("letter-rate-for-date-2024-07-10-sheets-1-postage-second", 0.54, ex=86400),
         call("letter-rate-for-date-2024-07-10-sheets-2-postage-first", 0.85, ex=86400),
+        call("letter-rate-for-date-2024-07-10-sheets-1-postage-economy", 0.59, ex=86400),
     ]
 
     # but we only get each rate once from db
     assert mock_get_letter_rates.call_args_list == [
+        call(datetime.now().date()),
         call(datetime.now().date()),
         call(datetime.now().date()),
     ]
