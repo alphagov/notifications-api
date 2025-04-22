@@ -10,10 +10,7 @@ from app.dao.invited_user_dao import (
     get_invited_users_for_service,
     save_invited_user,
 )
-from app.dao.service_join_requests_dao import dao_create_service_join_request
-from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
 from app.models import Service
 from app.notifications.process_notifications import (
@@ -125,47 +122,6 @@ def validate_service_invitation_token(token):
 
     invited_user = get_invited_user_by_id(invited_user_id)
     return jsonify(data=invited_user_schema.dump(invited_user)), 200
-
-
-@service_invite.route("/service/<service_id>/invite/request-for/<user_to_invite_id>", methods=["POST"])
-def request_invite_to_service(service_id, user_to_invite_id):
-    request_json = request.get_json()
-    user_requesting_invite = get_user_by_id(user_to_invite_id)
-    recipients_of_invite_request_ids = request_json["service_managers_ids"]
-    recipients_of_invite_request = [get_user_by_id(recipient_id) for recipient_id in recipients_of_invite_request_ids]
-    service = dao_fetch_service_by_id(service_id)
-    reason_for_request = request_json["reason"]
-    invite_link_host = request_json["invite_link_host"]
-    request_again_url = f"{invite_link_host}/services/{service.id}/join/ask"
-
-    if user_requesting_invite.services and service in user_requesting_invite.services:
-        raise BadRequestError(400, "user-already-in-service")
-
-    # Temporary logic to capture the request
-    # Once the join service request flow is completed this needs to be refactored
-    created_service_join_request = dao_create_service_join_request(
-        requester_id=user_to_invite_id,
-        service_id=service_id,
-        contacted_user_ids=recipients_of_invite_request_ids,
-        reason=reason_for_request,
-    )
-
-    approve_request_url = (
-        f"{invite_link_host}/services/{service.id}/join-request/{created_service_join_request.id}/approve"
-    )
-
-    send_service_invite_request(
-        user_requesting_invite, recipients_of_invite_request, service, reason_for_request, approve_request_url
-    )
-
-    send_receipt_after_sending_request_invite_letter(
-        user_requesting_invite,
-        service=service,
-        recipients_of_invite_request=recipients_of_invite_request,
-        request_again_url=request_again_url,
-    )
-
-    return {}, 204
 
 
 def send_service_invite_request(
