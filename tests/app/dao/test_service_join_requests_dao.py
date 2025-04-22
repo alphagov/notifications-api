@@ -14,7 +14,6 @@ from app.dao.service_join_requests_dao import (
     dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
     dao_get_service_join_request_by_id_and_service_id,
-    dao_update_service_join_request,
     dao_update_service_join_request_by_id,
 )
 from app.models import ServiceJoinRequest, User
@@ -165,59 +164,6 @@ def test_dao_get_service_join_request_by_id_and_service_id(notify_db_session, te
 def test_dao_get_service_join_request_by_id_and_service_id_raise_error_if_no_result_found(sample_service):
     with pytest.raises(SQLAlchemyError):
         dao_get_service_join_request_by_id_and_service_id(request_id=uuid4(), service_id=sample_service.created_by_id)
-
-
-@pytest.mark.parametrize(
-    "updated_status,reason",
-    [
-        (SERVICE_JOIN_REQUEST_APPROVED, None),
-        (SERVICE_JOIN_REQUEST_REJECTED, "Rejected due to incomplete information"),
-    ],
-    ids=["Approved", "Rejected with reason"],
-)
-def test_dao_update_service_join_request(client, notify_db_session, updated_status, reason):
-    requester_id = uuid4()
-    service_id = uuid4()
-    user_1 = uuid4()
-    user_2 = uuid4()
-
-    setup_service_join_request_test_data(service_id, requester_id, [user_1, user_2])
-
-    request = dao_create_service_join_request(
-        requester_id=requester_id,
-        service_id=service_id,
-        contacted_user_ids=[user_1, user_2],
-    )
-
-    updated_request = dao_update_service_join_request(
-        request_id=request.id,
-        status=updated_status,
-        status_changed_by_id=user_1,
-        reason=reason,
-    )
-
-    assert updated_request.status == updated_status
-    assert updated_request.status_changed_by_id == user_1
-    assert updated_request.reason == reason
-    assert len(updated_request.contacted_service_users) == 2
-
-
-def test_dao_update_service_join_request_no_request_found(client, notify_db_session):
-    requester_id = uuid4()
-    request_id = uuid4()
-    service_id = uuid4()
-    user_1 = uuid4()
-
-    setup_service_join_request_test_data(service_id, requester_id, [user_1])
-
-    updated_request = dao_update_service_join_request(
-        request_id=request_id,
-        status=SERVICE_JOIN_REQUEST_REJECTED,
-        status_changed_by_id=user_1,
-        reason=None,
-    )
-
-    assert updated_request is None
 
 
 @pytest.mark.parametrize(
