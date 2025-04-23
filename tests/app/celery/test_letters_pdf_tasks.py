@@ -44,6 +44,7 @@ from app.constants import (
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
+from app.dao.notifications_dao import get_notification_by_id
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import ScanErrorType
@@ -336,6 +337,31 @@ def test_send_dvla_letters_via_api(sample_letter_template, mock_celery_task):
         ],
         any_order=True,
     )
+
+
+@pytest.mark.parametrize("postage", ["economy"])
+def test_send_dvla_letters_sets_economy_to_tech_failure(sample_letter_template, postage):
+    with freeze_time("2021-06-01 16:29"):
+        economy = create_notification(sample_letter_template, postage=postage)
+
+    send_dvla_letters_via_api(datetime(2021, 6, 1, 17, 30))
+
+    notification = get_notification_by_id(economy.id)
+    assert notification.status == NOTIFICATION_TECHNICAL_FAILURE
+
+
+def test_send_dvla_letters_filters_out_economy(sample_letter_template, mock_celery_task):
+    mock_celery = mock_celery_task(shatter_deliver_letter_tasks)
+
+    with freeze_time("2021-06-01 16:29"):
+        create_notification(sample_letter_template, postage="first")
+        create_notification(sample_letter_template, postage="second")
+        create_notification(sample_letter_template, postage="economy")  # should be excluded
+
+    send_dvla_letters_via_api(datetime(2021, 6, 1, 17, 30))
+
+    # We expect only 2 non-economy letters to be batched and queued
+    assert [len(call.args[0][0]) for call in mock_celery.call_args_list] == [2]
 
 
 def test_batching_of_send_letter_celery_tasks(sample_letter_template, mock_celery_task):

@@ -113,6 +113,7 @@ DVLA_TO_NOTIFICATION_STATUS_MAP = {
 # Letter postage zones
 FIRST_CLASS = "first"
 SECOND_CLASS = "second"
+ECONOMY_CLASS = "economy"
 EUROPE = "europe"
 REST_OF_WORLD = "rest-of-world"
 

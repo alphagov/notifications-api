@@ -12,6 +12,7 @@ from app.aws import s3
 from app.celery.provider_tasks import deliver_letter
 from app.config import QueueNames, TaskNames
 from app.constants import (
+    ECONOMY_CLASS,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_POSTAGE_TYPES,
     KEY_TYPE_NORMAL,
@@ -231,10 +232,26 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
 
 def send_dvla_letters_via_api(print_run_deadline_local, batch_size=100):
     current_app.logger.info("send-dvla-letters-for-day-via-api - starting queuing")
-    for batch in batched(
-        (row.id for row in dao_get_letters_to_be_printed(print_run_deadline_local)),
-        batch_size,
-    ):
+
+    notifications = dao_get_letters_to_be_printed(print_run_deadline_local)
+
+    economy_ids = []
+    letters_to_send_ids = []
+
+    for row in notifications:
+        if row.postage == ECONOMY_CLASS:
+            economy_ids.append(row.id)
+        else:
+            letters_to_send_ids.append(row.id)
+
+    # Update economy letters to technical-failure - this will be removed after release of Economy Mail Feature
+    for notification_id in economy_ids:
+        update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+
+    current_app.logger.info("Marked %s economy letters as technical-failure", len(economy_ids))
+
+    # Queue only the non-economy letters
+    for batch in batched(letters_to_send_ids, batch_size):
         shatter_deliver_letter_tasks.apply_async([batch], queue=QueueNames.PERIODIC)
 
 

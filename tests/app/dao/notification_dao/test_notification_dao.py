@@ -1644,6 +1644,34 @@ def test_letters_to_be_printed_returns_ids(notify_db_session):
     assert sorted(x.id for x in results) == sorted(x.id for x in printed_notifications)
 
 
+def test_letters_to_be_printed_returns_ids_and_postage(notify_db_session):
+    first_service = create_service(service_name="first service", service_id="3a5cea08-29fd-4bb9-b582-8dedd928b149")
+    second_service = create_service(service_name="second service", service_id="642bf33b-54b5-45f2-8c13-942a46616704")
+    first_template = create_template(service=first_service, template_type="letter", postage="second")
+    second_template = create_template(service=second_service, template_type="letter", postage="second")
+    economy_template = create_template(service=first_service, template_type="letter", postage="economy")
+    email_template = create_template(service=first_service, template_type="email")
+
+    printed_notifications = {
+        create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30)),
+        create_notification(second_template, created_at=datetime(2020, 12, 1, 8, 30)),
+        create_notification(economy_template, created_at=datetime(2020, 12, 1, 9, 15)),
+    }
+
+    # unprinted_notifications
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 17, 31))  # too late
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30), key_type="test")  # wrong keytype
+    create_notification(email_template, created_at=datetime(2020, 12, 1, 9, 30))  # email
+    create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 31), billable_units=0)  # no units
+
+    results = list(dao_get_letters_to_be_printed(print_run_deadline_local=datetime(2020, 12, 1, 17, 30), query_limit=4))
+    assert sorted(x.id for x in results) == sorted(x.id for x in printed_notifications)
+
+    postage_by_id = {x.id: x.postage for x in results}
+    for n in printed_notifications:
+        assert postage_by_id[n.id] == n.postage
+
+
 def test_dao_get_letters_and_sheets_volume_by_postage(notify_db_session):
     first_service = create_service(service_name="first service", service_id="3a5cea08-29fd-4bb9-b582-8dedd928b149")
     second_service = create_service(service_name="second service", service_id="642bf33b-54b5-45f2-8c13-942a46616704")
