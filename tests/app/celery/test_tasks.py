@@ -1142,7 +1142,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(
 
 
 @pytest.mark.parametrize("client_reference", [None, "ab1234"])
-def test_notification_belonging_to_a_job_with_incorrect_number_saved_as_validation_failed_and_not_sent(
+def test_notification_belonging_to_a_job_with_incorrect_number_should_go_to_personal_failure(
     sample_template_with_placeholders, mock_celery_task, sample_job, client_reference
 ):
     notification = _notification_json(
