@@ -783,6 +783,31 @@ def test_update_service_sets_volumes(
 
 
 @pytest.mark.parametrize(
+    "daily_limit_type, limit_size",
+    [
+        ["email_message_limit", 1123456],
+        ["international_sms_message_limit", 1123],
+        ["sms_message_limit", 1123456],
+        ["letter_message_limit", 123456],
+    ],
+)
+def test_update_service_sets_daily_limits(
+    admin_request,
+    sample_service,
+    daily_limit_type,
+    limit_size,
+):
+    admin_request.post(
+        "service.update_service",
+        service_id=sample_service.id,
+        _data={
+            daily_limit_type: limit_size,
+        },
+    )
+    assert getattr(sample_service, daily_limit_type) == limit_size
+
+
+@pytest.mark.parametrize(
     "value, expected_status, expected_persisted",
     (
         (True, 200, True),
