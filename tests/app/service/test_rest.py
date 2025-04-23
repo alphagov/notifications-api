@@ -27,7 +27,6 @@ from app.constants import (
     REPORT_REQUEST_PENDING,
     SERVICE_JOIN_REQUEST_APPROVED,
     SERVICE_JOIN_REQUEST_CANCELLED,
-    SERVICE_JOIN_REQUEST_PENDING,
     SMS_TYPE,
     UPLOAD_LETTERS,
 )
@@ -4186,53 +4185,6 @@ def test_request_invite_to_service_raises_exception_if_no_service_managers_to_se
     )
     assert response["message"] == "no-valid-service-managers-ids"
     assert not mock_receipt.called
-
-
-def test_get_service_join_request_not_found(admin_request):
-    request_id = uuid.uuid4()
-
-    resp = admin_request.get(
-        "service.get_service_join_request",
-        request_id=request_id,
-        _expected_status=404,
-    )
-
-    assert resp["message"] == f"Service join request with ID {request_id} not found."
-
-
-def test_get_service_join_request_success(admin_request, notify_db_session, mocker):
-    mocker.patch("app.service.rest.send_service_invite_request")
-    mocker.patch("app.service.rest.send_receipt_after_sending_request_invite_letter")
-
-    requester_id = uuid.uuid4()
-    service_id = uuid.uuid4()
-    contacted_user = uuid.uuid4()
-
-    setup_service_join_request_test_data(service_id, requester_id, [contacted_user])
-
-    resp = admin_request.post(
-        "service.create_service_join_request",
-        service_id=str(service_id),
-        _data={
-            "requester_id": str(requester_id),
-            "contacted_user_ids": [str(contacted_user)],
-            "invite_link_host": "www",
-        },
-        _expected_status=201,
-    )
-
-    request_id = resp["service_join_request_id"]
-
-    resp = admin_request.get(
-        "service.get_service_join_request",
-        request_id=request_id,
-        _expected_status=200,
-    )
-
-    assert resp["contacted_service_users"] is not None
-    assert resp["status"] == SERVICE_JOIN_REQUEST_PENDING
-    assert resp["id"] == request_id
-    assert resp["created_at"] is not None
 
 
 def test_get_service_join_request_by_id(admin_request, sample_service):

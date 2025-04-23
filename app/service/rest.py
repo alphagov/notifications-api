@@ -78,9 +78,7 @@ from app.dao.service_guest_list_dao import (
 from app.dao.service_join_requests_dao import (
     dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
-    dao_get_service_join_request_by_id,
     dao_get_service_join_request_by_id_and_service_id,
-    dao_update_service_join_request,
     dao_update_service_join_request_by_id,
 )
 from app.dao.service_letter_contact_dao import (
@@ -1401,16 +1399,6 @@ def send_receipt_after_sending_request_invite_letter(
     send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
 
-@service_blueprint.route("/service-join-request/<uuid:request_id>", methods=["GET"])
-def get_service_join_request(request_id: uuid.UUID):
-    service_join_request = dao_get_service_join_request_by_id(request_id)
-
-    if not service_join_request:
-        raise InvalidRequest(message=f"Service join request with ID {request_id} not found.", status_code=404)
-
-    return jsonify(service_join_request.serialize()), 200
-
-
 @service_blueprint.route("/<uuid:service_id>/service-join-request/<uuid:request_id>", methods=["GET"])
 def get_service_join_request_by_id(service_id: uuid.UUID, request_id: uuid.UUID):
     service_join_request = dao_get_service_join_request_by_id_and_service_id(
@@ -1418,51 +1406,6 @@ def get_service_join_request_by_id(service_id: uuid.UUID, request_id: uuid.UUID)
     )
 
     return jsonify(service_join_request.serialize()), 200
-
-
-@service_blueprint.route("/update-service-join-request-status/<uuid:request_id>", methods=["POST"])
-def update_service_join_request(request_id: uuid.UUID):
-    data = request.get_json()
-
-    validate(data, service_join_request_update_schema)
-
-    status = data["status"]
-    status_changed_by_id = data["status_changed_by_id"]
-    reason = data.get("reason")
-
-    updated_request = dao_update_service_join_request(request_id, status, status_changed_by_id, reason)
-
-    if updated_request is None:
-        return jsonify({"message": "Service join request not found"}), 404
-
-    if status == SERVICE_JOIN_REQUEST_APPROVED:
-        permissions = data.get("permissions", None)
-
-        if permissions:
-            permissions = [
-                Permission(service_id=updated_request.service_id, user_id=updated_request.requester_id, permission=p)
-                for p in permissions
-            ]
-
-        requester_user = get_user_by_id(updated_request.requester_id)
-        approver_user = get_user_by_id(updated_request.status_changed_by_id)
-        service = dao_fetch_service_by_id(updated_request.service_id)
-        folder_permissions = data.get("folder_permissions", [])
-
-        dao_add_user_to_service(service, requester_user, permissions, folder_permissions)
-
-        updated_auth_type = data.get("auth_type")
-        _update_auth_type(updated_auth_type, requester_user)
-
-        send_service_join_request_decision_email(
-            requester_email_address=requester_user.email_address,
-            template=dao_get_template_by_id(current_app.config["SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID"]),
-            personalisation=create_personalisation(requester_user.name, approver_user.name, service.name, service.id),
-        )
-
-        dao_cancel_pending_service_join_requests(requester_user.id, approver_user.id, service.id)
-
-    return jsonify(updated_request.serialize()), 200
 
 
 @service_blueprint.route("/<uuid:service_id>/service-join-request/<uuid:request_id>", methods=["POST"])
