@@ -173,11 +173,9 @@ def process_sms_or_email_notification(
     notification_id = uuid.uuid4()
     form_send_to = form["email_address"] if notification_type == EMAIL_TYPE else form["phone_number"]
 
-    recipient_data = validate_and_format_recipient(
+    send_to = validate_and_format_recipient(
         send_to=form_send_to, key_type=api_user.key_type, service=service, notification_type=notification_type
     )
-
-    send_to = recipient_data["normalised_to"] if type(recipient_data) is dict else recipient_data
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
@@ -211,7 +209,7 @@ def process_sms_or_email_notification(
         notification_id=notification_id,
         template_id=template.id,
         template_version=template.version,
-        recipient=recipient_data if type(recipient_data) is dict else form_send_to,
+        recipient=form_send_to,
         service=service,
         personalisation=personalisation,
         notification_type=notification_type,

@@ -1,7 +1,7 @@
 from flask import current_app
 
 from app.config import QueueNames
-from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, SMS_TYPE
+from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL
 from app.dao.services_dao import (
     dao_fetch_active_users_for_service,
     dao_fetch_service_by_id,
@@ -11,7 +11,6 @@ from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
 )
-from app.notifications.validators import validate_and_format_recipient
 
 
 def send_notification_to_service_users(service_id, template_id, personalisation=None, include_user_fields=None):
@@ -27,16 +26,7 @@ def send_notification_to_service_users(service_id, template_id, personalisation=
         notification = persist_notification(
             template_id=template.id,
             template_version=template.version,
-            recipient=(
-                user.email_address
-                if template.template_type == EMAIL_TYPE
-                else validate_and_format_recipient(
-                    user.mobile_number,
-                    KEY_TYPE_NORMAL,
-                    notify_service,
-                    SMS_TYPE,
-                )
-            ),
+            recipient=user.email_address if template.template_type == EMAIL_TYPE else user.mobile_number,
             service=notify_service,
             personalisation=personalisation,
             notification_type=template.template_type,
