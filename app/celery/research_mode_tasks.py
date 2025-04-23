@@ -113,6 +113,7 @@ def _create_fake_letter_callback_data(notification_id: uuid.UUID, billable_units
             "jobType": "NOTIFY",
             "jobStatus": "DESPATCHED",
             "templateReference": "NOTIFY",
+            "transitionDate": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         },
         "metadata": {
             "handler": {"urn": "dvla:resource:osl:print:print-hub-fulfilment:5.18.0"},

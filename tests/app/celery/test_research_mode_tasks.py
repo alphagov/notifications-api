@@ -165,6 +165,7 @@ def test_create_fake_letter_callback_sends_letter_response(
             "jobType": "NOTIFY",
             "jobStatus": "DESPATCHED",
             "templateReference": "NOTIFY",
+            "transitionDate": "2024-07-26T16:30:53Z",
         },
         "metadata": {
             "handler": {"urn": "dvla:resource:osl:print:print-hub-fulfilment:5.18.0"},
