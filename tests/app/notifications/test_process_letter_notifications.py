@@ -1,3 +1,5 @@
+import pytest
+
 from app.constants import LETTER_TYPE, NOTIFICATION_CREATED
 from app.models import Notification
 from app.notifications.process_letter_notifications import (
@@ -82,3 +84,29 @@ def test_create_letter_notification_sets_billable_units(sample_letter_template, 
     )
 
     assert notification.billable_units == 3
+
+
+@pytest.mark.parametrize("postage", ["second", "first", "economy"])
+def test_create_letter_notification_with_different_postage(sample_letter_template, sample_api_key, postage):
+    data = {
+        "personalisation": {
+            "address_line_1": "The Queen",
+            "address_line_2": "Buckingham Palace",
+            "postcode": "SW1 1AA",
+        },
+        "postage": postage,
+    }
+
+    template = SerialisedTemplate.from_id_and_service_id(sample_letter_template.id, sample_letter_template.service_id)
+
+    notification = create_letter_notification(
+        data,
+        template,
+        sample_letter_template.service,
+        sample_api_key,
+        NOTIFICATION_CREATED,
+    )
+
+    assert notification == Notification.query.one()
+    assert notification.status == NOTIFICATION_CREATED
+    assert notification.postage == postage

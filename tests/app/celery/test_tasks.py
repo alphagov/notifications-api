@@ -1691,6 +1691,7 @@ def test_save_letter_saves_letter_to_database(
         ("SW1 1AA", "second", "second", False),
         ("New Zealand", "second", "rest-of-world", True),
         ("France", "first", "europe", True),
+        ("SW1 1AA", "economy", "economy", False),
     ],
 )
 def test_save_letter_saves_letter_to_database_with_correct_postage(
