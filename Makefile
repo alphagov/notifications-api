@@ -49,9 +49,7 @@ run-celery-with-docker: ## Run celery in Docker container (useful if you can't i
 
 .PHONY: run-celery-beat
 run-celery-beat: ## Run celery beat
-	. environment.sh && celery \
-		-A run_celery.notify_celery beat \
-		--loglevel=INFO
+	. environment.sh && celery --quiet -A run_celery.notify_celery beat
 
 .PHONY: run-celery-beat-with-docker
 run-celery-beat-with-docker: ## Run celery beat in Docker container (useful if you can't install pycurl locally)
