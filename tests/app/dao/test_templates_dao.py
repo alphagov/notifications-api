@@ -421,3 +421,55 @@ def test_dao_get_template_service_join_request_approved(service_join_request_app
     assert str(template.id) == template_id
     assert template.template_type == template_type
     assert partial_content in template.content
+
+
+@pytest.mark.parametrize(
+    "postage",
+    ["first", "second", "europe", "rest-of-world", "economy"],
+)
+def test_create_letter_template_with_various_postage_options(sample_service, sample_user, postage):
+    data = {
+        "name": f"Letter Template - {postage}",
+        "template_type": "letter",
+        "subject": "Subject",
+        "content": "Content of the letter.",
+        "service": sample_service,
+        "created_by": sample_user,
+        "postage": postage,
+    }
+
+    template = Template(**data)
+    dao_create_template(template)
+
+    template = Template.query.filter_by(name=f"Letter Template - {postage}").one()
+    assert template.template_type == "letter"
+    assert template.postage == postage
+
+
+def test_dao_update_template_postage_creates_history_entry(sample_service, sample_user):
+    # Create a letter template with "second" class
+    template = Template(
+        name="Postage Test Template",
+        template_type="letter",
+        content="Template content",
+        subject="subject",
+        service=sample_service,
+        created_by=sample_user,
+        postage="second",
+    )
+    dao_create_template(template)
+
+    # Update postage to "economy"
+    created = Template.query.get(template.id)
+    created.postage = "economy"
+    dao_update_template(created)
+
+    updated = Template.query.get(template.id)
+
+    assert updated.postage == "economy"
+    assert updated.version == 2
+    assert updated.updated_at is not None
+
+    history = TemplateHistory.query.filter_by(id=template.id, version=2).one()
+    assert history.postage == "economy"
+    assert history.updated_at == updated.updated_at
