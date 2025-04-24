@@ -1063,6 +1063,14 @@ def set_up_usage_data(start_date):
         rate=0.50,
         postage="first",
     )
+    create_ft_billing(
+        bst_date=two_days_later,
+        template=letter_template_4,
+        notifications_sent=3,
+        billable_unit=2,
+        rate=0.64,
+        postage="economy",
+    )
 
     # service with chargeable SMS, without an organisation
     service_with_sms_without_org = create_service(
