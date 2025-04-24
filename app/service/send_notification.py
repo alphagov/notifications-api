@@ -81,6 +81,9 @@ def send_one_off_notification(service_id, post_data):
         if not postage:
             postage = template.postage
 
+        if postage == "economy":
+            check_service_has_permission(service, ECONOMY_LETTER_SENDING)
+
         client_reference = _get_reference_from_personalisation(personalisation)
 
     validate_created_by(service, post_data["created_by"])
