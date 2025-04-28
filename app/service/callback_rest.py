@@ -8,11 +8,8 @@ from app.dao.service_callback_api_dao import (
     reset_service_callback_api,
     save_service_callback_api,
 )
-from app.dao.service_inbound_api_dao import (
-    save_service_inbound_api,
-)
 from app.errors import InvalidRequest, register_errors
-from app.models import ServiceCallbackApi, ServiceInboundApi
+from app.models import ServiceCallbackApi
 from app.schema_validation import validate
 from app.service.service_callback_api_schema import (
     create_service_callback_api_schema,
@@ -28,25 +25,14 @@ register_errors(service_callback_blueprint)
 def create_service_callback_api(service_id):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
-    callback_type = data["callback_type"]
     data["service_id"] = service_id
-
     service_callback_api = ServiceCallbackApi(**data)
     error_message = "service_callback_api"
+
     try:
         save_service_callback_api(service_callback_api)
     except SQLAlchemyError as e:
         return handle_sql_error(e, error_message)
-
-    # TODO remove this if statement once service_inbound_api has been merged into service_callback_api
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        del data["callback_type"]  # ServiceInboundApi doesn't have this attribute
-        error_message = "service_inbound_api"
-        inbound_sms_callback_api = ServiceInboundApi(**data)
-        try:
-            save_service_inbound_api(inbound_sms_callback_api)
-        except SQLAlchemyError as e:
-            return handle_sql_error(e, error_message)
 
     return jsonify(data=service_callback_api.serialize()), 201
 
