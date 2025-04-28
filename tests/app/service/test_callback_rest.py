@@ -4,7 +4,7 @@ import pytest
 
 from app.constants import ServiceCallbackTypes
 from app.models import ServiceCallbackApi, ServiceInboundApi
-from tests.app.db import create_service_callback_api, create_service_inbound_api
+from tests.app.db import create_service_callback_api
 
 
 @pytest.mark.parametrize(
@@ -88,12 +88,9 @@ def test_set_service_callback_api_raises_404_when_service_does_not_exist(admin_r
     ],
 )
 def test_update_service_callback_api_updates_url(admin_request, sample_service, callback_type, path):
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        callback_api = create_service_inbound_api(service=sample_service, url="https://original_url.com")
-    else:
-        callback_api = create_service_callback_api(
-            callback_type=callback_type, service=sample_service, url="https://original_url.com"
-        )
+    callback_api = create_service_callback_api(
+        callback_type=callback_type, service=sample_service, url="https://original_url.com"
+    )
     new_url = f"https://another_url.com/{path}"
     data = {"url": new_url, "updated_by_id": str(sample_service.users[0].id), "callback_type": callback_type}
 
@@ -108,67 +105,6 @@ def test_update_service_callback_api_updates_url(admin_request, sample_service, 
     assert callback_api.url == new_url
 
 
-def test_update_service_callback_api_updates_both_callback_tables_for_inbound_sms(admin_request, sample_service):
-    inbound_sms_api = create_service_inbound_api(
-        service=sample_service, url="https://original_url.com", bearer_token="old_bearer_token"
-    )
-    create_service_callback_api(
-        callback_type=ServiceCallbackTypes.inbound_sms.value,
-        service=sample_service,
-        url="https://original_url.com",
-        bearer_token="old_bearer_token",
-    )
-    new_url = "https://yet_another_url.com/inbound-sms"
-    new_bearer_token = "new_bearer_token"
-    data = {
-        "url": new_url,
-        "updated_by_id": str(sample_service.users[0].id),
-        "callback_type": ServiceCallbackTypes.inbound_sms.value,
-        "bearer_token": new_bearer_token,
-    }
-
-    admin_request.post(
-        "service_callback.update_service_callback_api",
-        service_id=sample_service.id,
-        callback_api_id=inbound_sms_api.id,
-        _data=data,
-    )
-
-    service_inbound_api_object = ServiceInboundApi.query.one()
-    service_callback_api_object = ServiceCallbackApi.query.one()
-
-    assert service_inbound_api_object.url == new_url
-    assert service_inbound_api_object.bearer_token == new_bearer_token
-    assert service_callback_api_object.url == new_url
-    assert service_callback_api_object.bearer_token == new_bearer_token
-
-
-def test_update_service_callback_api_updates_for_inbound_sms_when_no_callback_in_service_callback_api_table(
-    admin_request, sample_service
-):
-    # This test covers the case where an inbound_sms callback is only present in the inbound_sms table.
-    # Although we are now writing to both callback tables there is historical data in the service_inbound_api table
-    # which may not be in the service_callback_api table
-    inbound_sms_api = create_service_inbound_api(service=sample_service, url="https://original_url.com")
-    new_url = "https://another_url.com/inbound-sms"
-    data = {
-        "url": new_url,
-        "updated_by_id": str(sample_service.users[0].id),
-        "callback_type": ServiceCallbackTypes.inbound_sms.value,
-    }
-
-    admin_request.post(
-        "service_callback.update_service_callback_api",
-        service_id=sample_service.id,
-        callback_api_id=inbound_sms_api.id,
-        _data=data,
-    )
-
-    service_inbound_api_object = ServiceInboundApi.query.one()
-
-    assert service_inbound_api_object.url == new_url
-
-
 @pytest.mark.parametrize(
     "callback_type, path",
     [
@@ -178,12 +114,9 @@ def test_update_service_callback_api_updates_for_inbound_sms_when_no_callback_in
     ],
 )
 def test_update_service_callback_api_updates_bearer_token(admin_request, sample_service, callback_type, path):
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        callback_api = create_service_inbound_api(service=sample_service, url="https://original_url.com")
-    else:
-        callback_api = create_service_callback_api(
-            callback_type=callback_type, service=sample_service, bearer_token=f"some_{callback_type}super_secret"
-        )
+    callback_api = create_service_callback_api(
+        callback_type=callback_type, service=sample_service, bearer_token=f"some_{callback_type}super_secret"
+    )
     data = {
         "bearer_token": f"different_token_{callback_type}",
         "updated_by_id": str(sample_service.users[0].id),
