@@ -207,6 +207,25 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
     )
 
 
+def test_send_one_off_notification_raises_error_if_sending_economy_letter_without_permission(sample_service):
+    template = create_template(service=sample_service, template_type=LETTER_TYPE, postage="economy")
+
+    post_data = {
+        "template_id": str(template.id),
+        "to": "First Last",
+        "personalisation": {
+            "name": "foo",
+            "address_line_1": "First Last",
+            "address_line_2": "1 Example Street",
+            "postcode": "SW1A 1AA",
+        },
+        "created_by": str(sample_service.created_by_id),
+    }
+
+    with pytest.raises(BadRequestError):
+        send_one_off_notification(sample_service.id, post_data)
+
+
 def test_send_one_off_notification_raises_if_invalid_recipient(notify_db_session):
     service = create_service()
     template = create_template(service=service)
