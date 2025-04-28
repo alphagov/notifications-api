@@ -96,11 +96,7 @@ def update_service_callback_api(callback_api_id, service_id):
 @service_callback_blueprint.route("/callback-api/<uuid:callback_api_id>", methods=["GET"])
 def fetch_service_callback_api(callback_api_id, service_id):
     callback_type = request.args.get("callback_type")
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        callback_api = get_service_inbound_api(callback_api_id, service_id)
-    else:
-        callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
-
+    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
     return jsonify(data=callback_api.serialize()), 200
 
 

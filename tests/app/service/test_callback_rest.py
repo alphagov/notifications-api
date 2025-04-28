@@ -199,16 +199,26 @@ def test_update_service_callback_api_updates_bearer_token(admin_request, sample_
     assert callback_api.bearer_token == f"different_token_{callback_type}"
 
 
-def test_fetch_service_inbound_api(admin_request, sample_service):
-    service_inbound_api = create_service_inbound_api(service=sample_service)
+@pytest.mark.parametrize(
+    "callback_type, path",
+    [
+        (ServiceCallbackTypes.inbound_sms.value, "inbound-sms"),
+        (ServiceCallbackTypes.delivery_status.value, "delivery-status"),
+        (ServiceCallbackTypes.returned_letter.value, "returned-letter"),
+    ],
+)
+def test_fetch_service_callback_api(admin_request, sample_service, callback_type, path):
+    service_callback_api = create_service_callback_api(
+        service=sample_service, callback_type=callback_type, url=f"https://something.com/{path}"
+    )
 
     response = admin_request.get(
         "service_callback.fetch_service_callback_api",
         service_id=sample_service.id,
-        callback_api_id=service_inbound_api.id,
-        callback_type="inbound_sms",
+        callback_api_id=service_callback_api.id,
+        callback_type=callback_type,
     )
-    assert response["data"] == service_inbound_api.serialize()
+    assert response["data"] == service_callback_api.serialize()
 
 
 @pytest.mark.parametrize(
