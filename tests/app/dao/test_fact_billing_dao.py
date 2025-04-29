@@ -252,13 +252,14 @@ def test_fetch_billing_data_for_day_groups_by_postage(notify_db_session):
     create_notification(template=letter_template, status="delivered", postage="first")
     create_notification(template=letter_template, status="delivered", postage="first")
     create_notification(template=letter_template, status="delivered", postage="second")
+    create_notification(template=letter_template, status="delivered", postage="economy")
     create_notification(template=letter_template, status="delivered", postage="europe")
     create_notification(template=letter_template, status="delivered", postage="rest-of-world")
     create_notification(template=email_template, status="delivered")
 
     today = convert_utc_to_bst(datetime.utcnow())
     results = fetch_billing_data_for_day(today.date())
-    assert len(results) == 5
+    assert len(results) == 6
 
 
 def test_fetch_billing_data_for_day_groups_by_sent_by(notify_db_session):
@@ -888,8 +889,8 @@ def test_fetch_usage_for_all_services_letter(notify_db_session):
         None,
         fixtures["service_with_letters_without_org"].name,
         fixtures["service_with_letters_without_org"].id,
-        18,
-        Decimal("24.45"),
+        21,
+        Decimal("26.37"),
     )
 
 
@@ -898,7 +899,7 @@ def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session):
 
     results = fetch_usage_for_all_services_letter_breakdown(datetime(2019, 6, 1), datetime(2019, 9, 30)).all()
 
-    assert len(results) == 7
+    assert len(results) == 8
     assert results[0] == (
         fixtures["org_1"].name,
         fixtures["org_1"].id,
@@ -940,11 +941,20 @@ def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session):
         None,
         fixtures["service_with_letters_without_org"].name,
         fixtures["service_with_letters_without_org"].id,
+        Decimal("0.64"),
+        "economy",
+        3,
+    )
+    assert results[5] == (
+        None,
+        None,
+        fixtures["service_with_letters_without_org"].name,
+        fixtures["service_with_letters_without_org"].id,
         Decimal("0.35"),
         "second",
         2,
     )
-    assert results[5] == (
+    assert results[6] == (
         None,
         None,
         fixtures["service_with_letters_without_org"].name,
@@ -953,7 +963,7 @@ def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session):
         "first",
         1,
     )
-    assert results[6] == (
+    assert results[7] == (
         None,
         None,
         fixtures["service_with_letters_without_org"].name,
@@ -1321,8 +1331,10 @@ class TestUpdateFtBillingLetterDespatch:
         create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=0.5, sheet_count=2, post_class="second")
         create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=0.75, sheet_count=3, post_class="second")
         create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=1.5, sheet_count=4, post_class="europe")
+        create_letter_rate(start_date=datetime(2020, 1, 1, 0, 0), rate=0.78, sheet_count=5, post_class="economy")
 
-        # Send 1x 1st class (1 page), 1x 2nd class (1 page), 2x 2nd class (2 pages), 1x europe (3 pages)
+        # Send 2x 1st class (1 page), 1x 2nd class (2 pages), 3x 2nd class (3 pages), 1x europe (4 pages), 1x economy
+        # (5 pages)
         letter_template = create_template(service=sample_service, template_type="letter")
         noti_1 = create_notification(template=letter_template, postage="first", billable_units=1, status="delivered")
         noti_2 = create_notification(template=letter_template, postage="first", billable_units=1, status="delivered")
@@ -1331,6 +1343,8 @@ class TestUpdateFtBillingLetterDespatch:
         noti_5 = create_notification(template=letter_template, postage="second", billable_units=3, status="delivered")
         noti_6 = create_notification(template=letter_template, postage="second", billable_units=3, status="delivered")
         noti_7 = create_notification(template=letter_template, postage="europe", billable_units=4, status="delivered")
+        noti_8 = create_notification(template=letter_template, postage="economy", billable_units=5, status="delivered")
+
         dao_record_letter_despatched_on_by_id(
             notification_id=noti_1.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )
@@ -1352,45 +1366,34 @@ class TestUpdateFtBillingLetterDespatch:
         dao_record_letter_despatched_on_by_id(
             notification_id=noti_7.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
         )
+        dao_record_letter_despatched_on_by_id(
+            notification_id=noti_8.id, despatched_on=despatch_date, cost_threshold=LetterCostThreshold.sorted
+        )
 
         assert FactBillingLetterDespatch.query.count() == 0
 
         num_records, deleted = update_ft_billing_letter_despatch(despatch_date)
 
-        assert num_records == 6
+        assert num_records == 7
         assert deleted == 0
 
         facts = FactBillingLetterDespatch.query.order_by(FactBillingLetterDespatch.billable_units).all()
-        assert len(facts) == 6
-        assert facts[0].billable_units == 1
-        assert facts[0].rate == 1
-        assert facts[0].cost_threshold == LetterCostThreshold.sorted
-        assert facts[0].postage == "first"
 
-        assert facts[1].billable_units == 1
-        assert facts[1].rate == 1
-        assert facts[1].cost_threshold == LetterCostThreshold.unsorted
-        assert facts[1].postage == "first"
+        expected = [
+            (1, 1, LetterCostThreshold.sorted, "first"),
+            (1, 1, LetterCostThreshold.unsorted, "first"),
+            (2, 0.5, LetterCostThreshold.sorted, "second"),
+            (3, 0.75, LetterCostThreshold.sorted, "second"),
+            (3, 0.75, LetterCostThreshold.unsorted, "second"),
+            (4, 1.5, LetterCostThreshold.sorted, "europe"),
+            (5, 0.78, LetterCostThreshold.sorted, "economy"),
+        ]
 
-        assert facts[2].billable_units == 2
-        assert facts[2].rate == 0.5
-        assert facts[2].cost_threshold == LetterCostThreshold.sorted
-        assert facts[2].postage == "second"
+        actual = [(f.billable_units, float(f.rate), f.cost_threshold, f.postage) for f in facts]
 
-        assert facts[3].billable_units == 3
-        assert facts[3].rate == 0.75
-        assert facts[3].cost_threshold == LetterCostThreshold.sorted
-        assert facts[3].postage == "second"
-
-        assert facts[4].billable_units == 3
-        assert facts[4].rate == 0.75
-        assert facts[4].cost_threshold == LetterCostThreshold.unsorted
-        assert facts[4].postage == "second"
-
-        assert facts[5].billable_units == 4
-        assert facts[5].rate == 1.5
-        assert facts[5].cost_threshold == LetterCostThreshold.sorted
-        assert facts[5].postage == "europe"
+        for entry in expected:
+            assert entry in actual
+        assert len(actual) == len(expected)
 
     def test_deletes_records_that_no_longer_exist(self, notify_db_session):
         despatch_date = date(2020, 1, 1)

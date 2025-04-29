@@ -1,3 +1,5 @@
+import pytest
+
 from app.dao.notification_history_dao import (
     delete_notification_history_between_two_datetimes,
 )
@@ -35,3 +37,21 @@ def test_delete_notification_history_between_two_datetimes(notify_db_session, sa
     assert notification_history_rows[2].created_at.isoformat() == notification_history_datetimes[7]
     assert notification_history_rows[3].created_at.isoformat() == notification_history_datetimes[8]
     assert notification_history_rows[4].created_at.isoformat() == notification_history_datetimes[9]
+
+
+@pytest.mark.parametrize("postage", ["first", "second", "europe", "rest-of-world", "economy"])
+def test_create_notification_history_with_various_postage_values(notify_db_session, sample_letter_template, postage):
+    created = create_notification_history(
+        sample_letter_template,
+        status="delivered",
+        created_at="2024-01-01T10:00:00",
+        sent_at="2024-01-01T10:01:00",
+        updated_at="2024-01-01T10:02:00",
+        postage=postage,
+    )
+
+    retrieved = NotificationHistory.query.get(created.id)
+    assert retrieved is not None
+    assert retrieved.postage == postage
+    assert retrieved.notification_type == "letter"
+    assert retrieved.status == "delivered"

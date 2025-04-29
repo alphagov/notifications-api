@@ -2417,7 +2417,7 @@ def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake
             [
                 {
                     "error": "ValidationError",
-                    "message": "postage invalid. It must be first, second, europe or rest-of-world.",
+                    "message": "postage invalid. It must be first, second, economy, europe or rest-of-world.",
                 }
             ],
         ),

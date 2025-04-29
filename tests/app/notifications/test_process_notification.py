@@ -556,6 +556,8 @@ def test_persist_email_notification_stores_normalised_email(
         ("second", "first", "second"),
         ("first", "first", "first"),
         ("first", "second", "first"),
+        ("economy", "first", "economy"),
+        ("economy", "second", "economy"),
     ],
 )
 def test_persist_letter_notification_finds_correct_postage(
