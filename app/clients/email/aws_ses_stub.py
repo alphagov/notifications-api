@@ -26,10 +26,20 @@ class AwsSesStubClient(EmailClient):
         self.url = stub_url
         self.requests_session = requests.Session()
 
-    def send_email(self, source, to_addresses, subject, body, html_body="", reply_to_address=None):
+    def send_email(
+        self,
+        *,
+        from_address: str,
+        to_address: str,
+        subject: str,
+        body: str,
+        html_body: str,
+        reply_to_address: str | None,
+        headers: list[dict[str, str]],
+    ) -> str:
         try:
             start_time = monotonic()
-            response = self.session.request("POST", self.url, data={"id": "dummy-data"}, timeout=60)
+            response = self.requests_session.request("POST", self.url, data={"id": "dummy-data"}, timeout=60)
             response.raise_for_status()
             response_json = json.loads(response.text)
 
