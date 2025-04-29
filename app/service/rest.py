@@ -1,4 +1,5 @@
 import itertools
+import json
 import uuid
 from datetime import datetime
 
@@ -43,7 +44,11 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range,
 )
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
-from app.dao.report_requests_dao import dao_create_report_request, dao_get_report_request_by_id
+from app.dao.report_requests_dao import (
+    dao_create_report_request,
+    dao_get_oldest_ongoing_report_request,
+    dao_get_report_request_by_id,
+)
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -78,9 +83,7 @@ from app.dao.service_guest_list_dao import (
 from app.dao.service_join_requests_dao import (
     dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
-    dao_get_service_join_request_by_id,
     dao_get_service_join_request_by_id_and_service_id,
-    dao_update_service_join_request,
     dao_update_service_join_request_by_id,
 )
 from app.dao.service_letter_contact_dao import (
@@ -1401,16 +1404,6 @@ def send_receipt_after_sending_request_invite_letter(
     send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
 
-@service_blueprint.route("/service-join-request/<uuid:request_id>", methods=["GET"])
-def get_service_join_request(request_id: uuid.UUID):
-    service_join_request = dao_get_service_join_request_by_id(request_id)
-
-    if not service_join_request:
-        raise InvalidRequest(message=f"Service join request with ID {request_id} not found.", status_code=404)
-
-    return jsonify(service_join_request.serialize()), 200
-
-
 @service_blueprint.route("/<uuid:service_id>/service-join-request/<uuid:request_id>", methods=["GET"])
 def get_service_join_request_by_id(service_id: uuid.UUID, request_id: uuid.UUID):
     service_join_request = dao_get_service_join_request_by_id_and_service_id(
@@ -1418,51 +1411,6 @@ def get_service_join_request_by_id(service_id: uuid.UUID, request_id: uuid.UUID)
     )
 
     return jsonify(service_join_request.serialize()), 200
-
-
-@service_blueprint.route("/update-service-join-request-status/<uuid:request_id>", methods=["POST"])
-def update_service_join_request(request_id: uuid.UUID):
-    data = request.get_json()
-
-    validate(data, service_join_request_update_schema)
-
-    status = data["status"]
-    status_changed_by_id = data["status_changed_by_id"]
-    reason = data.get("reason")
-
-    updated_request = dao_update_service_join_request(request_id, status, status_changed_by_id, reason)
-
-    if updated_request is None:
-        return jsonify({"message": "Service join request not found"}), 404
-
-    if status == SERVICE_JOIN_REQUEST_APPROVED:
-        permissions = data.get("permissions", None)
-
-        if permissions:
-            permissions = [
-                Permission(service_id=updated_request.service_id, user_id=updated_request.requester_id, permission=p)
-                for p in permissions
-            ]
-
-        requester_user = get_user_by_id(updated_request.requester_id)
-        approver_user = get_user_by_id(updated_request.status_changed_by_id)
-        service = dao_fetch_service_by_id(updated_request.service_id)
-        folder_permissions = data.get("folder_permissions", [])
-
-        dao_add_user_to_service(service, requester_user, permissions, folder_permissions)
-
-        updated_auth_type = data.get("auth_type")
-        _update_auth_type(updated_auth_type, requester_user)
-
-        send_service_join_request_decision_email(
-            requester_email_address=requester_user.email_address,
-            template=dao_get_template_by_id(current_app.config["SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID"]),
-            personalisation=create_personalisation(requester_user.name, approver_user.name, service.name, service.id),
-        )
-
-        dao_cancel_pending_service_join_requests(requester_user.id, approver_user.id, service.id)
-
-    return jsonify(updated_request.serialize()), 200
 
 
 @service_blueprint.route("/<uuid:service_id>/service-join-request/<uuid:request_id>", methods=["POST"])
@@ -1584,25 +1532,53 @@ def get_report_request_by_id(service_id, request_id):
 def create_report_request_by_type(service_id):
     req_json = request.get_json()
     form = validate(request.get_json(), add_report_request_schema)
-    report_type = req_json.get("report_type", None)
 
-    if report_type == "notifications_report":
-        notification_status = form.get("notification_status")
-        notification_type = form.get("notification_type")
-        parameter = {"notification_type": notification_type, "notification_status": notification_status}
-        report_type = REPORT_REQUEST_NOTIFICATIONS
+    # Currently we only support notifications_report, other report types will fail during validation
+    notification_status = form.get("notification_status")
+    notification_type = form.get("notification_type")
+    parameter = {"notification_type": notification_type, "notification_status": notification_status}
+    report_type = REPORT_REQUEST_NOTIFICATIONS
+    timeout_minutes = current_app.config.get("REPORT_REQUEST_NOTIFICATIONS_TIMEOUT_MINUTES")
 
-    try:
-        user_id = req_json.get("user_id")
-        report_request = ReportRequest(
-            user_id=user_id,
-            service_id=service_id,
-            report_type=report_type,
-            status=REPORT_REQUEST_PENDING,
-            parameter=parameter,
+    user_id = req_json.get("user_id")
+
+    dto = ReportRequest(
+        user_id=user_id,
+        service_id=service_id,
+        report_type=report_type,
+        status=REPORT_REQUEST_PENDING,
+        parameter=parameter,
+    )
+
+    # 1. Check for duplicate requests and if found return ongoing request
+    existing_request = dao_get_oldest_ongoing_report_request(dto, timeout_minutes=timeout_minutes)
+
+    if existing_request:
+        current_app.logger.info(
+            "Duplicate report request detected for user %s (service %s) with params %s – returning existing request %s",
+            existing_request.user_id,
+            existing_request.service_id,
+            json.dumps(existing_request.parameter, separators=(",", ":")),
+            existing_request.id,
         )
-        dao_create_report_request(report_request)
-        return jsonify(data=report_request.serialize()), 201
 
-    except ValueError as err:
-        raise InvalidRequest(message=f"{err}", status_code=400) from err
+        return jsonify(data=existing_request.serialize()), 200
+
+    # 2. If no ongoing request is present, create and enqueue the request
+    created_request = dao_create_report_request(dto)
+
+    current_app.logger.info(
+        "Report request %s for user %s (service %s) created with params %s",
+        created_request.id,
+        created_request.user_id,
+        created_request.service_id,
+        json.dumps(created_request.parameter, separators=(",", ":")),
+    )
+
+    # TODO: Remove comments when async function has been implemented
+    # process_report_request.apply_async(
+    #     [str(report_request.service_id), str(report_request.id)],
+    #     queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
+    # )
+
+    return jsonify(data=created_request.serialize()), 201

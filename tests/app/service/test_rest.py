@@ -27,11 +27,11 @@ from app.constants import (
     REPORT_REQUEST_PENDING,
     SERVICE_JOIN_REQUEST_APPROVED,
     SERVICE_JOIN_REQUEST_CANCELLED,
-    SERVICE_JOIN_REQUEST_PENDING,
     SMS_TYPE,
     UPLOAD_LETTERS,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
+from app.dao.report_requests_dao import dao_create_report_request
 from app.dao.service_join_requests_dao import dao_create_service_join_request
 from app.dao.service_user_dao import dao_get_service_user
 from app.dao.services_dao import (
@@ -46,6 +46,7 @@ from app.models import (
     EmailBranding,
     Notification,
     Permission,
+    ReportRequest,
     Service,
     ServiceEmailReplyTo,
     ServiceJoinRequest,
@@ -781,6 +782,31 @@ def test_update_service_sets_volumes(
         _expected_status=expected_status,
     )
     assert getattr(sample_service, field) == expected_persisted
+
+
+@pytest.mark.parametrize(
+    "daily_limit_type, limit_size",
+    [
+        ["email_message_limit", 1123456],
+        ["international_sms_message_limit", 1123],
+        ["sms_message_limit", 1123456],
+        ["letter_message_limit", 123456],
+    ],
+)
+def test_update_service_sets_daily_limits(
+    admin_request,
+    sample_service,
+    daily_limit_type,
+    limit_size,
+):
+    admin_request.post(
+        "service.update_service",
+        service_id=sample_service.id,
+        _data={
+            daily_limit_type: limit_size,
+        },
+    )
+    assert getattr(sample_service, daily_limit_type) == limit_size
 
 
 @pytest.mark.parametrize(
@@ -4188,53 +4214,6 @@ def test_request_invite_to_service_raises_exception_if_no_service_managers_to_se
     assert not mock_receipt.called
 
 
-def test_get_service_join_request_not_found(admin_request):
-    request_id = uuid.uuid4()
-
-    resp = admin_request.get(
-        "service.get_service_join_request",
-        request_id=request_id,
-        _expected_status=404,
-    )
-
-    assert resp["message"] == f"Service join request with ID {request_id} not found."
-
-
-def test_get_service_join_request_success(admin_request, notify_db_session, mocker):
-    mocker.patch("app.service.rest.send_service_invite_request")
-    mocker.patch("app.service.rest.send_receipt_after_sending_request_invite_letter")
-
-    requester_id = uuid.uuid4()
-    service_id = uuid.uuid4()
-    contacted_user = uuid.uuid4()
-
-    setup_service_join_request_test_data(service_id, requester_id, [contacted_user])
-
-    resp = admin_request.post(
-        "service.create_service_join_request",
-        service_id=str(service_id),
-        _data={
-            "requester_id": str(requester_id),
-            "contacted_user_ids": [str(contacted_user)],
-            "invite_link_host": "www",
-        },
-        _expected_status=201,
-    )
-
-    request_id = resp["service_join_request_id"]
-
-    resp = admin_request.get(
-        "service.get_service_join_request",
-        request_id=request_id,
-        _expected_status=200,
-    )
-
-    assert resp["contacted_service_users"] is not None
-    assert resp["status"] == SERVICE_JOIN_REQUEST_PENDING
-    assert resp["id"] == request_id
-    assert resp["created_at"] is not None
-
-
 def test_get_service_join_request_by_id(admin_request, sample_service):
     requester = create_user(email="requester@gov.uk")
     approver = create_user()
@@ -4709,7 +4688,7 @@ def test_get_report_request_by_id(admin_request, sample_service, sample_report_r
         ),
     ],
 )
-def test_create_report_request_should_return_validation_error(
+def test_create_report_request_by_type_should_return_validation_error(
     admin_request, sample_service, data, error_type, error_message
 ):
     json_resp = admin_request.post(
@@ -4731,7 +4710,7 @@ def test_create_report_request_should_return_validation_error(
         ("letter", "sending"),
     ],
 )
-def test_create_report_request(admin_request, sample_service, notification_type, notification_status):
+def test_create_report_request_by_type(admin_request, sample_service, notification_type, notification_status):
     json_resp = admin_request.post(
         "service.create_report_request_by_type",
         service_id=str(sample_service.id),
@@ -4753,3 +4732,101 @@ def test_create_report_request(admin_request, sample_service, notification_type,
     assert json_resp["data"]["service_id"] == str(sample_service.id)
     assert not json_resp["data"]["updated_at"]
     assert json_resp["data"]["created_at"]
+
+
+def test_create_report_request_by_type_returns_existing_request(admin_request, sample_service, sample_user, caplog):
+    expected_params = {"notification_type": "sms", "notification_status": "sending"}
+    existing_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_PENDING,
+        parameter=expected_params,
+        created_at=datetime.utcnow() - timedelta(minutes=2),
+    )
+    existing_request = dao_create_report_request(existing_request)
+
+    payload = {
+        "user_id": str(sample_user.id),
+        "report_type": "notifications_report",
+        "notification_type": "sms",
+        "notification_status": "sending",
+    }
+
+    response = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=str(sample_service.id),
+        _data=payload,
+        _expected_status=200,
+    )
+
+    assert response["data"]["id"] == str(existing_request.id)
+    assert response["data"]["parameter"] == existing_request.parameter
+    assert (
+        f"Duplicate report request detected for user {sample_user.id} (service {sample_service.id})"
+        f" with params {json.dumps(expected_params, separators=(',', ':'))} – returning existing "
+        f"request {existing_request.id}" in caplog.messages
+    )
+
+
+def test_create_report_request_by_type_creates_new_when_no_existing(admin_request, sample_service):
+    data = {
+        "user_id": str(sample_service.created_by_id),
+        "report_type": "notifications_report",
+        "notification_type": "sms",
+        "notification_status": "failed",
+    }
+
+    response = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=str(sample_service.id),
+        _data=data,
+        _expected_status=201,
+    )
+
+    assert response["data"]["status"] == REPORT_REQUEST_PENDING
+    assert response["data"]["report_type"] == REPORT_REQUEST_NOTIFICATIONS
+    assert response["data"]["parameter"] == {
+        "notification_type": "sms",
+        "notification_status": "failed",
+    }
+
+
+def test_create_report_request_by_type_creates_new_if_existing_is_stale(
+    admin_request, sample_service, sample_user, caplog
+):
+    expected_params = {"notification_type": "email", "notification_status": "failed"}
+
+    timeout = current_app.config["REPORT_REQUEST_NOTIFICATIONS_TIMEOUT_MINUTES"]
+    stale_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_PENDING,
+        parameter=expected_params,
+        created_at=datetime.utcnow() - timedelta(minutes=timeout + 10),
+        updated_at=None,
+    )
+    stale_request = dao_create_report_request(stale_request)
+
+    data = {
+        "user_id": str(sample_user.id),
+        "report_type": "notifications_report",
+        "notification_type": "email",
+        "notification_status": "failed",
+    }
+
+    response = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=str(sample_service.id),
+        _data=data,
+        _expected_status=201,
+    )
+
+    created_request_id = response["data"]["id"]
+
+    assert created_request_id != str(stale_request.id)
+    assert (
+        f"Report request {created_request_id} for user {sample_user.id} (service {sample_service.id}) "
+        f"created with params {json.dumps(expected_params, separators=(',', ':'))}" in caplog.messages
+    )

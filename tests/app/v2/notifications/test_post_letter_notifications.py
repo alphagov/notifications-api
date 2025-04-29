@@ -30,7 +30,7 @@ from tests import create_service_authorization_header
 from tests.app.db import create_letter_contact, create_service, create_template
 from tests.conftest import set_config_values
 
-test_address = {"address_line_1": "test 1", "address_line_2": "test 2", "postcode": "test pc"}
+test_address = {"address_line_1": "test 1", "address_line_2": "test 2", "postcode": "SW1 1AA"}
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -480,6 +480,25 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
 
     assert error_json["status_code"] == expected_status
     assert error_json["errors"] == [{"error": "BadRequestError", "message": expected_message}]
+
+
+def test_post_letter_notification_returns_400_if_not_allowed_to_send_economy_postage(
+    api_client_request,
+    sample_service,
+):
+    template = create_template(sample_service, template_type=LETTER_TYPE, postage="economy")
+
+    data = {"template_id": str(template.id), "personalisation": test_address}
+
+    error_json = api_client_request.post(
+        sample_service.id,
+        "v2_notifications.post_notification",
+        notification_type="letter",
+        _data=data,
+        _expected_status=400,
+    )
+
+    assert error_json["errors"][0]["message"] == "Service is not allowed to send economy letters"
 
 
 def test_post_letter_notification_doesnt_accept_team_key(api_client_request, sample_letter_template, mocker):
