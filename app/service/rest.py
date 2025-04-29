@@ -1,4 +1,5 @@
 import itertools
+import json
 import uuid
 from datetime import datetime
 
@@ -43,7 +44,11 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range,
 )
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
-from app.dao.report_requests_dao import dao_create_report_request, dao_get_report_request_by_id
+from app.dao.report_requests_dao import (
+    dao_create_report_request,
+    dao_get_oldest_ongoing_report_request,
+    dao_get_report_request_by_id,
+)
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -1527,25 +1532,53 @@ def get_report_request_by_id(service_id, request_id):
 def create_report_request_by_type(service_id):
     req_json = request.get_json()
     form = validate(request.get_json(), add_report_request_schema)
-    report_type = req_json.get("report_type", None)
 
-    if report_type == "notifications_report":
-        notification_status = form.get("notification_status")
-        notification_type = form.get("notification_type")
-        parameter = {"notification_type": notification_type, "notification_status": notification_status}
-        report_type = REPORT_REQUEST_NOTIFICATIONS
+    # Currently we only support notifications_report, other report types will fail during validation
+    notification_status = form.get("notification_status")
+    notification_type = form.get("notification_type")
+    parameter = {"notification_type": notification_type, "notification_status": notification_status}
+    report_type = REPORT_REQUEST_NOTIFICATIONS
+    timeout_minutes = current_app.config.get("REPORT_REQUEST_NOTIFICATIONS_TIMEOUT_MINUTES")
 
-    try:
-        user_id = req_json.get("user_id")
-        report_request = ReportRequest(
-            user_id=user_id,
-            service_id=service_id,
-            report_type=report_type,
-            status=REPORT_REQUEST_PENDING,
-            parameter=parameter,
+    user_id = req_json.get("user_id")
+
+    dto = ReportRequest(
+        user_id=user_id,
+        service_id=service_id,
+        report_type=report_type,
+        status=REPORT_REQUEST_PENDING,
+        parameter=parameter,
+    )
+
+    # 1. Check for duplicate requests and if found return ongoing request
+    existing_request = dao_get_oldest_ongoing_report_request(dto, timeout_minutes=timeout_minutes)
+
+    if existing_request:
+        current_app.logger.info(
+            "Duplicate report request detected for user %s (service %s) with params %s – returning existing request %s",
+            existing_request.user_id,
+            existing_request.service_id,
+            json.dumps(existing_request.parameter, separators=(",", ":")),
+            existing_request.id,
         )
-        dao_create_report_request(report_request)
-        return jsonify(data=report_request.serialize()), 201
 
-    except ValueError as err:
-        raise InvalidRequest(message=f"{err}", status_code=400) from err
+        return jsonify(data=existing_request.serialize()), 200
+
+    # 2. If no ongoing request is present, create and enqueue the request
+    created_request = dao_create_report_request(dto)
+
+    current_app.logger.info(
+        "Report request %s for user %s (service %s) created with params %s",
+        created_request.id,
+        created_request.user_id,
+        created_request.service_id,
+        json.dumps(created_request.parameter, separators=(",", ":")),
+    )
+
+    # TODO: Remove comments when async function has been implemented
+    # process_report_request.apply_async(
+    #     [str(report_request.service_id), str(report_request.id)],
+    #     queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
+    # )
+
+    return jsonify(data=created_request.serialize()), 201
