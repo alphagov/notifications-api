@@ -90,7 +90,7 @@ if debug_post_threshold:
             else:
                 prof_out_str = "profiler already running - no profile collected"
 
-            attrs = ["pid", "name", "cpu_percent", "cpu_times", "status", "memory_info"]
+            attrs = ["pid", "name", "cpu_percent", "cpu_times", "status", "num_threads", "memory_info"]
 
             context = {
                 "actual_profile_period": perf_counter_after - perf_counter_before,
