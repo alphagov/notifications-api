@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 import string
@@ -31,6 +32,7 @@ from notifications_utils.eventlet import EventletTimeout
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.logging import flask as utils_logging
 from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
@@ -66,6 +68,38 @@ memo_resetters: list[Callable] = []
 #
 # "clients" that need thread-local copies
 #
+
+
+logfile = "sqlalchemy.log"
+logging.basicConfig()
+logger = logging.getLogger("sqlalchemy.engine")
+logger.setLevel(logging.DEBUG)
+
+handler = logging.FileHandler(logfile, mode="w")
+
+logger.handlers = []
+
+handler.setLevel(logging.DEBUG)
+logger.addHandler(handler)
+
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    context._query_start_time = time.time()
+    logger.debug("Start Query:\n%s" % statement)  # noqa: G002, UP031
+    # Modification for StackOverflow answer:
+    # Show parameters, which might be too verbose, depending on usage..
+    logger.debug("Parameters:\n%r" % (parameters,))  # noqa: UP031, G002
+
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    total = time.time() - context._query_start_time
+    logger.debug("Query Complete!")
+
+    # Modification for StackOverflow: times in milliseconds
+    logger.debug("Total Time: %.02fms" % (total * 1000))  # noqa: G002
+
 
 _firetext_client_context_var: ContextVar[FiretextClient] = ContextVar("firetext_client")
 get_firetext_client: LazyLocalGetter[FiretextClient] = LazyLocalGetter(
@@ -411,7 +445,6 @@ def init_app(app):
     @app.after_request
     def after_request(response):
         CONCURRENT_REQUESTS.dec()
-
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
