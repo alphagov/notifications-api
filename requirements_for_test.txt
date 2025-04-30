@@ -105,7 +105,7 @@ docopt==0.6.2
     # via
     #   -r requirements.txt
     #   notifications-python-client
-eventlet==0.35.2
+eventlet==0.39.1
     # via
     #   -r requirements.txt
     #   gunicorn
@@ -151,7 +151,7 @@ greenlet==3.0.3
     # via
     #   -r requirements.txt
     #   eventlet
-gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
+gunicorn==23.0.0
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -228,6 +228,7 @@ ordered-set==4.1.0
 packaging==23.2
     # via
     #   -r requirements.txt
+    #   gunicorn
     #   marshmallow
     #   marshmallow-sqlalchemy
     #   pytest
@@ -342,10 +343,6 @@ segno==1.6.1
     #   notifications-utils
 sentry-sdk==1.45.1
     # via -r requirements.txt
-setuptools==75.6.0
-    # via
-    #   -r requirements.txt
-    #   gunicorn
 six==1.16.0
     # via
     #   -r requirements.txt
