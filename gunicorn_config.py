@@ -15,11 +15,11 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
-workers = 4
+workers = 1
 worker_class = "eventlet"
-worker_connections = 8  # limit runaway greenthread creation
+worker_connections = 256  # limit runaway greenthread creation
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
-keepalive = 0  # disable temporarily for diagnosing issues
+keepalive = 35  # disable temporarily for diagnosing issues
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
@@ -90,7 +90,7 @@ if debug_post_threshold:
             else:
                 prof_out_str = "profiler already running - no profile collected"
 
-            attrs = ["pid", "name", "cpu_percent", "cpu_times", "status", "memory_info"]
+            attrs = ["pid", "name", "cpu_percent", "cpu_times", "status", "num_threads", "memory_info"]
 
             context = {
                 "actual_profile_period": perf_counter_after - perf_counter_before,
