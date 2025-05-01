@@ -74,8 +74,7 @@ def format_monthly_template_notification_stats(year, rows):
 
 def create_zeroed_stats_dicts():
     return {
-        template_type: {status: 0 for status in ("requested", "delivered", "failed")}
-        for template_type in NOTIFICATION_TYPES
+        template_type: dict.fromkeys(("requested", "delivered", "failed"), 0) for template_type in NOTIFICATION_TYPES
     }
 
 

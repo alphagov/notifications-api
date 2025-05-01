@@ -1,4 +1,4 @@
-# This file was automatically copied from notifications-utils@99.1.0
+# This file was automatically copied from notifications-utils@99.1.2
 
 extend-exclude = [
     "migrations/versions/",
