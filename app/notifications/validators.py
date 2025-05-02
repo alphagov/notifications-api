@@ -132,20 +132,24 @@ def check_if_service_can_send_files_by_email(service_contact_link, service_id):
         )
 
 
-def validate_and_format_recipient(send_to, key_type, service, notification_type, allow_guest_list_recipients=True):
+def validate_and_format_recipient(
+    send_to, key_type, service, notification_type, allow_guest_list_recipients=True, check_intl_sms_limit=True
+):
     if send_to is None:
         raise BadRequestError(message="Recipient can't be empty")
 
     service_can_send_to_recipient(send_to, key_type, service, allow_guest_list_recipients)
 
     if notification_type == SMS_TYPE:
-        return validate_and_return_extended_phone_number_info(service, send_to, key_type)
+        return validate_and_return_extended_phone_number_info(
+            service, send_to, key_type, check_intl_sms_limit=check_intl_sms_limit
+        )
 
     elif notification_type == EMAIL_TYPE:
         return validate_and_format_email_address(email_address=send_to)
 
 
-def validate_and_return_extended_phone_number_info(service, send_to, key_type):
+def validate_and_return_extended_phone_number_info(service, send_to, key_type, check_intl_sms_limit):
     try:
         phone_number = PhoneNumber(send_to)
         phone_number.validate(
@@ -155,7 +159,7 @@ def validate_and_return_extended_phone_number_info(service, send_to, key_type):
 
         recipient_data = _get_extended_phone_number_info(phone_number, send_to)
 
-        if recipient_data["international"]:
+        if recipient_data["international"] and check_intl_sms_limit:
             check_service_over_daily_message_limit(service, key_type, notification_type=INTERNATIONAL_SMS_TYPE)
 
         return recipient_data

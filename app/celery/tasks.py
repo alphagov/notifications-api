@@ -268,6 +268,7 @@ def save_sms(
             key_type=KEY_TYPE_NORMAL,
             service=service,
             notification_type=SMS_TYPE,
+            check_intl_sms_limit=False,
         )
         extra_args = {}
 
