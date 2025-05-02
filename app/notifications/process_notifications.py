@@ -218,11 +218,11 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
             queue = QueueNames.CREATE_LETTERS_PDF
         deliver_task = get_pdf_for_templated_letter
 
-    try:
-        deliver_task.apply_async([str(notification_id)], queue=queue)
-    except Exception:
-        dao_delete_notifications_by_id(notification_id)
-        raise
+    #try:
+    #    deliver_task.apply_async([str(notification_id)], queue=queue)
+    #except Exception:
+    #    dao_delete_notifications_by_id(notification_id)
+    #    raise
 
     current_app.logger.debug("%s %s sent to the %s queue for delivery", notification_type, notification_id, queue)
 
