@@ -21,7 +21,6 @@ from app.models import (
     ServiceContactList,
     ServiceDataRetention,
     ServiceEmailReplyTo,
-    ServiceInboundApi,
     ServiceSmsSender,
     Template,
     TemplateFolder,
@@ -42,7 +41,6 @@ from tests.app.db import (
     create_service_callback_api,
     create_service_contact_list,
     create_service_data_retention,
-    create_service_inbound_api,
     create_service_with_inbound_number,
     create_template_folder,
 )
@@ -85,9 +83,6 @@ class TestFindByUUID:
         elif model == TemplateFolder:
             sample_service = request.getfixturevalue("sample_service")
             create_template_folder(sample_service)
-        elif model == ServiceInboundApi:
-            sample_service = request.getfixturevalue("sample_service")
-            create_service_inbound_api(sample_service)
         elif model == ServiceCallbackApi:
             sample_service = request.getfixturevalue("sample_service")
             create_service_callback_api("delivery_status", sample_service)
