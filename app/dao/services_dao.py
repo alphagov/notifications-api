@@ -41,10 +41,10 @@ from app.models import (
     Organisation,
     Permission,
     Service,
+    ServiceCallbackApi,
     ServiceContactList,
     ServiceDataRetention,
     ServiceEmailReplyTo,
-    ServiceInboundApi,
     ServiceJoinRequest,
     ServiceLetterContact,
     ServicePermission,
@@ -367,7 +367,7 @@ def delete_service_and_all_associated_db_objects(service):
 
     _delete(InboundSms.query.filter_by(service=service))
     _delete(InboundSmsHistory.query.filter_by(service=service))
-    _delete(ServiceInboundApi.query.filter_by(service=service))
+    _delete(ServiceCallbackApi.query.filter_by(service=service))
 
     _delete(UnsubscribeRequest.query.filter_by(service_id=service.id))
     _delete(UnsubscribeRequestReport.query.filter_by(service_id=service.id))
@@ -377,7 +377,6 @@ def delete_service_and_all_associated_db_objects(service):
     for service_join_request in service_join_requests:
         service_join_request.contacted_service_users = []
     _delete(service_join_requests)
-
     _delete(ServiceSmsSender.query.filter_by(service=service))
     _delete(InboundNumber.query.filter_by(service=service))
     _delete(ServiceEmailReplyTo.query.filter_by(service=service))
