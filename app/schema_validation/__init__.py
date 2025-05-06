@@ -48,8 +48,7 @@ def validate_schema_postage(instance):
     """
     if isinstance(instance, str):
         if instance not in ["first", "second", "economy"]:
-            # TODO: include economy on error message when economy mail is released
-            raise ValidationError("invalid. It must be either first or second.")
+            raise ValidationError("invalid. It must be either first, second or economy.")
     return True
 
 
