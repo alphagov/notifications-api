@@ -17,7 +17,6 @@ from sqlalchemy import func
 
 from app.constants import (
     BROADCAST_TYPE,
-    ECONOMY_LETTER_SENDING,
     EMAIL_TYPE,
     LETTER_TYPE,
     SMS_TYPE,
@@ -117,8 +116,6 @@ def get_public_notify_type_text(notify_type, plural=False):
         notify_type_text = "text message"
     elif notify_type == BROADCAST_TYPE:
         notify_type_text = "broadcast message"
-    elif notify_type == ECONOMY_LETTER_SENDING:
-        notify_type_text = "economy letter"
 
     return "{}{}".format(notify_type_text, "s" if plural else "")
 
