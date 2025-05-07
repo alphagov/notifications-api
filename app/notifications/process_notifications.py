@@ -7,6 +7,7 @@ from notifications_utils.clients import redis
 from notifications_utils.recipient_validation.email_address import (
     format_email_address,
 )
+from notifications_utils.recipient_validation.phone_number import UK_PREFIX
 from notifications_utils.template import (
     LetterPrintTemplate,
     PlainTextEmailTemplate,
@@ -164,7 +165,7 @@ def persist_notification(
             service.id,
             notification_type,
             key_type,
-            international_sms=notification.international,
+            international_sms=str(notification.phone_prefix) != UK_PREFIX,
         )
 
     return notification
