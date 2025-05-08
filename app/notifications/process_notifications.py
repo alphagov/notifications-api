@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from time import sleep
-from random import random
+import random
 from flask import current_app
 from gds_metrics import Histogram
 from notifications_utils.clients import redis
