@@ -11,7 +11,7 @@ from app import memo_resetters, notify_celery, signing
 from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.returned_letters_dao import fetch_returned_letter_callback_data_dao
-from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
+from app.dao.service_callback_api_dao import get_service_callback_api_by_callback_type
 from app.utils import DATETIME_FORMAT
 
 # thread-local copies of persistent requests.Session
@@ -101,7 +101,8 @@ def send_complaint_to_service(self, complaint_data):
 
 @notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
 def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
-    inbound_api = get_service_inbound_api_for_service(service_id=service_id)
+    inbound_api = get_service_callback_api_by_callback_type(service_id, "inbound_sms")
+
     if not inbound_api:
         # No API data has been set for this service
         return

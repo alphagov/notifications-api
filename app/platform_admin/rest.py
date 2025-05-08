@@ -23,7 +23,6 @@ from app.models import (
     ServiceContactList,
     ServiceDataRetention,
     ServiceEmailReplyTo,
-    ServiceInboundApi,
     ServiceSmsSender,
     Template,
     TemplateFolder,
@@ -52,7 +51,6 @@ FIND_BY_UUID_MODELS = {
     "inbound_number": InboundNumber,
     "api_key": ApiKey,
     "template_folder": TemplateFolder,
-    "service_inbound_api": ServiceInboundApi,
     "service_callback_api": ServiceCallbackApi,
     "complaint": Complaint,
     "inbound_sms": InboundSms,
@@ -74,7 +72,6 @@ FIND_BY_UUID_EXTRA_CONTEXT = {
     "service_sms_sender": {"service_id"},
     "api_key": {"service_id"},
     "template_folder": {"service_id"},
-    "service_inbound_api": {"service_id"},
     "service_callback_api": {"service_id"},
     "inbound_sms": {"service_id"},
 }

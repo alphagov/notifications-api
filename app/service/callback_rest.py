@@ -5,18 +5,11 @@ from app.constants import ServiceCallbackTypes
 from app.dao.service_callback_api_dao import (
     delete_service_callback_api,
     get_service_callback_api,
-    get_service_callback_api_by_callback_type,
     reset_service_callback_api,
     save_service_callback_api,
 )
-from app.dao.service_inbound_api_dao import (
-    delete_service_inbound_api,
-    get_service_inbound_api,
-    reset_service_inbound_api,
-    save_service_inbound_api,
-)
 from app.errors import InvalidRequest, register_errors
-from app.models import ServiceCallbackApi, ServiceInboundApi
+from app.models import ServiceCallbackApi
 from app.schema_validation import validate
 from app.service.service_callback_api_schema import (
     create_service_callback_api_schema,
@@ -32,25 +25,14 @@ register_errors(service_callback_blueprint)
 def create_service_callback_api(service_id):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
-    callback_type = data["callback_type"]
     data["service_id"] = service_id
-
     service_callback_api = ServiceCallbackApi(**data)
     error_message = "service_callback_api"
+
     try:
         save_service_callback_api(service_callback_api)
     except SQLAlchemyError as e:
         return handle_sql_error(e, error_message)
-
-    # TODO remove this if statement once service_inbound_api has been merged into service_callback_api
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        del data["callback_type"]  # ServiceInboundApi doesn't have this attribute
-        error_message = "service_inbound_api"
-        inbound_sms_callback_api = ServiceInboundApi(**data)
-        try:
-            save_service_inbound_api(inbound_sms_callback_api)
-        except SQLAlchemyError as e:
-            return handle_sql_error(e, error_message)
 
     return jsonify(data=service_callback_api.serialize()), 201
 
@@ -60,51 +42,24 @@ def update_service_callback_api(callback_api_id, service_id):
     data = request.get_json()
     validate(data, update_service_callback_api_schema)
     callback_type = data["callback_type"]
-
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        inbound_sms_update = get_service_inbound_api(callback_api_id, service_id)
-        reset_service_inbound_api(
-            inbound_sms_update,
-            data["updated_by_id"],
-            data.get("url", None),
-            data.get("bearer_token", None),
-        )
-        # The callback_api_id for inbound_sms is retrieved from the service_inbound_api table and
-        # won't be applicable to the service_callback_api table. Since both tables are being written to
-        # the callback_api entry in the service_callback_api is also retrieved and updated. However, there will
-        # callback_data in the service_inbound_api table that won't exist in the service_callback_api table
-        if service_callback_update := get_service_callback_api_by_callback_type(service_id, callback_type):
-            reset_service_callback_api(
-                service_callback_update,
-                data["updated_by_id"],
-                data.get("url", None),
-                data.get("bearer_token", None),
-            )
-        return jsonify(data=inbound_sms_update.serialize()), 200
-
-    else:
-        to_update = get_service_callback_api(callback_api_id, service_id, callback_type)
-        reset_service_callback_api(
-            to_update,
-            data["updated_by_id"],
-            data.get("url", None),
-            data.get("bearer_token", None),
-        )
-        return jsonify(data=to_update.serialize()), 200
+    to_update = get_service_callback_api(callback_api_id, service_id, callback_type)
+    reset_service_callback_api(
+        to_update,
+        data["updated_by_id"],
+        data.get("url", None),
+        data.get("bearer_token", None),
+    )
+    return jsonify(data=to_update.serialize()), 200
 
 
 @service_callback_blueprint.route("/callback-api/<uuid:callback_api_id>", methods=["GET"])
 def fetch_service_callback_api(callback_api_id, service_id):
     callback_type = request.args.get("callback_type")
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        callback_api = get_service_inbound_api(callback_api_id, service_id)
-    else:
-        callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
-
+    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
     return jsonify(data=callback_api.serialize()), 200
 
 
-REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES = {
+SERVICE_CALLBACK_ERROR_MESSAGES = {
     ServiceCallbackTypes.inbound_sms.value: "Service inbound API not found",
     ServiceCallbackTypes.delivery_status.value: "Service delivery receipt API not found",
     ServiceCallbackTypes.returned_letter.value: "Service returned letter API not found",
@@ -114,27 +69,12 @@ REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES = {
 @service_callback_blueprint.route("/callback-api/<uuid:callback_api_id>", methods=["DELETE"])
 def remove_service_callback_api(callback_api_id, service_id):
     callback_type = request.args.get("callback_type")
-    if callback_type == ServiceCallbackTypes.inbound_sms.value:
-        service_inbound_api = get_service_inbound_api(callback_api_id, service_id)
-        if not service_inbound_api:
-            error = REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES[callback_type]
-            raise InvalidRequest(error, status_code=404)
-        delete_service_inbound_api(service_inbound_api)
-
-        service_callback_api = get_service_callback_api_by_callback_type(service_id, callback_type)
-        if service_callback_api:
-            # It is possible there would be no inbound_sms callback data in the service_callback_api table,
-            # during this transition stage. In such a case we do not want to raise an error. At this stage we
-            # are more interested in service_inbound_api errors.
-            delete_service_callback_api(service_callback_api)
-        return "", 204
-    else:
-        callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
-        if not callback_api:
-            error = REMOVE_SERVICE_CALLBACK_ERROR_MESSAGES[callback_type]
-            raise InvalidRequest(error, status_code=404)
-        delete_service_callback_api(callback_api)
-        return "", 204
+    callback_api = get_service_callback_api(callback_api_id, service_id, callback_type)
+    if not callback_api:
+        error = SERVICE_CALLBACK_ERROR_MESSAGES[callback_type]
+        raise InvalidRequest(error, status_code=404)
+    delete_service_callback_api(callback_api)
+    return "", 204
 
 
 def handle_sql_error(e, table_name):
