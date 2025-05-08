@@ -7,9 +7,7 @@ from notifications_utils.clients.redis import (
 )
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
-from notifications_utils.recipient_validation.phone_number import (
-    PhoneNumber,
-)
+from notifications_utils.recipient_validation.phone_number import PhoneNumber
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -159,7 +157,8 @@ def validate_and_return_extended_phone_number_info(service, send_to, key_type, c
 
         recipient_data = _get_extended_phone_number_info(phone_number, send_to)
 
-        if recipient_data["international"] and check_intl_sms_limit:
+        # UK_PREFIX includes standard domestic numbers, and crown dependency
+        if check_intl_sms_limit and not phone_number.is_uk_phone_number():
             check_service_over_daily_message_limit(service, key_type, notification_type=INTERNATIONAL_SMS_TYPE)
 
         return recipient_data

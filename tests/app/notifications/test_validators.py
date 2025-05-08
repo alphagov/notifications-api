@@ -571,6 +571,26 @@ def test_validate_and_format_recipient_raises_when_service_over_daily_limit_for_
     assert expected_error.fields == []
 
 
+def test_validate_and_format_recipient_doesnt_raise_for_crown_dependency_num_when_service_over_daily_intl_sms_limit(
+    sample_service_full_permissions, mocker
+):
+    service = create_service(
+        international_sms_message_limit=4,
+        service_permissions=["sms", "international_sms"],
+    )
+    mocker.patch("app.redis_store.get", return_value="5")
+
+    result = validate_and_format_recipient("+44 7797 100 100", KEY_TYPE_NORMAL, service, SMS_TYPE)
+
+    assert result == {
+        "international": True,
+        "normalised_to": "447797100100",
+        "unformatted_recipient": "+44 7797 100 100",
+        "phone_prefix": "44",
+        "rate_multiplier": 2,
+    }
+
+
 @pytest.mark.parametrize(
     "recipient, expected_normalised, expected_international, expected_prefix, expected_rate_multiplier",
     [
