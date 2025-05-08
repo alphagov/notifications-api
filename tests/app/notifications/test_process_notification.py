@@ -394,6 +394,33 @@ def test_persist_notification_doesnt_increment_cache_for_international_sms_when_
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_doesnt_increment_cache_for_international_sms_with_email(
+    notify_api, notify_db_session, mocker
+):
+    service = create_service()
+    template = create_template(service=service, template_type="email")
+    api_key = create_api_key(service=service)
+    mocker.patch("app.notifications.process_notifications.redis_store.get", return_value=1)
+    mock_incr = mocker.patch("app.notifications.process_notifications.redis_store.incr")
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient="example@email.com",
+            service=template.service,
+            personalisation={},
+            notification_type="email",
+            api_key_id=api_key.id,
+            key_type=api_key.key_type,
+        )
+
+        assert mock_incr.call_args_list == [
+            mocker.call(f"{service.id}-2016-01-01-count"),
+            mocker.call(f"{service.id}-email-2016-01-01-count"),
+        ]
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_persist_notification_increments_cache_for_international_sms_if_the_cache_does_not_exist(
     notify_api, notify_db_session, mocker
 ):

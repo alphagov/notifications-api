@@ -165,7 +165,7 @@ def persist_notification(
             service.id,
             notification_type,
             key_type,
-            international_sms=str(notification.phone_prefix) != UK_PREFIX,
+            international_sms=notification_type == SMS_TYPE and str(notification.phone_prefix) != UK_PREFIX,
         )
 
     return notification
@@ -186,7 +186,7 @@ def increment_daily_limit_cache(service_id, notification_type, key_type, interna
         else:
             redis_store.incr(cache_key)
 
-    if international_sms:
+    if notification_type == SMS_TYPE and international_sms:
         _increment_international_sms_daily_limit_cache(service_id)
 
 
