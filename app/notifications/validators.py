@@ -157,7 +157,6 @@ def validate_and_return_extended_phone_number_info(service, send_to, key_type, c
 
         recipient_data = _get_extended_phone_number_info(phone_number, send_to)
 
-        # UK_PREFIX includes standard domestic numbers, and crown dependency
         if check_intl_sms_limit and not phone_number.is_uk_phone_number():
             check_service_over_daily_message_limit(service, key_type, notification_type=INTERNATIONAL_SMS_TYPE)
 
