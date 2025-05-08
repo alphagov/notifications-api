@@ -186,7 +186,7 @@ def increment_daily_limit_cache(service_id, notification_type, key_type, interna
         else:
             redis_store.incr(cache_key)
 
-    if international_sms:
+    if notification_type == SMS_TYPE and international_sms:
         _increment_international_sms_daily_limit_cache(service_id)
 
 
