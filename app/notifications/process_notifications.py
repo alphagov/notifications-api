@@ -165,7 +165,7 @@ def persist_notification(
             service.id,
             notification_type,
             key_type,
-            international_sms=str(notification.phone_prefix) != UK_PREFIX,
+            international_sms=notification_type == SMS_TYPE and str(notification.phone_prefix) != UK_PREFIX,
         )
 
     return notification
