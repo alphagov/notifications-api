@@ -196,16 +196,10 @@ CANCEL_BROADCASTS = "cancel_broadcasts"
 REJECT_BROADCASTS = "reject_broadcasts"
 INTERNATIONAL_SMS_TYPE = "international_sms"
 INBOUND_SMS_TYPE = "inbound_sms"
-SCHEDULE_NOTIFICATIONS = "schedule_notifications"
 EMAIL_AUTH = "email_auth"
-LETTERS_AS_PDF = "letters_as_pdf"
-PRECOMPILED_LETTER = "precompiled_letter"
-UPLOAD_DOCUMENT = "upload_document"
 EDIT_FOLDER_PERMISSIONS = "edit_folder_permissions"
 UPLOAD_LETTERS = "upload_letters"
 INTERNATIONAL_LETTERS = "international_letters"
-EXTRA_EMAIL_FORMATTING = "extra_email_formatting"
-EXTRA_LETTER_FORMATTING = "extra_letter_formatting"
 SMS_TO_UK_LANDLINES = "sms_to_uk_landlines"
 ECONOMY_LETTER_SENDING = "economy_letter_sending"
 SERVICE_PERMISSION_TYPES = [
@@ -215,15 +209,10 @@ SERVICE_PERMISSION_TYPES = [
     BROADCAST_TYPE,
     INTERNATIONAL_SMS_TYPE,
     INBOUND_SMS_TYPE,
-    SCHEDULE_NOTIFICATIONS,
     EMAIL_AUTH,
-    LETTERS_AS_PDF,
-    UPLOAD_DOCUMENT,
     EDIT_FOLDER_PERMISSIONS,
     UPLOAD_LETTERS,
     INTERNATIONAL_LETTERS,
-    EXTRA_EMAIL_FORMATTING,
-    EXTRA_LETTER_FORMATTING,
     SMS_TO_UK_LANDLINES,
     ECONOMY_LETTER_SENDING,
 ]
