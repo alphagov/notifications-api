@@ -162,8 +162,8 @@ def persist_notification(
     if not simulated:
         dao_create_notification(notification)
         increment_daily_limit_caches(
-            service.id,
-            notification_type,
+            service,
+            notification,
             key_type,
             international_sms=notification_type == SMS_TYPE and str(notification.phone_prefix) != UK_PREFIX,
         )
@@ -171,15 +171,15 @@ def persist_notification(
     return notification
 
 
-def increment_daily_limit_caches(service_id, notification_type, key_type, international_sms=False):
+def increment_daily_limit_caches(service, notification, key_type, international_sms=False):
     if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
         return
 
-    increment_daily_limit_cache(service_id)
-    increment_daily_limit_cache(service_id, notification_type)
+    increment_daily_limit_cache(service.id)
+    increment_daily_limit_cache(service.id, notification.notification_type)
 
-    if notification_type == SMS_TYPE and international_sms:
-        increment_daily_limit_cache(service_id, INTERNATIONAL_SMS_TYPE)
+    if notification.notification_type == SMS_TYPE and international_sms:
+        increment_daily_limit_cache(service.id, INTERNATIONAL_SMS_TYPE)
 
 
 def increment_daily_limit_cache(service_id, notification_type=None):
