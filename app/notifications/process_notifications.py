@@ -165,20 +165,19 @@ def persist_notification(
             service,
             notification,
             key_type,
-            international_sms=notification_type == SMS_TYPE and str(notification.phone_prefix) != UK_PREFIX,
         )
 
     return notification
 
 
-def increment_daily_limit_caches(service, notification, key_type, international_sms=False):
+def increment_daily_limit_caches(service, notification, key_type):
     if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
         return
 
     increment_daily_limit_cache(service.id)
     increment_daily_limit_cache(service.id, notification.notification_type)
 
-    if notification.notification_type == SMS_TYPE and international_sms:
+    if notification.notification_type == SMS_TYPE and str(notification.phone_prefix) != UK_PREFIX:
         increment_daily_limit_cache(service.id, INTERNATIONAL_SMS_TYPE)
 
 
