@@ -161,11 +161,7 @@ def persist_notification(
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
-        increment_daily_limit_caches(
-            service,
-            notification,
-            key_type,
-        )
+        increment_daily_limit_caches(service, notification, key_type)
 
     return notification
 
