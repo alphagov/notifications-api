@@ -127,15 +127,6 @@ def send_a_file_confirm_email_before_download(instance):
     )
 
 
-@format_checker.checks("letter_production_run_date", raises=ValidationError)
-def validate_letter_production_run_date(instance):
-    if isinstance(instance, str):
-        if re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+", instance):
-            return True
-
-    raise ValidationError("Datetime format is invalid. It must be in the format %Y-%m-%d %H:%M:%S.%f")
-
-
 def validate(json_to_validate, schema):
     validator = Draft7Validator(schema, format_checker=format_checker)
     errors = list(validator.iter_errors(json_to_validate))
