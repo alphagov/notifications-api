@@ -87,6 +87,9 @@ def _create_fake_letter_callback_data(notification_id: uuid.UUID, billable_units
     elif postage == "second":
         postage = "2ND"
         mailing_product = "MM"
+    elif postage == "economy":
+        postage = "2ND"
+        mailing_product = "UNSORTEDE"
     elif postage == "europe":
         postage = "INTERNATIONAL"
         mailing_product = "INT EU"
