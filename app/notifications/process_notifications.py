@@ -161,7 +161,7 @@ def persist_notification(
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
-        increment_daily_limit_cache(
+        increment_daily_limit_caches(
             service.id,
             notification_type,
             key_type,
@@ -171,27 +171,19 @@ def persist_notification(
     return notification
 
 
-def increment_daily_limit_cache(service_id, notification_type, key_type, international_sms=False):
+def increment_daily_limit_caches(service_id, notification_type, key_type, international_sms=False):
     if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
         return
 
-    for notification_type_ in [None, notification_type]:
-        cache_key = redis.daily_limit_cache_key(service_id, notification_type=notification_type_)
-        if redis_store.get(cache_key) is None:
-            # if cache does not exist set the cache to 1 with an expiry of 24 hours,
-            # The cache should be set by the time we create the notification
-            # but in case it is this will make sure the expiry is set to 24 hours,
-            # where if we let the incr method create the cache it will be set a ttl.
-            redis_store.set(cache_key, 1, ex=86400)
-        else:
-            redis_store.incr(cache_key)
+    increment_daily_limit_cache(service_id)
+    increment_daily_limit_cache(service_id, notification_type)
 
     if notification_type == SMS_TYPE and international_sms:
-        _increment_international_sms_daily_limit_cache(service_id)
+        increment_daily_limit_cache(service_id, INTERNATIONAL_SMS_TYPE)
 
 
-def _increment_international_sms_daily_limit_cache(service_id):
-    cache_key = redis.daily_limit_cache_key(service_id, notification_type=INTERNATIONAL_SMS_TYPE)
+def increment_daily_limit_cache(service_id, notification_type=None):
+    cache_key = redis.daily_limit_cache_key(service_id, notification_type=notification_type)
     if redis_store.get(cache_key) is None:
         # if cache does not exist set the cache to 1 with an expiry of 24 hours,
         # The cache should be set by the time we create the notification
