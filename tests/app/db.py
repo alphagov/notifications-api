@@ -70,7 +70,6 @@ from app.models import (
     ServiceContactList,
     ServiceEmailReplyTo,
     ServiceGuestList,
-    ServiceInboundApi,
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
@@ -474,18 +473,6 @@ def create_inbound_sms(
     )
     dao_create_inbound_sms(inbound)
     return inbound
-
-
-def create_service_inbound_api(
-    service,
-    url="https://something.com",
-    bearer_token="some_super_secret",
-):
-    service_inbound_api = ServiceInboundApi(
-        service_id=service.id, url=url, bearer_token=bearer_token, updated_by_id=service.users[0].id
-    )
-    save_service_inbound_api(service_inbound_api)
-    return service_inbound_api
 
 
 def create_service_callback_api(callback_type, service, url="https://something.com", bearer_token="some_super_secret"):
