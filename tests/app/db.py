@@ -26,7 +26,6 @@ from app.dao.organisation_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_data_retention_dao import insert_service_data_retention
-from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.service_sms_sender_dao import (
     dao_update_service_sms_sender,
