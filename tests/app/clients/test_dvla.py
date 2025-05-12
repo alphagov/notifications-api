@@ -1022,3 +1022,18 @@ class TestDVLAApiClientRestrictedCiphers:
                 )
 
         assert "alert handshake failure" in str(e.value)
+
+
+def test_format_create_print_job_json_adds_despatchMethod_key_for_economy_class_post(dvla_client):
+    formatted_json = dvla_client._format_create_print_job_json(
+        notification_id="my_notification_id",
+        reference="ABCDEFGHIJKL",
+        address=PostalAddress("A. User\nThe road\nCity\nSW1 1AA"),
+        postage="economy",
+        service_id="my_service_id",
+        organisation_id="my_organisation_id",
+        pdf_file=b"pdf_content",
+        callback_url="/my-callback",
+    )
+
+    assert formatted_json["standardParams"]["despatchMethod"] == "ECONOMY"

@@ -265,9 +265,11 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
 
 
 @pytest.mark.parametrize("postage", ["1ST", "2ND", "INTERNATIONAL"])
-@pytest.mark.parametrize("mailing_product", ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"])
+@pytest.mark.parametrize(
+    "mailing_product", ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW", "UNSORTEDE", "MM ECONOMY"]
+)
 def test__get_cost_threshold(mailing_product, postage):
-    if postage == "2ND" and mailing_product == "MM":
+    if (mailing_product == "MM" or mailing_product == "MM ECONOMY") and postage == "2ND":
         expected_cost_threshold = LetterCostThreshold.sorted
     else:
         expected_cost_threshold = LetterCostThreshold.unsorted
