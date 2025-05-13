@@ -800,6 +800,7 @@ def letter_volumes_email_template(notify_service):
             "",
             "((first_class_volume)) first class letters (((first_class_sheets)) sheets).",
             "((second_class_volume)) second class letters (((second_class_sheets)) sheets).",
+            "((economy_mail_volume)) economy mail letters (((economy_mail_sheets)) sheets).",
             "((international_volume)) international letters (((international_sheets)) sheets).",
             "",
             "Thanks",

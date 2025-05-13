@@ -12,6 +12,8 @@ from app.aws import s3
 from app.celery.provider_tasks import deliver_letter
 from app.config import QueueNames, TaskNames
 from app.constants import (
+    ECONOMY_CLASS,
+    FIRST_CLASS,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_POSTAGE_TYPES,
     KEY_TYPE_NORMAL,
@@ -22,6 +24,7 @@ from app.constants import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
+    SECOND_CLASS,
 )
 from app.cronitor import cronitor
 from app.dao.notifications_dao import (
@@ -185,19 +188,24 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
         "total_volume": 0,
         "first_class_volume": 0,
         "second_class_volume": 0,
+        "economy_mail_volume": 0,
         "international_volume": 0,
         "total_sheets": 0,
         "first_class_sheets": 0,
         "second_class_sheets": 0,
+        "economy_mail_sheets": 0,
         "international_sheets": 0,
         "date": date.strftime("%d %B %Y"),
     }
     for item in letters_volumes:
         personalisation["total_volume"] += item.letters_count
         personalisation["total_sheets"] += item.sheets_count
-        if f"{item.postage}_class_volume" in personalisation:
+        if item.postage in (FIRST_CLASS, SECOND_CLASS):
             personalisation[f"{item.postage}_class_volume"] = item.letters_count
             personalisation[f"{item.postage}_class_sheets"] = item.sheets_count
+        elif item.postage == ECONOMY_CLASS:
+            personalisation["economy_mail_volume"] = item.letters_count
+            personalisation["economy_mail_sheets"] = item.sheets_count
         else:
             personalisation["international_volume"] += item.letters_count
             personalisation["international_sheets"] += item.sheets_count
