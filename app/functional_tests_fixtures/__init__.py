@@ -9,7 +9,6 @@ from sqlalchemy.exc import NoResultFound
 from app.constants import (
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
-    EXTRA_LETTER_FORMATTING,
     INBOUND_SMS_TYPE,
     SECOND_CLASS,
     SEND_EMAILS,
@@ -567,7 +566,7 @@ def _create_service_email_reply_to(service_id, email_address, is_default):
 
 def _create_service_permissions(service_id, permissions=None):
     if permissions is None:
-        permissions = [EDIT_FOLDER_PERMISSIONS, EXTRA_LETTER_FORMATTING, INBOUND_SMS_TYPE, EMAIL_AUTH]
+        permissions = [EDIT_FOLDER_PERMISSIONS, INBOUND_SMS_TYPE, EMAIL_AUTH]
 
     service_permissions = dao_fetch_service_permissions(service_id)
 
