@@ -1,9 +1,9 @@
 from flask import url_for
 
+from app.constants import ServiceCallbackTypes
 from tests.app.db import (
     create_inbound_sms,
     create_service_callback_api,
-    create_service_inbound_api,
 )
 
 
@@ -29,9 +29,10 @@ def test_get_inbound_sms_returns_200(api_client_request, sample_service):
 
 
 def test_get_inbound_sms_returns_200_when_service_has_callbacks(api_client_request, sample_service):
-    create_service_inbound_api(
+    create_service_callback_api(
         service=sample_service,
         url="https://inbound.example.com",
+        callback_type=ServiceCallbackTypes.inbound_sms.value,
     )
     create_service_callback_api(
         callback_type="delivery_status",
