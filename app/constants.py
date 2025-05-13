@@ -116,7 +116,6 @@ SECOND_CLASS = "second"
 ECONOMY_CLASS = "economy"
 EUROPE = "europe"
 REST_OF_WORLD = "rest-of-world"
-ECONOMY_CLASS = "economy"
 
 # Aggregated letter postage types
 POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS, ECONOMY_CLASS, EUROPE, REST_OF_WORLD]
