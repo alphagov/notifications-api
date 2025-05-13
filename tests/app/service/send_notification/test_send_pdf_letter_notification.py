@@ -2,7 +2,7 @@ import pytest
 from freezegun import freeze_time
 from notifications_utils.s3 import S3ObjectNotFound
 
-from app.constants import EMAIL_TYPE, LETTER_TYPE
+from app.constants import EMAIL_TYPE, LETTER_TYPE, UPLOAD_LETTERS
 from app.dao.notifications_dao import get_notification_by_id
 from app.service.send_notification import send_pdf_letter_notification
 from app.v2.errors import BadRequestError, TooManyRequestsError
@@ -20,11 +20,19 @@ def post_data(sample_service_full_permissions, fake_uuid):
     }
 
 
-def test_send_pdf_letter_notification_raises_error_if_service_does_not_have_letter_permission(
+@pytest.mark.parametrize(
+    "permissions",
+    [
+        [EMAIL_TYPE],
+        [UPLOAD_LETTERS],
+    ],
+)
+def test_send_pdf_letter_notification_raises_error_if_service_does_not_have_permission(
     notify_db_session,
+    permissions,
     post_data,
 ):
-    service = create_service(service_permissions=[EMAIL_TYPE])
+    service = create_service(service_permissions=permissions)
 
     with pytest.raises(BadRequestError):
         send_pdf_letter_notification(service.id, post_data)
