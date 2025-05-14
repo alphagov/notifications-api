@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
-
+from time import sleep
+import random
 from flask import current_app
 from gds_metrics import Histogram
 from notifications_utils.clients import redis
@@ -220,9 +221,10 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
         deliver_task = get_pdf_for_templated_letter
 
     try:
-        deliver_task.apply_async([str(notification_id)], queue=queue)
+    #    deliver_task.apply_async([str(notification_id)], queue=queue)
+        sleep(random.uniform(0.03, 0.06))
     except Exception:
-        dao_delete_notifications_by_id(notification_id)
+    #    dao_delete_notifications_by_id(notification_id)
         raise
 
     current_app.logger.debug("%s %s sent to the %s queue for delivery", notification_type, notification_id, queue)
