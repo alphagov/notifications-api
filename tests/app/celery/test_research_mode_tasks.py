@@ -120,6 +120,7 @@ def test_failure_firetext_callback(phone_number):
     [
         ("1", "first", "1ST", "UNCODED"),
         ("3", "second", "2ND", "MM"),
+        ("4", "economy", "2ND", "UNSORTEDE"),
         ("5", "europe", "INTERNATIONAL", "INT EU"),
         ("2", "rest-of-world", "INTERNATIONAL", "INT ROW"),
     ],
@@ -165,6 +166,7 @@ def test_create_fake_letter_callback_sends_letter_response(
             "jobType": "NOTIFY",
             "jobStatus": "DESPATCHED",
             "templateReference": "NOTIFY",
+            "transitionDate": "2024-07-26T16:30:53Z",
         },
         "metadata": {
             "handler": {"urn": "dvla:resource:osl:print:print-hub-fulfilment:5.18.0"},

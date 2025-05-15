@@ -95,7 +95,7 @@ def register_errors(blueprint):  # noqa: C901
     @blueprint.errorhandler(NoResultFound)
     @blueprint.errorhandler(DataError)
     def no_result_found(e):
-        current_app.logger.info(e)
+        current_app.logger.info(e, exc_info=True)
         return jsonify(result="error", message="No result found"), 404
 
     @blueprint.errorhandler(EventletTimeout)

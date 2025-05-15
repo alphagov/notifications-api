@@ -7,9 +7,7 @@ from notifications_utils.clients.redis import (
 )
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
-from notifications_utils.recipient_validation.phone_number import (
-    PhoneNumber,
-)
+from notifications_utils.recipient_validation.phone_number import PhoneNumber
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -27,13 +25,12 @@ from app.constants import (
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
-from app.models import ServicePermission
 from app.notifications.process_notifications import (
     create_content_for_notification,
 )
 from app.serialised_models import SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
-from app.utils import get_international_phone_info, get_public_notify_type_text
+from app.utils import get_public_notify_type_text
 from app.v2.errors import (
     BadRequestError,
     RateLimitError,
@@ -65,6 +62,7 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
     rate_limits = {
         EMAIL_TYPE: service.email_message_limit,
         SMS_TYPE: service.sms_message_limit,
+        INTERNATIONAL_SMS_TYPE: service.international_sms_message_limit,
         LETTER_TYPE: service.letter_message_limit,
     }
 
@@ -132,52 +130,64 @@ def check_if_service_can_send_files_by_email(service_contact_link, service_id):
         )
 
 
-def validate_and_format_recipient(send_to, key_type, service, notification_type, allow_guest_list_recipients=True):
+def validate_and_format_recipient(
+    send_to, key_type, service, notification_type, allow_guest_list_recipients=True, check_intl_sms_limit=True
+):
     if send_to is None:
         raise BadRequestError(message="Recipient can't be empty")
 
     service_can_send_to_recipient(send_to, key_type, service, allow_guest_list_recipients)
 
     if notification_type == SMS_TYPE:
-        if service.has_permission(SMS_TO_UK_LANDLINES):
-            try:
-                phone_number = PhoneNumber(send_to)
-                phone_number.validate(
-                    allow_international_number=service.has_permission(INTERNATIONAL_SMS_TYPE),
-                    allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
-                )
-                return phone_number.get_normalised_format()
-            except InvalidPhoneError as e:
-                if e.code == InvalidPhoneError.Codes.NOT_A_UK_MOBILE:
-                    raise BadRequestError(message="Cannot send to international mobile numbers") from e
-                else:
-                    raise
-        else:
-            check_if_service_can_send_to_number(service, send_to)
-            phone_number = PhoneNumber(send_to)
-            phone_number.validate(
-                allow_international_number=service.has_permission(INTERNATIONAL_SMS_TYPE),
-                allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
-            )
-            return phone_number.get_normalised_format()
+        return validate_and_return_extended_phone_number_info(
+            service, send_to, key_type, check_intl_sms_limit=check_intl_sms_limit
+        )
+
     elif notification_type == EMAIL_TYPE:
         return validate_and_format_email_address(email_address=send_to)
 
 
-def check_if_service_can_send_to_number(service, number):
-    international_phone_info = get_international_phone_info(number)
+def validate_and_return_extended_phone_number_info(service, send_to, key_type, check_intl_sms_limit):
+    try:
+        phone_number = PhoneNumber(send_to)
+        phone_number.validate(
+            allow_international_number=service.has_permission(INTERNATIONAL_SMS_TYPE),
+            allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
+        )
 
-    if service.permissions and isinstance(service.permissions[0], ServicePermission):
-        permissions = [p.permission for p in service.permissions]
-    else:
-        permissions = service.permissions
-    if (
-        # if number is international and not a crown dependency
-        international_phone_info.international and not international_phone_info.crown_dependency
-    ) and INTERNATIONAL_SMS_TYPE not in permissions:
-        raise BadRequestError(message="Cannot send to international mobile numbers")
-    else:
-        return international_phone_info
+        recipient_data = _get_extended_phone_number_info(phone_number, send_to)
+
+        if check_intl_sms_limit and not phone_number.is_uk_phone_number():
+            check_service_over_daily_message_limit(service, key_type, notification_type=INTERNATIONAL_SMS_TYPE)
+
+        return recipient_data
+
+    except InvalidPhoneError as e:
+        # only show "Not a UK mobile" error when a service tries to send to landline and is not allowed
+        # in all other cases show "Cannot send to international mobile numbers"
+        if e.code == InvalidPhoneError.Codes.NOT_A_UK_MOBILE and is_international_number(phone_number):
+            raise BadRequestError(message="Cannot send to international mobile numbers") from e
+        else:
+            raise
+
+
+def _get_extended_phone_number_info(phone_number, send_to):
+    formatted_recipient = phone_number.get_normalised_format()
+    recipient_info = phone_number.get_international_phone_info()
+
+    return {
+        "unformatted_recipient": send_to,
+        "normalised_to": formatted_recipient,
+        "international": recipient_info.international,
+        "phone_prefix": recipient_info.country_prefix,
+        "rate_multiplier": recipient_info.rate_multiplier,
+    }
+
+
+def is_international_number(phone_number):
+    international_phone_info = phone_number.get_international_phone_info()
+
+    return international_phone_info.international and not international_phone_info.crown_dependency
 
 
 def check_is_message_too_long(template_with_content):

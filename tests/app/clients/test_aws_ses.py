@@ -1,3 +1,4 @@
+import inspect
 from unittest.mock import ANY, Mock
 
 import botocore
@@ -6,10 +7,12 @@ import pytest
 from app import aws_ses_client
 from app.clients.email import EmailClientNonRetryableException
 from app.clients.email.aws_ses import (
+    AwsSesClient,
     AwsSesClientException,
     AwsSesClientThrottlingSendRateException,
     get_aws_responses,
 )
+from app.clients.email.aws_ses_stub import AwsSesStubClient
 
 
 def test_should_return_correct_details_for_delivery():
@@ -215,3 +218,13 @@ def test_send_email_raises_other_errs_as_AwsSesClientException(mocker):
         )
 
     assert "some error message from amazon" in str(excinfo.value)
+
+
+def test_stub_client_is_compatible_with_real_client():
+    # AwsSesStubClient can have additonal arguments, so we only check that
+    # its arguments are a superset of AwsSesClient’s
+    assert set(inspect.signature(AwsSesStubClient.__init__).parameters).issuperset(
+        set(inspect.signature(AwsSesClient.__init__).parameters)
+    )
+    # send_email should match exactly
+    assert inspect.signature(AwsSesClient.send_email) == inspect.signature(AwsSesStubClient.send_email)

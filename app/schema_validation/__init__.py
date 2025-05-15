@@ -47,7 +47,8 @@ def validate_schema_postage(instance):
     For validating postage on templates and user requests, where postage can only be `first` or `second`
     """
     if isinstance(instance, str):
-        if instance not in ["first", "second"]:
+        if instance not in ["first", "second", "economy"]:
+            # TODO: include economy on error message when economy mail is released
             raise ValidationError("invalid. It must be either first or second.")
     return True
 
@@ -58,8 +59,8 @@ def validate_schema_postage_including_international(instance):
     For validating postage sent by admin when sending a precompiled letter, where postage can include international
     """
     if isinstance(instance, str):
-        if instance not in ["first", "second", "europe", "rest-of-world"]:
-            raise ValidationError("invalid. It must be first, second, europe or rest-of-world.")
+        if instance not in ["first", "second", "economy", "europe", "rest-of-world"]:
+            raise ValidationError("invalid. It must be first, second, economy, europe or rest-of-world.")
     return True
 
 
@@ -124,15 +125,6 @@ def send_a_file_confirm_email_before_download(instance):
     raise ValidationError(
         f"Unsupported value for confirm_email_before_download: {instance}. Use a boolean true or false value."
     )
-
-
-@format_checker.checks("letter_production_run_date", raises=ValidationError)
-def validate_letter_production_run_date(instance):
-    if isinstance(instance, str):
-        if re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+", instance):
-            return True
-
-    raise ValidationError("Datetime format is invalid. It must be in the format %Y-%m-%d %H:%M:%S.%f")
 
 
 def validate(json_to_validate, schema):

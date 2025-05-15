@@ -198,6 +198,12 @@ def test_get_notification_by_id_invalid_id(api_client_request, sample_notificati
         (6, "second", "2000-06-05T15:00:00.000000Z"),  # 4pm BST in summer
         (12, "first", "2000-12-05T16:00:00.000000Z"),  # 4pm GMT in winter
         (6, "first", "2000-06-03T15:00:00.000000Z"),  # 4pm BST in summer (two days before 2nd class due to weekends)
+        (
+            12,
+            "economy",
+            "2000-12-07T16:00:00.000000Z",
+        ),  # 4pm GMT in winter (1 extra working day - slower than second class)
+        (6, "economy", "2000-06-06T15:00:00.000000Z"),  # 4pm BST in summer
     ],
 )
 def test_get_notification_adds_delivery_estimate_for_letters(
@@ -209,6 +215,7 @@ def test_get_notification_adds_delivery_estimate_for_letters(
 ):
     create_letter_rate(start_date=datetime.datetime(2000, 1, 1), rate=0.82, post_class="first", sheet_count=1)
     create_letter_rate(start_date=datetime.datetime(2000, 1, 1), rate=0.82, post_class="second", sheet_count=1)
+    create_letter_rate(start_date=datetime.datetime(2000, 1, 1), rate=0.82, post_class="economy", sheet_count=1)
     sample_letter_notification.created_at = datetime.datetime(2000, created_at_month, 1)
     sample_letter_notification.postage = postage
 

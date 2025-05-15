@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from flask import Blueprint, current_app, request
 from itsdangerous import BadSignature
 from jsonschema import ValidationError
+from notifications_utils.timezones import convert_utc_to_bst
 
 from app import signing
 from app.celery.process_letter_client_response_tasks import process_letter_callback_data
@@ -35,7 +36,7 @@ dvla_letter_callback_schema = {
             "properties": {
                 "despatchProperties": {
                     "type": "array",
-                    "minItems": 4,
+                    "minItems": 3,
                     "uniqueItems": True,
                     "items": {
                         "type": "object",
@@ -52,17 +53,20 @@ dvla_letter_callback_schema = {
                                 "properties": {
                                     "key": {"const": "mailingProduct"},
                                     "value": {
-                                        "enum": ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"]
+                                        "enum": [
+                                            "UNCODED",
+                                            "MM UNSORTED",
+                                            "UNSORTED",
+                                            "MM",
+                                            "INT EU",
+                                            "INT ROW",
+                                            "UNSORTEDE",
+                                            "MM ECONOMY",
+                                        ]
                                     },
                                 }
                             },
                             {"properties": {"key": {"const": "totalSheets"}, "value": {"type": "string"}}},
-                            {
-                                "properties": {
-                                    "key": {"const": "productionRunDate"},
-                                    "value": {"type": "string", "format": "letter_production_run_date"},
-                                }
-                            },
                             # if the key does not match the requirements above, do not check values specified previously
                             {
                                 "properties": {
@@ -72,7 +76,6 @@ dvla_letter_callback_schema = {
                                                 "postageClass",
                                                 "mailingProduct",
                                                 "totalSheets",
-                                                "productionRunDate",
                                             ]
                                         }
                                     },
@@ -85,8 +88,9 @@ dvla_letter_callback_schema = {
                 "jobType": {"type": "string"},
                 "jobStatus": {"type": "string", "enum": [DVLA_NOTIFICATION_DISPATCHED, DVLA_NOTIFICATION_REJECTED]},
                 "templateReference": {"type": "string"},
+                "transitionDate": {"type": "string", "format": "date-time"},
             },
-            "required": ["despatchProperties", "jobId", "jobStatus"],
+            "required": ["despatchProperties", "jobId", "jobStatus", "transitionDate"],
         },
         "metadata": {
             "type": "object",
@@ -168,8 +172,8 @@ def extract_properties_from_request(request_data) -> LetterUpdate:
     postage = next(item["value"] for item in despatch_properties if item["key"] == "postageClass")
     cost_threshold = _get_cost_threshold(mailing_product, postage)
 
-    despatch_datetime = next(item["value"] for item in despatch_properties if item["key"] == "productionRunDate")
-    despatch_date = _get_despatch_date(despatch_datetime)
+    despatch_datetime = request_data["data"]["transitionDate"]
+    despatch_date = convert_utc_to_bst(datetime.datetime.strptime(despatch_datetime, "%Y-%m-%dT%H:%M:%SZ")).date()
 
     return LetterUpdate(
         page_count=page_count,
@@ -180,9 +184,8 @@ def extract_properties_from_request(request_data) -> LetterUpdate:
 
 
 def _get_cost_threshold(mailing_product: str, postage: str) -> LetterCostThreshold:
-    if mailing_product == "MM" and postage == "2ND":
+    if (mailing_product == "MM" or mailing_product == "MM ECONOMY") and postage == "2ND":
         return LetterCostThreshold("sorted")
-
     return LetterCostThreshold("unsorted")
 
 

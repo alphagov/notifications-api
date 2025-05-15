@@ -74,7 +74,13 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(persist_mock,
     persist_mock.assert_called_once_with(
         template_id=template.id,
         template_version=template.version,
-        recipient=post_data["to"],
+        recipient={
+            "unformatted_recipient": "07700 900 001",
+            "normalised_to": "447700900001",
+            "international": False,
+            "phone_prefix": "44",
+            "rate_multiplier": 1,
+        },
         service=template.service,
         personalisation={"name": "foo"},
         notification_type=SMS_TYPE,
@@ -107,7 +113,13 @@ def test_send_one_off_notification_calls_persist_correctly_for_international_sms
 
     send_one_off_notification(service.id, post_data)
 
-    assert persist_mock.call_args[1]["recipient"] == "+1415-771-1401"
+    assert persist_mock.call_args[1]["recipient"] == {
+        "unformatted_recipient": "+1415-771-1401",
+        "normalised_to": "14157711401",
+        "international": True,
+        "phone_prefix": "1",
+        "rate_multiplier": 1,
+    }
 
 
 def test_send_one_off_notification_calls_persist_correctly_for_email(persist_mock, celery_mock, notify_db_session):
@@ -193,6 +205,25 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         client_reference=None,
         template_has_unsubscribe_link=False,
     )
+
+
+def test_send_one_off_notification_raises_error_if_sending_economy_letter_without_permission(sample_service):
+    template = create_template(service=sample_service, template_type=LETTER_TYPE, postage="economy")
+
+    post_data = {
+        "template_id": str(template.id),
+        "to": "First Last",
+        "personalisation": {
+            "name": "foo",
+            "address_line_1": "First Last",
+            "address_line_2": "1 Example Street",
+            "postcode": "SW1A 1AA",
+        },
+        "created_by": str(sample_service.created_by_id),
+    }
+
+    with pytest.raises(BadRequestError):
+        send_one_off_notification(sample_service.id, post_data)
 
 
 def test_send_one_off_notification_raises_if_invalid_recipient(notify_db_session):

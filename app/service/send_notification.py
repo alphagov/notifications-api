@@ -6,7 +6,7 @@ from notifications_utils.s3 import s3download as utils_s3download
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import create_random_identifier
-from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, LETTER_TYPE, SMS_TYPE
+from app.constants import ECONOMY_LETTER_SENDING, EMAIL_TYPE, KEY_TYPE_NORMAL, LETTER_TYPE, SMS_TYPE
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
@@ -65,7 +65,7 @@ def send_one_off_notification(service_id, post_data):
 
     check_service_over_daily_message_limit(service, KEY_TYPE_NORMAL, notification_type=template.template_type)
 
-    validate_and_format_recipient(
+    recipient_data = validate_and_format_recipient(
         send_to=post_data["to"],
         key_type=KEY_TYPE_NORMAL,
         service=service,
@@ -81,6 +81,9 @@ def send_one_off_notification(service_id, post_data):
         if not postage:
             postage = template.postage
 
+        if postage == "economy":
+            check_service_has_permission(service, ECONOMY_LETTER_SENDING)
+
         client_reference = _get_reference_from_personalisation(personalisation)
 
     validate_created_by(service, post_data["created_by"])
@@ -89,11 +92,12 @@ def send_one_off_notification(service_id, post_data):
     reply_to = get_reply_to_text(
         notification_type=template.template_type, sender_id=sender_id, service=service, template=template
     )
+
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         template_has_unsubscribe_link=template.has_unsubscribe_link,
-        recipient=post_data["to"],
+        recipient=recipient_data or post_data["to"],
         service=service,
         personalisation=personalisation,
         notification_type=template.template_type,
@@ -149,6 +153,11 @@ def send_pdf_letter_notification(service_id, post_data):
     template = get_precompiled_letter_template(service.id)
     file_location = "service-{}/{}.pdf".format(service.id, post_data["file_id"])
 
+    postage = post_data["postage"] or template.postage
+
+    if postage == "economy":
+        check_service_has_permission(service, ECONOMY_LETTER_SENDING)
+
     try:
         letter = utils_s3download(current_app.config["S3_BUCKET_TRANSIENT_UPLOADED_LETTERS"], file_location)
     except S3ObjectNotFound as e:
@@ -180,7 +189,7 @@ def send_pdf_letter_notification(service_id, post_data):
         client_reference=post_data["filename"],
         created_by_id=post_data["created_by"],
         billable_units=billable_units,
-        postage=post_data["postage"] or template.postage,
+        postage=postage,
     )
 
     upload_filename = generate_letter_pdf_filename(

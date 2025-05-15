@@ -195,10 +195,13 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[3]["service_id"] == str(fixtures["service_with_letters_without_org"].id)
     assert response[3]["sms_cost"] == 0
     assert response[3]["sms_chargeable_units"] == 0
-    assert response[3]["total_letters"] == 18
-    assert response[3]["letter_cost"] == 24.45
+    assert response[3]["total_letters"] == 21
+    assert response[3]["letter_cost"] == 26.37
     assert response[3]["letter_breakdown"] == (
-        "2 second class letters at 35p\n1 first class letters at 50p\n15 international letters at £1.55\n"
+        "3 economy class letters at 64p\n"
+        "2 second class letters at 35p\n"
+        "1 first class letters at 50p\n"
+        "15 international letters at £1.55\n"
     )
     assert response[3]["purchase_order_number"] is None
 
@@ -220,8 +223,8 @@ def test_daily_volumes_report(notify_db_session, admin_request):
     assert response[1] == {
         "day": "2022-03-03",
         "email_totals": 0,
-        "letter_sheet_totals": 10,
-        "letter_totals": 18,
+        "letter_sheet_totals": 12,
+        "letter_totals": 21,
         "sms_chargeable_units": 2,
         "sms_fragment_totals": 2,
         "sms_totals": 2,
@@ -416,6 +419,104 @@ class TestGetDataForDvlaBillingReport:
                 "sheets": 1,
                 "letters": 5,
                 "cost": 7.5,
+            },
+        ]
+
+    def test_dvla_billing_report_postage_types_2025(self, admin_request, notify_db_session):
+        facts = [
+            FactBillingLetterDespatch(
+                bst_date="2025-04-01",
+                postage="first",
+                cost_threshold=LetterCostThreshold.sorted,
+                rate=1.49,
+                billable_units=1,
+                notifications_sent=10,
+            ),
+            FactBillingLetterDespatch(
+                bst_date="2025-04-01",
+                postage="second",
+                cost_threshold=LetterCostThreshold.sorted,
+                rate=0.68,
+                billable_units=1,
+                notifications_sent=20,
+            ),
+            FactBillingLetterDespatch(
+                bst_date="2025-04-02",
+                postage="economy",
+                cost_threshold=LetterCostThreshold.sorted,
+                rate=0.59,
+                billable_units=1,
+                notifications_sent=30,
+            ),
+            FactBillingLetterDespatch(
+                bst_date="2025-04-02",
+                postage="europe",
+                cost_threshold=LetterCostThreshold.sorted,
+                rate=1.5,
+                billable_units=1,
+                notifications_sent=5,
+            ),
+            FactBillingLetterDespatch(
+                bst_date="2025-04-03",
+                postage="rest-of-world",
+                cost_threshold=LetterCostThreshold.sorted,
+                rate=1.5,
+                billable_units=1,
+                notifications_sent=3,
+            ),
+        ]
+        notify_db_session.add_all(facts)
+        notify_db_session.commit()
+
+        response = admin_request.get(
+            "platform_stats.get_data_for_dvla_billing_report", start_date="2025-04-01", end_date="2026-03-31"
+        )
+
+        assert response == [
+            {
+                "date": "2025-04-01",
+                "postage": "first",
+                "cost_threshold": "sorted",
+                "rate": 1.49,
+                "sheets": 1,
+                "letters": 10,
+                "cost": 14.9,
+            },
+            {
+                "date": "2025-04-01",
+                "postage": "second",
+                "cost_threshold": "sorted",
+                "rate": 0.68,
+                "sheets": 1,
+                "letters": 20,
+                "cost": 13.6,
+            },
+            {
+                "date": "2025-04-02",
+                "postage": "economy",
+                "cost_threshold": "sorted",
+                "rate": 0.59,
+                "sheets": 1,
+                "letters": 30,
+                "cost": 17.7,
+            },
+            {
+                "date": "2025-04-02",
+                "postage": "europe",
+                "cost_threshold": "sorted",
+                "rate": 1.5,
+                "sheets": 1,
+                "letters": 5,
+                "cost": 7.5,
+            },
+            {
+                "date": "2025-04-03",
+                "postage": "rest-of-world",
+                "cost_threshold": "sorted",
+                "rate": 1.5,
+                "sheets": 1,
+                "letters": 3,
+                "cost": 4.5,
             },
         ]
 

@@ -7,7 +7,6 @@ from flask import current_app
 from sqlalchemy.exc import NoResultFound
 
 from app.constants import (
-    CAN_ASK_TO_JOIN_SERVICE,
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
     EXTRA_LETTER_FORMATTING,
@@ -37,11 +36,11 @@ from app.dao.organisation_dao import (
     dao_update_organisation,
 )
 from app.dao.permissions_dao import permission_dao
+from app.dao.service_callback_api_dao import get_service_callback_api_by_callback_type, save_service_callback_api
 from app.dao.service_email_reply_to_dao import (
     add_reply_to_email_address_for_service,
     dao_get_reply_to_by_service_id,
 )
-from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service, save_service_inbound_api
 from app.dao.service_letter_contact_dao import add_letter_contact_for_service, dao_get_letter_contacts_by_service_id
 from app.dao.service_permissions_dao import (
     dao_add_service_permission,
@@ -70,8 +69,8 @@ from app.models import (
     Organisation,
     Permission,
     Service,
+    ServiceCallbackApi,
     ServiceEmailReplyTo,
-    ServiceInboundApi,
     User,
 )
 from app.schemas import api_key_schema, template_schema
@@ -372,7 +371,6 @@ def _create_organiation(email_domain, org_name="Functional Tests Org"):
 
         dao_create_organisation(org)
 
-    org.set_permissions_list([CAN_ASK_TO_JOIN_SERVICE])
     dao_update_organisation(org.id, domains=[email_domain], can_approve_own_go_live_requests=True)
 
     return org
@@ -594,16 +592,18 @@ def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_numb
 
 
 def _create_service_inbound_api(service_id, user_id):
-    inbound_api = get_service_inbound_api_for_service(service_id)
+    inbound_api = get_service_callback_api_by_callback_type(service_id, "inbound_sms")
 
     if inbound_api is None:
-        inbound_api = ServiceInboundApi(
-            service_id=service_id, url="https://5c6b93352e82dab5d82d02e5178c2d57.m.pipedream.net", updated_by_id=user_id
+        inbound_api = ServiceCallbackApi(
+            service_id=service_id,
+            url="https://5c6b93352e82dab5d82d02e5178c2d57.m.pipedream.net",
+            updated_by_id=user_id,
+            callback_type="inbound_sms",
         )
-
     inbound_api.bearer_token = "1234567890"
 
-    save_service_inbound_api(inbound_api)
+    save_service_callback_api(inbound_api)
 
 
 def _create_inbound_sms(service, count):

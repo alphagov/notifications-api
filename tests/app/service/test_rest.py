@@ -9,6 +9,7 @@ from flask import current_app, url_for
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.celery.provider_tasks import deliver_email
 from app.constants import (
     BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
@@ -26,11 +27,11 @@ from app.constants import (
     REPORT_REQUEST_PENDING,
     SERVICE_JOIN_REQUEST_APPROVED,
     SERVICE_JOIN_REQUEST_CANCELLED,
-    SERVICE_JOIN_REQUEST_PENDING,
     SMS_TYPE,
     UPLOAD_LETTERS,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
+from app.dao.report_requests_dao import dao_create_report_request
 from app.dao.service_join_requests_dao import dao_create_service_join_request
 from app.dao.service_user_dao import dao_get_service_user
 from app.dao.services_dao import (
@@ -45,6 +46,7 @@ from app.models import (
     EmailBranding,
     Notification,
     Permission,
+    ReportRequest,
     Service,
     ServiceEmailReplyTo,
     ServiceJoinRequest,
@@ -74,6 +76,7 @@ from tests.app.db import (
     create_notification,
     create_notification_history,
     create_organisation,
+    create_permissions,
     create_reply_to_email,
     create_returned_letter,
     create_service,
@@ -276,6 +279,7 @@ def test_get_service_by_id(admin_request, sample_service):
         "has_active_go_live_request",
         "id",
         "inbound_api",
+        "international_sms_message_limit",
         "letter_branding",
         "letter_message_limit",
         "name",
@@ -778,6 +782,31 @@ def test_update_service_sets_volumes(
         _expected_status=expected_status,
     )
     assert getattr(sample_service, field) == expected_persisted
+
+
+@pytest.mark.parametrize(
+    "daily_limit_type, limit_size",
+    [
+        ["email_message_limit", 1123456],
+        ["international_sms_message_limit", 1123],
+        ["sms_message_limit", 1123456],
+        ["letter_message_limit", 123456],
+    ],
+)
+def test_update_service_sets_daily_limits(
+    admin_request,
+    sample_service,
+    daily_limit_type,
+    limit_size,
+):
+    admin_request.post(
+        "service.update_service",
+        service_id=sample_service.id,
+        _data={
+            daily_limit_type: limit_size,
+        },
+    )
+    assert getattr(sample_service, daily_limit_type) == limit_size
 
 
 @pytest.mark.parametrize(
@@ -1487,6 +1516,7 @@ def test_get_service_and_api_key_history(notify_api, sample_service, sample_api_
             assert json_resp["data"]["api_key_history"][0]["id"] == str(sample_api_key.id)
 
 
+@freeze_time("2025-01-02T03:04:05")
 def test_get_all_notifications_for_service_in_order(client, notify_db_session):
     service_1 = create_service(service_name="1")
     service_2 = create_service(service_name="2")
@@ -1510,6 +1540,9 @@ def test_get_all_notifications_for_service_in_order(client, notify_db_session):
     assert resp["notifications"][0]["to"] == notification_3.to
     assert resp["notifications"][1]["to"] == notification_2.to
     assert resp["notifications"][2]["to"] == notification_1.to
+    assert resp["notifications"][0]["created_at"] == "2025-01-02T03:04:05.000000Z"
+    assert resp["notifications"][1]["created_at"] == "2025-01-02T03:04:05.000000Z"
+    assert resp["notifications"][2]["created_at"] == "2025-01-02T03:04:05.000000Z"
     assert response.status_code == 200
 
 
@@ -2384,7 +2417,7 @@ def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake
             [
                 {
                     "error": "ValidationError",
-                    "message": "postage invalid. It must be first, second, europe or rest-of-world.",
+                    "message": "postage invalid. It must be first, second, economy, europe or rest-of-world.",
                 }
             ],
         ),
@@ -3946,22 +3979,15 @@ ServiceJoinRequestTestCase = namedtuple(
             expected_status_code=400,
             expected_response="requester_id badly formed hexadecimal UUID string",
         ),
-        ServiceJoinRequestTestCase(
-            requester_id=uuid.uuid4(),
-            service_id=uuid.uuid4(),
-            contacted_user_ids=[str(uuid.uuid4())],
-            expected_status_code=201,
-            expected_response={"service_join_request_id": "some-uuid-here"},
-        ),
     ],
     ids=[
         "Validation Error - No contacts",
         "Validation Error - Invalid Type for Requester ID (None)",
-        "Created Request Successfully",
     ],
 )
-def test_create_service_join_request(
+def test_create_service_join_request_when_there_is_a_validation_error(
     admin_request,
+    notify_db_session,
     test_case,
 ):
     setup_service_join_request_test_data(test_case.service_id, test_case.requester_id, test_case.contacted_user_ids)
@@ -3973,50 +3999,260 @@ def test_create_service_join_request(
         _expected_status=test_case.expected_status_code,
     )
 
-    if test_case.expected_status_code == 400:
-        assert resp["errors"][0]["message"] == test_case.expected_response
-    elif test_case.expected_status_code == 201:
-        assert "service_join_request_id" in resp
+    assert resp["errors"][0]["message"] == test_case.expected_response
 
 
-def test_get_service_join_request_not_found(admin_request):
-    request_id = uuid.uuid4()
+def test_create_service_join_request_creates_join_request(admin_request, sample_service, mocker):
+    mock_send_invite = mocker.patch("app.service.rest.send_service_invite_request")
+    mock_send_receipt = mocker.patch("app.service.rest.send_receipt_after_sending_request_invite_letter")
 
-    resp = admin_request.get(
-        "service.get_service_join_request",
-        request_id=request_id,
-        _expected_status=404,
-    )
+    requester = create_user(name="Requester", email_address="requester@gov.uk")
+    contacted_user = create_user(name="Service Manager", email_address="manager@gov.uk")
+    invite_host = "www"
 
-    assert resp["message"] == f"Service join request with ID {request_id} not found."
-
-
-def test_get_service_join_request_success(admin_request):
-    requester_id = uuid.uuid4()
-    service_id = uuid.uuid4()
-    contacted_user = uuid.uuid4()
-
-    setup_service_join_request_test_data(service_id, requester_id, [contacted_user])
-
-    resp = admin_request.post(
+    response = admin_request.post(
         "service.create_service_join_request",
-        service_id=str(service_id),
-        _data={"requester_id": str(requester_id), "contacted_user_ids": [str(contacted_user)]},
+        service_id=str(sample_service.id),
+        _data={
+            "requester_id": str(requester.id),
+            "contacted_user_ids": [str(contacted_user.id)],
+            "invite_link_host": invite_host,
+        },
         _expected_status=201,
     )
 
-    request_id = resp["service_join_request_id"]
-
-    resp = admin_request.get(
-        "service.get_service_join_request",
-        request_id=request_id,
-        _expected_status=200,
+    assert response == {"service_join_request_id": mocker.ANY}
+    mock_send_invite.assert_called_once_with(
+        requester,
+        [contacted_user],
+        sample_service,
+        None,
+        f"{invite_host}/services/{sample_service.id}/join-request/{response['service_join_request_id']}/approve",
+    )
+    mock_send_receipt.assert_called_once_with(
+        requester,
+        service=sample_service,
+        recipients_of_invite_request=[contacted_user],
+        request_again_url=f"{invite_host}/services/{sample_service.id}/join/ask",
     )
 
-    assert resp["contacted_service_users"] is not None
-    assert resp["status"] == SERVICE_JOIN_REQUEST_PENDING
-    assert resp["id"] == request_id
-    assert resp["created_at"] is not None
+
+@pytest.mark.parametrize(
+    "reason, expected_reason_given, expected_reason",
+    (
+        (
+            "",
+            "no",
+            "",
+        ),
+        (
+            "One reason given",
+            "yes",
+            "^ One reason given",
+        ),
+        (
+            "Lots of reasons\n\nIncluding more in a new paragraph",
+            "yes",
+            "^ Lots of reasons\n^ \n^ Including more in a new paragraph",
+        ),
+    ),
+)
+def test_request_invite_to_service_email_is_sent_to_valid_service_managers(
+    admin_request,
+    sample_service,
+    request_invite_email_template,
+    receipt_for_request_invite_email_template,
+    reason,
+    expected_reason_given,
+    expected_reason,
+    mock_celery_task,
+):
+    # This test also covers a scenario where a list that contains valid service managers also contains an invalid
+    # service manager. Expected behaviour is that notifications will be sent only to the valid service managers.
+    mock_celery = mock_celery_task(deliver_email)
+    user_requesting_invite = create_user(email_address="requester@example.gov.uk")
+    service_manager_1 = create_user(name="Manager 1", email_address="manager.1@example.gov.uk")
+    service_manager_2 = create_user(name="Manager 2", email_address="manager.2@example.gov.uk")
+    service_manager_3 = create_user(name="Manager 3", email_address="manager.3@example.gov.uk")
+    another_service = create_service(service_name="Another Service")
+    service_manager_1.services = [sample_service]
+    service_manager_2.services = [sample_service]
+    service_manager_3.services = [another_service]
+    create_permissions(service_manager_1, sample_service, "manage_settings")
+    create_permissions(service_manager_2, sample_service, "manage_settings")
+    create_permissions(service_manager_3, another_service, "manage_settings")
+    recipients_of_invite_request = [service_manager_1.id, service_manager_2.id, service_manager_3.id]
+    invite_link_host = current_app.config["ADMIN_BASE_URL"]
+
+    data = {
+        "requester_id": str(user_requesting_invite.id),
+        "contacted_user_ids": [str(x) for x in recipients_of_invite_request],
+        "reason": reason,
+        "invite_link_host": invite_link_host,
+    }
+    admin_request.post(
+        "service.create_service_join_request",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=201,
+    )
+
+    # Two sets of notifications are sent:
+    # 1.request invite notifications to the service manager(s)
+    # 2.receipt for request invite notification to the user that initiated the invite request.
+
+    notifications = Notification.query.all()
+    service_manager_1_notification = [
+        n
+        for n in notifications
+        if n.personalisation.get("approver_name") == service_manager_1.name
+        and n.template_id == request_invite_email_template.id
+    ][0]
+
+    user_notification = [
+        n
+        for n in notifications
+        if n.personalisation.get("requester_name") == user_requesting_invite.name
+        and n.template_id == receipt_for_request_invite_email_template.id
+    ][0]
+
+    assert mock_celery.call_count == 3
+    assert len(notifications) == 3
+
+    # One join service request is created
+    join_request = ServiceJoinRequest.query.one()
+
+    assert join_request.service_id == sample_service.id
+    assert len(join_request.contacted_service_users) == 3
+
+    # Request invite notification
+    assert len(service_manager_1_notification.personalisation.keys()) == 7
+    assert service_manager_1_notification.personalisation["requester_name"] == user_requesting_invite.name
+    assert service_manager_1_notification.personalisation["service_name"] == sample_service.name
+    assert service_manager_1_notification.personalisation["reason_given"] == expected_reason_given
+    assert service_manager_1_notification.personalisation["reason"] == expected_reason
+    assert service_manager_1_notification.to == service_manager_1.email_address
+    assert (
+        service_manager_1_notification.personalisation["url"]
+        == f"{invite_link_host}/services/{sample_service.id}/join-request/{join_request.id}/approve"
+    )
+    assert service_manager_1_notification.reply_to_text == user_requesting_invite.email_address
+
+    # Receipt for request invite notification
+    assert user_notification.personalisation == {
+        "requester_name": user_requesting_invite.name,
+        "service_name": "Sample service",
+        "service_admin_names": [
+            "Manager 1 – manager.1@example.gov.uk",
+            "Manager 2 – manager.2@example.gov.uk",
+            "Manager 3 – manager.3@example.gov.uk",
+        ],
+        "url_ask_to_join_page": f"{invite_link_host}/services/{sample_service.id}/join/ask",
+    }
+    assert user_notification.reply_to_text == "notify@gov.uk"
+
+
+def test_request_invite_to_service_email_is_not_sent_if_requester_is_already_part_of_service(
+    admin_request, sample_service, mocker
+):
+    mock_invite_request = mocker.patch("app.service_invite.rest.send_service_invite_request")
+    mock_receipt = mocker.patch("app.service_invite.rest.send_receipt_after_sending_request_invite_letter")
+
+    user_requesting_invite = create_user()
+    user_requesting_invite.services = [sample_service]
+    service_manager_1 = create_user()
+    create_permissions(service_manager_1, sample_service)
+    service_managers = [service_manager_1]
+
+    data = {
+        "requester_id": str(user_requesting_invite.id),
+        "contacted_user_ids": [str(x.id) for x in service_managers],
+        "reason": "Lots of reasons",
+        "invite_link_host": current_app.config["ADMIN_BASE_URL"],
+    }
+
+    response = admin_request.post(
+        "service.create_service_join_request",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=400,
+    )
+    assert response["message"] == "user-already-in-service"
+    assert not mock_invite_request.called
+    assert not mock_receipt.called
+
+
+def test_request_invite_to_service_raises_exception_if_no_service_managers_to_send_email_to(
+    admin_request,
+    sample_service,
+    request_invite_email_template,
+    mocker,
+):
+    mock_receipt = mocker.patch("app.service_invite.rest.send_receipt_after_sending_request_invite_letter")
+
+    user_requesting_invite = create_user()
+    service_manager = create_user()
+    another_service = create_service(service_name="Another Service")
+    service_manager.services = [another_service]
+    create_permissions(service_manager, another_service, "manage_settings")
+    recipients_of_invite_request = [service_manager.id]
+
+    data = {
+        "requester_id": str(user_requesting_invite.id),
+        "contacted_user_ids": [str(x) for x in recipients_of_invite_request],
+        "reason": "Lots of reasons",
+        "invite_link_host": current_app.config["ADMIN_BASE_URL"],
+    }
+
+    response = admin_request.post(
+        "service.create_service_join_request",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=400,
+    )
+    assert response["message"] == "no-valid-service-managers-ids"
+    assert not mock_receipt.called
+
+
+def test_get_service_join_request_by_id(admin_request, sample_service):
+    requester = create_user(email="requester@gov.uk")
+    approver = create_user()
+
+    join_request = dao_create_service_join_request(requester.id, sample_service.id, [approver.id])
+
+    response = admin_request.get(
+        "service.get_service_join_request_by_id",
+        service_id=sample_service.id,
+        request_id=join_request.id,
+    )
+
+    assert response["id"] == str(join_request.id)
+    assert response["service_id"] == str(sample_service.id)
+    assert response["created_at"] is not None
+    assert response["status"] == "pending"
+    assert response["status_changed_by"] is None
+    assert response["requester"] == {
+        "id": str(requester.id),
+        "name": "Test User",
+        "belongs_to_service": [],
+        "email_address": "requester@gov.uk",
+    }
+    assert response["status_changed_at"] is None
+    assert response["reason"] is None
+    assert response["contacted_service_users"] == [str(approver.id)]
+
+
+def test_get_service_join_request_by_id_when_request_is_not_found(admin_request, sample_service, fake_uuid):
+    create_user(email="requester@gov.uk")
+
+    response = admin_request.get(
+        "service.get_service_join_request_by_id",
+        service_id=sample_service.id,
+        request_id=fake_uuid,
+        _expected_status=404,
+    )
+
+    assert response["message"] == "No result found"
 
 
 @pytest.mark.parametrize(
@@ -4052,12 +4288,13 @@ def test_get_service_join_request_success(admin_request):
         ),
     ],
 )
-def test_update_service_join_request_validation_errors(
-    admin_request, status_changed_by_id, permissions, status, reason, expected_error
+def test_update_service_join_request_by_id_validation_errors(
+    admin_request, notify_db_session, status_changed_by_id, permissions, status, reason, expected_error
 ):
     resp = admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(uuid.uuid4()),
+        service_id=str(uuid.uuid4()),
         _data={
             "permissions": permissions,
             "status_changed_by_id": str(status_changed_by_id),
@@ -4078,7 +4315,7 @@ def test_update_service_join_request_validation_errors(
         (uuid.uuid4(), ["manage_users"], "rejected", "user is not part of company anymore"),
     ],
 )
-def test_update_service_join_request_updates_service_join_request_table(
+def test_update_service_join_request_by_id_updates_service_join_request_table(
     admin_request,
     status_changed_by_id,
     permissions,
@@ -4090,35 +4327,49 @@ def test_update_service_join_request_updates_service_join_request_table(
 ):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
-    user_id = status_changed_by_id
 
-    setup_service_join_request_test_data(service_id, requester_id, [user_id])
+    setup_service_join_request_test_data(service_id, requester_id, [status_changed_by_id])
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
 
     request = dao_create_service_join_request(
         requester_id=requester_id,
         service_id=service_id,
-        contacted_user_ids=[user_id],
+        contacted_user_ids=[status_changed_by_id],
     )
 
     resp = admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=str(service_id),
         _data={
             "permissions": permissions,
             "status_changed_by_id": str(status_changed_by_id),
             "status": status,
             "reason": reason,
         },
-        _expected_status=200,
     )
 
+    assert resp["id"] == str(request.id)
+    assert resp["service_id"] == str(service_id)
+    assert resp["created_at"]
     assert resp["status"] == status
+    assert resp["status_changed_by"] == {
+        "id": str(status_changed_by_id),
+        "name": f"User Within Existing Service {status_changed_by_id}",
+    }
     assert resp["reason"] == reason
-    assert resp["status_changed_by"]["id"] == str(status_changed_by_id)
+    assert resp["contacted_service_users"] == [str(status_changed_by_id)]
+
+    expected_belongs_to_service = [str(service_id)] if status == "approved" else []
+    assert resp["requester"] == {
+        "belongs_to_service": expected_belongs_to_service,
+        "email_address": f"{requester_id}@digital.cabinet-office.gov.uk",
+        "id": str(requester_id),
+        "name": "Requester User",
+    }
 
 
-def test_update_service_join_request_request_not_found(admin_request):
+def test_update_service_join_request_by_id_request_not_found(admin_request, notify_db_session):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     user_id = uuid.uuid4()
@@ -4126,8 +4377,9 @@ def test_update_service_join_request_request_not_found(admin_request):
     setup_service_join_request_test_data(service_id, requester_id, [user_id])
 
     resp = admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(uuid.uuid4()),
+        service_id=(str(uuid.uuid4())),
         _data={
             "permissions": ["manage_users"],
             "status_changed_by_id": str(user_id),
@@ -4137,23 +4389,22 @@ def test_update_service_join_request_request_not_found(admin_request):
         _expected_status=404,
     )
 
-    assert resp["message"] == "Service join request not found"
+    assert resp["message"] == "No result found"
 
 
 @pytest.mark.parametrize(
-    "status_changed_by_id, set_permissions, with_folder_permissions, status, reason",
+    "status_changed_by_id, set_permissions, with_folder_permissions, status",
     [
-        (uuid.uuid4(), ["manage_users"], False, "approved", None),
-        (uuid.uuid4(), [], True, "approved", None),
+        (uuid.uuid4(), ["manage_users"], False, "approved"),
+        (uuid.uuid4(), [], True, "approved"),
     ],
 )
-def test_update_service_join_request_add_user_to_service(
+def test_update_service_join_request_by_id_add_user_to_service(
     admin_request,
     status_changed_by_id,
     set_permissions,
     with_folder_permissions,
     status,
-    reason,
     notify_service,
     service_join_request_approved_template,
     mocker,
@@ -4181,17 +4432,17 @@ def test_update_service_join_request_add_user_to_service(
         folder_permissions = [str(folder_1.id), str(folder_2.id)]
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=str(service_id),
         _data={
             "permissions": set_permissions,
             "folder_permissions": folder_permissions,
             "status_changed_by_id": str(status_changed_by_id),
             "status": status,
-            "reason": reason,
+            "reason": None,
             "auth_type": "sms_auth",
         },
-        _expected_status=200,
     )
 
     user = get_user_by_id(requester_id)
@@ -4220,7 +4471,7 @@ def test_update_service_join_request_add_user_to_service(
         ("email_auth", None, "email_auth", "email_auth"),
     ],
 )
-def test_update_service_join_request_updates_user_auth_type(
+def test_update_service_join_request_by_id_updates_user_auth_type(
     admin_request,
     sample_user_service_permission,
     notify_service,
@@ -4242,8 +4493,9 @@ def test_update_service_join_request_updates_user_auth_type(
     )
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=sample_user_service_permission.service.id,
         _data={
             "permissions": ["manage_users"],
             "folder_permissions": [],
@@ -4257,18 +4509,18 @@ def test_update_service_join_request_updates_user_auth_type(
     assert requester.auth_type == expected_auth_type
 
 
-def test_update_service_join_request_notification_sent(
+def test_update_service_join_request_by_id_notification_sent(
     admin_request,
     notify_service,
     service_join_request_approved_template,
-    mocker,
+    mock_celery_task,
 ):
     requester_id = uuid.uuid4()
     service_id = uuid.uuid4()
     approver_id = uuid.uuid4()
 
     setup_service_join_request_test_data(service_id, requester_id, [approver_id])
-    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    mock_deliver_email_task = mock_celery_task(deliver_email)
 
     request = dao_create_service_join_request(
         requester_id=requester_id,
@@ -4277,19 +4529,19 @@ def test_update_service_join_request_notification_sent(
     )
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=str(service_id),
         _data={
             "permissions": ["manage_users"],
             "status_changed_by_id": str(approver_id),
             "status": "approved",
             "auth_type": "email_auth",
         },
-        _expected_status=200,
     )
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mock_deliver_email_task.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
 
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
     assert notification.to == f"{requester_id}@digital.cabinet-office.gov.uk"
@@ -4305,9 +4557,10 @@ def test_update_service_join_request_get_template(
     notify_service,
     service_join_request_approved_template,
     mocker,
+    mock_celery_task,
 ):
     template = service_join_request_approved_template
-    mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    mock_deliver_email_task = mock_celery_task(deliver_email)
     mocker.patch("app.dao.templates_dao.dao_get_template_by_id", return_value=template)
 
     requester_id = uuid.uuid4()
@@ -4323,24 +4576,24 @@ def test_update_service_join_request_get_template(
     )
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(request.id),
+        service_id=str(service_id),
         _data={
             "permissions": ["manage_users"],
             "status_changed_by_id": str(approver_id),
             "status": "approved",
         },
-        _expected_status=200,
     )
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mock_deliver_email_task.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
 
     assert notification.template.version == template.version
     assert notification.template_id == template.id
 
 
-def test_update_service_join_request_cancels_pending_requests(
+def test_update_service_join_request_by_id_cancels_pending_requests(
     admin_request,
     notify_service,
     service_join_request_approved_template,
@@ -4362,15 +4615,15 @@ def test_update_service_join_request_cancels_pending_requests(
     )
 
     admin_request.post(
-        "service.update_service_join_request",
+        "service.update_service_join_request_by_id",
         request_id=str(pending_request_2.id),
+        service_id=str(service_id),
         _data={
             "permissions": ["manage_users"],
             "status_changed_by_id": str(approver_id),
             "status": "approved",
             "auth_type": "sms_auth",
         },
-        _expected_status=200,
     )
 
     all_user_requests = ServiceJoinRequest.query.filter_by(requester_id=requester_id, service_id=service_id).all()
@@ -4435,7 +4688,7 @@ def test_get_report_request_by_id(admin_request, sample_service, sample_report_r
         ),
     ],
 )
-def test_create_report_request_should_return_validation_error(
+def test_create_report_request_by_type_should_return_validation_error(
     admin_request, sample_service, data, error_type, error_message
 ):
     json_resp = admin_request.post(
@@ -4457,7 +4710,7 @@ def test_create_report_request_should_return_validation_error(
         ("letter", "sending"),
     ],
 )
-def test_create_report_request(admin_request, sample_service, notification_type, notification_status):
+def test_create_report_request_by_type(admin_request, sample_service, notification_type, notification_status):
     json_resp = admin_request.post(
         "service.create_report_request_by_type",
         service_id=str(sample_service.id),
@@ -4479,3 +4732,101 @@ def test_create_report_request(admin_request, sample_service, notification_type,
     assert json_resp["data"]["service_id"] == str(sample_service.id)
     assert not json_resp["data"]["updated_at"]
     assert json_resp["data"]["created_at"]
+
+
+def test_create_report_request_by_type_returns_existing_request(admin_request, sample_service, sample_user, caplog):
+    expected_params = {"notification_type": "sms", "notification_status": "sending"}
+    existing_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_PENDING,
+        parameter=expected_params,
+        created_at=datetime.utcnow() - timedelta(minutes=2),
+    )
+    existing_request = dao_create_report_request(existing_request)
+
+    payload = {
+        "user_id": str(sample_user.id),
+        "report_type": "notifications_report",
+        "notification_type": "sms",
+        "notification_status": "sending",
+    }
+
+    response = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=str(sample_service.id),
+        _data=payload,
+        _expected_status=200,
+    )
+
+    assert response["data"]["id"] == str(existing_request.id)
+    assert response["data"]["parameter"] == existing_request.parameter
+    assert (
+        f"Duplicate report request detected for user {sample_user.id} (service {sample_service.id})"
+        f" with params {json.dumps(expected_params, separators=(',', ':'))} – returning existing "
+        f"request {existing_request.id}" in caplog.messages
+    )
+
+
+def test_create_report_request_by_type_creates_new_when_no_existing(admin_request, sample_service):
+    data = {
+        "user_id": str(sample_service.created_by_id),
+        "report_type": "notifications_report",
+        "notification_type": "sms",
+        "notification_status": "failed",
+    }
+
+    response = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=str(sample_service.id),
+        _data=data,
+        _expected_status=201,
+    )
+
+    assert response["data"]["status"] == REPORT_REQUEST_PENDING
+    assert response["data"]["report_type"] == REPORT_REQUEST_NOTIFICATIONS
+    assert response["data"]["parameter"] == {
+        "notification_type": "sms",
+        "notification_status": "failed",
+    }
+
+
+def test_create_report_request_by_type_creates_new_if_existing_is_stale(
+    admin_request, sample_service, sample_user, caplog
+):
+    expected_params = {"notification_type": "email", "notification_status": "failed"}
+
+    timeout = current_app.config["REPORT_REQUEST_NOTIFICATIONS_TIMEOUT_MINUTES"]
+    stale_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_PENDING,
+        parameter=expected_params,
+        created_at=datetime.utcnow() - timedelta(minutes=timeout + 10),
+        updated_at=None,
+    )
+    stale_request = dao_create_report_request(stale_request)
+
+    data = {
+        "user_id": str(sample_user.id),
+        "report_type": "notifications_report",
+        "notification_type": "email",
+        "notification_status": "failed",
+    }
+
+    response = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=str(sample_service.id),
+        _data=data,
+        _expected_status=201,
+    )
+
+    created_request_id = response["data"]["id"]
+
+    assert created_request_id != str(stale_request.id)
+    assert (
+        f"Report request {created_request_id} for user {sample_user.id} (service {sample_service.id}) "
+        f"created with params {json.dumps(expected_params, separators=(',', ':'))}" in caplog.messages
+    )

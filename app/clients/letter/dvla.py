@@ -15,12 +15,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.ssl_ import create_urllib3_context
 
 from app.clients import ClientException
-from app.constants import (
-    EUROPE,
-    FIRST_CLASS,
-    INTERNATIONAL_POSTAGE_TYPES,
-    REST_OF_WORLD,
-)
+from app.constants import ECONOMY_CLASS, EUROPE, FIRST_CLASS, INTERNATIONAL_POSTAGE_TYPES, REST_OF_WORLD
 
 
 class DvlaException(ClientException):
@@ -265,7 +260,7 @@ class DVLAClient:
         notification_id: str,
         reference: str,
         address: PostalAddress,
-        postage: Literal["first", "second", "europe", "rest-of-world"],
+        postage: Literal["first", "second", "europe", "rest-of-world", "economy"],
         service_id: str,
         organisation_id: str,
         pdf_file: bytes,
@@ -343,6 +338,8 @@ class DVLAClient:
             json_payload["standardParams"]["despatchMethod"] = "INTERNATIONAL_EU"
         elif postage == REST_OF_WORLD:
             json_payload["standardParams"]["despatchMethod"] = "INTERNATIONAL_ROW"
+        elif postage == ECONOMY_CLASS:
+            json_payload["standardParams"]["despatchMethod"] = "ECONOMY"
 
         return json_payload
 

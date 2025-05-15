@@ -1,9 +1,11 @@
+import logging
 from collections.abc import Sequence
 from datetime import datetime
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
+from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
 from sqlalchemy.exc import SQLAlchemyError
@@ -38,7 +40,10 @@ from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.notifications.process_notifications import persist_notification
-from app.notifications.validators import check_service_over_daily_message_limit
+from app.notifications.validators import (
+    check_service_over_daily_message_limit,
+    validate_and_format_recipient,
+)
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
 from app.utils import batched
@@ -258,10 +263,34 @@ def save_sms(
         return
 
     try:
+        recipient_data = validate_and_format_recipient(
+            send_to=notification["to"],
+            key_type=KEY_TYPE_NORMAL,
+            service=service,
+            notification_type=SMS_TYPE,
+            check_intl_sms_limit=False,
+        )
+        extra_args = {}
+
+    except InvalidPhoneError:
+        recipient_data = {
+            "unformatted_recipient": notification["to"],
+            "normalised_to": notification["to"],
+            "international": False,
+            "phone_prefix": "+44",
+            "rate_multiplier": 0,
+        }
+        extra_args = {
+            "status": NOTIFICATION_VALIDATION_FAILED,
+            "billable_units": 0,
+            "updated_at": datetime.utcnow(),
+        }
+
+    try:
         saved_notification = persist_notification(
             template_id=notification["template"],
             template_version=notification["template_version"],
-            recipient=notification["to"],
+            recipient=recipient_data,
             service=service,
             personalisation=notification.get("personalisation"),
             notification_type=SMS_TYPE,
@@ -273,6 +302,7 @@ def save_sms(
             notification_id=notification_id,
             reply_to_text=reply_to_text,
             client_reference=notification.get("client_reference", None),
+            **extra_args,
         )
 
         if saved_notification.status != NOTIFICATION_VALIDATION_FAILED:
@@ -299,7 +329,7 @@ def save_sms(
 
 
 @notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
-def save_email(self, service_id, notification_id, encoded_notification, sender_id=None):
+def save_email(self, service_id, notification_id, encoded_notification, sender_id=None, early_log_level=logging.DEBUG):
     notification = signing.decode(encoded_notification)
 
     service = SerialisedService.from_id(service_id)

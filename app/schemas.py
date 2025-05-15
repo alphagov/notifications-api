@@ -24,7 +24,7 @@ import app.constants
 from app import db, ma, models
 from app.dao.permissions_dao import permission_dao
 from app.models import ServicePermission
-from app.utils import DATETIME_FORMAT_NO_TIMEZONE, parse_and_format_phone_number
+from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, parse_and_format_phone_number
 
 
 def _validate_positive_number(value, msg="Not a positive integer"):
@@ -39,16 +39,15 @@ def _validate_positive_number(value, msg="Not a positive integer"):
 class FlexibleDateTime(fields.DateTime):
     """
     Allows input data to not contain tz info.
-    Outputs data using the output format that marshmallow version 2 used to use, OLD_MARSHMALLOW_FORMAT
+    Outputs data using our standard format
     """
 
     DEFAULT_FORMAT = "flexible"
-    OLD_MARSHMALLOW_FORMAT = "%Y-%m-%dT%H:%M:%S+00:00"
 
     def __init__(self, *args, allow_none=True, **kwargs):
         super().__init__(*args, allow_none=allow_none, **kwargs)
         self.DESERIALIZATION_FUNCS["flexible"] = parse
-        self.SERIALIZATION_FUNCS["flexible"] = lambda x: x.strftime(self.OLD_MARSHMALLOW_FORMAT)
+        self.SERIALIZATION_FUNCS["flexible"] = lambda x: x.strftime(DATETIME_FORMAT)
 
 
 class UUIDsAsStringsMixin:
@@ -149,7 +148,6 @@ class UserUpdateAttributeSchema(BaseSchema):
             "id",
             "logged_in_at",
             "password_changed_at",
-            "platform_admin",
             "state",
             "updated_at",
             "verify_codes",
@@ -175,6 +173,11 @@ class UserUpdateAttributeSchema(BaseSchema):
                 number.validate(allow_international_number=True)
         except InvalidPhoneError as error:
             raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
+
+    @validates("platform_admin")
+    def validate_platform_admin(self, value):
+        if value is not False:
+            raise ValidationError(f"Cannot set platform_admin to {value}")
 
     @validates_schema(pass_original=True)
     def check_unknown_fields(self, data, original_data, **kwargs):
@@ -218,6 +221,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     email_branding = field_for(models.Service, "email_branding")
     organisation = field_for(models.Service, "organisation")
     email_message_limit = field_for(models.Service, "email_message_limit", required=True)
+    international_sms_message_limit = field_for(models.Service, "international_sms_message_limit", required=False)
     sms_message_limit = field_for(models.Service, "sms_message_limit", required=True)
     letter_message_limit = field_for(models.Service, "letter_message_limit", required=True)
     go_live_at = field_for(models.Service, "go_live_at", format=DATETIME_FORMAT_NO_TIMEZONE)

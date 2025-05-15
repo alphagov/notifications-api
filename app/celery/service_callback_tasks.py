@@ -1,4 +1,5 @@
 import json
+import logging
 from contextvars import ContextVar
 
 import requests
@@ -10,8 +11,8 @@ from app import memo_resetters, notify_celery, signing
 from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.returned_letters_dao import fetch_returned_letter_callback_data_dao
-from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
-from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
+from app.dao.service_callback_api_dao import get_service_callback_api_by_callback_type
+from app.utils import DATETIME_FORMAT
 
 # thread-local copies of persistent requests.Session
 _requests_session_context_var: ContextVar[requests.Session] = ContextVar("service_callback_requests_session")
@@ -49,7 +50,9 @@ def send_returned_letter_to_service(self, encoded_returned_letter):
     )
 
 
-@notify_celery.task(bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300)
+@notify_celery.task(
+    bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300, early_log_level=logging.DEBUG
+)
 def send_delivery_status_to_service(self, notification_id, encoded_status_update):
     status_update = signing.decode(encoded_status_update)
 
@@ -98,7 +101,8 @@ def send_complaint_to_service(self, complaint_data):
 
 @notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
 def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
-    inbound_api = get_service_inbound_api_for_service(service_id=service_id)
+    inbound_api = get_service_callback_api_by_callback_type(service_id, "inbound_sms")
+
     if not inbound_api:
         # No API data has been set for this service
         return
@@ -203,7 +207,7 @@ def create_returned_letter_callback_data(notification_id, service_id, service_ca
     data = {
         "notification_id": str(returned_letter_data["notification_id"]),
         "reference": returned_letter_data["client_reference"] if returned_letter_data["api_key_id"] else None,
-        "created_at": returned_letter_data["created_at"].strftime(DATETIME_FORMAT_NO_TIMEZONE),
+        "created_at": returned_letter_data["created_at"].strftime(DATETIME_FORMAT),
         "email_address": returned_letter_data["email_address"] or "API",
         # it doesn't make sense to show hidden/precompiled templates
         "template_name": returned_letter_data["template_name"] if not returned_letter_data["hidden"] else None,

@@ -26,7 +26,6 @@ from app.dao.organisation_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_data_retention_dao import insert_service_data_retention
-from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.service_sms_sender_dao import (
     dao_update_service_sms_sender,
@@ -70,7 +69,6 @@ from app.models import (
     ServiceContactList,
     ServiceEmailReplyTo,
     ServiceGuestList,
-    ServiceInboundApi,
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
@@ -117,6 +115,7 @@ def create_service(
     prefix_sms=True,
     email_message_limit=1000,
     sms_message_limit=1000,
+    international_sms_message_limit=1000,
     letter_message_limit=1000,
     organisation_type="central",
     check_if_service_exists=False,
@@ -137,6 +136,7 @@ def create_service(
             name=service_name,
             email_message_limit=email_message_limit,
             sms_message_limit=sms_message_limit,
+            international_sms_message_limit=international_sms_message_limit,
             letter_message_limit=letter_message_limit,
             restricted=restricted,
             custom_email_sender_name=None,
@@ -472,18 +472,6 @@ def create_inbound_sms(
     )
     dao_create_inbound_sms(inbound)
     return inbound
-
-
-def create_service_inbound_api(
-    service,
-    url="https://something.com",
-    bearer_token="some_super_secret",
-):
-    service_inbound_api = ServiceInboundApi(
-        service_id=service.id, url=url, bearer_token=bearer_token, updated_by_id=service.users[0].id
-    )
-    save_service_inbound_api(service_inbound_api)
-    return service_inbound_api
 
 
 def create_service_callback_api(callback_type, service, url="https://something.com", bearer_token="some_super_secret"):
@@ -1062,6 +1050,14 @@ def set_up_usage_data(start_date):
         billable_unit=1,
         rate=0.50,
         postage="first",
+    )
+    create_ft_billing(
+        bst_date=two_days_later,
+        template=letter_template_4,
+        notifications_sent=3,
+        billable_unit=2,
+        rate=0.64,
+        postage="economy",
     )
 
     # service with chargeable SMS, without an organisation

@@ -800,6 +800,7 @@ def letter_volumes_email_template(notify_service):
             "",
             "((first_class_volume)) first class letters (((first_class_sheets)) sheets).",
             "((second_class_volume)) second class letters (((second_class_sheets)) sheets).",
+            "((economy_mail_volume)) economy mail letters (((economy_mail_sheets)) sheets).",
             "((international_volume)) international letters (((international_sheets)) sheets).",
             "",
             "Thanks",
@@ -1302,7 +1303,7 @@ def mock_dvla_callback_data():
                 "jobType": "NOTIFY",
                 "jobStatus": "DESPATCHED",
                 "templateReference": "NOTIFY",
-                "transitionDate": "2021-03-31T08:15:07Z",
+                "transitionDate": "2025-03-31T08:15:07Z",
             },
             "metadata": {
                 "handler": {"urn": "dvla:resource:osl:print:print-hub-fulfilment:5.18.0"},

@@ -1626,11 +1626,13 @@ def test_letters_to_be_printed_returns_ids(notify_db_session):
     second_service = create_service(service_name="second service", service_id="642bf33b-54b5-45f2-8c13-942a46616704")
     first_template = create_template(service=first_service, template_type="letter", postage="second")
     second_template = create_template(service=second_service, template_type="letter", postage="second")
+    economy_template = create_template(service=first_service, template_type="letter", postage="economy")
     email_template = create_template(service=first_service, template_type="email")
 
     printed_notifications = {
         create_notification(first_template, created_at=datetime(2020, 12, 1, 9, 30)),
         create_notification(second_template, created_at=datetime(2020, 12, 1, 8, 30)),
+        create_notification(economy_template, created_at=datetime(2020, 12, 1, 9, 15)),
     }
     # unprinted_notifications
     create_notification(first_template, created_at=datetime(2020, 12, 1, 17, 31))  # too late
@@ -1649,6 +1651,8 @@ def test_dao_get_letters_and_sheets_volume_by_postage(notify_db_session):
     second_service = create_service(service_name="second service", service_id="642bf33b-54b5-45f2-8c13-942a46616704")
     first_template = create_template(service=first_service, template_type="letter", postage="second")
     second_template = create_template(service=second_service, template_type="letter", postage="second")
+    economy_template = create_template(service=first_service, template_type="letter", postage="economy")
+
     create_notification(template=first_template, created_at=datetime(2020, 12, 1, 9, 30), postage="first")
     create_notification(template=first_template, created_at=datetime(2020, 12, 1, 12, 30), postage="europe")
     create_notification(template=first_template, created_at=datetime(2020, 12, 1, 13, 30), postage="rest-of-world")
@@ -1657,19 +1661,21 @@ def test_dao_get_letters_and_sheets_volume_by_postage(notify_db_session):
     create_notification(template=first_template, created_at=datetime(2020, 12, 1, 15, 30))
     create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 30), postage="first")
     create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 31), postage="first")
+    create_notification(template=economy_template, created_at=datetime(2020, 12, 1, 10, 0), postage="economy")
     create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 32))
     create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 33))
     create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 34))
 
     results = dao_get_letters_and_sheets_volume_by_postage(print_run_deadline_local=datetime(2020, 12, 1, 17, 30))
 
-    assert len(results) == 4
+    assert len(results) == 5
 
     expected_results = [
         {"letters_count": 1, "sheets_count": 1, "postage": "europe"},
         {"letters_count": 3, "sheets_count": 3, "postage": "first"},
         {"letters_count": 1, "sheets_count": 1, "postage": "rest-of-world"},
         {"letters_count": 5, "sheets_count": 7, "postage": "second"},
+        {"letters_count": 1, "sheets_count": 1, "postage": "economy"},
     ]
 
     for result in results:

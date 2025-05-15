@@ -379,6 +379,7 @@ def test_send_letters_volume_email_to_dvla(notify_db_session, mock_celery_task, 
     letters_volumes = [
         MockVolume("first", 5, 7),
         MockVolume("second", 4, 12),
+        MockVolume("economy", 2, 4),
         MockVolume("europe", 1, 3),
         MockVolume("rest-of-world", 1, 2),
     ]
@@ -395,13 +396,15 @@ def test_send_letters_volume_email_to_dvla(notify_db_session, mock_celery_task, 
         assert str(email.template_id) == current_app.config["LETTERS_VOLUME_EMAIL_TEMPLATE_ID"]
         assert email.to in current_app.config["DVLA_EMAIL_ADDRESSES"]
         assert email.personalisation == {
-            "total_volume": 11,
+            "total_volume": 13,
             "first_class_volume": 5,
             "second_class_volume": 4,
+            "economy_mail_volume": 2,
             "international_volume": 2,
-            "total_sheets": 24,
+            "total_sheets": 28,
             "first_class_sheets": 7,
             "second_class_sheets": 12,
+            "economy_mail_sheets": 4,
             "international_sheets": 5,
             "date": "17 February 2020",
         }

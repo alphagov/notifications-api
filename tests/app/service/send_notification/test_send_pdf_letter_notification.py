@@ -6,7 +6,7 @@ from app.constants import EMAIL_TYPE, LETTER_TYPE, UPLOAD_LETTERS
 from app.dao.notifications_dao import get_notification_by_id
 from app.service.send_notification import send_pdf_letter_notification
 from app.v2.errors import BadRequestError, TooManyRequestsError
-from tests.app.db import create_service
+from tests.app.db import create_service, create_template
 
 
 @pytest.fixture
@@ -36,6 +36,24 @@ def test_send_pdf_letter_notification_raises_error_if_service_does_not_have_perm
 
     with pytest.raises(BadRequestError):
         send_pdf_letter_notification(service.id, post_data)
+
+
+def test_send_pdf_letter_notification_raises_error_if_using_economy_postage_without_permission(
+    sample_service,
+    post_data,
+):
+    create_template(
+        sample_service,
+        template_type=LETTER_TYPE,
+        template_name="Pre-compiled PDF",
+        hidden=True,
+    )
+
+    post_data["postage"] = "economy"
+    post_data["created_by"] = sample_service.users[0].id
+
+    with pytest.raises(BadRequestError):
+        send_pdf_letter_notification(sample_service.id, post_data)
 
 
 def test_send_pdf_letter_notification_raises_error_if_service_is_over_daily_message_limit(

@@ -21,8 +21,9 @@ from app.celery.service_callback_tasks import (
 from app.constants import (
     KEY_TYPE_NORMAL,
     NOTIFICATION_RETURNED_LETTER,
+    ServiceCallbackTypes,
 )
-from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
+from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_api_key,
     create_complaint,
@@ -34,7 +35,6 @@ from tests.app.db import (
     create_service,
     create_service_callback_api,
     create_service_contact_list,
-    create_service_inbound_api,
     create_template,
 )
 
@@ -186,8 +186,11 @@ def test_send_complaint_to_service_sends_callback_to_service(notify_db_session, 
 
 
 def test_send_inbound_sms_to_service_sends_callback_to_service(notify_api, sample_service, mocker):
-    create_service_inbound_api(
-        service=sample_service, url="https://some.service.gov.uk/", bearer_token="something_unique"
+    create_service_callback_api(
+        callback_type=ServiceCallbackTypes.inbound_sms.value,
+        service=sample_service,
+        url="https://some.service.gov.uk/",
+        bearer_token="something_unique",
     )
     inbound_sms = create_inbound_sms(
         service=sample_service,
@@ -215,7 +218,7 @@ def test_send_inbound_sms_to_service_sends_callback_to_service(notify_api, sampl
 def test_send_inbound_sms_to_service_does_not_send_callback_when_inbound_sms_does_not_exist(
     notify_api, sample_service, mocker
 ):
-    create_service_inbound_api(service=sample_service)
+    create_service_callback_api(service=sample_service, callback_type=ServiceCallbackTypes.inbound_sms.value)
     send_callback_mock = mocker.patch("app.celery.service_callback_tasks._send_data_to_service_callback_api")
 
     with pytest.raises(SQLAlchemyError):
@@ -252,7 +255,7 @@ def test_send_returned_letter_to_service_sends_callback_to_service(
     expected_data = {
         "notification_id": str(notification.id),
         "reference": notification.client_reference,
-        "date_sent": notification.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
+        "date_sent": notification.created_at.strftime(DATETIME_FORMAT),
         "sent_by": sample_letter_template.service.users[0].email_address,
         "template_name": sample_letter_template.name,
         "template_id": str(sample_letter_template.id),

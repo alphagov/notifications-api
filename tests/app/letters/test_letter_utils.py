@@ -169,10 +169,7 @@ def test_get_bucket_name_and_prefix_for_notification_invalid_notification():
 
 @pytest.mark.parametrize(
     "postage,expected_postage",
-    [
-        ("second", 2),
-        ("first", 1),
-    ],
+    [("second", 2), ("first", 1), ("economy", "ECONOMY")],
 )
 def test_generate_letter_pdf_filename_returns_correct_postage_for_filename(notify_api, postage, expected_postage):
     created_at = datetime(2017, 12, 4, 17, 29)

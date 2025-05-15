@@ -48,3 +48,21 @@ def test_dao_get_letter_rates_for_timestamp(notify_db_session):
     rates = dao_get_letter_rates_for_timestamp(datetime(2024, 6, 4))
     # assert the right letter rates are returned
     assert set(rates) == set(expected_rates)
+
+
+def test_dao_get_letter_rates_for_timestamp_returns_all_post_classes_for_2025(notify_db_session):
+    test_date = datetime(2025, 4, 1)
+
+    expected_rates = [
+        create_letter_rate(start_date=test_date, rate=0.83, post_class="first", sheet_count=2),
+        create_letter_rate(start_date=test_date, rate=0.52, post_class="second", sheet_count=3),
+        create_letter_rate(start_date=test_date, rate=0.64, post_class="economy", sheet_count=2),
+    ]
+
+    # Add a non-crown rate that should be excluded
+    create_letter_rate(start_date=test_date, rate=0.64, post_class="economy", sheet_count=2, crown=False)
+
+    rates = dao_get_letter_rates_for_timestamp(test_date)
+
+    assert set(rates) == set(expected_rates)
+    assert {r.post_class for r in rates} == {"first", "second", "economy"}

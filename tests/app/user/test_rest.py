@@ -227,6 +227,32 @@ def test_post_user_attribute(admin_request, sample_user, user_attribute, user_va
     assert getattr(sample_user, user_attribute) == user_value
 
 
+@pytest.mark.parametrize("platform_admin", (True, False))
+@pytest.mark.parametrize(
+    "value, expected_status",
+    (
+        (False, 200),
+        (True, 400),
+        ("foo", 400),
+        (123, 400),
+    ),
+)
+def test_post_user_update_platform_admin(admin_request, sample_user, platform_admin, value, expected_status):
+    sample_user.platform_admin = platform_admin
+
+    json_resp = admin_request.post(
+        "user.update_user_attribute",
+        user_id=sample_user.id,
+        _data={"platform_admin": value},
+        _expected_status=expected_status,
+    )
+    if expected_status == 200:
+        assert json_resp["data"]["platform_admin"] is False
+        assert sample_user.platform_admin is False
+    else:
+        assert sample_user.platform_admin == platform_admin
+
+
 @pytest.mark.parametrize(
     "user_attribute, user_value, arguments",
     [
@@ -262,7 +288,13 @@ def test_post_user_attribute(admin_request, sample_user, user_attribute, user_va
                     "servicemanagername": "Service Manago",
                     "email address": "notify@digital.cabinet-office.gov.uk",
                 },
-                "recipient": "+4407700900460",
+                "recipient": {
+                    "unformatted_recipient": "+4407700900460",
+                    "normalised_to": "447700900460",
+                    "international": False,
+                    "phone_prefix": "44",
+                    "rate_multiplier": 1,
+                },
                 "reply_to_text": "testing",
                 "service": mock.ANY,
                 "template_id": uuid.UUID("8a31520f-4751-4789-8ea1-fe54496725eb"),

@@ -7,10 +7,7 @@ from notifications_utils.clients import redis
 from notifications_utils.recipient_validation.email_address import (
     format_email_address,
 )
-from notifications_utils.recipient_validation.errors import InvalidPhoneError
-from notifications_utils.recipient_validation.phone_number import (
-    PhoneNumber,
-)
+from notifications_utils.recipient_validation.phone_number import UK_PREFIX
 from notifications_utils.template import (
     LetterPrintTemplate,
     PlainTextEmailTemplate,
@@ -24,11 +21,10 @@ from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_POSTAGE_TYPES,
+    INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
-    NOTIFICATION_VALIDATION_FAILED,
-    SMS_TO_UK_LANDLINES,
     SMS_TYPE,
 )
 from app.dao.notifications_dao import (
@@ -129,7 +125,7 @@ def persist_notification(
         id=notification_id,
         template_id=template_id,
         template_version=template_version,
-        to=recipient,
+        to=recipient["unformatted_recipient"] if type(recipient) is dict else recipient,
         service_id=service.id,
         personalisation=personalisation,
         notification_type=notification_type,
@@ -149,32 +145,14 @@ def persist_notification(
         updated_at=updated_at,
     )
     if notification_type == SMS_TYPE:
-        try:
-            phonenumber = PhoneNumber(recipient)
-            phonenumber.validate(
-                allow_international_number=True, allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES)
-            )
-            formatted_recipient = phonenumber.get_normalised_format()
-            recipient_info = phonenumber.get_international_phone_info()
-            notification.normalised_to = formatted_recipient
-            notification.international = recipient_info.international
-            notification.phone_prefix = recipient_info.country_prefix
-            notification.rate_multiplier = recipient_info.rate_multiplier
-        except InvalidPhoneError as e:
-            if job_id:
-                formatted_recipient = recipient
-                notification.normalised_to = formatted_recipient
-                notification.international = False
-                notification.phone_prefix = "+44"
-                notification.rate_multiplier = 0
-                notification.billable_units = 0
-                notification.status = NOTIFICATION_VALIDATION_FAILED
-                notification.updated_at = datetime.utcnow()
-            else:
-                raise e
+        notification.normalised_to = recipient["normalised_to"]
+        notification.international = recipient["international"]
+        notification.phone_prefix = recipient["phone_prefix"]
+        notification.rate_multiplier = recipient["rate_multiplier"]
 
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
+
     elif notification_type == LETTER_TYPE:
         notification.postage = postage
         notification.international = postage in INTERNATIONAL_POSTAGE_TYPES
@@ -183,11 +161,17 @@ def persist_notification(
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
-        increment_daily_limit_cache(service.id, notification_type, key_type)
+        increment_daily_limit_cache(
+            service.id,
+            notification_type,
+            key_type,
+            international_sms=notification_type == SMS_TYPE and str(notification.phone_prefix) != UK_PREFIX,
+        )
+
     return notification
 
 
-def increment_daily_limit_cache(service_id, notification_type, key_type):
+def increment_daily_limit_cache(service_id, notification_type, key_type, international_sms=False):
     if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
         return
 
@@ -201,6 +185,21 @@ def increment_daily_limit_cache(service_id, notification_type, key_type):
             redis_store.set(cache_key, 1, ex=86400)
         else:
             redis_store.incr(cache_key)
+
+    if notification_type == SMS_TYPE and international_sms:
+        _increment_international_sms_daily_limit_cache(service_id)
+
+
+def _increment_international_sms_daily_limit_cache(service_id):
+    cache_key = redis.daily_limit_cache_key(service_id, notification_type=INTERNATIONAL_SMS_TYPE)
+    if redis_store.get(cache_key) is None:
+        # if cache does not exist set the cache to 1 with an expiry of 24 hours,
+        # The cache should be set by the time we create the notification
+        # but in case it is this will make sure the expiry is set to 24 hours,
+        # where if we let the incr method create the cache it will be set a ttl.
+        redis_store.set(cache_key, 1, ex=86400)
+    else:
+        redis_store.incr(cache_key)
 
 
 def send_notification_to_queue_detached(key_type, notification_type, notification_id, queue=None):

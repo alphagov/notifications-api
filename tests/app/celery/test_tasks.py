@@ -1142,7 +1142,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(
 
 
 @pytest.mark.parametrize("client_reference", [None, "ab1234"])
-def test_notification_belonging_to_a_job_with_incorrect_number_should_go_to_personal_failure(
+def test_notification_belonging_to_a_job_with_incorrect_number_saved_as_validation_failed_and_not_sent(
     sample_template_with_placeholders, mock_celery_task, sample_job, client_reference
 ):
     notification = _notification_json(
@@ -1691,6 +1691,7 @@ def test_save_letter_saves_letter_to_database(
         ("SW1 1AA", "second", "second", False),
         ("New Zealand", "second", "rest-of-world", True),
         ("France", "first", "europe", True),
+        ("SW1 1AA", "economy", "economy", False),
     ],
 )
 def test_save_letter_saves_letter_to_database_with_correct_postage(
@@ -1888,6 +1889,33 @@ def test_save_sms_uses_non_default_sms_sender_reply_to_text_if_provided(mocker, 
 
     persisted_notification = Notification.query.one()
     assert persisted_notification.reply_to_text == "new-sender"
+
+
+def test_save_sms_doesnt_check_international_sms_limit(
+    mocker,
+    mock_celery_task,
+    notify_api,
+    notify_db_session,
+):
+    service = create_service(international_sms_message_limit=0)
+    template = create_template(service=service)
+
+    notification = _notification_json(template, to="+48697894044")
+    notification_id = uuid.uuid4()
+
+    mock_celery_task(provider_tasks.deliver_sms)
+
+    from tests.conftest import set_config
+
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        save_sms(
+            service.id,
+            notification_id,
+            signing.encode(notification),
+        )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.normalised_to == "48697894044"
 
 
 def test_save_letter_calls_get_pdf_for_templated_letter_task(

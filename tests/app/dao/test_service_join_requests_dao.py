@@ -2,6 +2,7 @@ from collections import namedtuple
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.constants import (
     SERVICE_JOIN_REQUEST_APPROVED,
@@ -12,15 +13,15 @@ from app.constants import (
 from app.dao.service_join_requests_dao import (
     dao_cancel_pending_service_join_requests,
     dao_create_service_join_request,
-    dao_get_service_join_request_by_id,
-    dao_update_service_join_request,
+    dao_get_service_join_request_by_id_and_service_id,
+    dao_update_service_join_request_by_id,
 )
 from app.models import ServiceJoinRequest, User
 from tests.app.db import create_service, create_user
 
 
 def setup_service_join_request_test_data(
-    service_id: uuid4(), requester_id: uuid4(), contacted_user_ids: list[uuid4()]
+    service_id: uuid4, requester_id: uuid4, contacted_user_ids: list[uuid4]
 ) -> tuple[User, list[User]]:
     """Helper function to create service, requester, and contacted users."""
     create_service(service_id=service_id, service_name=f"Service Requester Wants To Join {service_id}")
@@ -38,17 +39,21 @@ def setup_service_join_request_test_data(
     return contacted_users
 
 
-def create_service_join_request(requester_id, service_id, contacted_user_ids, status=None, decider_id=None):
+def create_service_join_request(
+    requester_id, service_id, contacted_user_ids, status=None, decider_id=None, reason=None
+):
     """Helper function to create a service join request and optionally update its status."""
     service_join_request = dao_create_service_join_request(
         requester_id=requester_id,
         service_id=service_id,
         contacted_user_ids=contacted_user_ids,
+        reason=reason,
     )
 
     if status and decider_id:
-        service_join_request = dao_update_service_join_request(
+        service_join_request = dao_update_service_join_request_by_id(
             request_id=service_join_request.id,
+            service_id=service_id,
             status=status,
             status_changed_by_id=decider_id,
         )
@@ -57,7 +62,7 @@ def create_service_join_request(requester_id, service_id, contacted_user_ids, st
 
 
 ServiceJoinRequestTestCase = namedtuple(
-    "TestCase", ["requester_id", "service_id", "contacted_user_ids", "expected_num_contacts"]
+    "TestCase", ["requester_id", "service_id", "contacted_user_ids", "reason", "expected_num_contacts"]
 )
 
 
@@ -68,12 +73,14 @@ ServiceJoinRequestTestCase = namedtuple(
             requester_id=uuid4(),
             service_id=uuid4(),
             contacted_user_ids=[uuid4(), uuid4()],
+            reason="some reason for joining1",
             expected_num_contacts=2,
         ),
         ServiceJoinRequestTestCase(
             requester_id=uuid4(),
             service_id=uuid4(),
             contacted_user_ids=[uuid4()],
+            reason="some reason for joining2",
             expected_num_contacts=1,
         ),
     ],
@@ -88,12 +95,14 @@ def test_dao_create_service_join_request(client, test_case, notify_db_session):
         requester_id=test_case.requester_id,
         service_id=test_case.service_id,
         contacted_user_ids=test_case.contacted_user_ids,
+        reason=test_case.reason,
     )
 
     assert request.requester_id == test_case.requester_id
     assert request.service_id == test_case.service_id
     assert len(request.contacted_service_users) == test_case.expected_num_contacts
     assert request.status == SERVICE_JOIN_REQUEST_PENDING
+    assert request.reason == test_case.reason
 
     for user in contacted_users:
         assert user in request.contacted_service_users
@@ -107,23 +116,26 @@ def test_dao_create_service_join_request(client, test_case, notify_db_session):
             service_id=uuid4(),
             contacted_user_ids=[],
             expected_num_contacts=0,
+            reason="some reason for joining1",
         ),
         ServiceJoinRequestTestCase(
             requester_id=uuid4(),
             service_id=uuid4(),
             contacted_user_ids=[uuid4(), uuid4()],
             expected_num_contacts=2,
+            reason="some reason for joining2",
         ),
         ServiceJoinRequestTestCase(
             requester_id=uuid4(),
             service_id=uuid4(),
             contacted_user_ids=[uuid4()],
             expected_num_contacts=1,
+            reason=None,
         ),
     ],
     ids=["no_contacts", "two_contacts", "one_contact"],
 )
-def test_get_service_join_request_by_id(client, test_case, notify_db_session):
+def test_dao_get_service_join_request_by_id_and_service_id(notify_db_session, test_case):
     contacted_user = setup_service_join_request_test_data(
         test_case.service_id, test_case.requester_id, test_case.contacted_user_ids
     )
@@ -132,25 +144,26 @@ def test_get_service_join_request_by_id(client, test_case, notify_db_session):
         requester_id=test_case.requester_id,
         service_id=test_case.service_id,
         contacted_user_ids=test_case.contacted_user_ids,
+        reason=test_case.reason,
     )
 
-    retrieved_request = dao_get_service_join_request_by_id(request.id)
+    retrieved_request = dao_get_service_join_request_by_id_and_service_id(
+        request_id=request.id, service_id=test_case.service_id
+    )
 
-    assert retrieved_request is not None
     assert retrieved_request.id == request.id
     assert retrieved_request.requester.id == test_case.requester_id
     assert retrieved_request.service_id == test_case.service_id
     assert len(retrieved_request.contacted_service_users) == test_case.expected_num_contacts
+    assert retrieved_request.reason == test_case.reason
 
     for user in contacted_user:
         assert user in retrieved_request.contacted_service_users
 
 
-def test_get_service_join_request_by_id_not_found(notify_db_session):
-    non_existent_id = uuid4()
-    retrieved_request = dao_get_service_join_request_by_id(non_existent_id)
-
-    assert retrieved_request is None
+def test_dao_get_service_join_request_by_id_and_service_id_raise_error_if_no_result_found(sample_service):
+    with pytest.raises(SQLAlchemyError):
+        dao_get_service_join_request_by_id_and_service_id(request_id=uuid4(), service_id=sample_service.created_by_id)
 
 
 @pytest.mark.parametrize(
@@ -161,7 +174,7 @@ def test_get_service_join_request_by_id_not_found(notify_db_session):
     ],
     ids=["Approved", "Rejected with reason"],
 )
-def test_dao_update_service_join_request(client, notify_db_session, updated_status, reason):
+def test_dao_update_service_join_request_by_id(notify_db_session, updated_status, reason):
     requester_id = uuid4()
     service_id = uuid4()
     user_1 = uuid4()
@@ -175,8 +188,9 @@ def test_dao_update_service_join_request(client, notify_db_session, updated_stat
         contacted_user_ids=[user_1, user_2],
     )
 
-    updated_request = dao_update_service_join_request(
+    updated_request = dao_update_service_join_request_by_id(
         request_id=request.id,
+        service_id=service_id,
         status=updated_status,
         status_changed_by_id=user_1,
         reason=reason,
@@ -185,39 +199,39 @@ def test_dao_update_service_join_request(client, notify_db_session, updated_stat
     assert updated_request.status == updated_status
     assert updated_request.status_changed_by_id == user_1
     assert updated_request.reason == reason
+    assert updated_request.status_changed_at
     assert len(updated_request.contacted_service_users) == 2
 
 
-def test_dao_update_service_join_request_no_request_found(client, notify_db_session):
-    requester_id = uuid4()
-    request_id = uuid4()
-    service_id = uuid4()
-    user_1 = uuid4()
-
-    setup_service_join_request_test_data(service_id, requester_id, [user_1])
-
-    updated_request = dao_update_service_join_request(
-        request_id=request_id,
-        status=SERVICE_JOIN_REQUEST_REJECTED,
-        status_changed_by_id=user_1,
-        reason=None,
-    )
-
-    assert updated_request is None
+def test_dao_update_service_join_request_by_id_raises_error_if_no_result_found(notify_db_session):
+    with pytest.raises(SQLAlchemyError):
+        dao_update_service_join_request_by_id(
+            request_id=uuid4(),
+            service_id=uuid4(),
+            status=SERVICE_JOIN_REQUEST_REJECTED,
+            status_changed_by_id=uuid4(),
+            reason=None,
+        )
 
 
 def test_dao_cancel_pending_service_join_requests(client, notify_db_session):
     requester_id = uuid4()
     decider_id = uuid4()
     service_id = uuid4()
+    reason = "some reason to join service"
 
     setup_service_join_request_test_data(service_id, requester_id, [decider_id])
 
     pending_request_1 = create_service_join_request(
-        requester_id, service_id, [decider_id], status=SERVICE_JOIN_REQUEST_REJECTED, decider_id=decider_id
+        requester_id,
+        service_id,
+        [decider_id],
+        status=SERVICE_JOIN_REQUEST_REJECTED,
+        decider_id=decider_id,
+        reason=reason,
     )
 
-    pending_request_2 = create_service_join_request(requester_id, service_id, [decider_id])
+    pending_request_2 = create_service_join_request(requester_id, service_id, [decider_id], reason=reason)
 
     pending_request_3 = create_service_join_request(requester_id, service_id, [decider_id])
 
@@ -240,10 +254,10 @@ def test_dao_cancel_pending_service_join_requests(client, notify_db_session):
     assert request_status_map[pending_request_2.id] == SERVICE_JOIN_REQUEST_CANCELLED
     assert request_status_map[pending_request_3.id] == SERVICE_JOIN_REQUEST_CANCELLED
 
-    assert request_reason_map[pending_request_1.id] is None
+    assert request_reason_map[pending_request_1.id] == reason
     assert request_reason_map[pending_request_4.id] is None
-    assert request_reason_map[pending_request_2.id] == "system update due to cancellation"
-    assert request_reason_map[pending_request_3.id] == "system update due to cancellation"
+    assert request_reason_map[pending_request_2.id] == reason
+    assert request_reason_map[pending_request_3.id] is None
 
 
 def test_dao_cancel_pending_service_join_requests_no_pending_requests(client, notify_db_session):

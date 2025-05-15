@@ -7,9 +7,10 @@ service_join_request_schema = {
     "properties": {
         "requester_id": {"type": "string", "format": "uuid"},
         "contacted_user_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uuid"}},
+        "invite_link_host": {"type": "string"},
         "reason": {"type": ["string", "null"], "description": "Optional reason for the request"},
     },
-    "required": ["requester_id", "contacted_user_ids"],
+    "required": ["requester_id", "contacted_user_ids", "invite_link_host"],
     "additionalProperties": False,
 }
 

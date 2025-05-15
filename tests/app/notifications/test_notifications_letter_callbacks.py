@@ -85,6 +85,16 @@ def test_process_letter_callback_gives_error_for_missing_or_invalid_token(client
             {"data": {"jobId": "1234 not a uuid 1234"}},
             "data badly formed hexadecimal UUID string",
         ),
+        # missing `transitionDate` in data
+        (
+            {"data": {"transitionDate": None}},
+            "data transitionDate is a required property",
+        ),
+        # invalid `transitionDate` in format
+        (
+            {"data": {"transitionDate": "2025-03-31T13:15Z"}},
+            "data 2025-03-31T13:15Z is not a date-time",
+        ),
     ],
 )
 def test_process_letter_callback_validation_for_required_fields(
@@ -118,29 +128,8 @@ def test_process_letter_callback_validation_for_required_fields(
                 {"key": "postageClass", "value": "invalid-postage-class"},
                 {"key": "totalSheets", "value": "5"},
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
-                {"key": "productionRunDate", "value": "2024-10-15 08:53:32.361"},
             ],
             "data {key: postageClass, value: invalid-postage-class} is not valid under any of the given schemas",
-        ),
-        # missing totalSheets field
-        (
-            [
-                {"key": "postageClass", "value": "1ST"},
-                {"key": "mailingProduct", "value": "MM UNSORTED"},
-                {"key": "productionRunDate", "value": "2024-10-15 08:53:32.361"},
-            ],
-            "data [{key: postageClass, value: 1ST}, {key: mailingProduct, value: MM UNSORTED}, "
-            "{key: productionRunDate, value: 2024-10-15 08:53:32.361}] is too short",
-        ),
-        # invalid date-time format for productionRunDate
-        (
-            [
-                {"key": "postageClass", "value": "1ST"},
-                {"key": "totalSheets", "value": "5"},
-                {"key": "mailingProduct", "value": "MM UNSORTED"},
-                {"key": "productionRunDate", "value": "invalid-date"},
-            ],
-            "data {key: productionRunDate, value: invalid-date} is not valid under any of the given schemas",
         ),
         # invalid enum for mailingProduct
         (
@@ -148,7 +137,6 @@ def test_process_letter_callback_validation_for_required_fields(
                 {"key": "postageClass", "value": "1ST"},
                 {"key": "totalSheets", "value": "5"},
                 {"key": "mailingProduct", "value": "invalid-mailing-product"},
-                {"key": "productionRunDate", "value": "2024-10-15 08:53:32.361"},
             ],
             "data {key: mailingProduct, value: invalid-mailing-product} is not valid under any of the given schemas",
         ),
@@ -196,16 +184,17 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
     )
 
 
-@pytest.mark.parametrize("status", ["DESPATCHED", "REJECTED"])
+@pytest.mark.parametrize(
+    "status,transition_date,expected_month,expected_day",
+    [("DESPATCHED", "2025-04-01T23:30:07Z", 4, 2), ("REJECTED", "2025-02-01T23:30:07Z", 2, 1)],
+)
 def test_process_letter_callback_calls_process_letter_callback_data_task(
-    client,
-    mock_celery_task,
-    mock_dvla_callback_data,
-    status,
+    client, mock_celery_task, mock_dvla_callback_data, status, transition_date, expected_month, expected_day
 ):
     mock_task = mock_celery_task(process_letter_callback_data)
     data = mock_dvla_callback_data()
     data["data"]["jobStatus"] = status
+    data["data"]["transitionDate"] = transition_date
 
     response = client.post(
         url_for(
@@ -224,7 +213,7 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
             "page_count": 5,
             "dvla_status": status,
             "cost_threshold": LetterCostThreshold.unsorted,
-            "despatch_date": datetime.date(2024, 8, 1),
+            "despatch_date": datetime.date(2025, expected_month, expected_day),
         },
     )
 
@@ -259,9 +248,9 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
                 {"key": "totalSheets", "value": "10"},
                 {"key": "postageClass", "value": "1ST"},
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
-                {"key": "productionRunDate", "value": "2024-10-15 04:00:16.287"},
             ],
             "jobStatus": "REJECTED",
+            "transitionDate": "2025-03-31T13:15:07Z",
         }
     }
 
@@ -272,13 +261,15 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
     assert letter_update.page_count == 10
     assert letter_update.status == "REJECTED"
     assert letter_update.cost_threshold == LetterCostThreshold.unsorted
-    assert letter_update.despatch_date == datetime.date(2024, 10, 15)
+    assert letter_update.despatch_date == datetime.date(2025, 3, 31)
 
 
 @pytest.mark.parametrize("postage", ["1ST", "2ND", "INTERNATIONAL"])
-@pytest.mark.parametrize("mailing_product", ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW"])
+@pytest.mark.parametrize(
+    "mailing_product", ["UNCODED", "MM UNSORTED", "UNSORTED", "MM", "INT EU", "INT ROW", "UNSORTEDE", "MM ECONOMY"]
+)
 def test__get_cost_threshold(mailing_product, postage):
-    if postage == "2ND" and mailing_product == "MM":
+    if (mailing_product == "MM" or mailing_product == "MM ECONOMY") and postage == "2ND":
         expected_cost_threshold = LetterCostThreshold.sorted
     else:
         expected_cost_threshold = LetterCostThreshold.unsorted
