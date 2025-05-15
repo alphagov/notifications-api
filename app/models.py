@@ -37,6 +37,7 @@ from sqlalchemy.schema import Sequence
 from app import db, redis_store, signing
 from app.constants import (
     ALL_BROADCAST_PROVIDERS,
+    ALL_TYPE,
     BRANDING_ORG,
     BROADCAST_TYPE,
     EMAIL_TYPE,
@@ -50,6 +51,10 @@ from app.constants import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
+    NOTIFICATION_REQUEST_REPORT_ALL,
+    NOTIFICATION_REQUEST_REPORT_DELIVERED,
+    NOTIFICATION_REQUEST_REPORT_FAILED,
+    NOTIFICATION_REQUEST_REPORT_SENDING,
     NOTIFICATION_RETURNED_LETTER,
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
@@ -3015,8 +3020,15 @@ class ReportRequest(db.Model):
     _schema = {
         "type": "object",
         "properties": {
-            "notification_type": {"enum": ["email", "sms", "letter", "all"]},
-            "notification_status": {"enum": ["all", "sending", "delivered", "failed"]},
+            "notification_type": {"enum": [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, ALL_TYPE]},
+            "notification_status": {
+                "enum": [
+                    NOTIFICATION_REQUEST_REPORT_ALL,
+                    NOTIFICATION_REQUEST_REPORT_SENDING,
+                    NOTIFICATION_REQUEST_REPORT_DELIVERED,
+                    NOTIFICATION_REQUEST_REPORT_FAILED,
+                ]
+            },
         },
         "additionalProperties": False,
     }

@@ -522,8 +522,8 @@ def create_letter_rate(start_date=None, end_date=None, crown=True, sheet_count=1
     return rate
 
 
-def create_api_key(service, key_type=KEY_TYPE_NORMAL, key_name=None):
-    id_ = uuid.uuid4()
+def create_api_key(service, key_type=KEY_TYPE_NORMAL, key_name=None, id=None):
+    id_ = id if id else uuid.uuid4()
 
     name = key_name if key_name else f"{key_type} api key {id_}"
 
