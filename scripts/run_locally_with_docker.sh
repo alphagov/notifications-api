@@ -37,6 +37,7 @@ docker run -it --rm \
   -e FLASK_APP=$FLASK_APP \
   -e FLASK_DEBUG=$FLASK_DEBUG \
   -e WERKZEUG_DEBUG_PIN=$WERKZEUG_DEBUG_PIN \
+  -e CELERY_LOG_LEVEL=INFO \
   ${EXPOSED_PORTS} \
   -v $(pwd):/home/vcap/app \
   ${DOCKER_IMAGE_NAME} \
