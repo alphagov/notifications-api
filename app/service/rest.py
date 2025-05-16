@@ -14,6 +14,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.datastructures import MultiDict
 
 from app.aws import s3
+from app.celery.tasks import process_report_request
 from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
@@ -1542,7 +1543,7 @@ def create_report_request_by_type(service_id):
 
     user_id = req_json.get("user_id")
 
-    dto = ReportRequest(
+    report_request = ReportRequest(
         user_id=user_id,
         service_id=service_id,
         report_type=report_type,
@@ -1551,7 +1552,7 @@ def create_report_request_by_type(service_id):
     )
 
     # 1. Check for duplicate requests and if found return ongoing request
-    existing_request = dao_get_oldest_ongoing_report_request(dto, timeout_minutes=timeout_minutes)
+    existing_request = dao_get_oldest_ongoing_report_request(report_request, timeout_minutes=timeout_minutes)
 
     if existing_request:
         current_app.logger.info(
@@ -1565,7 +1566,7 @@ def create_report_request_by_type(service_id):
         return jsonify(data=existing_request.serialize()), 200
 
     # 2. If no ongoing request is present, create and enqueue the request
-    created_request = dao_create_report_request(dto)
+    created_request = dao_create_report_request(report_request)
 
     current_app.logger.info(
         "Report request %s for user %s (service %s) created with params %s",
@@ -1575,10 +1576,9 @@ def create_report_request_by_type(service_id):
         json.dumps(created_request.parameter, separators=(",", ":")),
     )
 
-    # TODO: Remove comments when async function has been implemented
-    # process_report_request.apply_async(
-    #     [str(report_request.service_id), str(report_request.id)],
-    #     queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
-    # )
+    process_report_request.apply_async(
+        kwargs={"service_id": str(report_request.service_id), "report_request_id": str(report_request.id)},
+        queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
+    )
 
     return jsonify(data=created_request.serialize()), 201

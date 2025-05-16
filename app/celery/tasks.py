@@ -26,6 +26,10 @@ from app.constants import (
     NOTIFICATION_CREATED,
     NOTIFICATION_RETURNED_LETTER,
     NOTIFICATION_VALIDATION_FAILED,
+    REPORT_REQUEST_FAILED,
+    REPORT_REQUEST_IN_PROGRESS,
+    REPORT_REQUEST_PENDING,
+    REPORT_REQUEST_STORED,
     SMS_TYPE,
 )
 from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
@@ -34,6 +38,7 @@ from app.dao.notifications_dao import (
     dao_update_notifications_by_reference,
     get_notification_by_id,
 )
+from app.dao.report_requests_dao import dao_get_report_request_by_id, dao_update_report_request
 from app.dao.returned_letters_dao import _get_notification_ids_for_references, insert_returned_letters
 from app.dao.service_callback_api_dao import get_returned_letter_callback_api_for_service
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
@@ -44,6 +49,7 @@ from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
 )
+from app.report_requests.process_notifications_report import ReportRequestProcessor
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
 from app.utils import batched
@@ -53,6 +59,10 @@ DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE = 32
 
 
 class UnprocessableJobRow(Exception):
+    pass
+
+
+class ProcessReportRequestException(Exception):
     pass
 
 
@@ -526,3 +536,31 @@ def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
     if service_callback_api := get_returned_letter_callback_api_for_service(service_id=service_id):
         returned_letter_data = create_returned_letter_callback_data(notification_id, service_id, service_callback_api)
         send_returned_letter_to_service.apply_async([returned_letter_data], queue=QueueNames.CALLBACKS)
+
+
+@notify_celery.task(name="process-report-request")
+def process_report_request(service_id, report_request_id):
+    report_request = dao_get_report_request_by_id(service_id=service_id, report_id=report_request_id)
+
+    current_app.logger.info(
+        "Starting process-report-request task for report request id %s and status %s",
+        report_request_id,
+        report_request.status,
+    )
+
+    if report_request.status != REPORT_REQUEST_PENDING:
+        return
+
+    report_request.status = REPORT_REQUEST_IN_PROGRESS
+    dao_update_report_request(report_request)
+
+    try:
+        ReportRequestProcessor(service_id=service_id, report_request_id=report_request_id).process()
+        report_request.status = REPORT_REQUEST_STORED
+        dao_update_report_request(report_request)
+
+        current_app.logger.info("Report request for id %s succeeded", report_request_id)
+    except Exception as e:
+        report_request.status = REPORT_REQUEST_FAILED
+        dao_update_report_request(report_request)
+        raise ProcessReportRequestException(f"Report request for id {report_request_id} failed") from e

@@ -57,3 +57,9 @@ def dao_get_oldest_ongoing_report_request(
         )
 
     return query.order_by(ReportRequest.created_at.asc()).first()
+
+
+@autocommit
+def dao_update_report_request(report_request: ReportRequest) -> ReportRequest:
+    db.session.add(report_request)
+    return report_request

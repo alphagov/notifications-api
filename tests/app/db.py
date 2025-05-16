@@ -24,6 +24,7 @@ from app.dao.organisation_dao import (
     dao_create_organisation,
 )
 from app.dao.permissions_dao import permission_dao
+from app.dao.report_requests_dao import dao_create_report_request
 from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_permissions_dao import dao_add_service_permission
@@ -63,6 +64,7 @@ from app.models import (
     Organisation,
     Permission,
     Rate,
+    ReportRequest,
     ReturnedLetter,
     Service,
     ServiceCallbackApi,
@@ -1363,3 +1365,22 @@ def create_unsubscribe_request_and_return_the_notification_id(
         }
     )
     return notification.id
+
+
+def create_report_request(
+    user_id,
+    service_id,
+    report_type="notifications",
+    status="pending",
+    notification_type="email",
+    notification_status="all",
+):
+    report_request = ReportRequest(
+        user_id=user_id,
+        service_id=service_id,
+        report_type=report_type,
+        status=status,
+        parameter={"notification_type": notification_type, "notification_status": notification_status},
+    )
+
+    return dao_create_report_request(report_request)
