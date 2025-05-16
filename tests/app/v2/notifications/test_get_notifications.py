@@ -194,16 +194,16 @@ def test_get_notification_by_id_invalid_id(api_client_request, sample_notificati
 @pytest.mark.parametrize(
     "created_at_month, postage, estimated_delivery",
     [
-        (12, "second", "2000-12-06T16:00:00.000000Z"),  # 4pm GMT in winter
-        (6, "second", "2000-06-05T15:00:00.000000Z"),  # 4pm BST in summer
-        (12, "first", "2000-12-05T16:00:00.000000Z"),  # 4pm GMT in winter
-        (6, "first", "2000-06-03T15:00:00.000000Z"),  # 4pm BST in summer (two days before 2nd class due to weekends)
+        (12, "second", "2000-12-07T16:00:00.000000Z"),  # 4pm GMT in winter
+        (6, "second", "2000-06-06T15:00:00.000000Z"),  # 4pm BST in summer
+        (12, "first", "2000-12-12T16:00:00.000000Z"),  # 4pm GMT in winter
+        (6, "first", "2000-06-10T15:00:00.000000Z"),  # 4pm BST in summer (two days before 2nd class due to weekends)
         (
             12,
             "economy",
-            "2000-12-07T16:00:00.000000Z",
+            "2000-12-12T16:00:00.000000Z",
         ),  # 4pm GMT in winter (1 extra working day - slower than second class)
-        (6, "economy", "2000-06-06T15:00:00.000000Z"),  # 4pm BST in summer
+        (6, "economy", "2000-06-10T15:00:00.000000Z"),  # 4pm BST in summer
     ],
 )
 def test_get_notification_adds_delivery_estimate_for_letters(
