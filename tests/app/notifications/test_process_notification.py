@@ -47,6 +47,18 @@ def test_create_content_for_notification_with_placeholders_passes(
     assert "Bobby" in str(content)
 
 
+def test_create_content_for_notification_with_make_safe_placeholders_passes(
+    sample_template_with_make_safe_placeholders,
+):
+    template = SerialisedTemplate.from_id_and_service_id(
+        sample_template_with_make_safe_placeholders.id,
+        sample_template_with_make_safe_placeholders.service_id,
+    )
+    content = create_content_for_notification(template, {"Name": "Bobby"})
+    assert content.content == template.content
+    assert "Bobby" in str(content)
+
+
 def test_create_content_for_notification_fails_with_missing_personalisation(
     sample_template_with_placeholders,
 ):

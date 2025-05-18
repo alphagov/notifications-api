@@ -218,6 +218,11 @@ def sample_template_with_placeholders(sample_service):
 
 
 @pytest.fixture(scope="function")
+def sample_template_with_make_safe_placeholders(sample_service):
+    return create_template(sample_service, content="Hello ((Name::make_safe))\nYour thing is due soon")
+
+
+@pytest.fixture(scope="function")
 def sample_sms_template_with_html(sample_service):
     # deliberate space and title case in placeholder
     return create_template(sample_service, content="Hello (( Name))\nHere is <em>some HTML</em> & entities")
