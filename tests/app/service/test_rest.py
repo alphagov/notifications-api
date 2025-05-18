@@ -2366,6 +2366,28 @@ def test_send_one_off_notification(sample_service, admin_request, mocker):
     assert response["id"] == str(noti.id)
 
 
+def test_send_one_off_email_notification_with_make_safe_template(sample_service, admin_request, mocker):
+    template = create_template(
+        service=sample_service, template_type=EMAIL_TYPE, content="Hello ((Name::make_ssafe))\nYour thing is due soon"
+    )
+    mocker.patch("app.service.send_notification.send_notification_to_queue")
+
+    response = admin_request.post(
+        "service.create_one_off_notification",
+        service_id=sample_service.id,
+        _data={
+            "template_id": str(template.id),
+            "to": "sample@samplemail.com",
+            "created_by": str(sample_service.created_by_id),
+            "personalisation": {"Name": "Geoff"},
+        },
+        _expected_status=201,
+    )
+
+    noti = Notification.query.one()
+    assert response["id"] == str(noti.id)
+
+
 def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake_uuid, notify_user):
     mocker.patch("app.service.send_notification.utils_s3download")
     mocker.patch("app.service.send_notification.get_page_count", return_value=1)
