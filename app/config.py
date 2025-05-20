@@ -597,25 +597,7 @@ class Test(Development):
     SEND_ZENDESK_ALERTS_ENABLED = True
 
 
-class CloudFoundryConfig(Config):
-    pass
-
-
-# CloudFoundry sandbox
-class Sandbox(CloudFoundryConfig):
-    NOTIFY_EMAIL_DOMAIN = "notify.works"
-    NOTIFY_ENVIRONMENT = "sandbox"
-    S3_BUCKET_CSV_UPLOAD = "cf-sandbox-notifications-csv-upload"
-    S3_BUCKET_CONTACT_LIST = "cf-sandbox-contact-list"
-    S3_BUCKET_LETTERS_PDF = "cf-sandbox-letters-pdf"
-    S3_BUCKET_TEST_LETTERS = "cf-sandbox-test-letters"
-    S3_BUCKET_LETTERS_SCAN = "cf-sandbox-letters-scan"
-    S3_BUCKET_INVALID_PDF = "cf-sandbox-letters-invalid-pdf"
-    FROM_NUMBER = "sandbox"
-
-
 configs = {
     "development": Development,
     "test": Test,
-    "sandbox": Sandbox,
 }
