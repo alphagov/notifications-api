@@ -1683,7 +1683,7 @@ class Notification(db.Model):
 
             serialized["estimated_delivery"] = get_letter_timings(
                 serialized["created_at"], postage=self.postage
-            ).earliest_delivery.strftime(DATETIME_FORMAT)
+            ).latest_delivery.strftime(DATETIME_FORMAT)
 
         return serialized
 
