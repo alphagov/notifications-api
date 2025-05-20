@@ -20,6 +20,8 @@ from app.celery import provider_tasks, tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.service_callback_tasks import send_returned_letter_to_service
 from app.celery.tasks import (
+    ProcessReportRequestException,
+    ReportRequestProcessor,
     UnprocessableJobRow,
     _check_and_queue_returned_letter_callback_task,
     get_id_task_args_kwargs_for_job_row,
@@ -27,6 +29,7 @@ from app.celery.tasks import (
     process_incomplete_job,
     process_incomplete_jobs,
     process_job,
+    process_report_request,
     process_returned_letters_list,
     s3,
     save_email,
@@ -43,9 +46,11 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_VALIDATION_FAILED,
+    REPORT_REQUEST_FAILED,
+    REPORT_REQUEST_STORED,
     SMS_TYPE,
 )
-from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
+from app.dao import jobs_dao, report_requests_dao, service_email_reply_to_dao, service_sms_sender_dao
 from app.models import Job, Notification, NotificationHistory, ReturnedLetter
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.v2.errors import TooManyRequestsError
@@ -59,6 +64,7 @@ from tests.app.db import (
     create_notification,
     create_notification_history,
     create_reply_to_email,
+    create_report_request,
     create_service,
     create_service_with_defined_sms_sender,
     create_template,
@@ -2852,3 +2858,54 @@ def test_check_and_queue_returned_letter_callback_task_for_no_existing_callback_
     _check_and_queue_returned_letter_callback_task(notification_id, sample_service.id)
 
     mock_send.assert_not_called()
+
+
+def test_process_report_request_task_processes_report_and_updates_status(sample_user, sample_service, caplog, mocker):
+    process_mock = mocker.patch.object(ReportRequestProcessor, "process")
+    report_request = create_report_request(user_id=sample_user.id, service_id=sample_service.id)
+
+    process_report_request(sample_service.id, report_request.id)
+
+    updated_request = report_requests_dao.dao_get_report_request_by_id(sample_service.id, report_request.id)
+
+    assert updated_request.status == REPORT_REQUEST_STORED
+    assert process_mock.called
+    assert (
+        f"Starting process-report-request task for report request id {report_request.id} and status pending"
+        in caplog.messages
+    )
+
+
+def test_process_report_request_task_returns_if_report_is_already_pending(sample_user, sample_service, caplog, mocker):
+    process_mock = mocker.patch.object(ReportRequestProcessor, "process")
+    report_request = create_report_request(
+        user_id=sample_user.id, service_id=sample_service.id, status=REPORT_REQUEST_STORED
+    )
+
+    process_report_request(sample_service.id, report_request.id)
+
+    original_request = report_requests_dao.dao_get_report_request_by_id(sample_service.id, report_request.id)
+
+    assert original_request.status == REPORT_REQUEST_STORED
+    assert not process_mock.called
+    assert (
+        f"Starting process-report-request task for report request id {report_request.id} and status stored"
+        in caplog.messages
+    )
+
+
+def test_process_report_request_task_if_processing_gives_an_error(sample_user, sample_service, caplog, mocker):
+    process_mock = mocker.patch.object(ReportRequestProcessor, "process", side_effect=Exception())
+    report_request = create_report_request(user_id=sample_user.id, service_id=sample_service.id)
+
+    with pytest.raises(ProcessReportRequestException):
+        process_report_request(sample_service.id, report_request.id)
+
+    original_request = report_requests_dao.dao_get_report_request_by_id(sample_service.id, report_request.id)
+
+    assert original_request.status == REPORT_REQUEST_FAILED
+    assert process_mock.called
+    assert (
+        f"Starting process-report-request task for report request id {report_request.id} and status pending"
+        in caplog.messages
+    )
