@@ -279,7 +279,6 @@ def test_get_service_by_id(admin_request, sample_service):
         "go_live_user",
         "has_active_go_live_request",
         "id",
-        "inbound_api",
         "international_sms_message_limit",
         "letter_branding",
         "letter_message_limit",

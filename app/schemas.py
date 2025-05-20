@@ -360,7 +360,6 @@ class DetailedServiceSchema(BaseSchema):
             "email_branding",
             "email_message_limit",
             "guest_list",
-            "inbound_api",
             "inbound_number",
             "inbound_sms",
             "jobs",
