@@ -113,7 +113,7 @@ execnet==2.1.1
     # via pytest-xdist
 flaky==3.8.0
     # via -r requirements_for_test.in
-flask==3.1.0
+flask==3.1.1
     # via
     #   -r requirements.txt
     #   flask-bcrypt
@@ -201,6 +201,7 @@ mako==1.2.3
 markupsafe==2.1.1
     # via
     #   -r requirements.txt
+    #   flask
     #   jinja2
     #   mako
     #   werkzeug
@@ -219,7 +220,7 @@ moto==5.0.11
     # via -r requirements_for_test.in
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0b99dd5a5b0f55a77a537c7fdcf508d76e286a76
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@d669a9544cc87372a10af8786d3bb172593261fa
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
