@@ -1027,7 +1027,7 @@ class TemplateBase(db.Model):
     content = db.Column(db.Text, nullable=False)
     archived = db.Column(db.Boolean, nullable=False, default=False)
     hidden = db.Column(db.Boolean, nullable=False, default=False)
-    subject = db.Column(db.Text)
+    subject = db.Column(db.Text, nullable=False, default=False)
     postage = db.Column(db.String, nullable=True)
     broadcast_data = db.Column(JSONB(none_as_null=True), nullable=True)
 
