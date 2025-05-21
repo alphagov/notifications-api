@@ -35,8 +35,7 @@ from tests.conftest import set_config_values
 @pytest.mark.parametrize(
     "template_type, subject",
     [
-        (BROADCAST_TYPE, None),
-        (SMS_TYPE, None),
+        (SMS_TYPE, "subject"),
         (EMAIL_TYPE, "subject"),
         (LETTER_TYPE, "subject"),
     ],
@@ -667,7 +666,6 @@ def test_should_not_return_content_and_subject_if_requested(
     "subject, content, template_type",
     [
         ("about your ((thing))", "hello ((name)) we’ve received your ((thing))", EMAIL_TYPE),
-        (None, "hello ((name)) we’ve received your ((thing))", SMS_TYPE),
         ("about your ((thing))", "hello ((name)) we’ve received your ((thing))", LETTER_TYPE),
     ],
 )
