@@ -286,7 +286,6 @@ def test_persist_notification_increments_cache_for_trial_or_live_service(
         )
 
         assert mock_incr.call_args_list == [
-            mocker.call(f"{service.id}-2016-01-01-count"),
             mocker.call(f"{service.id}-sms-2016-01-01-count"),
         ]
 
@@ -321,7 +320,6 @@ def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exist(
         )
 
         assert mock_set.call_args_list == [
-            mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400),
             mocker.call(f"{service.id}-sms-2016-01-01-count", 1, ex=86400),
         ]
 
@@ -353,7 +351,6 @@ def test_persist_notification_increments_cache_for_international_sms(notify_api,
         )
 
         assert mock_incr.call_args_list == [
-            mocker.call(f"{service.id}-2016-01-01-count"),
             mocker.call(f"{service.id}-sms-2016-01-01-count"),
             mocker.call(f"{service.id}-international_sms-2016-01-01-count"),
         ]
@@ -388,7 +385,6 @@ def test_persist_notification_doesnt_increment_cache_for_international_sms_when_
         )
 
         assert mock_incr.call_args_list == [
-            mocker.call(f"{service.id}-2016-01-01-count"),
             mocker.call(f"{service.id}-sms-2016-01-01-count"),
         ]
 
@@ -415,7 +411,6 @@ def test_persist_notification_doesnt_increment_cache_for_international_sms_with_
         )
 
         assert mock_incr.call_args_list == [
-            mocker.call(f"{service.id}-2016-01-01-count"),
             mocker.call(f"{service.id}-email-2016-01-01-count"),
         ]
 
@@ -449,7 +444,6 @@ def test_persist_notification_increments_cache_for_international_sms_if_the_cach
         )
 
         assert mock_set.call_args_list == [
-            mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400),
             mocker.call(f"{service.id}-sms-2016-01-01-count", 1, ex=86400),
             mocker.call(f"{service.id}-international_sms-2016-01-01-count", 1, ex=86400),
         ]
