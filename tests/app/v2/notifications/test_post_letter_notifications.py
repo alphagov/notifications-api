@@ -701,7 +701,7 @@ def test_post_letter_notification_throws_error_for_invalid_postage(api_client_re
     resp_json = api_client_request.post(
         sample_service.id, "v2_notifications.post_precompiled_letter_notification", _data=data, _expected_status=400
     )
-    assert resp_json["errors"][0]["message"] == "postage invalid. It must be either first or second."
+    assert resp_json["errors"][0]["message"] == "postage invalid. It must be either first, second or economy."
 
     assert not Notification.query.first()
 
