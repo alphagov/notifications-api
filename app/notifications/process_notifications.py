@@ -170,14 +170,13 @@ def increment_daily_limit_caches(service, notification, key_type):
     if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
         return
 
-    increment_daily_limit_cache(service.id)
     increment_daily_limit_cache(service.id, notification.notification_type)
 
     if notification.notification_type == SMS_TYPE and str(notification.phone_prefix) != UK_PREFIX:
         increment_daily_limit_cache(service.id, INTERNATIONAL_SMS_TYPE)
 
 
-def increment_daily_limit_cache(service_id, notification_type=None):
+def increment_daily_limit_cache(service_id, notification_type):
     cache_key = redis.daily_limit_cache_key(service_id, notification_type=notification_type)
     if redis_store.get(cache_key) is None:
         # if cache does not exist set the cache to 1 with an expiry of 24 hours,
