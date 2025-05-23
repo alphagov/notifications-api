@@ -130,6 +130,10 @@ class ReportRequestProcessor:
         data_bytes = self.csv_buffer.getvalue().encode("utf-8")
         if len(data_bytes) >= S3_MULTIPART_UPLOAD_MIN_PART_SIZE:
             self._upload_part(data_bytes)
+
+            # Reset the buffer for the next part
+            # truncate(0) does not reset the cursor so seek(0) is needed to reset the cursor
+            self.csv_buffer.seek(0)
             self.csv_buffer.truncate(0)
             self.csv_writer = csv.writer(self.csv_buffer)
 
@@ -154,7 +158,7 @@ class ReportRequestProcessor:
             self.report_request_id,
             self.s3_bucket,
             self.filename,
-            self.page_size,
+            data_bytes.count(b"\n"),
         )
 
     def _finalize_upload(self) -> None:
