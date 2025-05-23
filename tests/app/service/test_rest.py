@@ -267,6 +267,7 @@ def test_get_service_by_id(admin_request, sample_service):
         "billing_contact_names",
         "billing_reference",
         "broadcast_channel",
+        "confirmed_unique",
         "consent_to_research",
         "contact_link",
         "count_as_live",
