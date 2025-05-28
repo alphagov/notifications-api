@@ -1,9 +1,8 @@
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 
 from app import create_random_identifier
-from app.constants import ECONOMY_LETTER_SENDING, LETTER_TYPE
+from app.constants import LETTER_TYPE
 from app.notifications.process_notifications import persist_notification
-from app.notifications.validators import check_service_has_permission
 
 
 def create_letter_notification(
@@ -17,13 +16,6 @@ def create_letter_notification(
     updated_at=None,
     postage=None,
 ):
-    # letter_data.get('postage') is only set for precompiled letters (if international it is set after sanitise)
-    # letters from a template will pass in 'europe' or 'rest-of-world' if None then use postage from template
-    postage = postage or letter_data.get("postage") or template.postage
-
-    if postage == "economy":
-        check_service_has_permission(service, ECONOMY_LETTER_SENDING)
-
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
@@ -41,7 +33,9 @@ def create_letter_notification(
         status=status,
         reply_to_text=reply_to_text,
         billable_units=billable_units,
-        postage=postage,
+        # letter_data.get('postage') is only set for precompiled letters (if international it is set after sanitise)
+        # letters from a template will pass in 'europe' or 'rest-of-world' if None then use postage from template
+        postage=postage or letter_data.get("postage") or template.postage,
         updated_at=updated_at,
     )
     return notification
