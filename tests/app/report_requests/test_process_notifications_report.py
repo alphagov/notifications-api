@@ -1,5 +1,6 @@
 import csv
 import io
+import random
 from datetime import datetime, timedelta
 from io import StringIO
 
@@ -41,6 +42,11 @@ from tests.app.db import (
 from tests.conftest import set_config
 
 
+def get_created_at_date_time(days_ago=0):
+    datetime_now = datetime.now().replace(hour=14, minute=30, second=30, microsecond=random.randint(0, 999999))
+    return datetime_now - timedelta(days=days_ago)
+
+
 @pytest.fixture
 @mock_aws
 def mock_service(
@@ -51,34 +57,26 @@ def mock_service(
 
     api_key = create_api_key(service=service, key_type=KEY_TYPE_NORMAL, id="8e33368c-3965-4ae1-ab55-4f9d3275f84d")
 
-    datetime_now = datetime.now()
-    datetime_now_1_day_before = datetime_now - timedelta(days=1)
-    datetime_now_2_days_before = datetime_now - timedelta(days=2)
-    datetime_now_3_days_before = datetime_now - timedelta(days=3)
-    datetime_now_4_days_before = datetime_now - timedelta(days=4)
-    datetime_now_5_days_before = datetime_now - timedelta(days=5)
-    datetime_now_6_days_before = datetime_now - timedelta(days=6)
-
     for _i in range(10):
         create_notification(
             template=sample_email_template,
             status=NOTIFICATION_SENDING,
             api_key=api_key,
-            created_at=datetime_now_1_day_before,
+            created_at=get_created_at_date_time(days_ago=1),
             created_by_id=service.users[0].id,
         )
         create_notification(
             template=sample_email_template,
             status=NOTIFICATION_PERMANENT_FAILURE,
             api_key=api_key,
-            created_at=datetime_now_2_days_before,
+            created_at=get_created_at_date_time(days_ago=2),
             created_by_id=service.users[0].id,
         )
         create_notification(
             template=sample_email_template,
             status=NOTIFICATION_DELIVERED,
             api_key=api_key,
-            created_at=datetime_now_3_days_before,
+            created_at=get_created_at_date_time(days_ago=3),
             client_reference="email-reference",
             created_by_id=service.users[0].id,
         )
@@ -86,7 +84,7 @@ def mock_service(
             template=sample_email_template,
             status=NOTIFICATION_CREATED,
             api_key=api_key,
-            created_at=datetime_now_4_days_before,
+            created_at=get_created_at_date_time(days_ago=4),
             client_reference="email-reference",
             created_by_id=service.users[0].id,
         )
@@ -94,14 +92,14 @@ def mock_service(
             template=sample_email_template,
             status=NOTIFICATION_SENT,
             api_key=api_key,
-            created_at=datetime_now_5_days_before,
+            created_at=get_created_at_date_time(days_ago=5),
             created_by_id=service.users[0].id,
         )
         create_notification(
             template=sample_sms_template,
             status=NOTIFICATION_SENDING,
             api_key=api_key,
-            created_at=datetime_now_4_days_before,
+            created_at=get_created_at_date_time(days_ago=4),
             client_reference="sms-reference",
             created_by_id=service.users[0].id,
         )
@@ -109,14 +107,14 @@ def mock_service(
             template=sample_sms_template,
             status=NOTIFICATION_CREATED,
             api_key=api_key,
-            created_at=datetime_now_6_days_before,
+            created_at=get_created_at_date_time(days_ago=6),
             created_by_id=service.users[0].id,
         )
         create_notification(
             template=sample_sms_template,
             status=NOTIFICATION_TECHNICAL_FAILURE,
             api_key=api_key,
-            created_at=datetime_now_2_days_before,
+            created_at=get_created_at_date_time(days_ago=2),
             client_reference="sms-reference",
             created_by_id=service.users[0].id,
         )
@@ -124,7 +122,7 @@ def mock_service(
             template=sample_sms_template,
             status=NOTIFICATION_DELIVERED,
             api_key=api_key,
-            created_at=datetime_now,
+            created_at=get_created_at_date_time(days_ago=0),
             created_by_id=service.users[0].id,
         )
 
@@ -297,7 +295,7 @@ def test_upload_remaining_data_skips_if_empty(mocker, mock_processor):
 
 def test_fetch_serialized_notifications_empty(mocker, mock_processor):
     mocker.patch("app.report_requests.process_notifications_report.get_notifications_for_service")
-    result = mock_processor._fetch_serialized_notifications(1, 7)
+    result = mock_processor._fetch_serialized_notifications(7, None)
     assert result == []
 
 
@@ -382,20 +380,12 @@ def test_process_report_request_should_return_correct_rows(
 
     api_key = create_api_key(service=service, key_type=KEY_TYPE_NORMAL, id="8e33368c-3965-4ae1-ab55-4f9d3275f84d")
 
-    datetime_now = datetime.now()
-    datetime_now_1_day_before = datetime_now - timedelta(days=1)
-    datetime_now_2_days_before = datetime_now - timedelta(days=2)
-    datetime_now_3_days_before = datetime_now - timedelta(days=3)
-    datetime_now_4_days_before = datetime_now - timedelta(days=4)
-    datetime_now_5_days_before = datetime_now - timedelta(days=5)
-    datetime_now_6_days_before = datetime_now - timedelta(days=6)
-
     for _i in range(10):
         create_notification(
             template=sample_email_template,
             status=NOTIFICATION_SENDING,
             api_key=api_key,
-            created_at=datetime_now_1_day_before,
+            created_at=get_created_at_date_time(days_ago=1),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -403,7 +393,7 @@ def test_process_report_request_should_return_correct_rows(
             template=sample_email_template,
             status=NOTIFICATION_PERMANENT_FAILURE,
             api_key=api_key,
-            created_at=datetime_now_2_days_before,
+            created_at=get_created_at_date_time(days_ago=2),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -411,7 +401,7 @@ def test_process_report_request_should_return_correct_rows(
             template=sample_email_template,
             status=NOTIFICATION_DELIVERED,
             api_key=api_key,
-            created_at=datetime_now_3_days_before,
+            created_at=get_created_at_date_time(days_ago=3),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -419,7 +409,7 @@ def test_process_report_request_should_return_correct_rows(
             template=sample_email_template,
             status=NOTIFICATION_CREATED,
             api_key=api_key,
-            created_at=datetime_now_4_days_before,
+            created_at=get_created_at_date_time(days_ago=4),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -427,7 +417,7 @@ def test_process_report_request_should_return_correct_rows(
             template=sample_email_template,
             status=NOTIFICATION_SENT,
             api_key=api_key,
-            created_at=datetime_now_5_days_before,
+            created_at=get_created_at_date_time(days_ago=5),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -435,7 +425,7 @@ def test_process_report_request_should_return_correct_rows(
             template=sample_sms_template,
             status=NOTIFICATION_SENDING,
             api_key=api_key,
-            created_at=datetime_now_4_days_before,
+            created_at=get_created_at_date_time(days_ago=4),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -443,7 +433,7 @@ def test_process_report_request_should_return_correct_rows(
             template=sample_sms_template,
             status=NOTIFICATION_CREATED,
             api_key=api_key,
-            created_at=datetime_now_6_days_before,
+            created_at=get_created_at_date_time(days_ago=6),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -451,7 +441,7 @@ def test_process_report_request_should_return_correct_rows(
             template=sample_sms_template,
             status=NOTIFICATION_TECHNICAL_FAILURE,
             api_key=api_key,
-            created_at=datetime_now_2_days_before,
+            created_at=get_created_at_date_time(days_ago=2),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -459,7 +449,7 @@ def test_process_report_request_should_return_correct_rows(
             template=sample_sms_template,
             status=NOTIFICATION_DELIVERED,
             api_key=api_key,
-            created_at=datetime_now,
+            created_at=get_created_at_date_time(days_ago=0),
             client_reference=client_reference,
             created_by_id=service.users[0].id,
         )
@@ -499,12 +489,12 @@ def test_process_report_request_should_return_correct_rows(
         for row in reader:
             created_at = row.get("Time")
             assert created_at in [
-                utc_string_to_bst_string(datetime_now),
-                utc_string_to_bst_string(datetime_now_1_day_before),
-                utc_string_to_bst_string(datetime_now_2_days_before),
-                utc_string_to_bst_string(datetime_now_3_days_before),
-                utc_string_to_bst_string(datetime_now_4_days_before),
-                utc_string_to_bst_string(datetime_now_5_days_before),
+                utc_string_to_bst_string(get_created_at_date_time(days_ago=0)),
+                utc_string_to_bst_string(get_created_at_date_time(days_ago=1)),
+                utc_string_to_bst_string(get_created_at_date_time(days_ago=2)),
+                utc_string_to_bst_string(get_created_at_date_time(days_ago=3)),
+                utc_string_to_bst_string(get_created_at_date_time(days_ago=4)),
+                utc_string_to_bst_string(get_created_at_date_time(days_ago=5)),
             ]
 
             assert row.get("Type") == notification_type
@@ -553,9 +543,6 @@ def test_process_report_request_should_contain_job_notification(
 
     api_key = create_api_key(service=service, key_type=KEY_TYPE_NORMAL, id="8e33368c-3965-4ae1-ab55-4f9d3275f84d")
 
-    datetime_now = datetime.now()
-    datetime_now_1_day_before = datetime_now - timedelta(days=1)
-
     job = create_job(template=sample_email_template)
 
     # job notification
@@ -565,7 +552,7 @@ def test_process_report_request_should_contain_job_notification(
         status=NOTIFICATION_SENDING,
         job=job,
         job_row_number=2,
-        created_at=datetime_now_1_day_before,
+        created_at=get_created_at_date_time(days_ago=1),
         created_by_id=service.users[0].id,
     )
     create_notification(
@@ -574,7 +561,7 @@ def test_process_report_request_should_contain_job_notification(
         api_key=api_key,
         status=NOTIFICATION_SENDING,
         job_row_number=2,
-        created_at=datetime_now_1_day_before,
+        created_at=get_created_at_date_time(days_ago=1),
         created_by_id=service.users[0].id,
     )
 
