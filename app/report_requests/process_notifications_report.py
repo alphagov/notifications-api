@@ -67,23 +67,21 @@ class ReportRequestProcessor:
     def _fetch_and_upload_notifications(self) -> None:
         service_retention = fetch_service_data_retention_by_notification_type(self.service_id, self.notification_type)
         limit_days = service_retention.days_of_retention if service_retention else 7
-        page = 1
-
+        older_than = None
         is_notification = True
         while is_notification:
-            serialized_notifications = self._fetch_serialized_notifications(page, limit_days)
+            serialized_notifications = self._fetch_serialized_notifications(limit_days, older_than)
 
             is_notification = len(serialized_notifications) != 0
 
             csv_data = self._convert_notifications_to_csv(serialized_notifications)
             self.csv_writer.writerows(csv_data)
             self._upload_csv_part_if_needed()
-            page += 1
-
+            older_than = serialized_notifications[-1]["id"] if is_notification else None
         # Upload any remaining data
         self._upload_remaining_data()
 
-    def _fetch_serialized_notifications(self, page: int, limit_days: int) -> list[dict[str, Any]]:
+    def _fetch_serialized_notifications(self, limit_days: int, older_than: str | None) -> list[dict[str, Any]]:
         statuses = NOTIFICATION_REPORT_REQUEST_MAPPING[self.notification_status]
 
         notifications = get_notifications_for_service(
@@ -92,7 +90,6 @@ class ReportRequestProcessor:
                 "template_type": self.notification_type,
                 "status": statuses,
             },
-            page=page,
             page_size=self.page_size,
             count_pages=False,
             limit_days=limit_days,
@@ -101,6 +98,7 @@ class ReportRequestProcessor:
             include_from_test_key=False,
             error_out=False,
             include_one_off=True,
+            older_than=older_than,
         )
 
         serialized_notifications = [notification.serialize_for_csv() for notification in notifications]
