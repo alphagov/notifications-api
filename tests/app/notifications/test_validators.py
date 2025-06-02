@@ -472,9 +472,9 @@ def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_
         with pytest.raises(RateLimitError) as e:
             check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
 
-        assert app.redis_store.exceeded_rate_limit.called_with(
-            f"{str(sample_service.id)}-{api_key.key_type}", sample_service.rate_limit, 60
-        )
+        assert app.redis_store.exceeded_rate_limit.call_args_list == [
+            mocker.call(f"{str(sample_service.id)}-{api_key.key_type}", sample_service.rate_limit, 60)
+        ]
         assert e.value.status_code == 429
         assert e.value.message == (
             f"Exceeded rate limit for key type {key_type.upper()} of {sample_service.rate_limit} "
@@ -493,7 +493,9 @@ def test_check_service_over_api_rate_limit_when_rate_limit_has_not_exceeded_limi
         serialised_api_key = SerialisedAPIKeyCollection.from_service_id(serialised_service.id)[0]
 
         check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
-        assert app.redis_store.exceeded_rate_limit.called_with(f"{str(sample_service.id)}-{api_key.key_type}", 3000, 60)
+        assert app.redis_store.exceeded_rate_limit.call_args_list == [
+            mocker.call(f"{str(sample_service.id)}-{api_key.key_type}", 3000, 60)
+        ]
 
 
 def test_check_service_over_api_rate_limit_should_do_nothing_if_limiting_is_disabled(sample_service, mocker):
