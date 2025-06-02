@@ -1453,7 +1453,7 @@ def test_preview_letter_template_precompiled_pdf_file_type(notify_api, client, a
                 file_type="pdf",
             )
 
-            assert mock_get_letter_pdf.called_once_with(notification)
+            mock_get_letter_pdf.assert_called_once_with(notification)
             assert base64.b64decode(resp["content"]) == content
 
 
@@ -1576,7 +1576,7 @@ def test_preview_letter_template_precompiled_for_png_shows_overlay_on_pages_with
 
             with pytest.raises(ValueError):
                 mock_post.last_request.json()
-            assert mock_get_letter_pdf.called_once_with(notification)
+            mock_get_letter_pdf.assert_called_once_with(notification)
             assert base64.b64decode(response["content"]) == expected_returned_content
             assert response["metadata"] == metadata
 
@@ -1645,7 +1645,7 @@ def test_preview_letter_template_precompiled_for_pdf_shows_overlay_on_all_pages_
 
             with pytest.raises(ValueError):
                 mock_post.last_request.json()
-            assert mock_get_letter_pdf.called_once_with(notification)
+            mock_get_letter_pdf.assert_called_once_with(notification)
             assert base64.b64decode(response["content"]) == expected_returned_content
             assert response["metadata"] == metadata
 
