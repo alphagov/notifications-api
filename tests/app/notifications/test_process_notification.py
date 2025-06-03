@@ -199,32 +199,58 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key):
     assert not persisted_notification.reply_to_text
 
 
-def test_persist_notification_cache_is_not_incremented_on_failure_to_create_notification(
-    notify_api, sample_api_key, mocker
-):
-    mocked_redis = mocker.patch("app.redis_store.incr")
-    with pytest.raises(SQLAlchemyError):
-        persist_notification(
-            template_id=None,
-            template_version=None,
-            recipient={
+@pytest.mark.parametrize(
+    "recipient, notification_type",
+    [
+        (
+            {
                 "unformatted_recipient": "+447111111111",
                 "normalised_to": "447111111111",
                 "international": False,
                 "phone_prefix": "44",
                 "rate_multiplier": 1,
             },
+            "sms",
+        ),
+        ("test@notifications.service.gov.uk", "email"),
+    ],
+)
+def test_persist_notification_cache_is_not_incremented_on_failure_to_create_notification(
+    notify_api, sample_api_key, mocker, recipient, notification_type
+):
+    mocked_redis = mocker.patch("app.redis_store.incr")
+    with pytest.raises(SQLAlchemyError):
+        persist_notification(
+            template_id=None,
+            template_version=None,
+            recipient=recipient,
             service=sample_api_key.service,
             personalisation=None,
-            notification_type="sms",
+            notification_type=notification_type,
             api_key_id=sample_api_key.id,
             key_type=sample_api_key.key_type,
         )
     mocked_redis.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "recipient, notification_type",
+    [
+        (
+            {
+                "unformatted_recipient": "+447111111111",
+                "normalised_to": "447111111111",
+                "international": False,
+                "phone_prefix": "44",
+                "rate_multiplier": 1,
+            },
+            "sms",
+        ),
+        ("test@notifications.service.gov.uk", "email"),
+    ],
+)
 def test_persist_notification_does_not_increment_cache_if_test_key(
-    notify_api, sample_template, sample_job, mocker, sample_test_api_key
+    notify_api, sample_template, sample_job, mocker, sample_test_api_key, recipient, notification_type
 ):
     daily_limit_cache = mocker.patch("app.notifications.process_notifications.redis_store.incr")
 
@@ -234,16 +260,10 @@ def test_persist_notification_does_not_increment_cache_if_test_key(
         persist_notification(
             template_id=sample_template.id,
             template_version=sample_template.version,
-            recipient={
-                "unformatted_recipient": "+447111111111",
-                "normalised_to": "447111111111",
-                "international": False,
-                "phone_prefix": "44",
-                "rate_multiplier": 1,
-            },
+            recipient=recipient,
             service=sample_template.service,
             personalisation={},
-            notification_type="sms",
+            notification_type=notification_type,
             api_key_id=sample_test_api_key.id,
             key_type=sample_test_api_key.key_type,
             job_id=sample_job.id,
@@ -256,10 +276,26 @@ def test_persist_notification_does_not_increment_cache_if_test_key(
     assert not daily_limit_cache.called
 
 
+@pytest.mark.parametrize(
+    "recipient, notification_type",
+    [
+        (
+            {
+                "unformatted_recipient": "+447111111111",
+                "normalised_to": "447111111111",
+                "international": False,
+                "phone_prefix": "44",
+                "rate_multiplier": 1,
+            },
+            "sms",
+        ),
+        ("test@notifications.service.gov.uk", "email"),
+    ],
+)
 @pytest.mark.parametrize("restricted_service", [True, False])
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_persist_notification_increments_cache_for_trial_or_live_service(
-    notify_api, notify_db_session, mocker, restricted_service
+    notify_api, notify_db_session, mocker, restricted_service, recipient, notification_type
 ):
     service = create_service(restricted=restricted_service)
     template = create_template(service=service)
