@@ -19,9 +19,7 @@ from app.constants import (
     BROADCAST_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
-    PRECOMPILED_LETTER,
     SMS_TYPE,
-    UPLOAD_DOCUMENT,
     CacheKeys,
 )
 
@@ -116,10 +114,6 @@ def get_public_notify_type_text(notify_type, plural=False):
     notify_type_text = notify_type
     if notify_type == SMS_TYPE:
         notify_type_text = "text message"
-    elif notify_type == UPLOAD_DOCUMENT:
-        notify_type_text = "document"
-    elif notify_type == PRECOMPILED_LETTER:
-        notify_type_text = "precompiled letter"
     elif notify_type == BROADCAST_TYPE:
         notify_type_text = "broadcast message"
 
