@@ -29,7 +29,6 @@ from app.constants import (
     SERVICE_JOIN_REQUEST_APPROVED,
     SERVICE_JOIN_REQUEST_CANCELLED,
     SMS_TYPE,
-    UPLOAD_LETTERS,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.dao.report_requests_dao import dao_create_report_request
@@ -315,8 +314,7 @@ def test_get_service_list_has_default_permissions(admin_request, service_factory
     json_resp = admin_request.get("service.get_services")
     assert len(json_resp["data"]) == 3
     assert all(
-        set(json["permissions"])
-        == {EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS}
+        set(json["permissions"]) == {EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, INTERNATIONAL_LETTERS}
         for json in json_resp["data"]
     )
 
@@ -329,7 +327,6 @@ def test_get_service_by_id_has_default_service_permissions(admin_request, sample
         SMS_TYPE,
         INTERNATIONAL_SMS_TYPE,
         LETTER_TYPE,
-        UPLOAD_LETTERS,
         INTERNATIONAL_LETTERS,
     }
 
