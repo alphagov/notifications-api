@@ -237,7 +237,6 @@ INTERNATIONAL_SMS_TYPE = "international_sms"
 INBOUND_SMS_TYPE = "inbound_sms"
 EMAIL_AUTH = "email_auth"
 EDIT_FOLDER_PERMISSIONS = "edit_folder_permissions"
-UPLOAD_LETTERS = "upload_letters"
 INTERNATIONAL_LETTERS = "international_letters"
 SMS_TO_UK_LANDLINES = "sms_to_uk_landlines"
 SERVICE_PERMISSION_TYPES = [
@@ -249,7 +248,6 @@ SERVICE_PERMISSION_TYPES = [
     INBOUND_SMS_TYPE,
     EMAIL_AUTH,
     EDIT_FOLDER_PERMISSIONS,
-    UPLOAD_LETTERS,
     INTERNATIONAL_LETTERS,
     SMS_TO_UK_LANDLINES,
 ]
