@@ -154,6 +154,7 @@ def test_create_service_with_organisation(notify_db_session):
         ("test@nhs.uk", "central"),
         ("test@example.nhs.uk", "central"),
         ("TEST@NHS.UK", "central"),
+        ("test@test.co.uk", "pharmacy_local"),
     ),
 )
 @pytest.mark.parametrize(

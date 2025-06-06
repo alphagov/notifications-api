@@ -172,6 +172,7 @@ def test_dao_get_default_annual_allowance_for_service(sample_service, org_type, 
         ("emergency_service", get_current_financial_year_start_year(), 10_000),
         ("school_or_college", get_current_financial_year_start_year(), 5_000),
         ("other", get_current_financial_year_start_year(), 5_000),
+        ("pharmacy_local", get_current_financial_year_start_year(), 0),
         (None, get_current_financial_year_start_year(), 5_000),
     ],
 )
