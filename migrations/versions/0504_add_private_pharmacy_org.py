@@ -23,5 +23,5 @@ def upgrade():
 
 
 def downgrade():
-    op.execute("DELETE FROM organisation_types WHERE name = 'private_pharmacy'")
     op.execute("DELETE FROM default_annual_allowance WHERE valid_from_financial_year_start = 2025 AND organisation_type = 'private_pharmacy'")
+    op.execute("DELETE FROM organisation_types WHERE name = 'private_pharmacy'")
