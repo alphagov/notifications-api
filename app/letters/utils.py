@@ -262,12 +262,7 @@ def adjust_daily_service_limits_for_cancelled_letters(service_id, no_of_cancelle
         return
 
     letters_cache_key = daily_limit_cache_key(service_id, notification_type=LETTER_TYPE)
-    all_notifications_cache_key = daily_limit_cache_key(service_id)
 
     if (cached_letters_sent := redis_store.get(letters_cache_key)) is not None:
         if (int(cached_letters_sent) - no_of_cancelled_letters) >= 0:
             redis_store.decrby(letters_cache_key, no_of_cancelled_letters)
-
-    if (cached_notifications_sent := redis_store.get(all_notifications_cache_key)) is not None:
-        if (int(cached_notifications_sent) - no_of_cancelled_letters) >= 0:
-            redis_store.decrby(all_notifications_cache_key, no_of_cancelled_letters)
