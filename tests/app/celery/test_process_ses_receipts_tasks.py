@@ -3,7 +3,7 @@ from datetime import datetime
 
 from freezegun import freeze_time
 
-from app import signing, statsd_client
+from app import otel_client, signing, statsd_client
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.celery.research_mode_tasks import (
     ses_hard_bounce_callback,
@@ -65,7 +65,9 @@ def test_remove_email_from_bounce():
 def test_ses_callback_should_update_notification_status(client, notify_db_session, sample_email_template, mocker):
     with freeze_time("2001-01-01T12:00:00"):
         mocker.patch("app.statsd_client.incr")
+        mocker.patch("app.otel_client.incr")
         mocker.patch("app.statsd_client.timing_with_dates")
+        mocker.patch("app.otel_client.record")
         send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
         notification = create_notification(
             template=sample_email_template,
@@ -79,7 +81,19 @@ def test_ses_callback_should_update_notification_status(client, notify_db_sessio
         statsd_client.timing_with_dates.assert_any_call(
             "callback.ses.delivered.elapsed-time", datetime.utcnow(), notification.sent_at
         )
+        otel_client.record.assert_any_call(
+            "callback_elapsed_time",
+            value=(datetime.utcnow() - notification.sent_at).total_seconds(),
+            attributes={"provider": "ses", "status": "delivered"},
+            description="Elapsed time for SES callback with status",
+        )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
+        otel_client.incr.assert_any_call(
+            "callback_success",
+            attributes={"provider": "ses", "status": "delivered"},
+            description="Count of successful SES callbacks with status",
+        )
+
         updated_notification = Notification.query.get(notification.id)
         send_mock.assert_called_once_with(updated_notification)
 

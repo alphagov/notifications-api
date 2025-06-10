@@ -26,10 +26,11 @@ class SmsClient(Client):
     Base Sms client for sending smss.
     """
 
-    def __init__(self, current_app, statsd_client):
+    def __init__(self, current_app, statsd_client, otel_client):
         super().__init__()
         self.current_app = current_app
         self.statsd_client = statsd_client
+        self.otel_client = otel_client
 
         self.requests_session = requests.Session()
         if platform.system() == "Linux":  # these are linux-specific socket options enabling tcp keepalive
@@ -49,8 +50,19 @@ class SmsClient(Client):
         if success:
             self.current_app.logger.info("Provider request for %s %s", self.name, "succeeded" if success else "failed")
             self.statsd_client.incr(f"clients.{self.name}.success")
+
+            self.otel_client.incr(
+                "clients_success",
+                attributes={"provider": self.name},
+                description="Count of successful requests to provider",
+            )
         else:
             self.statsd_client.incr(f"clients.{self.name}.error")
+            self.otel_client.incr(
+                "clients_error",
+                attributes={"provider": self.name},
+                description="Count of failed requests to provider",
+            )
             self.current_app.logger.warning(
                 "Provider request for %s %s", self.name, "succeeded" if success else "failed"
             )
@@ -66,7 +78,14 @@ class SmsClient(Client):
             raise e
         finally:
             elapsed_time = monotonic() - start_time
+
             self.statsd_client.timing(f"clients.{self.name}.request-time", elapsed_time)
+            self.otel_client.record(
+                "clients_request_time",
+                value=elapsed_time,
+                attributes={"provider": self.name},
+                description="Time taken for request to provider",
+            )
             self.current_app.logger.info(
                 "%s request for %s finished in %s",
                 self.name,

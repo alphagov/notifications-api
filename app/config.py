@@ -100,6 +100,8 @@ class Config:
     CELERY_WORKER_LOG_LEVEL = os.getenv("CELERY_WORKER_LOG_LEVEL", "CRITICAL").upper()
     CELERY_BEAT_LOG_LEVEL = os.getenv("CELERY_BEAT_LOG_LEVEL", "INFO").upper()
 
+    OTEL_METRICS_EXPORT = os.getenv("OTEL_METRICS_EXPORT", "otlp")
+
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = "notify-admin"
     FUNCTIONAL_TESTS_CLIENT_ID = "notify-functional-tests"
@@ -526,6 +528,8 @@ class Development(Config):
 
     CELERY_WORKER_LOG_LEVEL = "INFO"
 
+    OTEL_METRICS_EXPORT = os.getenv("OTEL_METRICS_EXPORT", "none")
+
     CELERY = {
         **Config.CELERY,
         "broker_transport_options": {
@@ -585,6 +589,8 @@ class Test(Development):
     TESTING = True
 
     CELERY_WORKER_LOG_LEVEL = "INFO"
+
+    OTEL_METRICS_EXPORT = os.getenv("OTEL_METRICS_EXPORT", "none")
 
     S3_BUCKET_CSV_UPLOAD = "test-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "test-contact-list"

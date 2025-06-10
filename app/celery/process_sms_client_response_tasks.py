@@ -5,7 +5,7 @@ from datetime import datetime
 from flask import current_app
 from notifications_utils.template import SMSMessageTemplate
 
-from app import notify_celery, statsd_client
+from app import notify_celery, otel_client, statsd_client
 from app.clients import ClientException
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
@@ -74,11 +74,30 @@ def _process_for_status(notification_status, client_name, provider_reference, de
 
     statsd_client.incr(f"callback.{client_name.lower()}.{notification_status}")
 
+    otel_client.incr(
+        "callback",
+        attributes={
+            "provider": client_name.lower(),
+            "status": notification_status,
+        },
+        description="Count of callbacks",
+    )
+
     if notification.sent_at:
         statsd_client.timing_with_dates(
             f"callback.{client_name.lower()}.{notification_status}.elapsed-time",
             datetime.utcnow(),
             notification.sent_at,
+        )
+
+        otel_client.record(
+            "callback_elapsed_time",
+            value=(datetime.utcnow() - notification.sent_at).total_seconds(),
+            attributes={
+                "provider": client_name.lower(),
+                "status": notification_status,
+            },
+            description="Elapsed time for callbacks",
         )
 
     if notification.billable_units == 0:
@@ -98,3 +117,12 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         check_and_queue_callback_task(notification)
         if notification.international:
             statsd_client.incr(f"international-sms.{notification_status}.{notification.phone_prefix}")
+
+            otel_client.incr(
+                "international_sms",
+                attributes={
+                    "status": notification_status,
+                    "phone_prefix": notification.phone_prefix,
+                },
+                description="Count of international SMS",
+            )

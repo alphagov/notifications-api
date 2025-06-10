@@ -23,6 +23,7 @@ from gds_metrics import GDSMetrics
 from gds_metrics.metrics import Gauge, Histogram
 from notifications_utils import request_helper
 from notifications_utils.celery import NotifyCelery
+from notifications_utils.clients.otel.otel_client import OtelClient
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.signing.signing_client import Signing
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
@@ -49,6 +50,7 @@ ma = Marshmallow()
 notify_celery = NotifyCelery()
 signing = Signing()
 statsd_client = StatsdClient()
+otel_client = OtelClient()
 redis_store = RedisClient()
 cbc_proxy_client = CBCProxyClient()
 metrics = GDSMetrics()
@@ -70,7 +72,7 @@ memo_resetters: list[Callable] = []
 _firetext_client_context_var: ContextVar[FiretextClient] = ContextVar("firetext_client")
 get_firetext_client: LazyLocalGetter[FiretextClient] = LazyLocalGetter(
     _firetext_client_context_var,
-    lambda: FiretextClient(current_app, statsd_client=statsd_client),
+    lambda: FiretextClient(current_app, statsd_client=statsd_client, otel_client=otel_client),
     expected_type=FiretextClient,
 )
 memo_resetters.append(lambda: get_firetext_client.clear())
@@ -79,7 +81,7 @@ firetext_client = LocalProxy(get_firetext_client)
 _mmg_client_context_var: ContextVar[MMGClient] = ContextVar("mmg_client")
 get_mmg_client: LazyLocalGetter[MMGClient] = LazyLocalGetter(
     _mmg_client_context_var,
-    lambda: MMGClient(current_app, statsd_client=statsd_client),
+    lambda: MMGClient(current_app, statsd_client=statsd_client, otel_client=otel_client),
     expected_type=MMGClient,
 )
 memo_resetters.append(lambda: get_mmg_client.clear())
@@ -88,7 +90,7 @@ mmg_client = LocalProxy(get_mmg_client)
 _aws_ses_client_context_var: ContextVar[AwsSesClient] = ContextVar("aws_ses_client")
 get_aws_ses_client: LazyLocalGetter[AwsSesClient] = LazyLocalGetter(
     _aws_ses_client_context_var,
-    lambda: AwsSesClient(current_app.config["AWS_REGION"], statsd_client=statsd_client),
+    lambda: AwsSesClient(current_app.config["AWS_REGION"], statsd_client=statsd_client, otel_client=otel_client),
     expected_type=AwsSesClient,
 )
 memo_resetters.append(lambda: get_aws_ses_client.clear())
@@ -99,8 +101,9 @@ get_aws_ses_stub_client: LazyLocalGetter[AwsSesStubClient] = LazyLocalGetter(
     _aws_ses_stub_client_context_var,
     lambda: AwsSesStubClient(
         current_app.config["AWS_REGION"],
-        statsd_client=statsd_client,
         stub_url=current_app.config["SES_STUB_URL"],
+        statsd_client=statsd_client,
+        otel_client=otel_client,
     ),
     expected_type=AwsSesStubClient,
 )
@@ -135,7 +138,7 @@ notification_provider_clients = LocalProxy(get_notification_provider_clients)
 _dvla_client_context_var: ContextVar[DVLAClient] = ContextVar("dvla_client")
 get_dvla_client: LazyLocalGetter[DVLAClient] = LazyLocalGetter(
     _dvla_client_context_var,
-    lambda: DVLAClient(current_app, statsd_client=statsd_client),
+    lambda: DVLAClient(current_app, statsd_client=statsd_client, otel_client=otel_client),
 )
 memo_resetters.append(lambda: get_dvla_client.clear())
 dvla_client = LocalProxy(get_dvla_client)
@@ -160,6 +163,8 @@ zendesk_client = LocalProxy(get_zendesk_client)
 def create_app(application):
     from app.config import Config, configs
 
+    global notify_otel_client
+
     notify_environment = os.environ["NOTIFY_ENVIRONMENT"]
 
     if notify_environment in configs:
@@ -177,7 +182,8 @@ def create_app(application):
     migrate.init_app(application, db=db)
     ma.init_app(application)
     statsd_client.init_app(application)
-    utils_logging.init_app(application, statsd_client)
+    otel_client.init_app(application)
+    utils_logging.init_app(application, statsd_client, otel_client)
 
     notify_celery.init_app(application)
     signing.init_app(application)

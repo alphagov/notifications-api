@@ -185,6 +185,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
         return_value=slow_delivery_reports,
     )
     mock_statsd = mocker.patch("app.celery.scheduled_tasks.statsd_client.gauge")
+    mock_otel = mocker.patch("app.celery.scheduled_tasks.otel_client.record")
     mock_check_slow_delivery = mocker.patch(
         "app.celery.scheduled_tasks._check_slow_text_message_delivery_reports_and_raise_error_if_needed"
     )
@@ -204,6 +205,68 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
         call("slow-delivery.sms.delivered-within-minutes.10.ratio", 0.6),
     ]
     mock_statsd.assert_has_calls(calls, any_order=True)
+    otel_description = (
+        "Ratio of slow message deliveries for in the last 15 minutes for deliveries "
+        "taking longer than delivery_interval minutes"
+    )
+
+    otel_calls = [
+        call(
+            "slow_delivery_ratio",
+            value=0.4,
+            attributes={"provider": "mmg", "delivery_interval": 1},
+            description=otel_description,
+        ),
+        call(
+            "slow_delivery_ratio",
+            value=0.8,
+            attributes={"provider": "firetext", "delivery_interval": 1},
+            description=otel_description,
+        ),
+        call(
+            "slow_sms_delivery_ratio",
+            value=0.6,
+            attributes={"delivery_interval": 1},
+            description=otel_description,
+        ),
+        call(
+            "slow_delivery_ratio",
+            value=0.4,
+            attributes={"provider": "mmg", "delivery_interval": 5},
+            description=otel_description,
+        ),
+        call(
+            "slow_delivery_ratio",
+            value=0.8,
+            attributes={"provider": "firetext", "delivery_interval": 5},
+            description=otel_description,
+        ),
+        call(
+            "slow_sms_delivery_ratio",
+            value=0.6,
+            attributes={"delivery_interval": 5},
+            description=otel_description,
+        ),
+        call(
+            "slow_delivery_ratio",
+            value=0.4,
+            attributes={"provider": "mmg", "delivery_interval": 10},
+            description=otel_description,
+        ),
+        call(
+            "slow_delivery_ratio",
+            value=0.8,
+            attributes={"provider": "firetext", "delivery_interval": 10},
+            description=otel_description,
+        ),
+        call(
+            "slow_sms_delivery_ratio",
+            value=0.6,
+            attributes={"delivery_interval": 10},
+            description=otel_description,
+        ),
+    ]
+    mock_otel.assert_has_calls(otel_calls, any_order=True)
 
     assert mock_check_slow_delivery.call_args_list == (
         [mocker.call(slow_delivery_reports)] if expect_check_slow_delivery else []

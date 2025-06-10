@@ -20,9 +20,10 @@ class AwsSesStubClient(EmailClient):
 
     name = "ses"
 
-    def __init__(self, region, statsd_client, stub_url):
+    def __init__(self, region, stub_url, statsd_client, otel_client):
         super().__init__()
         self.statsd_client = statsd_client
+        self.otel_client = otel_client
         self.url = stub_url
         self.requests_session = requests.Session()
 
@@ -45,10 +46,26 @@ class AwsSesStubClient(EmailClient):
 
         except Exception as e:
             self.statsd_client.incr("clients.ses_stub.error")
+            self.otel_client.incr(
+                "clients_error",
+                attributes={"provider": self.name},
+                description="Count of failed requests to provider",
+            )
             raise AwsSesStubClientException(str(e)) from e
         else:
             elapsed_time = monotonic() - start_time
             current_app.logger.info("AWS SES stub request finished in %s", elapsed_time)
             self.statsd_client.timing("clients.ses_stub.request-time", elapsed_time)
             self.statsd_client.incr("clients.ses_stub.success")
+            self.otel_client.record(
+                "clients_request_time",
+                value=elapsed_time,
+                attributes={"provider": self.name},
+                description="Time taken for requests provider",
+            )
+            self.otel_client.incr(
+                "clients_success",
+                attributes={"provider": self.name},
+                description="Count of successful requests to provider",
+            )
             return response_json["MessageId"]

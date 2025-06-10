@@ -6,7 +6,7 @@ from celery.exceptions import Retry
 from flask import current_app, json
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import notify_celery, statsd_client
+from app import notify_celery, otel_client, statsd_client
 from app.clients.email.aws_ses import get_aws_responses
 from app.config import QueueNames
 from app.constants import NOTIFICATION_PENDING, NOTIFICATION_SENDING
@@ -79,9 +79,22 @@ def process_ses_results(self, response):
 
         statsd_client.incr(f"callback.ses.{notification_status}")
 
+        otel_client.incr(
+            "callback_success",
+            attributes={"provider": "ses", "status": notification_status},
+            description="Count of successful SES callbacks with status",
+        )
+
         if notification.sent_at:
             statsd_client.timing_with_dates(
                 f"callback.ses.{notification_status}.elapsed-time", datetime.utcnow(), notification.sent_at
+            )
+
+            otel_client.record(
+                "callback_elapsed_time",
+                value=(datetime.utcnow() - notification.sent_at).total_seconds(),
+                attributes={"provider": "ses", "status": notification_status},
+                description="Elapsed time for SES callback with status",
             )
 
         check_and_queue_callback_task(notification)
