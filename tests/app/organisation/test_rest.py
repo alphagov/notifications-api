@@ -221,7 +221,7 @@ def test_post_create_organisation(admin_request, notify_db_session, crown):
     assert organisation.permissions[0].permission == CAN_ASK_TO_JOIN_SERVICE
 
 
-@pytest.mark.parametrize("org_type", ["nhs_central", "nhs_local", "nhs_gp"])
+@pytest.mark.parametrize("org_type", ["nhs_central", "nhs_local", "nhs_gp", "pharmacy_local"])
 def test_post_create_organisation_sets_default_nhs_branding_and_adds_it_to_org_pool_for_nhs_org_types(
     admin_request, notify_db_session, nhs_email_branding, nhs_letter_branding, org_type
 ):
@@ -307,7 +307,7 @@ def test_post_create_organisation_existing_name_raises_400(admin_request, sample
             (
                 "organisation_type foo is not one of "
                 "[central, local, nhs_central, nhs_local, nhs_gp, emergency_service, school_or_college, "
-                "other]"
+                "other, pharmacy_local]"
             ),
         ),
     ),
@@ -439,7 +439,7 @@ def test_update_other_organisation_attributes_doesnt_clear_domains(
     assert [domain.domain for domain in org.domains] == ["example.gov.uk"]
 
 
-@pytest.mark.parametrize("new_org_type", ["nhs_central", "nhs_local", "nhs_gp"])
+@pytest.mark.parametrize("new_org_type", ["nhs_central", "nhs_local", "nhs_gp", "pharmacy_local"])
 def test_post_update_organisation_to_nhs_type_updates_branding_if_none_present(
     admin_request, nhs_email_branding, nhs_letter_branding, notify_db_session, new_org_type
 ):
@@ -458,7 +458,7 @@ def test_post_update_organisation_to_nhs_type_updates_branding_if_none_present(
     assert organisation.letter_branding_id == uuid.UUID(current_app.config["NHS_LETTER_BRANDING_ID"])
 
 
-@pytest.mark.parametrize("new_org_type", ["nhs_central", "nhs_local", "nhs_gp"])
+@pytest.mark.parametrize("new_org_type", ["nhs_central", "nhs_local", "nhs_gp", "pharmacy_local"])
 def test_post_update_organisation_to_nhs_type_does_not_update_branding_if_default_branding_set(
     admin_request, nhs_email_branding, nhs_letter_branding, notify_db_session, new_org_type
 ):
