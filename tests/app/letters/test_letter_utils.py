@@ -446,7 +446,6 @@ def test_adjust_daily_service_limits_for_cancelled_letters_when_cache_keys_do_no
 
         assert mock_redis_get.call_args_list == [
             call(f"{fake_uuid}-letter-2024-01-01-count"),
-            call(f"{fake_uuid}-2024-01-01-count"),
         ]
         assert not mock_redis_decrby.called
 
@@ -463,7 +462,6 @@ def test_adjust_daily_service_limits_for_cancelled_letters_will_not_update_redis
 
         assert mock_redis_get.call_args_list == [
             call(f"{fake_uuid}-letter-2024-01-01-count"),
-            call(f"{fake_uuid}-2024-01-01-count"),
         ]
         assert not mock_redis_decrby.called
 
@@ -485,10 +483,8 @@ def test_adjust_daily_service_limits_for_cancelled_letters_updates_redis(notify_
 
         assert mock_redis_get.call_args_list == [
             call(f"{fake_uuid}-letter-2024-01-01-count"),
-            call(f"{fake_uuid}-2024-01-01-count"),
         ]
 
         assert mock_redis_decrby.call_args_list == [
             call(f"{fake_uuid}-letter-2024-01-01-count", 5),
-            call(f"{fake_uuid}-2024-01-01-count", 5),
         ]
