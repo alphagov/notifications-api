@@ -18,9 +18,10 @@ def app_for_test():
     app = flask.Flask(__name__)
     app.config["TESTING"] = True
     init_app(app)
-    from app import statsd_client
+    from app import otel_client, statsd_client
 
     statsd_client.init_app(app)
+    otel_client.init_app(app)
 
     from app.v2.errors import register_errors
 

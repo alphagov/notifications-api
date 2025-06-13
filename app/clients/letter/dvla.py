@@ -112,11 +112,12 @@ class DVLAClient:
     name = "dvla"
 
     statsd_client = None
+    otel_client = None
 
     _jwt_token = None
     _jwt_expires_at = None
 
-    def __init__(self, application, *, statsd_client):
+    def __init__(self, application, *, statsd_client, otel_client):
         self.base_url = application.config["DVLA_API_BASE_URL"]
         self.ciphers = application.config["DVLA_API_TLS_CIPHERS"]
         ssm_client = boto3.client("ssm", region_name=application.config["AWS_REGION"])
@@ -124,6 +125,7 @@ class DVLAClient:
         self.dvla_password = SSMParameter(key="/notify/api/dvla_password", ssm_client=ssm_client)
         self.dvla_api_key = SSMParameter(key="/notify/api/dvla_api_key", ssm_client=ssm_client)
         self.statsd_client = statsd_client
+        self.otel_client = otel_client
 
         self.session = requests.Session()
         self.session.mount(self.base_url, _SpecifiedCiphersAdapter(ciphers=self.ciphers))
