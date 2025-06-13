@@ -15,6 +15,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
+from app.otel.metrics import otel_metrics
 
 sms_response_mapper = {
     "MMG": get_mmg_responses,
@@ -74,11 +75,26 @@ def _process_for_status(notification_status, client_name, provider_reference, de
 
     statsd_client.incr(f"callback.{client_name.lower()}.{notification_status}")
 
+    otel_metrics.provider_callback_counter.add(
+        amount=1,
+        attributes={
+            "provider_name": client_name.lower(),
+            "notification_status": notification_status,
+        },
+    )
+
     if notification.sent_at:
         statsd_client.timing_with_dates(
             f"callback.{client_name.lower()}.{notification_status}.elapsed-time",
             datetime.utcnow(),
             notification.sent_at,
+        )
+        otel_metrics.provider_request_time_histogram.record(
+            amount=(datetime.utcnow() - notification.sent_at).total_seconds(),
+            attributes={
+                "provider_name": client_name.lower(),
+                "notification_status": notification_status,
+            },
         )
 
     if notification.billable_units == 0:
@@ -98,3 +114,10 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         check_and_queue_callback_task(notification)
         if notification.international:
             statsd_client.incr(f"international-sms.{notification_status}.{notification.phone_prefix}")
+            otel_metrics.international_sms_counter.add(
+                ammount=1,
+                attributes={
+                    "notification_status": notification_status,
+                    "phone_prefix": notification.phone_prefix,
+                },
+            )
