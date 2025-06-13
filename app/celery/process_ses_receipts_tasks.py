@@ -17,6 +17,7 @@ from app.notifications.notifications_ses_callback import (
     determine_notification_bounce_type,
     handle_complaint,
 )
+from app.otel.metrics import otel_metrics
 
 
 @notify_celery.task(
@@ -79,9 +80,24 @@ def process_ses_results(self, response):
 
         statsd_client.incr(f"callback.ses.{notification_status}")
 
+        otel_metrics.provider_status_counter.add(
+            amount=1,
+            attributes={
+                "provider": "ses",
+                "status": notification_status,
+            },
+        )
+
         if notification.sent_at:
             statsd_client.timing_with_dates(
                 f"callback.ses.{notification_status}.elapsed-time", datetime.utcnow(), notification.sent_at
+            )
+            otel_metrics.provider_request_time_histogram.record(
+                amount=(datetime.utcnow() - notification.sent_at).total_seconds(),
+                attributes={
+                    "provider": "ses",
+                    "status": notification_status,
+                },
             )
 
         check_and_queue_callback_task(notification)

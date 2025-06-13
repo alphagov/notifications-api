@@ -42,6 +42,8 @@ from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.letter.dvla import DVLAClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.otel.metrics import otel_metrics
+from app.otel.traces import otel_traces
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -184,6 +186,9 @@ def create_app(application):
     redis_store.init_app(application)
 
     cbc_proxy_client.init_app(application)
+
+    otel_metrics.init_app(application)
+    otel_traces.init_app(application)
 
     register_blueprint(application)
     register_v2_blueprints(application)
