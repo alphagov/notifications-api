@@ -257,7 +257,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
     fake_create_letter_task = mock_celery_task(get_pdf_for_templated_letter)
     fake_create_dvla_response_task = mock_celery_task(create_fake_letter_callback)
 
-    with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": True}):
+    with set_config_values(notify_api, {"TEST_LETTERS_FAKE_DELIVERY": False}):
         api_client_request.post(
             sample_letter_template.service_id,
             "v2_notifications.post_notification",
@@ -291,7 +291,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
 
     fake_create_letter_task = mock_celery_task(get_pdf_for_templated_letter)
     fake_create_dvla_response_task = mock_celery_task(create_fake_letter_callback)
-    with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": False}):
+    with set_config_values(notify_api, {"TEST_LETTERS_FAKE_DELIVERY": True}):
         api_client_request.post(
             sample_letter_template.service_id,
             "v2_notifications.post_notification",
