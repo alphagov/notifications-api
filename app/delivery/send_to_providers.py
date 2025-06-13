@@ -238,7 +238,7 @@ def get_html_email_options(service):
         return {
             "govuk_banner": True,
             "brand_banner": False,
-            "rebrand": False,
+            "rebrand": True,
         }
     if isinstance(service, SerialisedService):
         branding = dao_get_email_branding_by_id(service.email_branding)
@@ -254,7 +254,7 @@ def get_html_email_options(service):
         "brand_logo": logo_url,
         "brand_text": branding.text,
         "brand_alt_text": branding.alt_text,
-        "rebrand": False,
+        "rebrand": True,
     }
 
 
