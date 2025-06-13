@@ -457,7 +457,7 @@ def create_inbound_sms(
     if not service.inbound_number:
         create_inbound_number(
             # create random inbound number
-            notify_number or f"07{random.randint(0, 1e9 - 1):09}",
+            notify_number or f"07{random.randint(100_000_000, 999_999_999)}",
             provider=provider,
             service_id=service.id,
         )
