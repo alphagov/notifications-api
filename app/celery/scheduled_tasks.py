@@ -87,6 +87,7 @@ from app.models import (
     User,
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
+from app.otel.metrics import otel_metrics
 from app.utils import get_london_midnight_in_utc
 
 
@@ -216,12 +217,27 @@ def generate_sms_delivery_stats():
                 f"slow-delivery.{report.provider}.delivered-within-minutes.{delivery_interval}.ratio", report.slow_ratio
             )
 
+            otel_metrics.slow_delivery_ratio_gauge.set(
+                amount=report.slow_ratio,
+                attributes={
+                    "provider": report.provider,
+                    "delivery_interval": delivery_interval,
+                },
+            )
+
         total_notifications = sum(report.total_notifications for report in providers_slow_delivery_reports)
         slow_notifications = sum(report.slow_notifications for report in providers_slow_delivery_reports)
         ratio_slow_notifications = slow_notifications / total_notifications
 
         statsd_client.gauge(
             f"slow-delivery.sms.delivered-within-minutes.{delivery_interval}.ratio", ratio_slow_notifications
+        )
+
+        otel_metrics.slow_sms_delivery_ratio_gauge.set(
+            amount=ratio_slow_notifications,
+            attributes={
+                "delivery_interval": delivery_interval,
+            },
         )
 
         # For the 5-minute delivery interval, let's check the percentage of all text messages sent that were slow.

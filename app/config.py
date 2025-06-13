@@ -100,6 +100,12 @@ class Config:
     CELERY_WORKER_LOG_LEVEL = os.getenv("CELERY_WORKER_LOG_LEVEL", "CRITICAL").upper()
     CELERY_BEAT_LOG_LEVEL = os.getenv("CELERY_BEAT_LOG_LEVEL", "INFO").upper()
 
+    OTEL_EXPORT_TYPE = os.getenv("OTEL_EXPORT_TYPE", "otlp")
+    OTEL_COLLECTOR_ENDPOINT = os.getenv("OTEL_COLLECTOR_ENDPOINT", "localhost:4317")
+    OTEL_INSTRUMENTATIONS = os.getenv(
+        "OTEL_INSTRUMENTATIONS", "wsgi,celery,flask,redis,sqlalchemy,requests,psycopg2,boto3sqs"
+    )
+
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = "notify-admin"
     FUNCTIONAL_TESTS_CLIENT_ID = "notify-functional-tests"
@@ -526,6 +532,8 @@ class Development(Config):
 
     CELERY_WORKER_LOG_LEVEL = "INFO"
 
+    OTEL_EXPORT_TYPE = os.getenv("OTEL_EXPORT_TYPE", "none")
+
     CELERY = {
         **Config.CELERY,
         "broker_transport_options": {
@@ -585,6 +593,8 @@ class Test(Development):
     TESTING = True
 
     CELERY_WORKER_LOG_LEVEL = "INFO"
+
+    OTEL_EXPORT_TYPE = os.getenv("OTEL_EXPORT_TYPE", "none")
 
     S3_BUCKET_CSV_UPLOAD = "test-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "test-contact-list"

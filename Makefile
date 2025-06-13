@@ -91,6 +91,10 @@ test: ## Run tests
 	ruff format --check .
 	pytest -n auto --maxfail=10 -v
 
+.PHONY: test2
+test2:
+	pytest -n auto --maxfail=10 -v
+
 .PHONY: watch-tests
 watch-tests: ## Watch tests and run on change
 	ptw --runner "pytest --testmon -n auto"
