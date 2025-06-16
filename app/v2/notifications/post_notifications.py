@@ -306,7 +306,7 @@ def process_letter_notification(
     updated_at = None
     if test_key:
         # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
-        if not current_app.config["SEND_LETTERS_ENABLED"]:
+        if current_app.config["TEST_LETTERS_FAKE_DELIVERY"]:
             status = NOTIFICATION_SENDING
         # mark test letter as delivered and do not create a fake response later
         else:
@@ -328,7 +328,7 @@ def process_letter_notification(
 
     get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue)
 
-    if test_key and not current_app.config["SEND_LETTERS_ENABLED"]:
+    if test_key and current_app.config["TEST_LETTERS_FAKE_DELIVERY"]:
         create_fake_letter_callback.apply_async(
             [notification.id, notification.billable_units, notification.postage],
             queue=queue,
