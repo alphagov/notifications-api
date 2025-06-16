@@ -74,6 +74,7 @@ from app.models import (
     Template,
     User,
 )
+from app.otel.decorators import otel
 
 
 @click.group(name="command", help="Additional commands")
@@ -397,6 +398,7 @@ def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permi
     "-s", "--start_date", default=datetime(2017, 2, 1), help="start date inclusive", type=click_dt(format="%Y-%m-%d")
 )
 @statsd(namespace="tasks")
+@otel()
 def populate_notification_postage(start_date):
     current_app.logger.info("populating historical notification postage")
 
@@ -442,6 +444,7 @@ def populate_notification_postage(start_date):
 @click.option("-s", "--start_date", required=True, help="start date inclusive", type=click_dt(format="%Y-%m-%d"))
 @click.option("-e", "--end_date", required=True, help="end date inclusive", type=click_dt(format="%Y-%m-%d"))
 @statsd(namespace="tasks")
+@otel()
 def update_jobs_archived_flag(start_date, end_date):
     current_app.logger.info("Archiving jobs created between %s to %s", start_date, end_date)
 
@@ -475,6 +478,7 @@ def update_jobs_archived_flag(start_date, end_date):
 @notify_command(name="update-emails-to-remove-gsi")
 @click.option("-s", "--service_id", required=True, help="service id. Update all user.email_address to remove .gsi")
 @statsd(namespace="tasks")
+@otel()
 def update_emails_to_remove_gsi(service_id):
     users_to_update = """SELECT u.id user_id, u.name, email_address, s.id, s.name
                            FROM users u
