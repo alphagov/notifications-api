@@ -62,7 +62,7 @@ certifi==2024.7.4
     #   -r requirements.txt
     #   requests
     #   sentry-sdk
-cffi==1.15.1
+cffi==1.17.1
     # via cryptography
 charset-normalizer==2.1.1
     # via
@@ -147,7 +147,7 @@ govuk-bank-holidays==0.15
     # via
     #   -r requirements.txt
     #   notifications-utils
-greenlet==3.0.3
+greenlet==3.2.2
     # via
     #   -r requirements.txt
     #   eventlet
@@ -253,7 +253,7 @@ psycopg2-binary==2.9.10
     # via -r requirements.txt
 pycparser==2.21
     # via cffi
-pycurl==7.44.1
+pycurl==7.45.6
     # via -r requirements.txt
 pyjwt==2.10.1
     # via

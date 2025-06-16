@@ -96,7 +96,7 @@ gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6
     # via -r requirements.in
 govuk-bank-holidays==0.15
     # via notifications-utils
-greenlet==3.0.3
+greenlet==3.2.2
     # via eventlet
 gunicorn==23.0.0
     # via
@@ -171,7 +171,7 @@ psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
     # via -r requirements.in
-pycurl==7.44.1
+pycurl==7.45.6
     # via
     #   celery
     #   kombu
