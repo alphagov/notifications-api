@@ -23,18 +23,18 @@ blinker==1.9.0
     #   flask
     #   gds-metrics
     #   sentry-sdk
-boto3==1.34.100
+boto3[crt]==1.34.100
     # via
     #   celery
     #   kombu
     #   notifications-utils
-botocore==1.34.100
+botocore[crt]==1.34.100
     # via
     #   boto3
     #   s3transfer
 cachetools==5.5.0
     # via notifications-utils
-celery==5.4.0
+celery[sqs]==5.4.0
     # via
     #   -r requirements.in
     #   sentry-sdk
@@ -97,8 +97,10 @@ gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6
 govuk-bank-holidays==0.15
     # via notifications-utils
 greenlet==3.2.2
-    # via eventlet
-gunicorn==23.0.0
+    # via
+    #   eventlet
+    #   sqlalchemy
+gunicorn[eventlet]==23.0.0
     # via
     #   -r requirements.in
     #   notifications-utils
@@ -106,6 +108,10 @@ idna==3.7
     # via
     #   jsonschema
     #   requests
+importlib-metadata==8.7.0
+    # via
+    #   flask
+    #   segno
 iso8601==2.1.0
     # via -r requirements.in
 isoduration==20.11.0
@@ -124,11 +130,11 @@ jmespath==1.0.1
     #   botocore
 jsonpointer==2.3
     # via jsonschema
-jsonschema==4.23.0
+jsonschema[format]==4.23.0
     # via -r requirements.in
 jsonschema-specifications==2024.10.1
     # via jsonschema
-kombu==5.3.7
+kombu[sqs]==5.3.7
     # via celery
 mako==1.2.3
     # via alembic
@@ -150,7 +156,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a97b36f6a32e7bb917152c8cd716fe65fa15ac9f
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@99.8.0
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -198,7 +204,7 @@ referencing==0.35.1
     # via
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.2
+requests==2.32.4
     # via
     #   -r requirements.in
     #   govuk-bank-holidays
@@ -216,7 +222,7 @@ s3transfer==0.10.1
     # via boto3
 segno==1.6.1
     # via notifications-utils
-sentry-sdk==1.45.1
+sentry-sdk[celery,flask,sqlalchemy]==1.45.1
     # via -r requirements.in
 six==1.16.0
     # via
@@ -234,6 +240,11 @@ sqlalchemy==1.4.41
     #   sentry-sdk
 statsd==4.0.1
     # via notifications-utils
+typing-extensions==4.14.0
+    # via
+    #   kombu
+    #   pypdf
+    #   python-json-logger
 tzdata==2024.1
     # via celery
 uri-template==1.2.0
@@ -256,3 +267,5 @@ webcolors==1.12
     # via jsonschema
 werkzeug==3.1.3
     # via flask
+zipp==3.23.0
+    # via importlib-metadata
