@@ -11,7 +11,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
 )
 
-from app import create_uuid, db, notification_provider_clients, redis_store, statsd_client
+from app import create_uuid, db, notification_provider_clients, otel_client, redis_store, statsd_client
 from app.celery.research_mode_tasks import (
     send_email_response,
     send_sms_response,
@@ -98,14 +98,41 @@ def send_sms_to_provider(notification):
                 update_notification_to_sending(notification, provider)
                 if notification.international:
                     statsd_client.incr(f"international-sms.{NOTIFICATION_SENT}.{notification.phone_prefix}")
+                    otel_client.incr(
+                        "international-sms.sent",
+                        attributes={
+                            "phone_prefix": notification.phone_prefix,
+                            "notification_type": SMS_TYPE,
+                            "status": NOTIFICATION_SENT,
+                        },
+                        description="Count of international SMS sent",
+                    )
 
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
         statsd_client.timing("sms.total-time", delta_seconds)
+        otel_client.record(
+            "total-time",
+            value=delta_seconds,
+            attributes={"notification_type": SMS_TYPE},
+            description="Total time taken to send an SMS",
+        )
 
         if key_type == KEY_TYPE_TEST:
             statsd_client.timing("sms.test-key.total-time", delta_seconds)
+            otel_client.record(
+                "test-key.total-time",
+                value=delta_seconds,
+                attributes={"notification_type": SMS_TYPE},
+                description="Total time taken to send a test SMS",
+            )
         else:
             statsd_client.timing("sms.live-key.total-time", delta_seconds)
+            otel_client.record(
+                "live-key.total-time",
+                value=delta_seconds,
+                attributes={"notification_type": SMS_TYPE},
+                description="Total time taken to send a live SMS",
+            )
 
 
 def _get_email_headers(notification: Notification, template: SerialisedTemplate) -> list[dict[str, str]]:
@@ -176,8 +203,20 @@ def send_email_to_provider(notification):
 
         if key_type == KEY_TYPE_TEST:
             statsd_client.timing("email.test-key.total-time", delta_seconds)
+            otel_client.record(
+                "test-key.total-time",
+                value=delta_seconds,
+                attributes={"notification_type": EMAIL_TYPE},
+                description="Total time taken to send a test email",
+            )
         else:
             statsd_client.timing("email.live-key.total-time", delta_seconds)
+            otel_client.record(
+                "live-key.total-time",
+                value=delta_seconds,
+                attributes={"notification_type": EMAIL_TYPE},
+                description="Total time taken to send a live email",
+            )
 
 
 def update_notification_to_sending(notification, provider):

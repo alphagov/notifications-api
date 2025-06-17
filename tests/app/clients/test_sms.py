@@ -1,6 +1,6 @@
 import pytest
 
-from app import statsd_client
+from app import otel_client, statsd_client
 from app.clients.sms import SmsClient, SmsClientResponseException
 
 
@@ -12,7 +12,7 @@ def fake_client(notify_api):
         def try_send_sms(self):
             pass
 
-    fake_client = FakeSmsClient(notify_api, statsd_client)
+    fake_client = FakeSmsClient(notify_api, statsd_client, otel_client)
     return fake_client
 
 
