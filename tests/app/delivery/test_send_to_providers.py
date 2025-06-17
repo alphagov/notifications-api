@@ -456,7 +456,7 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
     options = send_to_providers.get_html_email_options(sample_service)
 
-    assert options == {"govuk_banner": True, "brand_banner": False, "rebrand": False}
+    assert options == {"govuk_banner": True, "brand_banner": False, "rebrand": True}
 
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api, hostnames):
@@ -849,7 +849,7 @@ def test_get_html_email_options_return_email_branding_from_serialised_service(sa
         "brand_logo": get_logo_url(current_app.config["ADMIN_BASE_URL"], branding.logo),
         "brand_text": branding.text,
         "brand_alt_text": branding.alt_text,
-        "rebrand": False,
+        "rebrand": True,
     }
 
 
@@ -865,7 +865,7 @@ def test_get_html_email_options_add_email_branding_from_service(sample_service):
         "brand_logo": get_logo_url(current_app.config["ADMIN_BASE_URL"], branding.logo),
         "brand_text": branding.text,
         "brand_alt_text": branding.alt_text,
-        "rebrand": False,
+        "rebrand": True,
     }
 
 
