@@ -147,7 +147,7 @@ govuk-bank-holidays==0.15
     # via
     #   -r requirements.txt
     #   notifications-utils
-greenlet==3.2.2
+greenlet==3.2.3
     # via
     #   -r requirements.txt
     #   eventlet
