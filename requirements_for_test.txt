@@ -12,10 +12,6 @@ arrow==1.2.3
     # via
     #   -r requirements.txt
     #   isoduration
-async-timeout==4.0.3
-    # via
-    #   -r requirements.txt
-    #   redis
 attrs==24.3.0
     # via
     #   -r requirements.txt
@@ -105,7 +101,7 @@ docopt==0.6.2
     # via
     #   -r requirements.txt
     #   notifications-python-client
-eventlet==0.39.1
+eventlet==0.40.0
     # via
     #   -r requirements.txt
     #   gunicorn
@@ -147,7 +143,7 @@ govuk-bank-holidays==0.15
     # via
     #   -r requirements.txt
     #   notifications-utils
-greenlet==3.2.2
+greenlet==3.2.3
     # via
     #   -r requirements.txt
     #   eventlet
