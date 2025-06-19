@@ -13,8 +13,10 @@ from app.dao.report_requests_dao import (
     dao_create_report_request,
     dao_get_oldest_ongoing_report_request,
     dao_get_report_request_by_id,
+    dao_update_report_request,
 )
 from app.models import ReportRequest
+from tests.app.db import create_report_request
 
 
 def test_dao_create_report_request(sample_service, sample_user):
@@ -329,3 +331,16 @@ def test_dao_get_oldest_ongoing_report_request_returns_oldest_when_multiple_matc
 
     assert isinstance(result, ReportRequest)
     assert result.id == older_request.id
+
+
+def test_dao_update_report_request(sample_service, sample_user):
+    report_request = create_report_request(sample_user.id, sample_service.id)
+
+    assert report_request.status == REPORT_REQUEST_PENDING
+    assert not report_request.updated_at
+
+    report_request.status = REPORT_REQUEST_IN_PROGRESS
+    dao_update_report_request(report_request)
+
+    assert report_request.status == REPORT_REQUEST_IN_PROGRESS
+    assert report_request.updated_at

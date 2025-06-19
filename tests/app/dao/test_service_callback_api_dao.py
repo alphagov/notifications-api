@@ -16,12 +16,21 @@ from app.models import ServiceCallbackApi
 from tests.app.db import create_service_callback_api
 
 
-def test_save_service_callback_api(sample_service):
+@pytest.mark.parametrize(
+    "callback_type",
+    [
+        ServiceCallbackTypes.inbound_sms.value,
+        ServiceCallbackTypes.delivery_status.value,
+        ServiceCallbackTypes.returned_letter.value,
+    ],
+)
+def test_save_service_callback_api(sample_service, callback_type):
     service_callback_api = ServiceCallbackApi(
         service_id=sample_service.id,
-        url="https://some_service/callback_endpoint",
-        bearer_token="some_unique_string",
+        url=f"https://some_service/{callback_type}",
+        bearer_token=f"some_unique_string_{callback_type}",
         updated_by_id=sample_service.users[0].id,
+        callback_type=callback_type,
     )
 
     save_service_callback_api(service_callback_api)
@@ -32,66 +41,91 @@ def test_save_service_callback_api(sample_service):
     assert callback_api.id is not None
     assert callback_api.service_id == sample_service.id
     assert callback_api.updated_by_id == sample_service.users[0].id
-    assert callback_api.url == "https://some_service/callback_endpoint"
-    assert callback_api.bearer_token == "some_unique_string"
-    assert callback_api._bearer_token != "some_unique_string"
+    assert callback_api.url == f"https://some_service/{callback_type}"
+    assert callback_api.bearer_token == f"some_unique_string_{callback_type}"
+    assert callback_api._bearer_token != f"some_unique_string_{callback_type}"
     assert callback_api.updated_at is None
 
     versioned = ServiceCallbackApi.get_history_model().query.filter_by(id=callback_api.id).one()
     assert versioned.id == callback_api.id
     assert versioned.service_id == sample_service.id
     assert versioned.updated_by_id == sample_service.users[0].id
-    assert versioned.url == "https://some_service/callback_endpoint"
+    assert versioned.url == f"https://some_service/{callback_type}"
     # note that on the history model, the attribute name matches the column name (and stores the encoded version)
-    assert signing.decode(versioned.bearer_token) == "some_unique_string"
+    assert signing.decode(versioned.bearer_token) == f"some_unique_string_{callback_type}"
     assert versioned.updated_at is None
     assert versioned.version == 1
 
 
-def test_save_service_callback_api_fails_if_service_does_not_exist(notify_db_session):
+@pytest.mark.parametrize(
+    "callback_type",
+    [
+        ServiceCallbackTypes.inbound_sms.value,
+        ServiceCallbackTypes.delivery_status.value,
+        ServiceCallbackTypes.returned_letter.value,
+    ],
+)
+def test_save_service_callback_api_fails_if_service_does_not_exist(notify_db_session, callback_type):
     service_callback_api = ServiceCallbackApi(
         service_id=uuid.uuid4(),
         url="https://some_service/callback_endpoint",
         bearer_token="some_unique_string",
         updated_by_id=uuid.uuid4(),
+        callback_type=callback_type,
     )
 
     with pytest.raises(SQLAlchemyError):
         save_service_callback_api(service_callback_api)
 
 
-def test_update_service_callback_api_unique_constraint(sample_service):
+@pytest.mark.parametrize(
+    "callback_type",
+    [
+        ServiceCallbackTypes.inbound_sms.value,
+        ServiceCallbackTypes.delivery_status.value,
+        ServiceCallbackTypes.returned_letter.value,
+    ],
+)
+def test_update_service_callback_api_unique_constraint(sample_service, callback_type):
     service_callback_api = ServiceCallbackApi(
         service_id=sample_service.id,
-        url="https://some_service/callback_endpoint",
+        url=f"https://some_service/{callback_type}",
         bearer_token="some_unique_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type="delivery_status",
+        callback_type=callback_type,
     )
     save_service_callback_api(service_callback_api)
     another = ServiceCallbackApi(
         service_id=sample_service.id,
-        url="https://some_service/another_callback_endpoint",
+        url=f"https://some_service/{callback_type}",
         bearer_token="different_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type="delivery_status",
+        callback_type=callback_type,
     )
     with pytest.raises(expected_exception=SQLAlchemyError):
         save_service_callback_api(another)
 
 
-def test_update_service_callback_can_add_two_api_of_different_types(sample_service):
-    delivery_status = ServiceCallbackApi(
+@pytest.mark.parametrize(
+    "callback_type",
+    [
+        ServiceCallbackTypes.inbound_sms.value,
+        ServiceCallbackTypes.delivery_status.value,
+        ServiceCallbackTypes.returned_letter.value,
+    ],
+)
+def test_update_service_callback_can_add_two_api_of_different_types(sample_service, callback_type):
+    callback_api = ServiceCallbackApi(
         service_id=sample_service.id,
         url="https://some_service/callback_endpoint",
         bearer_token="some_unique_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type="delivery_status",
+        callback_type=callback_type,
     )
-    save_service_callback_api(delivery_status)
+    save_service_callback_api(callback_api)
     complaint = ServiceCallbackApi(
         service_id=sample_service.id,
-        url="https://some_service/another_callback_endpoint",
+        url=f"https://some_service/{callback_type}",
         bearer_token="different_string",
         updated_by_id=sample_service.users[0].id,
         callback_type="complaint",
@@ -100,15 +134,24 @@ def test_update_service_callback_can_add_two_api_of_different_types(sample_servi
     results = ServiceCallbackApi.query.order_by(ServiceCallbackApi.callback_type).all()
     assert len(results) == 2
     assert results[0].serialize() == complaint.serialize()
-    assert results[1].serialize() == delivery_status.serialize()
+    assert results[1].serialize() == callback_api.serialize()
 
 
-def test_update_service_callback_api(sample_service):
+@pytest.mark.parametrize(
+    "callback_type",
+    [
+        ServiceCallbackTypes.inbound_sms.value,
+        ServiceCallbackTypes.delivery_status.value,
+        ServiceCallbackTypes.returned_letter.value,
+    ],
+)
+def test_update_service_callback_api(sample_service, callback_type):
     service_callback_api = ServiceCallbackApi(
         service_id=sample_service.id,
-        url="https://some_service/callback_endpoint",
-        bearer_token="some_unique_string",
+        url=f"https://some_service/{callback_type}",
+        bearer_token=f"some_unique_string_{callback_type}",
         updated_by_id=sample_service.users[0].id,
+        callback_type=callback_type,
     )
 
     save_service_callback_api(service_callback_api)
@@ -126,15 +169,15 @@ def test_update_service_callback_api(sample_service):
     assert updated.service_id == sample_service.id
     assert updated.updated_by_id == sample_service.users[0].id
     assert updated.url == "https://some_service/changed_url"
-    assert updated.bearer_token == "some_unique_string"
-    assert updated._bearer_token != "some_unique_string"
+    assert updated.bearer_token == f"some_unique_string_{callback_type}"
+    assert updated._bearer_token != f"some_unique_string_{callback_type}"
     assert updated.updated_at is not None
 
     versioned_results = ServiceCallbackApi.get_history_model().query.filter_by(id=saved_callback_api.id).all()
     assert len(versioned_results) == 2
     for x in versioned_results:
         if x.version == 1:
-            assert x.url == "https://some_service/callback_endpoint"
+            assert x.url == f"https://some_service/{callback_type}"
             assert not x.updated_at
         elif x.version == 2:
             assert x.url == "https://some_service/changed_url"
@@ -144,18 +187,26 @@ def test_update_service_callback_api(sample_service):
         assert x.id is not None
         assert x.service_id == sample_service.id
         assert x.updated_by_id == sample_service.users[0].id
-        assert signing.decode(x.bearer_token) == "some_unique_string"
+        assert signing.decode(x.bearer_token) == f"some_unique_string_{callback_type}"
 
 
-def test_get_service_callback_api(sample_service):
-    service_delivery_callback_api = ServiceCallbackApi(
+@pytest.mark.parametrize(
+    "callback_type",
+    [
+        ServiceCallbackTypes.inbound_sms.value,
+        ServiceCallbackTypes.delivery_status.value,
+        ServiceCallbackTypes.returned_letter.value,
+    ],
+)
+def test_get_service_callback_api(sample_service, callback_type):
+    callback_api = ServiceCallbackApi(
         service_id=sample_service.id,
-        url="https://some_service/delivery_callback_endpoint",
-        bearer_token="delivery_unique_string",
+        url=f"https://some_service/{callback_type}",
+        bearer_token=f"{callback_type}_unique_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type=ServiceCallbackTypes.delivery_status,
+        callback_type=callback_type,
     )
-    save_service_callback_api(service_delivery_callback_api)
+    save_service_callback_api(callback_api)
 
     service_complaint_callback_api = ServiceCallbackApi(
         service_id=sample_service.id,
@@ -166,16 +217,14 @@ def test_get_service_callback_api(sample_service):
     )
     save_service_callback_api(service_complaint_callback_api)
 
-    delivery_callback_api = get_service_callback_api(
-        service_delivery_callback_api.id, sample_service.id, ServiceCallbackTypes.delivery_status.value
-    )
-    assert delivery_callback_api.id is not None
-    assert delivery_callback_api.service_id == sample_service.id
-    assert delivery_callback_api.updated_by_id == sample_service.users[0].id
-    assert delivery_callback_api.url == "https://some_service/delivery_callback_endpoint"
-    assert delivery_callback_api.bearer_token == "delivery_unique_string"
-    assert delivery_callback_api._bearer_token != "delivery_unique_string"
-    assert delivery_callback_api.updated_at is None
+    callback_api = get_service_callback_api(callback_api.id, sample_service.id, callback_type)
+    assert callback_api.id is not None
+    assert callback_api.service_id == sample_service.id
+    assert callback_api.updated_by_id == sample_service.users[0].id
+    assert callback_api.url == f"https://some_service/{callback_type}"
+    assert callback_api.bearer_token == f"{callback_type}_unique_string"
+    assert callback_api._bearer_token != f"{callback_type}_unique_string"
+    assert callback_api.updated_at is None
 
     complaint_callback_api = get_service_callback_api(
         service_complaint_callback_api.id, sample_service.id, ServiceCallbackTypes.complaint.value

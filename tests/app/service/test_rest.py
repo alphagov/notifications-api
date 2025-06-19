@@ -10,6 +10,7 @@ from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.celery.provider_tasks import deliver_email
+from app.celery.tasks import process_report_request
 from app.constants import (
     BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
@@ -278,7 +279,6 @@ def test_get_service_by_id(admin_request, sample_service):
         "go_live_user",
         "has_active_go_live_request",
         "id",
-        "inbound_api",
         "international_sms_message_limit",
         "letter_branding",
         "letter_message_limit",
@@ -4710,7 +4710,11 @@ def test_create_report_request_by_type_should_return_validation_error(
         ("letter", "sending"),
     ],
 )
-def test_create_report_request_by_type(admin_request, sample_service, notification_type, notification_status):
+def test_create_report_request_by_type(
+    admin_request, sample_service, notification_type, notification_status, mock_celery_task
+):
+    process_task_mock = mock_celery_task(process_report_request)
+
     json_resp = admin_request.post(
         "service.create_report_request_by_type",
         service_id=str(sample_service.id),
@@ -4721,6 +4725,14 @@ def test_create_report_request_by_type(admin_request, sample_service, notificati
             "notification_status": notification_status,
         },
         _expected_status=201,
+    )
+
+    process_task_mock.assert_called_once_with(
+        kwargs={
+            "report_request_id": json_resp["data"]["id"],
+            "service_id": str(sample_service.id),
+        },
+        queue="report-requests-notifications-tasks",
     )
 
     assert json_resp["data"]["id"]
@@ -4734,7 +4746,11 @@ def test_create_report_request_by_type(admin_request, sample_service, notificati
     assert json_resp["data"]["created_at"]
 
 
-def test_create_report_request_by_type_returns_existing_request(admin_request, sample_service, sample_user, caplog):
+def test_create_report_request_by_type_returns_existing_request(
+    admin_request, sample_service, sample_user, caplog, mock_celery_task
+):
+    process_task_mock = mock_celery_task(process_report_request)
+
     expected_params = {"notification_type": "sms", "notification_status": "sending"}
     existing_request = ReportRequest(
         user_id=sample_user.id,
@@ -4767,9 +4783,12 @@ def test_create_report_request_by_type_returns_existing_request(admin_request, s
         f" with params {json.dumps(expected_params, separators=(',', ':'))} – returning existing "
         f"request {existing_request.id}" in caplog.messages
     )
+    assert not process_task_mock.called
 
 
-def test_create_report_request_by_type_creates_new_when_no_existing(admin_request, sample_service):
+def test_create_report_request_by_type_creates_new_when_no_existing(admin_request, sample_service, mock_celery_task):
+    process_task_mock = mock_celery_task(process_report_request)
+
     data = {
         "user_id": str(sample_service.created_by_id),
         "report_type": "notifications_report",
@@ -4791,10 +4810,19 @@ def test_create_report_request_by_type_creates_new_when_no_existing(admin_reques
         "notification_status": "failed",
     }
 
+    process_task_mock.assert_called_once_with(
+        kwargs={
+            "report_request_id": response["data"]["id"],
+            "service_id": str(sample_service.id),
+        },
+        queue="report-requests-notifications-tasks",
+    )
+
 
 def test_create_report_request_by_type_creates_new_if_existing_is_stale(
-    admin_request, sample_service, sample_user, caplog
+    admin_request, sample_service, sample_user, caplog, mock_celery_task
 ):
+    process_task_mock = mock_celery_task(process_report_request)
     expected_params = {"notification_type": "email", "notification_status": "failed"}
 
     timeout = current_app.config["REPORT_REQUEST_NOTIFICATIONS_TIMEOUT_MINUTES"]
@@ -4829,4 +4857,11 @@ def test_create_report_request_by_type_creates_new_if_existing_is_stale(
     assert (
         f"Report request {created_request_id} for user {sample_user.id} (service {sample_service.id}) "
         f"created with params {json.dumps(expected_params, separators=(',', ':'))}" in caplog.messages
+    )
+    process_task_mock.assert_called_once_with(
+        kwargs={
+            "report_request_id": response["data"]["id"],
+            "service_id": str(sample_service.id),
+        },
+        queue="report-requests-notifications-tasks",
     )

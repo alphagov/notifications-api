@@ -37,6 +37,7 @@ from sqlalchemy.schema import Sequence
 from app import db, redis_store, signing
 from app.constants import (
     ALL_BROADCAST_PROVIDERS,
+    ALL_TYPE,
     BRANDING_ORG,
     BROADCAST_TYPE,
     EMAIL_TYPE,
@@ -50,6 +51,10 @@ from app.constants import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
+    NOTIFICATION_REQUEST_REPORT_ALL,
+    NOTIFICATION_REQUEST_REPORT_DELIVERED,
+    NOTIFICATION_REQUEST_REPORT_FAILED,
+    NOTIFICATION_REQUEST_REPORT_SENDING,
     NOTIFICATION_RETURNED_LETTER,
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
@@ -859,40 +864,6 @@ class ServiceGuestList(db.Model):
 
     def __repr__(self):
         return f"Recipient {self.recipient} of type: {self.recipient_type}"
-
-
-class ServiceInboundApi(db.Model, Versioned):
-    __tablename__ = "service_inbound_api"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False, unique=True)
-    service = db.relationship("Service", backref="inbound_api")
-    url = db.Column(db.String(), nullable=False)
-    _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True)
-    updated_by = db.relationship("User")
-    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-
-    @property
-    def bearer_token(self):
-        if self._bearer_token:
-            return signing.decode(self._bearer_token)
-        return None
-
-    @bearer_token.setter
-    def bearer_token(self, bearer_token):
-        if bearer_token:
-            self._bearer_token = signing.encode(str(bearer_token))
-
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "service_id": str(self.service_id),
-            "url": self.url,
-            "updated_by_id": str(self.updated_by_id),
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-        }
 
 
 class ServiceCallbackApi(db.Model, Versioned):
@@ -1712,7 +1683,7 @@ class Notification(db.Model):
 
             serialized["estimated_delivery"] = get_letter_timings(
                 serialized["created_at"], postage=self.postage
-            ).earliest_delivery.strftime(DATETIME_FORMAT)
+            ).latest_delivery.strftime(DATETIME_FORMAT)
 
         return serialized
 
@@ -3015,8 +2986,15 @@ class ReportRequest(db.Model):
     _schema = {
         "type": "object",
         "properties": {
-            "notification_type": {"enum": ["email", "sms", "letter", "all"]},
-            "notification_status": {"enum": ["all", "sending", "delivered", "failed"]},
+            "notification_type": {"enum": [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, ALL_TYPE]},
+            "notification_status": {
+                "enum": [
+                    NOTIFICATION_REQUEST_REPORT_ALL,
+                    NOTIFICATION_REQUEST_REPORT_SENDING,
+                    NOTIFICATION_REQUEST_REPORT_DELIVERED,
+                    NOTIFICATION_REQUEST_REPORT_FAILED,
+                ]
+            },
         },
         "additionalProperties": False,
     }
