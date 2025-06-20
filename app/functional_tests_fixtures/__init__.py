@@ -92,10 +92,10 @@ def apply_fixtures():
     request_bin_api_token = os.getenv("REQUEST_BIN_API_TOKEN")
     environment = current_app.config["NOTIFY_ENVIRONMENT"]
     test_email_username = os.getenv("TEST_EMAIL_USERNAME", "notify-tests-preview")
-    email_domain = "digital.cabinet-office.gov.uk"
-    function_tests_govuk_key_name = "govuk_notify"
-    function_tests_live_key_name = "functional_tests_service_live_key"
-    function_tests_test_key_name = "functional_tests_service_test_key"
+    email_domain = "notify-functional-tests.gov.uk"
+    function_tests_govuk_key_name = "govuk_notify_2"
+    function_tests_live_key_name = "functional_tests_service_live_key_2"
+    function_tests_test_key_name = "functional_tests_service_test_key_2"
     govuk_service_id = current_app.config["NOTIFY_SERVICE_ID"]
 
     env_var_dict = _create_db_objects(
