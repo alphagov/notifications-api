@@ -98,6 +98,8 @@ def apply_fixtures():
     function_tests_test_key_name = "functional_tests_service_test_key"
     govuk_service_id = current_app.config["NOTIFY_SERVICE_ID"]
 
+    org_name = os.getenv("FUNCTIONAL_TEST_ORGANISATION_NAME", "Functional Tests Org")
+
     env_var_dict = _create_db_objects(
         functional_test_password,
         request_bin_api_token,
@@ -108,6 +110,7 @@ def apply_fixtures():
         function_tests_live_key_name,
         function_tests_test_key_name,
         govuk_service_id,
+        org_name,
     )
 
     functional_test_config = "\n".join(f"export {k}='{v}'" for k, v in env_var_dict.items())
@@ -143,11 +146,12 @@ def _create_db_objects(
     function_tests_live_key_name,
     function_tests_test_key_name,
     govuk_service_id,
+    org_name,
 ) -> dict[str, str]:
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
     current_app.logger.info("--> Ensure organisation exists")
-    org = _create_organiation(email_domain)
+    org = _create_organiation(email_domain, org_name)
 
     current_app.logger.info("--> Ensure users exists")
     func_test_user = _create_user(
@@ -357,7 +361,7 @@ def _create_user(name, email_address, password, auth_type="sms_auth", organisati
     return user
 
 
-def _create_organiation(email_domain, org_name="Functional Tests Org"):
+def _create_organiation(email_domain, org_name):
     organisations = dao_get_organisations_by_partial_name(org_name)
 
     org = None
