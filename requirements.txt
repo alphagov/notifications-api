@@ -60,6 +60,12 @@ click-plugins==1.1.1
     # via celery
 click-repl==0.2.0
     # via celery
+deprecated==1.2.18
+    # via
+    #   opentelemetry-api
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-semantic-conventions
 dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
@@ -94,10 +100,16 @@ fqdn==1.5.1
     # via jsonschema
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.in
+googleapis-common-protos==1.70.0
+    # via
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 govuk-bank-holidays==0.15
     # via notifications-utils
 greenlet==3.2.2
     # via eventlet
+grpcio==1.73.0
+    # via opentelemetry-exporter-otlp-proto-grpc
 gunicorn==23.0.0
     # via
     #   -r requirements.in
@@ -106,6 +118,8 @@ idna==3.7
     # via
     #   jsonschema
     #   requests
+importlib-metadata==8.6.1
+    # via opentelemetry-api
 iso8601==2.1.0
     # via -r requirements.in
 isoduration==20.11.0
@@ -150,8 +164,50 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a97b36f6a32e7bb917152c8cd716fe65fa15ac9f
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@d7b27a02ed3711a3371b8db4c0600b1337822260
     # via -r requirements.in
+opentelemetry-api==1.33.1
+    # via
+    #   opentelemetry-distro
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-distro==0.54b1
+    # via notifications-utils
+opentelemetry-exporter-otlp==1.33.1
+    # via notifications-utils
+opentelemetry-exporter-otlp-proto-common==1.33.1
+    # via
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-grpc==1.33.1
+    # via opentelemetry-exporter-otlp
+opentelemetry-exporter-otlp-proto-http==1.33.1
+    # via opentelemetry-exporter-otlp
+opentelemetry-instrumentation==0.54b1
+    # via
+    #   opentelemetry-distro
+    #   opentelemetry-instrumentation-celery
+opentelemetry-instrumentation-celery==0.54b1
+    # via notifications-utils
+opentelemetry-proto==1.33.1
+    # via
+    #   opentelemetry-exporter-otlp-proto-common
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk==1.33.1
+    # via
+    #   opentelemetry-distro
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-semantic-conventions==0.54b1
+    # via
+    #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-sdk
 ordered-set==4.1.0
     # via notifications-utils
 packaging==23.2
@@ -159,6 +215,7 @@ packaging==23.2
     #   gunicorn
     #   marshmallow
     #   marshmallow-sqlalchemy
+    #   opentelemetry-instrumentation
 phonenumbers==8.13.52
     # via notifications-utils
 prometheus-client==0.14.1
@@ -167,6 +224,10 @@ prometheus-client==0.14.1
     #   gds-metrics
 prompt-toolkit==3.0.31
     # via click-repl
+protobuf==5.29.5
+    # via
+    #   googleapis-common-protos
+    #   opentelemetry-proto
 psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
@@ -204,6 +265,7 @@ requests==2.32.2
     #   govuk-bank-holidays
     #   notifications-python-client
     #   notifications-utils
+    #   opentelemetry-exporter-otlp-proto-http
 rfc3339-validator==0.1.4
     # via jsonschema
 rfc3987==1.3.8
@@ -234,6 +296,8 @@ sqlalchemy==1.4.41
     #   sentry-sdk
 statsd==4.0.1
     # via notifications-utils
+typing-extensions==4.14.0
+    # via opentelemetry-sdk
 tzdata==2024.1
     # via celery
 uri-template==1.2.0
@@ -256,3 +320,9 @@ webcolors==1.12
     # via jsonschema
 werkzeug==3.1.3
     # via flask
+wrapt==1.17.2
+    # via
+    #   deprecated
+    #   opentelemetry-instrumentation
+zipp==3.23.0
+    # via importlib-metadata

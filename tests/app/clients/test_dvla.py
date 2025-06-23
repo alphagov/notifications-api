@@ -55,7 +55,7 @@ def ssm():
 
 @pytest.fixture
 def dvla_client(notify_api, client, ssm):
-    dvla_client = DVLAClient(notify_api, statsd_client=Mock())
+    dvla_client = DVLAClient(notify_api, statsd_client=Mock(), otel_client=Mock())
     yield dvla_client
 
 
@@ -945,6 +945,7 @@ class TestDVLAApiClientRestrictedCiphers:
         dvla_client = DVLAClient(
             fake_app,
             statsd_client=mocker.Mock(),
+            otel_client=mocker.Mock(),
         )
 
         with ca.cert_pem.tempfile() as ca_temp_path:
@@ -958,7 +959,7 @@ class TestDVLAApiClientRestrictedCiphers:
     def test_invalid_ciphers(self, mocker, server_base_url, fake_app):
         with pytest.raises(ssl.SSLError) as e:
             fake_app.config["DVLA_API_TLS_CIPHERS"] = "not-a-valid-cipher"
-            DVLAClient(fake_app, statsd_client=mocker.Mock())
+            DVLAClient(fake_app, statsd_client=mocker.Mock(), otel_client=mocker.Mock())
 
         assert "No cipher can be selected." in e.value.args
 
@@ -977,6 +978,7 @@ class TestDVLAApiClientRestrictedCiphers:
         dvla_client = DVLAClient(
             fake_app,
             statsd_client=mocker.Mock(),
+            otel_client=mocker.Mock(),
         )
 
         httpserver.expect_request(
@@ -1007,6 +1009,7 @@ class TestDVLAApiClientRestrictedCiphers:
         dvla_client = DVLAClient(
             fake_app,
             statsd_client=mocker.Mock(),
+            otel_client=mocker.Mock(),
         )
 
         httpserver.expect_request(

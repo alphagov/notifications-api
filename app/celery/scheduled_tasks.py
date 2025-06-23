@@ -18,7 +18,7 @@ from redis.exceptions import LockError
 from sqlalchemy import and_, between
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db, dvla_client, notify_celery, redis_store, statsd_client, zendesk_client
+from app import db, dvla_client, notify_celery, otel_client, redis_store, statsd_client, zendesk_client
 from app.aws import s3
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
@@ -216,12 +216,33 @@ def generate_sms_delivery_stats():
                 f"slow-delivery.{report.provider}.delivered-within-minutes.{delivery_interval}.ratio", report.slow_ratio
             )
 
+            otel_client.record(
+                "slow_delivery_ratio",
+                value=report.slow_ratio,
+                attributes={
+                    "provider": report.provider,
+                    "delivery_interval": delivery_interval,
+                },
+                description="Ratio of slow message deliveries for in the last 15 minutes "
+                "for deliveries taking longer than delivery_interval minutes",
+            )
+
         total_notifications = sum(report.total_notifications for report in providers_slow_delivery_reports)
         slow_notifications = sum(report.slow_notifications for report in providers_slow_delivery_reports)
         ratio_slow_notifications = slow_notifications / total_notifications
 
         statsd_client.gauge(
             f"slow-delivery.sms.delivered-within-minutes.{delivery_interval}.ratio", ratio_slow_notifications
+        )
+
+        otel_client.record(
+            "slow_sms_delivery_ratio",
+            value=ratio_slow_notifications,
+            attributes={
+                "delivery_interval": delivery_interval,
+            },
+            description="Ratio of slow message deliveries for in the last 15 minutes "
+            "for deliveries taking longer than delivery_interval minutes",
         )
 
         # For the 5-minute delivery interval, let's check the percentage of all text messages sent that were slow.
