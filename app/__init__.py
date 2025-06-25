@@ -23,6 +23,7 @@ from gds_metrics import GDSMetrics
 from gds_metrics.metrics import Gauge, Histogram
 from notifications_utils import request_helper
 from notifications_utils.celery import NotifyCelery
+from notifications_utils.clients.otel.otel_client import init_otel_app
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.signing.signing_client import Signing
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
@@ -171,6 +172,7 @@ def create_app(application):
     init_app(application)
 
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
+    init_otel_app(application)
     metrics.init_app(application)
     request_helper.init_app(application)
     db.init_app(application)

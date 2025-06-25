@@ -3,7 +3,9 @@ import uuid
 from datetime import datetime
 
 from flask import current_app
+from notifications_utils.clients.otel.utils import default_histogram_bucket
 from notifications_utils.template import SMSMessageTemplate
+from opentelemetry import metrics
 
 from app import notify_celery, statsd_client
 from app.clients import ClientException
@@ -20,6 +22,20 @@ sms_response_mapper = {
     "MMG": get_mmg_responses,
     "Firetext": get_firetext_responses,
 }
+
+meter = metrics.get_meter(__name__)
+
+otel_provider_callback_completed = meter.create_histogram(
+    "provider_sms",
+    description="Time for sms sends to complete in seconds",
+    explicit_bucket_boundaries_advisory=default_histogram_bucket,
+    unit="seconds",
+)
+
+otel_sms_international = meter.create_counter(
+    "international_sms",
+    description="Count of provider callbacks",
+)
 
 
 @notify_celery.task(
@@ -81,6 +97,14 @@ def _process_for_status(notification_status, client_name, provider_reference, de
             notification.sent_at,
         )
 
+        otel_provider_callback_completed.record(
+            (datetime.utcnow() - notification.sent_at).total_seconds(),
+            {
+                "client_name": client_name.lower(),
+                "notification_status": notification_status,
+            },
+        )
+
     if notification.billable_units == 0:
         service = notification.service
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
@@ -98,3 +122,10 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         check_and_queue_callback_task(notification)
         if notification.international:
             statsd_client.incr(f"international-sms.{notification_status}.{notification.phone_prefix}")
+            otel_sms_international.add(
+                1,
+                {
+                    "notification_status": notification_status,
+                    "phone_prefix": notification.phone_prefix,
+                },
+            )
