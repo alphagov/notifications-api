@@ -10,6 +10,7 @@ from notifications_utils.letter_timings import (
     is_dvla_working_day,
 )
 from notifications_utils.timezones import convert_utc_to_bst
+from opentelemetry import metrics
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -53,6 +54,13 @@ from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
 from app.utils import get_london_midnight_in_utc
+
+meter = metrics.get_meter(__name__)
+
+otel_timeout_sending_counter = meter.create_counter(
+    "timeout_sending",
+    description="Notifications counter that have timed out sending",
+)
 
 
 @notify_celery.task(name="remove_sms_email_jobs")
@@ -250,6 +258,12 @@ def timeout_notifications():
 
         for notification in notifications:
             statsd_client.incr(f"timeout-sending.{notification.sent_by}")
+            otel_timeout_sending_counter.add(
+                1,
+                {
+                    "notification_send_by": notification.sent_by,
+                },
+            )
             check_and_queue_callback_task(notification)
 
         current_app.logger.info(
