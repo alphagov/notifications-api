@@ -4,6 +4,7 @@ import pytest
 from flask import current_app
 
 from app.constants import (
+    REPORT_REQUEST_DELETED,
     REPORT_REQUEST_FAILED,
     REPORT_REQUEST_IN_PROGRESS,
     REPORT_REQUEST_NOTIFICATIONS,
@@ -11,6 +12,7 @@ from app.constants import (
 )
 from app.dao.report_requests_dao import (
     dao_create_report_request,
+    dao_get_active_report_request_by_id,
     dao_get_oldest_ongoing_report_request,
     dao_get_report_request_by_id,
     dao_update_report_request,
@@ -344,3 +346,42 @@ def test_dao_update_report_request(sample_service, sample_user):
 
     assert report_request.status == REPORT_REQUEST_IN_PROGRESS
     assert report_request.updated_at
+
+
+def test_dao_get_active_report_request_by_id_when_deleted_report(sample_service, sample_user):
+    sample_parameter = {"notification_status": "sending"}
+
+    report_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_DELETED,
+        parameter=sample_parameter,
+    )
+
+    dao_create_report_request(report_request)
+
+    report = dao_get_active_report_request_by_id(sample_service.id, report_request.id)
+    assert report is None
+
+
+def test_dao_get_active_report_request_by_id_when_active_report(sample_service, sample_user):
+    sample_parameter = {"notification_status": "sending"}
+
+    report_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_IN_PROGRESS,
+        parameter=sample_parameter,
+    )
+
+    dao_create_report_request(report_request)
+    report = dao_get_report_request_by_id(sample_service.id, report_request.id)
+
+    assert report.id == report_request.id
+    assert report.service_id == sample_service.id
+    assert report.user_id == sample_user.id
+    assert report.report_type == REPORT_REQUEST_NOTIFICATIONS
+    assert report.status == REPORT_REQUEST_IN_PROGRESS
+    assert report.parameter == sample_parameter
