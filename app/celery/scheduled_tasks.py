@@ -14,6 +14,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
     NotifyTicketType,
 )
 from notifications_utils.timezones import convert_utc_to_bst
+from opentelemetry import metrics
 from redis.exceptions import LockError
 from sqlalchemy import and_, between
 from sqlalchemy.exc import SQLAlchemyError
@@ -88,6 +89,13 @@ from app.models import (
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.utils import get_london_midnight_in_utc
+
+meter = metrics.get_meter(__name__)
+
+otel_slow_delivery_ratio_gauge = meter.create_gauge(
+    "slow_delivery_ratio",
+    description="Ratio of slow delivery notifications",
+)
 
 
 @notify_celery.task(name="run-scheduled-jobs")
@@ -204,6 +212,7 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
         redis_store.set(CacheKeys.NUMBER_OF_TIMES_OVER_SLOW_SMS_DELIVERY_THRESHOLD, 0)
 
 
+# TODO: We are reimplementing a histogram here. We should just use that instead.
 @notify_celery.task(name="generate-sms-delivery-stats")
 def generate_sms_delivery_stats():
     for delivery_interval in (1, 5, 10):
@@ -215,11 +224,19 @@ def generate_sms_delivery_stats():
             statsd_client.gauge(
                 f"slow-delivery.{report.provider}.delivered-within-minutes.{delivery_interval}.ratio", report.slow_ratio
             )
+            otel_slow_delivery_ratio_gauge.set(
+                report.slow_ratio,
+                attributes={
+                    "provider": report.provider,
+                    "delivery_interval": delivery_interval,
+                },
+            )
 
         total_notifications = sum(report.total_notifications for report in providers_slow_delivery_reports)
         slow_notifications = sum(report.slow_notifications for report in providers_slow_delivery_reports)
         ratio_slow_notifications = slow_notifications / total_notifications
 
+        # Not recording an overall otel metric here as this can be calculated
         statsd_client.gauge(
             f"slow-delivery.sms.delivered-within-minutes.{delivery_interval}.ratio", ratio_slow_notifications
         )

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import iso8601
 from celery.exceptions import Retry
 from flask import current_app, json
+from opentelemetry import metrics
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery, statsd_client
@@ -16,6 +17,21 @@ from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
     determine_notification_bounce_type,
     handle_complaint,
+)
+from app.otel.utils import default_histogram_bucket
+
+meter = metrics.get_meter(__name__)
+
+otel_ses_notification_processing_histogram = meter.create_histogram(
+    "ses_notification_processing",
+    description="Time taken to process an SES notification in seconds",
+    explicit_bucket_boundaries_advisory=default_histogram_bucket,
+    unit="seconds",
+)
+
+otel_ses_callback_counter = meter.create_counter(
+    "ses_callback",
+    description="Amount of non-duplicate ses callbacks processed",
 )
 
 
@@ -78,10 +94,22 @@ def process_ses_results(self, response):
             )
 
         statsd_client.incr(f"callback.ses.{notification_status}")
-
+        otel_ses_callback_counter.add(
+            1,
+            {
+                "notification_status": notification_status,
+            },
+        )
         if notification.sent_at:
             statsd_client.timing_with_dates(
                 f"callback.ses.{notification_status}.elapsed-time", datetime.utcnow(), notification.sent_at
+            )
+
+            otel_ses_notification_processing_histogram.record(
+                (datetime.utcnow() - notification.sent_at).total_seconds(),
+                {
+                    "notification_status": notification_status,
+                },
             )
 
         check_and_queue_callback_task(notification)

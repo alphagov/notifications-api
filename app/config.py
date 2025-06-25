@@ -100,6 +100,10 @@ class Config:
     CELERY_WORKER_LOG_LEVEL = os.getenv("CELERY_WORKER_LOG_LEVEL", "CRITICAL").upper()
     CELERY_BEAT_LOG_LEVEL = os.getenv("CELERY_BEAT_LOG_LEVEL", "INFO").upper()
 
+    OTEL_EXPORT_TYPE = os.getenv("OTEL_EXPORT_TYPE", "otlp")
+    OTEL_COLLECTOR_ENDPOINT = os.getenv("OTEL_COLLECTOR_ENDPOINT", "localhost:4317")
+    OTEL_INSTRUMENTATIONS = os.getenv("OTEL_INSTRUMENTATIONS", "celery,flask,redis,sqlalchemy,requests,botocore")
+
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = "notify-admin"
     FUNCTIONAL_TESTS_CLIENT_ID = "notify-functional-tests"
@@ -533,6 +537,8 @@ class Development(Config):
         },
     }
 
+    OTEL_EXPORT_TYPE = os.getenv("OTEL_EXPORT_TYPE", "none")
+
     SERVER_NAME = os.getenv("SERVER_NAME")
 
     REDIS_ENABLED = os.getenv("REDIS_ENABLED") == "1"
@@ -583,6 +589,8 @@ class Test(Development):
     FROM_NUMBER = "testing"
     NOTIFY_ENVIRONMENT = "test"
     TESTING = True
+
+    OTEL_EXPORT_TYPE = os.getenv("OTEL_EXPORT_TYPE", "none")
 
     CELERY_WORKER_LOG_LEVEL = "INFO"
 

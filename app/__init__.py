@@ -42,6 +42,7 @@ from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.letter.dvla import DVLAClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.otel import init_otel_app
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -171,6 +172,7 @@ def create_app(application):
     init_app(application)
 
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
+    init_otel_app(application)
     metrics.init_app(application)
     request_helper.init_app(application)
     db.init_app(application)
