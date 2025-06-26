@@ -76,3 +76,16 @@ def dao_get_oldest_ongoing_report_request(
 def dao_update_report_request(report_request: ReportRequest) -> ReportRequest:
     db.session.add(report_request)
     return report_request
+
+
+def update_report_requests_status_to_deleted():
+    day_1 = datetime.utcnow() - timedelta(days=1)
+    day_5 = datetime.utcnow() - timedelta(days=5)
+
+    ReportRequest.query.filter(
+        ReportRequest.status != REPORT_REQUEST_DELETED,
+        ReportRequest.created_at < day_1,
+        ReportRequest.created_at >= day_5,
+    ).update({"status": REPORT_REQUEST_DELETED, "updated_at": datetime.utcnow()}, synchronize_session=False)
+
+    db.session.commit()
