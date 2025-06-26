@@ -10,6 +10,7 @@ from notifications_utils.letter_timings import (
     is_dvla_working_day,
 )
 from notifications_utils.timezones import convert_utc_to_bst
+from opentelemetry import trace
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -52,6 +53,7 @@ from app.models import FactProcessingTime, Notification
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
+from app.otel.utils import otel_span_with_status
 from app.utils import get_london_midnight_in_utc
 
 
@@ -250,7 +252,10 @@ def timeout_notifications():
 
         for notification in notifications:
             statsd_client.incr(f"timeout-sending.{notification.sent_by}")
-            check_and_queue_callback_task(notification)
+            with otel_span_with_status(
+                trace.get_tracer(__name__), "timeout-sending", notification_sent_by=str(notification.sent_by)
+            ):
+                check_and_queue_callback_task(notification)
 
         current_app.logger.info(
             "Timeout period reached for %s notifications, status has been updated.", len(notifications)

@@ -10,6 +10,7 @@ from app.clients.email import (
     EmailClientException,
     EmailClientNonRetryableException,
 )
+from app.otel.utils import otel_histogram
 
 ses_response_map = {
     "Permanent": {
@@ -65,6 +66,9 @@ class AwsSesClient(EmailClient):
         self._client = boto3.client("sesv2", region_name=region)
         self.statsd_client = statsd_client
 
+    @otel_histogram(
+        "aws_ses_send_email_duration", description="Time taken to send an email using AWS SES", unit="seconds"
+    )
     def send_email(
         self,
         *,
