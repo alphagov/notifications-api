@@ -4,6 +4,7 @@ import logging
 import requests
 
 from app.clients.sms import SmsClient, SmsClientResponseException
+from app.otel.decorators import otel
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,14 @@ class FiretextClient(SmsClient):
         self.international_api_key = self.current_app.config.get("FIRETEXT_INTERNATIONAL_API_KEY")
         self.url = self.current_app.config.get("FIRETEXT_URL")
         self.receipt_url = self.current_app.config.get("FIRETEXT_RECEIPT_URL")
+
+    @otel(
+        "provider_status_counter",
+        "provider_request_time_histogram",
+        attributes={"provider": "firetext"},
+    )
+    def send_sms(self, *args, **kwargs):
+        return super().send_sms(*args, **kwargs)
 
     def try_send_sms(self, to, content, reference, international, sender):
         data = {
