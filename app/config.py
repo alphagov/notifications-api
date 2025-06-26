@@ -343,6 +343,11 @@ class Config:
                 "schedule": crontab(hour=2, minute=0),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "update-report-status-to-deleted": {
+                "task": "update-report-status-to-deleted",
+                "schedule": crontab(hour=2, minute=00),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             "remove_sms_email_jobs": {
                 "task": "remove_sms_email_jobs",
                 "schedule": crontab(hour=4, minute=0),
