@@ -383,6 +383,11 @@ class Config:
                 "schedule": crontab(hour=19, minute=00),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "update-report-status-to-deleted": {
+                "task": "update-report-status-to-deleted",
+                "schedule": crontab(hour=2, minute=00),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             # The check-time-to-collate-letters does assume it is called in an hour that BST does not make a
             # difference to the truncate date which translates to the filename to process
             # We schedule it for 16:50 and 17:50 UTC. This task is then responsible for determining if the local time
