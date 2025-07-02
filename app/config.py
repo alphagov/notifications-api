@@ -155,7 +155,7 @@ class Config:
     # Antivirus
     ANTIVIRUS_ENABLED = True
 
-    NOTIFY_EVENTLET_STATS = os.getenv("NOTIFY_EVENTLET_STATS", "0") == "1"
+    NOTIFY_GREENLET_STATS = os.getenv("NOTIFY_GREENLET_STATS", "0") == "1"
 
     ###########################
     # Default config values ###
