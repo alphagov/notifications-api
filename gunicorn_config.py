@@ -15,9 +15,9 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
-workers = 4
-worker_class = "gevent"
-worker_connections = 8  # limit runaway greenthread creation
+workers = 2
+worker_class = "eventlet"
+worker_connections = 128
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 0  # disable temporarily for diagnosing issues
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with gevent worker_class
