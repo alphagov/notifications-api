@@ -4,7 +4,12 @@ from uuid import UUID
 from sqlalchemy import and_, or_
 
 from app import db
-from app.constants import REPORT_REQUEST_IN_PROGRESS, REPORT_REQUEST_NOTIFICATIONS, REPORT_REQUEST_PENDING
+from app.constants import (
+    REPORT_REQUEST_DELETED,
+    REPORT_REQUEST_IN_PROGRESS,
+    REPORT_REQUEST_NOTIFICATIONS,
+    REPORT_REQUEST_PENDING,
+)
 from app.dao.dao_utils import autocommit
 from app.models import ReportRequest
 
@@ -17,6 +22,14 @@ def dao_create_report_request(report_request: ReportRequest):
 
 def dao_get_report_request_by_id(service_id: UUID, report_id: UUID) -> ReportRequest:
     return ReportRequest.query.filter_by(service_id=service_id, id=report_id).one()
+
+
+def dao_get_active_report_request_by_id(service_id: UUID, report_id: UUID) -> ReportRequest | None:
+    return ReportRequest.query.filter(
+        ReportRequest.service_id == service_id,
+        ReportRequest.id == report_id,
+        ReportRequest.status != REPORT_REQUEST_DELETED,
+    ).first()
 
 
 def dao_get_oldest_ongoing_report_request(
