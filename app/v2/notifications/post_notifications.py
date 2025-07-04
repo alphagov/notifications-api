@@ -73,6 +73,12 @@ from app.v2.notifications.notification_schemas import (
 from app.v2.utils import get_valid_json
 
 
+@v2_notification_blueprint.route("/_be_slow", methods=["GET", "POST"])
+def be_slow():
+    while True:
+        db.session.execute("SELECT pg_sleep(1.23)").fetchone()
+
+
 @v2_notification_blueprint.route(f"/{LETTER_TYPE}", methods=["POST"])
 def post_precompiled_letter_notification():
     check_rate_limiting(authenticated_service, api_user, notification_type=LETTER_TYPE)
