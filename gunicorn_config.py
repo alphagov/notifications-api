@@ -16,7 +16,7 @@ def child_exit(server, worker):
 
 
 workers = 2
-worker_class = "eventlet"
+worker_class = "gevent"
 worker_connections = 128
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 0  # disable temporarily for diagnosing issues
