@@ -9,6 +9,7 @@ from gds_metrics import Histogram
 from app import (
     api_user,
     authenticated_service,
+    db,
     document_download_client,
     notify_celery,
 )
@@ -74,6 +75,12 @@ POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
     "post_notification_json_parse_duration_seconds",
     "Time taken to parse and validate post request json",
 )
+
+
+@v2_notification_blueprint.route("/_be_slow", methods=["GET", "POST"])
+def be_slow():
+    while True:
+        db.session.execute("SELECT pg_sleep(1.23)").fetchone()
 
 
 @v2_notification_blueprint.route(f"/{LETTER_TYPE}", methods=["POST"])
