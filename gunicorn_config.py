@@ -17,7 +17,7 @@ def child_exit(server, worker):
 
 workers = 1
 worker_class = "eventlet"
-worker_connections = 128
+worker_connections = 256
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 32  # disable temporarily for diagnosing issues
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with gevent worker_class
