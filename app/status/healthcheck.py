@@ -27,6 +27,12 @@ def show_status():
         )
 
 
+@status.route("/_be_slow", methods=["GET", "POST"])
+def be_slow():
+    while True:
+        be_slow_db()
+
+
 @status.route("/_status/live-service-and-organisation-counts")
 def live_service_and_organisation_counts():
     return (
@@ -36,6 +42,11 @@ def live_service_and_organisation_counts():
         ),
         200,
     )
+
+
+def be_slow_db():
+    query = "SELECT pg_sleep(1.23)"
+    return db.session.execute(query).fetchone()
 
 
 def get_db_version(session=db.session, raise_db_exception=True):
