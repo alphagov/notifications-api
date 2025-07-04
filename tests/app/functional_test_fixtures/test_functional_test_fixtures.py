@@ -44,6 +44,7 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
                 function_tests_test_key_name,
                 govuk_service_id,
                 "Functional Tests Org",
+                "07700900500",
             )
 
     assert variables["FUNCTIONAL_TESTS_API_HOST"] == "http://localhost:6011"
