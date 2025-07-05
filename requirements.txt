@@ -94,10 +94,15 @@ fqdn==1.5.1
     # via jsonschema
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.in
+gevent==25.5.1
+    # via gunicorn
 govuk-bank-holidays==0.15
     # via notifications-utils
 greenlet==3.2.2
-    # via eventlet
+    # via
+    #   eventlet
+    #   gevent
+    #   sqlalchemy
 gunicorn==23.0.0
     # via
     #   -r requirements.in
@@ -150,7 +155,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a97b36f6a32e7bb917152c8cd716fe65fa15ac9f
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@2cf33bd9287d4c0114679ba7d62c19a8f01f1978
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -181,11 +186,12 @@ pyjwt==2.10.1
     #   notifications-python-client
 pypdf==3.17.0
     # via notifications-utils
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via
     #   arrow
     #   botocore
     #   celery
+    #   notifications-utils
 python-json-logger==3.3.0
     # via notifications-utils
 pytz==2024.2
@@ -218,6 +224,10 @@ segno==1.6.1
     # via notifications-utils
 sentry-sdk==1.45.1
     # via -r requirements.in
+setuptools==80.9.0
+    # via
+    #   zope-event
+    #   zope-interface
 six==1.16.0
     # via
     #   click-repl
@@ -256,3 +266,7 @@ webcolors==1.12
     # via jsonschema
 werkzeug==3.1.3
     # via flask
+zope-event==5.1
+    # via gevent
+zope-interface==7.2
+    # via gevent

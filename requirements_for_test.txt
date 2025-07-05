@@ -143,6 +143,10 @@ freezegun==1.5.1
     # via -r requirements_for_test_common.in
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.txt
+gevent==25.5.1
+    # via
+    #   -r requirements.txt
+    #   gunicorn
 govuk-bank-holidays==0.15
     # via
     #   -r requirements.txt
@@ -151,6 +155,8 @@ greenlet==3.2.2
     # via
     #   -r requirements.txt
     #   eventlet
+    #   gevent
+    #   sqlalchemy
 gunicorn==23.0.0
     # via
     #   -r requirements.txt
@@ -220,7 +226,7 @@ moto==5.0.11
     # via -r requirements_for_test.in
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a97b36f6a32e7bb917152c8cd716fe65fa15ac9f
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@2cf33bd9287d4c0114679ba7d62c19a8f01f1978
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
@@ -280,7 +286,7 @@ pytest-testmon==2.1.1
     # via -r requirements_for_test_common.in
 pytest-xdist==3.6.1
     # via -r requirements_for_test_common.in
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via
     #   -r requirements.txt
     #   arrow
@@ -288,6 +294,7 @@ python-dateutil==2.8.2
     #   celery
     #   freezegun
     #   moto
+    #   notifications-utils
 python-json-logger==3.3.0
     # via
     #   -r requirements.txt
@@ -344,6 +351,11 @@ segno==1.6.1
     #   notifications-utils
 sentry-sdk==1.45.1
     # via -r requirements.txt
+setuptools==80.9.0
+    # via
+    #   -r requirements.txt
+    #   zope-event
+    #   zope-interface
 six==1.16.0
     # via
     #   -r requirements.txt
@@ -403,3 +415,11 @@ werkzeug==3.1.3
     #   pytest-httpserver
 xmltodict==0.14.2
     # via moto
+zope-event==5.1
+    # via
+    #   -r requirements.txt
+    #   gevent
+zope-interface==7.2
+    # via
+    #   -r requirements.txt
+    #   gevent
