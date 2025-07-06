@@ -22,8 +22,8 @@ statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 32  # disable temporarily for diagnosing issues
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet/gevent worker_class
 
-debug_post_threshold_seconds = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
-debug_post_threshold_concurrency = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_CONCURRENCY", "0")
+debug_post_threshold_seconds = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_DUMP_THRESHOLD_SECONDS", None)
+debug_post_threshold_concurrency = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_DUMP_THRESHOLD_CONCURRENCY", "0")
 
 if debug_post_threshold_seconds:
     debug_post_threshold_seconds_float = float(debug_post_threshold_seconds)
