@@ -32,13 +32,13 @@ if debug_post_threshold_seconds:
     concurrent_requests = 0
 
     def pre_request(worker, req):
-        nonlocal concurrent_requests
+        global concurrent_requests
         concurrent_requests += 1
         # using os.times() to avoid additional imports before eventlet monkeypatching
         req._pre_request_elapsed = os.times().elapsed
 
     def post_request(worker, req, environ, resp):
-        nonlocal concurrent_requests
+        global concurrent_requests
         concurrent_requests -= 1
         elapsed = os.times().elapsed - req._pre_request_elapsed
         if elapsed > debug_post_threshold_seconds_float and concurrent_requests > debug_post_threshold_concurrency_int:
