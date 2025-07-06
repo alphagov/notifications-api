@@ -20,4 +20,33 @@ worker_class = "gevent"
 worker_connections = 256
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 32  # disable temporarily for diagnosing issues
-timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with gevent worker_class
+timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet/gevent worker_class
+
+debug_post_threshold_seconds = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
+debug_post_threshold_concurrency = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_CONCURRENCY", "0")
+
+if debug_post_threshold_seconds:
+    debug_post_threshold_seconds_float = float(debug_post_threshold_seconds)
+    debug_post_threshold_concurrency_int = int(debug_post_threshold_concurrency)
+
+    concurrent_requests = 0
+
+    def pre_request(worker, req):
+        nonlocal concurrent_requests
+        concurrent_requests += 1
+        # using os.times() to avoid additional imports before eventlet monkeypatching
+        req._pre_request_elapsed = os.times().elapsed
+
+    def post_request(worker, req, environ, resp):
+        nonlocal concurrent_requests
+        concurrent_requests -= 1
+        elapsed = os.times().elapsed - req._pre_request_elapsed
+        if elapsed > debug_post_threshold_seconds_float and concurrent_requests > debug_post_threshold_concurrency_int:
+            if worker_class == "gevent":
+                from datetime import datetime
+                from gevent.util import print_run_info
+                from tempdir import gettempdir
+
+                timestamp = datetime.utcnow().isoformat(timespec="microseconds")
+                with open(f"{gettempdir()}/dump.{timestamp}", "w") as f:
+                    print_run_info(file=f)
