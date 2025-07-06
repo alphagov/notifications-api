@@ -24,11 +24,14 @@ timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little 
 
 debug_post_threshold_seconds = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_DUMP_THRESHOLD_SECONDS", None)
 debug_post_threshold_concurrency = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_DUMP_THRESHOLD_CONCURRENCY", "0")
+debug_post_backoff_seconds = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_DUMP_BACKOFF_SECONDS", "1")
 
 if debug_post_threshold_seconds:
     debug_post_threshold_seconds_float = float(debug_post_threshold_seconds)
     debug_post_threshold_concurrency_int = int(debug_post_threshold_concurrency)
+    debug_post_backoff_seconds_float = float(debug_post_backoff_seconds)
 
+    last_dumped = 0
     concurrent_requests = 0
 
     def pre_request(worker, req):
@@ -45,8 +48,15 @@ if debug_post_threshold_seconds:
             from datetime import datetime
             from gevent.util import print_run_info
 
-        elapsed = os.times().elapsed - req._pre_request_elapsed
-        if elapsed > debug_post_threshold_seconds_float and concurrent_requests > debug_post_threshold_concurrency_int:
+        now_elapsed = os.times().elapsed
+        elapsed = now_elapsed - req._pre_request_elapsed
+        if (
+            elapsed > debug_post_threshold_seconds_float
+            and concurrent_requests > debug_post_threshold_concurrency_int
+            and last_dumped + debug_post_backoff_seconds_float < now_elapsed
+        ):
+            global last_dumped
+            last_dumped = now_elapsed
             if worker_class == "gevent":
                 timestamp = datetime.utcnow().isoformat(timespec="microseconds")
                 p = f"/tmp/dump.{timestamp}"
