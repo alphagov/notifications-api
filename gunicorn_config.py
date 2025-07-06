@@ -42,6 +42,7 @@ if debug_post_threshold_seconds:
 
     def post_request(worker, req, environ, resp):
         global concurrent_requests
+        global last_dumped
         concurrent_requests -= 1
 
         if worker_class == "gevent":
@@ -55,7 +56,6 @@ if debug_post_threshold_seconds:
             and concurrent_requests > debug_post_threshold_concurrency_int
             and last_dumped + debug_post_backoff_seconds_float < now_elapsed
         ):
-            global last_dumped
             last_dumped = now_elapsed
             if worker_class == "gevent":
                 timestamp = datetime.utcnow().isoformat(timespec="microseconds")
