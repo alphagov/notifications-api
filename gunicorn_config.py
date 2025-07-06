@@ -40,13 +40,17 @@ if debug_post_threshold_seconds:
     def post_request(worker, req, environ, resp):
         global concurrent_requests
         concurrent_requests -= 1
+
+        if worker_class == "gevent":
+            from datetime import datetime
+            from gevent.util import print_run_info
+
         elapsed = os.times().elapsed - req._pre_request_elapsed
         if elapsed > debug_post_threshold_seconds_float and concurrent_requests > debug_post_threshold_concurrency_int:
             if worker_class == "gevent":
-                from datetime import datetime
-                from gevent.util import print_run_info
-                from tempfile import gettempdir
-
                 timestamp = datetime.utcnow().isoformat(timespec="microseconds")
-                with open(f"{gettempdir()}/dump.{timestamp}", "w") as f:
+                p = f"/tmp/dump.{timestamp}"
+                with open(p, "w") as f:
                     print_run_info(file=f)
+
+                worker.log.info("Wrote dump %s", p)
