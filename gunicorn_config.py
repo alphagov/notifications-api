@@ -45,7 +45,7 @@ if debug_post_threshold_seconds:
             if worker_class == "gevent":
                 from datetime import datetime
                 from gevent.util import print_run_info
-                from tempdir import gettempdir
+                from tempfile import gettempdir
 
                 timestamp = datetime.utcnow().isoformat(timespec="microseconds")
                 with open(f"{gettempdir()}/dump.{timestamp}", "w") as f:
