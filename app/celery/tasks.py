@@ -257,7 +257,7 @@ def save_sms(
 ):
     notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(service_id)
-    template = SerialisedTemplate.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_service_id_and_version(
         notification["template"],
         service_id=service.id,
         version=notification["template_version"],
@@ -343,7 +343,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
     notification = signing.decode(encoded_notification)
 
     service = SerialisedService.from_id(service_id)
-    template = SerialisedTemplate.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_service_id_and_version(
         notification["template"],
         service_id=service.id,
         version=notification["template_version"],
@@ -403,7 +403,7 @@ def save_letter(
     postal_address = PostalAddress.from_personalisation(InsensitiveDict(notification["personalisation"]))
 
     service = SerialisedService.from_id(service_id)
-    template = SerialisedTemplate.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_service_id_and_version(
         notification["template"],
         service_id=service.id,
         version=notification["template_version"],

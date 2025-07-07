@@ -11,6 +11,7 @@ EXPECTED_TEMPLATE_ATTRIBUTES = {
     "coerce_value_to_type",
     "content",
     "from_id_and_service_id",
+    "from_id_service_id_and_version",
     "get_dict",
     "has_unsubscribe_link",
     "id",
@@ -83,7 +84,7 @@ def test_template_version_caches_in_redis_with_correct_keys(
 
     sample_template = create_template(service=sample_service)
 
-    template = SerialisedTemplate.from_id_and_service_id(sample_template.id, sample_service.id, version=1)
+    template = SerialisedTemplate.from_id_service_id_and_version(sample_template.id, sample_service.id, version=1)
 
     mock_redis_set.assert_called_once_with(
         f"service-{sample_service.id}-template-{sample_template.id}-version-1",
