@@ -4,6 +4,7 @@ from abc import abstractmethod
 from time import monotonic
 
 import requests
+from notifications_utils.clients.otel.utils import otel_duration_histogram
 from urllib3.connection import HTTPConnection
 
 from app.clients import Client, ClientException
@@ -55,6 +56,7 @@ class SmsClient(Client):
                 "Provider request for %s %s", self.name, "succeeded" if success else "failed"
             )
 
+    @otel_duration_histogram("send_sms", attributes=lambda args, kwargs: {"provider_name": args[0].name})
     def send_sms(self, to, content, reference, international, sender):
         start_time = monotonic()
 

@@ -3,6 +3,7 @@ from time import monotonic
 import boto3
 import botocore
 from flask import current_app
+from notifications_utils.clients.otel.utils import otel_duration_histogram
 
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 from app.clients.email import (
@@ -65,6 +66,9 @@ class AwsSesClient(EmailClient):
         self._client = boto3.client("sesv2", region_name=region)
         self.statsd_client = statsd_client
 
+    @otel_duration_histogram(
+        "aws_ses_send_email_duration", description="Time taken to send an email using AWS SES", unit="seconds"
+    )
     def send_email(
         self,
         *,
