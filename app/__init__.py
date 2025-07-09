@@ -33,6 +33,7 @@ from notifications_utils.logging import flask as utils_logging
 from sqlalchemy import event
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.clients import NotificationProviderClients
 from app.clients.cbc_proxy import CBCProxyClient
@@ -401,6 +402,9 @@ def register_v2_blueprints(application):
 
 
 def init_app(app):
+    # Configure ProxyFix middleware to handle X-Forwarded-For headers
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=0, x_port=0, x_prefix=0)
+
     @app.before_request
     def record_request_details():
         CONCURRENT_REQUESTS.inc()
