@@ -2,8 +2,10 @@ from datetime import datetime, timedelta
 
 import pytest
 from flask import current_app
+from sqlalchemy.orm.exc import NoResultFound
 
 from app.constants import (
+    REPORT_REQUEST_DELETED,
     REPORT_REQUEST_FAILED,
     REPORT_REQUEST_IN_PROGRESS,
     REPORT_REQUEST_NOTIFICATIONS,
@@ -11,9 +13,11 @@ from app.constants import (
 )
 from app.dao.report_requests_dao import (
     dao_create_report_request,
+    dao_get_active_report_request_by_id,
     dao_get_oldest_ongoing_report_request,
     dao_get_report_request_by_id,
     dao_update_report_request,
+    update_report_requests_status_to_deleted,
 )
 from app.models import ReportRequest
 from tests.app.db import create_report_request
@@ -344,3 +348,114 @@ def test_dao_update_report_request(sample_service, sample_user):
 
     assert report_request.status == REPORT_REQUEST_IN_PROGRESS
     assert report_request.updated_at
+
+
+def test_dao_get_active_report_request_by_id_when_deleted_report(sample_service, sample_user):
+    sample_parameter = {"notification_status": "sending"}
+
+    report_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_DELETED,
+        parameter=sample_parameter,
+    )
+
+    dao_create_report_request(report_request)
+
+    with pytest.raises(NoResultFound) as e:
+        dao_get_active_report_request_by_id(sample_service.id, report_request.id)
+
+    assert "No row was found when one was required" in str(e.value)
+
+
+def test_dao_get_active_report_request_by_id_when_active_report(sample_service, sample_user):
+    sample_parameter = {"notification_status": "sending"}
+
+    report_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_IN_PROGRESS,
+        parameter=sample_parameter,
+    )
+
+    dao_create_report_request(report_request)
+    report = dao_get_report_request_by_id(sample_service.id, report_request.id)
+
+    assert report.id == report_request.id
+    assert report.service_id == sample_service.id
+    assert report.user_id == sample_user.id
+    assert report.report_type == REPORT_REQUEST_NOTIFICATIONS
+    assert report.status == REPORT_REQUEST_IN_PROGRESS
+    assert report.parameter == sample_parameter
+
+
+def test_update_report_requests_status_to_deleted(sample_service, sample_user):
+    report_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_IN_PROGRESS,
+        parameter={"notification_status": "sending"},
+        created_at=datetime.utcnow() - timedelta(days=4),
+    )
+    dao_create_report_request(report_request)
+
+    update_report_requests_status_to_deleted()
+
+    updated_report_request = dao_get_report_request_by_id(sample_service.id, report_request.id)
+    assert updated_report_request.status == REPORT_REQUEST_DELETED
+    assert updated_report_request.updated_at is not None
+
+
+def test_update_report_requests_status_to_deleted_when_already_deleted(sample_service, sample_user):
+    report_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_DELETED,
+        parameter={"notification_status": "sending"},
+    )
+    dao_create_report_request(report_request)
+
+    update_report_requests_status_to_deleted()
+
+    updated_report_request = dao_get_report_request_by_id(sample_service.id, report_request.id)
+    assert updated_report_request.status == REPORT_REQUEST_DELETED
+    assert updated_report_request.updated_at is None
+
+
+@pytest.mark.parametrize(
+    ["created_before_days", "expected_status", "expect_updated_at_none"],
+    [
+        (0, REPORT_REQUEST_IN_PROGRESS, True),
+        (1, REPORT_REQUEST_DELETED, False),
+        (3, REPORT_REQUEST_DELETED, False),
+        (4, REPORT_REQUEST_DELETED, False),
+        (5, REPORT_REQUEST_IN_PROGRESS, True),
+        (6, REPORT_REQUEST_IN_PROGRESS, True),
+    ],
+)
+def test_update_report_requests_status_to_deleted_should_update_within_cutoff_days(
+    sample_service, sample_user, created_before_days, expected_status, expect_updated_at_none
+):
+    report_request = ReportRequest(
+        user_id=sample_user.id,
+        service_id=sample_service.id,
+        report_type=REPORT_REQUEST_NOTIFICATIONS,
+        status=REPORT_REQUEST_IN_PROGRESS,
+        parameter={"notification_status": "sending"},
+        created_at=datetime.utcnow() - timedelta(days=created_before_days),
+    )
+    dao_create_report_request(report_request)
+
+    update_report_requests_status_to_deleted()
+
+    updated_report_request = dao_get_report_request_by_id(sample_service.id, report_request.id)
+    assert updated_report_request.status == expected_status
+
+    if expect_updated_at_none:
+        assert updated_report_request.updated_at is None
+    else:
+        assert updated_report_request.updated_at is not None

@@ -31,6 +31,7 @@ from app.celery.nightly_tasks import (
     s3,
     save_daily_notification_processing_time,
     timeout_notifications,
+    update_report_status_to_deleted,
 )
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from app.models import FactProcessingTime, UnsubscribeRequest, UnsubscribeRequestHistory, UnsubscribeRequestReport
@@ -755,3 +756,11 @@ def test_delete_test_notifications_for_service_and_type_stops_if_nothing_deleted
 
     mock_delete.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
     assert not mock_task_call.called
+
+
+def test_delete_unneeded_notification_history_for_specific_hour2(mocker):
+    delete_mock = mocker.patch("app.celery.nightly_tasks.update_report_requests_status_to_deleted")
+
+    update_report_status_to_deleted()
+
+    delete_mock.assert_called_once_with()
