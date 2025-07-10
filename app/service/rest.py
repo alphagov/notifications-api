@@ -47,8 +47,8 @@ from app.dao.fact_notification_status_dao import (
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.report_requests_dao import (
     dao_create_report_request,
+    dao_get_active_report_request_by_id,
     dao_get_oldest_ongoing_report_request,
-    dao_get_report_request_by_id,
 )
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
@@ -1525,7 +1525,11 @@ def _fetch_returned_letter_data(service_id, report_date):
 
 @service_blueprint.route("/<uuid:service_id>/report-request/<uuid:request_id>", methods=["GET"])
 def get_report_request_by_id(service_id, request_id):
-    request = dao_get_report_request_by_id(service_id, request_id)
+    request = dao_get_active_report_request_by_id(service_id, request_id)
+
+    if not request:
+        raise InvalidRequest(f"Report request {request_id} not found for service {service_id}", status_code=404)
+
     return jsonify(data=request.serialize())
 
 
