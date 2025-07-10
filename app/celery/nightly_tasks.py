@@ -53,6 +53,7 @@ from app.models import FactProcessingTime, Notification
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
+from app.otel.metrics import otel_metrics
 from app.utils import get_london_midnight_in_utc
 
 
@@ -251,6 +252,11 @@ def timeout_notifications():
 
         for notification in notifications:
             statsd_client.incr(f"timeout-sending.{notification.sent_by}")
+            otel_metrics.provider_timeout_sending_counter.add(
+                amount=1,
+                attributes={"send_by": notification.sent_by},
+            )
+
             check_and_queue_callback_task(notification)
 
         current_app.logger.info(

@@ -10,6 +10,7 @@ from app.clients.email import (
     EmailClientException,
     EmailClientNonRetryableException,
 )
+from app.otel.metrics import otel_metrics
 
 ses_response_map = {
     "Permanent": {
@@ -102,6 +103,13 @@ class AwsSesClient(EmailClient):
             )
         except botocore.exceptions.ClientError as e:
             self.statsd_client.incr("clients.ses.error")
+            otel_metrics.provider_status_counter.add(
+                amount=1,
+                attributes={
+                    "provider": "ses",
+                    "status": "error",
+                },
+            )
 
             # https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html#API_SendEmail_Errors
             if e.response["Error"]["Code"] == "InvalidParameterValue":
@@ -110,6 +118,13 @@ class AwsSesClient(EmailClient):
                 raise AwsSesClientThrottlingSendRateException(str(e)) from e
             else:
                 self.statsd_client.incr("clients.ses.error")
+                otel_metrics.provider_status_counter.add(
+                    amount=1,
+                    attributes={
+                        "provider": "ses",
+                        "status": "error",
+                    },
+                )
                 raise AwsSesClientException(str(e) + e.response["Error"]["Code"]) from e
         except Exception as e:
             self.statsd_client.incr("clients.ses.error")
@@ -124,7 +139,20 @@ class AwsSesClient(EmailClient):
                 },
             )
             self.statsd_client.timing("clients.ses.request-time", elapsed_time)
+            otel_metrics.provider_request_time_histogram.record(
+                amount=elapsed_time,
+                attributes={
+                    "provider_name": "ses",
+                },
+            )
             self.statsd_client.incr("clients.ses.success")
+            otel_metrics.provider_status_counter.add(
+                amount=1,
+                attributes={
+                    "provider": "ses",
+                    "status": "success",
+                },
+            )
             return response["MessageId"]
 
 

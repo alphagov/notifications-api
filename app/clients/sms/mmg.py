@@ -3,6 +3,7 @@ import json
 import requests
 
 from app.clients.sms import SmsClient, SmsClientResponseException
+from app.otel.decorators import otel
 
 # For some extra context, see google drive: GOV.UK Notify -> SMS suppliers -> Detailed failure statuses
 mmg_response_map = {
@@ -87,6 +88,14 @@ class MMGClient(SmsClient):
         self.api_key = self.current_app.config.get("MMG_API_KEY")
         self.mmg_url = self.current_app.config.get("MMG_URL")
         self.receipt_url = self.current_app.config.get("MMG_RECEIPT_URL")
+
+    @otel(
+        "provider_status_counter",
+        "provider_request_time_histogram",
+        attributes={"provider": "mmg"},
+    )
+    def send_sms(self, *args, **kwargs):
+        return super().send_sms(*args, **kwargs)
 
     def try_send_sms(self, to, content, reference, international, sender):
         data = {"reqType": "BULK", "MSISDN": to, "msg": content, "sender": sender, "cid": reference, "multi": True}
