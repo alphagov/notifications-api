@@ -150,7 +150,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a97b36f6a32e7bb917152c8cd716fe65fa15ac9f
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@bfc6372b5fea95e6439d67b351522391c8802339
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -181,11 +181,12 @@ pyjwt==2.10.1
     #   notifications-python-client
 pypdf==3.17.0
     # via notifications-utils
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via
     #   arrow
     #   botocore
     #   celery
+    #   notifications-utils
 python-json-logger==3.3.0
     # via notifications-utils
 pytz==2024.2
