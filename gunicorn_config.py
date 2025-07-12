@@ -15,8 +15,8 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
-workers = 1
-worker_class = "gevent"
+workers = 2
+worker_class = "eventlet"
 worker_connections = 256
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = 32  # disable temporarily for diagnosing issues
