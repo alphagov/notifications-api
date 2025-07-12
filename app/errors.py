@@ -1,7 +1,7 @@
 from flask import current_app, json, jsonify
 from jsonschema import ValidationError as JsonSchemaValidationError
 from marshmallow import ValidationError
-from notifications_utils.eventlet import EventletTimeout
+from notifications_utils.greenlet import RequestHandlingTimeout
 from notifications_utils.recipient_validation.errors import InvalidRecipientError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
@@ -98,8 +98,8 @@ def register_errors(blueprint):  # noqa: C901
         current_app.logger.info(e, exc_info=True)
         return jsonify(result="error", message="No result found"), 404
 
-    @blueprint.errorhandler(EventletTimeout)
-    def eventlet_timeout(error):
+    @blueprint.errorhandler(RequestHandlingTimeout)
+    def request_handling_timeout(error):
         current_app.logger.exception(error)
         return jsonify(result="error", message="Timeout serving request"), 504
 
