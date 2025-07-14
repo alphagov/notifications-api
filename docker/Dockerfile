@@ -9,6 +9,7 @@ ENV VIRTUAL_ENV="/opt/venv"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+    procps \
     libcurl4 \
     curl \
     && apt-get -y clean && \
@@ -34,7 +35,8 @@ COPY requirements.txt .
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN echo "Installing python requirements" && \
     python3 -m venv /opt/venv && \
-    uv pip sync --python /opt/venv/bin/python requirements.txt
+    uv pip sync --python /opt/venv/bin/python requirements.txt && \
+    /opt/venv/bin/pip install --no-cache-dir py-spy
 
 COPY . .
 RUN make generate-version-file  # This file gets copied across
