@@ -44,7 +44,19 @@ RUN make generate-version-file  # This file gets copied across
 ##### Production Image #######################################################
 FROM base AS production
 
+# Temporarily switch to root to install sudo
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends sudo && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/*
+
+# Create user and add to sudo group
 RUN groupadd -r notify && useradd -r -g notify notify && chown -R notify:notify /home/vcap
+RUN usermod -aG sudo notify && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Switch back to the non-root user
 USER notify
 
 RUN mkdir /home/vcap/logs
