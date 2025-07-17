@@ -67,12 +67,13 @@ ENV PATH="/opt/venv/bin:${PATH}"
 COPY --chown=notify:notify app app
 COPY --chown=notify:notify migrations migrations
 COPY --chown=notify:notify templates templates
-COPY --chown=notify:notify run_celery.py gunicorn_config.py application.py entrypoint.sh ./
+COPY --chown=notify:notify run_celery.py gunicorn_config.py application.py entrypoint.sh run_and_upload_profile.sh ./
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 
 RUN python -m compileall . && \
     chown -R notify:notify /home/vcap/app && \
-    chmod +x /home/vcap/app/entrypoint.sh
+    chmod +x /home/vcap/app/entrypoint.sh && \
+    chmod +x /home/vcap/app/run_and_upload_profile.sh
 
 ENTRYPOINT [ "/home/vcap/app/entrypoint.sh" ]
 
