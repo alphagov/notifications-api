@@ -7,6 +7,10 @@ from itsdangerous import BadSignature
 
 from app import signing
 from app.celery.process_letter_client_response_tasks import process_letter_callback_data
+from app.constants import (
+    DVLA_NOTIFICATION_DISPATCHED,
+    DVLA_NOTIFICATION_REJECTED,
+)
 from app.errors import InvalidRequest
 from app.models import LetterCostThreshold
 from app.notifications.notifications_letter_callback import (
@@ -184,17 +188,13 @@ def test_process_letter_callback_raises_error_if_token_and_notification_id_in_da
     )
 
 
-@pytest.mark.parametrize(
-    "status,transition_date,expected_month,expected_day",
-    [("DESPATCHED", "2025-04-01T23:30:07Z", 4, 2), ("REJECTED", "2025-02-01T23:30:07Z", 2, 1)],
-)
-def test_process_letter_callback_calls_process_letter_callback_data_task(
-    client, mock_celery_task, mock_dvla_callback_data, status, transition_date, expected_month, expected_day
+def test_process_dvla_dispatched_letter_callback_calls_process_letter_callback_data_task(
+    client, mock_celery_task, mock_dvla_callback_data
 ):
     mock_task = mock_celery_task(process_letter_callback_data)
     data = mock_dvla_callback_data()
-    data["data"]["jobStatus"] = status
-    data["data"]["transitionDate"] = transition_date
+    data["data"]["jobStatus"] = DVLA_NOTIFICATION_DISPATCHED
+    data["data"]["transitionDate"] = "2025-04-01T23:30:07Z"
 
     response = client.post(
         url_for(
@@ -211,9 +211,46 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
         kwargs={
             "notification_id": uuid.UUID("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
             "page_count": 5,
-            "dvla_status": status,
+            "dvla_status": DVLA_NOTIFICATION_DISPATCHED,
             "cost_threshold": LetterCostThreshold.unsorted,
-            "despatch_date": datetime.date(2025, expected_month, expected_day),
+            "despatch_date": datetime.date(2025, 4, 2),
+        },
+    )
+
+
+def test_process_rejected_letter_callback_calls_process_letter_callback_data_task(
+    client, mock_dvla_callback_data, mock_celery_task
+):
+    mock_task = mock_celery_task(process_letter_callback_data)
+    rejected_data = {
+        "comment": "Unable to download PDF  - Connection reset",
+        "jobId": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
+        "jobStatus": DVLA_NOTIFICATION_REJECTED,
+        "jobType": "NOTIFY",
+        "templateReference": "NOTIFY",
+        "transitionDate": "2025-06-23T17:17:04Z",
+    }
+    data = mock_dvla_callback_data()
+    data["data"] = rejected_data
+
+    response = client.post(
+        url_for(
+            "notifications_letter_callback.process_letter_callback",
+            token=signing.encode("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
+        ),
+        data=json.dumps(data),
+    )
+
+    assert response.status_code == 204, response.json
+
+    mock_task.assert_called_once_with(
+        queue="letter-callbacks",
+        kwargs={
+            "notification_id": uuid.UUID("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
+            "dvla_status": DVLA_NOTIFICATION_REJECTED,
+            "despatch_date": datetime.date(2025, 6, 23),
+            "page_count": None,
+            "cost_threshold": None,
         },
     )
 
@@ -241,7 +278,25 @@ def test_check_token_passes_matching_paylods(caplog, client):
     assert not caplog.records, "Expected no log messages, but some were captured."
 
 
-def test_extract_properties_from_request(mock_dvla_callback_data):
+def test_dvla_rejected_callback_extract_properties_from_request(mock_dvla_callback_data):
+    overrides = {
+        "data": {
+            "jobStatus": DVLA_NOTIFICATION_REJECTED,
+            "transitionDate": "2025-03-31T13:15:07Z",
+        }
+    }
+
+    data = mock_dvla_callback_data(overrides)
+
+    letter_update = extract_properties_from_request(data)
+
+    assert letter_update.page_count is None
+    assert letter_update.status == DVLA_NOTIFICATION_REJECTED
+    assert letter_update.cost_threshold is None
+    assert letter_update.despatch_date == datetime.date(2025, 3, 31)
+
+
+def test_dvla_dispatched_callback_extract_properties_from_request(mock_dvla_callback_data):
     overrides = {
         "data": {
             "despatchProperties": [
@@ -249,7 +304,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
                 {"key": "postageClass", "value": "1ST"},
                 {"key": "mailingProduct", "value": "MM UNSORTED"},
             ],
-            "jobStatus": "REJECTED",
+            "jobStatus": DVLA_NOTIFICATION_DISPATCHED,
             "transitionDate": "2025-03-31T13:15:07Z",
         }
     }
@@ -259,7 +314,7 @@ def test_extract_properties_from_request(mock_dvla_callback_data):
     letter_update = extract_properties_from_request(data)
 
     assert letter_update.page_count == 10
-    assert letter_update.status == "REJECTED"
+    assert letter_update.status == DVLA_NOTIFICATION_DISPATCHED
     assert letter_update.cost_threshold == LetterCostThreshold.unsorted
     assert letter_update.despatch_date == datetime.date(2025, 3, 31)
 

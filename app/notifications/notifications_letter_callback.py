@@ -89,8 +89,11 @@ dvla_letter_callback_schema = {
                 "jobStatus": {"type": "string", "enum": [DVLA_NOTIFICATION_DISPATCHED, DVLA_NOTIFICATION_REJECTED]},
                 "templateReference": {"type": "string"},
                 "transitionDate": {"type": "string", "format": "date-time"},
+                "comment": {"type": "string"},
             },
-            "required": ["despatchProperties", "jobId", "jobStatus", "transitionDate"],
+            "required": ["jobId", "jobStatus", "transitionDate"],
+            "if": {"properties": {"jobStatus": {"const": DVLA_NOTIFICATION_DISPATCHED}}},
+            "then": {"required": ["despatchProperties"]},
         },
         "metadata": {
             "type": "object",
@@ -161,25 +164,35 @@ def check_token_matches_payload(token_id, json_id):
 
 @dataclass
 class LetterUpdate:
-    page_count: int
+    page_count: int | None
     status: str
-    cost_threshold: LetterCostThreshold
+    cost_threshold: LetterCostThreshold | None
     despatch_date: datetime.date
 
 
 def extract_properties_from_request(request_data) -> LetterUpdate:
-    despatch_properties = request_data["data"]["despatchProperties"]
+    data = request_data["data"]
+    status = data["jobStatus"]
+    despatch_datetime = data["transitionDate"]
+
+    despatch_date = convert_utc_to_bst(datetime.datetime.strptime(despatch_datetime, "%Y-%m-%dT%H:%M:%SZ")).date()
+
+    if status == DVLA_NOTIFICATION_REJECTED:
+        return LetterUpdate(
+            page_count=None,
+            status=status,
+            cost_threshold=None,
+            despatch_date=despatch_date,
+        )
+
+    despatch_properties = data["despatchProperties"]
 
     # Since validation guarantees the presence of "totalSheets", we can directly extract it
     page_count = int(next(item["value"] for item in despatch_properties if item["key"] == "totalSheets"))
-    status = request_data["data"]["jobStatus"]
 
     mailing_product = next(item["value"] for item in despatch_properties if item["key"] == "mailingProduct")
     postage = next(item["value"] for item in despatch_properties if item["key"] == "postageClass")
     cost_threshold = _get_cost_threshold(mailing_product, postage)
-
-    despatch_datetime = request_data["data"]["transitionDate"]
-    despatch_date = convert_utc_to_bst(datetime.datetime.strptime(despatch_datetime, "%Y-%m-%dT%H:%M:%SZ")).date()
 
     return LetterUpdate(
         page_count=page_count,
