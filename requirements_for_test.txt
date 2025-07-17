@@ -220,7 +220,7 @@ moto==5.0.11
     # via -r requirements_for_test.in
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a97b36f6a32e7bb917152c8cd716fe65fa15ac9f
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@e4635d7b91db5d8cfe7aa23cf20887f1687f05bd
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
@@ -233,7 +233,7 @@ packaging==23.2
     #   marshmallow
     #   marshmallow-sqlalchemy
     #   pytest
-phonenumbers==8.13.52
+phonenumbers==9.0.9
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -280,7 +280,7 @@ pytest-testmon==2.1.1
     # via -r requirements_for_test_common.in
 pytest-xdist==3.6.1
     # via -r requirements_for_test_common.in
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via
     #   -r requirements.txt
     #   arrow
@@ -288,6 +288,7 @@ python-dateutil==2.8.2
     #   celery
     #   freezegun
     #   moto
+    #   notifications-utils
 python-json-logger==3.3.0
     # via
     #   -r requirements.txt
