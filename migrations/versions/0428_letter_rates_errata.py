@@ -40,7 +40,7 @@ def upgrade():
             post_class = 'first'
     """
         ),
-        rate_change_date=RATE_CHANGE_DATE,
+        {"rate_change_date": RATE_CHANGE_DATE},
     )
 
     # add correct new rates
@@ -54,12 +54,14 @@ def upgrade():
                     VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
             """
                 ),
-                id=id,
-                start_date=start_date,
-                sheet_count=sheet_count,
-                rate=rate,
-                crown=crown,
-                post_class=post_class,
+                {
+                    "id": uuid.uuid4(),
+                    "start_date": start_date,
+                    "sheet_count": sheet_count,
+                    "rate": rate,
+                    "crown": crown,
+                    "post_class": post_class,
+                }
             )
 
 

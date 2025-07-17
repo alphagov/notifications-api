@@ -38,12 +38,14 @@ def upgrade():
                     VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
             """
                 ),
-                id=rates_id,
-                start_date=RATE_CHANGE_DATE,
-                sheet_count=sheet_count,
-                rate=rate,
-                crown=crown,
-                post_class=POST_CLASS,
+                {
+                    "id": uuid.uuid4(),
+                    "start_date": RATE_CHANGE_DATE,
+                    "sheet_count": sheet_count,
+                    "rate": rate,
+                    "crown": crown,
+                    "post_class": POST_CLASS,
+                }
             )
 
 

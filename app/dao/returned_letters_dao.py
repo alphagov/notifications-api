@@ -142,8 +142,6 @@ def fetch_returned_letter_callback_data_dao(notification_id, service_id):
                 table.created_by_id,
                 User.name.label("user_name"),
                 Job.original_file_name,
-                # row numbers in notifications db table start at 0, but in spreadsheet uploaded by service user
-                # the recipient rows would start at row 2 (row 1 is column headers).
                 (table.job_row_number + 2).label("job_row_number"),
             )
             .outerjoin(User, table.created_by_id == User.id)
@@ -154,7 +152,11 @@ def fetch_returned_letter_callback_data_dao(notification_id, service_id):
                 ReturnedLetter.notification_id == table.id,
                 table.template_id == Template.id,
             )
-            .one_or_none()
+            .execution_options(populate_existing=True)
+            .enable_eagerloads(False)
+            .with_labels()
         )
-        if result:
-            return result
+
+        result_dict = db.session.execute(result.statement).mappings().one_or_none()
+        if result_dict:
+            return result_dict

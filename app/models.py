@@ -19,14 +19,7 @@ from notifications_utils.template import (
     PlainTextEmailTemplate,
     SMSMessageTemplate,
 )
-from sqlalchemy import (
-    CheckConstraint,
-    Index,
-    String,
-    UniqueConstraint,
-    and_,
-    func,
-)
+from sqlalchemy import CheckConstraint, Index, String, UniqueConstraint, and_, func
 from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr

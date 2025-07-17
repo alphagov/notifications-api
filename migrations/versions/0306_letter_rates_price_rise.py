@@ -39,7 +39,7 @@ CHANGEOVER_DATE = datetime(2019, 9, 30, 23, 0)
 def upgrade():
     # all old rates are going in the bin
     conn = op.get_bind()
-    conn.execute(text("UPDATE letter_rates SET end_date = :start WHERE end_date IS NULL"), start=CHANGEOVER_DATE)
+    conn.execute(text("UPDATE letter_rates SET end_date = :start WHERE end_date IS NULL"), {"start": CHANGEOVER_DATE})
 
     base_prices = {
         "second": 30,

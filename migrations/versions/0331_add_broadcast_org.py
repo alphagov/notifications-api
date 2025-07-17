@@ -55,14 +55,16 @@ def upgrade():
         conn = op.get_bind()
         conn.execute(
             sa.text(insert_sql),
-            id=organisation_id,
-            name=f"Broadcast Services ({environment})",
-            active=True,
-            agreement_signed=None,
-            crown=None,
-            organisation_type="central",
+            {
+                "id": organisation_id,
+                "name": f"Broadcast Services ({environment})",
+                "active": True,
+                "agreement_signed": None,
+                "crown": None,
+                "organisation_type": "central",
+            }
         )
-        conn.execute(sa.text(update_service_set_broadcast_org_sql), organisation_id=organisation_id)
+        conn.execute(sa.text(update_service_set_broadcast_org_sql), {"organisation_id": organisation_id})
 
 
 def downgrade():

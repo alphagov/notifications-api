@@ -6,6 +6,7 @@ import os
 import sys
 
 from alembic.script import ScriptDirectory
+from sqlalchemy import text
 
 sys.path.append(".")
 
@@ -63,7 +64,7 @@ def fix_branch_point(migrations, branch_point, heads):
     print(f"Migrations directory has a branch point at {branch_point.revision}")
 
     branches = get_branches(migrations, branch_point, heads)
-    move_branch = choice("Select migrations to move", branches, lambda x: " -> ".join(m.revision for m in x))
+    move_branch = choice(text("Select migrations to move", branches, lambda x: " -> ".join(m.revision for m in x)))
     branches.remove(move_branch)
 
     reorder_revisions(move_branch, branch_point.revision, branches[0][-1].revision)

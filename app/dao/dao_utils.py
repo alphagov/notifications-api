@@ -10,12 +10,9 @@ def autocommit(func):
     @wraps(func)
     def commit_or_rollback(*args, **kwargs):
         try:
-            res = func(*args, **kwargs)
-
-            if not db.session.registry().transaction.nested:
-                db.session.commit()
-
-            return res
+            result = func(*args, **kwargs)
+            db.session.commit()
+            return result
         except Exception:
             db.session.rollback()
             raise

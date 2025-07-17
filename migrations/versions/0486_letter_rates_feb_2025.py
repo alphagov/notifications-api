@@ -36,7 +36,7 @@ def upgrade():
             AND post_class IN ('europe', 'rest-of-world')
             """
         ),
-        end_date=RATE_CHANGE_DATE,
+        {"end_date": RATE_CHANGE_DATE},
     )
     # add correct new rates
     for sheet_count, rate in NEW_INTERNATIONAL_RATES:
@@ -51,12 +51,14 @@ def upgrade():
                         (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
                     """
                 ),
-                id=id,
-                start_date=RATE_CHANGE_DATE,
-                sheet_count=sheet_count,
-                rate=rate,
-                crown=crown,
-                post_class=post_class,
+                {
+                    "id": uuid.uuid4(),
+                    "start_date": RATE_CHANGE_DATE,
+                    "sheet_count": sheet_count,
+                    "rate": rate,
+                    "crown": crown,
+                    "post_class": post_class,
+                }
             )
 
 

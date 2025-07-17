@@ -44,7 +44,7 @@ def upgrade():
         AND post_class IN ('first', 'second')
     """
         ),
-        end_date=RATE_CHANGE_DATE,
+        {"end_date": RATE_CHANGE_DATE},
     )
 
     for crown in [True, False]:
@@ -57,12 +57,14 @@ def upgrade():
                     VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
             """
                 ),
-                id=id,
-                start_date=RATE_CHANGE_DATE,
-                sheet_count=sheet_count,
-                rate=rate,
-                crown=crown,
-                post_class=post_class,
+                {
+                    "id": uuid.uuid4(),
+                    "start_date": RATE_CHANGE_DATE,
+                    "sheet_count": sheet_count,
+                    "rate": rate,
+                    "crown": crown,
+                    "post_class": post_class,
+                }
             )
 
 

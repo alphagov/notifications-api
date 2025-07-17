@@ -10,8 +10,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
-import sqlalchemy as sa
-
+from sqlalchemy import text
 
 revision = "0416_add_org_user_perms"
 down_revision = "0415_org_invite_perms"
@@ -20,15 +19,15 @@ down_revision = "0415_org_invite_perms"
 def upgrade():
     conn = op.get_bind()
 
-    results = conn.execute(
+    results = conn.execute(text(
         """
     SELECT user_id, organisation_id FROM user_to_organisation
     """
-    ).fetchall()
+    )).fetchall()
 
     for user_id, organisation_id in results:
         conn.execute(
-            sa.sql.text(
+            text(
                 "INSERT INTO organisation_user_permissions "
                 "(id, created_at, user_id, organisation_id, permission) "
                 "VALUES (:id, :created_at, :user_id, :organisation_id, :permission)"

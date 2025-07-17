@@ -36,7 +36,7 @@ def get_new_rate(sheet_count, post_class):
 
 def upgrade():
     conn = op.get_bind()
-    conn.execute(text("UPDATE letter_rates SET end_date = :start WHERE end_date IS NULL"), start=CHANGEOVER_DATE)
+    conn.execute(text("UPDATE letter_rates SET end_date = :start WHERE end_date IS NULL"), {"start": CHANGEOVER_DATE})
 
     op.bulk_insert(
         LetterRate.__table__,

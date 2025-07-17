@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
-from sqlalchemy.sql import text
+from sqlalchemy import text
 
 from app.models import LetterRate
 
@@ -21,12 +21,12 @@ down_revision = "0369_update_sms_rates"
 
 def upgrade():
     conn = op.get_bind()
-    conn.execute("DELETE FROM provider_details WHERE identifier = 'reach'")
+    conn.execute(text("DELETE FROM provider_details WHERE identifier = 'reach'"))
 
 
 def downgrade():
     conn = op.get_bind()
-    conn.execute(
+    conn.execute(text(
         """
         INSERT INTO provider_details (
             id,
@@ -51,4 +51,4 @@ def downgrade():
         """.format(
             str(uuid.uuid4()),
         )
-    )
+    ))
