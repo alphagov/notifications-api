@@ -362,6 +362,7 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
             api_key=api_key,
             status=status,
             reply_to_text=reply_to_text,
+            _autocommit=False,
         )
         filename = upload_letter_pdf(notification, letter_content, precompiled=True)
         db.session.commit()

@@ -178,11 +178,11 @@ def link_service_to_organisation(organisation_id):
     data = request.get_json()
     validate(data, post_link_service_to_organisation_schema)
     service = dao_fetch_service_by_id(data["service_id"])
+    service.organisation = None
 
     try:
-        service.organisation = None
-        dao_add_service_to_organisation(service, organisation_id)
-        set_default_free_allowance_for_service(service, year_start=None)
+        dao_add_service_to_organisation(service, organisation_id, _autocommit=False)
+        set_default_free_allowance_for_service(service, year_start=None, _autocommit=False)
         db.session.commit()
     except Exception:
         db.session.rollback()

@@ -262,7 +262,7 @@ def dao_create_service(  # noqa: C901
     service,
     user,
     service_permissions=None,
-):  
+):
     if not user:
         raise ValueError("Can't create a service without a user")
 

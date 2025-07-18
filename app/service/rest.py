@@ -293,14 +293,14 @@ def create_service():
 
     # unpack valid json into service object
     valid_service = Service.from_json(data)
-    dao_create_service(valid_service, user)
-    set_default_free_allowance_for_service(service=valid_service, year_start=None)
-    with db.session.begin_nested():
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            raise
+
+    try:
+        dao_create_service(service=valid_service, user=user, _autocommit=False)
+        set_default_free_allowance_for_service(service=valid_service, year_start=None, _autocommit=False)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
     return jsonify(data=service_schema.dump(valid_service)), 201
 

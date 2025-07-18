@@ -10,8 +10,10 @@ def autocommit(func):
     @wraps(func)
     def commit_or_rollback(*args, **kwargs):
         try:
+            _autocommit = kwargs.pop("_autocommit", True)
             result = func(*args, **kwargs)
-            db.session.commit()
+            if _autocommit:
+                db.session.commit()
             return result
         except Exception:
             db.session.rollback()

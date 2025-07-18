@@ -69,11 +69,10 @@ def create_test_db(database_uri):
     db_uri_parts = database_uri.split("/")
     postgres_db_uri = "/".join(db_uri_parts[:-1] + ["postgres"])
 
-    postgres_db = sqlalchemy.create_engine(
-        postgres_db_uri, echo=False, isolation_level="AUTOCOMMIT", client_encoding="utf8"
-    )
+    postgres_db = sqlalchemy.create_engine(postgres_db_uri, echo=False, client_encoding="utf8")
     try:
         with postgres_db.connect() as connection:
+            connection.execution_options(isolation_level="AUTOCOMMIT")
             connection.execute(sqlalchemy.sql.text(f"CREATE DATABASE {db_uri_parts[-1]}"))
     except sqlalchemy.exc.ProgrammingError:
         # database "test_notification_api_master" already exists
@@ -148,6 +147,7 @@ def notify_db_session(_notify_db, sms_providers):
 
     `notify_db_session.commit()`
     """
+
     yield _notify_db.session
 
     _clean_database(_notify_db)
