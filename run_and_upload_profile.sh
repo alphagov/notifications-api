@@ -25,4 +25,4 @@ cleanup() {
 trap cleanup EXIT
 
 # Start py-spy, which will in turn start Gunicorn.
-py-spy record -r 25 -o "$LOCAL_PROFILE_PATH" -s -- gunicorn -c /home/vcap/app/gunicorn_config.py application
+py-spy record -r 13 -o "$LOCAL_PROFILE_PATH" -s -- gunicorn -c /home/vcap/app/gunicorn_config.py application
