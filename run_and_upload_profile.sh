@@ -4,7 +4,7 @@
 set -e
 
 # --- Configuration ---
-S3_BUCKET_URI="${S3_BUCKET_PYTHON_PROFILING_RESULTS}/profile-313-$(date +%s).svg"
+S3_BUCKET_URI="s3://dev-b-python-profiling-results/profile-313-$(date +%s).svg"
 LOCAL_PROFILE_PATH="/tmp/profile.svg"
 
 # --- Main Logic ---
@@ -25,4 +25,4 @@ cleanup() {
 trap cleanup EXIT
 
 # Start py-spy, which will in turn start Gunicorn.
-py-spy record -r 13 -o "$LOCAL_PROFILE_PATH" -s -- gunicorn -c /home/vcap/app/gunicorn_config.py application
+py-spy record -r 13 -o "$LOCAL_PROFILE_PATH" -s -n -- gunicorn -c /home/vcap/app/gunicorn_config.py application
