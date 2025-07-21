@@ -1,30 +1,29 @@
+#!/bin/sh
+set -e
+
 # --- Configuration ---
-S3_BUCKET_URI="s3://dev-b-python-profiling-results/profile-run-$(date +%s)-final.svg"
 LOCAL_PROFILE_PATH="/tmp/profile.svg"
 PROFILE_DURATION=600 # 600 seconds = 10 minutes
 
-# --- Main Logic ---
-cleanup() {
-  echo "FINAL UPLOAD: Process exited. Checking for profile..."
-  if [ -s "$LOCAL_PROFILE_PATH" ]; then
-    echo "FINAL UPLOAD: Found profile file, uploading to ${S3_BUCKET_URI}..."
-    aws s3 cp "$LOCAL_PROFILE_PATH" "$S3_BUCKET_URI"
-    echo "FINAL UPLOAD: Upload complete."
-  else
-    echo "FINAL UPLOAD: Profile file not found. Skipping upload."
-  fi
-}
-trap cleanup EXIT
-
 echo "Starting py-spy to profile Gunicorn for ${PROFILE_DURATION} seconds..."
+echo "Profile will be saved to ${LOCAL_PROFILE_PATH}"
 
 # Run py-spy in the foreground for a fixed duration.
 # It will automatically stop and save the file when the duration is up.
 py-spy record \
-  -r 15 \
+  -r 10 \
   -o "$LOCAL_PROFILE_PATH" \
   -s \
   -n \
   -d "$PROFILE_DURATION" \
   -- \
-  gunicorn -c /home/vcap/app/gunicorn_config.py application
+  /opt/venv/bin/gunicorn -c /home/vcap/app/gunicorn_config.py application
+
+# After py-spy exits and saves its file, the script will get here.
+echo "py-spy has finished and saved the profile.svg."
+echo "Container will now idle and can now be accessed to retrieve the profile.svg file."
+
+# This infinite loop keeps the container alive after the profile is generated.
+while true; do
+  sleep 3600
+done
