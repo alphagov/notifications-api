@@ -51,7 +51,7 @@ echo "py-spy errors will be logged to ${PYSPY_LOG_PATH}"
 # 1. Redirect py-spy's stderr (2) to its log file.
 # 2. Use 'sh -c' to run gunicorn in its own shell.
 # 3. In that subshell, redirect gunicorn's stderr (2) to its stdout (1).
-py-spy record -r 10 -o "$LOCAL_PROFILE_PATH" -s -n \
+py-spy record -r 15 -o "$LOCAL_PROFILE_PATH" -s -n \
   2> "$PYSPY_LOG_PATH" \
   -- \
   sh -c 'exec gunicorn -c /home/vcap/app/gunicorn_config.py application 2>&1' &
