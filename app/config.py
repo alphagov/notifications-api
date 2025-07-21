@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from celery.schedules import crontab
 from kombu import Exchange, Queue
+from notifications_utils.config import BaseConfig
 
 
 class QueueNames:
@@ -88,7 +89,7 @@ class TaskNames:
     RECREATE_PDF_FOR_PRECOMPILED_LETTER = "recreate-pdf-for-precompiled-letter"
 
 
-class Config:
+class Config(BaseConfig):
     # URL of admin app
     ADMIN_BASE_URL = os.getenv("ADMIN_BASE_URL", "http://localhost:6012")
 
@@ -99,6 +100,8 @@ class Config:
     # Celery log levels
     CELERY_WORKER_LOG_LEVEL = os.getenv("CELERY_WORKER_LOG_LEVEL", "CRITICAL").upper()
     CELERY_BEAT_LOG_LEVEL = os.getenv("CELERY_BEAT_LOG_LEVEL", "INFO").upper()
+
+    OTEL_EXPORT_TYPE = os.environ.get("OTEL_EXPORT_TYPE", "otlp").lower().strip()
 
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = "notify-admin"

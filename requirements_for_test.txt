@@ -97,6 +97,13 @@ cryptography==44.0.1
     # via
     #   moto
     #   trustme
+deprecated==1.2.18
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-api
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-semantic-conventions
 dnspython==2.6.1
     # via
     #   -r requirements.txt
@@ -143,6 +150,11 @@ freezegun==1.5.1
     # via -r requirements_for_test_common.in
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.txt
+googleapis-common-protos==1.70.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 govuk-bank-holidays==0.15
     # via
     #   -r requirements.txt
@@ -151,6 +163,10 @@ greenlet==3.2.2
     # via
     #   -r requirements.txt
     #   eventlet
+grpcio==1.73.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp-proto-grpc
 gunicorn==23.0.0
     # via
     #   -r requirements.txt
@@ -160,6 +176,10 @@ idna==3.7
     #   -r requirements.txt
     #   requests
     #   trustme
+importlib-metadata==8.6.1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-api
 iniconfig==2.0.0
     # via pytest
 iso8601==2.1.0
@@ -220,8 +240,113 @@ moto==5.0.11
     # via -r requirements_for_test.in
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a97b36f6a32e7bb917152c8cd716fe65fa15ac9f
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@c59a85f44ad83ee0d4e4f09499b5b58b5239cf2c
     # via -r requirements.txt
+opentelemetry-api==1.33.1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-distro
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-botocore
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-redis
+    #   opentelemetry-instrumentation-requests
+    #   opentelemetry-instrumentation-sqlalchemy
+    #   opentelemetry-instrumentation-wsgi
+    #   opentelemetry-processor-baggage
+    #   opentelemetry-propagator-aws-xray
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-distro==0.54b1
+    # via
+    #   -r requirements.txt
+    #   notifications-utils
+opentelemetry-exporter-otlp==1.33.1
+    # via
+    #   -r requirements.txt
+    #   notifications-utils
+opentelemetry-exporter-otlp-proto-common==1.33.1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-grpc==1.33.1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp
+opentelemetry-exporter-otlp-proto-http==1.33.1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp
+opentelemetry-instrumentation==0.54b1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-distro
+    #   opentelemetry-instrumentation-botocore
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-redis
+    #   opentelemetry-instrumentation-requests
+    #   opentelemetry-instrumentation-sqlalchemy
+    #   opentelemetry-instrumentation-wsgi
+opentelemetry-instrumentation-botocore==0.54b1
+    # via -r requirements.txt
+opentelemetry-instrumentation-celery==0.54b1
+    # via -r requirements.txt
+opentelemetry-instrumentation-flask==0.54b1
+    # via -r requirements.txt
+opentelemetry-instrumentation-redis==0.54b1
+    # via -r requirements.txt
+opentelemetry-instrumentation-requests==0.54b1
+    # via -r requirements.txt
+opentelemetry-instrumentation-sqlalchemy==0.54b1
+    # via -r requirements.txt
+opentelemetry-instrumentation-wsgi==0.54b1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-flask
+opentelemetry-processor-baggage==0.54b1
+    # via
+    #   -r requirements.txt
+    #   notifications-utils
+opentelemetry-propagator-aws-xray==1.0.2
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-botocore
+opentelemetry-proto==1.33.1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp-proto-common
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk==1.33.1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-distro
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-processor-baggage
+opentelemetry-semantic-conventions==0.54b1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-botocore
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-redis
+    #   opentelemetry-instrumentation-requests
+    #   opentelemetry-instrumentation-sqlalchemy
+    #   opentelemetry-instrumentation-wsgi
+    #   opentelemetry-sdk
+opentelemetry-util-http==0.54b1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-requests
+    #   opentelemetry-instrumentation-wsgi
 ordered-set==4.1.0
     # via
     #   -r requirements.txt
@@ -232,6 +357,9 @@ packaging==23.2
     #   gunicorn
     #   marshmallow
     #   marshmallow-sqlalchemy
+    #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-sqlalchemy
     #   pytest
 phonenumbers==8.13.52
     # via
@@ -247,6 +375,11 @@ prompt-toolkit==3.0.31
     # via
     #   -r requirements.txt
     #   click-repl
+protobuf==5.29.5
+    # via
+    #   -r requirements.txt
+    #   googleapis-common-protos
+    #   opentelemetry-proto
 psutil==6.1.1
     # via -r requirements.txt
 psycopg2-binary==2.9.10
@@ -280,7 +413,7 @@ pytest-testmon==2.1.1
     # via -r requirements_for_test_common.in
 pytest-xdist==3.6.1
     # via -r requirements_for_test_common.in
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via
     #   -r requirements.txt
     #   arrow
@@ -288,6 +421,7 @@ python-dateutil==2.8.2
     #   celery
     #   freezegun
     #   moto
+    #   notifications-utils
 python-json-logger==3.3.0
     # via
     #   -r requirements.txt
@@ -317,6 +451,7 @@ requests==2.32.2
     #   moto
     #   notifications-python-client
     #   notifications-utils
+    #   opentelemetry-exporter-otlp-proto-http
     #   requests-mock
     #   responses
 requests-mock==1.12.1
@@ -370,6 +505,10 @@ statsd==4.0.1
     #   notifications-utils
 trustme==0.9.0
     # via -r requirements_for_test.in
+typing-extensions==4.14.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-sdk
 tzdata==2024.1
     # via
     #   -r requirements.txt
@@ -401,5 +540,17 @@ werkzeug==3.1.3
     #   flask
     #   moto
     #   pytest-httpserver
+wrapt==1.17.2
+    # via
+    #   -r requirements.txt
+    #   deprecated
+    #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-redis
+    #   opentelemetry-instrumentation-sqlalchemy
+    #   opentelemetry-processor-baggage
 xmltodict==0.14.2
     # via moto
+zipp==3.23.0
+    # via
+    #   -r requirements.txt
+    #   importlib-metadata
