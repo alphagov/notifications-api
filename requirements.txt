@@ -169,6 +169,8 @@ psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
     # via -r requirements.in
+py-spy==0.4.0
+    # via -r requirements.in
 pycurl==7.45.6
     # via
     #   celery

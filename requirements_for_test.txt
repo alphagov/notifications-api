@@ -247,6 +247,8 @@ psutil==6.1.1
     # via -r requirements.txt
 psycopg2-binary==2.9.10
     # via -r requirements.txt
+py-spy==0.4.0
+    # via -r requirements.txt
 pycparser==2.21
     # via cffi
 pycurl==7.45.6
