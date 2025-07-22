@@ -218,6 +218,43 @@ def test_process_letter_callback_calls_process_letter_callback_data_task(
     )
 
 
+def test_process_rejected_letter_callback_calls_process_letter_callback_data_task(
+    client, mock_dvla_callback_data, mock_celery_task
+):
+    mock_task = mock_celery_task(process_letter_callback_data)
+    rejected_data = {
+        "comment": "Unable to download PDF  - Connection reset",
+        "jobId": "cfce9e7b-1534-4c07-a66d-3cf9172f7640",
+        "jobStatus": "REJECTED",
+        "jobType": "NOTIFY",
+        "templateReference": "NOTIFY",
+        "transitionDate": "2025-06-23T17:17:04Z",
+    }
+    data = mock_dvla_callback_data()
+    data["data"] = rejected_data
+
+    response = client.post(
+        url_for(
+            "notifications_letter_callback.process_letter_callback",
+            token=signing.encode("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
+        ),
+        data=json.dumps(data),
+    )
+
+    assert response.status_code == 204, response.json
+
+    mock_task.assert_called_once_with(
+        queue="letter-callbacks",
+        kwargs={
+            "notification_id": uuid.UUID("cfce9e7b-1534-4c07-a66d-3cf9172f7640"),
+            "dvla_status": "REJECTED",
+            "despatch_date": datetime.date(2025, 6, 23),
+            "page_count": 0,
+            "cost_threshold": "unsorted",
+        },
+    )
+
+
 @pytest.mark.parametrize("token", [None, "invalid-token"])
 def test_parse_token_invalid(client, token, caplog, mocker):
     mocker.patch("app.signing.decode", side_effect=BadSignature("Invalid token"))
