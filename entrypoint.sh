@@ -16,7 +16,7 @@ case "$1" in
     exec /home/vcap/app/run_and_upload_profile.sh
     ;;
   api-local)
-    exec flask run --host 0.0.0.0 --port $PORT
+    exec /home/vcap/app/run_and_upload_profile.sh
     ;;
   migration)
     exec flask db upgrade
