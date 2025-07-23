@@ -19,6 +19,7 @@ from flask import current_app, json
 from notifications_utils.recipients import RecipientCSV
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import SMSMessageTemplate
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -193,13 +194,13 @@ def backfill_notification_statuses():
     LIMIT = 250000
     subq = f"SELECT id FROM notification_history WHERE notification_status is NULL LIMIT {LIMIT}"
     update = f"UPDATE notification_history SET notification_status = status WHERE id in ({subq})"
-    result = db.session.execute(subq).fetchall()
+    result = db.session.execute(text(subq)).fetchall()
 
     while len(result) > 0:
-        db.session.execute(update)
+        db.session.execute(text(update))
         print(f"commit {LIMIT} updates at {datetime.utcnow()}")
         db.session.commit()
-        result = db.session.execute(subq).fetchall()
+        result = db.session.execute(text(subq)).fetchall()
 
 
 @notify_command()
@@ -210,23 +211,23 @@ def update_notification_international_flag():
     # 250,000 rows takes 30 seconds to update.
     subq = "select id from notifications where international is null limit 250000"
     update = f"update notifications set international = False where id in ({subq})"
-    result = db.session.execute(subq).fetchall()
+    result = db.session.execute(text(subq)).fetchall()
 
     while len(result) > 0:
-        db.session.execute(update)
+        db.session.execute(text(update))
         print(f"commit 250000 updates at {datetime.utcnow()}")
         db.session.commit()
-        result = db.session.execute(subq).fetchall()
+        result = db.session.execute(text(subq)).fetchall()
 
     # Now update notification_history
     subq_history = "select id from notification_history where international is null limit 250000"
     update_history = f"update notification_history set international = False where id in ({subq_history})"
-    result_history = db.session.execute(subq_history).fetchall()
+    result_history = db.session.execute(text(subq_history)).fetchall()
     while len(result_history) > 0:
-        db.session.execute(update_history)
+        db.session.execute(text(update_history))
         print(f"commit 250000 updates at {datetime.utcnow()}")
         db.session.commit()
-        result_history = db.session.execute(subq_history).fetchall()
+        result_history = db.session.execute(text(subq_history)).fetchall()
 
 
 @notify_command()
@@ -243,23 +244,23 @@ def fix_notification_statuses_not_in_sync():
 
     subq = f"SELECT id FROM notifications WHERE cast (status as text) != notification_status LIMIT {MAX}"
     update = f"UPDATE notifications SET notification_status = status WHERE id in ({subq})"
-    result = db.session.execute(subq).fetchall()
+    result = db.session.execute(text(subq)).fetchall()
 
     while len(result) > 0:
-        db.session.execute(update)
+        db.session.execute(text(update))
         print(f"Committed {len(result)} updates at {datetime.utcnow()}")
         db.session.commit()
-        result = db.session.execute(subq).fetchall()
+        result = db.session.execute(text(subq)).fetchall()
 
     subq_hist = f"SELECT id FROM notification_history WHERE cast (status as text) != notification_status LIMIT {MAX}"
     update = f"UPDATE notification_history SET notification_status = status WHERE id in ({subq_hist})"
-    result = db.session.execute(subq_hist).fetchall()
+    result = db.session.execute(text(subq_hist)).fetchall()
 
     while len(result) > 0:
-        db.session.execute(update)
+        db.session.execute(text(update))
         print(f"Committed {len(result)} updates at {datetime.utcnow()}")
         db.session.commit()
-        result = db.session.execute(subq_hist).fetchall()
+        result = db.session.execute(text(subq_hist)).fetchall()
 
 
 @notify_command(name="insert-inbound-numbers")
@@ -279,7 +280,7 @@ def insert_inbound_numbers_from_file(file_name):
             line = line.strip()
             if line:
                 print(line)
-                db.session.execute(sql.format(uuid.uuid4(), line))
+                db.session.execute(text(sql.format(uuid.uuid4(), line)))
                 db.session.commit()
 
 
@@ -418,9 +419,9 @@ def populate_notification_postage(start_date):
 
         if end_date > datetime.utcnow() - timedelta(days=8):
             print("Updating notifications table as well")
-            db.session.execute(sql.format("notifications"), {"start": start_date, "end": end_date})
+            db.session.execute(text(sql.format("notifications"), {"start": start_date, "end": end_date}))
 
-        result = db.session.execute(sql.format("notification_history"), {"start": start_date, "end": end_date})
+        result = db.session.execute(text(sql.format("notification_history"), {"start": start_date, "end": end_date}))
         db.session.commit()
 
         current_app.logger.info(
@@ -457,7 +458,7 @@ def update_jobs_archived_flag(start_date, end_date):
                     at time zone 'UTC'
                     and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'"""
 
-        result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
+        result = db.session.execute(text(sql, {"start": process_date, "end": process_date + timedelta(days=1)}))
         db.session.commit()
         current_app.logger.info(
             "jobs: --- Completed took %sms. Archived %s jobs for %s",
@@ -483,7 +484,7 @@ def update_emails_to_remove_gsi(service_id):
                           WHERE s.id = :service_id
                             AND u.email_address ilike ('%.gsi.gov.uk%')
     """
-    results = db.session.execute(users_to_update, {"service_id": service_id})
+    results = db.session.execute(text(users_to_update), {"service_id": service_id})
     print(f"Updating {results.rowcount} users.")
 
     for user in results:
@@ -495,7 +496,7 @@ def update_emails_to_remove_gsi(service_id):
                updated_at = now()
          WHERE id = :user_id
         """
-        db.session.execute(update_stmt, {"user_id": str(user.user_id)})
+        db.session.execute(text(update_stmt), {"user_id": str(user.user_id)})
         db.session.commit()
 
 
@@ -625,7 +626,7 @@ def get_letters_data_from_references(notification_references):
         FROM notifications
         WHERE reference IN :notification_references
         ORDER BY service_id, job_id"""
-    result = db.session.execute(sql, {"notification_references": notification_references}).fetchall()
+    result = db.session.execute(text(sql), {"notification_references": notification_references}).fetchall()
 
     with open("zips_sent_details.csv", "w") as csvfile:
         csv_writer = csv.writer(csvfile)
@@ -775,7 +776,7 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
         from annual_billing
         where financial_year_start = :year
     """
-    services_without_annual_billing = db.session.execute(sql, {"year": year})
+    services_without_annual_billing = db.session.execute(text(sql), {"year": year})
     for row in services_without_annual_billing:
         latest_annual_billing = """
             Select free_sms_fragment_limit
@@ -783,7 +784,7 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
             where service_id = :service_id
             order by financial_year_start desc limit 1
         """
-        free_allowance_rows = db.session.execute(latest_annual_billing, {"service_id": row.id})
+        free_allowance_rows = db.session.execute(text(latest_annual_billing), {"service_id": row.id})
         free_allowance = [x[0] for x in free_allowance_rows]
         print(f"create free limit of {free_allowance[0]} for service: {row.id}")
         dao_create_or_update_annual_billing_for_year(
