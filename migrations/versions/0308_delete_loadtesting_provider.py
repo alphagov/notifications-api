@@ -10,7 +10,7 @@ Create Date: 2019-10-22 17:30
 import uuid
 
 from alembic import op
-from sqlalchemy.sql import text
+from sqlalchemy import text
 
 revision = "0308_delete_loadtesting_provider"
 down_revision = "0307_delete_dm_datetime"
@@ -18,8 +18,8 @@ down_revision = "0307_delete_dm_datetime"
 
 def upgrade():
     conn = op.get_bind()
-    conn.execute("DELETE FROM provider_details WHERE identifier = 'loadtesting'")
-    conn.execute("DELETE FROM provider_details_history WHERE identifier = 'loadtesting'")
+    conn.execute(text("DELETE FROM provider_details WHERE identifier = 'loadtesting'"))
+    conn.execute(text("DELETE FROM provider_details_history WHERE identifier = 'loadtesting'"))
 
 
 def downgrade():
@@ -39,5 +39,5 @@ def downgrade():
         (:uuid, 'Loadtesting', 'loadtesting', 100, 'sms', true, 1, false)
         """
         ),
-        uuid=uuid.uuid4(),
+        {"uuid": uuid.uuid4()},
     )

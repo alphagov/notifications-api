@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
-from sqlalchemy.sql import text
+from sqlalchemy import text
 
 RATE_CHANGE_DATE = datetime(2023, 11, 1, 0, 0)
 
@@ -32,15 +32,15 @@ def upgrade():
     conn.execute(
         text(
             """
-        DELETE FROM
-            letter_rates
-        WHERE
-            start_date = :rate_change_date
-        AND
-            post_class = 'first'
-    """
+            DELETE FROM
+                letter_rates
+            WHERE
+                start_date = :rate_change_date
+            AND
+                post_class = 'first'
+            """
         ),
-        rate_change_date=RATE_CHANGE_DATE,
+        {"rate_change_date": RATE_CHANGE_DATE},
     )
 
     # add correct new rates
@@ -50,16 +50,18 @@ def upgrade():
             conn.execute(
                 text(
                     """
-                INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
-                    VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
-            """
+                    INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
+                        VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
+                    """
                 ),
-                id=id,
-                start_date=start_date,
-                sheet_count=sheet_count,
-                rate=rate,
-                crown=crown,
-                post_class=post_class,
+                {
+                    "id": uuid.uuid4(),
+                    "start_date": start_date,
+                    "sheet_count": sheet_count,
+                    "rate": rate,
+                    "crown": crown,
+                    "post_class": post_class,
+                }
             )
 
 
