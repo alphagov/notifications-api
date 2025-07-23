@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import freezegun
 import pytest
 import sqlalchemy
+from sqlalchemy import delete, text
 
 from app import create_app, db, reset_memos
 from app.authentication.auth import requires_admin_auth, requires_no_auth
@@ -72,7 +73,7 @@ def create_test_db(database_uri):
     try:
         with postgres_db.connect() as connection:
             connection.execution_options(isolation_level="AUTOCOMMIT")
-            connection.execute(sqlalchemy.sql.text(f"CREATE DATABASE {db_uri_parts[-1]}"))
+            connection.execute(text(f"CREATE DATABASE {db_uri_parts[-1]}"))
     except sqlalchemy.exc.ProgrammingError:
         # database "test_notification_api_master" already exists
         pass
@@ -170,7 +171,8 @@ def _clean_database(_db):
             "service_callback_type",
             "default_annual_allowance",
         ]:
-            _db.engine.execute(tbl.delete())
+            stmt = delete(tbl)
+            _db.session.execute(stmt)
     _db.session.commit()
 
 

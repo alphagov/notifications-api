@@ -13,7 +13,7 @@ from notifications_utils.international_billing_rates import (
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, or_, union
+from sqlalchemy import and_, asc, desc, func, or_, text, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import defer, joinedload, undefer
 from sqlalchemy.orm.exc import NoResultFound
@@ -231,7 +231,7 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
     if key_type:
         filter_dict["key_type"] = key_type
 
-    return Notification.query.filter_by(**filter_dict).options(joinedload("template")).one()
+    return Notification.query.filter_by(**filter_dict).options(joinedload(Notification.template)).one()
 
 
 def get_notification_by_id(notification_id, service_id=None, _raise=False):
@@ -309,11 +309,11 @@ def get_notifications_for_service(  # noqa: C901
     query = _filter_query(query, filter_dict)
 
     if with_template:
-        query = query.options(joinedload("template"))
+        query = query.options(joinedload(Notification.template))
 
-    query = query.options((undefer if with_personalisation else defer)("_personalisation"))
+    query = query.options((undefer if with_personalisation else defer)(Notification._personalisation))
 
-    query = query.options(joinedload("api_key"))
+    query = query.options(joinedload(Notification.api_key))
 
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
@@ -409,13 +409,13 @@ def insert_notification_history_delete_notifications(
     }
 
     select_to_use = select_into_temp_table_for_letters if notification_type == "letter" else select_into_temp_table
-    db.session.execute(select_to_use, input_params)
+    db.session.execute(text(select_to_use), input_params)
 
-    result = db.session.execute("select count(*) from NOTIFICATION_ARCHIVE").fetchone()[0]
+    result = db.session.execute(text("select count(*) from NOTIFICATION_ARCHIVE")).fetchone()[0]
 
-    db.session.execute(insert_query)
+    db.session.execute(text(insert_query))
 
-    db.session.execute(delete_query)
+    db.session.execute(text(delete_query))
 
     return result
 
@@ -603,12 +603,10 @@ def get_slow_text_message_delivery_reports_by_provider(
         db.session.query(
             ProviderDetails.identifier,
             case(
-                [
-                    (
-                        Notification.status == NOTIFICATION_DELIVERED,
-                        (Notification.updated_at - Notification.sent_at) >= delivery_time,
-                    )
-                ],
+                (
+                    (Notification.status == NOTIFICATION_DELIVERED),
+                    (Notification.updated_at - Notification.sent_at) >= delivery_time,
+                ),
                 else_=(datetime.utcnow() - Notification.sent_at) >= delivery_time,
             ).label("slow"),
             func.count().label("count"),
@@ -750,7 +748,7 @@ def dao_get_notifications_processing_time_stats(start_date, end_date):
     notification_type != 'letter';
     """
     under_10_secs = Notification.sent_at - Notification.created_at <= timedelta(seconds=10)
-    sum_column = functions.coalesce(functions.sum(case([(under_10_secs, 1)], else_=0)), 0)
+    sum_column = functions.coalesce(functions.sum(case((under_10_secs, 1), else_=0)), 0)
 
     return (
         db.session.query(

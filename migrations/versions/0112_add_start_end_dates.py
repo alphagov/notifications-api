@@ -12,6 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 from app.dao.date_util import get_month_start_and_end_date_in_utc
+from sqlalchemy import text
 
 down_revision = "0111_drop_old_service_flags"
 revision = "0112_add_start_end_dates"
@@ -24,7 +25,7 @@ def upgrade():
     op.add_column("monthly_billing", sa.Column("start_date", sa.DateTime))
     op.add_column("monthly_billing", sa.Column("end_date", sa.DateTime))
     conn = op.get_bind()
-    results = conn.execute("Select id, month, year from monthly_billing")
+    results = conn.execute(text("Select id, month, year from monthly_billing"))
     res = results.fetchall()
     for x in res:
         start_date, end_date = get_month_start_and_end_date_in_utc(
