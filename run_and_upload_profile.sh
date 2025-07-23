@@ -5,15 +5,15 @@ set -ex
 S3_BUCKET_URI="s3://dev-b-python-profiling-results/profile-run-$(date +%s)-final.svg"
 LOCAL_PROFILE_PATH="/tmp/profile.svg"
 PYSPY_LOG_PATH="/tmp/pyspy.errors.log"
-PROFILE_DURATION=600  # Profile for 10 minutes
-STARTUP_DELAY=1200    # Wait 20 minutes for app initialisation to complete
+PROFILE_DURATION=600
+STARTUP_DELAY=120 # shorter delay to wait for workers to spawn which we want py-spy to attach to
+APP_INIT_TIMEOUT=300 # Wait for app initialisation to complete
 
 cleanup() {
   echo "FINAL UPLOAD: Checking for profile..."
   if [ -s "$LOCAL_PROFILE_PATH" ]; then
     echo "--- BEGIN PROFILE FILE (BASE64) ---"
     # This is our backup: print the base64 encoded file to the logs
-    # If S3 fails, you can copy this text from the logs and decode it locally
     base64 "$LOCAL_PROFILE_PATH"
     echo "--- END PROFILE FILE (BASE64) ---"
 
@@ -35,27 +35,35 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Starting Gunicorn in the background..."
-# Start Gunicorn directly and send it to the background
 /opt/venv/bin/gunicorn -c /home/vcap/app/gunicorn_config.py application &
+MASTER_PID=$!
+echo "Gunicorn master process started with PID: ${MASTER_PID}"
 
-# Get the PID of the Gunicorn Master Process
-GUNICORN_PID=$!
-echo "Gunicorn master process started with PID: ${GUNICORN_PID}"
+echo "Waiting for a Gunicorn worker process to appear (child of ${MASTER_PID})..."
+sleep "$STARTUP_DELAY" # Give workers a moment to spawn
 
-echo "Waiting ${STARTUP_DELAY} seconds for workers to initialize..."
-sleep "$STARTUP_DELAY"
+# Find a worker PID. pgrep finds processes with a given parent PID.
+WORKER_PID=$(pgrep -P "$MASTER_PID" | head -n 1)
 
-echo "Starting py-spy to profile Gunicorn (PID: ${GUNICORN_PID}) for ${PROFILE_DURATION} seconds..."
+if [ -z "$WORKER_PID" ]; then
+  echo "Error: Could not find a Gunicorn worker process. Exiting."
+  exit 1
+fi
+
+echo "Found Gunicorn worker with PID: ${WORKER_PID}"
+echo "Waiting ${APP_INIT_TIMEOUT} seconds for app to fully initialize..."
+sleep "$APP_INIT_TIMEOUT"
+
+echo "Starting py-spy to profile Gunicorn Worker (PID: ${WORKER_PID}) for ${PROFILE_DURATION} seconds..."
 echo "py-spy errors will be logged to ${PYSPY_LOG_PATH}"
 
-# Attach py-spy, redirecting its standard error to a dedicated log file
-# The '|| true' prevents the script from exiting if py-spy returns a non-zero code
+# We target the worker PID directly. The -s flag is removed as it's no longer needed.
 py-spy record \
   -r 10 \
   -o "$LOCAL_PROFILE_PATH" \
-  -s \
   -d "$PROFILE_DURATION" \
-  -p "$GUNICORN_PID" \
+  -p "$WORKER_PID" \
   2> "$PYSPY_LOG_PATH" || true
 
 echo "py-spy has finished. The cleanup function will now handle the upload."
+sleep 1800 # ensure that that the task is not terminated even though the script has completed execution.
