@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 from alembic import op
-from sqlalchemy.sql import text
+from sqlalchemy import text
 
 revision = "0486_letter_rates_feb_2025"
 down_revision = "0485_add_job_status_fin_allrws"
@@ -36,7 +36,7 @@ def upgrade():
             AND post_class IN ('europe', 'rest-of-world')
             """
         ),
-        end_date=RATE_CHANGE_DATE,
+        {"end_date": RATE_CHANGE_DATE},
     )
     # add correct new rates
     for sheet_count, rate in NEW_INTERNATIONAL_RATES:
@@ -51,12 +51,14 @@ def upgrade():
                         (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
                     """
                 ),
-                id=id,
-                start_date=RATE_CHANGE_DATE,
-                sheet_count=sheet_count,
-                rate=rate,
-                crown=crown,
-                post_class=post_class,
+                {
+                    "id": uuid.uuid4(),
+                    "start_date": RATE_CHANGE_DATE,
+                    "sheet_count": sheet_count,
+                    "rate": rate,
+                    "crown": crown,
+                    "post_class": post_class,
+                }
             )
 
 
@@ -69,7 +71,7 @@ def downgrade():
             DELETE FROM letter_rates WHERE start_date = :start_date
             """
         ),
-        start_date=RATE_CHANGE_DATE,
+        {"start_date": RATE_CHANGE_DATE},
     )
     # make old rates active again
     conn.execute(
@@ -78,7 +80,7 @@ def downgrade():
             UPDATE letter_rates
             SET end_date = null
             WHERE end_date = :end_date
-             """
+            """
         ),
-        end_date=RATE_CHANGE_DATE,
+        {"end_date": RATE_CHANGE_DATE},
     )
