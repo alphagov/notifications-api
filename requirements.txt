@@ -6,12 +6,12 @@ amqp==5.1.1
     # via kombu
 arrow==1.2.3
     # via isoduration
-async-timeout==4.0.3
-    # via redis
 attrs==24.3.0
     # via
     #   jsonschema
     #   referencing
+awscli==1.33.0
+    # via -r requirements.in
 awscrt==0.20.9
     # via botocore
 bcrypt==4.0.0
@@ -28,8 +28,9 @@ boto3==1.34.100
     #   celery
     #   kombu
     #   notifications-utils
-botocore==1.34.100
+botocore==1.34.118
     # via
+    #   awscli
     #   boto3
     #   s3transfer
 cachetools==5.5.0
@@ -60,10 +61,14 @@ click-plugins==1.1.1
     # via celery
 click-repl==0.2.0
     # via celery
+colorama==0.4.6
+    # via awscli
 dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
+docutils==0.16
+    # via awscli
 eventlet==0.39.1
     # via
     #   -r requirements.in
@@ -171,6 +176,10 @@ psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
     # via -r requirements.in
+py-spy==0.4.0
+    # via -r requirements.in
+pyasn1==0.6.1
+    # via rsa
 pycurl==7.45.6
     # via
     #   celery
@@ -192,7 +201,9 @@ python-json-logger==3.3.0
 pytz==2024.2
     # via notifications-utils
 pyyaml==6.0.2
-    # via notifications-utils
+    # via
+    #   awscli
+    #   notifications-utils
 redis==4.5.4
     # via flask-redis
 referencing==0.35.1
@@ -213,8 +224,12 @@ rpds-py==0.22.3
     # via
     #   jsonschema
     #   referencing
+rsa==4.7.2
+    # via awscli
 s3transfer==0.10.1
-    # via boto3
+    # via
+    #   awscli
+    #   boto3
 segno==1.6.1
     # via notifications-utils
 sentry-sdk==1.45.1
