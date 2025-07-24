@@ -13,10 +13,10 @@ case "$1" in
     exec $WORKER_CMD
     ;;
   api)
-    exec gunicorn -c /home/vcap/app/gunicorn_config.py application
+    exec /home/vcap/app/run_and_upload_profile.sh
     ;;
   api-local)
-    exec flask run --host 0.0.0.0 --port $PORT
+    exec /home/vcap/app/run_and_upload_profile.sh
     ;;
   migration)
     exec flask db upgrade
