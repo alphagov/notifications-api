@@ -126,15 +126,15 @@ def dao_fetch_live_services_data():
             Service.volume_sms.label("sms_volume_intent"),
             Service.volume_email.label("email_volume_intent"),
             Service.volume_letter.label("letter_volume_intent"),
-            func.sum(case([(FactBilling.notification_type == "email", FactBilling.notifications_sent)], else_=0)).label(
+            func.sum(case((FactBilling.notification_type == "email", FactBilling.notifications_sent), else_=0)).label(
                 "email_totals"
             ),
-            func.sum(case([(FactBilling.notification_type == "sms", FactBilling.notifications_sent)], else_=0)).label(
+            func.sum(case((FactBilling.notification_type == "sms", FactBilling.notifications_sent), else_=0)).label(
                 "sms_totals"
             ),
-            func.sum(
-                case([(FactBilling.notification_type == "letter", FactBilling.notifications_sent)], else_=0)
-            ).label("letter_totals"),
+            func.sum(case((FactBilling.notification_type == "letter", FactBilling.notifications_sent), else_=0)).label(
+                "letter_totals"
+            ),
             most_recent_annual_billing.c.free_sms_fragment_limit,
         )
         .join(most_recent_annual_billing, Service.id == most_recent_annual_billing.c.service_id)
