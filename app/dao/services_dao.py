@@ -75,7 +75,7 @@ DEFAULT_SERVICE_PERMISSIONS = [
 
 
 def dao_fetch_all_services(only_active=False):
-    query = Service.query.order_by(asc(Service.created_at)).options(joinedload("users"))
+    query = Service.query.order_by(asc(Service.created_at)).options(joinedload(Service.users))
 
     if only_active:
         query = query.filter(Service.active)
@@ -173,7 +173,7 @@ def dao_fetch_service_by_id(service_id, only_active=False, with_users=True):
     query = Service.query.filter_by(id=service_id)
 
     if with_users:
-        query = query.options(joinedload("users"))
+        query = query.options(joinedload(Service.users))
 
     if only_active:
         query = query.filter(Service.active)
@@ -191,7 +191,7 @@ def dao_fetch_service_by_inbound_number(number):
 
 
 def dao_fetch_service_by_id_with_api_keys(service_id, only_active=False):
-    query = Service.query.filter_by(id=service_id).options(joinedload("api_keys"))
+    query = Service.query.filter_by(id=service_id).options(joinedload(Service.api_keys))
 
     if only_active:
         query = query.filter(Service.active)
@@ -203,7 +203,7 @@ def dao_fetch_all_services_by_user(user_id, only_active=False):
     query = (
         Service.query.filter(Service.users.any(id=user_id))
         .order_by(asc(Service.created_at))
-        .options(joinedload("users"))
+        .options(joinedload(Service.users))
     )
 
     if only_active:
@@ -229,9 +229,8 @@ def dao_archive_service(service_id):
     # to ensure that db.session still contains the models when it comes to creating history objects
     service = (
         Service.query.options(
-            joinedload("templates"),
-            joinedload("templates.template_redacted"),
-            joinedload("api_keys"),
+            joinedload(Service.templates).joinedload(Template.template_redacted),
+            joinedload(Service.api_keys),
         )
         .filter(Service.id == service_id)
         .one()
@@ -251,7 +250,9 @@ def dao_archive_service(service_id):
 
 def dao_fetch_service_by_id_and_user(service_id, user_id):
     return (
-        Service.query.filter(Service.users.any(id=user_id), Service.id == service_id).options(joinedload("users")).one()
+        Service.query.filter(Service.users.any(id=user_id), Service.id == service_id)
+        .options(joinedload(Service.users))
+        .one()
     )
 
 
@@ -321,7 +322,9 @@ def dao_add_user_to_service(service, user, permissions=None, folder_permissions=
     try:
         from app.dao.permissions_dao import permission_dao
 
-        service.users.append(user)
+        if user not in service.users:
+            service.users.append(user)
+
         permission_dao.set_user_service_permission(user, service, permissions, _commit=False)
         db.session.add(service)
 
