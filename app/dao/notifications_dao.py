@@ -411,7 +411,7 @@ def insert_notification_history_delete_notifications(
     select_to_use = select_into_temp_table_for_letters if notification_type == "letter" else select_into_temp_table
     db.session.execute(text(select_to_use), input_params)
 
-    result = db.session.execute(text("select count(*) from NOTIFICATION_ARCHIVE")).fetchone()[0]
+    result = db.session.execute(text("SELECT COUNT(*) FROM NOTIFICATION_ARCHIVE")).fetchone()[0]
 
     db.session.execute(text(insert_query))
 
