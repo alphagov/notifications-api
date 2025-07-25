@@ -3,7 +3,7 @@ from typing import Any
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import Date, Integer, and_, desc, func, not_, union
+from sqlalchemy import Date, Integer, and_, desc, func, not_, select, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import case, literal, tuple_
 
@@ -41,7 +41,7 @@ from app.models import (
 from app.utils import get_ft_billing_data_for_today_updated_at, get_london_midnight_in_utc, midnight_n_days_ago
 
 
-def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None):
+def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None, exclude_restricted=False):
     # ASSUMPTION: start_date and end_date are in the same financial year
     year = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
     ft_billing_subquery = _fetch_usage_for_all_services_sms_query(year, organisation_id=organisation_id).subquery()
@@ -52,8 +52,8 @@ def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None)
     charged_units = func.sum(ft_billing_subquery.c.charged_units)
     cost = func.sum(ft_billing_subquery.c.cost)
 
-    return (
-        db.session.query(
+    stmt = (
+        select(
             Organisation.name.label("organisation_name"),
             Organisation.id.label("organisation_id"),
             Service.name.label("service_name"),
@@ -72,6 +72,7 @@ def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None)
             ft_billing_subquery.c.bst_date >= start_date,
             ft_billing_subquery.c.bst_date <= end_date,
             *[Service.organisation_id == organisation_id] if organisation_id else [],
+            *([Service.restricted.is_(False)] if exclude_restricted else []),
         )
         .group_by(
             Organisation.name,
@@ -81,6 +82,7 @@ def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None)
         )
         .order_by(Organisation.name, Service.name)
     )
+    return db.session.execute(stmt).mappings()
 
 
 def _fetch_usage_for_all_services_sms_query(year, organisation_id=None):
