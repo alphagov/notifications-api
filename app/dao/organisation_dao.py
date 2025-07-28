@@ -217,8 +217,11 @@ def dao_remove_user_from_organisation(organisation, user):
 def dao_add_email_branding_to_organisation_pool(organisation_id, email_branding_id):
     organisation = dao_get_organisation_by_id(organisation_id)
     email_branding = EmailBranding.query.filter_by(id=email_branding_id).one()
-    organisation.email_branding_pool.append(email_branding)
-    db.session.add(organisation)
+
+    if email_branding not in organisation.email_branding_pool:
+        organisation.email_branding_pool.append(email_branding)
+        db.session.add(organisation)
+
     return email_branding
 
 
@@ -277,10 +280,12 @@ def dao_get_letter_branding_pool_for_organisation(organisation_id):
 @autocommit
 def dao_add_letter_branding_list_to_organisation_pool(organisation_id, letter_branding_ids):
     organisation = dao_get_organisation_by_id(organisation_id)
-    letter_brandings = [dao_get_letter_branding_by_id(branding_id) for branding_id in letter_branding_ids]
+    existing_branding_ids = {b.id for b in organisation.letter_branding_pool}
 
-    organisation.letter_branding_pool.extend(letter_brandings)
-
+    for branding_id in letter_branding_ids:
+        if branding_id not in existing_branding_ids:
+            branding = dao_get_letter_branding_by_id(branding_id)
+            organisation.letter_branding_pool.append(branding)
     db.session.add(organisation)
 
 
