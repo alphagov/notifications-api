@@ -1,7 +1,5 @@
 import itertools
-from contextlib import contextmanager
 from functools import wraps
-from sqlalchemy.orm.scoping import scoped_session
 
 from app import db
 from app.history_meta import create_history
@@ -10,33 +8,17 @@ from app.history_meta import create_history
 def autocommit(func):
     @wraps(func)
     def commit_or_rollback(*args, **kwargs):
-        session = db.session() if isinstance(db.session, scoped_session) else db.session
         try:
-            res = func(*args, **kwargs)
-
-            if not session.get_nested_transaction():
-                session.commit()
-
-            return res
+            _autocommit = kwargs.pop("_autocommit", True)
+            result = func(*args, **kwargs)
+            if _autocommit:
+                db.session.commit()
+            return result
         except Exception:
-            session.rollback()
+            db.session.rollback()
             raise
 
     return commit_or_rollback
-
-
-@contextmanager
-def transaction():
-    try:
-        db.session.begin_nested()
-        yield
-        db.session.commit()
-
-        if not db.session.registry().transaction.nested:
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
-        raise
 
 
 class VersionOptions:
