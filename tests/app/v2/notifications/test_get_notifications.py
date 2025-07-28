@@ -195,11 +195,11 @@ def test_get_notification_by_id_invalid_id(api_client_request, sample_notificati
     "created_at_month, postage, estimated_delivery",
     [
         # no print during weekends, no delivery on Sundays
-        (12, "second", "2000-12-07T16:00:00.000000Z"),  # Created Fri 1 Dec, printed Mon 4 Dec, delivered Thu 7 Dec
-        (6, "second", "2000-06-06T15:00:00.000000Z"),  # Created Thu 1 Jun, printed Fri 2 Jun, delivered Tue 6 Jun
+        (12, "second", "2000-12-11T16:00:00.000000Z"),  # Created Fri 1 Dec, printed Mon 4 Dec, delivered Mon 11 Dec
+        (6, "second", "2000-06-09T15:00:00.000000Z"),  # Created Thu 1 Jun, printed Fri 2 Jun, delivered Fri 9 Jun
         (12, "first", "2000-12-05T16:00:00.000000Z"),  # Created Fri 1 Dec, printed Mon 4 Dec, delivered Tue 5 Dec
         (6, "first", "2000-06-03T15:00:00.000000Z"),  # Created Thu 1 Jun, printed Fri 2 Jun, delivered Sat 3 Jun
-        (12, "economy", "2000-12-14T16:00:00.000000Z"),  # Created Fri 1 Dec, printed Mon 4 Dec, delivered Thu 14 Dec
+        (12, "economy", "2000-12-13T16:00:00.000000Z"),  # Created Fri 1 Dec, printed Mon 4 Dec, delivered Weds 13 Dec
         (6, "economy", "2000-06-13T15:00:00.000000Z"),  # Created Thu 1 Jun, printed Fri 2 Jun, delivery Fri 13 Jun
     ],
 )
