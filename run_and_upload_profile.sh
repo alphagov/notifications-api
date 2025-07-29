@@ -59,7 +59,8 @@ echo "py-spy errors will be logged to ${PYSPY_LOG_PATH}"
 
 # We target the worker PID directly. The -s flag is removed as it's no longer needed.
 py-spy record \
-  -r 10 \
+  -r 50 \
+  -B \
   -o "$LOCAL_PROFILE_PATH" \
   -d "$PROFILE_DURATION" \
   -p "$WORKER_PID" \
