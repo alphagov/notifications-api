@@ -23,8 +23,12 @@ keepalive = 0  # disable temporarily for diagnosing issues
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
+debug_post_probability = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_PROBABILITY", "1.0")
+debug_post_period = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_PERIOD_SECONDS", "0.1")
 if debug_post_threshold:
     debug_post_threshold_float = float(debug_post_threshold)
+    debug_post_probability_float = float(debug_post_probability)
+    debug_post_period_float = float(debug_post_period)
     profiler = None
 
     def pre_request(worker, req):
@@ -50,8 +54,12 @@ if debug_post_threshold:
         return value
 
     def post_request(worker, req, environ, resp):
+        import random
+
         elapsed = os.times().elapsed - req._pre_request_elapsed
-        if elapsed > debug_post_threshold_float:
+        if elapsed > debug_post_threshold_float and (
+            debug_post_probability_float == 1 or random.random() < debug_post_probability_float
+        ):
             import json
             import time
             from io import StringIO
@@ -76,7 +84,7 @@ if debug_post_threshold:
 
             perf_counter_before = time.perf_counter()
 
-            time.sleep(0.1)  # period over which to profile and calculate cpu_percent
+            time.sleep(debug_post_period_float)  # period over which to profile and calculate cpu_percent
 
             perf_counter_after = time.perf_counter()
 
