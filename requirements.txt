@@ -139,12 +139,12 @@ markupsafe==2.1.1
     #   mako
     #   sentry-sdk
     #   werkzeug
-marshmallow==3.18.0
+marshmallow==3.21.3
     # via
     #   -r requirements.in
     #   flask-marshmallow
     #   marshmallow-sqlalchemy
-marshmallow-sqlalchemy==1.4.2
+marshmallow-sqlalchemy==1.0.0
     # via -r requirements.in
 mistune==0.8.4
     # via notifications-utils
@@ -158,7 +158,6 @@ packaging==23.2
     # via
     #   gunicorn
     #   marshmallow
-    #   marshmallow-sqlalchemy
 phonenumbers==9.0.9
     # via notifications-utils
 prometheus-client==0.14.1
