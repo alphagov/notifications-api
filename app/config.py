@@ -141,7 +141,7 @@ class Config:
     ZENDESK_API_KEY = os.environ.get("ZENDESK_API_KEY")
 
     # Logging
-    DEBUG = False
+    DEBUG = True
 
     NOTIFY_LOG_LEVEL = os.getenv("NOTIFY_LOG_LEVEL", "INFO")
     NOTIFY_LOG_LEVEL_HANDLERS = os.getenv("NOTIFY_LOG_LEVEL_HANDLERS", NOTIFY_LOG_LEVEL)
