@@ -426,7 +426,6 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
     is_precompiled_letter = fields.Method("get_is_precompiled_letter")
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
-    service = fields.Nested(ServiceSchema)
 
     def redact(self, template):
         return template.redact_personalisation
