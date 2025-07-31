@@ -68,7 +68,7 @@ def create_test_db(database_uri):
     # get the
     db_uri_parts = database_uri.split("/")
     postgres_db_uri = "/".join(db_uri_parts[:-1] + ["postgres"])
-    print(postgres_db_uri) # noqa: T201
+    print(postgres_db_uri)  # noqa: T201
     postgres_db = sqlalchemy.create_engine(postgres_db_uri, echo=False, client_encoding="utf8")
     try:
         with postgres_db.connect() as connection:
