@@ -91,7 +91,7 @@ def _notify_db(notify_api, worker_id):
 
     # the path as used with urlparse has a leading slash
     db_name = f"/test_notification_api_{worker_id}"
-    db_uri = urlparse(str("postgresql+psycopg2://postgres:postgres@localhost:5432/postgres"))._replace(path=db_name).geturl()
+    db_uri = urlparse("postgresql+psycopg2://postgres:postgres@localhost:5432/postgres")._replace(path=db_name).geturl()
 
     # create a database for this worker thread -
     current_app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
