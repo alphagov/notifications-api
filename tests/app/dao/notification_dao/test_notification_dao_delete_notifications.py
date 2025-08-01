@@ -614,7 +614,7 @@ def test_insert_notification_history_delete_notifications_can_handle_different_c
     )
 
     with notify_db_session.begin_nested():
-        notify_db_session.execute(text("drop view if exists notifications_all_time_view"))
+        # notify_db_session.execute(text("drop view if exists notifications_all_time_view"))
         notify_db_session.execute(text("alter table notification_history drop column client_reference"))
         notify_db_session.execute(text("alter table notification_history add column client_reference varchar"))
 
