@@ -10,7 +10,7 @@ export NOTIFY_ENVIRONMENT="development"
 MIGRATION_TEST_DATABASE_DB_NAME="migration_test"
 
 # default to localhost
-POSTGRES_SERVER_URI=${SQLALCHEMY_DATABASE_URI:-"postgresql+psycopg2://postgres:postgres@localhost:5432/"}
+POSTGRES_SERVER_URI=${SQLALCHEMY_DATABASE_URI:-"postgresql://postgres:postgres@localhost/"}
 # remove any existing db name, and replace with migration_test
 POSTGRES_SERVER_URI="${POSTGRES_SERVER_URI%/*}/"
 MIGRATION_TEST_DATABASE_URI="$POSTGRES_SERVER_URI$MIGRATION_TEST_DATABASE_DB_NAME"
