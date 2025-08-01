@@ -50,7 +50,7 @@ def send_sms_to_provider(notification):
     if notification.status == "created":
         provider = provider_to_use(SMS_TYPE, notification.international)
 
-        template_model = SerialisedTemplate.from_id_and_service_id(
+        template_model = SerialisedTemplate.from_id_service_id_and_version(
             template_id=notification.template_id, service_id=service.id, version=notification.template_version
         )
 
@@ -129,7 +129,7 @@ def send_email_to_provider(notification):
     if notification.status == "created":
         provider = provider_to_use(EMAIL_TYPE)
 
-        template = SerialisedTemplate.from_id_and_service_id(
+        template = SerialisedTemplate.from_id_service_id_and_version(
             template_id=notification.template_id, service_id=service.id, version=notification.template_version
         )
 
