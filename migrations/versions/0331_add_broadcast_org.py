@@ -78,5 +78,5 @@ def downgrade():
         WHERE id = :organisation_id
     """
     conn = op.get_bind()
-    conn.execute(text(update_service_remove_org_sql), organisation_id=organisation_id)
-    conn.execute(text(delete_sql), organisation_id=organisation_id)
+    conn.execute(text(update_service_remove_org_sql), {"organisation_id": organisation_id})
+    conn.execute(text(delete_sql), {"organisation_id": organisation_id})

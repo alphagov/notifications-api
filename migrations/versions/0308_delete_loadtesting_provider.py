@@ -39,5 +39,5 @@ def downgrade():
         (:uuid, 'Loadtesting', 'loadtesting', 100, 'sms', true, 1, false)
         """
         ),
-        uuid=uuid.uuid4(),
+        {"uuid": uuid.uuid4()},
     )
