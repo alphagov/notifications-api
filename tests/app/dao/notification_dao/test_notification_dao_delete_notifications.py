@@ -22,6 +22,8 @@ from tests.app.db import (
     create_template,
 )
 
+pytest.mark.order("last")
+
 
 def test_every_column_in_notification_history_is_filled_with_data_from_notifications():
     # This test is there to prevent the case where we add a new column to notifications and notifications_history but
@@ -614,7 +616,7 @@ def test_insert_notification_history_delete_notifications_can_handle_different_c
     )
 
     with notify_db_session.begin_nested():
-        # notify_db_session.execute(text("drop view if exists notifications_all_time_view"))
+        notify_db_session.execute(text("drop view if exists notifications_all_time_view"))
         notify_db_session.execute(text("alter table notification_history drop column client_reference"))
         notify_db_session.execute(text("alter table notification_history add column client_reference varchar"))
 
