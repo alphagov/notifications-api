@@ -159,4 +159,5 @@ RUN \
 
 RUN \
     service postgresql start \
-    && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\""
+    && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\"" \
+    && psql postgresql://postgres:postgres@localhost/postgres

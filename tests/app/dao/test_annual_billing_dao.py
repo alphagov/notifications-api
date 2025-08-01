@@ -219,6 +219,7 @@ def test_set_default_free_allowance_for_service_using_correct_year(sample_servic
         2020,
         high_volume_service_last_year=False,
         has_custom_allowance=False,
+        _autocommit=True,
     )
 
 
@@ -234,6 +235,7 @@ def test_set_default_free_allowance_for_high_volume_service(sample_service, mock
         2020,
         high_volume_service_last_year=True,
         has_custom_allowance=False,
+        _autocommit=True,
     )
 
 
@@ -263,6 +265,7 @@ def test_set_default_free_allowance_for_service_with_custom_allowance(
         2020,
         high_volume_service_last_year=False,
         has_custom_allowance=True,
+        _autocommit=True,
     )
 
 
@@ -278,6 +281,7 @@ def test_set_default_free_allowance_for_service_for_service_with_previous_defaul
         2020,
         high_volume_service_last_year=False,
         has_custom_allowance=False,
+        _autocommit=True,
     )
 
 

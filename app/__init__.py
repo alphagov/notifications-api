@@ -31,6 +31,7 @@ from notifications_utils.eventlet import EventletTimeout
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.logging import flask as utils_logging
 from sqlalchemy import event
+from sqlalchemy.orm import declarative_base
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
@@ -42,7 +43,9 @@ from app.clients.letter.dvla import DVLAClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
 
-db = SQLAlchemy()
+Base = declarative_base()
+
+db = SQLAlchemy(model_class=Base)
 migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
