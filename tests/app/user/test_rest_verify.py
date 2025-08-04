@@ -307,7 +307,7 @@ def test_send_new_user_email_verification(
     assert resp.status_code == 204
     notification = Notification.query.first()
     assert VerifyCode.query.count() == 0
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks", ignore_result=True)
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
     assert notification.personalisation["name"] == "Test User"
     assert notification.personalisation["url"].startswith(expected_url_starts_with.format(hostnames=hostnames))
@@ -413,7 +413,7 @@ def test_send_user_email_code(
     assert str(noti.template_id) == current_app.config["EMAIL_2FA_TEMPLATE_ID"]
     assert noti.personalisation["name"] == "Test User"
     assert noti.personalisation["url"].startswith(expected_auth_url.format(hostnames=hostnames))
-    deliver_email.assert_called_once_with([str(noti.id)], queue="notify-internal-tasks")
+    deliver_email.assert_called_once_with([str(noti.id)], queue="notify-internal-tasks", ignore_result=True)
 
 
 def test_send_user_email_code_with_urlencoded_next_param(admin_request, mocker, sample_user, email_2fa_code_template):

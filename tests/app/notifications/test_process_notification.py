@@ -543,7 +543,10 @@ def test_send_notification_to_queue(
 
     send_notification_to_queue(notification=notification, queue=requested_queue)
 
-    mocked.assert_called_once_with([str(notification.id)], queue=expected_queue)
+    if expected_task == "provider_tasks.deliver_email":
+        mocked.assert_called_once_with([str(notification.id)], queue=expected_queue, ignore_result=True)
+    else:
+        mocked.assert_called_once_with([str(notification.id)], queue=expected_queue)
 
 
 def test_send_notification_to_queue_throws_exception_deletes_notification(sample_notification, mocker):
