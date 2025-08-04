@@ -220,7 +220,7 @@ moto==5.0.11
     # via -r requirements_for_test.in
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@4201823031adc5c557d52809c511be2f876dc79d
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@8a998cf82afe070c9cb2f33913560d67b99a25c8
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
