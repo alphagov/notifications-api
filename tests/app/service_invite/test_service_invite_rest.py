@@ -65,7 +65,7 @@ def test_create_invited_user(
     assert len(notification.personalisation["url"]) > len(expected_start_of_invite_url.format(hostnames=hostnames))
     assert str(notification.template_id) == current_app.config["INVITATION_EMAIL_TEMPLATE_ID"]
 
-    mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
+    mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks", ignore_result=True)
 
 
 def test_create_invited_user_without_auth_type(admin_request, sample_service, mocker, invitation_email_template):

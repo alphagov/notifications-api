@@ -390,8 +390,8 @@ def test_send_letters_volume_email_to_dvla(notify_db_session, mock_celery_task, 
     emails_to_dvla = Notification.query.all()
     assert len(emails_to_dvla) == 2
     send_mock.called = 2
-    send_mock.assert_any_call([str(emails_to_dvla[0].id)], queue=QueueNames.NOTIFY)
-    send_mock.assert_any_call([str(emails_to_dvla[1].id)], queue=QueueNames.NOTIFY)
+    send_mock.assert_any_call([str(emails_to_dvla[0].id)], queue=QueueNames.NOTIFY, ignore_result=True)
+    send_mock.assert_any_call([str(emails_to_dvla[1].id)], queue=QueueNames.NOTIFY, ignore_result=True)
     for email in emails_to_dvla:
         assert str(email.template_id) == current_app.config["LETTERS_VOLUME_EMAIL_TEMPLATE_ID"]
         assert email.to in current_app.config["DVLA_EMAIL_ADDRESSES"]
