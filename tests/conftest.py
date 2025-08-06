@@ -89,9 +89,10 @@ def _notify_db(notify_api, worker_id):
     """
     from flask import current_app
 
+    base_uri = current_app.config["SQLALCHEMY_DATABASE_URI"]
     # the path as used with urlparse has a leading slash
     db_name = f"/test_notification_api_{worker_id}"
-    db_uri = urlparse(str(db.engine.url))._replace(path=db_name).geturl()
+    db_uri = urlparse(str(base_uri))._replace(path=db_name).geturl()
 
     # create a database for this worker thread -
     current_app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
