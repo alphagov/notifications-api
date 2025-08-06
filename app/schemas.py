@@ -441,7 +441,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
         exclude = []
 
 
-class TemplateHistorySchema(BaseSchema):
+class TemplateHistorySchema(BaseSchema, UUIDsAsStringsMixin):
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
     process_type = field_for(models.Template, "process_type")
