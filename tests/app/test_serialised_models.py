@@ -121,7 +121,6 @@ def test_template_version_caches_in_redis_with_correct_keys(
             "subject": None,
             "template_redacted": ANY,
             "template_type": "sms",
-            "unsubscribe_requests": [],
             "updated_at": None,
             "version": 1,
         }

@@ -466,6 +466,7 @@ class TemplateHistorySchema(BaseSchema, UUIDsAsStringsMixin):
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
+        exclude = tuple(set(BaseTemplateSchema.Meta.exclude) - {"jobs"})
 
 
 class ApiKeySchema(BaseSchema):
