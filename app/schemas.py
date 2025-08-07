@@ -388,6 +388,7 @@ class BaseTemplateSchema(BaseSchema):
     letter_languages = fields.Method("get_letter_languages", "load_letter_languages", allow_none=True)
     is_precompiled_letter = fields.Method("get_is_precompiled_letter")
     process_type = field_for(models.Template, "process_type")
+    created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
 
     def get_is_precompiled_letter(self, template):
@@ -416,7 +417,6 @@ class BaseTemplateSchema(BaseSchema):
 class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
     created_by = field_for(models.Template, "created_by", required=True)
     redact_personalisation = fields.Method("redact")
-    created_at = FlexibleDateTime()
 
     def redact(self, template):
         return template.redact_personalisation
@@ -443,7 +443,6 @@ class TemplateSchemaNoDetail(TemplateSchema):
 
 class TemplateHistorySchema(BaseTemplateSchema, UUIDsAsStringsMixin):
     created_by = fields.Nested(UserSchema, only=["id", "name", "email_address"], dump_only=True)
-    created_at = field_for(models.Template, "created_at", format=DATETIME_FORMAT_NO_TIMEZONE)
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
