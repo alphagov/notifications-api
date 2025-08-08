@@ -2,9 +2,9 @@
 
 set -ex
 
-S3_BUCKET_URI="s3://dev-b-python-profiling-results/python313/profile-run-$(date +%s)-final.svg"
-LOCAL_PROFILE_PATH="/tmp/profile.svg"
-PROFILE_DURATION=600
+S3_BUCKET_URI="s3://dev-b-python-profiling-results/python313/profile-$(date +%s)-final.svg"
+LOCAL_PROFILE_PATH="/tmp/python-profile.json"
+PROFILE_DURATION=900
 STARTUP_DELAY=120 # shorter delay to wait for workers to spawn which we want py-spy to attach to
 APP_INIT_TIMEOUT=1200 # Wait for app initialisation to complete
 
@@ -54,7 +54,8 @@ echo "py-spy errors will be logged to ${PYSPY_LOG_PATH}"
 
 # We target the worker PID directly. The -s flag is removed as it's no longer needed.
 py-spy record \
-  -r 50 \
+  -r 100 \
+  --format speedscope \
   --nonblocking \
   -o "$LOCAL_PROFILE_PATH" \
   -d "$PROFILE_DURATION" \
