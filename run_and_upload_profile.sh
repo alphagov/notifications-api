@@ -28,10 +28,13 @@ echo "Starting Celery worker in the background..."
   --logfile=/dev/null \
   --concurrency=${CONCURRENCY:-4} \
   "$@" &
-CELERY_PID=$!
+MAIN_CELERY_PID=$!
 echo "Celery worker started with PID: ${CELERY_PID}"
-sleep 1200
 
+# 'pgrep -P' finds processes with the specified parent PID. We take the first one.
+WORKER_PID=$(pgrep -P "$MAIN_CELERY_PID" | head -n 1)
+
+sleep 1200
 
 # --- Profiling ---
 echo "Starting py-spy to profile Celery Worker (PID: ${CELERY_PID})..."
@@ -41,7 +44,7 @@ py-spy record \
   --nonblocking \
   -o "$LOCAL_PROFILE_PATH" \
   -d "$PROFILE_DURATION" \
-  -p "$CELERY_PID"
+  -p "$WORKER_PID"
 
 
 # --- Keep Container Alive ---
