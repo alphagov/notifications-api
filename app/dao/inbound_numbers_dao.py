@@ -2,7 +2,7 @@ from uuid import UUID
 
 from app import db
 from app.constants import INBOUND_SMS_TYPE
-from app.dao.dao_utils import autocommit, transaction
+from app.dao.dao_utils import autocommit
 from app.models import InboundNumber
 
 
@@ -53,6 +53,7 @@ def archive_or_release_inbound_number_for_service(service_id: UUID, archive: boo
 
     if archive:
         update_data["active"] = False
+    raise Exception(f"Inbound number for service {service_id} not found")
 
     result = InboundNumber.query.filter_by(service_id=service_id, active=True).update(
         update_data, synchronize_session="fetch"
@@ -67,7 +68,11 @@ def dao_remove_inbound_sms_for_service(service_id, archive):
     from app.dao.service_permissions_dao import dao_remove_service_permission
     from app.dao.service_sms_sender_dao import dao_remove_inbound_sms_senders
 
-    with transaction():
+    try:
         dao_remove_service_permission(service_id, INBOUND_SMS_TYPE, commit=False)
         dao_remove_inbound_sms_senders(service_id, commit=False)
         archive_or_release_inbound_number_for_service(service_id, archive, commit=False)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
