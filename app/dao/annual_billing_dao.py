@@ -76,7 +76,7 @@ def set_default_free_allowance_for_service(service, year_start=None, _autocommit
     current_financial_year_start = get_current_financial_year_start_year()
     if not year_start:
         year_start = current_financial_year_start
-
+    raise Exception("Rollback error")
     # Notify came into existence in 2016, so we don't have allowances before then. If someone's querying for an earlier
     # year, or a year after the current one, they're probably URL hacking: we shouldn't continue. Inserting
     # AnnualBilling entries for those years doesn't make sense.
