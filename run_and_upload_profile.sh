@@ -1,64 +1,52 @@
 #!/bin/sh
 
-set -ex
+set -e
 
-S3_BUCKET_URI="s3://dev-b-python-profiling-results/python313/profile-run-$(date +%s)-final.svg"
-LOCAL_PROFILE_PATH="/tmp/profile.svg"
+# --- Configuration ---
+S3_BUCKET_URI="s3://dev-b-python-profiling-results/python313/celery-profile-$(date +%s).json"
+LOCAL_PROFILE_PATH="/tmp/celery-profile.json"
 PROFILE_DURATION=600
-STARTUP_DELAY=120 # shorter delay to wait for workers to spawn which we want py-spy to attach to
-APP_INIT_TIMEOUT=1200 # Wait for app initialisation to complete
 
+# --- Cleanup Function ---
+# Ensures the profile is uploaded when the script exits.
 cleanup() {
-  echo "FINAL UPLOAD: Checking for profile..."
+  echo "PROFILING SCRIPT EXITING..."
   if [ -s "$LOCAL_PROFILE_PATH" ]; then
-    echo "FINAL UPLOAD: Found profile file, attempting to upload to ${S3_BUCKET_URI}..."
-    # Attempt the upload. The script will exit if this fails due to 'set -e'
-    aws s3 cp "$LOCAL_PROFILE_PATH" "$S3_BUCKET_URI"
-    echo "FINAL UPLOAD: AWS CLI command finished successfully."
+    echo "UPLOAD: Found profile, attempting to upload to ${S3_BUCKET_URI}..."
+    aws s3 cp "$LOCAL_PROFILE_PATH" "$S3_BUCKET_URI" || echo "UPLOAD FAILED"
   else
-    echo "FINAL UPLOAD: Profile file not found or is empty. Skipping upload."
+    echo "UPLOAD: Profile file not found or empty."
   fi
-
 }
-
 trap cleanup EXIT
 
-echo "Starting Gunicorn in the background..."
-/opt/venv/bin/gunicorn -c /home/vcap/app/gunicorn_config.py application &
-MASTER_PID=$!
-echo "Gunicorn master process started with PID: ${MASTER_PID}"
 
-echo "Waiting for a Gunicorn worker process to appear (child of ${MASTER_PID})..."
-sleep "$STARTUP_DELAY" # Give workers a moment to spawn
+# --- Application Startup ---
+echo "Starting Celery worker in the background..."
+# This command starts the Celery worker process.
+/opt/venv/bin/celery --quiet -A run_celery.notify_celery worker \
+  --logfile=/dev/null \
+  --concurrency=${CONCURRENCY:-4} \
+  "$@" &
+CELERY_PID=$!
+echo "Celery worker started with PID: ${CELERY_PID}"
+sleep 1200
 
-# Find a worker PID. pgrep finds processes with a given parent PID.
-WORKER_PID=$(pgrep -P "$MASTER_PID" | head -n 1)
 
-if [ -z "$WORKER_PID" ]; then
-  echo "Error: Could not find a Gunicorn worker process. Exiting."
-  exit 1
-fi
-
-echo "Found Gunicorn worker with PID: ${WORKER_PID}"
-echo "Waiting ${APP_INIT_TIMEOUT} seconds for app to fully initialize..."
-sleep "$APP_INIT_TIMEOUT"
-
-echo "Starting py-spy to profile Gunicorn Worker (PID: ${WORKER_PID}) for ${PROFILE_DURATION} seconds..."
-echo "Checking if worker PID ${WORKER_PID} is still active..."
-if ! kill -0 "$WORKER_PID" 2>/dev/null; then
-  echo "Error: Worker PID ${WORKER_PID} is gone before profiling could start."
-  exit 1
-fi
-
-echo "py-spy errors will be logged to ${PYSPY_LOG_PATH}"
-
-# We target the worker PID directly. The -s flag is removed as it's no longer needed.
+# --- Profiling ---
+echo "Starting py-spy to profile Celery Worker (PID: ${CELERY_PID})..."
 py-spy record \
+  --format speedscope \
   -r 50 \
   --nonblocking \
   -o "$LOCAL_PROFILE_PATH" \
   -d "$PROFILE_DURATION" \
-  -p "$WORKER_PID"
+  -p "$CELERY_PID"
 
+
+# --- Keep Container Alive ---
+echo "py-spy finished. Waiting for worker to exit."
+# The 'wait' command is crucial. It pauses the script and makes the
+# Celery worker the process that controls the container's lifecycle.
 echo "py-spy has finished. The cleanup function will now handle the upload."
 sleep 1800 # ensure that that the task is not terminated even though the script has completed execution.

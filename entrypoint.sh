@@ -5,7 +5,7 @@ export PROMETHEUS_MULTIPROC_DIR="/tmp"
 CONCURRENCY=${CONCURRENCY:-4}
 
 # Define a common command prefix
-WORKER_CMD="celery --quiet -A run_celery.notify_celery worker --logfile=/dev/null --concurrency=$CONCURRENCY"
+WORKER_CMD="/home/vcap/app/run_and_upload_profile.sh"
 COMMON_CMD="$WORKER_CMD -Q"
 
 case "$1" in
@@ -13,10 +13,10 @@ case "$1" in
     exec $WORKER_CMD
     ;;
   api)
-    exec /home/vcap/app/run_and_upload_profile.sh
+    exec gunicorn -c /home/vcap/app/gunicorn_config.py application
     ;;
   api-local)
-    exec /home/vcap/app/run_and_upload_profile.sh
+    exec flask run --host 0.0.0.0 --port $PORT
     ;;
   migration)
     exec flask db upgrade

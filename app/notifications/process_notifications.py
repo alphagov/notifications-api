@@ -206,7 +206,10 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
         deliver_task = get_pdf_for_templated_letter
 
     try:
-        deliver_task.apply_async([str(notification_id)], queue=queue)
+        if notification_type == EMAIL_TYPE:
+            deliver_task.apply_async([str(notification_id)], queue=queue)
+        else:
+            deliver_task.apply_async([str(notification_id)], queue=queue)
     except Exception:
         dao_delete_notifications_by_id(notification_id)
         raise
