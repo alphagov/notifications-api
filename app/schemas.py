@@ -387,7 +387,6 @@ class BaseTemplateSchema(BaseSchema):
     letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
     letter_languages = fields.Method("get_letter_languages", "load_letter_languages", allow_none=True)
     is_precompiled_letter = fields.Method("get_is_precompiled_letter")
-    process_type = field_for(models.Template, "process_type")
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
 

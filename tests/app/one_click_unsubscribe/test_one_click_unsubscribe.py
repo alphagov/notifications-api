@@ -65,7 +65,6 @@ def test_unsubscribe_request_object_refers_to_correct_template_version_after_tem
 
     # update template content to generate new template version
     test_template.content = "New content"
-    test_template.process_type = "priority"
     dao_update_template(test_template)
     subsequent_template_version = test_template.version
 

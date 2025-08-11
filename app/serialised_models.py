@@ -42,7 +42,6 @@ class SerialisedTemplate(SerialisedModel):
     content: str
     id: Any
     postage: str
-    process_type: str
     reply_to_text: str
     subject: str
     template_type: str

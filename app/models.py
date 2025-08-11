@@ -43,7 +43,6 @@ from app.constants import (
     INVITED_USER_STATUS_TYPES,
     LETTER_TYPE,
     MOBILE_TYPE,
-    NORMAL,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
@@ -930,11 +929,6 @@ class KeyTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-class TemplateProcessTypes(db.Model):
-    __tablename__ = "template_process_type"
-    name = db.Column(db.String(255), primary_key=True)
-
-
 class TemplateFolder(db.Model):
     __tablename__ = "template_folder"
 
@@ -1037,12 +1031,6 @@ class TemplateBase(db.Model):
     @declared_attr
     def created_by(cls):
         return db.relationship("User")
-
-    @declared_attr
-    def process_type(cls):
-        return db.Column(
-            db.String(255), db.ForeignKey("template_process_type.name"), index=True, nullable=False, default=NORMAL
-        )
 
     redact_personalisation = association_proxy("template_redacted", "redact_personalisation")
 
