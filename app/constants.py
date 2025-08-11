@@ -407,3 +407,7 @@ REPORT_REQUEST_STATUS_TYPES = [
 
 # Request report types
 NOTIFICATION_REPORT = "notifications_report"
+
+# Rate limit bucket sizes
+TOKEN_BUCKET_MAX = 100
+TOKEN_BUCKET_MIN = -100

@@ -21,6 +21,8 @@ from app.constants import (
     LETTER_TYPE,
     SMS_TO_UK_LANDLINES,
     SMS_TYPE,
+    TOKEN_BUCKET_MAX,
+    TOKEN_BUCKET_MIN,
 )
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
@@ -50,7 +52,7 @@ def check_service_over_api_rate_limit(service, key_type):
         rate_limit = service.rate_limit
         interval = 60
         with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.time():
-            if redis_store.get_remaining_bucket_tokens(cache_key, rate_limit, 100, -100) < 1:
+            if redis_store.get_remaining_bucket_tokens(cache_key, rate_limit, TOKEN_BUCKET_MAX, TOKEN_BUCKET_MIN) < 1:
                 current_app.logger.info("service %s has been rate limited for throughput", service.id)
                 raise RateLimitError(rate_limit, interval, key_type)
 
