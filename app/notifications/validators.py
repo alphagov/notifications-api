@@ -50,9 +50,10 @@ def check_service_over_api_rate_limit(service, key_type):
     if current_app.config["API_RATE_LIMIT_ENABLED"] and current_app.config["REDIS_ENABLED"]:
         cache_key = rate_limit_cache_key(service.id, key_type)
         rate_limit = service.rate_limit
-        interval = 60
+        interval = 60 # keep this for now so that we have a like for like mapping of the per minute rate limit
+        rate_limit_in_seconds = rate_limit / interval
         with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.time():
-            if redis_store.get_remaining_bucket_tokens(cache_key, rate_limit, TOKEN_BUCKET_MAX, TOKEN_BUCKET_MIN) < 1:
+            if redis_store.get_remaining_bucket_tokens(cache_key, rate_limit_in_seconds, TOKEN_BUCKET_MAX, TOKEN_BUCKET_MIN) < 1:
                 current_app.logger.info("service %s has been rate limited for throughput", service.id)
                 raise RateLimitError(rate_limit, interval, key_type)
 
