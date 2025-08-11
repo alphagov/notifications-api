@@ -225,7 +225,6 @@ class Config:
             "is_secure": True,
             "predefined_queues": QueueNames.predefined_queues(NOTIFICATION_QUEUE_PREFIX, AWS_REGION, AWS_ACCOUNT_ID),
         },
-        "task_ignore_result": True,  # temporary disable results backend for debugging purposes
         "result_expires": 0,
         "timezone": "UTC",
         "imports": [
