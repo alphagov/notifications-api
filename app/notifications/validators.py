@@ -50,7 +50,7 @@ def check_service_over_api_rate_limit(service, key_type):
         rate_limit = service.rate_limit
         interval = 60
         with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.time():
-            if redis_store.exceeded_rate_limit(cache_key, rate_limit, interval):
+            if redis_store.get_remaining_bucket_tokens(cache_key, rate_limit, 100, -100) < 1:
                 current_app.logger.info("service %s has been rate limited for throughput", service.id)
                 raise RateLimitError(rate_limit, interval, key_type)
 
