@@ -386,6 +386,13 @@ class BaseTemplateSchema(BaseSchema):
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
     letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
     letter_languages = fields.Method("get_letter_languages", "load_letter_languages", allow_none=True)
+    is_precompiled_letter = fields.Method("get_is_precompiled_letter")
+    process_type = field_for(models.Template, "process_type")
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
+
+    def get_is_precompiled_letter(self, template):
+        return template.is_precompiled_letter
 
     def get_reply_to(self, template):
         return template.reply_to
@@ -409,17 +416,10 @@ class BaseTemplateSchema(BaseSchema):
 
 class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
     created_by = field_for(models.Template, "created_by", required=True)
-    process_type = field_for(models.Template, "process_type")
     redact_personalisation = fields.Method("redact")
-    is_precompiled_letter = fields.Method("get_is_precompiled_letter")
-    created_at = FlexibleDateTime()
-    updated_at = FlexibleDateTime()
 
     def redact(self, template):
         return template.redact_personalisation
-
-    def get_is_precompiled_letter(self, template):
-        return template.is_precompiled_letter
 
     @validates_schema
     def validate_type(self, data, **kwargs):
@@ -441,31 +441,12 @@ class TemplateSchemaNoDetail(TemplateSchema):
         exclude = []
 
 
-class TemplateHistorySchema(BaseSchema, UUIDsAsStringsMixin):
-    reply_to = fields.Method("get_reply_to", allow_none=True)
-    reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
-    process_type = field_for(models.Template, "process_type")
-    is_precompiled_letter = fields.Method("get_is_precompiled_letter")
-    letter_attachment = fields.Method("get_letter_attachment", allow_none=True)
-
+class TemplateHistorySchema(BaseTemplateSchema, UUIDsAsStringsMixin):
     created_by = fields.Nested(UserSchema, only=["id", "name", "email_address"], dump_only=True)
-    created_at = field_for(models.Template, "created_at", format=DATETIME_FORMAT_NO_TIMEZONE)
-    updated_at = FlexibleDateTime()
-
-    def get_reply_to(self, template):
-        return template.reply_to
-
-    def get_reply_to_text(self, template):
-        return template.get_reply_to_text()
-
-    def get_letter_attachment(self, template):
-        return template.letter_attachment.serialize() if template.letter_attachment_id else None
-
-    def get_is_precompiled_letter(self, template):
-        return template.is_precompiled_letter
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
+        exclude = tuple(set(BaseTemplateSchema.Meta.exclude) - {"jobs"})
 
 
 class ApiKeySchema(BaseSchema):
