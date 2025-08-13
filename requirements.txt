@@ -179,7 +179,7 @@ pyjwt==2.10.1
     # via
     #   -r requirements.in
     #   notifications-python-client
-pypdf==3.17.0
+pypdf==6.1.0
     # via notifications-utils
 python-dateutil==2.9.0.post0
     # via
