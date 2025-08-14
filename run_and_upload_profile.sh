@@ -56,7 +56,6 @@ echo "py-spy errors will be logged to ${PYSPY_LOG_PATH}"
 py-spy record \
   -r 100 \
   --format speedscope \
-  --nonblocking \
   -o "$LOCAL_PROFILE_PATH" \
   -d "$PROFILE_DURATION" \
   -p "$WORKER_PID"
