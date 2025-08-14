@@ -27,7 +27,7 @@ def test_template_history_version(notify_api, sample_user, sample_template):
             assert json_resp["data"]["process_type"] == "normal"
             assert json_resp["data"]["created_by"]["name"] == sample_user.name
             assert json_resp["data"]["is_precompiled_letter"] is False
-            assert datetime.strptime(json_resp["data"]["created_at"], "%Y-%m-%d %H:%M:%S.%f").date() == date.today()
+            assert datetime.strptime(json_resp["data"]["created_at"], "%Y-%m-%dT%H:%M:%S.%fZ").date() == date.today()
 
 
 def test_previous_template_history_version(notify_api, sample_template):

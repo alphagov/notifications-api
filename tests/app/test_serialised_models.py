@@ -97,7 +97,7 @@ def test_template_version_caches_in_redis_with_correct_keys(
         "data": {
             "archived": False,
             "content": "Dear Sir/Madam, Hello. Yours Truly, The Government.",
-            "created_at": "2025-08-06 01:02:03.000000",
+            "created_at": "2025-08-06T01:02:03.000000Z",
             "created_by": {
                 "id": str(sample_template.created_by.id),
                 "email_address": "notify@digital.cabinet-office.gov.uk",
@@ -121,7 +121,6 @@ def test_template_version_caches_in_redis_with_correct_keys(
             "subject": None,
             "template_redacted": ANY,
             "template_type": "sms",
-            "unsubscribe_requests": [],
             "updated_at": None,
             "version": 1,
         }
