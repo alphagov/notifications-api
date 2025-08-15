@@ -220,6 +220,7 @@ class Config:
         "broker_url": "https://sqs.eu-west-1.amazonaws.com",
         "broker_transport": "sqs",
         "task_ignore_result": True,
+        "result_backend": None,
         "broker_transport_options": {
             "region": AWS_REGION,
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
