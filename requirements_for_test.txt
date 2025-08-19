@@ -12,10 +12,6 @@ arrow==1.2.3
     # via
     #   -r requirements.txt
     #   isoduration
-async-timeout==4.0.3
-    # via
-    #   -r requirements.txt
-    #   redis
 attrs==24.3.0
     # via
     #   -r requirements.txt
@@ -220,7 +216,7 @@ moto==5.0.11
     # via -r requirements_for_test.in
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@8a998cf82afe070c9cb2f33913560d67b99a25c8
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@6a99fe785d4ed3ea4bc75dfb8f40d0323e7452c0
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
