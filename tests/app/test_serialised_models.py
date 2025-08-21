@@ -1,9 +1,10 @@
 import json
-from unittest.mock import ANY
+from unittest.mock import ANY, call
 
+import pytest
 from freezegun import freeze_time
 
-from app.serialised_models import SerialisedTemplate
+from app.serialised_models import SerialisedTemplate, memory_cache
 from tests.app.db import create_template
 
 EXPECTED_TEMPLATE_ATTRIBUTES = {
@@ -125,3 +126,87 @@ def test_template_version_caches_in_redis_with_correct_keys(
     }
 
     assert {attr for attr in dir(template) if not attr.startswith("_")} == EXPECTED_TEMPLATE_ATTRIBUTES
+
+
+def test_memory_cache_caches(mocker):
+    expensive = mocker.Mock()
+
+    class Model:
+        @classmethod
+        @memory_cache
+        def cached_with_default_args(cls, *args, **kwargs):
+            expensive(*args, **kwargs)
+
+        @classmethod
+        @memory_cache(ttl=3)
+        def cached_with_custom_ttl(cls, *args, **kwargs):
+            expensive(*args, **kwargs)
+
+    for _ in range(10):
+        Model.cached_with_default_args("foo", a=1)
+        Model.cached_with_custom_ttl("bar", b=2)
+        Model.cached_with_custom_ttl("bar", c=3)
+
+    assert expensive.call_args_list == [call("foo", a=1), call("bar", b=2), call("bar", c=3)]
+
+
+def test_memory_cache_not_shared_between_classes(mocker):
+    expensive = mocker.Mock()
+
+    class Model_A:
+        @classmethod
+        @memory_cache
+        def foo(cls):
+            expensive("from Model_A")
+
+    class Model_B:
+        @classmethod
+        @memory_cache
+        def foo(cls):
+            expensive("from Model_B")
+
+    Model_A.foo()
+    Model_B.foo()
+
+    assert expensive.call_args_list == [call("from Model_A"), call("from Model_B")]
+
+
+def test_results_of_memory_cache(mocker):
+    class Model:
+        @classmethod
+        @memory_cache
+        def a(cls):
+            return "a"
+
+        @classmethod
+        @memory_cache
+        def b(cls):
+            return "b"
+
+    assert [Model.a() for _ in range(3)] == ["a", "a", "a"]
+    assert [Model.b() for _ in range(3)] == ["b", "b", "b"]
+
+
+def test_memory_cache_on_plain_function(mocker):
+    @memory_cache
+    def not_a_classmethod(*args):
+        pass
+
+    with pytest.raises(TypeError):
+        not_a_classmethod()
+
+    with pytest.raises(TypeError):
+        not_a_classmethod("foo")
+
+
+def test_memory_cache_on_non_class_method(mocker):
+    class Model:
+        @memory_cache
+        def not_a_classmethod(self, *args):
+            pass
+
+    with pytest.raises(TypeError):
+        Model().not_a_classmethod()
+
+    with pytest.raises(TypeError):
+        Model().not_a_classmethod("foo")

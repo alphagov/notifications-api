@@ -25,6 +25,8 @@ def memory_cache(*args, ttl=2):
             key=ignore_first_argument_cache_key,
         )
         def wrapper(*args, **kwargs):
+            if not isinstance(getattr(args[0], "__dict__", {}).get(func.__name__), classmethod):
+                raise TypeError("memory_cache can only be used on classmethods")
             return func(*args, **kwargs)
 
         return wrapper
