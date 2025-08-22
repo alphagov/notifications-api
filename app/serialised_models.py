@@ -13,6 +13,7 @@ from werkzeug.utils import cached_property
 from app import db, redis_store
 from app.dao.api_key_dao import get_model_api_keys
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.utils import is_classmethod
 
 redis_cache = RequestCache(redis_store)
 
@@ -25,7 +26,7 @@ def memory_cache(*args, ttl=2):
             key=ignore_first_argument_cache_key,
         )
         def wrapper(*args, **kwargs):
-            if not isinstance(getattr(args[0], "__dict__", {}).get(func.__name__), classmethod):
+            if not is_classmethod(func, args[0]):
                 raise TypeError("memory_cache can only be used on classmethods")
             return func(*args, **kwargs)
 
