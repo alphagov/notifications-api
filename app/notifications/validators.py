@@ -237,15 +237,6 @@ def validate_template(template_id, personalisation, service, notification_type, 
     return template, template_with_content
 
 
-def check_reply_to(service_id, reply_to_id, type_):
-    if type_ == EMAIL_TYPE:
-        return check_service_email_reply_to_id(service_id, reply_to_id, type_)
-    elif type_ == SMS_TYPE:
-        return check_service_sms_sender_id(service_id, reply_to_id, type_)
-    elif type_ == LETTER_TYPE:
-        return check_service_letter_contact_id(service_id, reply_to_id, type_)
-
-
 def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
     if reply_to_id:
         try:
