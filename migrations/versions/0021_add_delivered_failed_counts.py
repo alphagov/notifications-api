@@ -12,6 +12,7 @@ down_revision = "0020_template_history_fix"
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import text
 
 
 def upgrade():
@@ -19,7 +20,7 @@ def upgrade():
     op.add_column("jobs", sa.Column("notifications_delivered", sa.Integer(), nullable=True))
     op.add_column("jobs", sa.Column("notifications_failed", sa.Integer(), nullable=True))
     conn = op.get_bind()
-    results = conn.execute("select distinct job_id from notifications")
+    results = conn.execute(text("select distinct job_id from notifications"))
     res = results.fetchall()
 
     for x in res:

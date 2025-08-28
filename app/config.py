@@ -218,7 +218,12 @@ class Config:
     AWS_ACCOUNT_ID = os.environ.get("AWS_ACCOUNT_ID", "123456789012")
     CELERY = {
         "broker_url": "https://sqs.eu-west-1.amazonaws.com",
-        "broker_transport": "sqs",
+        # deriving the actual SQS alias resolution from
+        # https://github.com/celery/kombu/blob/723e4b0cd236f23e332951f768f9b644d0b53218/kombu/transport/
+        # __init__.py#L31C5-L31C44
+        "broker_transport": "kombu.transport.SQS.Transport",
+        "task_ignore_result": True,
+        "result_backend": None,
         "broker_transport_options": {
             "region": AWS_REGION,
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
@@ -542,7 +547,9 @@ class Development(Config):
     NOTIFY_ENVIRONMENT = "development"
     NOTIFY_EMAIL_DOMAIN = "notify.tools"
 
-    SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", "postgresql://localhost/notification_api")
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "SQLALCHEMY_DATABASE_URI", "postgresql+psycopg2://postgres:postgres@localhost:5432/notification_api"
+    )
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     ANTIVIRUS_ENABLED = os.getenv("ANTIVIRUS_ENABLED") == "1"

@@ -8,7 +8,7 @@ Create Date: 2020-09-23 10:11:01.094412
 
 import os
 
-import sqlalchemy as sa
+from sqlalchemy import text
 from alembic import op
 
 revision = "0331_add_broadcast_org"
@@ -54,15 +54,17 @@ def upgrade():
         """
         conn = op.get_bind()
         conn.execute(
-            sa.text(insert_sql),
-            id=organisation_id,
-            name=f"Broadcast Services ({environment})",
-            active=True,
-            agreement_signed=None,
-            crown=None,
-            organisation_type="central",
+            text(insert_sql),
+            {
+                "id": organisation_id,
+                "name": f"Broadcast Services ({environment})",
+                "active": True,
+                "agreement_signed": None,
+                "crown": None,
+                "organisation_type": "central",
+            }
         )
-        conn.execute(sa.text(update_service_set_broadcast_org_sql), organisation_id=organisation_id)
+        conn.execute(text(update_service_set_broadcast_org_sql), {"organisation_id": organisation_id})
 
 
 def downgrade():
@@ -76,5 +78,5 @@ def downgrade():
         WHERE id = :organisation_id
     """
     conn = op.get_bind()
-    conn.execute(sa.text(update_service_remove_org_sql), organisation_id=organisation_id)
-    conn.execute(sa.text(delete_sql), organisation_id=organisation_id)
+    conn.execute(text(update_service_remove_org_sql), {"organisation_id": organisation_id})
+    conn.execute(text(delete_sql), {"organisation_id": organisation_id})
