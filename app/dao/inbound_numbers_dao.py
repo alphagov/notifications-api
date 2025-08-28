@@ -53,7 +53,6 @@ def archive_or_release_inbound_number_for_service(service_id: UUID, archive: boo
 
     if archive:
         update_data["active"] = False
-    raise Exception(f"Inbound number for service {service_id} not found")
 
     result = InboundNumber.query.filter_by(service_id=service_id, active=True).update(
         update_data, synchronize_session="fetch"
