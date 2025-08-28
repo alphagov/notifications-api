@@ -64,7 +64,7 @@ dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-eventlet==0.39.1
+eventlet==0.40.0
     # via
     #   -r requirements.in
     #   gunicorn
@@ -96,7 +96,7 @@ gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6
     # via -r requirements.in
 govuk-bank-holidays==0.15
     # via notifications-utils
-greenlet==3.2.2
+greenlet==3.2.3
     # via eventlet
 gunicorn==23.0.0
     # via
@@ -150,7 +150,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@8a998cf82afe070c9cb2f33913560d67b99a25c8
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@6a99fe785d4ed3ea4bc75dfb8f40d0323e7452c0
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
