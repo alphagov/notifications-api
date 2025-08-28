@@ -1,3 +1,4 @@
+from contextlib import suppress
 from datetime import datetime, timedelta
 from itertools import islice
 from urllib.parse import urljoin
@@ -190,3 +191,9 @@ def parse_and_format_phone_number(number: str, with_country_code=True) -> str:
 def get_international_phone_info(number: str):
     phone_number = PhoneNumber(number)
     return phone_number.get_international_phone_info()
+
+
+def is_classmethod(method, cls):
+    with suppress(AttributeError, KeyError):
+        return isinstance(cls.__dict__[method.__name__], classmethod)
+    return False
