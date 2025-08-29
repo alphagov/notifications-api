@@ -52,7 +52,7 @@ def upgrade():
                 """
             )
         ),
-        notify_email_domain=current_app.config["NOTIFY_EMAIL_DOMAIN"],
+        {"notify_email_domain": current_app.config["NOTIFY_EMAIL_DOMAIN"]},
     )
 
     rows = results.fetchall()
