@@ -199,7 +199,6 @@ def create_template(
     archived=False,
     folder=None,
     postage=None,
-    process_type="normal",
     contact_block_id=None,
     version=None,
 ):
@@ -213,7 +212,6 @@ def create_template(
         "reply_to": reply_to,
         "hidden": hidden,
         "folder": folder,
-        "process_type": process_type,
     }
     if template_type == LETTER_TYPE:
         data["postage"] = postage or "second"

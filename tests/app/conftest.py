@@ -198,7 +198,6 @@ def sample_template(sample_user):
         "created_by": sample_user,
         "archived": False,
         "hidden": False,
-        "process_type": "normal",
     }
     template = Template(**data)
     dao_create_template(template)

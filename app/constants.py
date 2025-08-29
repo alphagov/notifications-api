@@ -271,12 +271,6 @@ class OrganisationUserPermissionTypes(enum.StrEnum):
     can_make_services_live = "can_make_services_live"
 
 
-# Prioritisation for template processing
-# PRIORITY queue is now archived and should be ripe for cleanup.
-NORMAL = "normal"
-PRIORITY = "priority"
-TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
-
 # User authetication
 SMS_AUTH_TYPE = "sms_auth"
 EMAIL_AUTH_TYPE = "email_auth"

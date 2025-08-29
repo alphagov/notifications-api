@@ -1,4 +1,4 @@
-from app.constants import TEMPLATE_PROCESS_TYPE, TEMPLATE_TYPES, LetterLanguageOptions
+from app.constants import TEMPLATE_TYPES, LetterLanguageOptions
 from app.schema_validation.definitions import nullable_uuid, uuid
 
 letter_languages_subschema = {
@@ -58,7 +58,6 @@ post_create_template_schema = {
         "name": {"type": "string"},
         "template_type": {"enum": TEMPLATE_TYPES},
         "service": uuid,
-        "process_type": {"enum": TEMPLATE_PROCESS_TYPE},
         "content": {"type": "string"},
         "subject": {"type": "string"},
         "created_by": uuid,
@@ -85,7 +84,6 @@ post_update_template_schema = {
         "name": {"type": "string"},
         "template_type": {"enum": TEMPLATE_TYPES},
         "service": uuid,
-        "process_type": {"enum": TEMPLATE_PROCESS_TYPE},
         "content": {"type": "string"},
         "subject": {"type": "string"},
         "postage": {"type": "string", "format": "postage"},

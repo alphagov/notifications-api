@@ -27,7 +27,6 @@ from app.notifications.validators import (
     check_is_message_too_long,
     check_notification_content_is_not_empty,
     check_rate_limiting,
-    check_reply_to,
     check_service_email_reply_to_id,
     check_service_letter_contact_id,
     check_service_over_api_rate_limit,
@@ -700,11 +699,6 @@ def test_validate_and_format_recipient_fails_when_no_recipient():
     assert e.value.message == "Recipient can't be empty"
 
 
-@pytest.mark.parametrize("notification_type", ["sms", "email", "letter"])
-def test_check_service_email_reply_to_id_where_reply_to_id_is_none(notification_type):
-    assert check_service_email_reply_to_id(None, None, notification_type) is None
-
-
 def test_check_service_email_reply_to_where_email_reply_to_is_found(sample_service):
     reply_to_address = create_reply_to_email(sample_service, "test@test.com")
     assert check_service_email_reply_to_id(sample_service.id, reply_to_address.id, EMAIL_TYPE) == "test@test.com"
@@ -731,11 +725,6 @@ def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_s
     )
 
 
-@pytest.mark.parametrize("notification_type", ["sms", "email", "letter"])
-def test_check_service_sms_sender_id_where_sms_sender_id_is_none(notification_type):
-    assert check_service_sms_sender_id(None, None, notification_type) is None
-
-
 def test_check_service_sms_sender_id_where_sms_sender_id_is_found(sample_service):
     sms_sender = create_service_sms_sender(service=sample_service, sms_sender="123456")
     assert check_service_sms_sender_id(sample_service.id, sms_sender.id, SMS_TYPE) == "123456"
@@ -754,10 +743,6 @@ def test_check_service_sms_sender_id_where_sms_sender_is_not_found(sample_servic
         check_service_sms_sender_id(sample_service.id, fake_uuid, SMS_TYPE)
     assert e.value.status_code == 400
     assert e.value.message == f"sms_sender_id {fake_uuid} does not exist in database for service id {sample_service.id}"
-
-
-def test_check_service_letter_contact_id_where_letter_contact_id_is_none():
-    assert check_service_letter_contact_id(None, None, "letter") is None
 
 
 def test_check_service_letter_contact_id_where_letter_contact_id_is_found(sample_service):
@@ -786,24 +771,32 @@ def test_check_service_letter_contact_id_where_letter_contact_is_not_found(sampl
     )
 
 
-@pytest.mark.parametrize("notification_type", ["sms", "email", "letter"])
-def test_check_reply_to_with_empty_reply_to(sample_service, notification_type):
-    assert check_reply_to(sample_service.id, None, notification_type) is None
+@pytest.mark.parametrize(
+    "func",
+    [check_service_email_reply_to_id, check_service_sms_sender_id, check_service_letter_contact_id],
+)
+@pytest.mark.parametrize(
+    "notification_type",
+    ["sms", "email", "letter"],
+)
+def test_check_reply_to_with_empty_reply_to(sample_service, notification_type, func):
+    assert func(None, None, notification_type) is None
+    assert func(sample_service.id, None, notification_type) is None
 
 
 def test_check_reply_to_email_type(sample_service):
     reply_to_address = create_reply_to_email(sample_service, "test@test.com")
-    assert check_reply_to(sample_service.id, reply_to_address.id, EMAIL_TYPE) == "test@test.com"
+    assert check_service_email_reply_to_id(sample_service.id, reply_to_address.id, EMAIL_TYPE) == "test@test.com"
 
 
 def test_check_reply_to_sms_type(sample_service):
     sms_sender = create_service_sms_sender(service=sample_service, sms_sender="123456")
-    assert check_reply_to(sample_service.id, sms_sender.id, SMS_TYPE) == "123456"
+    assert check_service_sms_sender_id(sample_service.id, sms_sender.id, SMS_TYPE) == "123456"
 
 
 def test_check_reply_to_letter_type(sample_service):
     letter_contact = create_letter_contact(service=sample_service, contact_block="123456")
-    assert check_reply_to(sample_service.id, letter_contact.id, LETTER_TYPE) == "123456"
+    assert check_service_letter_contact_id(sample_service.id, letter_contact.id, LETTER_TYPE) == "123456"
 
 
 def test_check_if_service_can_send_files_by_email_raises_if_no_contact_link_set(sample_service, hostnames):

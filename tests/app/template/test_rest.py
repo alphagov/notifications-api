@@ -69,7 +69,6 @@ def test_should_create_a_new_template_for_a_service(client, sample_user, templat
     assert json_resp["data"]["service"] == str(service.id)
     assert json_resp["data"]["id"]
     assert json_resp["data"]["version"] == 1
-    assert json_resp["data"]["process_type"] == "normal"
     assert json_resp["data"]["created_by"] == str(sample_user.id)
     if subject:
         assert json_resp["data"]["subject"] == "subject"
@@ -599,7 +598,6 @@ def test_should_get_return_all_fields_by_default(
         "letter_welsh_subject",
         "name",
         "postage",
-        "process_type",
         "redact_personalisation",
         "reply_to_text",
         "reply_to",
@@ -650,7 +648,6 @@ def test_should_get_a_single_template(client, sample_user, sample_service, subje
     assert response.status_code == 200
     assert data["content"] == content
     assert data["subject"] == subject
-    assert data["process_type"] == "normal"
     assert not data["redact_personalisation"]
     assert data["letter_attachment"] is None
 
@@ -839,20 +836,6 @@ def test_update_does_not_create_new_version_when_there_is_no_change(client, samp
 
     template = dao_get_template_by_id(sample_template.id)
     assert template.version == 1
-
-
-def test_update_set_process_type_on_template(client, sample_template):
-    auth_header = create_admin_authorization_header()
-    data = {"process_type": "priority"}
-    resp = client.post(
-        f"/service/{sample_template.service_id}/template/{sample_template.id}",
-        data=json.dumps(data),
-        headers=[("Content-Type", "application/json"), auth_header],
-    )
-    assert resp.status_code == 200
-
-    template = dao_get_template_by_id(sample_template.id)
-    assert template.process_type == "priority"
 
 
 def test_create_a_template_with_reply_to(admin_request, sample_user):

@@ -42,7 +42,6 @@ def test_create_template(sample_service, sample_user, template_type, subject):
 
     template = Template.query.one()
     assert template.name == "Sample Template"
-    assert template.process_type == "normal"
     assert template.has_unsubscribe_link is False
 
 
