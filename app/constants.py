@@ -234,6 +234,7 @@ EMAIL_AUTH = "email_auth"
 EDIT_FOLDER_PERMISSIONS = "edit_folder_permissions"
 INTERNATIONAL_LETTERS = "international_letters"
 SMS_TO_UK_LANDLINES = "sms_to_uk_landlines"
+TOKEN_BUCKET = "token_bucket"
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
     SMS_TYPE,
@@ -244,6 +245,7 @@ SERVICE_PERMISSION_TYPES = [
     EDIT_FOLDER_PERMISSIONS,
     INTERNATIONAL_LETTERS,
     SMS_TO_UK_LANDLINES,
+    TOKEN_BUCKET,
 ]
 
 # List of available permissions
