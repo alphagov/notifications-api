@@ -31,7 +31,7 @@ bcrypt==4.0.0
     #   flask-bcrypt
 beautifulsoup4==4.12.3
     # via -r requirements_for_test_common.in
-billiard==4.2.0
+billiard==4.2.1
     # via
     #   -r requirements.txt
     #   celery
@@ -55,7 +55,7 @@ cachetools==5.5.0
     # via
     #   -r requirements.txt
     #   notifications-utils
-celery==5.4.0
+celery==5.5.3
     # via -r requirements.txt
 certifi==2024.7.4
     # via
@@ -190,7 +190,7 @@ jsonschema-specifications==2024.10.1
     # via
     #   -r requirements.txt
     #   jsonschema
-kombu==5.3.7
+kombu==5.5.4
     # via
     #   -r requirements.txt
     #   celery
@@ -230,6 +230,7 @@ packaging==23.2
     # via
     #   -r requirements.txt
     #   gunicorn
+    #   kombu
     #   marshmallow
     #   marshmallow-sqlalchemy
     #   pytest
@@ -253,8 +254,6 @@ psycopg2-binary==2.9.10
     # via -r requirements.txt
 pycparser==2.21
     # via cffi
-pycurl==7.45.6
-    # via -r requirements.txt
 pyjwt==2.10.1
     # via
     #   -r requirements.txt
@@ -371,10 +370,10 @@ statsd==4.0.1
     #   notifications-utils
 trustme==0.9.0
     # via -r requirements_for_test.in
-tzdata==2024.1
+tzdata==2025.2
     # via
     #   -r requirements.txt
-    #   celery
+    #   kombu
 uri-template==1.2.0
     # via -r requirements.txt
 urllib3==1.26.19
