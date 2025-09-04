@@ -51,7 +51,7 @@ cachetools==5.5.0
     # via
     #   -r requirements.txt
     #   notifications-utils
-celery==5.5.3
+celery==5.4.0
     # via -r requirements.txt
 certifi==2024.7.4
     # via
@@ -250,6 +250,8 @@ psycopg2-binary==2.9.10
     # via -r requirements.txt
 pycparser==2.21
     # via cffi
+pycurl==7.45.6
+    # via -r requirements.txt
 pyjwt==2.10.1
     # via
     #   -r requirements.txt
@@ -369,6 +371,7 @@ trustme==0.9.0
 tzdata==2025.2
     # via
     #   -r requirements.txt
+    #   celery
     #   kombu
 uri-template==1.2.0
     # via -r requirements.txt

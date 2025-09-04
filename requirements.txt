@@ -32,7 +32,7 @@ botocore==1.34.100
     #   s3transfer
 cachetools==5.5.0
     # via notifications-utils
-celery==5.5.3
+celery==5.4.0
     # via
     #   -r requirements.in
     #   sentry-sdk
@@ -170,6 +170,8 @@ psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
     # via -r requirements.in
+pycurl==7.45.6
+    # via celery
 pyjwt==2.10.1
     # via
     #   -r requirements.in
@@ -231,7 +233,9 @@ sqlalchemy==1.4.41
 statsd==4.0.1
     # via notifications-utils
 tzdata==2025.2
-    # via kombu
+    # via
+    #   celery
+    #   kombu
 uri-template==1.2.0
     # via jsonschema
 urllib3==1.26.19
