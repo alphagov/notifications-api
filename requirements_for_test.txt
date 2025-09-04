@@ -12,10 +12,6 @@ arrow==1.2.3
     # via
     #   -r requirements.txt
     #   isoduration
-async-timeout==4.0.3
-    # via
-    #   -r requirements.txt
-    #   redis
 attrs==24.3.0
     # via
     #   -r requirements.txt
