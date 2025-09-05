@@ -7,6 +7,7 @@ from unittest.mock import ANY
 import pytest
 from flask import current_app, url_for
 from freezegun import freeze_time
+from notifications_utils.testing.comparisons import AnyStringMatching, RestrictedAny
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.celery.provider_tasks import deliver_email
@@ -3391,6 +3392,10 @@ def test_get_returned_letter_summary(admin_request, sample_service):
     assert response[1] == {"returned_letter_count": 1, "reported_at": "2019-12-08"}
 
 
+_any_falsey = RestrictedAny(lambda x: not x)
+_any_emaily = AnyStringMatching(r".+@.+")
+
+
 @freeze_time("2019-12-11 13:30")
 def test_get_returned_letter(admin_request, sample_letter_template):
     job = create_job(template=sample_letter_template)
@@ -3452,6 +3457,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
         service=sample_letter_template.service, reported_at=datetime.utcnow(), notification_id=uploaded_letter.id
     )
 
+    # not included in results because wrong service
     not_included_in_results_template = create_template(
         service=create_service(service_name="not included in results"), template_type="letter"
     )
@@ -3461,71 +3467,125 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     create_returned_letter(
         service=not_included_in_results_template.service, reported_at=datetime.utcnow(), notification_id=letter_4.id
     )
+
+    # not included in results because wrong reported_at
+    letter_5 = create_notification_history(
+        template=precompiled_template,
+        client_reference="filename.pdf",
+        created_at=datetime.utcnow() - timedelta(days=6),
+        created_by_id=sample_letter_template.service.users[0].id,
+    )
+    create_returned_letter(
+        service=sample_letter_template.service,
+        reported_at=datetime.utcnow() - timedelta(days=2),
+        notification_id=letter_5.id,
+    )
+
+    # two "orphaned" letters
+    create_returned_letter(
+        service=sample_letter_template.service,
+        reported_at=datetime.utcnow(),
+        notification_id=uuid.uuid4(),
+    )
+    create_returned_letter(
+        service=sample_letter_template.service,
+        reported_at=datetime.utcnow(),
+        notification_id=uuid.uuid4(),
+    )
+
+    # an "orphaned" letter for the wrong day
+    create_returned_letter(
+        service=sample_letter_template.service,
+        reported_at=datetime.utcnow() - timedelta(days=3),
+        notification_id=uuid.uuid4(),
+    )
+
+    # an "orphaned" letter for the wrong service
+    create_returned_letter(
+        service=not_included_in_results_template.service,
+        reported_at=datetime.utcnow(),
+        notification_id=uuid.uuid4(),
+    )
+
     response = admin_request.get(
         "service.get_returned_letters", service_id=sample_letter_template.service_id, reported_at="2019-12-11"
     )
 
-    assert len(response) == 5
-    assert response[0]["notification_id"] == str(letter_from_job.id)
-    assert not response[0]["client_reference"]
-    assert response[0]["reported_at"] == "2019-12-11"
-    assert response[0]["created_at"] == "2019-12-10 13:30:00.000000"
-    assert response[0]["template_name"] == sample_letter_template.name
-    assert response[0]["template_id"] == str(sample_letter_template.id)
-    assert response[0]["template_version"] == sample_letter_template.version
-    assert response[0]["user_name"] == sample_letter_template.service.users[0].name
-    assert response[0]["original_file_name"] == job.original_file_name
-    assert response[0]["job_row_number"] == 4
-    assert not response[0]["uploaded_letter_file_name"]
-
-    assert response[1]["notification_id"] == str(one_off_letter.id)
-    assert not response[1]["client_reference"]
-    assert response[1]["reported_at"] == "2019-12-11"
-    assert response[1]["created_at"] == "2019-12-09 13:30:00.000000"
-    assert response[1]["template_name"] == sample_letter_template.name
-    assert response[1]["template_id"] == str(sample_letter_template.id)
-    assert response[1]["template_version"] == sample_letter_template.version
-    assert response[1]["user_name"] == sample_letter_template.service.users[0].name
-    assert not response[1]["original_file_name"]
-    assert not response[1]["job_row_number"]
-    assert not response[1]["uploaded_letter_file_name"]
-
-    assert response[2]["notification_id"] == str(api_letter.id)
-    assert response[2]["client_reference"] == "api_letter"
-    assert response[2]["reported_at"] == "2019-12-11"
-    assert response[2]["created_at"] == "2019-12-08 13:30:00.000000"
-    assert response[2]["template_name"] == sample_letter_template.name
-    assert response[2]["template_id"] == str(sample_letter_template.id)
-    assert response[2]["template_version"] == sample_letter_template.version
-    assert response[2]["user_name"] == "API"
-    assert not response[2]["original_file_name"]
-    assert not response[2]["job_row_number"]
-    assert not response[2]["uploaded_letter_file_name"]
-
-    assert response[3]["notification_id"] == str(precompiled_letter.id)
-    assert response[3]["client_reference"] == "precompiled letter"
-    assert response[3]["reported_at"] == "2019-12-11"
-    assert response[3]["created_at"] == "2019-12-07 13:30:00.000000"
-    assert not response[3]["template_name"]
-    assert not response[3]["template_id"]
-    assert not response[3]["template_version"]
-    assert response[3]["user_name"] == "API"
-    assert not response[3]["original_file_name"]
-    assert not response[3]["job_row_number"]
-    assert not response[3]["uploaded_letter_file_name"]
-
-    assert response[4]["notification_id"] == str(uploaded_letter.id)
-    assert not response[4]["client_reference"]
-    assert response[4]["reported_at"] == "2019-12-11"
-    assert response[4]["created_at"] == "2019-12-06 13:30:00.000000"
-    assert not response[4]["template_name"]
-    assert not response[4]["template_id"]
-    assert not response[4]["template_version"]
-    assert response[4]["user_name"] == sample_letter_template.service.users[0].name
-    assert response[4]["email_address"] == sample_letter_template.service.users[0].email_address
-    assert not response[4]["original_file_name"]
-    assert not response[4]["job_row_number"]
-    assert response[4]["uploaded_letter_file_name"] == "filename.pdf"
+    assert response == {
+        "returned_letters": [
+            {
+                "notification_id": str(letter_from_job.id),
+                "client_reference": _any_falsey,
+                "reported_at": "2019-12-11",
+                "created_at": "2019-12-10 13:30:00.000000",
+                "email_address": _any_emaily,
+                "template_name": sample_letter_template.name,
+                "template_id": str(sample_letter_template.id),
+                "template_version": sample_letter_template.version,
+                "user_name": sample_letter_template.service.users[0].name,
+                "original_file_name": job.original_file_name,
+                "job_row_number": 4,
+                "uploaded_letter_file_name": _any_falsey,
+            },
+            {
+                "notification_id": str(one_off_letter.id),
+                "client_reference": _any_falsey,
+                "reported_at": "2019-12-11",
+                "created_at": "2019-12-09 13:30:00.000000",
+                "email_address": _any_emaily,
+                "template_name": sample_letter_template.name,
+                "template_id": str(sample_letter_template.id),
+                "template_version": sample_letter_template.version,
+                "user_name": sample_letter_template.service.users[0].name,
+                "original_file_name": _any_falsey,
+                "job_row_number": _any_falsey,
+                "uploaded_letter_file_name": _any_falsey,
+            },
+            {
+                "notification_id": str(api_letter.id),
+                "client_reference": "api_letter",
+                "reported_at": "2019-12-11",
+                "created_at": "2019-12-08 13:30:00.000000",
+                "email_address": "API",
+                "template_name": sample_letter_template.name,
+                "template_id": str(sample_letter_template.id),
+                "template_version": sample_letter_template.version,
+                "user_name": "API",
+                "original_file_name": _any_falsey,
+                "job_row_number": _any_falsey,
+                "uploaded_letter_file_name": _any_falsey,
+            },
+            {
+                "notification_id": str(precompiled_letter.id),
+                "client_reference": "precompiled letter",
+                "reported_at": "2019-12-11",
+                "created_at": "2019-12-07 13:30:00.000000",
+                "email_address": "API",
+                "template_name": _any_falsey,
+                "template_id": _any_falsey,
+                "template_version": _any_falsey,
+                "user_name": "API",
+                "original_file_name": _any_falsey,
+                "job_row_number": _any_falsey,
+                "uploaded_letter_file_name": _any_falsey,
+            },
+            {
+                "notification_id": str(uploaded_letter.id),
+                "client_reference": _any_falsey,
+                "reported_at": "2019-12-11",
+                "created_at": "2019-12-06 13:30:00.000000",
+                "email_address": _any_emaily,
+                "template_name": _any_falsey,
+                "template_id": _any_falsey,
+                "template_version": _any_falsey,
+                "user_name": sample_letter_template.service.users[0].name,
+                "original_file_name": _any_falsey,
+                "job_row_number": _any_falsey,
+                "uploaded_letter_file_name": "filename.pdf",
+            },
+        ],
+        "orphaned_count": 2,
+    }
 
 
 @freeze_time("2024-07-01 12:00")
