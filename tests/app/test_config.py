@@ -1,7 +1,7 @@
 from celery.schedules import crontab
 
 from app import db
-from app.config import QueueNames
+from app.config import Config, QueueNames
 
 
 def test_queue_names_all_queues_correct():
@@ -80,3 +80,10 @@ def test_sqlalchemy_config(notify_api, notify_db_session):
     assert db.engine.pool.size() == notify_api.config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_size"]
     assert db.engine.pool.timeout() == notify_api.config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_timeout"]
     assert db.engine.pool._recycle == notify_api.config["SQLALCHEMY_ENGINE_OPTIONS"]["pool_recycle"]
+
+
+def test_celery_config_contains_task_ignore_result_is_true():
+    # We currently do not declare a result_backend for celery. This test ensures that
+    # task_ignore_result have been declared in the CELERY config
+    # in order to prevent celery from expending resources on trying to process results from tasks
+    assert Config.CELERY["task_ignore_result"] is True
