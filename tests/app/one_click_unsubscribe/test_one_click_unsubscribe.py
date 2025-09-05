@@ -5,12 +5,18 @@ import pytest
 from flask import current_app
 from notifications_utils.url_safe_token import generate_token
 
-from app.constants import EMAIL_TYPE
+from app.constants import EMAIL_TYPE, NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID, NOTIFY_RESEARCH_SERVICE_ID
 from app.dao.templates_dao import dao_update_template
 from app.dao.unsubscribe_request_dao import get_unsubscribe_request_by_notification_id_dao
 from app.models import UnsubscribeRequest
 from app.one_click_unsubscribe.rest import is_duplicate_unsubscribe_request
-from tests.app.db import create_notification, create_template, create_unsubscribe_request_and_return_the_notification_id
+from tests.app.db import (
+    create_notification,
+    create_service,
+    create_template,
+    create_unsubscribe_request_and_return_the_notification_id,
+    create_user,
+)
 
 
 def unsubscribe_url_post(client, notification_id, token):
@@ -159,3 +165,85 @@ def test_is_duplicate_unsubscribe_request(
 
     result = is_duplicate_unsubscribe_request(notification_id)
     assert result == expected_result
+
+
+def test_unsubscribe_from_notify_research(mocker, client, sample_email_notification):
+    mock_redis = mocker.patch("app.dao.users_dao.redis_store.delete")
+    user = create_user(email=sample_email_notification.to)
+    user.take_part_in_research = True
+    service = create_service(
+        service_id=NOTIFY_RESEARCH_SERVICE_ID,
+        service_name="Notify research",
+        check_if_service_exists=True,
+    )
+    sample_email_notification.service_id = service.id
+
+    token = generate_token(
+        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
+    )
+    response = unsubscribe_url_post(client, sample_email_notification.id, token)
+    response_json_data = response.get_json()
+
+    assert response.status_code == 200
+    assert response_json_data["message"] == "Unsubscribe successful"
+    assert response_json_data["result"] == "success"
+
+    assert user.take_part_in_research is False
+
+    assert get_unsubscribe_request_by_notification_id_dao(sample_email_notification.id) is None
+    mock_redis.assert_called_once_with(f"user-{user.id}")
+
+
+def test_unsubscribe_from_notify_features(mocker, client, sample_email_notification):
+    mock_redis = mocker.patch("app.dao.users_dao.redis_store.delete")
+    user = create_user(email=sample_email_notification.to)
+    user.receives_new_features_email = True
+    service = create_service(
+        service_id=NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID,
+        service_name="Notify research",
+        check_if_service_exists=True,
+    )
+    sample_email_notification.service_id = service.id
+
+    token = generate_token(
+        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
+    )
+    response = unsubscribe_url_post(client, sample_email_notification.id, token)
+    response_json_data = response.get_json()
+
+    assert response.status_code == 200
+    assert response_json_data["message"] == "Unsubscribe successful"
+    assert response_json_data["result"] == "success"
+
+    assert user.receives_new_features_email is False
+
+    assert get_unsubscribe_request_by_notification_id_dao(sample_email_notification.id) is None
+    mock_redis.assert_called_once_with(f"user-{user.id}")
+
+
+@pytest.mark.parametrize(
+    "service_id",
+    (
+        NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID,
+        NOTIFY_RESEARCH_SERVICE_ID,
+    ),
+)
+def test_unsubscribe_from_notify_service_for_unknown_user(client, service_id, sample_email_notification):
+    service = create_service(
+        service_id=service_id,
+        service_name="Notify research",
+        check_if_service_exists=True,
+    )
+    sample_email_notification.service_id = service.id
+
+    token = generate_token(
+        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
+    )
+    response = unsubscribe_url_post(client, sample_email_notification.id, token)
+    response_json_data = response.get_json()
+
+    assert response.status_code == 200
+    assert response_json_data["message"] == "Unsubscribe successful"
+    assert response_json_data["result"] == "success"
+
+    assert get_unsubscribe_request_by_notification_id_dao(sample_email_notification.id)

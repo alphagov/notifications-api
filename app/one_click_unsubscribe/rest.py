@@ -12,6 +12,7 @@ from app.dao.unsubscribe_request_dao import (
     get_unsubscribe_request_report_by_id_dao,
     get_unsubscribe_request_reports_dao,
 )
+from app.dao.users_dao import unsubscribe_user_from_notify_services
 from app.errors import InvalidRequest, register_errors
 from app.models import UnsubscribeRequestReport
 
@@ -48,6 +49,14 @@ def one_click_unsubscribe(notification_id, token):
     else:
         errors = {"unsubscribe request": "This is not a valid unsubscribe link."}
         raise InvalidRequest(errors, status_code=404)
+
+    if unsubscribe_user_from_notify_services(unsubscribe_data["service_id"], unsubscribe_data["email_address"]):
+        current_app.logger.debug(
+            "Unsubscribe request processed for Notify service %s and notification_id: %s",
+            unsubscribe_data["service_id"],
+            notification_id,
+        )
+        return jsonify(result="success", message="Unsubscribe successful"), 200
 
     create_unsubscribe_request_dao(unsubscribe_data)
     redis_store.delete(f"service-{unsubscribe_data['service_id']}-unsubscribe-request-statistics")
