@@ -167,17 +167,16 @@ def create_app(application):
 
     application.config["NOTIFY_APP_NAME"] = application.name
     init_app(application)
-
+    statsd_client.init_app(application)
+    notify_celery.init_app(application)
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
     metrics.init_app(application)
     request_helper.init_app(application)
     db.init_app(application)
     migrate.init_app(application, db=db)
     ma.init_app(application)
-    statsd_client.init_app(application)
     utils_logging.init_app(application, statsd_client)
 
-    notify_celery.init_app(application)
     signing.init_app(application)
     redis_store.init_app(application)
 
