@@ -5,9 +5,10 @@ from random import SystemRandom
 from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import NoResultFound
 
-from app import db
-from app.constants import EMAIL_AUTH_TYPE
+from app import db, redis_store
+from app.constants import EMAIL_AUTH_TYPE, NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID, NOTIFY_RESEARCH_SERVICE_ID
 from app.dao.dao_utils import autocommit
 from app.dao.organisation_dao import dao_remove_user_from_organisation
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
@@ -247,3 +248,25 @@ def get_users_list(
         filters.append(User.take_part_in_research == take_part_in_research)
 
     return User.query.filter(*filters).all()
+
+
+def unsubscribe_user_from_notify_services(service_id, email_address):
+    try:
+        attribute_to_update = {
+            NOTIFY_RESEARCH_SERVICE_ID: "take_part_in_research",
+            NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID: "receives_new_features_email",
+        }[str(service_id)]
+    except KeyError:
+        return
+
+    try:
+        user = get_user_by_email(email_address)
+    except NoResultFound:
+        return
+
+    setattr(user, attribute_to_update, False)
+    db.session.add(user)
+
+    redis_store.delete(f"user-{user.id}")
+
+    return True
