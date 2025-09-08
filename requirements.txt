@@ -64,7 +64,7 @@ dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-eventlet==0.39.1
+eventlet==0.40.3
     # via
     #   -r requirements.in
     #   gunicorn
