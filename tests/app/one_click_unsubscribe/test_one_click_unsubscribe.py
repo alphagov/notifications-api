@@ -141,7 +141,7 @@ def test_invalid_one_click_unsubscribe_url_notification_id(client, sample_email_
     response = unsubscribe_url_post(client, invalid_notification_id, token)
     response_json_data = response.get_json()
     assert response.status_code == 404
-    assert response_json_data["message"] == {"unsubscribe request": "This is not a valid unsubscribe link."}
+    assert response_json_data["message"] == {"unsubscribe request": "This unsubscribe link is invalid or expired."}
 
 
 @pytest.mark.parametrize(

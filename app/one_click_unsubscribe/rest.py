@@ -47,7 +47,7 @@ def one_click_unsubscribe(notification_id, token):
     # if there is no match on both the Notifications and Notifications History tables, the unsubscribe request
     # is deemed invalid
     else:
-        errors = {"unsubscribe request": "This is not a valid unsubscribe link."}
+        errors = {"unsubscribe request": "This unsubscribe link is invalid or expired."}
         raise InvalidRequest(errors, status_code=404)
 
     if unsubscribe_user_from_notify_services(unsubscribe_data["service_id"], unsubscribe_data["email_address"]):
