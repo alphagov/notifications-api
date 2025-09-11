@@ -229,8 +229,8 @@ statsd==4.0.1
     # via notifications-utils
 typing-extensions==4.14.1
     # via sqlalchemy
-tzdata==2024.1
-    # via celery
+tzdata==2025.2
+    # via kombu
 uri-template==1.2.0
     # via jsonschema
 urllib3==1.26.19

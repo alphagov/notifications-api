@@ -228,7 +228,6 @@ packaging==23.2
     #   gunicorn
     #   kombu
     #   marshmallow
-    #   marshmallow-sqlalchemy
     #   pytest
 phonenumbers==9.0.9
     # via
@@ -366,7 +365,7 @@ typing-extensions==4.14.1
     # via
     #   -r requirements.txt
     #   sqlalchemy
-tzdata==2024.1
+tzdata==2025.2
     # via
     #   -r requirements.txt
     #   kombu
