@@ -14,7 +14,7 @@ awscrt==0.20.9
     # via botocore
 bcrypt==4.0.0
     # via flask-bcrypt
-billiard==4.2.0
+billiard==4.2.1
     # via celery
 blinker==1.9.0
     # via
@@ -32,7 +32,7 @@ botocore==1.34.100
     #   s3transfer
 cachetools==5.5.0
     # via notifications-utils
-celery==5.4.0
+celery==5.5.3
     # via
     #   -r requirements.in
     #   sentry-sdk
@@ -126,7 +126,7 @@ jsonschema==4.23.0
     # via -r requirements.in
 jsonschema-specifications==2024.10.1
     # via jsonschema
-kombu==5.3.7
+kombu==5.5.4
     # via celery
 mako==1.2.3
     # via alembic
@@ -155,6 +155,7 @@ ordered-set==4.1.0
 packaging==23.2
     # via
     #   gunicorn
+    #   kombu
     #   marshmallow
 phonenumbers==9.0.9
     # via notifications-utils
@@ -168,10 +169,6 @@ psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
     # via -r requirements.in
-pycurl==7.45.6
-    # via
-    #   celery
-    #   kombu
 pyjwt==2.10.1
     # via
     #   -r requirements.in
