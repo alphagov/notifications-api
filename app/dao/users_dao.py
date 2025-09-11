@@ -266,6 +266,7 @@ def unsubscribe_user_from_notify_services(service_id, email_address):
 
     setattr(user, attribute_to_update, False)
     db.session.add(user)
+    db.session.commit()
 
     redis_store.delete(f"user-{user.id}")
 
