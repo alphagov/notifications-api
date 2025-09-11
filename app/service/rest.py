@@ -51,6 +51,7 @@ from app.dao.report_requests_dao import (
     dao_get_oldest_ongoing_report_request,
 )
 from app.dao.returned_letters_dao import (
+    count_orphaned_returned_letters,
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
     fetch_returned_letter_summary,
@@ -1128,7 +1129,12 @@ def get_returned_letters(service_id):
     report_date = request.args.get("reported_at")
     json_results = _fetch_returned_letter_data(service_id, report_date)
 
-    return jsonify(sorted(json_results, key=lambda i: i["created_at"], reverse=True))
+    return jsonify(
+        {
+            "returned_letters": sorted(json_results, key=lambda i: i["created_at"], reverse=True),
+            "orphaned_count": count_orphaned_returned_letters(service_id, report_date),
+        }
+    )
 
 
 @service_blueprint.route("/<uuid:service_id>/unsubscribe-request-reports-summary", methods=["GET"])
