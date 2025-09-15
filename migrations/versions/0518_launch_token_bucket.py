@@ -26,7 +26,10 @@ def upgrade():
                 WHERE
                     service_id = services.id and
                     permission = '{TOKEN_BUCKET}'
-           )
+            )
+            AND services.id NOT IN (
+                '798e1041-4be3-4469-86b7-356c79e9ab65'
+            )
         """
     )
 
