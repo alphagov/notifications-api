@@ -53,6 +53,7 @@ from app.dao.invited_user_dao import (
 from app.dao.jobs_dao import (
     dao_set_scheduled_jobs_to_pending,
     dao_update_job,
+    find_jobs_that_completed_processing,
     find_jobs_with_missing_rows,
     find_missing_row_for_job,
 )
@@ -409,6 +410,15 @@ def check_for_missing_rows_in_completed_jobs():
             )
             current_app.logger.info("Processing missing row: %s for job: %s", row_to_process.missing_row, job.id)
             process_job_row(template.template_type, task_args_kwargs)
+
+
+@notify_celery.task(name="update-status-of-fully-processed-jobs")
+def update_status_of_fully_processed_jobs():
+    fully_processed_jobs = find_jobs_that_completed_processing()
+
+    for job in fully_processed_jobs:
+        job.job_status = JOB_STATUS_FINISHED_ALL_NOTIFICATIONS_CREATED
+        dao_update_job(job)
 
 
 @notify_celery.task(name="check-for-services-with-high-failure-rates-or-sending-to-tv-numbers")

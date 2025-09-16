@@ -39,6 +39,7 @@ from app.celery.scheduled_tasks import (
     run_populate_annual_billing,
     run_scheduled_jobs,
     switch_current_sms_provider_on_slow_delivery,
+    update_status_of_fully_processed_jobs,
     weekly_dwp_report,
     weekly_user_research_email,
     zendesk_new_email_branding_report,
@@ -52,6 +53,7 @@ from app.config import Config, QueueNames, TaskNames
 from app.constants import (
     JOB_STATUS_ERROR,
     JOB_STATUS_FINISHED,
+    JOB_STATUS_FINISHED_ALL_NOTIFICATIONS_CREATED,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
     NOTIFICATION_DELIVERED,
@@ -766,6 +768,21 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(
             (str(job.service_id), "some-uuid", "something_encoded"), {"sender_id": fake_uuid}, queue="database-tasks"
         )
     ]
+
+
+def test_update_status_of_fully_processed_jobs(mocker, sample_email_template, mock_celery_task):
+    job = create_job(
+        template=sample_email_template,
+        notification_count=5,
+        job_status=JOB_STATUS_FINISHED,
+        processing_finished=datetime.utcnow() - timedelta(minutes=3),
+    )
+    for i in range(5):
+        create_notification(job=job, job_row_number=i)
+
+    update_status_of_fully_processed_jobs()
+
+    assert job.job_status == JOB_STATUS_FINISHED_ALL_NOTIFICATIONS_CREATED
 
 
 MockServicesSendingToTVNumbers = namedtuple(

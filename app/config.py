@@ -277,6 +277,11 @@ class Config:
                 "schedule": crontab(minute="*/10"),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "update-status-of-fully-processed-jobs": {
+                "task": "update-status-of-fully-processed-jobs",
+                "schedule": crontab(minute="*/1"),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             "replay-created-notifications": {
                 "task": "replay-created-notifications",
                 "schedule": crontab(minute="0, 15, 30, 45"),

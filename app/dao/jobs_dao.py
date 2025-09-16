@@ -238,13 +238,13 @@ def find_jobs_with_missing_rows() -> (list[Job], list[Job]):
     """
     # Jobs can be a maximum of 100,000 rows. It typically takes 10 minutes to create all those notifications.
     # Using 20 minutes as a condition seems reasonable.
-    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=20)
+    twenty_minutes_ago = datetime.utcnow() - timedelta(minutes=20)
     yesterday = datetime.utcnow() - timedelta(days=1)
     jobs_has_all_notifications = (
         db.session.query(Job, (func.count(Notification.id) == Job.notification_count).label("has_all_notifications"))
         .filter(
             Job.job_status == JOB_STATUS_FINISHED,
-            Job.processing_finished < ten_minutes_ago,
+            Job.processing_finished < twenty_minutes_ago,
             Job.processing_finished > yesterday,
             Job.id == Notification.job_id,
         )
@@ -255,6 +255,30 @@ def find_jobs_with_missing_rows() -> (list[Job], list[Job]):
     return [job for job, has_all in jobs_has_all_notifications if not has_all], [
         job for job, has_all in jobs_has_all_notifications if has_all
     ]
+
+
+def find_jobs_that_completed_processing() -> list[Job]:
+    """
+    Returns a list of jobs with all rows created
+    """
+    one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
+    twenty_minutes_ago = datetime.utcnow() - timedelta(minutes=20)
+    jobs_has_all_notifications = (
+        db.session.query(
+            Job,
+            (func.count(Notification.id) == Job.notification_count).label("has_all_notifications"),
+        )
+        .filter(
+            Job.job_status == JOB_STATUS_FINISHED,
+            Job.processing_finished < one_minute_ago,
+            Job.processing_finished > twenty_minutes_ago,
+            Job.id == Notification.job_id,
+        )
+        .group_by(Job)
+        .all()
+    )
+
+    return [job for job, has_all in jobs_has_all_notifications if has_all]
 
 
 def find_missing_row_for_job(job_id, job_size):
