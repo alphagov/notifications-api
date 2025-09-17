@@ -54,26 +54,34 @@ def check_service_over_api_rate_limit(service, key_type):
         return
 
     with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.time():
-        if rate_limit_exceeded(service, key_type):
-            current_app.logger.info("service %s has been rate limited for throughput", service.id)
-            raise RateLimitError(service.rate_limit, SECONDS_IN_1_MINUTE, key_type)
+        if service.has_permission("token_bucket"):
+            if token_bucket_rate_limit_exceeded(service, key_type):
+                current_app.logger.info("service %s has been rate limited for token bucket", service.id)
+                raise RateLimitError(service.rate_limit, SECONDS_IN_1_MINUTE, key_type)
+        else:
+            if sliding_window_rate_limit_exceeded(service, key_type):
+                current_app.logger.info("service %s has been rate limited for throughput", service.id)
+                raise RateLimitError(service.rate_limit, SECONDS_IN_1_MINUTE, key_type)
 
 
-def rate_limit_exceeded(service, key_type):
-    cache_key = rate_limit_cache_key(service.id, key_type)
-
-    if service.has_permission("token_bucket"):
-        return (
-            redis_store.get_remaining_bucket_tokens(
-                key=cache_key,
-                replenish_per_sec=int(service.rate_limit / SECONDS_IN_1_MINUTE),
-                bucket_max=TOKEN_BUCKET_MAX,
-                bucket_min=TOKEN_BUCKET_MIN,
-            )
-            < 1
+def token_bucket_rate_limit_exceeded(service, key_type):
+    return (
+        redis_store.get_remaining_bucket_tokens(
+            key=rate_limit_cache_key(service.id, key_type),
+            replenish_per_sec=int(service.rate_limit / SECONDS_IN_1_MINUTE),
+            bucket_max=TOKEN_BUCKET_MAX,
+            bucket_min=TOKEN_BUCKET_MIN,
         )
+        < 1
+    )
 
-    return redis_store.exceeded_rate_limit(cache_key, service.rate_limit, SECONDS_IN_1_MINUTE)
+
+def sliding_window_rate_limit_exceeded(service, key_type):
+    return redis_store.exceeded_rate_limit(
+        rate_limit_cache_key(service.id, key_type),
+        service.rate_limit,
+        SECONDS_IN_1_MINUTE,
+    )
 
 
 def check_service_over_daily_message_limit(service, key_type, notification_type, num_notifications=1):
