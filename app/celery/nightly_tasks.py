@@ -1,5 +1,9 @@
 from datetime import UTC, datetime, timedelta
+from tempfile import TemporaryFile
+from uuid import uuid4, UUID
 
+import boto3
+import pyorc
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
@@ -10,7 +14,7 @@ from notifications_utils.letter_timings import (
     is_dvla_working_day,
 )
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import func
+from sqlalchemy import func, inspect
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery, statsd_client, zendesk_client
@@ -404,3 +408,94 @@ def update_report_status_to_deleted():
     except SQLAlchemyError as e:
         current_app.logger.error("Failed to update report status to deleted: %s", str(e))
         raise
+
+# in order of priority (type hierarchies can overlap!)
+_python_types_orc_types = (
+    (int, pyorc.Int),
+    (UUID, pyorc.Binary),
+    (str, pyorc.String),
+    (datetime, pyorc.Timestamp),
+    (bool, pyorc.Boolean),
+)
+
+def _get_orc_type_from_python_type(python_type):
+    for candidate_python_type, orc_type in _python_types_orc_types:
+        if issubclass(python_type, candidate_python_type):
+            return orc_type
+
+    raise ValueError(f"Don't know what orc type to use for python type {python_type!r}")
+
+def archive_notification_history_by_hour(
+    start_datetime,
+    written_rows_log_every=1_000_000,
+    s3_key_prefix="",
+    s3_bucket="some-bucket",
+):
+    if start_datetime.time.minute or start_datetime.time.second or start_datetime.time.microsecond:
+        raise ValueError(f"start_datetime %{start_datetime} is not on-the-hour")
+
+    s3 = boto3.client("s3")
+
+    table = NotificationHistory.__table__
+    orc_type_description = pyorc.Struct(**{col.name: _get_orc_type_from_python_type(col.type.python_type) for col in inspect(table).c})
+
+    with TemporaryFile() as f:
+        with pyorc.Writer(
+            f,
+            orc_type_description,
+            struct_repr=pyorc.StructRepr.DICT,
+            compression=pyorc.CompressionKind.ZSTD,
+            bloom_filter_columns=tuple(col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)),
+        ) as writer:
+            history_rows = db.session.execute(
+                select(
+                    table
+                ).where(
+                    table.c.created_at >= start_datetime,
+                    table.c.created_at < start_datetime + timedelta(hours=1),
+                ).order_by(
+                    table.c.created_at,
+                ).with_for_update(
+                    read=True,
+                )
+            ).all()
+
+            for row in history_rows:
+                writer.write({k: (v.bytes if isinstance(v, UUID) else v) for k, v in row._mapping.items()})
+                if not writer.current_row % written_rows_log_every:
+                    current_app.logger.info(
+                        "%s rows of ORC file written",
+                        writer.current_row,
+                        extra={"rows_written": writer.current_row},
+                    )
+
+            final_current_row=writer.current_row,
+
+        f.seek(0, 2)  # end of file
+        final_file_size = f.tell()
+        f.seek(0)
+
+        current_app.logger.info(
+            "Finished writing %s byte ORC file with %s rows",
+            final_file_size,
+            final_current_row,
+            extra={
+                "rows_written": final_current_row,
+                "file_size": final_file_size,
+            },
+        )
+
+        s3_key = f"{s3_key_prefix}created_at_date={start_datetime.date.isoformat()}/created_at_hour={start_datetime.time.hour:02}/{uuid4()}.orc"
+
+        current_app.logger.info(
+            "Uploading %s byte file to %s in bucket %s",
+            final_file_size,
+            s3_key,
+            extra={
+                "s3_key": s3_key,
+                "s3_bucket": s3_bucket,
+                "file_size": final_file_size,
+            },
+        )
+
+        s3.upload_fileobj(f, "some-bucket", s3_key)
