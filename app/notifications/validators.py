@@ -1,10 +1,7 @@
 from flask import current_app
 from gds_metrics.metrics import Histogram
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
-from notifications_utils.clients.redis import (
-    daily_limit_cache_key,
-    rate_limit_cache_key,
-)
+from notifications_utils.clients.redis import daily_limit_cache_key
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
@@ -68,7 +65,7 @@ def token_bucket_rate_limit_exceeded(service, key_type):
     with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.labels(algorithm="token_bucket").time():
         return (
             redis_store.get_remaining_bucket_tokens(
-                key=rate_limit_cache_key(service.id, key_type),
+                key=f"{service.id}-{key_type}",
                 replenish_per_sec=int(service.rate_limit / SECONDS_IN_1_MINUTE),
                 bucket_max=TOKEN_BUCKET_MAX,
                 bucket_min=TOKEN_BUCKET_MIN,
@@ -80,7 +77,7 @@ def token_bucket_rate_limit_exceeded(service, key_type):
 def sliding_window_rate_limit_exceeded(service, key_type):
     with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.labels(algorithm="sliding_window").time():
         return redis_store.exceeded_rate_limit(
-            rate_limit_cache_key(service.id, key_type),
+            f"{service.id}-{key_type}",
             service.rate_limit,
             SECONDS_IN_1_MINUTE,
         )
