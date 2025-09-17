@@ -454,9 +454,8 @@ def test_validate_template_calls_all_validators_exception_message_too_long(mocke
 
 
 @pytest.mark.parametrize("key_type", ["team", "live", "test"])
-def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_raises_error(
-    key_type, sample_service, mocker
-):
+def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_raises_error(key_type, mocker):
+    service = create_service(service_name=str(uuid4()), service_permissions=[], restricted=True)
     with freeze_time("2016-01-01 12:00:00.000000"):
         if key_type == "live":
             api_key_type = "normal"
@@ -465,16 +464,15 @@ def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_
 
         mocker.patch("app.redis_store.exceeded_rate_limit", return_value=True)
 
-        sample_service.restricted = True
-        api_key = create_api_key(sample_service, key_type=api_key_type)
-        serialised_service = SerialisedService.from_id(sample_service.id)
+        api_key = create_api_key(service, key_type=api_key_type)
+        serialised_service = SerialisedService.from_id(service.id)
         serialised_api_key = SerialisedAPIKeyCollection.from_service_id(serialised_service.id)[0]
 
         with pytest.raises(RateLimitError) as e:
             check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
 
         assert app.redis_store.exceeded_rate_limit.call_args_list == [
-            mocker.call(f"{str(sample_service.id)}-{api_key.key_type}", sample_service.rate_limit, 60)
+            mocker.call(f"{str(service.id)}-{api_key.key_type}", service.rate_limit, 60)
         ]
         assert e.value.status_code == 429
         assert e.value.message == (
@@ -483,18 +481,19 @@ def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_
         assert e.value.fields == []
 
 
-def test_check_service_over_api_rate_limit_when_rate_limit_has_not_exceeded_limit_succeeds(sample_service, mocker):
+def test_check_service_over_api_rate_limit_when_rate_limit_has_not_exceeded_limit_succeeds(mocker):
+    service = create_service(service_name=str(uuid4()), service_permissions=[], restricted=True)
     with freeze_time("2016-01-01 12:00:00.000000"):
         mocker.patch("app.redis_store.exceeded_rate_limit", return_value=False)
 
-        sample_service.restricted = True
-        api_key = create_api_key(sample_service)
-        serialised_service = SerialisedService.from_id(sample_service.id)
+        service.restricted = True
+        api_key = create_api_key(service)
+        serialised_service = SerialisedService.from_id(service.id)
         serialised_api_key = SerialisedAPIKeyCollection.from_service_id(serialised_service.id)[0]
 
         check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
         assert app.redis_store.exceeded_rate_limit.call_args_list == [
-            mocker.call(f"{str(sample_service.id)}-{api_key.key_type}", 3000, 60)
+            mocker.call(f"{str(service.id)}-{api_key.key_type}", 3000, 60)
         ]
 
 
