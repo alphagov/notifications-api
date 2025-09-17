@@ -520,7 +520,7 @@ def test_check_token_bucket_service_over_api_rate_limit_when_exceed_rate_limit_r
 
         assert app.redis_store.get_remaining_bucket_tokens.call_args_list == [
             mocker.call(
-                key=f"{str(service.id)}-{api_key.key_type}", replenish_per_sec=50, bucket_max=1_000, bucket_min=0
+                key=f"{str(service.id)}-tokens-{api_key.key_type}", replenish_per_sec=50, bucket_max=1_000, bucket_min=0
             )
         ]
         assert e.value.status_code == 429
@@ -546,7 +546,7 @@ def test_check_token_bucket_service_over_api_rate_limit_when_rate_limit_has_not_
         check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
         assert app.redis_store.get_remaining_bucket_tokens.call_args_list == [
             mocker.call(
-                key=f"{str(service.id)}-{api_key.key_type}", replenish_per_sec=50, bucket_max=1_000, bucket_min=0
+                key=f"{str(service.id)}-tokens-{api_key.key_type}", replenish_per_sec=50, bucket_max=1_000, bucket_min=0
             )
         ]
 

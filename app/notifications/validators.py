@@ -65,7 +65,7 @@ def token_bucket_rate_limit_exceeded(service, key_type):
     with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.labels(algorithm="token_bucket").time():
         return (
             redis_store.get_remaining_bucket_tokens(
-                key=f"{service.id}-{key_type}",
+                key=f"{service.id}-tokens-{key_type}",
                 replenish_per_sec=int(service.rate_limit / SECONDS_IN_1_MINUTE),
                 bucket_max=TOKEN_BUCKET_MAX,
                 bucket_min=TOKEN_BUCKET_MIN,
