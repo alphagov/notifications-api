@@ -8,7 +8,7 @@ from pathlib import Path
 
 from alembic import context
 from flask import current_app
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 import sqlalchemy
 
 # this is the Alembic Config object, which provides
@@ -98,14 +98,14 @@ def run_migrations_online():
         # advisory lock ids are 64b (signed) integers, so use the null-padded,
         # big-endian representation of the string "alembic"
         lock_id = struct.unpack(">q", struct.pack("8s", b"alembic"))[0]
-        connection.execute("SELECT pg_advisory_lock(%s)", lock_id)
+        connection.execute(text("SELECT pg_advisory_lock(:id)"), {"id": lock_id})
 
         # abort any migrations if a lock (other than the above advisory lock)
         # cannot be acquired after one second.
         #
         # if we see issues with this lock timeout failing, we should try running
         # again when there are no locks on that table, perhaps at a quieter time.
-        connection.execute("SET lock_timeout = 1000")
+        connection.execute(text("SET lock_timeout = 1000"))
 
         with context.begin_transaction():
             context.run_migrations()

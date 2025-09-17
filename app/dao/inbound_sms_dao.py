@@ -112,8 +112,11 @@ def delete_inbound_sms_older_than_retention():
     current_app.logger.info("Deleting inbound sms for services with flexible data retention")
 
     flexible_data_retention = (
-        ServiceDataRetention.query.join(ServiceDataRetention.service, Service.inbound_number)
-        .filter(ServiceDataRetention.notification_type == SMS_TYPE)
+        ServiceDataRetention.query.join(ServiceDataRetention.service)
+        .join(Service.inbound_number)
+        .filter(
+            ServiceDataRetention.notification_type == SMS_TYPE,
+        )
         .all()
     )
 

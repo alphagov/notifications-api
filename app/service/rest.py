@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.datastructures import MultiDict
 
+from app import db
 from app.aws import s3
 from app.celery.tasks import process_report_request
 from app.config import QueueNames
@@ -35,7 +36,7 @@ from app.dao.api_key_dao import (
     get_unsigned_secret,
     save_model_api_key,
 )
-from app.dao.dao_utils import dao_rollback, transaction
+from app.dao.dao_utils import dao_rollback
 from app.dao.date_util import get_financial_year
 from app.dao.fact_notification_status_dao import (
     fetch_monthly_template_usage_for_service,
@@ -293,9 +294,13 @@ def create_service():
     # unpack valid json into service object
     valid_service = Service.from_json(data)
 
-    with transaction():
-        dao_create_service(valid_service, user)
-        set_default_free_allowance_for_service(service=valid_service, year_start=None)
+    try:
+        dao_create_service(service=valid_service, user=user, _autocommit=False)
+        set_default_free_allowance_for_service(service=valid_service, year_start=None, _autocommit=False)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
     return jsonify(data=service_schema.dump(valid_service)), 201
 
