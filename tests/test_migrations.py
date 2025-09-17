@@ -1,8 +1,6 @@
 import glob
 import pathlib
 
-from sqlalchemy import text
-
 
 def test_migration_files_start_with_numeric_id():
     """Make sure that all of the migration files start with a 4-character integer"""
@@ -28,7 +26,7 @@ def test_revision_matches_filename(notify_db_session):
     head_migration_filename = pathlib.Path(migrations[-1]).stem
     head_migration_id = head_migration_filename.split(".")[0]
 
-    results = notify_db_session.execute(text("select version_num from alembic_version")).fetchall()
+    results = notify_db_session.execute("select version_num from alembic_version").fetchall()
     assert len(results) == 1
     assert results[0].version_num == head_migration_id, (
         'alembic head filename {head_migration_filename} does not match "revision" {results[0].version}'

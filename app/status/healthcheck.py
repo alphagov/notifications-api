@@ -1,5 +1,4 @@
 from flask import Blueprint, jsonify, request
-from sqlalchemy import text
 
 from app import db, version
 from app.dao.organisation_dao import dao_count_organisations_with_live_services
@@ -38,5 +37,5 @@ def live_service_and_organisation_counts():
 
 def get_db_version():
     query = "SELECT version_num FROM alembic_version"
-    full_name = db.session.execute(text(query)).fetchone()[0]
+    full_name = db.session.execute(query).fetchone()[0]
     return full_name

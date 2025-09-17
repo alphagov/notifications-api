@@ -42,10 +42,7 @@ def handle_integrity_error(exc):
 def get_template_folders_for_service(service_id):
     service = (
         Service.query.filter_by(id=service_id)
-        .options(
-            raiseload(Service.users),
-            selectinload(Service.all_template_folders).options(selectinload(TemplateFolder.users)),
-        )
+        .options(raiseload("users"), selectinload("all_template_folders").options(selectinload("users")))
         .one()
     )
 

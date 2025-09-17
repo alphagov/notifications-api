@@ -9,7 +9,6 @@ Create Date: 2021-02-09 09:19:07.957980
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
-from sqlalchemy import text
 
 revision = "0345_move_broadcast_provider"
 down_revision = "0344_stubbed_not_nullable"
@@ -28,7 +27,7 @@ def upgrade():
         values('{}', 'test', '{}', now(), null)
     """
     conn = op.get_bind()
-    results = conn.execute(text(sql))
+    results = conn.execute(sql)
     restrictions = results.fetchall()
     for x in restrictions:
         f = insert_sql.format(x.service_id, x.provider)

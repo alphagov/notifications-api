@@ -20,7 +20,7 @@ import uuid
 
 from sqlalchemy import Column, Integer, Table, util
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import Mapper, attributes, object_mapper
+from sqlalchemy.orm import attributes, mapper, object_mapper
 from sqlalchemy.orm.properties import ColumnProperty, RelationshipProperty
 
 
@@ -42,7 +42,7 @@ def _history_mapper(local_mapper):
     # on on column-mapped attributes so that the old version
     # of the info is always loaded (currently sets it on all attributes)
     for prop in local_mapper.iterate_properties:
-        prop.active_history = True
+        getattr(local_mapper.class_, prop.key).impl.active_history = True
 
     def _col_copy(col):
         orig = col
@@ -76,7 +76,7 @@ def _history_mapper(local_mapper):
     )
     versioned_cls = type.__new__(type, f"{cls.__name__}History", cls.__bases__, {})
 
-    m = local_mapper.registry.map_imperatively(
+    m = mapper(
         versioned_cls,
         table,
         properties=properties,
@@ -91,7 +91,7 @@ class Versioned:
     @declared_attr
     def __mapper_cls__(cls):
         def map(cls, *arg, **kw):
-            mp = Mapper(cls, *arg, **kw)
+            mp = mapper(cls, *arg, **kw)
             _history_mapper(mp)
             return mp
 

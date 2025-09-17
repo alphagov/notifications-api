@@ -128,7 +128,7 @@ def fetch_returned_letters(service_id, report_date):
 
 def fetch_returned_letter_callback_data_dao(notification_id, service_id):
     for table in [Notification, NotificationHistory]:
-        query = (
+        result = (
             db.session.query(
                 ReturnedLetter.notification_id,
                 table.client_reference,
@@ -154,8 +154,7 @@ def fetch_returned_letter_callback_data_dao(notification_id, service_id):
                 ReturnedLetter.notification_id == table.id,
                 table.template_id == Template.id,
             )
-            .with_labels()
+            .one_or_none()
         )
-        result_dict = db.session.execute(query.statement).mappings().one_or_none()
-        if result_dict:
-            return result_dict
+        if result:
+            return result

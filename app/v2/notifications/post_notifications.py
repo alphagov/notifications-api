@@ -9,7 +9,6 @@ from gds_metrics import Histogram
 from app import (
     api_user,
     authenticated_service,
-    db,
     document_download_client,
     notify_celery,
 )
@@ -31,6 +30,7 @@ from app.constants import (
     NOTIFICATION_SENDING,
     SMS_TYPE,
 )
+from app.dao.dao_utils import transaction
 from app.dao.templates_dao import get_precompiled_letter_template
 from app.letters.utils import upload_letter_pdf
 from app.notifications.process_letter_notifications import (
@@ -352,7 +352,7 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
     except ValueError as e:
         raise BadRequestError(message="Cannot decode letter content (invalid base64 encoding)", status_code=400) from e
 
-    try:
+    with transaction():
         notification = create_letter_notification(
             letter_data=letter_data,
             service=service,
@@ -360,13 +360,8 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
             api_key=api_key,
             status=status,
             reply_to_text=reply_to_text,
-            _autocommit=False,
         )
         filename = upload_letter_pdf(notification, letter_content, precompiled=True)
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        raise
 
     resp = {"id": notification.id, "reference": notification.client_reference, "postage": notification.postage}
 

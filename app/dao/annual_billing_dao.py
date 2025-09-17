@@ -72,7 +72,7 @@ def dao_get_default_annual_allowance_for_service(service, year_start):
     return default_free_sms_fragment_allowance
 
 
-def set_default_free_allowance_for_service(service, year_start=None, _autocommit=True):
+def set_default_free_allowance_for_service(service, year_start=None):
     current_financial_year_start = get_current_financial_year_start_year()
     if not year_start:
         year_start = current_financial_year_start
@@ -124,7 +124,6 @@ def set_default_free_allowance_for_service(service, year_start=None, _autocommit
         year_start,
         high_volume_service_last_year=high_volume_service_last_year,
         has_custom_allowance=has_custom_allowance,
-        _autocommit=_autocommit,
     )
 
 

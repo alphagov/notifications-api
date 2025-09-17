@@ -5,7 +5,6 @@ import pytest
 from flask import current_app
 from freezegun import freeze_time
 from moto import mock_aws
-from sqlalchemy import text
 
 from app.constants import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from app.dao.notifications_dao import (
@@ -614,9 +613,9 @@ def test_insert_notification_history_delete_notifications_can_handle_different_c
     )
 
     with notify_db_session.begin_nested():
-        notify_db_session.execute(text("drop view notifications_all_time_view"))
-        notify_db_session.execute(text("alter table notification_history drop column client_reference"))
-        notify_db_session.execute(text("alter table notification_history add column client_reference varchar"))
+        notify_db_session.execute("drop view notifications_all_time_view")
+        notify_db_session.execute("alter table notification_history drop column client_reference")
+        notify_db_session.execute("alter table notification_history add column client_reference varchar")
 
         del_count = insert_notification_history_delete_notifications(
             notification_type=sample_template.template_type,

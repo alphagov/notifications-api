@@ -133,7 +133,7 @@ flask-redis==0.4.0
     # via
     #   -r requirements.txt
     #   notifications-utils
-flask-sqlalchemy==3.1.1
+flask-sqlalchemy==3.0.5
     # via
     #   -r requirements.txt
     #   flask-migrate
@@ -205,12 +205,12 @@ markupsafe==2.1.1
     #   jinja2
     #   mako
     #   werkzeug
-marshmallow==3.21.3
+marshmallow==3.18.0
     # via
     #   -r requirements.txt
     #   flask-marshmallow
     #   marshmallow-sqlalchemy
-marshmallow-sqlalchemy==1.0.0
+marshmallow-sqlalchemy==0.28.1
     # via -r requirements.txt
 mistune==0.8.4
     # via
@@ -231,6 +231,7 @@ packaging==23.2
     #   -r requirements.txt
     #   gunicorn
     #   marshmallow
+    #   marshmallow-sqlalchemy
     #   pytest
 phonenumbers==9.0.9
     # via
@@ -356,7 +357,7 @@ smartypants==2.0.1
     #   notifications-utils
 soupsieve==2.6
     # via beautifulsoup4
-sqlalchemy==2.0.41
+sqlalchemy==1.4.41
     # via
     #   -r requirements.txt
     #   alembic
@@ -370,10 +371,6 @@ statsd==4.0.1
     #   notifications-utils
 trustme==0.9.0
     # via -r requirements_for_test.in
-typing-extensions==4.14.1
-    # via
-    #   -r requirements.txt
-    #   sqlalchemy
 tzdata==2024.1
     # via
     #   -r requirements.txt
