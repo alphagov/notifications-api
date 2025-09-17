@@ -122,7 +122,7 @@ COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 COPY --chown=notify:notify . .
 
-ENV SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://postgres:postgres@localhost:5432/
+ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
 
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN uv pip sync requirements_for_test.txt

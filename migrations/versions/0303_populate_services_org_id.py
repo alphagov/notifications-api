@@ -8,7 +8,7 @@ Create Date: 2019-08-06 09:43:57.993510
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy import text
+from sqlalchemy.sql import text
 
 revision = "0303_populate_services_org_id"
 down_revision = "0302_add_org_id_to_services"
@@ -16,7 +16,7 @@ down_revision = "0302_add_org_id_to_services"
 
 def upgrade():
     conn = op.get_bind()
-    results = conn.execute(text("select service_id, organisation_id from organisation_to_service"))
+    results = conn.execute("select service_id, organisation_id from organisation_to_service")
     org_to_service = results.fetchall()
     for x in org_to_service:
         sql = """
@@ -37,9 +37,9 @@ def upgrade():
 def downgrade():
     conn = op.get_bind()
 
-    results = conn.execute(text("select id, organisation_id from services where organisation_id is not null"))
+    results = conn.execute("select id, organisation_id from services where organisation_id is not null")
     services = results.fetchall()
-    results_2 = conn.execute(text("select service_id, organisation_id from organisation_to_service"))
+    results_2 = conn.execute("select service_id, organisation_id from organisation_to_service")
     org_to_service = results_2.fetchall()
 
     for x in services:

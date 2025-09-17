@@ -12,7 +12,6 @@ down_revision = "0038_test_api_key_type"
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy import text
 
 
 def upgrade():
@@ -27,7 +26,7 @@ def upgrade():
     op.execute(reset_counts)
     all_notifications = "select * from notifications where date(created_at) > '2016-06-30' order by created_at;"
 
-    results = conn.execute(text(all_notifications))
+    results = conn.execute(all_notifications)
     res = results.fetchall()
 
     for x in res:

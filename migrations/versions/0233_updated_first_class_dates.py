@@ -11,7 +11,7 @@ down_revision = "0230_noti_postage_constraint_3"
 from datetime import datetime
 
 from alembic import op
-from sqlalchemy import text
+from sqlalchemy.sql import text
 
 START_DATE = datetime(2018, 8, 31, 23, 0)
 
@@ -19,7 +19,7 @@ START_DATE = datetime(2018, 8, 31, 23, 0)
 def upgrade():
     conn = op.get_bind()
     conn.execute(
-        text("UPDATE letter_rates SET start_date = :start_date WHERE post_class = 'first'"), {"start_date": START_DATE}
+        text("""UPDATE letter_rates SET start_date = :start_date WHERE post_class = 'first'"""), start_date=START_DATE
     )
 
 

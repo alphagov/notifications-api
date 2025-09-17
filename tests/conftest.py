@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 import freezegun
 import pytest
 import sqlalchemy
-from sqlalchemy import delete, text
 
 from app import create_app, db, reset_memos
 from app.authentication.auth import requires_admin_auth, requires_no_auth
@@ -69,11 +68,12 @@ def create_test_db(database_uri):
     db_uri_parts = database_uri.split("/")
     postgres_db_uri = "/".join(db_uri_parts[:-1] + ["postgres"])
 
-    postgres_db = sqlalchemy.create_engine(postgres_db_uri, echo=False, client_encoding="utf8")
+    postgres_db = sqlalchemy.create_engine(
+        postgres_db_uri, echo=False, isolation_level="AUTOCOMMIT", client_encoding="utf8"
+    )
     try:
-        with postgres_db.connect() as connection:
-            connection.execution_options(isolation_level="AUTOCOMMIT")
-            connection.execute(text(f"CREATE DATABASE {db_uri_parts[-1]}"))
+        result = postgres_db.execute(sqlalchemy.sql.text(f"CREATE DATABASE {db_uri_parts[-1]}"))
+        result.close()
     except sqlalchemy.exc.ProgrammingError:
         # database "test_notification_api_master" already exists
         pass
@@ -89,10 +89,9 @@ def _notify_db(notify_api, worker_id):
     """
     from flask import current_app
 
-    base_uri = current_app.config["SQLALCHEMY_DATABASE_URI"]
     # the path as used with urlparse has a leading slash
     db_name = f"/test_notification_api_{worker_id}"
-    db_uri = urlparse(str(base_uri))._replace(path=db_name).geturl()
+    db_uri = urlparse(str(db.engine.url))._replace(path=db_name).geturl()
 
     # create a database for this worker thread -
     current_app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
@@ -172,8 +171,7 @@ def _clean_database(_db):
             "service_callback_type",
             "default_annual_allowance",
         ]:
-            stmt = delete(tbl)
-            _db.session.execute(stmt)
+            _db.engine.execute(tbl.delete())
     _db.session.commit()
 
 
@@ -259,12 +257,6 @@ def set_config_values(app, dict):
     finally:
         for key in dict:
             app.config[key] = old_values[key]
-
-
-def pytest_collection_modifyitems(session, config, items):
-    last_items = [item for item in items if "test_notification_dao_delete_notifications.py" in item.nodeid]
-    other_items = [item for item in items if "test_notification_dao_delete_notifications.py" not in item.nodeid]
-    items[:] = other_items + last_items
 
 
 class Matcher:

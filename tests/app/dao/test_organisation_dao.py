@@ -544,20 +544,20 @@ def test_dao_remove_email_branding_from_organisation_pool(sample_organisation):
     sample_organisation.email_branding_id = branding_2.id
     sample_organisation.email_branding_pool += [branding_1, branding_2, branding_3]
 
-    assert set(sample_organisation.email_branding_pool) == {branding_1, branding_2, branding_3}
+    assert sample_organisation.email_branding_pool == [branding_1, branding_2, branding_3]
 
     dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_1.id)
-    assert set(sample_organisation.email_branding_pool) == {branding_2, branding_3}
+    assert sample_organisation.email_branding_pool == [branding_2, branding_3]
 
     # Error if trying to remove an email branding that's not in the pool
     with pytest.raises(ValueError):
         dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_1.id)
-    assert set(sample_organisation.email_branding_pool) == {branding_2, branding_3}
+    assert sample_organisation.email_branding_pool == [branding_2, branding_3]
 
     # Error if trying to remove the org's default email branding
     with pytest.raises(InvalidRequest):
         dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_2.id)
-    assert set(sample_organisation.email_branding_pool) == {branding_2, branding_3}
+    assert sample_organisation.email_branding_pool == [branding_2, branding_3]
 
     dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_3.id)
     assert sample_organisation.email_branding_pool == [branding_2]

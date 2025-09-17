@@ -25,7 +25,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
-from sqlalchemy import text
+from sqlalchemy.sql import text
 
 from app.models import LetterRate
 
@@ -39,7 +39,7 @@ CHANGEOVER_DATE = datetime(2019, 9, 30, 23, 0)
 def upgrade():
     # all old rates are going in the bin
     conn = op.get_bind()
-    conn.execute(text("UPDATE letter_rates SET end_date = :start WHERE end_date IS NULL"), {"start": CHANGEOVER_DATE})
+    conn.execute(text("UPDATE letter_rates SET end_date = :start WHERE end_date IS NULL"), start=CHANGEOVER_DATE)
 
     base_prices = {
         "second": 30,
@@ -65,5 +65,5 @@ def upgrade():
 def downgrade():
     # Make sure you've thought about billing implications etc before downgrading!
     conn = op.get_bind()
-    conn.execute(text("DELETE FROM letter_rates WHERE start_date = :start"), {"start": CHANGEOVER_DATE})
-    conn.execute(text("UPDATE letter_rates SET end_date = NULL WHERE end_date = :start"), {"start": CHANGEOVER_DATE})
+    conn.execute(text("DELETE FROM letter_rates WHERE start_date = :start"), start=CHANGEOVER_DATE)
+    conn.execute(text("UPDATE letter_rates SET end_date = NULL WHERE end_date = :start"), start=CHANGEOVER_DATE)

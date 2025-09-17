@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
-from sqlalchemy import text
+from sqlalchemy.sql import text
 
 revision = '0491_letter_rates_april_2025'
 down_revision = '0490_create_report_requests'
@@ -35,35 +35,34 @@ def upgrade():
     conn.execute(
         text(
             """
-            UPDATE
-                letter_rates
-            SET
-                end_date = :end_date
-            WHERE
-                end_date IS NULL
-            AND post_class IN ('first', 'second')
-            """
+        UPDATE
+            letter_rates
+        SET
+            end_date = :end_date
+        WHERE
+            end_date IS NULL
+        AND post_class IN ('first', 'second')
+    """
         ),
-        {"end_date": RATE_CHANGE_DATE},
+        end_date=RATE_CHANGE_DATE,
     )
 
     for crown in [True, False]:
         for sheet_count, rate, post_class in NEW_RATES:
+            id = uuid.uuid4()
             conn.execute(
                 text(
                     """
-                    INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
-                        VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
-                    """
+                INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
+                    VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
+            """
                 ),
-                {
-                    "id": uuid.uuid4(),
-                    "start_date": RATE_CHANGE_DATE,
-                    "sheet_count": sheet_count,
-                    "rate": rate,
-                    "crown": crown,
-                    "post_class": post_class,
-                }
+                id=id,
+                start_date=RATE_CHANGE_DATE,
+                sheet_count=sheet_count,
+                rate=rate,
+                crown=crown,
+                post_class=post_class,
             )
 
 
@@ -76,7 +75,7 @@ def downgrade():
             DELETE FROM letter_rates WHERE start_date = :start_date
             """
         ),
-        {"start_date": RATE_CHANGE_DATE},
+        start_date=RATE_CHANGE_DATE,
     )
     # make old rates active again
     conn.execute(
@@ -85,7 +84,7 @@ def downgrade():
             UPDATE letter_rates
             SET end_date = null
             WHERE end_date = :end_date
-            """
+             """
         ),
-        {"end_date": RATE_CHANGE_DATE},
+        end_date=RATE_CHANGE_DATE,
     )

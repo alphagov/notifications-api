@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
-from sqlalchemy import text
+from sqlalchemy.sql import text
 
 START = datetime(2018, 9, 30, 23, 0)
 
@@ -44,33 +44,31 @@ def upgrade():
     conn.execute(
         text(
             """
-            update
-                letter_rates
-            set
-                end_date = :start
-            where
-                rate != 0.30
-            """
+        update
+            letter_rates
+        set
+            end_date = :start
+        where
+            rate != 0.30
+    """
         ),
-        {"start": START},
+        start=START,
     )
 
     for id, start_date, sheet_count, rate, crown, post_class in NEW_RATES:
         conn.execute(
             text(
                 """
-                INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
-                    VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
-                """
+            INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
+                VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
+        """
             ),
-            {
-                "id": id,
-                "start_date": start_date,
-                "sheet_count": sheet_count,
-                "rate": rate,
-                "crown": crown,
-                "post_class": post_class,
-            },
+            id=id,
+            start_date=start_date,
+            sheet_count=sheet_count,
+            rate=rate,
+            crown=crown,
+            post_class=post_class,
         )
 
 
@@ -79,25 +77,25 @@ def downgrade():
     conn.execute(
         text(
             """
-            delete from
-                letter_rates
-            where
-                start_date = :start
-            """
+        delete from
+            letter_rates
+        where
+            start_date = :start
+    """
         ),
-        {"start": START},
+        start=START,
     )
 
     conn.execute(
         text(
             """
-            update
-                letter_rates
-            set
-                end_date = null
-            where
-                end_date = :start
-            """
+        update
+            letter_rates
+        set
+            end_date = null
+        where
+            end_date = :start
+    """
         ),
-        {"start": START},
+        start=START,
     )

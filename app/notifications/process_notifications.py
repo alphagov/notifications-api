@@ -116,7 +116,6 @@ def persist_notification(
     postage=None,
     document_download_count=None,
     updated_at=None,
-    _autocommit=True,
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -161,8 +160,7 @@ def persist_notification(
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
-        dao_create_notification(notification=notification, _autocommit=_autocommit)
-        # Not sure how we can rollback
+        dao_create_notification(notification)
         increment_daily_limit_caches(service, notification, key_type)
 
     return notification

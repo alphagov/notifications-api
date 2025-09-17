@@ -52,4 +52,4 @@ def upgrade():
 
 def downgrade():
     conn = op.get_bind()
-    conn.execute(text("DELETE FROM letter_rates WHERE start_date = :start"), {"start": start_date})
+    conn.execute(text("DELETE FROM letter_rates WHERE start_date = :start"), start=start_date)

@@ -7,7 +7,6 @@ Create Date: 2019-12-09 12:13:49.432993
 """
 
 from alembic import op
-from sqlalchemy import text
 
 revision = "0312_populate_returned_letters"
 down_revision = "0311_add_inbound_sms_history"
@@ -25,7 +24,7 @@ def upgrade():
         values(uuid_in(md5(random()::text)::cstring), '{}', '{}', '{}', now(), null)
     """
 
-    results = conn.execute(text(sql))
+    results = conn.execute(sql)
     returned_letters = results.fetchall()
     for x in returned_letters:
         f = insert_sql.format(x.updated_at.date(), x.service_id, x.id)

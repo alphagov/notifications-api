@@ -3,7 +3,7 @@ Create Date: 2025-07-07 15:46:53.673184
 """
 
 from alembic import op
-from sqlalchemy import text
+from sqlalchemy.sql import text
 
 revision = '0509_delete_broadcast_data'
 down_revision = '0508_n_history_templates_index'
@@ -38,7 +38,7 @@ def upgrade():
     """
 
     conn = op.get_bind()
-    results = conn.execute(text("SELECT service_id FROM service_broadcast_settings;"))
+    results = conn.execute("SELECT service_id FROM service_broadcast_settings;")
     res = results.fetchall()
     broadcast_service_ids = tuple(x.service_id for x in res)
 
@@ -101,7 +101,7 @@ def upgrade():
         ]
 
     for delete_statement in delete_statements:
-        conn.execute(text(delete_statement), {"service_ids": broadcast_service_ids})
+        conn.execute(text(delete_statement), service_ids=broadcast_service_ids)
 
 
 def downgrade():

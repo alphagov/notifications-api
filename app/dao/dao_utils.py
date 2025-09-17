@@ -1,4 +1,5 @@
 import itertools
+from contextlib import contextmanager
 from functools import wraps
 
 from app import db
@@ -9,16 +10,31 @@ def autocommit(func):
     @wraps(func)
     def commit_or_rollback(*args, **kwargs):
         try:
-            _autocommit = kwargs.pop("_autocommit", True)
-            result = func(*args, **kwargs)
-            if _autocommit:
+            res = func(*args, **kwargs)
+
+            if not db.session.registry().transaction.nested:
                 db.session.commit()
-            return result
+
+            return res
         except Exception:
             db.session.rollback()
             raise
 
     return commit_or_rollback
+
+
+@contextmanager
+def transaction():
+    try:
+        db.session.begin_nested()
+        yield
+        db.session.commit()
+
+        if not db.session.registry().transaction.nested:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 class VersionOptions:

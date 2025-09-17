@@ -2,7 +2,7 @@ from uuid import UUID
 
 from app import db
 from app.constants import INBOUND_SMS_TYPE
-from app.dao.dao_utils import autocommit
+from app.dao.dao_utils import autocommit, transaction
 from app.models import InboundNumber
 
 
@@ -67,11 +67,7 @@ def dao_remove_inbound_sms_for_service(service_id, archive):
     from app.dao.service_permissions_dao import dao_remove_service_permission
     from app.dao.service_sms_sender_dao import dao_remove_inbound_sms_senders
 
-    try:
+    with transaction():
         dao_remove_service_permission(service_id, INBOUND_SMS_TYPE, commit=False)
         dao_remove_inbound_sms_senders(service_id, commit=False)
         archive_or_release_inbound_number_for_service(service_id, archive, commit=False)
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        raise

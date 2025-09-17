@@ -9,7 +9,6 @@ Create Date: 2021-02-18 15:25:30.667098
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
-from sqlalchemy import text
 
 revision = "0348_migrate_broadcast_settings"
 down_revision = "0347_add_dvla_volumes_template"
@@ -34,7 +33,7 @@ def upgrade():
     WHERE service_permissions.permission = 'broadcast'
     """
 
-    services = conn.execute(text(find_services_sql))
+    services = conn.execute(find_services_sql)
     for service in services:
         setting = conn.execute(
             f"SELECT service_id, channel, provider FROM service_broadcast_settings WHERE service_id = '{service.id}';"
