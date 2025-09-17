@@ -8,7 +8,7 @@ Flask-Migrate==3.1.0
 flask-sqlalchemy==3.0.5
 click-datetime==0.2
 gunicorn[eventlet]==23.0.0
-eventlet==0.39.1
+eventlet==0.40.3
 iso8601==2.1.0
 jsonschema[format]==4.23.0
 marshmallow-sqlalchemy==0.28.1
