@@ -1,10 +1,7 @@
 from flask import current_app
 from gds_metrics.metrics import Histogram
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
-from notifications_utils.clients.redis import (
-    daily_limit_cache_key,
-    rate_limit_cache_key,
-)
+from notifications_utils.clients.redis import daily_limit_cache_key
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
@@ -19,8 +16,11 @@ from app.constants import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    SECONDS_IN_1_MINUTE,
     SMS_TO_UK_LANDLINES,
     SMS_TYPE,
+    TOKEN_BUCKET_MAX,
+    TOKEN_BUCKET_MIN,
 )
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
@@ -41,18 +41,46 @@ from app.v2.errors import (
 REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS = Histogram(
     "redis_exceeded_rate_limit_duration_seconds",
     "Time taken to check rate limit",
+    ["algorithm"],
 )
 
 
 def check_service_over_api_rate_limit(service, key_type):
-    if current_app.config["API_RATE_LIMIT_ENABLED"] and current_app.config["REDIS_ENABLED"]:
-        cache_key = rate_limit_cache_key(service.id, key_type)
-        rate_limit = service.rate_limit
-        interval = 60
-        with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.time():
-            if redis_store.exceeded_rate_limit(cache_key, rate_limit, interval):
-                current_app.logger.info("service %s has been rate limited for throughput", service.id)
-                raise RateLimitError(rate_limit, interval, key_type)
+    if not current_app.config["API_RATE_LIMIT_ENABLED"]:
+        return
+    if not current_app.config["REDIS_ENABLED"]:
+        return
+
+    if service.has_permission("token_bucket"):
+        if token_bucket_rate_limit_exceeded(service, key_type):
+            current_app.logger.info("service %s has been rate limited for token bucket", service.id)
+            raise RateLimitError(service.rate_limit, SECONDS_IN_1_MINUTE, key_type)
+    else:
+        if sliding_window_rate_limit_exceeded(service, key_type):
+            current_app.logger.info("service %s has been rate limited for throughput", service.id)
+            raise RateLimitError(service.rate_limit, SECONDS_IN_1_MINUTE, key_type)
+
+
+def token_bucket_rate_limit_exceeded(service, key_type):
+    with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.labels(algorithm="token_bucket").time():
+        return (
+            redis_store.get_remaining_bucket_tokens(
+                key=f"{service.id}-tokens-{key_type}",
+                replenish_per_sec=int(service.rate_limit / SECONDS_IN_1_MINUTE),
+                bucket_max=TOKEN_BUCKET_MAX,
+                bucket_min=TOKEN_BUCKET_MIN,
+            )
+            < 1
+        )
+
+
+def sliding_window_rate_limit_exceeded(service, key_type):
+    with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.labels(algorithm="sliding_window").time():
+        return redis_store.exceeded_rate_limit(
+            f"{service.id}-{key_type}",
+            service.rate_limit,
+            SECONDS_IN_1_MINUTE,
+        )
 
 
 def check_service_over_daily_message_limit(service, key_type, notification_type, num_notifications=1):

@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from flask import current_app
 from freezegun import freeze_time
@@ -476,8 +478,7 @@ def test_check_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_
         ]
         assert e.value.status_code == 429
         assert e.value.message == (
-            f"Exceeded rate limit for key type {key_type.upper()} of {sample_service.rate_limit} "
-            f"requests per {60} seconds"
+            f"Exceeded rate limit for key type {key_type.upper()} of 3000 requests per 60 seconds"
         )
         assert e.value.fields == []
 
@@ -497,15 +498,69 @@ def test_check_service_over_api_rate_limit_when_rate_limit_has_not_exceeded_limi
         ]
 
 
-def test_check_service_over_api_rate_limit_should_do_nothing_if_limiting_is_disabled(sample_service, mocker):
+@pytest.mark.parametrize("key_type", ["team", "live", "test"])
+@pytest.mark.parametrize("remaining_tokens", (0, -1))
+def test_check_token_bucket_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_raises_error(
+    key_type, mocker, remaining_tokens
+):
+    service = create_service(service_name=str(uuid4()), service_permissions=["token_bucket"], restricted=True)
+    with freeze_time("2016-01-01 12:00:00.000000"):
+        if key_type == "live":
+            api_key_type = "normal"
+        else:
+            api_key_type = key_type
+
+        mocker.patch("app.redis_store.get_remaining_bucket_tokens", return_value=remaining_tokens)
+        api_key = create_api_key(service, key_type=api_key_type)
+        serialised_service = SerialisedService.from_id(service.id)
+        serialised_api_key = SerialisedAPIKeyCollection.from_service_id(serialised_service.id)[0]
+
+        with pytest.raises(RateLimitError) as e:
+            check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
+
+        assert app.redis_store.get_remaining_bucket_tokens.call_args_list == [
+            mocker.call(
+                key=f"{str(service.id)}-tokens-{api_key.key_type}", replenish_per_sec=50, bucket_max=1_000, bucket_min=0
+            )
+        ]
+        assert e.value.status_code == 429
+        assert e.value.message == (
+            f"Exceeded rate limit for key type {key_type.upper()} of 3000 requests per 60 seconds"
+        )
+        assert e.value.fields == []
+
+
+@pytest.mark.parametrize("remaining_tokens", (1, 999))
+def test_check_token_bucket_service_over_api_rate_limit_when_rate_limit_has_not_exceeded_limit_succeeds(
+    mocker,
+    remaining_tokens,
+):
+    service = create_service(service_name=str(uuid4()), service_permissions=["token_bucket"], restricted=True)
+    with freeze_time("2016-01-01 12:00:00.000000"):
+        mocker.patch("app.redis_store.get_remaining_bucket_tokens", return_value=remaining_tokens)
+
+        api_key = create_api_key(service)
+        serialised_service = SerialisedService.from_id(service.id)
+        serialised_api_key = SerialisedAPIKeyCollection.from_service_id(service.id)[0]
+
+        check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
+        assert app.redis_store.get_remaining_bucket_tokens.call_args_list == [
+            mocker.call(
+                key=f"{str(service.id)}-tokens-{api_key.key_type}", replenish_per_sec=50, bucket_max=1_000, bucket_min=0
+            )
+        ]
+
+
+@pytest.mark.parametrize("service_permissions", ([], ["token_bucket"]))
+def test_check_service_over_api_rate_limit_should_do_nothing_if_limiting_is_disabled(mocker, service_permissions):
+    service = create_service(service_name=str(uuid4()), service_permissions=service_permissions, restricted=True)
     with freeze_time("2016-01-01 12:00:00.000000"):
         current_app.config["API_RATE_LIMIT_ENABLED"] = False
 
         mocker.patch("app.redis_store.exceeded_rate_limit", return_value=False)
 
-        sample_service.restricted = True
-        create_api_key(sample_service)
-        serialised_service = SerialisedService.from_id(sample_service.id)
+        create_api_key(service)
+        serialised_service = SerialisedService.from_id(service.id)
         serialised_api_key = SerialisedAPIKeyCollection.from_service_id(serialised_service.id)[0]
 
         check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
