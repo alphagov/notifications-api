@@ -4,6 +4,7 @@ from uuid import uuid4, UUID
 
 import boto3
 import pyorc
+from boto3.s3.transfer import TransferConfig
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
@@ -501,7 +502,7 @@ def archive_notification_history_by_hour(
             },
         )
 
-        s3.upload_fileobj(f, "some-bucket", s3_key)
+        s3.upload_fileobj(f, "some-bucket", s3_key, Config=TransferConfig(use_threads=False))
 
         current_app.logger.info(
             "Successfully uploaded %s to bucket %s",
@@ -528,13 +529,53 @@ def archive_notification_history_by_hour(
         deleted_timestamp_iso = datetime.now(UTC).isoformat()
 
         current_app.logger.info(
-            "Tagging %s with in bucket %s contents_deleted_at=%s",
+            "Tagging %s in bucket %s with contents_deleted_at=%s",
             s3_key,
             s3_bucket,
             deleted_timestamp_iso,
             extra={
                 "s3_key": s3_key,
                 "s3_bucket": s3_bucket,
+                "file_size": final_file_size,
+            },
+        )
+
+        tag_set = s3.get_object_tagging(
+            Bucket=s3_bucket,
+            Key=s3_key,
+        )["TagSet"]
+
+        if existing_tag := next((tag for tag in tag_set if tag["Key"] == "contents_deleted_at"), None):
+            current_app.logger.warning(
+                "Found existing contents_deleted_at tag on object %s in bucket %s with value %s",
+                s3_key,
+                s3_bucket,
+                existing_tag["Value"],
+                extra={
+                    "s3_key": s3_key,
+                    "s3_bucket": s3_bucket,
+                    "tag_value": existing_tag["Value"],
+                },
+            )
+            tag_set = [tag for tag in tag_set if tag["Key"] != "contents_deleted_at"]
+
+        tag_set.append({"contents_deleted_at": deleted_timestamp_iso})
+
+        s3.put_object_tagging(
+            Bucket=s3_bucket,
+            Key=s3_key,
+            Tagging=tag_set,
+        )
+
+        current_app.logger.info(
+            "Successfully exported %s to bucket %s and deleted %s rows of NotificationHistory",
+            s3_key,
+            s3_bucket,
+            deleted_row_count,
+            extra={
+                "s3_key": s3_key,
+                "s3_bucket": s3_bucket,
+                "deleted_row_count": deleted_row_count,
                 "file_size": final_file_size,
             },
         )
