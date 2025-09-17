@@ -14,7 +14,7 @@ from notifications_utils.letter_timings import (
     is_dvla_working_day,
 )
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import func, inspect
+from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery, statsd_client, zendesk_client
@@ -434,6 +434,8 @@ def archive_notification_history_by_hour(
     if start_datetime.time.minute or start_datetime.time.second or start_datetime.time.microsecond:
         raise ValueError(f"start_datetime %{start_datetime} is not on-the-hour")
 
+    end_datetime = start_datetime + timedelta(hours=1)
+
     s3 = boto3.client("s3")
 
     table = NotificationHistory.__table__
@@ -452,7 +454,7 @@ def archive_notification_history_by_hour(
                     table
                 ).where(
                     table.c.created_at >= start_datetime,
-                    table.c.created_at < start_datetime + timedelta(hours=1),
+                    table.c.created_at < end_datetime,
                 ).order_by(
                     table.c.created_at,
                 ).with_for_update(
@@ -491,6 +493,7 @@ def archive_notification_history_by_hour(
             "Uploading %s byte file to %s in bucket %s",
             final_file_size,
             s3_key,
+            s3_bucket,
             extra={
                 "s3_key": s3_key,
                 "s3_bucket": s3_bucket,
@@ -499,3 +502,39 @@ def archive_notification_history_by_hour(
         )
 
         s3.upload_fileobj(f, "some-bucket", s3_key)
+
+        current_app.logger.info(
+            "Successfully uploaded %s to bucket %s",
+            s3_key,
+            s3_bucket,
+            extra={
+                "s3_key": s3_key,
+                "s3_bucket": s3_bucket,
+                "file_size": final_file_size,
+            },
+        )
+
+        deleted_row_count = db.session.execute(
+            delete(table).where(
+                table.c.created_at >= start_datetime,
+                table.c.created_at < end_datetime,
+            )
+        ).rowcount
+
+        if deleted_row_count != final_current_row:
+            raise RuntimeError(f"Number of deleted rows ({deleted_row_count}) would not be the same as number of rows exported ({final_current_row}) - aborting")
+
+        db.session.commit()
+        deleted_timestamp_iso = datetime.now(UTC).isoformat()
+
+        current_app.logger.info(
+            "Tagging %s with in bucket %s contents_deleted_at=%s",
+            s3_key,
+            s3_bucket,
+            deleted_timestamp_iso,
+            extra={
+                "s3_key": s3_key,
+                "s3_bucket": s3_bucket,
+                "file_size": final_file_size,
+            },
+        )
