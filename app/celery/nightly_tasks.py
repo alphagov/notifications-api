@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from tempfile import TemporaryFile
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
 import boto3
 import pyorc
@@ -18,7 +18,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, statsd_client, zendesk_client
+from app import db, notify_celery, statsd_client, zendesk_client
 from app.aws import s3
 from app.config import QueueNames
 from app.constants import (
@@ -54,7 +54,7 @@ from app.dao.unsubscribe_request_dao import (
     dao_archive_old_unsubscribe_requests,
     get_service_ids_with_unsubscribe_requests,
 )
-from app.models import FactProcessingTime, Notification
+from app.models import FactProcessingTime, Notification, NotificationHistory
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
@@ -410,6 +410,7 @@ def update_report_status_to_deleted():
         current_app.logger.error("Failed to update report status to deleted: %s", str(e))
         raise
 
+
 # in order of priority (type hierarchies can overlap!)
 _python_types_orc_types = (
     (int, pyorc.Int),
@@ -419,12 +420,14 @@ _python_types_orc_types = (
     (bool, pyorc.Boolean),
 )
 
+
 def _get_orc_type_from_python_type(python_type):
     for candidate_python_type, orc_type in _python_types_orc_types:
         if issubclass(python_type, candidate_python_type):
             return orc_type
 
     raise ValueError(f"Don't know what orc type to use for python type {python_type!r}")
+
 
 def archive_notification_history_by_hour(
     start_datetime,
@@ -440,7 +443,9 @@ def archive_notification_history_by_hour(
     s3 = boto3.client("s3")
 
     table = NotificationHistory.__table__
-    orc_type_description = pyorc.Struct(**{col.name: _get_orc_type_from_python_type(col.type.python_type) for col in inspect(table).c})
+    orc_type_description = pyorc.Struct(
+        **{col.name: _get_orc_type_from_python_type(col.type.python_type) for col in inspect(table).c}
+    )
 
     with TemporaryFile() as f:
         with pyorc.Writer(
@@ -451,14 +456,15 @@ def archive_notification_history_by_hour(
             bloom_filter_columns=tuple(col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)),
         ) as writer:
             history_rows = db.session.execute(
-                select(
-                    table
-                ).where(
+                select(table)
+                .where(
                     table.c.created_at >= start_datetime,
                     table.c.created_at < end_datetime,
-                ).order_by(
+                )
+                .order_by(
                     table.c.created_at,
-                ).with_for_update(
+                )
+                .with_for_update(
                     read=True,
                 )
             ).all()
@@ -472,7 +478,7 @@ def archive_notification_history_by_hour(
                         extra={"rows_written": writer.current_row},
                     )
 
-            final_current_row=writer.current_row,
+            final_current_row = (writer.current_row,)
 
         f.seek(0, 2)  # end of file
         final_file_size = f.tell()
@@ -488,7 +494,10 @@ def archive_notification_history_by_hour(
             },
         )
 
-        s3_key = f"{s3_key_prefix}created_at_date={start_datetime.date.isoformat()}/created_at_hour={start_datetime.time.hour:02}/{uuid4()}.orc"
+        s3_key = (
+            f"{s3_key_prefix}created_at_date={start_datetime.date.isoformat()}/"
+            f"created_at_hour={start_datetime.time.hour:02}/{uuid4()}.orc"
+        )
 
         current_app.logger.info(
             "Uploading %s byte file to %s in bucket %s",
@@ -523,7 +532,10 @@ def archive_notification_history_by_hour(
         ).rowcount
 
         if deleted_row_count != final_current_row:
-            raise RuntimeError(f"Number of deleted rows ({deleted_row_count}) would not be the same as number of rows exported ({final_current_row}) - aborting")
+            raise RuntimeError(
+                f"Number of deleted rows ({deleted_row_count}) would not be the same as "
+                f"number of rows exported ({final_current_row}) - aborting"
+            )
 
         db.session.commit()
         deleted_timestamp_iso = datetime.now(UTC).isoformat()
