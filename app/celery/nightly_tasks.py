@@ -429,7 +429,7 @@ def _get_orc_type_from_python_type(python_type):
     raise ValueError(f"Don't know what orc type to use for python type {python_type!r}")
 
 
-def archive_notification_history_by_hour(
+def archive_notification_history_hour_starting(
     start_datetime,
     written_rows_log_every=1_000_000,
     s3_key_prefix="",
@@ -512,7 +512,17 @@ def archive_notification_history_by_hour(
             },
         )
 
-        s3.upload_fileobj(f, "some-bucket", s3_key, Config=TransferConfig(use_threads=False))
+        s3.upload_fileobj(
+            f,
+            "some-bucket",
+            s3_key,
+            Config=TransferConfig(use_threads=False),
+            ExtraArgs={
+                "Tagging": [
+                    {"Key": "contents_deleted", "Value": "false"},
+                ],
+            },
+        )
 
         current_app.logger.info(
             "Successfully uploaded %s to bucket %s",
@@ -536,7 +546,8 @@ def archive_notification_history_by_hour(
             if deleted_row_count != final_current_row:
                 raise RuntimeError(
                     f"Number of deleted rows ({deleted_row_count}) would not be the same as "
-                    f"number of rows exported ({final_current_row}) - aborting"
+                    f"number of rows exported ({final_current_row}) - cowardly refusing"
+                    "to commit transaction"
                 )
 
             db.session.commit()
@@ -564,16 +575,29 @@ def archive_notification_history_by_hour(
                     "Found existing contents_deleted_at tag on object %s in bucket %s with value %s",
                     s3_key,
                     s3_bucket,
-                    existing_tag["Value"],
+                    repr(existing_tag["Value"]),
                     extra={
                         "s3_key": s3_key,
                         "s3_bucket": s3_bucket,
                         "tag_value": existing_tag["Value"],
                     },
                 )
-                tag_set = [tag for tag in tag_set if tag["Key"] != "contents_deleted_at"]
+            if next((tag for tag in tag_set if tag["Key"] == "contents_deleted"), {}).get("Value") == "true":
+                current_app.logger.warning(
+                    "Existing contents_deleted tag on object %s in bucket %s already has value 'true'",
+                    s3_key,
+                    s3_bucket,
+                    extra={
+                        "s3_key": s3_key,
+                        "s3_bucket": s3_bucket,
+                    },
+                )
 
-            tag_set.append({"contents_deleted_at": deleted_timestamp_iso})
+            tag_set = [tag for tag in tag_set if tag["Key"] not in ("contents_deleted", "contents_deleted_at")]
+            tag_set += [
+                {"contents_deleted": "true"},
+                {"contents_deleted_at": deleted_timestamp_iso},
+            ]
 
             s3.put_object_tagging(
                 Bucket=s3_bucket,
