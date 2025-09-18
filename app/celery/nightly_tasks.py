@@ -429,13 +429,15 @@ def _get_orc_type_from_python_type(python_type):
     raise ValueError(f"Don't know what orc type to use for python type {python_type!r}")
 
 
-def archive_notification_history_hour_starting(
-    start_datetime,
+@notify_celery.task(name="deep-archive-notification-history-hour-starting")
+def deep_archive_notification_history_hour_starting(
+    start_datetime_str: str,
     written_rows_log_every=1_000_000,
     s3_key_prefix="",
     s3_bucket="some-bucket",
     delete_archived=False,
 ):
+    start_datetime = datetime.fromisoformat(start_datetime_str)
     if start_datetime.time.minute or start_datetime.time.second or start_datetime.time.microsecond:
         raise ValueError(f"start_datetime %{start_datetime} is not on-the-hour")
 
@@ -546,7 +548,7 @@ def archive_notification_history_hour_starting(
             if deleted_row_count != final_current_row:
                 raise RuntimeError(
                     f"Number of deleted rows ({deleted_row_count}) would not be the same as "
-                    f"number of rows exported ({final_current_row}) - cowardly refusing"
+                    f"number of rows exported ({final_current_row}) - cowardly refusing "
                     "to commit transaction"
                 )
 
