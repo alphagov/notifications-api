@@ -248,7 +248,9 @@ prompt-toolkit==3.0.31
     #   -r requirements.txt
     #   click-repl
 psutil==6.1.1
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   -r requirements_for_test.in
 psycopg2-binary==2.9.10
     # via -r requirements.txt
 pycparser==2.21

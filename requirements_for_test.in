@@ -6,3 +6,4 @@ moto==5.0.11
 pytest-httpserver==1.0.8
 trustme==0.9.0
 squawk-cli==1.4.0
+psutil==6.1.1
