@@ -1902,6 +1902,11 @@ class InvitedUser(db.Model):
     auth_type = db.Column(db.String, db.ForeignKey("auth_type.name"), index=True, nullable=False, default=SMS_AUTH_TYPE)
     folder_permissions = db.Column(JSONB(none_as_null=True), nullable=False, default=[])
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_inv_users_user_id_service_id", ("user_id", "service_id"), ("dependencies",)),
+    )
+
     # would like to have used properties for this but haven't found a way to make them
     # play nice with marshmallow yet
     def get_permissions(self):
