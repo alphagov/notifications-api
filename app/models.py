@@ -1923,6 +1923,11 @@ class InvitedOrganisationUser(db.Model):
 
     status = db.Column(db.String, db.ForeignKey("invite_status_type.name"), nullable=False, default=INVITE_PENDING)
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_inv_org_users_inv_by_id_org_id", ("invited_by_id", "organisation_id"), ("dependencies",)),
+    )
+
     def serialize(self):
         return {
             "id": str(self.id),
@@ -1950,6 +1955,11 @@ class Permission(db.Model):
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
 
     __table_args__ = (UniqueConstraint("service_id", "user_id", "permission", name="uix_service_user_permission"),)
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_permissions_service_id_user_id", ("service_id", "user_id"), ("dependencies",)),
+    )
 
 
 class Event(db.Model):
@@ -1997,6 +2007,11 @@ class InboundSms(db.Model):
     provider = db.Column(db.String, nullable=False)
     _content = db.Column("content", db.String, nullable=False)
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_inb_sms_service_id_ntfy_num_provider", ("service_id", "notify_number", "provider"), ("dependencies",)),
+    )
+
     @property
     def content(self):
         return signing.decode(self._content)
@@ -2026,6 +2041,11 @@ class InboundSmsHistory(db.Model):
     provider_date = db.Column(db.DateTime)
     provider_reference = db.Column(db.String)
     provider = db.Column(db.String, nullable=False)
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_inb_sms_hist_service_id_ntfy_num_provider", ("service_id", "notify_number", "provider"), ("dependencies",)),
+    )
 
 
 class LetterRate(db.Model):
@@ -2141,6 +2161,13 @@ class FactBilling(db.Model):
     notifications_sent = db.Column(db.Integer(), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_ft_billing_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
+        ("st_dep_ft_billing_template_id_ntfcn_type", ("template_id", "notification_type"), ("dependencies",)),
+        ("st_dep_ft_billing_provider_ntfcn_type", ("provider", "notification_type"), ("dependencies",)),
+    )
 
 
 class FactNotificationStatus(db.Model):
