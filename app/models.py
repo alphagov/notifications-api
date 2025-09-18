@@ -911,6 +911,11 @@ class ApiKey(db.Model, Versioned):
         Index("uix_service_to_key_name", "service_id", "name", unique=True, postgresql_where=expiry_date.is_(None)),
     )
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_api_keys_service_id_created_by_id", ("service_id", "created_by_id"), ("dependencies",)),
+    )
+
     @property
     def secret(self):
         if self._secret:
@@ -948,6 +953,11 @@ class TemplateFolder(db.Model):
     )
 
     __table_args__ = (UniqueConstraint("id", "service_id", name="ix_id_service_id"), {})
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_template_folder_service_id_parent_id", ("service_id", "parent_id"), ("dependencies",)),
+    )
 
     def serialize(self):
         return {
@@ -1064,6 +1074,34 @@ class TemplateBase(db.Model):
             CheckConstraint(
                 "template_type = 'email' OR has_unsubscribe_link IS false",
                 name=f"ck_{cls.__tablename__}_non_email_has_unsubscribe_false",
+            ),
+        )
+
+    @declared_attr
+    def __extended_statistics__(cls):
+        return (
+            # dependencies
+            (f"st_dep_{cls.__tablename__}_service_id_ctd_by_id", ("service_id", "created_by_id"), ("dependencies",)),
+            (
+                f"st_dep_{cls.__tablename__}_service_id_let_att_id",
+                ("service_id", "letter_attachment_id"),
+                ("dependencies",),
+            ),
+            (
+                f"st_dep_{cls.__tablename__}_service_id_sv_let_cct_id",
+                ("service_id", "service_letter_contact_id"),
+                ("dependencies",),
+            ),
+            (
+                f"st_dep_{cls.__tablename__}_tpt_type_has_unsub_lnk",
+                ("template_type", "has_unsubscribe_link"),
+                ("dependencies",),
+            ),
+            (f"st_dep_{cls.__tablename__}_tpt_type_postage", ("template_type", "postage"), ("dependencies",)),
+            (
+                f"st_dep_{cls.__tablename__}_tpt_type_letter_lang",
+                ("template_type", "letter_languages"),
+                ("dependencies",),
             ),
         )
 
@@ -1293,6 +1331,7 @@ class Job(db.Model):
     __extended_statistics__ = (
         # dependencies
         ("st_dep_jobs_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
+        ("st_dep_jobs_service_id_created_by_id", ("service_id", "created_by_id"), ("dependencies",)),
         ("st_dep_jobs_service_id_contact_list_id", ("service_id", "contact_list_id"), ("dependencies",)),
     )
 
@@ -1461,11 +1500,19 @@ class Notification(db.Model):
         ("st_dep_notifications_service_id_api_key_id", ("service_id", "api_key_id"), ("dependencies",)),
         ("st_dep_notifications_service_id_job_id", ("service_id", "job_id"), ("dependencies",)),
         ("st_dep_notifications_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
+        ("st_dep_notifications_service_id_cby_id", ("service_id", "created_by_id"), ("dependencies",)),
         (
             "st_dep_notifications_job_id_template_id_notification_type",
             ("job_id", "template_id", "notification_type"),
             ("dependencies",),
         ),
+        ("st_dep_notifications_ntfcn_type_postage", ("notification_type", "postage"), ("dependencies",)),
+        ("st_dep_notifications_ntfcn_type_sent_by", ("notification_type", "sent_by"), ("dependencies",)),
+        ("st_dep_notifications_sent_by_postage", ("sent_by", "postage"), ("dependencies",)),
+        ("st_dep_notifications_ntfcn_type_phone_prefix", ("notification_type", "phone_prefix"), ("dependencies",)),
+        ("st_dep_notifications_ntfcn_type_intnl", ("notification_type", "international"), ("dependencies",)),
+        ("st_dep_notifications_phone_prefix_intnl", ("phone_prefix", "international"), ("dependencies",)),
+        ("st_dep_notifications_ntfcn_type_doc_dl", ("notification_type", "document_download_count"), ("dependencies",)),
         # most common values
         ("st_mcv_notifications_notification_type_status", ("notification_type", "notification_status"), ("mcv",)),
         ("st_mcv_notifications_service_id_key_type", ("service_id", "key_type"), ("mcv",)),
@@ -1841,9 +1888,25 @@ class NotificationHistory(db.Model):
         ("st_dep_notification_history_service_id_api_key_id", ("service_id", "api_key_id"), ("dependencies",)),
         ("st_dep_notification_history_service_id_job_id", ("service_id", "job_id"), ("dependencies",)),
         ("st_dep_notification_history_service_id_tpt_id", ("service_id", "template_id"), ("dependencies",)),
+        ("st_dep_notification_history_service_id_cby_id", ("service_id", "created_by_id"), ("dependencies",)),
         (
             "st_dep_notification_history_job_id_tpt_id_ntfcn_type",
             ("job_id", "template_id", "notification_type"),
+            ("dependencies",),
+        ),
+        ("st_dep_notification_history_ntfcn_type_postage", ("notification_type", "postage"), ("dependencies",)),
+        ("st_dep_notification_history_ntfcn_type_sent_by", ("notification_type", "sent_by"), ("dependencies",)),
+        ("st_dep_notification_history_sent_by_postage", ("sent_by", "postage"), ("dependencies",)),
+        (
+            "st_dep_notification_history_ntfcn_type_phone_prefix",
+            ("notification_type", "phone_prefix"),
+            ("dependencies",),
+        ),
+        ("st_dep_notification_history_ntfcn_type_intnl", ("notification_type", "international"), ("dependencies",)),
+        ("st_dep_notification_history_phone_prefix_intnl", ("phone_prefix", "international"), ("dependencies",)),
+        (
+            "st_dep_notification_history_ntfcn_type_doc_dl",
+            ("notification_type", "document_download_count"),
             ("dependencies",),
         ),
         # most common values
@@ -1902,6 +1965,11 @@ class InvitedUser(db.Model):
     auth_type = db.Column(db.String, db.ForeignKey("auth_type.name"), index=True, nullable=False, default=SMS_AUTH_TYPE)
     folder_permissions = db.Column(JSONB(none_as_null=True), nullable=False, default=[])
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_inv_users_user_id_service_id", ("user_id", "service_id"), ("dependencies",)),
+    )
+
     # would like to have used properties for this but haven't found a way to make them
     # play nice with marshmallow yet
     def get_permissions(self):
@@ -1922,6 +1990,11 @@ class InvitedOrganisationUser(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
 
     status = db.Column(db.String, db.ForeignKey("invite_status_type.name"), nullable=False, default=INVITE_PENDING)
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_inv_org_users_inv_by_id_org_id", ("invited_by_id", "organisation_id"), ("dependencies",)),
+    )
 
     def serialize(self):
         return {
@@ -1950,6 +2023,11 @@ class Permission(db.Model):
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
 
     __table_args__ = (UniqueConstraint("service_id", "user_id", "permission", name="uix_service_user_permission"),)
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_permissions_service_id_user_id", ("service_id", "user_id"), ("dependencies",)),
+    )
 
 
 class Event(db.Model):
@@ -1997,6 +2075,11 @@ class InboundSms(db.Model):
     provider = db.Column(db.String, nullable=False)
     _content = db.Column("content", db.String, nullable=False)
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_inb_sms_service_id_ntfy_num_provider", ("service_id", "notify_number", "provider"), ("dependencies",)),
+    )
+
     @property
     def content(self):
         return signing.decode(self._content)
@@ -2026,6 +2109,15 @@ class InboundSmsHistory(db.Model):
     provider_date = db.Column(db.DateTime)
     provider_reference = db.Column(db.String)
     provider = db.Column(db.String, nullable=False)
+
+    __extended_statistics__ = (
+        # dependencies
+        (
+            "st_dep_inb_sms_hist_service_id_ntfy_num_provider",
+            ("service_id", "notify_number", "provider"),
+            ("dependencies",),
+        ),
+    )
 
 
 class LetterRate(db.Model):
@@ -2141,6 +2233,16 @@ class FactBilling(db.Model):
     notifications_sent = db.Column(db.Integer(), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_ft_billing_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
+        ("st_dep_ft_billing_ntfcn_type_template_id", ("notification_type", "template_id"), ("dependencies",)),
+        ("st_dep_ft_billing_ntfcn_type_provider", ("notification_type", "provider"), ("dependencies",)),
+        ("st_dep_ft_billing_ntfcn_type_intnl", ("notification_type", "international"), ("dependencies",)),
+        ("st_dep_ft_billing_ntfcn_type_postage", ("notification_type", "postage"), ("dependencies",)),
+        ("st_dep_ft_billing_provider_postage", ("provider", "postage"), ("dependencies",)),
+    )
 
 
 class FactNotificationStatus(db.Model):
@@ -2474,6 +2576,20 @@ class UnsubscribeRequest(db.Model):
         Index("ix_unsubscribe_request_unsubscribe_request_report_id", "unsubscribe_request_report_id"),
     )
 
+    __extended_statistics__ = (
+        # dependencies
+        (
+            "st_dep_unsub_req_service_id_tpt_id_ntfcn_id",
+            ("service_id", "template_id", "notification_id"),
+            ("dependencies",),
+        ),
+        (
+            "st_dep_unsub_req_service_id_unsub_req_rpt_id",
+            ("service_id", "unsubscribe_request_report_id"),
+            ("dependencies",),
+        ),
+    )
+
     def serialize_for_history(self):
         return {
             column.key: getattr(self, column.key) for column in self.__table__.columns if column.key != "email_address"
@@ -2493,6 +2609,20 @@ class UnsubscribeRequestHistory(db.Model):
     template_version = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
     unsubscribe_request_report_id = db.Column(UUID(as_uuid=True), index=True, nullable=True)
+
+    __extended_statistics__ = (
+        # dependencies
+        (
+            "st_dep_unsub_req_history_service_id_tpt_id_ntfcn_id",
+            ("service_id", "template_id", "notification_id"),
+            ("dependencies",),
+        ),
+        (
+            "st_dep_unsub_req_history_service_id_unsub_req_rpt_id",
+            ("service_id", "unsubscribe_request_report_id"),
+            ("dependencies",),
+        ),
+    )
 
 
 class ProtectedSenderId(db.Model):
@@ -2605,6 +2735,11 @@ class ReportRequest(db.Model):
     _parameter = db.Column("parameter", JSONB, nullable=False, default={})
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_report_requests_service_id_user_id", ("service_id", "user_id"), ("dependencies",)),
+    )
 
     _schema = {
         "type": "object",
