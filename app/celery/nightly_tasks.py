@@ -434,6 +434,7 @@ def archive_notification_history_by_hour(
     written_rows_log_every=1_000_000,
     s3_key_prefix="",
     s3_bucket="some-bucket",
+    delete_archived=False,
 ):
     if start_datetime.time.minute or start_datetime.time.second or start_datetime.time.microsecond:
         raise ValueError(f"start_datetime %{start_datetime} is not on-the-hour")
@@ -524,70 +525,71 @@ def archive_notification_history_by_hour(
             },
         )
 
-        deleted_row_count = db.session.execute(
-            delete(table).where(
-                table.c.created_at >= start_datetime,
-                table.c.created_at < end_datetime,
-            )
-        ).rowcount
+        if delete_archived:
+            deleted_row_count = db.session.execute(
+                delete(table).where(
+                    table.c.created_at >= start_datetime,
+                    table.c.created_at < end_datetime,
+                )
+            ).rowcount
 
-        if deleted_row_count != final_current_row:
-            raise RuntimeError(
-                f"Number of deleted rows ({deleted_row_count}) would not be the same as "
-                f"number of rows exported ({final_current_row}) - aborting"
-            )
+            if deleted_row_count != final_current_row:
+                raise RuntimeError(
+                    f"Number of deleted rows ({deleted_row_count}) would not be the same as "
+                    f"number of rows exported ({final_current_row}) - aborting"
+                )
 
-        db.session.commit()
-        deleted_timestamp_iso = datetime.now(UTC).isoformat()
+            db.session.commit()
+            deleted_timestamp_iso = datetime.now(UTC).isoformat()
 
-        current_app.logger.info(
-            "Tagging %s in bucket %s with contents_deleted_at=%s",
-            s3_key,
-            s3_bucket,
-            deleted_timestamp_iso,
-            extra={
-                "s3_key": s3_key,
-                "s3_bucket": s3_bucket,
-                "file_size": final_file_size,
-            },
-        )
-
-        tag_set = s3.get_object_tagging(
-            Bucket=s3_bucket,
-            Key=s3_key,
-        )["TagSet"]
-
-        if existing_tag := next((tag for tag in tag_set if tag["Key"] == "contents_deleted_at"), None):
-            current_app.logger.warning(
-                "Found existing contents_deleted_at tag on object %s in bucket %s with value %s",
+            current_app.logger.info(
+                "Tagging %s in bucket %s with contents_deleted_at=%s",
                 s3_key,
                 s3_bucket,
-                existing_tag["Value"],
+                deleted_timestamp_iso,
                 extra={
                     "s3_key": s3_key,
                     "s3_bucket": s3_bucket,
-                    "tag_value": existing_tag["Value"],
+                    "file_size": final_file_size,
                 },
             )
-            tag_set = [tag for tag in tag_set if tag["Key"] != "contents_deleted_at"]
 
-        tag_set.append({"contents_deleted_at": deleted_timestamp_iso})
+            tag_set = s3.get_object_tagging(
+                Bucket=s3_bucket,
+                Key=s3_key,
+            )["TagSet"]
 
-        s3.put_object_tagging(
-            Bucket=s3_bucket,
-            Key=s3_key,
-            Tagging=tag_set,
-        )
+            if existing_tag := next((tag for tag in tag_set if tag["Key"] == "contents_deleted_at"), None):
+                current_app.logger.warning(
+                    "Found existing contents_deleted_at tag on object %s in bucket %s with value %s",
+                    s3_key,
+                    s3_bucket,
+                    existing_tag["Value"],
+                    extra={
+                        "s3_key": s3_key,
+                        "s3_bucket": s3_bucket,
+                        "tag_value": existing_tag["Value"],
+                    },
+                )
+                tag_set = [tag for tag in tag_set if tag["Key"] != "contents_deleted_at"]
 
-        current_app.logger.info(
-            "Successfully exported %s to bucket %s and deleted %s rows of NotificationHistory",
-            s3_key,
-            s3_bucket,
-            deleted_row_count,
-            extra={
-                "s3_key": s3_key,
-                "s3_bucket": s3_bucket,
-                "deleted_row_count": deleted_row_count,
-                "file_size": final_file_size,
-            },
-        )
+            tag_set.append({"contents_deleted_at": deleted_timestamp_iso})
+
+            s3.put_object_tagging(
+                Bucket=s3_bucket,
+                Key=s3_key,
+                Tagging=tag_set,
+            )
+
+            current_app.logger.info(
+                "Successfully archived %s to bucket %s and deleted %s rows of NotificationHistory",
+                s3_key,
+                s3_bucket,
+                deleted_row_count,
+                extra={
+                    "s3_key": s3_key,
+                    "s3_bucket": s3_bucket,
+                    "deleted_row_count": deleted_row_count,
+                    "file_size": final_file_size,
+                },
+            )
