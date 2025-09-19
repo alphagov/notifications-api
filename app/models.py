@@ -1846,6 +1846,7 @@ class NotificationHistory(db.Model):
             ("job_id", "template_id", "notification_type"),
             ("dependencies",),
         ),
+        ("st_dep_notification_history_service_id_cby_id", ("service_id", "created_by_id"), ("dependencies",)),
         # most common values
         ("st_mcv_notification_history_ntfcn_type_status", ("notification_type", "notification_status"), ("mcv",)),
         ("st_mcv_notification_history_service_id_key_type", ("service_id", "key_type"), ("mcv",)),
@@ -2174,6 +2175,7 @@ class FactBilling(db.Model):
         ("st_dep_ft_billing_ntfcn_type_provider", ("notification_type", "provider"), ("dependencies",)),
         ("st_dep_ft_billing_ntfcn_type_intnl", ("notification_type", "international"), ("dependencies",)),
         ("st_dep_ft_billing_ntfcn_type_postage", ("notification_type", "postage"), ("dependencies",)),
+        ("st_dep_ft_billing_provider_postage", ("provider", "postage"), ("dependencies",)),
     )
 
 
