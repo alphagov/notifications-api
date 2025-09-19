@@ -458,7 +458,7 @@ def test_validate_template_calls_all_validators_exception_message_too_long(mocke
 def test_check_token_bucket_service_over_api_rate_limit_when_exceed_rate_limit_request_fails_raises_error(
     key_type, mocker, remaining_tokens
 ):
-    service = create_service(service_name=str(uuid4()), service_permissions=["token_bucket"], restricted=True)
+    service = create_service(service_name=str(uuid4()), restricted=True)
     with freeze_time("2016-01-01 12:00:00.000000"):
         if key_type == "live":
             api_key_type = "normal"
@@ -490,7 +490,7 @@ def test_check_token_bucket_service_over_api_rate_limit_when_rate_limit_has_not_
     mocker,
     remaining_tokens,
 ):
-    service = create_service(service_name=str(uuid4()), service_permissions=["token_bucket"], restricted=True)
+    service = create_service(service_name=str(uuid4()), restricted=True)
     with freeze_time("2016-01-01 12:00:00.000000"):
         mocker.patch("app.redis_store.get_remaining_bucket_tokens", return_value=remaining_tokens)
 
@@ -506,9 +506,8 @@ def test_check_token_bucket_service_over_api_rate_limit_when_rate_limit_has_not_
         ]
 
 
-@pytest.mark.parametrize("service_permissions", ([], ["token_bucket"]))
-def test_check_service_over_api_rate_limit_should_do_nothing_if_limiting_is_disabled(mocker, service_permissions):
-    service = create_service(service_name=str(uuid4()), service_permissions=service_permissions, restricted=True)
+def test_check_service_over_api_rate_limit_should_do_nothing_if_limiting_is_disabled(mocker):
+    service = create_service(service_name=str(uuid4()), service_permissions=[], restricted=True)
     with freeze_time("2016-01-01 12:00:00.000000"):
         current_app.config["API_RATE_LIMIT_ENABLED"] = False
 
