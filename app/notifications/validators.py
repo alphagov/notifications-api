@@ -52,15 +52,9 @@ def check_service_over_api_rate_limit(service, key_type):
         return
     if not current_app.config["REDIS_ENABLED"]:
         return
-
-    if service.has_permission("token_bucket"):
-        if token_bucket_rate_limit_exceeded(service, key_type):
-            current_app.logger.info("service %s has been rate limited for token bucket", service.id)
-            raise RateLimitError(service.rate_limit, SECONDS_IN_1_MINUTE, key_type)
-    else:
-        if sliding_window_rate_limit_exceeded(service, key_type):
-            current_app.logger.info("service %s has been rate limited for throughput", service.id)
-            raise RateLimitError(service.rate_limit, SECONDS_IN_1_MINUTE, key_type)
+    if token_bucket_rate_limit_exceeded(service, key_type):
+        current_app.logger.info("service %s has been rate limited for token bucket", service.id)
+        raise RateLimitError(service.rate_limit, SECONDS_IN_1_MINUTE, key_type)
 
 
 def token_bucket_rate_limit_exceeded(service, key_type):
