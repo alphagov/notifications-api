@@ -17,7 +17,6 @@ from app.constants import (
     NON_CROWN_ORGANISATION_TYPES,
     NOTIFICATION_PERMANENT_FAILURE,
     SMS_TYPE,
-    TOKEN_BUCKET,
 )
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.date_util import get_current_financial_year
@@ -72,7 +71,6 @@ DEFAULT_SERVICE_PERMISSIONS = [
     LETTER_TYPE,
     INTERNATIONAL_SMS_TYPE,
     INTERNATIONAL_LETTERS,
-    TOKEN_BUCKET,
 ]
 
 
