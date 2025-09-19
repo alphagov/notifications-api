@@ -449,7 +449,7 @@ def deep_archive_notification_history_hour_starting(
 
     table = NotificationHistory.__table__
     orc_type_description = pyorc.Struct(
-        **{col.name: _get_orc_type_from_python_type(col.type.python_type)() for col in inspect(table).c}
+        **{col.name: _get_orc_type_from_python_type(col.type.python_type) for col in inspect(table).c}
     )
 
     with TemporaryFile() as f:
