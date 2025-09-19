@@ -412,20 +412,20 @@ def update_report_status_to_deleted():
 
 
 # in order of priority (type hierarchies can overlap!)
-_python_types_orc_types = (
-    (int, pyorc.Int),
-    (float, pyorc.Double),
-    (UUID, pyorc.Binary),
-    (str, pyorc.String),
-    (datetime, pyorc.Timestamp),
-    (bool, pyorc.Boolean),
+_python_types_orc_type_constructors = (
+    (int, lambda: pyorc.Int()),
+    (float, lambda: pyorc.Double()),
+    (UUID, lambda: pyorc.Binary()),
+    (str, lambda: pyorc.String()),
+    (datetime, lambda: pyorc.Timestamp()),
+    (bool, lambda: pyorc.Boolean()),
 )
 
 
 def _get_orc_type_from_python_type(python_type):
-    for candidate_python_type, orc_type in _python_types_orc_types:
+    for candidate_python_type, orc_type_ctr in _python_types_orc_type_constructors:
         if issubclass(python_type, candidate_python_type):
-            return orc_type
+            return orc_type_ctr()
 
     raise ValueError(f"Don't know what orc type to use for python type {python_type!r}")
 
@@ -449,7 +449,7 @@ def deep_archive_notification_history_hour_starting(
 
     table = NotificationHistory.__table__
     orc_type_description = pyorc.Struct(
-        **{col.name: _get_orc_type_from_python_type(col.type.python_type) for col in inspect(table).c}
+        **{col.name: _get_orc_type_from_python_type(col.type.python_type)() for col in inspect(table).c}
     )
 
     with TemporaryFile() as f:
