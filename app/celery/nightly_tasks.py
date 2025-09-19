@@ -437,7 +437,7 @@ def deep_archive_notification_history_hour_starting(
     delete_archived=False,
 ):
     start_datetime = datetime.fromisoformat(start_datetime_str)
-    if start_datetime.time.minute or start_datetime.time.second or start_datetime.time.microsecond:
+    if start_datetime.minute or start_datetime.second or start_datetime.microsecond:
         raise ValueError(f"start_datetime %{start_datetime} is not on-the-hour")
 
     end_datetime = start_datetime + timedelta(hours=1)
