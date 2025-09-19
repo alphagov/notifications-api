@@ -414,6 +414,7 @@ def update_report_status_to_deleted():
 # in order of priority (type hierarchies can overlap!)
 _python_types_orc_types = (
     (int, pyorc.Int),
+    (float, pyorc.Double),
     (UUID, pyorc.Binary),
     (str, pyorc.String),
     (datetime, pyorc.Timestamp),
