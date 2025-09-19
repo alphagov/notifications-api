@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from tempfile import TemporaryFile
+from urllib.parse import urlencode
 from uuid import UUID, uuid4
 
 import boto3
@@ -500,8 +501,8 @@ def deep_archive_notification_history_hour_starting(
         )
 
         s3_key = (
-            f"{s3_key_prefix}created_at_date={start_datetime.date.isoformat()}/"
-            f"created_at_hour={start_datetime.time.hour:02}/{uuid4()}.orc"
+            f"{s3_key_prefix}created_at_date={start_datetime.date().isoformat()}/"
+            f"created_at_hour={start_datetime.hour:02}/{uuid4()}.orc"
         )
 
         current_app.logger.info(
@@ -522,9 +523,7 @@ def deep_archive_notification_history_hour_starting(
             s3_key,
             Config=TransferConfig(use_threads=False),
             ExtraArgs={
-                "Tagging": [
-                    {"Key": "contents_deleted", "Value": "false"},
-                ],
+                "Tagging": urlencode({"contents_deleted": "false"}),
             },
         )
 
