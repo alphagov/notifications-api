@@ -434,7 +434,6 @@ def deep_archive_notification_history_hour_starting(
     start_datetime_str: str,
     written_rows_log_every=1_000_000,
     s3_key_prefix="",
-    s3_bucket="some-bucket",
     delete_archived=False,
 ):
     start_datetime = datetime.fromisoformat(start_datetime_str)
@@ -442,6 +441,8 @@ def deep_archive_notification_history_hour_starting(
         raise ValueError(f"start_datetime %{start_datetime} is not on-the-hour")
 
     end_datetime = start_datetime + timedelta(hours=1)
+
+    s3_bucket = current_app.config["S3_BUCKET_NOTIFICATION_DEEP_HISTORY"]
 
     s3 = boto3.client("s3")
 
