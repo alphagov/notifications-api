@@ -2170,8 +2170,10 @@ class FactBilling(db.Model):
     __extended_statistics__ = (
         # dependencies
         ("st_dep_ft_billing_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
-        ("st_dep_ft_billing_template_id_ntfcn_type", ("template_id", "notification_type"), ("dependencies",)),
-        ("st_dep_ft_billing_provider_ntfcn_type", ("provider", "notification_type"), ("dependencies",)),
+        ("st_dep_ft_billing_ntfcn_type_template_id", ("notification_type", "template_id"), ("dependencies",)),
+        ("st_dep_ft_billing_ntfcn_type_provider", ("notification_type", "provider"), ("dependencies",)),
+        ("st_dep_ft_billing_ntfcn_type_intnl", ("notification_type", "international"), ("dependencies",)),
+        ("st_dep_ft_billing_ntfcn_type_postage", ("notification_type", "postage"), ("dependencies",)),
     )
 
 
