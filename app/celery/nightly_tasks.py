@@ -440,7 +440,7 @@ def deep_archive_notification_history_hour_starting(
 ):
     start_datetime = datetime.fromisoformat(start_datetime_str)
     if start_datetime.minute or start_datetime.second or start_datetime.microsecond:
-        raise ValueError(f"start_datetime %{start_datetime} is not on-the-hour")
+        raise ValueError(f"start_datetime {start_datetime!r} is not on-the-hour")
 
     end_datetime = start_datetime + timedelta(hours=1)
 
@@ -484,7 +484,7 @@ def deep_archive_notification_history_hour_starting(
                         extra={"rows_written": writer.current_row},
                     )
 
-            final_current_row = (writer.current_row,)
+            final_current_row = writer.current_row
 
         f.seek(0, 2)  # end of file
         final_file_size = f.tell()
@@ -598,14 +598,16 @@ def deep_archive_notification_history_hour_starting(
 
             tag_set = [tag for tag in tag_set if tag["Key"] not in ("contents_deleted", "contents_deleted_at")]
             tag_set += [
-                {"contents_deleted": "true"},
-                {"contents_deleted_at": deleted_timestamp_iso},
+                {"Key": "contents_deleted", "Value": "true"},
+                {"Key": "contents_deleted_at", "Value": deleted_timestamp_iso},
             ]
 
             s3.put_object_tagging(
                 Bucket=s3_bucket,
                 Key=s3_key,
-                Tagging=tag_set,
+                Tagging={
+                    "TagSet": tag_set,
+                },
             )
 
             current_app.logger.info(
