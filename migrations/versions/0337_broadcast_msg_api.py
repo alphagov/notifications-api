@@ -22,6 +22,7 @@ def upgrade():
 
 
 def downgrade():
-    op.alter_column("broadcast_message", "created_by_id", nullable=False)
-    op.drop_column("broadcast_message", "api_key_id")
-    op.add_column("broadcast_message", "reference")
+    op.alter_column(table_name="broadcast_message", column_name="created_by_id", nullable=False)
+    op.drop_column(table_name="broadcast_message", column_name="api_key_id")
+    op.drop_column(table_name="broadcast_message", column_name="reference")
+

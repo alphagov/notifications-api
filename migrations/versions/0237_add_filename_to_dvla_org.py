@@ -8,7 +8,7 @@ Create Date: 2018-09-28 15:39:21.115358
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.sql import text
+from sqlalchemy import text
 
 revision = "0237_add_filename_to_dvla_org"
 down_revision = "0236_another_letter_org"
@@ -50,11 +50,13 @@ def upgrade():
         conn.execute(
             text(
                 """
-            UPDATE dvla_organisation SET filename = :filename WHERE id = :id
-        """
+                UPDATE dvla_organisation SET filename = :filename WHERE id = :id
+                """
             ),
-            filename=org_filename,
-            id=org_id,
+            {
+                "filename": org_filename,
+                "id": org_id,
+            }
         )
 
 
