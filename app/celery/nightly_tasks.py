@@ -461,6 +461,8 @@ def deep_archive_notification_history_hour_starting(
             compression=pyorc.CompressionKind.ZSTD,
             bloom_filter_columns=tuple(col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)),
         ) as writer:
+            # here we take a share-lock on all our archived rows to ensure the version we
+            # export is the *final* version the database saw
             history_rows = db.session.execute(
                 select(table)
                 .where(
@@ -539,6 +541,13 @@ def deep_archive_notification_history_hour_starting(
         )
 
         if delete_archived:
+            # this will attempt to upgrade our share-locks to exclusive locks, waiting
+            # until it is able to do so. in case of contention between two concurrent
+            # tasks trying to delete the same rows, only one of the transactions will
+            # be able to pass this point (due to the share-lock) and that one will
+            # get to mark its uploaded archive as contents_deleted (thereby preventing
+            # a lifecycle rule from reaping it). any other ones will have been killed
+            # by the deadlock detector.
             deleted_row_count = db.session.execute(
                 delete(table).where(
                     table.c.created_at >= start_datetime,
