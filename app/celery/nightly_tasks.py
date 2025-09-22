@@ -431,6 +431,54 @@ def _get_orc_type_from_python_type(python_type):
     raise ValueError(f"Don't know what orc type to use for python type {python_type!r}")
 
 
+def deep_archive_notification_history_up_to_limit(
+    max_hours_archived=96,
+    latest_archivable_age=timedelta(years=1),
+    written_rows_log_every=1_000_000,
+    s3_key_prefix="",
+    delete_archived=False,
+):
+    table = NotificationHistory.__table__
+    earliest_unarchivable_datetime = (datetime.now(UTC) - latest_archivable_age).replace(
+        minute=0, second=0, microsecond=0
+    )
+
+    for i in range(max_hours_archived):
+        oldest_created_at_row = (
+            db.session.execute(
+                select(table.c.created_at)
+                .where(table.c.created_at < earliest_unarchivable_datetime)
+                .order_by(table.c.created_at)
+                .limit(1)
+            )
+            .scalars()
+            .all()
+        )
+        if not oldest_created_at_row:
+            current_app.logger.info("No more archivable notification_history rows")
+            return
+
+        oldest_created_at_hour_str = oldest_created_at_row[0].replace(minute=0, second=0, microsecond=0).isoformat()
+        current_app.logger.info(
+            "Archiving created_at hour beginning %s",
+            oldest_created_at_hour_str,
+            extra={"hour_beginning": oldest_created_at_hour_str},
+        )
+
+        deep_archive_notification_history_hour_starting(
+            oldest_created_at_hour_str,
+            written_rows_log_every=written_rows_log_every,
+            s3_key_prefix=s3_key_prefix,
+            delete_archived=delete_archived,
+        )
+    else:
+        current_app.logger.info(
+            "Archived maximum number of hours allowed in this run (%s)",
+            max_hours_archived,
+            extra={"max_hours_archived": max_hours_archived},
+        )
+
+
 @notify_celery.task(name="deep-archive-notification-history-hour-starting")
 def deep_archive_notification_history_hour_starting(
     start_datetime_str: str,
