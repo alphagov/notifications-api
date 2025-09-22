@@ -525,6 +525,7 @@ def deep_archive_notification_history_hour_starting(
             s3_key,
             Config=TransferConfig(use_threads=False),
             ExtraArgs={
+                "ServerSideEncryption": "AES256",
                 "Tagging": urlencode({"contents_deleted": "false"}),
             },
         )
