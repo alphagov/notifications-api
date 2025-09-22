@@ -519,7 +519,7 @@ def deep_archive_notification_history_hour_starting(
 
         s3.upload_fileobj(
             f,
-            "some-bucket",
+            s3_bucket,
             s3_key,
             Config=TransferConfig(use_threads=False),
             ExtraArgs={
