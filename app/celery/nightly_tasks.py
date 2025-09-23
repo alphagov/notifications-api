@@ -431,19 +431,15 @@ def _get_orc_type_from_python_type(python_type):
     raise ValueError(f"Don't know what orc type to use for python type {python_type!r}")
 
 
-def deep_archive_notification_history_up_to_limit(
-    max_hours_archived=96,
-    latest_archivable_age=timedelta(years=1),
-    written_rows_log_every=1_000_000,
-    s3_key_prefix="",
-    delete_archived=False,
-):
-    table = NotificationHistory.__table__
-    earliest_unarchivable_datetime = (datetime.now(UTC) - latest_archivable_age).replace(
-        minute=0, second=0, microsecond=0
-    )
+@notify_celery.task(name="deep-archive-notification-history-up-to-limit")
+def deep_archive_notification_history_up_to_limit():
+    max_hours_archived = current_app.config["NOTIFICATION_DEEP_HISTORY_MAX_HOURS_ARCHIVED_IN_RUN"]
+    min_archivable_age = timedelta(days=current_app.config["NOTIFICATION_DEEP_HISTORY_MIN_AGE_DAYS"])
+    earliest_unarchivable_datetime = (datetime.now(UTC) - min_archivable_age).replace(minute=0, second=0, microsecond=0)
 
-    for i in range(max_hours_archived):
+    table = NotificationHistory.__table__
+
+    for _ in range(max_hours_archived):
         oldest_created_at_row = (
             db.session.execute(
                 select(table.c.created_at)
@@ -465,12 +461,7 @@ def deep_archive_notification_history_up_to_limit(
             extra={"hour_beginning": oldest_created_at_hour_str},
         )
 
-        deep_archive_notification_history_hour_starting(
-            oldest_created_at_hour_str,
-            written_rows_log_every=written_rows_log_every,
-            s3_key_prefix=s3_key_prefix,
-            delete_archived=delete_archived,
-        )
+        deep_archive_notification_history_hour_starting(oldest_created_at_hour_str)
     else:
         current_app.logger.info(
             "Archived maximum number of hours allowed in this run (%s)",
@@ -479,12 +470,9 @@ def deep_archive_notification_history_up_to_limit(
         )
 
 
-@notify_celery.task(name="deep-archive-notification-history-hour-starting")
 def deep_archive_notification_history_hour_starting(
     start_datetime_str: str,
     written_rows_log_every=1_000_000,
-    s3_key_prefix="",
-    delete_archived=False,
 ):
     start_datetime = datetime.fromisoformat(start_datetime_str)
     if start_datetime.minute or start_datetime.second or start_datetime.microsecond:
@@ -493,6 +481,8 @@ def deep_archive_notification_history_hour_starting(
     end_datetime = start_datetime + timedelta(hours=1)
 
     s3_bucket = current_app.config["S3_BUCKET_NOTIFICATION_DEEP_HISTORY"]
+    s3_key_prefix = current_app.config["NOTIFICATION_DEEP_HISTORY_S3_KEY_PREFIX"]
+    delete_archived = current_app.config["NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED"]
 
     s3 = boto3.client("s3")
 
@@ -509,8 +499,10 @@ def deep_archive_notification_history_hour_starting(
             compression=pyorc.CompressionKind.ZSTD,
             bloom_filter_columns=tuple(col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)),
         ) as writer:
-            # here we take a share-lock on all our archived rows to ensure the version we
-            # export is the *final* version the database saw
+            # here we take a share-lock on all our rows we intend to archive to ensure the
+            # version we export is the *final* version the database saw. share-lock is taken
+            # even if we're not deleting so that it simulates the performance impact of doing
+            # it for real
             history_rows = db.session.execute(
                 select(table)
                 .where(
@@ -680,3 +672,6 @@ def deep_archive_notification_history_hour_starting(
                     "file_size": final_file_size,
                 },
             )
+        else:
+            # release share-locks
+            db.session.commit()
