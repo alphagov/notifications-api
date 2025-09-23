@@ -917,7 +917,9 @@ def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
 
 def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     year_start, year_end = get_financial_year_dates(financial_year)
-    return fetch_usage_for_all_services_sms(year_start, year_end, organisation_id=organisation_id)
+    return fetch_usage_for_all_services_sms(
+        year_start, year_end, organisation_id=organisation_id, exclude_restricted=True
+    )
 
 
 def fetch_usage_for_organisation(organisation_id, year) -> tuple[Any, str | None]:

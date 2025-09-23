@@ -1037,14 +1037,23 @@ def test_fetch_usage_for_organisation_variable_rates(
 
 
 def test_fetch_usage_for_organisation_sms_remainder(
-    sample_service, sample_organisation, sample_sms_template, notify_db_session
+    sample_service, sample_restricted_service, sample_organisation, sample_sms_template, notify_db_session
 ):
+    # Restricted (trial) service
+    dao_add_service_to_organisation(service=sample_restricted_service, organisation_id=sample_organisation.id)
+    restricted_service_sms_template = create_template(service=sample_restricted_service, template_type="sms")
+    create_annual_billing(service_id=sample_restricted_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
+    create_ft_billing(
+        template=restricted_service_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162
+    )
+
+    # Live service
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=1)
 
     results, _ = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
-    assert len(results) == 1
+    assert len(results) == 1  # show organisation usage for only live services
 
     row = results[str(sample_service.id)]
     assert row["sms_remainder"] == 2
