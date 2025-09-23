@@ -219,7 +219,7 @@ def can_letter_job_be_cancelled(job):
         return False, "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
 
     if job.job_status != JOB_STATUS_FINISHED_ALL_NOTIFICATIONS_CREATED:
-        return False, "We are still processing these letters, please try again in a minute."
+        return False, "We are still processing these letters, please try again in 5 minutes."
 
     if (not letter_can_be_cancelled(NOTIFICATION_CREATED, job.created_at)) or db.session.query(
         Notification.query.filter(
