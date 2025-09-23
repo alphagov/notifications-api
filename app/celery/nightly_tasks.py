@@ -433,23 +433,27 @@ def _get_orc_type_from_python_type(python_type):
 
 @notify_celery.task(name="deep-archive-notification-history-up-to-limit")
 def deep_archive_notification_history_up_to_limit():
+    delete_archived = current_app.config["NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED"]
     max_hours_archived = current_app.config["NOTIFICATION_DEEP_HISTORY_MAX_HOURS_ARCHIVED_IN_RUN"]
     min_archivable_age = timedelta(days=current_app.config["NOTIFICATION_DEEP_HISTORY_MIN_AGE_DAYS"])
     earliest_unarchivable_datetime = (datetime.now(UTC) - min_archivable_age).replace(minute=0, second=0, microsecond=0)
 
     table = NotificationHistory.__table__
 
+    latest_created_at_archived = None
+
     for _ in range(max_hours_archived):
-        oldest_created_at_row = (
-            db.session.execute(
-                select(table.c.created_at)
-                .where(table.c.created_at < earliest_unarchivable_datetime)
-                .order_by(table.c.created_at)
-                .limit(1)
-            )
-            .scalars()
-            .all()
+        query = (
+            select(table.c.created_at)
+            .where(table.c.created_at < earliest_unarchivable_datetime)
+            .order_by(table.c.created_at)
+            .limit(1)
         )
+        if latest_created_at_archived and not delete_archived:
+            # extra clause needed to progress the run since rows aren't being deleted
+            query = query.where(table.c.created_at > latest_created_at_archived)
+
+        oldest_created_at_row = db.session.execute(query).scalars().all()
         if not oldest_created_at_row:
             current_app.logger.info("No more archivable notification_history rows")
             return
@@ -461,7 +465,7 @@ def deep_archive_notification_history_up_to_limit():
             extra={"hour_beginning": oldest_created_at_hour_str},
         )
 
-        deep_archive_notification_history_hour_starting(oldest_created_at_hour_str)
+        latest_created_at_archived = deep_archive_notification_history_hour_starting(oldest_created_at_hour_str)
     else:
         current_app.logger.info(
             "Archived maximum number of hours allowed in this run (%s)",
@@ -491,6 +495,8 @@ def deep_archive_notification_history_hour_starting(
         **{col.name: _get_orc_type_from_python_type(col.type.python_type) for col in inspect(table).c}
     )
 
+    latest_created_at = None
+
     with TemporaryFile() as f:
         with pyorc.Writer(
             f,
@@ -518,6 +524,7 @@ def deep_archive_notification_history_hour_starting(
             ).all()
 
             for row in history_rows:
+                latest_created_at = row["created_at"]
                 writer.write({k: (v.bytes if isinstance(v, UUID) else v) for k, v in row._mapping.items()})
                 if not writer.current_row % written_rows_log_every:
                     current_app.logger.info(
@@ -675,3 +682,5 @@ def deep_archive_notification_history_hour_starting(
         else:
             # release share-locks
             db.session.commit()
+
+        return latest_created_at
