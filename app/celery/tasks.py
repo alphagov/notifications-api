@@ -35,6 +35,7 @@ from app.constants import (
 from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
 from app.dao.notifications_dao import (
     dao_get_last_notification_added_for_job_id,
+    dao_get_unknown_references,
     dao_update_notifications_by_reference,
     get_notification_by_id,
 )
@@ -509,6 +510,13 @@ def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_B
 
 @notify_celery.task(name="process-returned-letters-list")
 def process_returned_letters_list(notification_references):
+    for ref in dao_get_unknown_references(notification_references):
+        current_app.logger.warning(
+            "Notification with reference %s not found in notifications or notifications history",
+            ref,
+            extra={"notification_reference": ref},
+        )
+
     updated, updated_history = dao_update_notifications_by_reference(
         notification_references, {"status": NOTIFICATION_RETURNED_LETTER}
     )

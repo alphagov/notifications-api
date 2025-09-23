@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timedelta
 from itertools import count
@@ -2721,7 +2722,7 @@ def test_process_incomplete_jobs_sets_status_to_in_progress_and_resets_processin
     ]
 
 
-def test_process_returned_letters_list(sample_letter_template):
+def test_process_returned_letters_list(caplog, sample_letter_template):
     create_notification(sample_letter_template, reference="ref1")
     create_notification(sample_letter_template, reference="ref2")
 
@@ -2732,22 +2733,52 @@ def test_process_returned_letters_list(sample_letter_template):
     assert [n.status for n in notifications] == ["returned-letter", "returned-letter"]
     assert all(n.updated_at for n in notifications)
 
+    assert (
+        "test",
+        logging.INFO,
+        "Updated 2 letter notifications (0 history notifications, from 3 references) to returned-letter",
+    ) in caplog.record_tuples
+
+    assert (
+        "test",
+        logging.WARNING,
+        "Notification with reference unknown-ref not found in notifications or notifications history",
+    ) in caplog.record_tuples
+
 
 def test_process_returned_letters_list_updates_history_if_notification_is_already_purged(
+    caplog,
     sample_letter_template,
 ):
     create_notification_history(sample_letter_template, reference="ref1")
     create_notification_history(sample_letter_template, reference="ref2")
 
-    process_returned_letters_list(["ref1", "ref2", "unknown-ref"])
+    process_returned_letters_list(["really-unknown-ref", "ref1", "ref2", "unknown-ref"])
 
     notifications = NotificationHistory.query.all()
 
     assert [n.status for n in notifications] == ["returned-letter", "returned-letter"]
     assert all(n.updated_at for n in notifications)
 
+    assert (
+        "test",
+        logging.INFO,
+        "Updated 0 letter notifications (2 history notifications, from 4 references) to returned-letter",
+    ) in caplog.record_tuples
 
-def test_process_returned_letters_list_processes_returned_letters_callback(sample_letter_template, mocker):
+    assert (
+        "test",
+        logging.WARNING,
+        "Notification with reference unknown-ref not found in notifications or notifications history",
+    ) in caplog.record_tuples
+    assert (
+        "test",
+        logging.WARNING,
+        "Notification with reference really-unknown-ref not found in notifications or notifications history",
+    ) in caplog.record_tuples
+
+
+def test_process_returned_letters_list_processes_returned_letters_callback(caplog, sample_letter_template, mocker):
     history_1 = create_notification_history(sample_letter_template, reference="ref1")
     history_2 = create_notification_history(sample_letter_template, reference="ref2")
 
@@ -2757,8 +2788,15 @@ def test_process_returned_letters_list_processes_returned_letters_callback(sampl
 
     letter_callback_mock.assert_called_with([history_1.reference, history_2.reference])
 
+    assert (
+        "test",
+        logging.INFO,
+        "Updated 0 letter notifications (2 history notifications, from 2 references) to returned-letter",
+    ) in caplog.record_tuples
+
 
 def test_process_returned_letters_populates_returned_letters_table(
+    caplog,
     sample_letter_template,
 ):
     create_notification_history(sample_letter_template, reference="ref1")
@@ -2768,6 +2806,18 @@ def test_process_returned_letters_populates_returned_letters_table(
 
     returned_letters = ReturnedLetter.query.all()
     assert len(returned_letters) == 2
+
+    assert (
+        "test",
+        logging.INFO,
+        "Updated 0 letter notifications (2 history notifications, from 3 references) to returned-letter",
+    ) in caplog.record_tuples
+
+    assert (
+        "test",
+        logging.WARNING,
+        "Notification with reference unknown-ref not found in notifications or notifications history",
+    ) in caplog.record_tuples
 
 
 @pytest.mark.parametrize(

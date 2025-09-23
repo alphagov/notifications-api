@@ -13,7 +13,7 @@ from notifications_utils.international_billing_rates import (
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, or_, union
+from sqlalchemy import String, and_, asc, column, desc, func, not_, or_, select, union, values
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import defer, joinedload, undefer
 from sqlalchemy.orm.exc import NoResultFound
@@ -660,6 +660,21 @@ def dao_update_notifications_by_reference(references, update_dict):
         )
 
     return updated_count, updated_history_count
+
+
+def dao_get_unknown_references(references):
+    v = values(column("reference", String), name="references").data([(r,) for r in references])
+
+    return (
+        db.session.execute(
+            select(v).where(
+                not_(select(1).where(Notification.reference == v.c.reference).exists()),
+                not_(select(1).where(NotificationHistory.reference == v.c.reference).exists()),
+            )
+        )
+        .scalars()
+        .all()
+    )
 
 
 def dao_get_notifications_by_recipient_or_reference(
