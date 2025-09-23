@@ -229,7 +229,7 @@ def process_sms_or_email_notification(
             notification_id=notification_id,
         )
     else:
-        current_app.logger.debug("POST simulated notification for id: %s", notification_id)
+        current_app.logger.info("POST simulated notification for id: %s", notification_id)
 
     return response
 
