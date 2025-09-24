@@ -14,6 +14,22 @@ application = NotifyApiFlaskApp("app")
 
 create_app(application)
 
+from collections.abc import Callable
+class DropRequestsMiddleware:
+    _app: Callable
+
+    def __init__(self, app: Callable):
+        self._app = app
+
+    def __call__(self, *args, **kwargs):
+        import random
+        if random.uniform(0, 1) <= float(os.getenv("REQUEST_SUCCESS_PROBABILITY", "1")):
+            return self._app(*args, **kwargs)
+        else:
+            raise Exception("kaboom")
+
+application.wsgi_app = DropRequestsMiddleware(application.wsgi_app)
+
 if utils_eventlet.using_eventlet:
     application.wsgi_app = utils_eventlet.EventletTimeoutMiddleware(
         application.wsgi_app,
