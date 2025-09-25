@@ -777,63 +777,20 @@ def test_delete_unneeded_notification_history_for_specific_hour2(mocker):
     delete_mock.assert_called_once_with()
 
 
+@pytest.mark.parametrize("delete_archived", (False, True))
 @freeze_time("2021-02-04 10:11")
 def test_deep_archive_notification_history_up_to_limit(
     caplog,
     notify_db_session,
     notify_api,
     sample_template,
-    mocker,
-):
-    from tests.conftest import set_config
-
-    with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", False):
-        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
-        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 5, 6))
-        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 10, 2))
-        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0))
-        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0, 123))
-        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 59, 59, 999999))
-        create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 9, 23, 23))
-        create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 10, 0, 0))
-
-        mock_inner = mocker.patch(
-            "app.celery.nightly_tasks._deep_archive_notification_history_hour_starting",
-            side_effect=(
-                datetime(2020, 2, 3, 4, 10, 2),
-                datetime(2020, 2, 3, 5, 59, 59, 999999),
-                datetime(2020, 2, 5, 9, 23, 23),
-            ),
-        )
-
-        deep_archive_notification_history_up_to_limit()
-
-        assert mock_inner.mock_calls == [
-            call("2020-02-03T04:00:00"),
-            call("2020-02-03T05:00:00"),
-            call("2020-02-05T09:00:00"),
-        ]
-
-        assert caplog.record_tuples == [
-            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-03T04:00:00"),
-            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-03T05:00:00"),
-            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-05T09:00:00"),
-            ("test", logging.INFO, "No more archivable notification_history rows"),
-        ]
-
-
-@freeze_time("2021-02-04 10:11")
-def test_deep_archive_notification_history_up_to_limit_delete_archived(
-    caplog,
-    notify_db_session,
-    notify_api,
-    sample_template,
+    delete_archived,
     mocker,
 ):
     from tests.conftest import set_config
 
     table = NotificationHistory.__table__
-    with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", True):
+    with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", delete_archived):
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 5, 6))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 10, 2))
@@ -844,30 +801,33 @@ def test_deep_archive_notification_history_up_to_limit_delete_archived(
         create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 10, 0, 0))
 
         def inner_side_effect():
-            db.session.execute(
-                delete(table).where(
-                    table.c.created_at >= datetime(2020, 2, 3, 4, 0, 0),
-                    table.c.created_at < datetime(2020, 2, 3, 5, 0, 0),
+            if delete_archived:
+                db.session.execute(
+                    delete(table).where(
+                        table.c.created_at >= datetime(2020, 2, 3, 4, 0, 0),
+                        table.c.created_at < datetime(2020, 2, 3, 5, 0, 0),
+                    )
                 )
-            )
             db.session.commit()
             yield datetime(2020, 2, 3, 4, 10, 2)
 
-            db.session.execute(
-                delete(table).where(
-                    table.c.created_at >= datetime(2020, 2, 3, 5, 0, 0),
-                    table.c.created_at < datetime(2020, 2, 3, 6, 0, 0),
+            if delete_archived:
+                db.session.execute(
+                    delete(table).where(
+                        table.c.created_at >= datetime(2020, 2, 3, 5, 0, 0),
+                        table.c.created_at < datetime(2020, 2, 3, 6, 0, 0),
+                    )
                 )
-            )
             db.session.commit()
             yield datetime(2020, 2, 3, 5, 59, 59, 999999)
 
-            db.session.execute(
-                delete(table).where(
-                    table.c.created_at >= datetime(2020, 2, 5, 9, 0, 0),
-                    table.c.created_at < datetime(2020, 2, 5, 10, 0, 0),
+            if delete_archived:
+                db.session.execute(
+                    delete(table).where(
+                        table.c.created_at >= datetime(2020, 2, 5, 9, 0, 0),
+                        table.c.created_at < datetime(2020, 2, 5, 10, 0, 0),
+                    )
                 )
-            )
             db.session.commit()
             yield datetime(2020, 2, 5, 9, 23, 23)
 
