@@ -19,6 +19,7 @@ from app.celery.nightly_tasks import (
     archive_batched_unsubscribe_requests,
     archive_old_unsubscribe_requests,
     archive_unsubscribe_requests,
+    deep_archive_notification_history_up_to_limit,
     delete_email_notifications_older_than_retention,
     delete_inbound_sms,
     delete_letter_notifications_older_than_retention,
@@ -35,10 +36,15 @@ from app.celery.nightly_tasks import (
     save_daily_notification_processing_time,
     timeout_notifications,
     update_report_status_to_deleted,
-    deep_archive_notification_history_up_to_limit
 )
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
-from app.models import FactProcessingTime, UnsubscribeRequest, UnsubscribeRequestHistory, UnsubscribeRequestReport, NotificationHistory
+from app.models import (
+    FactProcessingTime,
+    NotificationHistory,
+    UnsubscribeRequest,
+    UnsubscribeRequestHistory,
+    UnsubscribeRequestReport,
+)
 from app.utils import midnight_n_days_ago
 from tests.app.db import (
     create_job,
@@ -780,6 +786,7 @@ def test_deep_archive_notification_history_up_to_limit(
     mocker,
 ):
     from tests.conftest import set_config
+
     with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", False):
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 5, 6))
@@ -824,6 +831,7 @@ def test_deep_archive_notification_history_up_to_limit_delete_archived(
     mocker,
 ):
     from tests.conftest import set_config
+
     table = NotificationHistory.__table__
     with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", True):
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
