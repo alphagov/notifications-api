@@ -833,6 +833,7 @@ def test_deep_archive_notification_history_up_to_limit(
 
         mock_inner = mocker.patch(
             "app.celery.nightly_tasks._deep_archive_notification_history_hour_starting",
+            autospec=True,
             side_effect=inner_side_effect(),
         )
 
