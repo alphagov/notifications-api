@@ -458,14 +458,15 @@ def deep_archive_notification_history_up_to_limit():
             current_app.logger.info("No more archivable notification_history rows")
             return
 
-        oldest_created_at_hour_str = oldest_created_at_row[0].replace(minute=0, second=0, microsecond=0).isoformat()
+        oldest_created_at_hour = oldest_created_at_row[0].replace(minute=0, second=0, microsecond=0)
+        oldest_created_at_hour_str = oldest_created_at_hour.isoformat()
         current_app.logger.info(
             "Archiving created_at hour beginning %s",
             oldest_created_at_hour_str,
             extra={"hour_beginning": oldest_created_at_hour_str},
         )
 
-        latest_created_at_archived = _deep_archive_notification_history_hour_starting(oldest_created_at_hour_str)
+        latest_created_at_archived = _deep_archive_notification_history_hour_starting(oldest_created_at_hour)
     else:
         current_app.logger.info(
             "Archived maximum number of hours allowed in this run (%s)",
@@ -475,10 +476,9 @@ def deep_archive_notification_history_up_to_limit():
 
 
 def _deep_archive_notification_history_hour_starting(
-    start_datetime_str: str,
+    start_datetime: datetime,
     written_rows_log_every: int = 1_000_000,
 ) -> datetime:
-    start_datetime = datetime.fromisoformat(start_datetime_str)
     if start_datetime.minute or start_datetime.second or start_datetime.microsecond:
         raise ValueError(f"start_datetime {start_datetime!r} is not on-the-hour")
 
@@ -517,6 +517,7 @@ def _deep_archive_notification_history_hour_starting(
                 )
                 .order_by(
                     table.c.created_at,
+                    table.c.id,
                 )
                 .with_for_update(
                     read=True,

@@ -1,11 +1,14 @@
 import logging
 import uuid
 from datetime import date, datetime, timedelta
+from itertools import islice
 from unittest.mock import ANY, call
 
+import boto3
 import pytest
 from flask import current_app
 from freezegun import freeze_time
+from moto import mock_aws
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
     NotifyTicketType,
@@ -15,6 +18,7 @@ from sqlalchemy import delete
 from app import db
 from app.celery import nightly_tasks
 from app.celery.nightly_tasks import (
+    _deep_archive_notification_history_hour_starting,
     _delete_notifications_older_than_retention_by_type,
     archive_batched_unsubscribe_requests,
     archive_old_unsubscribe_requests,
@@ -777,6 +781,7 @@ def test_delete_unneeded_notification_history_for_specific_hour2(mocker):
     delete_mock.assert_called_once_with()
 
 
+@pytest.mark.parametrize("max_inner_calls", (1, 2, 50))
 @pytest.mark.parametrize("delete_archived", (False, True))
 @freeze_time("2021-02-04 10:11")
 def test_deep_archive_notification_history_up_to_limit(
@@ -785,22 +790,33 @@ def test_deep_archive_notification_history_up_to_limit(
     notify_api,
     sample_template,
     delete_archived,
+    max_inner_calls,
     mocker,
 ):
     from tests.conftest import set_config
 
     table = NotificationHistory.__table__
-    with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", delete_archived):
+    with (
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", delete_archived),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_MAX_HOURS_ARCHIVED_IN_RUN", max_inner_calls),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_MIN_AGE_DAYS", 365),
+    ):
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 5, 6))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 10, 2))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0, 123))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 1, 0, 123))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 2, 0, 123))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 59, 59, 999999))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 9, 23, 23))
         create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 10, 0, 0))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 8, 12, 34, 56))
+
+        inner_exhausted = False
 
         def inner_side_effect():
+            nonlocal inner_exhausted
             if delete_archived:
                 db.session.execute(
                     delete(table).where(
@@ -829,25 +845,84 @@ def test_deep_archive_notification_history_up_to_limit(
                     )
                 )
             db.session.commit()
+            inner_exhausted = True
             yield datetime(2020, 2, 5, 9, 23, 23)
 
         mock_inner = mocker.patch(
             "app.celery.nightly_tasks._deep_archive_notification_history_hour_starting",
             autospec=True,
-            side_effect=inner_side_effect(),
+            side_effect=islice(inner_side_effect(), max_inner_calls),
         )
 
         deep_archive_notification_history_up_to_limit()
 
-        assert mock_inner.mock_calls == [
-            call("2020-02-03T04:00:00"),
-            call("2020-02-03T05:00:00"),
-            call("2020-02-05T09:00:00"),
-        ]
+        assert (
+            mock_inner.mock_calls
+            == [
+                call(datetime(2020, 2, 3, 4, 0)),
+                call(datetime(2020, 2, 3, 5, 0)),
+                call(datetime(2020, 2, 5, 9, 0)),
+            ][:max_inner_calls]
+        )
 
         assert caplog.record_tuples == [
             ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-03T04:00:00"),
             ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-03T05:00:00"),
             ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-05T09:00:00"),
-            ("test", logging.INFO, "No more archivable notification_history rows"),
+        ][:max_inner_calls] + [
+            (
+                "test",
+                logging.INFO,
+                "No more archivable notification_history rows"
+                if inner_exhausted
+                else f"Archived maximum number of hours allowed in this run ({max_inner_calls})",
+            ),
         ]
+
+
+@pytest.mark.parametrize(
+    "start_datetime",
+    (
+        datetime(2020, 2, 3, 4, 0, 0),
+        datetime(2020, 2, 3, 5, 0, 0),
+        datetime(2020, 2, 5, 9, 0, 0),
+    ),
+)
+@freeze_time("2021-02-04 10:11")
+@mock_aws
+def test_deep_archive_notification_history_hour_starting(
+    caplog,
+    notify_db_session,
+    notify_api,
+    sample_template,
+    start_datetime,
+):
+    from tests.conftest import set_config
+
+    table = NotificationHistory.__table__
+    with (
+        set_config(notify_api, "S3_BUCKET_NOTIFICATION_DEEP_HISTORY", "deep-bucket"),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_S3_KEY_PREFIX", "foo/"),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", True),
+    ):
+        s3 = boto3.client("s3")
+        s3.create_bucket(
+            Bucket="deep-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-1"}
+        )
+
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 5, 6))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 10, 2))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0, 123))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 1, 0, 123))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 2, 0, 123))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 59, 59, 999999))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 9, 23, 23))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 10, 0, 0))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 8, 12, 34, 56))
+
+        assert _deep_archive_notification_history_hour_starting(
+            start_datetime,
+            written_rows_log_every=2,
+        ) == datetime(2020, 2, 8, 12, 34, 56)
