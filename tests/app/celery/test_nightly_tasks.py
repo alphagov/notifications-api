@@ -32,6 +32,7 @@ from app.celery.nightly_tasks import (
     save_daily_notification_processing_time,
     timeout_notifications,
     update_report_status_to_deleted,
+    deep_archive_notification_history_up_to_limit
 )
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from app.models import FactProcessingTime, UnsubscribeRequest, UnsubscribeRequestHistory, UnsubscribeRequestReport
@@ -39,6 +40,7 @@ from app.utils import midnight_n_days_ago
 from tests.app.db import (
     create_job,
     create_notification,
+    create_notification_history,
     create_service,
     create_service_data_retention,
     create_template,
@@ -764,3 +766,28 @@ def test_delete_unneeded_notification_history_for_specific_hour2(mocker):
     update_report_status_to_deleted()
 
     delete_mock.assert_called_once_with()
+
+
+@freeze_time("2021-02-04 10:11")
+def test_deep_archive_notification_history_up_to_limit(notify_db_session, notify_api, sample_template, mocker):
+    from tests.conftest import set_config
+    with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", False):
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 5, 6))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 10, 2))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0, 123))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 59, 59, 999999))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 9, 23, 23))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 10, 0, 0))
+
+        mocker.patch(
+            "app.celery.nightly_tasks._deep_archive_notification_history_hour_starting",
+            side_effect=(
+                datetime(2020, 2, 3, 4, 10, 2),
+                datetime(2020, 2, 3, 5, 59, 59, 999999),
+                datetime(2020, 2, 5, 9, 23, 23),
+            ),
+        )
+
+        deep_archive_notification_history_up_to_limit()
