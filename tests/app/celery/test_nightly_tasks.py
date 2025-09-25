@@ -10,7 +10,9 @@ from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
     NotifyTicketType,
 )
+from sqlalchemy import delete
 
+from app import db
 from app.celery import nightly_tasks
 from app.celery.nightly_tasks import (
     _delete_notifications_older_than_retention_by_type,
@@ -36,7 +38,7 @@ from app.celery.nightly_tasks import (
     deep_archive_notification_history_up_to_limit
 )
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
-from app.models import FactProcessingTime, UnsubscribeRequest, UnsubscribeRequestHistory, UnsubscribeRequestReport
+from app.models import FactProcessingTime, UnsubscribeRequest, UnsubscribeRequestHistory, UnsubscribeRequestReport, NotificationHistory
 from app.utils import midnight_n_days_ago
 from tests.app.db import (
     create_job,
@@ -770,7 +772,13 @@ def test_delete_unneeded_notification_history_for_specific_hour2(mocker):
 
 
 @freeze_time("2021-02-04 10:11")
-def test_deep_archive_notification_history_up_to_limit(caplog, notify_db_session, notify_api, sample_template, mocker):
+def test_deep_archive_notification_history_up_to_limit(
+    caplog,
+    notify_db_session,
+    notify_api,
+    sample_template,
+    mocker,
+):
     from tests.conftest import set_config
     with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", False):
         create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
@@ -789,6 +797,75 @@ def test_deep_archive_notification_history_up_to_limit(caplog, notify_db_session
                 datetime(2020, 2, 3, 5, 59, 59, 999999),
                 datetime(2020, 2, 5, 9, 23, 23),
             ),
+        )
+
+        deep_archive_notification_history_up_to_limit()
+
+        assert mock_inner.mock_calls == [
+            call("2020-02-03T04:00:00"),
+            call("2020-02-03T05:00:00"),
+            call("2020-02-05T09:00:00"),
+        ]
+
+        assert caplog.record_tuples == [
+            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-03T04:00:00"),
+            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-03T05:00:00"),
+            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-05T09:00:00"),
+            ("test", logging.INFO, "No more archivable notification_history rows"),
+        ]
+
+
+@freeze_time("2021-02-04 10:11")
+def test_deep_archive_notification_history_up_to_limit_delete_archived(
+    caplog,
+    notify_db_session,
+    notify_api,
+    sample_template,
+    mocker,
+):
+    from tests.conftest import set_config
+    table = NotificationHistory.__table__
+    with set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", True):
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 0, 0))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 5, 6))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 4, 10, 2))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 0, 0, 123))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 3, 5, 59, 59, 999999))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 9, 23, 23))
+        create_notification_history(sample_template, created_at=datetime(2020, 2, 5, 10, 0, 0))
+
+        def inner_side_effect():
+            db.session.execute(
+                delete(table).where(
+                    table.c.created_at >= datetime(2020, 2, 3, 4, 0, 0),
+                    table.c.created_at < datetime(2020, 2, 3, 5, 0, 0),
+                )
+            )
+            db.session.commit()
+            yield datetime(2020, 2, 3, 4, 10, 2)
+
+            db.session.execute(
+                delete(table).where(
+                    table.c.created_at >= datetime(2020, 2, 3, 5, 0, 0),
+                    table.c.created_at < datetime(2020, 2, 3, 6, 0, 0),
+                )
+            )
+            db.session.commit()
+            yield datetime(2020, 2, 3, 5, 59, 59, 999999)
+
+            db.session.execute(
+                delete(table).where(
+                    table.c.created_at >= datetime(2020, 2, 5, 9, 0, 0),
+                    table.c.created_at < datetime(2020, 2, 5, 10, 0, 0),
+                )
+            )
+            db.session.commit()
+            yield datetime(2020, 2, 5, 9, 23, 23)
+
+        mock_inner = mocker.patch(
+            "app.celery.nightly_tasks._deep_archive_notification_history_hour_starting",
+            side_effect=inner_side_effect(),
         )
 
         deep_archive_notification_history_up_to_limit()
