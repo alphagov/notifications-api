@@ -382,7 +382,7 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_not_stat
     create_notification(template=job.template, job=job, status="created")
     result, errors = can_letter_job_be_cancelled(job)
     assert not result
-    assert errors == "We are still processing these letters, please try again in a minute."
+    assert errors == "We are still processing these letters, please try again in 5 minutes."
 
 
 @freeze_time("2019-06-13 13:00")
@@ -431,7 +431,7 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_job_not_
     create_notification(template=job.template, job=job, status="created")
     result, errors = can_letter_job_be_cancelled(job)
     assert not result
-    assert errors == "We are still processing these letters, please try again in a minute."
+    assert errors == "We are still processing these letters, please try again in 5 minutes."
 
 
 def test_can_letter_job_be_cancelled_respects_bst(sample_letter_template):
