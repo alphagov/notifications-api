@@ -15,7 +15,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 )
 from notifications_utils.timezones import convert_utc_to_bst
 from redis.exceptions import LockError
-from sqlalchemy import and_, between
+from sqlalchemy import and_, between, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db, dvla_client, notify_celery, redis_store, statsd_client, zendesk_client
@@ -606,7 +606,7 @@ def weekly_dwp_report():
 
     attachments = []
     for csv_name, query in report_config["query"].items():
-        result = db.session.execute(query)
+        result = db.session.execute(text(query))
         headers = result.keys()
         rows = result.fetchall()
 

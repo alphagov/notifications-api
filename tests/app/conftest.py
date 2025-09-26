@@ -168,6 +168,30 @@ def sample_service(sample_user):
 
 
 @pytest.fixture(scope="function")
+def sample_restricted_service(sample_user):
+    service_name = "Trial service"
+
+    data = {
+        "name": service_name,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
+        "restricted": True,
+        "created_by": sample_user,
+        "crown": True,
+    }
+    service = Service.query.filter_by(name=service_name).first()
+    if not service:
+        service = Service(**data)
+        dao_create_service(service, sample_user, service_permissions=None)
+    else:
+        if sample_user not in service.users:
+            dao_add_user_to_service(service, sample_user)
+
+    return service
+
+
+@pytest.fixture(scope="function")
 def sample_service_with_email_branding(sample_service):
     sample_service.email_branding = create_email_branding(id=uuid.uuid4())
     return sample_service
