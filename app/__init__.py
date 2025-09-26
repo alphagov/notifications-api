@@ -191,6 +191,8 @@ def create_app(application):
 
     # set up sqlalchemy events
     setup_sqlalchemy_events(application)
+    with application.app_context():
+        current_app.logger.info(db.engine.pool.status())
 
     return application
 
@@ -471,6 +473,10 @@ def setup_sqlalchemy_events(app):  # noqa: C901
 
             cursor = dbapi_connection.cursor()
 
+            cursor.execute("SELECT pg_backend_pid()")
+            p = cursor.fetchone()[0]
+            current_app.logger.info("Setting up connection for pid %s", p, extra={"backend_pid": p})
+
             # why not set most of these using connect_args/options? just to avoid the
             # early-binding issues cross-referencing config vars in the config object
             # raises, and it's neater to compose these calls than to overwrite connect_args
@@ -504,12 +510,21 @@ def setup_sqlalchemy_events(app):  # noqa: C901
         def close(dbapi_connection, connection_record):
             # connection closed (probably only happens with overflow connections)
             TOTAL_DB_CONNECTIONS.dec()
+            current_app.logger.info("Closing connection")
 
         @event.listens_for(db.engine, "checkout")
         def checkout(dbapi_connection, connection_record, connection_proxy):
             try:
                 # connection given to a web worker
                 TOTAL_CHECKED_OUT_DB_CONNECTIONS.inc()
+
+                cursor = dbapi_connection.cursor()
+                cursor.execute("SHOW statement_timeout")
+                st = cursor.fetchone()[0]
+
+                cursor.execute("SELECT pg_backend_pid()")
+                p = cursor.fetchone()[0]
+                current_app.logger.info("statement_timeout = %s for pid %s", st, p, extra={"backend_pid": p, "statement_timeout": st})
 
                 # this will overwrite any previous checkout_at timestamp
                 connection_record.info["checkout_at"] = time.monotonic()
