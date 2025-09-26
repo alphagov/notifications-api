@@ -473,6 +473,10 @@ def setup_sqlalchemy_events(app):  # noqa: C901
 
             cursor = dbapi_connection.cursor()
 
+            cursor.execute("SELECT pg_backend_pid()")
+            p = cursor.fetchone()[0]
+            current_app.logger.info("Setting up connection for pid %s", p, extra={"backend_pid": p})
+
             # why not set most of these using connect_args/options? just to avoid the
             # early-binding issues cross-referencing config vars in the config object
             # raises, and it's neater to compose these calls than to overwrite connect_args
@@ -486,7 +490,6 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 "SET application_name = %s",
                 (current_app.config["NOTIFY_APP_NAME"],),
             )
-            current_app.logger.info("Set application_name")
 
             if current_app.config["DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY"]:
                 # by default disable parallel query because it allows large analytic-style
@@ -518,8 +521,10 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 cursor = dbapi_connection.cursor()
                 cursor.execute("SHOW statement_timeout")
                 st = cursor.fetchone()[0]
-                if st != current_app.config["DATABASE_STATEMENT_TIMEOUT_MS"]:
-                    current_app.logger.warning("Statement timeout is %s!", st)
+
+                cursor.execute("SELECT pg_backend_pid()")
+                p = cursor.fetchone()[0]
+                current_app.logger.info("statement_timeout = %s for pid %s", st, p, extra={"backend_pid": p, "statement_timeout": st})
 
                 # this will overwrite any previous checkout_at timestamp
                 connection_record.info["checkout_at"] = time.monotonic()
