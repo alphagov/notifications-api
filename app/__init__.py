@@ -191,6 +191,8 @@ def create_app(application):
 
     # set up sqlalchemy events
     setup_sqlalchemy_events(application)
+    with application.app_context():
+        db.engine.dispose()
 
     return application
 
