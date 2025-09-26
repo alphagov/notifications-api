@@ -26,12 +26,25 @@ from app.constants import (
 )
 from app.dao.services_dao import dao_add_user_to_service
 from app.models import (
+    ApiKey,
+    FactBilling,
     FactNotificationStatus,
+    InboundSms,
+    InboundSmsHistory,
+    InvitedOrganisationUser,
+    InvitedUser,
     Job,
     LetterCostThreshold,
     Notification,
     NotificationHistory,
+    Permission,
+    ReportRequest,
     ServiceGuestList,
+    Template,
+    TemplateFolder,
+    TemplateHistory,
+    UnsubscribeRequest,
+    UnsubscribeRequestHistory,
 )
 from tests.app.db import (
     create_inbound_number,
@@ -424,10 +437,23 @@ def test_notification_references_template_history(client, sample_template):
 @pytest.mark.parametrize(
     "model",
     (
+        ApiKey,
+        FactBilling,
         FactNotificationStatus,
+        InboundSms,
+        InboundSmsHistory,
+        InvitedOrganisationUser,
+        InvitedUser,
         Job,
         Notification,
         NotificationHistory,
+        Permission,
+        ReportRequest,
+        Template,
+        TemplateFolder,
+        TemplateHistory,
+        UnsubscribeRequest,
+        UnsubscribeRequestHistory,
     ),
 )
 def test_extended_statistics_presence(notify_db_session, model):
