@@ -486,6 +486,7 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 "SET application_name = %s",
                 (current_app.config["NOTIFY_APP_NAME"],),
             )
+            current_app.logger.info("Set application_name")
 
             if current_app.config["DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY"]:
                 # by default disable parallel query because it allows large analytic-style
