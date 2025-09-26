@@ -515,6 +515,12 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 # connection given to a web worker
                 TOTAL_CHECKED_OUT_DB_CONNECTIONS.inc()
 
+                cursor = dbapi_connection.cursor()
+                cursor.execute("SHOW statement_timeout")
+                st = cursor.fetchone()[0]
+                if st != current_app.config["DATABASE_STATEMENT_TIMEOUT_MS"]:
+                    current_app.logger.warning("Statement timeout is %s!", st)
+
                 # this will overwrite any previous checkout_at timestamp
                 connection_record.info["checkout_at"] = time.monotonic()
 
