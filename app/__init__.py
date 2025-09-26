@@ -506,6 +506,7 @@ def setup_sqlalchemy_events(app):  # noqa: C901
         def close(dbapi_connection, connection_record):
             # connection closed (probably only happens with overflow connections)
             TOTAL_DB_CONNECTIONS.dec()
+            current_app.logger.info("Closing connection")
 
         @event.listens_for(db.engine, "checkout")
         def checkout(dbapi_connection, connection_record, connection_proxy):
