@@ -506,6 +506,9 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 # round-trip of latency to every request.
                 cursor.execute("SET max_parallel_workers_per_gather = 0")
 
+            cursor.execute("COMMIT")
+            cursor.execute("BEGIN")
+
         @event.listens_for(db.engine, "close")
         def close(dbapi_connection, connection_record):
             # connection closed (probably only happens with overflow connections)
