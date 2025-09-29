@@ -477,11 +477,11 @@ def setup_sqlalchemy_events(app):  # noqa: C901
             # with our own constructed one
 
             cursor.execute(
-                "SET statement_timeout = %s",
+                "SET SESSION statement_timeout = %s",
                 (current_app.config["DATABASE_STATEMENT_TIMEOUT_MS"],),
             )
             cursor.execute(
-                "SET application_name = %s",
+                "SET SESSION application_name = %s",
                 (current_app.config["NOTIFY_APP_NAME"],),
             )
 
@@ -498,7 +498,17 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 # by the application somewhere, which would persist across checkouts.
                 # however, (re-)setting this on every checkout would likely add a database
                 # round-trip of latency to every request.
-                cursor.execute("SET max_parallel_workers_per_gather = 0")
+                cursor.execute("SET SESSION max_parallel_workers_per_gather = 0")
+
+            # ensure these connection parameters get retained as the session-scoped
+            # parameters. psycopg by default opens connections with a transaction
+            # already open. if this initial transaction happens to get rolled-back
+            # instead of committed, the connection parameters would be reverted
+            # (*despite* our explicit use of SET SESSION)
+            cursor.execute("COMMIT")
+            # open a new transaction to leave us back in the expected open-transaction
+            # state
+            cursor.execute("BEGIN")
 
         @event.listens_for(db.engine, "close")
         def close(dbapi_connection, connection_record):
