@@ -1,40 +1,121 @@
-FROM python:3.11-slim-bookworm AS base
+# arguably these image tags could instead be exposed as full image reference strings, allowing customization
+# of repo url and also flexibility to specify strongly pinned images via @sha256:... syntax, but the result
+# may be less readable
+ARG UV_IMAGE_TAG=0.5.28  # auto-update
+ARG DEBIAN_BASE_IMAGE_TAG=bookworm-20250317-slim  # auto-update
+# debian releases new base images a bit too slow for our liking so we'll probably want to upgrade
+# each one to a slightly more recent snapshot timestamp
+ARG UPDATED_SNAPSHOT_TIMESTAMP=20250327T000000Z  # auto-update
+# SOURCE_DATE_EPOCH needs to be explicitly listed in build command to have desired effect, included
+# here for reference. this is widely recognized as an environment variable telling built tools to
+# any embedded fields that would contain timestamps to use this as that timestamp, docker uses it
+# to set a layer's file timestamps when building in rewrite-timestamp mode
+ARG SOURCE_DATE_EPOCH=1742169600  # auto-update: should match that of debian base image's original snapshot
+ARG CONCOURSE_TESTS_POSTGRES_VERSION=15
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.28 /uv /uvx /bin/
+FROM ghcr.io/astral-sh/uv:${UV_IMAGE_TAG} AS uv
+
+##### Base Image #############################################################
+FROM debian:${DEBIAN_BASE_IMAGE_TAG} AS base
+
+SHELL ["/bin/bash", "-c"]
+
+ARG SOURCE_DATE_EPOCH
+ARG UPDATED_SNAPSHOT_TIMESTAMP
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV UV_COMPILE_BYTECODE=1
-ENV VIRTUAL_ENV="/opt/venv"
+ENV LANG=C.UTF-8
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH}
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+# official debian images are built from debian snapshots, but in their final build stage the original
+# snapshot repo is commented out and replaced with the "rolling" repo url. reverse this and also update
+# the snapshot timestamp to UPDATED_SNAPSHOT_TIMESTAMP, first checking each pattern we're looking for
+# can actually be found to avoid silent failures.
+# also flip a couple of apt options we will need/want.
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  ! sed -E "/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/q1" /etc/apt/sources.list.d/debian.sources; \
+  sed -i -E "s/^# (http:.*snapshot.debian.org.*?)([0-9]{8}T[0-9]{6}Z)\$/URIs: \\1${UPDATED_SNAPSHOT_TIMESTAMP}/g" /etc/apt/sources.list.d/debian.sources; \
+  ! sed -E "/^URIs: http:.*deb.debian.org.*$/q1" /etc/apt/sources.list.d/debian.sources > /dev/null; \
+  sed -i -E "s/^URIs: http:.*deb.debian.org.*$/# \\0/g" /etc/apt/sources.list.d/debian.sources; \
+  mkdir -p /etc/apt/apt.conf.d; \
+  echo "Acquire::Check-Valid-Until false;" >> /etc/apt/apt.conf.d/10-nocheckvalid; \
+  echo "Binary::apt::APT::Keep-Downloaded-Packages true;" >> /etc/apt/apt.conf.d/20-keepcache
+
+# first upgrade the base snapshot's packages to UPDATED_SNAPSHOT_TIMESTAMP then install a few
+# dependencies we're going to need
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  apt update; \
+  apt upgrade; \
+  apt install -y --no-install-recommends \
+    ca-certificates \
+    netbase \
+    tzdata \
     libcurl4 \
-    curl \
-    && apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
+    curl
+
+# install uv from its image and set related options we'll need
+COPY --from=uv /uv /uvx /bin/
+ENV UV_CACHE_DIR="/tmp/uv-cache/"
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV UV_NO_INSTALLER_METADATA=1
+ENV UV_PYTHON_INSTALL_DIR="/usr/local/python"
+
+ENV PYTHONUNBUFFERED=1
+ENV VIRTUAL_ENV="/opt/venv"
+ENV PATH="${UV_PYTHON_INSTALL_DIR}/bin:${VIRTUAL_ENV}/bin:${PATH}"
+
+# use uv to provide our python distribution - this is probably our best bet of getting a reproducible
+# python outside a real distribution package, though there are no guarantees
+COPY .python-version .
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Installing python"; \
+  uv python install
 
 WORKDIR /home/vcap/app
 
 ##### Python Build Image #####################################################
 FROM base AS python_build
 
-RUN echo "Install OS dependencies for python app requirements" &&  \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
+ARG SOURCE_DATE_EPOCH
+
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Install OS dependencies for python app requirements"; \
+  apt update; \
+  apt install -y --no-install-recommends \
     build-essential \
     git \
     libcurl4-openssl-dev \
-    libssl-dev && \
-    apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
+    libssl-dev
 
-COPY requirements.txt .
+COPY .python-version requirements.txt .
 
-ENV UV_CACHE_DIR='/tmp/uv-cache/'
-RUN echo "Installing python requirements" && \
-    python3 -m venv /opt/venv && \
-    uv pip sync --python /opt/venv/bin/python requirements.txt
+ENV CFLAGS="-frandom-seed=1234"
+
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Installing python requirements"; \
+  uv venv $VIRTUAL_ENV; \
+  uv pip sync requirements.txt
 
 COPY . .
 RUN make generate-version-file  # This file gets copied across
@@ -42,13 +123,20 @@ RUN make generate-version-file  # This file gets copied across
 ##### Production Image #######################################################
 FROM base AS production
 
-RUN groupadd -r notify && useradd -r -g notify notify && chown -R notify:notify /home/vcap
+ARG SOURCE_DATE_EPOCH
+
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  groupadd -r notify; \
+  useradd -r -g notify notify; \
+  chown -R notify:notify /home/vcap
+
 USER notify
 
-RUN mkdir /home/vcap/logs
-
 COPY --from=python_build --chown=root:root /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
 
 COPY --chown=notify:notify app app
 COPY --chown=notify:notify migrations migrations
@@ -56,107 +144,105 @@ COPY --chown=notify:notify templates templates
 COPY --chown=notify:notify run_celery.py gunicorn_config.py application.py entrypoint.sh ./
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 
-RUN python -m compileall . && \
-    chown -R notify:notify /home/vcap/app && \
-    chmod +x /home/vcap/app/entrypoint.sh
+# compile the bytecode of our own app code (using compileall's -j1 for reproducibility)
+# and ensuring permisssions are set up correctly
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  uv run -m compileall . -j1; \
+  chown -R notify:notify /home/vcap/app; \
+  chmod +x /home/vcap/app/entrypoint.sh
 
 ENTRYPOINT [ "/home/vcap/app/entrypoint.sh" ]
 
 ##### Test Image ##############################################################
 FROM production AS test
 
-USER root
-RUN echo "Install OS dependencies for test build" && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-      sudo \
-      make \
-      curl \
-      git && \
-    apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
-RUN usermod -aG sudo notify
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-USER notify
+ARG SOURCE_DATE_EPOCH
 
-# Make sure the app/ directory is there so that "make bootstrap" can create app/version.py
-RUN mkdir -p app
+USER root
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Install OS dependencies for test build"; \
+  apt update; \
+  apt install -y --no-install-recommends \
+    sudo \
+    make \
+    curl \
+    git; \
+  usermod -aG sudo notify; \
+  echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+USER notify
 
 # Copying to overwrite is faster than RUN chown notify:notify ...
 COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
 COPY --chown=notify:notify Makefile requirements_for_test.txt ./
-ENV UV_CACHE_DIR='/tmp/uv-cache/'
-RUN make bootstrap
+
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Installing python requirements for test"; \
+  uv pip sync requirements_for_test.txt
 
 COPY --chown=notify:notify . .
 
 ##### Concourse Test Image ##############################################################
-FROM production AS concourse_tests
+FROM test AS concourse_tests
 
-SHELL ["/bin/bash", "-c"]
-
-USER root
-RUN echo "Install OS dependencies for test build" && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-      sudo \
-      libcurl4-openssl-dev \
-      libssl-dev \
-      make \
-      git && \
-    apt-get -y clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
-RUN usermod -aG sudo notify
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-USER notify
-
-# Make sure the app/ directory is there so that "make bootstrap" can create app/version.py
-RUN mkdir -p app
-
-# Copying to overwrite is faster than RUN chown notify:notify ...
-COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
-
-# Install dev/test requirements
-COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
-COPY --chown=notify:notify . .
+ARG CONCOURSE_TESTS_POSTGRES_VERSION
+ARG SOURCE_DATE_EPOCH
 
 ENV SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@localhost/
-
-ENV UV_CACHE_DIR='/tmp/uv-cache/'
-RUN uv pip sync requirements_for_test.txt
+ENV POSTGRES_VERSION=${CONCOURSE_TESTS_POSTGRES_VERSION}
+ENV POSTGRES_REPO_KEY=B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
 
 USER root
-
-ENV POSTGRES_VERSION=15 \
-    POSTGRES_REPO_KEY=B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
-
-RUN \
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
-        gnupg \
-        lsb-release
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Install postgresql dependencies"; \
+  apt update; \
+  apt install -y --no-install-recommends \
+    gnupg \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    lsb-release
 
 # Installation of postgres is based on https://github.com/docker-library/postgres/blob/0d0485cb02e526f5a240b7740b46c35404aaf13f/9.6/Dockerfile
+# abandon hopes of reproducibility past this point
 
 # Add the gpg key for postgresql package repository
-RUN set -x \
-    && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$POSTGRES_REPO_KEY" \
-    && gpg --batch --export "$POSTGRES_REPO_KEY" > /etc/apt/trusted.gpg.d/postgres.gpg \
-    && command -v gpgconf > /dev/null && gpgconf --kill all \
-    &&rm -rf "$GNUPGHOME" \
-    && apt-key list
-
-# Install postgres
-RUN \
-    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main $POSTGRES_VERSION" > /etc/apt/sources.list.d/pgdg.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        postgresql-$POSTGRES_VERSION \
-    && rm -rf /var/lib/apt/lists/* /tmp/*
-
-RUN \
-    service postgresql start \
-    && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\""
+RUN --mount=type=tmpfs,target=/tmp \
+    --mount=type=cache,target=/var/cache,sharing=private \
+    --mount=type=cache,target=/var/lib/apt,sharing=private \
+    --mount=type=tmpfs,target=/var/log \
+  set -eux; \
+  echo "Add the gpg key for postgresql package repository"; \
+  export GNUPGHOME="$(mktemp -d)"; \
+  gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$POSTGRES_REPO_KEY"; \
+  gpg --batch --export "$POSTGRES_REPO_KEY" > /etc/apt/trusted.gpg.d/postgres.gpg; \
+  command -v gpgconf > /dev/null; \
+  gpgconf --kill all; \
+  apt-key list; \
+  \
+  echo "Install postgresql"; \
+  echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main $POSTGRES_VERSION" > /etc/apt/sources.list.d/pgdg.list; \
+  apt update; \
+  apt install -y --no-install-recommends \
+    postgresql-$POSTGRES_VERSION; \
+  \
+  echo "Setup postgresql user"; \
+  service postgresql start; \
+  su - postgres -c "psql -c \"alter user postgres with password 'postgres';\""
