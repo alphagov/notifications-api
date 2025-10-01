@@ -1,3 +1,4 @@
+import uuid
 from collections import namedtuple
 from datetime import datetime
 from unittest.mock import ANY, call
@@ -22,6 +23,7 @@ from app.celery.letters_pdf_tasks import (
     process_virus_scan_error,
     process_virus_scan_failed,
     replay_letters_in_error,
+    resanitise_letter_attachment,
     resanitise_pdf,
     sanitise_letter,
     send_dvla_letters_via_api,
@@ -888,6 +890,28 @@ def test_resanitise_pdf_calls_template_preview_with_letter_details(
             "notification_id": str(sample_letter_notification.id),
             "file_location": "2021-02-07/NOTIFY.FOO.D.2.C.20210207120000.PDF",
             "allow_international_letters": expected_international_letters_allowed,
+        },
+        queue=QueueNames.SANITISE_LETTERS,
+    )
+
+
+def test_resanitise_letter_attachment_calls_template_preview_with_attachment_details(
+    mocker,
+):
+    mock_celery = mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
+
+    service_id = str(uuid.uuid4())
+    attachment_id = str(uuid.uuid4())
+    original_filename = "test-123abc.pdf"
+
+    resanitise_letter_attachment(service_id, attachment_id, original_filename)
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.RECREATE_PDF_FOR_TEMPLATE_LETTER_ATTACHMENTS,
+        kwargs={
+            "service_id": service_id,
+            "attachment_id": attachment_id,
+            "original_filename": original_filename,
         },
         queue=QueueNames.SANITISE_LETTERS,
     )

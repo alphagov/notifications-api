@@ -523,3 +523,26 @@ def resanitise_pdf(notification_id):
         },
         queue=QueueNames.SANITISE_LETTERS,
     )
+
+
+@notify_celery.task(name="resanitise-letter-attachment")
+def resanitise_letter_attachment(service_id, attachment_id, original_filename):
+    """
+    `service_id` is the service id for a PDF letter attachment/template.
+    `attachment_id` is the attachment id for a PDF letter attachment which was uploaded for a template.
+    `original_filename` is the attachment name for a PDF letter attachment.
+
+    This task calls the `recreate-pdf-for-template-letter-attachments` template preview task which recreates the
+    PDF for a letter attachment which is already sanitised and in the letters-attachment bucket. The new file
+    that is generated will then overwrite the existing letter in the letter-attachments bucket.
+    """
+
+    notify_celery.send_task(
+        name=TaskNames.RECREATE_PDF_FOR_TEMPLATE_LETTER_ATTACHMENTS,
+        kwargs={
+            "service_id": service_id,
+            "attachment_id": attachment_id,
+            "original_filename": original_filename,
+        },
+        queue=QueueNames.SANITISE_LETTERS,
+    )

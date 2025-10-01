@@ -72,6 +72,7 @@ class TaskNames:
     SANITISE_LETTER = "sanitise-and-upload-letter"
     CREATE_PDF_FOR_TEMPLATED_LETTER = "create-pdf-for-templated-letter"
     RECREATE_PDF_FOR_PRECOMPILED_LETTER = "recreate-pdf-for-precompiled-letter"
+    RECREATE_PDF_FOR_TEMPLATE_LETTER_ATTACHMENTS = "recreate-pdf-for-template-letter-attachments"
 
 
 class Config:
