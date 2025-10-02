@@ -73,7 +73,7 @@ def _remove_csv_files(job_types):
     for job in jobs:
         s3.remove_job_from_s3(job.service_id, job.id)
         dao_archive_job(job)
-        current_app.logger.info("Job ID %s has been removed from s3.", job.id)
+        current_app.logger.info("Job ID %s has been removed from s3.", job.id, extra={"job_id": job.id})
 
 
 @notify_celery.task(name="archive-unsubscribe-requests")
@@ -98,13 +98,18 @@ def archive_old_unsubscribe_requests(service_id):
 
 
 def log_archive_unsubscribe_requests(start, service_id, count_deleted):
+    base_params = {
+        "celery_task": notify_celery.current_task.name,
+        "service_id": service_id,
+        "deleted_record_count": count_deleted,
+        "duration": datetime.now(UTC) - start,
+    }
     current_app.logger.info(
-        "%(task)s service: %(service_id)s, count deleted: %(count_deleted)s, duration: %(duration)s seconds",
-        {
-            "task": notify_celery.current_task.name,
-            "service_id": service_id,
-            "count_deleted": count_deleted,
-            "duration": (datetime.now(UTC) - start).seconds,
+        "%(celery_task)s service: %(service_id)s, count deleted: %(deleted_record_count)s, duration: %(duration)s",
+        base_params,
+        extra={
+            **base_params,
+            "duration": base_params["duration"].total_seconds(),
         },
     )
 
@@ -177,17 +182,20 @@ def _delete_notifications_older_than_retention_by_type(
             countdown=(i / len(service_ids_to_purge)) * stagger_total_period.seconds,
         )
 
+    extra = {
+        "notification_type": notification_type,
+        "service_ids_with_data_retention_count": len(service_ids_with_data_retention),
+        "service_ids_to_purge_count": len(service_ids_to_purge),
+    }
     current_app.logger.info(
         (
-            "delete-notifications-older-than-retention: triggered subtasks for notification_type %(type)s: "
-            "%(num_service_ids_with_data_retention)s services with flexible data retention, "
-            "%(num_service_ids_to_purge)s services without flexible data retention"
+            "delete-notifications-older-than-retention: triggered subtasks for "
+            "notification_type %(notification_type)s: "
+            "%(service_ids_with_data_retention_count)s services with flexible data retention, "
+            "%(service_ids_to_purge_count)s services without flexible data retention"
         ),
-        {
-            "type": notification_type,
-            "num_service_ids_with_data_retention": len(service_ids_with_data_retention),
-            "num_service_ids_to_purge": len(service_ids_to_purge),
-        },
+        extra,
+        extra=extra,
     )
 
 
@@ -201,17 +209,22 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
     )
     if num_deleted:
         end = datetime.utcnow()
+        base_params = {
+            "service_id": service_id,
+            "notification_type": notification_type,
+            "deleted_record_count": num_deleted,
+            "duration": end - start,
+        }
         current_app.logger.info(
             (
                 "delete-notifications-for-service-and-type: "
-                "service: %(service_id)s, notification_type: %(type)s, "
-                "count deleted: %(num_deleted)s, duration: %(duration)s seconds"
+                "service: %(service_id)s, notification_type: %(notification_type)s, "
+                "count deleted: %(deleted_record_count)s, duration: %(duration)s"
             ),
-            {
-                "service_id": service_id,
-                "type": notification_type,
-                "num_deleted": num_deleted,
-                "duration": (end - start).seconds,
+            base_params,
+            extra={
+                **base_params,
+                "duration": base_params["duration"].total_seconds(),
             },
         )
         # if some things were deleted, there could be more! lets queue up a new task with the same params
@@ -253,8 +266,11 @@ def timeout_notifications():
             statsd_client.incr(f"timeout-sending.{notification.sent_by}")
             check_and_queue_callback_task(notification)
 
+        extra = {"notification_count": len(notifications)}
         current_app.logger.info(
-            "Timeout period reached for %s notifications, status has been updated.", len(notifications)
+            "Timeout period reached for %(notification_count)s notifications, status has been updated.",
+            extra,
+            extra=extra,
         )
 
 
@@ -264,9 +280,19 @@ def delete_inbound_sms():
     try:
         start = datetime.utcnow()
         deleted = delete_inbound_sms_older_than_retention()
+        base_params = {
+            "start_time": start,
+            "duration": datetime.utcnow() - start,
+            "deleted_record_count": deleted,
+        }
         current_app.logger.info(
-            "Delete inbound sms job started %(start)s finished %(now)s deleted %(deleted)s inbound sms notifications",
-            {"start": start, "now": datetime.utcnow(), "deleted": deleted},
+            "Delete inbound sms job started %(start_time)s duration %(duration)s seconds deleted "
+            "%(deleted_record_count)s inbound sms notifications",
+            base_params,
+            extra={
+                **base_params,
+                "duration": base_params["duration"].total_seconds(),
+            },
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete inbound sms notifications")
@@ -300,6 +326,7 @@ def raise_alert_if_letter_notifications_still_sending():
                 "There are %s letters in the 'sending' state from %s",
                 still_sending_count,
                 sent_date.strftime("%A %d %B"),
+                extra={"notification_count": still_sending_count, "sent_date": sent_date},
             )
 
 
@@ -376,20 +403,29 @@ def delete_unneeded_notification_history_by_hour():
             # We use the reporting queue as it's not used for most of the day
             queue=QueueNames.REPORTING,
         )
+        extra = {
+            "start_time": start_datetime,
+            "end_time": end_datetime,
+        }
         current_app.logger.info(
-            "Created delete_unneeded_notification_history_for_specific_hour task between %s and %s",
-            start_datetime,
-            end_datetime,
+            "Created delete_unneeded_notification_history_for_specific_hour task between "
+            "%(start_time)s and %(end_time)s",
+            extra,
+            extra=extra,
         )
         start_datetime = end_datetime
 
 
 @notify_celery.task(name="delete_unneeded_notification_history_for_specific_hour")
 def delete_unneeded_notification_history_for_specific_hour(start_datetime: str, end_datetime: str):
+    extra = {
+        "start_time": start_datetime,
+        "end_time": end_datetime,
+    }
     current_app.logger.info(
-        "Beginning delete_unneeded_notification_history_for_specific_hour between %s and %s",
-        start_datetime,
-        end_datetime,
+        "Beginning delete_unneeded_notification_history_for_specific_hour between %(start_time)s and %(end_time)s",
+        extra,
+        extra=extra,
     )
 
     delete_notification_history_between_two_datetimes(start_datetime, end_datetime)

@@ -140,7 +140,7 @@ def test_get_pdf_for_templated_letter_retries_upon_error(mocker, sample_letter_n
     assert mock_celery.called
     assert mock_retry.called
     assert (
-        f"RETRY: calling create-letter-pdf task for notification {sample_letter_notification.id} failed"
+        f"RETRY: calling get-pdf-for-templated-letter task for notification {sample_letter_notification.id} failed"
         in caplog.messages
     )
 
@@ -158,7 +158,7 @@ def test_get_pdf_for_templated_letter_sets_technical_failure_max_retries(mocker,
 
     assert (
         e.value.args[0] == f"RETRY FAILED: Max retries reached. "
-        f"The task create-letter-pdf failed for notification id {sample_letter_notification.id}. "
+        f"The task get-pdf-for-templated-letter failed for notification id {sample_letter_notification.id}. "
         f"Notification has been updated to technical-failure"
     )
     assert mock_celery.called

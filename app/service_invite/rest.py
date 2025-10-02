@@ -160,6 +160,7 @@ def send_service_invite_request(
                 "request-to-join-service email not sent to user %s - they are not part of service %s",
                 recipient.id,
                 service.id,
+                extra={"user_id": recipient.id, "service_id": service.id},
             )
 
     if number_of_notifications_generated == 0:

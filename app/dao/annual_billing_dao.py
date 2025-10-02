@@ -48,7 +48,9 @@ def dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start=No
 def dao_get_default_annual_allowance_for_service(service, year_start):
     if not (org_type := service.organisation_type):
         current_app.logger.warning(
-            "No organisation type for service %s. Using default for `other` org type.", service.id
+            "No organisation type for service %s. Using default for `other` org type.",
+            service.id,
+            extra={"service_id": service.id},
         )
         org_type = ORG_TYPE_OTHER
 
@@ -109,14 +111,15 @@ def set_default_free_allowance_for_service(service, year_start=None, _autocommit
             next_free_sms_fragment_allowance = default_free_sms_fragment_allowance.allowance
             has_custom_allowance = False
 
+    extra = {
+        "service_id": service.id,
+        "valid_from_financial_year_start": year_start,
+        "free_sms_fragment_allowance": next_free_sms_fragment_allowance,
+    }
     current_app.logger.info(
-        (
-            "Set default free allowances for service %s "
-            "(valid_from_financial_year_start=%s, free_sms_fragment_allowance=%s)"
-        ),
-        service.id,
-        year_start,
-        next_free_sms_fragment_allowance,
+        "Setting default free allowances for service %(service_id)s",
+        extra,
+        extra=extra,
     )
     return dao_create_or_update_annual_billing_for_year(
         service.id,

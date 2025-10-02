@@ -104,7 +104,10 @@ def test_process_sms_client_response_updates_notification_status_when_detailed_s
     with caplog.at_level("WARNING"):
         process_sms_client_response("1", str(sample_notification.id), "Firetext", "789")
 
-    assert "Failure code 789 from Firetext not recognised" in caplog.messages
+    assert (
+        f"Failure code 789 from Firetext not recognised when processing notification {sample_notification.id}"
+        in caplog.messages
+    )
     assert sample_notification.status == "temporary-failure"
 
 

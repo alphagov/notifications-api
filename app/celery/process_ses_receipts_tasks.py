@@ -44,16 +44,22 @@ def process_ses_results(self, response):
         except NoResultFound:
             message_time = iso8601.parse_date(ses_message["mail"]["timestamp"]).replace(tzinfo=None)
             if datetime.utcnow() - message_time < timedelta(minutes=5):
+                extra = {"notification_reference": reference, "notification_status": notification_status}
                 current_app.logger.info(
-                    "notification not found for reference: %s (update to %s). "
+                    "notification not found for reference: %(notification_reference)s "
+                    "(update to %(notification_status)s). "
                     "Callback may have arrived before notification was persisted to the DB. Adding task to retry queue",
-                    reference,
-                    notification_status,
+                    extra,
+                    extra=extra,
                 )
                 self.retry(queue=QueueNames.RETRY)
             else:
+                extra = {"notification_reference": reference, "notification_status": notification_status}
                 current_app.logger.warning(
-                    "notification not found for reference: %s (update to %s)", reference, notification_status
+                    "notification not found for reference: %(notification_reference)s "
+                    "(update to %(notification_status)s)",
+                    extra,
+                    extra=extra,
                 )
             return
 
@@ -61,12 +67,13 @@ def process_ses_results(self, response):
             current_app.logger.info(
                 "SES bounce for notification ID %s",
                 notification.id,
-                extra={"bounce_message": json.dumps(bounce_message)},
+                extra={"notification_id": notification.id, "bounce_message": json.dumps(bounce_message)},
             )
         else:
             current_app.logger.info(
                 "SES successful delivery for notification ID %s",
                 notification.id,
+                extra={"notification_id": notification.id},
             )
 
         if notification.status not in [NOTIFICATION_SENDING, NOTIFICATION_PENDING]:
