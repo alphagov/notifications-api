@@ -211,8 +211,6 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
         dao_delete_notifications_by_id(notification_id)
         raise
 
-    current_app.logger.debug("%s %s sent to the %s queue for delivery", notification_type, notification_id, queue)
-
 
 def send_notification_to_queue(notification, queue=None):
     send_notification_to_queue_detached(notification.key_type, notification.notification_type, notification.id, queue)

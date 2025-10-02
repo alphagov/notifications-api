@@ -270,7 +270,7 @@ def save_sms(
         reply_to_text = template.reply_to_text
 
     if not service_allowed_to_send_to(notification["to"], service, KEY_TYPE_NORMAL):
-        current_app.logger.debug("SMS %s failed as restricted service", notification_id)
+        current_app.logger.info("SMS %s failed as restricted service", notification_id)
         return
 
     try:
@@ -322,13 +322,13 @@ def save_sms(
                 queue=QueueNames.SEND_SMS,
             )
         else:
-            current_app.logger.debug(
+            current_app.logger.info(
                 "SMS %s for job %s has failed validation and will not be sent.",
                 saved_notification.id,
                 notification.get("job", None),
             )
 
-        current_app.logger.debug(
+        current_app.logger.info(
             "SMS %s created at %s for job %s",
             saved_notification.id,
             saved_notification.created_at,
@@ -383,7 +383,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             queue=QueueNames.SEND_EMAIL,
         )
 
-        current_app.logger.debug(
+        current_app.logger.info(
             "Email %s created at %s",
             saved_notification.id,
             saved_notification.created_at,
@@ -435,7 +435,7 @@ def save_letter(
             [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
         )
 
-        current_app.logger.debug(
+        current_app.logger.info(
             "Letter %s created at %s",
             saved_notification.id,
             saved_notification.created_at,
