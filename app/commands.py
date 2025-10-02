@@ -324,11 +324,22 @@ def rebuild_ft_billing_for_day(service_id, day: date):
 
     def rebuild_ft_data(process_day: date, service_ids=None):
         deleted_rows = delete_billing_data_for_day(process_day=day, service_ids=service_ids)
-        current_app.logger.info("deleted %s existing billing rows for %s", deleted_rows, process_day)
+        current_app.logger.info(
+            "deleted %s existing billing rows for %s",
+            deleted_rows,
+            process_day,
+            extra={"deleted_record_count": deleted_rows, "process_day": process_day.isoformat()},
+        )
 
         billing_data = fetch_billing_data_for_day(process_day=process_day, service_ids=service_ids)
         update_ft_billing(billing_data, process_day)
-        current_app.logger.info("added/updated %s billing rows for %s", len(billing_data), process_day)
+        updated_record_count = len(billing_data)
+        current_app.logger.info(
+            "added/updated %s billing rows for %s",
+            updated_record_count,
+            process_day,
+            extra={"updated_record_count": updated_record_count, "process_day": process_day.isoformat()},
+        )
 
     if service_id:
         # get the service to confirm it exists
@@ -422,19 +433,26 @@ def populate_notification_postage(start_date):
         result = db.session.execute(text(sql.format("notification_history"), {"start": start_date, "end": end_date}))
         db.session.commit()
 
+        extra = {
+            "duration": (datetime.utcnow() - execution_start).total_seconds(),
+            "migrated_row_count": result.rowcount,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+        }
         current_app.logger.info(
-            "notification postage took %sms. Migrated %s rows for %s to %s",
-            datetime.utcnow() - execution_start,
-            result.rowcount,
-            start_date,
-            end_date,
+            "notification postage took %(duration)ss. "
+            "Migrated %(migrated_row_count)s rows for %(start_date)s to %(end_date)s",
+            **extra,
+            extra=extra,
         )
 
         start_date += timedelta(days=10)
 
         total_updated += result.rowcount
 
-    current_app.logger.info("Total inserted/updated records = %s", total_updated)
+    current_app.logger.info(
+        "Total inserted/updated records = %s", total_updated, extra={"updated_record_count": total_updated}
+    )
 
 
 @notify_command(name="archive-jobs-created-between-dates")
@@ -458,17 +476,21 @@ def update_jobs_archived_flag(start_date, end_date):
 
         result = db.session.execute(text(sql, {"start": process_date, "end": process_date + timedelta(days=1)}))
         db.session.commit()
+        extra = {
+            "duration": (datetime.now() - start_time).total_seconds(),
+            "updated_record_count": result.rowcount,
+            "process_date": process_date.isoformat(),
+        }
         current_app.logger.info(
-            "jobs: --- Completed took %sms. Archived %s jobs for %s",
-            datetime.now() - start_time,
-            result.rowcount,
-            process_date,
+            "jobs: --- Completed took %(duration)ss. Archived %(updated_record_count)s jobs for %(process_date)s",
+            **extra,
+            extra=extra,
         )
 
         process_date += timedelta(days=1)
 
         total_updated += result.rowcount
-    current_app.logger.info("Total archived jobs = %s", total_updated)
+    current_app.logger.info("Total archived jobs = %s", total_updated, extra={"updated_record_count": total_updated})
 
 
 @notify_command(name="update-emails-to-remove-gsi")
@@ -590,7 +612,7 @@ def populate_organisation_agreement_details_from_file(file_name):
         for row in csv_reader:
             org = dao_get_organisation_by_id(row[0])
 
-            current_app.logger.info("Updating %s", org.name)
+            current_app.logger.info("Updating %s", org.name, extra={"organisation_name": organisation_name})
 
             assert org.agreement_signed
 
@@ -754,8 +776,15 @@ def process_row_from_job(job_id, job_row_number):
 
             process_job_row(template.template_type, task_args_kwargs)
 
+            extra = {
+                "job_row_number": job_row_number,
+                "job_id": job_id,
+                "notification_id": notification_id,
+            }
             current_app.logger.info(
-                "Process row %s for job %s created notification_id: %s", job_row_number, job_id, notification_id
+                "Process row %(job_row_number)s for job %(job_id)s created notification_id: %(notification_id)s",
+                **extra,
+                extra=extra,
             )
 
 
