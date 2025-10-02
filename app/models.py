@@ -1253,6 +1253,65 @@ class TemplateHistory(TemplateBase):
         return url_for("v2_template.get_template_by_id", template_id=self.id, version=self.version, _external=True)
 
 
+class TemplateEmailFileBase(db.Model):
+    __abstract__ = True
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    filename = db.Column(db.Text, nullable=False)
+    link_text = db.Column(db.Text, nullable=True)
+    retention_period = db.Column(db.Integer, default=1, nullable=False)
+    validate_users_email = db.Column(db.Boolean, default=True, nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, onupdate=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    archived_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    @declared_attr
+    def template_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), index=True, nullable=False)
+
+    @declared_attr
+    def template_version(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey("templates.version"), index=True, nullable=False)
+
+    @declared_attr
+    def template(cls):
+        return db.relationship("Template", foreign_keys=[cls.template_id])
+
+    @declared_attr
+    def created_by_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
+
+    @declared_attr
+    def created_by(cls):
+        return db.relationship("User", foreign_keys=[cls.created_by_id])
+
+    @declared_attr
+    def archived_by_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
+
+    @declared_attr
+    def archived_by(cls):
+        return db.relationship("User", foreign_keys=[cls.archived_by_id])
+
+    @declared_attr
+    def letter_attachment_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey("letter_attachment.id"), nullable=True)
+
+
+class TemplateEmailFile(TemplateEmailFileBase):
+    __tablename__ = "template_email_files"
+
+    version = db.Column(db.Integer, default=0, nullable=False)
+
+
+class TemplateEmailFileHistory(TemplateEmailFileBase):
+    __tablename__ = "template_email_files_history"
+
+    version = db.Column(db.Integer, primary_key=True, nullable=False)
+
+
 class ProviderDetails(db.Model):
     __tablename__ = "provider_details"
 
