@@ -601,7 +601,7 @@ def test_check_if_letters_still_in_created_during_bst(sample_letter_template, ca
 
         check_if_letters_still_in_created()
 
-    assert "2 letters created before 17:30 yesterday still have 'created' status" in caplog.messages
+    assert "2 letter notifications created before 17:30 yesterday still have 'created' status" in caplog.messages
     mock_create_ticket.assert_called_with(
         ANY,
         message=(
@@ -637,7 +637,7 @@ def test_check_if_letters_still_in_created_during_utc(sample_letter_template, ca
 
         check_if_letters_still_in_created()
 
-    assert "2 letters created before 17:30 yesterday still have 'created' status" in caplog.messages
+    assert "2 letter notifications created before 17:30 yesterday still have 'created' status" in caplog.messages
     mock_create_ticket.assert_called_once_with(
         ANY,
         message=(
@@ -807,16 +807,16 @@ MockServicesWithHighFailureRate = namedtuple(
         [
             [MockServicesWithHighFailureRate("123", 0.3)],
             [],
-            "1 services have had a high permanent-failure rate for text messages in the last 24 hours.",
+            "Service 123 has had a high permanent-failure rate (0.3) for text messages in the last 24 hours",
             "1 service(s) have had high permanent-failure rates for sms messages in last "
             "24 hours:\nservice: {}/services/{} failure rate: 0.3,\n".format(Config.ADMIN_BASE_URL, "123"),
         ],
         [
             [],
-            [MockServicesSendingToTVNumbers("123", 300)],
-            "1 services have sent over 500 text messages to tv numbers in the last 24 hours.",
+            [MockServicesSendingToTVNumbers("123", 567)],
+            "Service 123 has sent 567 text messages to tv numbers in the last 24 hours",
             "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
-            "service: {}/services/{} count of sms to tv numbers: 300,\n".format(Config.ADMIN_BASE_URL, "123"),
+            "service: {}/services/{} count of sms to tv numbers: 567,\n".format(Config.ADMIN_BASE_URL, "123"),
         ],
     ],
 )
@@ -1152,7 +1152,9 @@ def test_weekly_user_research_email_skips_environments_with_setting_disabled(
     with set_config(notify_api, "WEEKLY_USER_RESEARCH_EMAIL_ENABLED", False):
         weekly_user_research_email()
 
-    assert "Skipping weekly user research email run in test" in caplog.messages
+    assert (
+        "Not running weekly-user-research-email - configured not to send weekly user research email" in caplog.messages
+    )
     assert not mock_send_email.called
 
 
@@ -1242,7 +1244,9 @@ class TestWeeklyDWPReport:
         ):
             weekly_dwp_report()
 
-        assert (f"Skipping DWP report run in {environment}" in caplog.messages) != should_run
+        assert (
+            "Not running weekly-dwp-report - configured not to send zendesk alerts" in caplog.messages
+        ) != should_run
 
         # 'Successful' runs for this test still don't get to the zendesk_update_ticket call because of other checks.
         assert mock_zendesk_update_ticket.call_args_list == []

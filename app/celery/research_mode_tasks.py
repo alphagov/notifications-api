@@ -72,10 +72,19 @@ def send_letter_response(notification_id: uuid.UUID, billable_units: int, postag
         response = requests_session.request("POST", api_call, headers=headers, data=json.dumps(data), timeout=30)
         response.raise_for_status()
     except requests.HTTPError as e:
-        current_app.logger.error("API POST request on %s failed with status %s", api_call, e.response.status_code)
+        current_app.logger.error(
+            "API POST request on %s failed with status %s",
+            api_call,
+            e.response.status_code,
+            extra={"url": api_call, "status_code": e.response.status_code},
+        )
         raise e
     finally:
-        current_app.logger.info("Mocked letter callback request for %s finished", notification_id)
+        current_app.logger.info(
+            "Mocked letter callback request for notification %s finished",
+            notification_id,
+            extra={"notification_id": notification_id},
+        )
 
     return jsonify(result="success"), 200
 
@@ -133,7 +142,12 @@ def make_request(notification_type, provider, data, headers):
         response = requests_session.request("POST", api_call, headers=headers, data=data, timeout=60)
         response.raise_for_status()
     except requests.HTTPError as e:
-        current_app.logger.error("API POST request on %s failed with status %s", api_call, e.response.status_code)
+        current_app.logger.error(
+            "API POST request on %s failed with status %s",
+            api_call,
+            e.response.status_code,
+            extra={"url": api_call, "status_code": e.response.status_code},
+        )
         raise e
     finally:
         current_app.logger.info("Mocked provider callback request finished")
@@ -187,7 +201,11 @@ def create_fake_letter_callback(self, notification_id: uuid.UUID, billable_units
         try:
             self.retry()
         except self.MaxRetriesExceededError:
-            current_app.logger.warning("Fake letter callback cound not be created for %s", notification_id)
+            current_app.logger.warning(
+                "Fake letter callback could not be created for notification %s",
+                notification_id,
+                extra={"notification_id": notification_id},
+            )
 
 
 def ses_notification_callback(reference):
