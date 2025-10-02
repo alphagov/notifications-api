@@ -108,12 +108,17 @@ def requires_auth():
     g.service_id = service_id
     g.authenticated_service = service
 
+    extra = {
+        "service_id": service_id,
+        "api_key_id": api_key.id,
+        "issuer": request.headers.get("User-Agent"),
+        "url": request.base_url,
+    }
     current_app.logger.info(
-        "API authorised for service %s with api key %s, using issuer %s for URL: %s",
-        service_id,
-        api_key.id,
-        request.headers.get("User-Agent"),
-        request.base_url,
+        "API authorised for service %(service_id)s with api key %(api_key_id)s, "
+        "using issuer %(issuer)s for URL: %(url)s",
+        extra,
+        extra=extra,
     )
 
 
@@ -123,12 +128,17 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
             decode_jwt_token(auth_token, api_key.secret)
         except TokenExpiredError as e:
             err_msg = "Error: Your system clock must be accurate to within 30 seconds"
+            extra = {
+                "error_message": err_msg,
+                "token_iat": e.token.get("iat"),
+                "local_unix_time": int(time.time()),
+                "cloudfront_request_id": request.headers.get("x-amz-cf-id"),
+            }
             current_app.logger.info(
-                'Rejecting user authentication with "%s" (token.iat: %s, us: %s) [X-Amz-Cf-Id: %s]',
-                err_msg,
-                e.token.get("iat"),
-                int(time.time()),
-                request.headers.get("x-amz-cf-id"),
+                "Rejecting user authentication with %(error_message)r "
+                "(token.iat: %(token_iat)s, us: %(local_unix_time)s) [X-Amz-Cf-Id: %(cloudfront_request_id)s]",
+                extra,
+                extra=extra,
             )
             raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id) from e
         except TokenAlgorithmError as e:

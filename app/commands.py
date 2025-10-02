@@ -442,7 +442,7 @@ def populate_notification_postage(start_date):
         current_app.logger.info(
             "notification postage took %(duration)ss. "
             "Migrated %(migrated_row_count)s rows for %(start_date)s to %(end_date)s",
-            **extra,
+            extra,
             extra=extra,
         )
 
@@ -483,7 +483,7 @@ def update_jobs_archived_flag(start_date, end_date):
         }
         current_app.logger.info(
             "jobs: --- Completed took %(duration)ss. Archived %(updated_record_count)s jobs for %(process_date)s",
-            **extra,
+            extra,
             extra=extra,
         )
 
@@ -612,7 +612,7 @@ def populate_organisation_agreement_details_from_file(file_name):
         for row in csv_reader:
             org = dao_get_organisation_by_id(row[0])
 
-            current_app.logger.info("Updating %s", org.name, extra={"organisation_name": organisation_name})
+            current_app.logger.info("Updating %s", org.name, extra={"organisation_name": org.name})
 
             assert org.agreement_signed
 
@@ -783,7 +783,7 @@ def process_row_from_job(job_id, job_row_number):
             }
             current_app.logger.info(
                 "Process row %(job_row_number)s for job %(job_id)s created notification_id: %(notification_id)s",
-                **extra,
+                extra,
                 extra=extra,
             )
 
