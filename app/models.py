@@ -1273,7 +1273,7 @@ class TemplateEmailFileBase(db.Model):
 
     @declared_attr
     def template_version(cls):
-        return db.Column(UUID(as_uuid=True), db.ForeignKey("templates.version"), index=True, nullable=False)
+        return db.Column(db.Integer(), index=True, nullable=False)
 
     @declared_attr
     def template(cls):
@@ -1294,10 +1294,6 @@ class TemplateEmailFileBase(db.Model):
     @declared_attr
     def archived_by(cls):
         return db.relationship("User", foreign_keys=[cls.archived_by_id])
-
-    @declared_attr
-    def letter_attachment_id(cls):
-        return db.Column(UUID(as_uuid=True), db.ForeignKey("letter_attachment.id"), nullable=True)
 
 
 class TemplateEmailFile(TemplateEmailFileBase):
