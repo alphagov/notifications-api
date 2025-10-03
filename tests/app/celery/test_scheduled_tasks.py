@@ -601,7 +601,7 @@ def test_check_if_letters_still_in_created_during_bst(sample_letter_template, ca
 
         check_if_letters_still_in_created()
 
-    assert "2 letters created before 17:30 yesterday still have 'created' status" in caplog.messages
+    assert "2 letter notifications created before 17:30 yesterday still have 'created' status" in caplog.messages
     mock_create_ticket.assert_called_with(
         ANY,
         message=(
@@ -637,7 +637,7 @@ def test_check_if_letters_still_in_created_during_utc(sample_letter_template, ca
 
         check_if_letters_still_in_created()
 
-    assert "2 letters created before 17:30 yesterday still have 'created' status" in caplog.messages
+    assert "2 letter notifications created before 17:30 yesterday still have 'created' status" in caplog.messages
     mock_create_ticket.assert_called_once_with(
         ANY,
         message=(

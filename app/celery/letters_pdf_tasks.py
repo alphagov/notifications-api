@@ -97,7 +97,7 @@ def get_pdf_for_templated_letter(self, notification_id):
     except Exception as e:
         try:
             current_app.logger.exception(
-                "RETRY: calling create-letter-pdf task for notification %s failed",
+                "RETRY: calling get-pdf-for-templated-letter task for notification %s failed",
                 notification_id,
                 extra={"notification_id": notification_id},
             )
@@ -105,7 +105,7 @@ def get_pdf_for_templated_letter(self, notification_id):
         except self.MaxRetriesExceededError as e:
             message = (
                 f"RETRY FAILED: Max retries reached. "
-                f"The task create-letter-pdf failed for notification id {notification_id}. "
+                f"The task get-pdf-for-templated-letter failed for notification id {notification_id}. "
                 f"Notification has been updated to technical-failure"
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
