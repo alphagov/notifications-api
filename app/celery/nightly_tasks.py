@@ -106,7 +106,7 @@ def log_archive_unsubscribe_requests(start, service_id, count_deleted):
     }
     current_app.logger.info(
         "%(celery_task)s service: %(service_id)s, "
-        "count deleted: %(deleted_record_count)s, duration: %(duration)s seconds",
+        "count deleted: %(deleted_record_count)s, duration: %(duration).6f seconds",
         extra,
         extra=extra,
     )
@@ -217,7 +217,7 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
             (
                 "delete-notifications-for-service-and-type: "
                 "service: %(service_id)s, notification_type: %(notification_type)s, "
-                "count deleted: %(deleted_record_count)s, duration: %(duration)s seconds"
+                "count deleted: %(deleted_record_count)s, duration: %(duration).6f seconds"
             ),
             extra,
             extra=extra,
@@ -281,7 +281,7 @@ def delete_inbound_sms():
             "deleted_record_count": deleted,
         }
         current_app.logger.info(
-            "Delete inbound sms job started %(start_time)s duration %(duration)ss deleted "
+            "Delete inbound sms job started %(start_time)s duration %(duration).6f seconds deleted "
             "%(deleted_record_count)s inbound sms notifications",
             extra,
             extra=extra,

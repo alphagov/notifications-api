@@ -440,7 +440,7 @@ def populate_notification_postage(start_date):
             "end_date": end_date.isoformat(),
         }
         current_app.logger.info(
-            "notification postage took %(duration)ss. "
+            "notification postage took %(duration).6f seconds. "
             "Migrated %(migrated_row_count)s rows for %(start_date)s to %(end_date)s",
             extra,
             extra=extra,
@@ -482,7 +482,8 @@ def update_jobs_archived_flag(start_date, end_date):
             "process_date": process_date.isoformat(),
         }
         current_app.logger.info(
-            "jobs: --- Completed took %(duration)ss. Archived %(updated_record_count)s jobs for %(process_date)s",
+            "jobs: --- Completed took %(duration).6f seconds. "
+            "Archived %(updated_record_count)s jobs for %(process_date)s",
             extra,
             extra=extra,
         )

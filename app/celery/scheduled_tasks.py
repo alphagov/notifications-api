@@ -97,7 +97,7 @@ def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
             process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
-            current_app.logger.info("Job ID %s added to process job queue", job.id)
+            current_app.logger.info("Job ID %s added to process job queue", job.id, extra={"job_id": job.id})
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
         raise
@@ -108,8 +108,15 @@ def delete_verify_codes():
     try:
         start = datetime.utcnow()
         deleted = delete_codes_older_created_more_than_a_day_ago()
+
+        extra = {
+            "duration": (datetime.utcnow() - start).total_seconds(),
+            "deleted_record_count": deleted,
+        }
         current_app.logger.info(
-            "Delete job started %s finished %s deleted %s verify codes", start, datetime.utcnow(), deleted
+            "Delete job took %(duration).6f seconds and deleted %(deleted_record_count)s verify codes",
+            extra,
+            extra=extra,
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete verify codes")
@@ -122,8 +129,15 @@ def delete_invitations():
         start = datetime.utcnow()
         deleted_invites = delete_invitations_created_more_than_two_days_ago()
         deleted_invites += delete_org_invitations_created_more_than_two_days_ago()
+
+        extra = {
+            "duration": (datetime.utcnow() - start).total_seconds(),
+            "deleted_record_count": deleted_invites,
+        }
         current_app.logger.info(
-            "Delete job started %s finished %s deleted %s invitations", start, datetime.utcnow(), deleted_invites
+            "Delete job took %(duration).6f seconds and deleted %(deleted_record_count)s invitations",
+            extra,
+            extra=extra,
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete invitations")
@@ -148,7 +162,11 @@ def switch_current_sms_provider_on_slow_delivery():
     if len(set(slow_delivery_notifications.values())) != 1:
         for provider_name, is_slow in slow_delivery_notifications.items():
             if is_slow:
-                current_app.logger.warning("Slow delivery notifications detected for provider %s", provider_name)
+                current_app.logger.warning(
+                    "Slow delivery notifications detected for provider %s",
+                    provider_name,
+                    extra={"provider_name": provider_name},
+                )
                 dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=5))
 
 
