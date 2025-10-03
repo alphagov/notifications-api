@@ -4,6 +4,7 @@ from datetime import datetime
 from flask import current_app
 from gds_metrics import Histogram
 from notifications_utils.clients import redis
+from notifications_utils.formatters import strip_and_remove_obscure_whitespace
 from notifications_utils.recipient_validation.email_address import (
     format_email_address,
 )
@@ -145,12 +146,14 @@ def persist_notification(
         updated_at=updated_at,
     )
     if notification_type == SMS_TYPE:
+        notification.to = strip_and_remove_obscure_whitespace(notification.to)
         notification.normalised_to = recipient["normalised_to"]
         notification.international = recipient["international"]
         notification.phone_prefix = recipient["phone_prefix"]
         notification.rate_multiplier = recipient["rate_multiplier"]
 
     elif notification_type == EMAIL_TYPE:
+        notification.to = strip_and_remove_obscure_whitespace(notification.to)
         notification.normalised_to = format_email_address(notification.to)
 
     elif notification_type == LETTER_TYPE:
