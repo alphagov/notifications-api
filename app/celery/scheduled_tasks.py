@@ -114,7 +114,7 @@ def delete_verify_codes():
             "deleted_record_count": deleted,
         }
         current_app.logger.info(
-            "Delete job took %(duration).6f seconds and deleted %(deleted_record_count)s verify codes",
+            "Delete job took %(duration).6g seconds and deleted %(deleted_record_count)s verify codes",
             extra,
             extra=extra,
         )
@@ -135,7 +135,7 @@ def delete_invitations():
             "deleted_record_count": deleted_invites,
         }
         current_app.logger.info(
-            "Delete job took %(duration).6f seconds and deleted %(deleted_record_count)s invitations",
+            "Delete job took %(duration).6g seconds and deleted %(deleted_record_count)s invitations",
             extra,
             extra=extra,
         )
@@ -428,9 +428,7 @@ def check_for_missing_rows_in_completed_jobs():
             )
 
             extra = {"job_row_number": row_to_process.missing_row, "job_id": job.id}
-            current_app.logger.info(
-                "Processing missing row %(job_row_number)s for job %(job_id)s", extra, extra=extra
-            )
+            current_app.logger.info("Processing missing row %(job_row_number)s for job %(job_id)s", extra, extra=extra)
             process_job_row(template.template_type, task_args_kwargs)
 
 
@@ -464,11 +462,12 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
             )
             message += f"service: {service_dashboard} failure rate: {service.permanent_failure_rate},\n"
 
-        current_app.logger.error(
-            "%s services have had a high permanent-failure rate for text messages in the last 24 hours.",
-            len(services_with_failures),
-            extra={"service_ids": [service.service_id for service in services_with_failures]},
-        )
+            current_app.logger.warning(
+                "Service %s has had a high permanent-failure rate (%.4g) for text messages in the last 24 hours",
+                service.service_id,
+                service.permanent_failure_rate,
+                extra={"service_id": service.service_id, "permanent_failure_rate": service.permanent_failure_rate},
+            )
 
     elif services_sending_to_tv_numbers:
         message += (
@@ -482,15 +481,15 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
             )
             message += f"service: {service_dashboard} count of sms to tv numbers: {service.notification_count},\n"
 
-        current_app.logger.error(
-            "%s services have sent over 500 text messages to tv numbers in the last 24 hours.",
-            len(services_sending_to_tv_numbers),
-            extra={
-                "service_ids_and_number_sent": {
-                    service.service_id: service.notification_count for service in services_sending_to_tv_numbers
-                }
-            },
-        )
+            current_app.logger.warning(
+                "Service %s has sent %s text messages to tv numbers in the last 24 hours",
+                service.service_id,
+                service.notification_count,
+                extra={
+                    "service_id": service.service_id,
+                    "notification_count": service.notification_count,
+                },
+            )
 
     if services_with_failures or services_sending_to_tv_numbers:
         if current_app.should_send_zendesk_alerts:

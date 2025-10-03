@@ -83,7 +83,7 @@ def create_or_update_ft_billing_for_day(process_day: str):
         "duration": (end - start).total_seconds(),
     }
     current_app.logger.info(
-        "create-or-update-ft-billing-for-day task for %(process_day)s: data fetched in %(duration).6f seconds",
+        "create-or-update-ft-billing-for-day task for %(process_day)s: data fetched in %(duration).6g seconds",
         extra,
         extra=extra,
     )
@@ -186,7 +186,7 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
     current_app.logger.info(
         (
             "create-nightly-notification-status-for-service-and-day task update for "
-            "%(service_id)s, %(notification_type)s for %(process_day)s: updated in %(duration).6f seconds"
+            "%(service_id)s, %(notification_type)s for %(process_day)s: updated in %(duration).6g seconds"
         ),
         extra,
         extra=extra,
