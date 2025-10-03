@@ -22,7 +22,7 @@ from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
 def create_nightly_billing(
     day_start=None,
     n_days=10,
-    stagger_total_period_seconds=timedelta(minutes=5).seconds,
+    stagger_total_period_seconds=timedelta(minutes=5).total_seconds(),
 ):
     # day_start is a datetime.date() object. i.e. up to n_days days of data counting
     # back from day_start is consolidated
