@@ -807,16 +807,16 @@ MockServicesWithHighFailureRate = namedtuple(
         [
             [MockServicesWithHighFailureRate("123", 0.3)],
             [],
-            "1 services have had a high permanent-failure rate for text messages in the last 24 hours.",
+            "Service 123 has had a high permanent-failure rate (0.3) for text messages in the last 24 hours",
             "1 service(s) have had high permanent-failure rates for sms messages in last "
             "24 hours:\nservice: {}/services/{} failure rate: 0.3,\n".format(Config.ADMIN_BASE_URL, "123"),
         ],
         [
             [],
-            [MockServicesSendingToTVNumbers("123", 300)],
-            "1 services have sent over 500 text messages to tv numbers in the last 24 hours.",
+            [MockServicesSendingToTVNumbers("123", 567)],
+            "Service 123 has sent 567 text messages to tv numbers in the last 24 hours",
             "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
-            "service: {}/services/{} count of sms to tv numbers: 300,\n".format(Config.ADMIN_BASE_URL, "123"),
+            "service: {}/services/{} count of sms to tv numbers: 567,\n".format(Config.ADMIN_BASE_URL, "123"),
         ],
     ],
 )
