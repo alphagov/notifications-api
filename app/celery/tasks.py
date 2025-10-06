@@ -509,20 +509,24 @@ def save_letter(
 
 def handle_exception(task, notification, notification_id, exc):
     if not get_notification_by_id(notification_id):
-        retry_msg = "{task} notification for job {job} row number {row} and notification id {noti}".format(
-            task=task.__name__,
-            job=notification.get("job", None),
-            row=notification.get("row_number", None),
-            noti=notification_id,
+        extra = {
+            "notification_id": notification_id,
+            "celery_task": task.name,
+            "job_id": notification.get("job", None),
+            "job_row_number": notification.get("row_number", None),
+        }
+        base_msg = (
+            "task %(celery_task)s notification for job %(job_id)s row number %(job_row_number)s "
+            "and notification id %(notification_id)s"
         )
         # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
         # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
         # send to the retry queue.
-        current_app.logger.exception("Retry %s", retry_msg)
+        current_app.logger.exception("Retry: " + base_msg, extra, extra=extra)  # noqa
         try:
             task.retry(queue=QueueNames.RETRY, exc=exc)
         except task.MaxRetriesExceededError:
-            current_app.logger.error("Max retry failed %s", retry_msg)
+            current_app.logger.error("Max retry failed: " + base_msg, extra, extra=extra)  # noqa
 
 
 @notify_celery.task(name="process-incomplete-jobs")
