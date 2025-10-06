@@ -539,12 +539,12 @@ def process_incomplete_jobs(job_ids, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS
         job.processing_started = datetime.utcnow()
         dao_update_job(job)
 
-    current_app.logger.info("Resuming job(s) %s", job_ids)
     for job_id in job_ids:
+        current_app.logger.info("Resuming job %s", job_id, extra={"job_id": job_id})
         try:
             process_incomplete_job(job_id, shatter_batch_size=shatter_batch_size)
         except UnprocessableJobRow as e:
-            current_app.logger.exception(str(e))
+            current_app.logger.exception(str(e), extra={"job_id": job_id})
             # but continue to next job
 
 
@@ -558,7 +558,12 @@ def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_B
     else:
         resume_from_row = -1  # The first row in the csv with a number is row 0
 
-    current_app.logger.info("Resuming job %s from row %s", job_id, resume_from_row)
+    current_app.logger.info(
+        "Resuming job %s from row %s",
+        job_id,
+        resume_from_row,
+        extra={"job_id": job_id, "job_row_number": resume_from_row},
+    )
 
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
@@ -590,11 +595,16 @@ def process_returned_letters_list(notification_references):
 
     insert_returned_letters(notification_references)
 
+    extra = {
+        "updated_record_count": updated,
+        "updated_history_record_count": updated_history,
+        "notification_reference_count": len(notification_references),
+    }
     current_app.logger.info(
-        "Updated %s letter notifications (%s history notifications, from %s references) to returned-letter",
-        updated,
-        updated_history,
-        len(notification_references),
+        "Updated %(updated_record_count)s letter notifications (%(updated_history_record_count)s "
+        "history notifications, from %(notification_reference_count)s references) to returned-letter",
+        extra,
+        extra=extra,
     )
 
     _process_returned_letters_callback(notification_references)
