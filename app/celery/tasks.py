@@ -75,6 +75,7 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
         "Starting process-job task for job id %s with status: %s",
         job_id,
         job.job_status,
+        extra={"job_id": job_id, "job_status": job.job_status},
     )
 
     if job.job_status != JOB_STATUS_PENDING:
@@ -89,7 +90,12 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
     if not service.active:
         job.job_status = JOB_STATUS_CANCELLED
         dao_update_job(job)
-        current_app.logger.warning("Job %s has been cancelled, service %s is inactive", job_id, service.id)
+        current_app.logger.warning(
+            "Job %s has been cancelled, service %s is inactive",
+            job_id,
+            service.id,
+            extra={"job_id": job_id, "service_id": service.id},
+        )
         return
 
     if __sending_limits_for_job_exceeded(service, job, job_id):
@@ -97,7 +103,12 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
 
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
-    current_app.logger.info("Starting job %s processing %s notifications", job_id, job.notification_count)
+    current_app.logger.info(
+        "Starting job %s processing %s notifications",
+        job_id,
+        job.notification_count,
+        extra={"job_id": job_id, "notification_count": job.notification_count},
+    )
 
     for shatter_batch in batched(recipient_csv.get_rows(), n=shatter_batch_size):
         batch_args_kwargs = [
@@ -173,15 +184,22 @@ def job_complete(job, resumed=False, start=None):
     job.processing_finished = finished
     dao_update_job(job)
 
+    extra = {"job_id": job.id, "job_processing_finished_at": job.processing_finished.isoformat()}
     if resumed:
-        current_app.logger.info("Resumed Job %s completed at %s", job.id, job.processing_finished)
-    else:
         current_app.logger.info(
-            "Job %s created at %s started at %s finished at %s",
-            job.id,
-            job.created_at,
-            start,
-            finished,
+            "Resumed Job %(job_id)s completed at %(job_processing_finished_at)s", extra, extra=extra
+        )
+    else:
+        extra = {
+            "job_created_at": job.created_at and job.created_at.isoformat(),
+            "job_started_at": start and start.isoformat(),
+            **extra,
+        }
+        current_app.logger.info(
+            "Job %(job_id)s created at %(job_created_at)s started at %(job_started_at)s "
+            "finished at %(job_processing_finished_at)s",
+            extra,
+            extra=extra,
         )
 
 
@@ -236,12 +254,17 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
         job.job_status = "sending limits exceeded"
         job.processing_finished = datetime.utcnow()
         dao_update_job(job)
+        extra = {
+            "job_id": job_id,
+            "notification_count": job.notification_count,
+            "limit_name": e.limit_name,
+            "sending_limit": e.sending_limit,
+        }
         current_app.logger.info(
-            "Job %s size %s error. Sending limits (%s: %s) exceeded.",
-            job_id,
-            job.notification_count,
-            e.limit_name,
-            e.sending_limit,
+            "Job %(job_id)s size %(notification_count)s error. Sending limits (%(limit_name)s: "
+            "%(sending_limit)s) exceeded.",
+            extra,
+            extra=extra,
         )
         return True
 
@@ -270,7 +293,16 @@ def save_sms(
         reply_to_text = template.reply_to_text
 
     if not service_allowed_to_send_to(notification["to"], service, KEY_TYPE_NORMAL):
-        current_app.logger.info("SMS %s failed as restricted service", notification_id)
+        extra = {
+            "notification_id": notification_id,
+            "job_id": notification.get("job", None),
+            "job_row_number": notification.get("row_number", None),
+        }
+        current_app.logger.warning(
+            "SMS notification %(notification_id)s for job %(job_id)s failed as restricted service",
+            extra,
+            extra=extra,
+        )
         return
 
     try:
@@ -322,17 +354,27 @@ def save_sms(
                 queue=QueueNames.SEND_SMS,
             )
         else:
-            current_app.logger.info(
-                "SMS %s for job %s has failed validation and will not be sent.",
-                saved_notification.id,
-                notification.get("job", None),
+            extra = {
+                "notification_id": saved_notification.id,
+                "job_id": notification.get("job", None),
+                "job_row_number": notification.get("row_number", None),
+            }
+            current_app.logger.warning(
+                "SMS notification %(notification_id)s for job %(job_id)s has failed validation and will not be sent",
+                extra,
+                extra=extra,
             )
 
+        extra = {
+            "notification_id": saved_notification.id,
+            "notification_created_at": saved_notification.created_at.isoformat(),
+            "job_id": notification.get("job", None),
+            "job_row_number": notification.get("row_number", None),
+        }
         current_app.logger.info(
-            "SMS %s created at %s for job %s",
-            saved_notification.id,
-            saved_notification.created_at,
-            notification.get("job", None),
+            "Saving SMS notification %(notification_id)s created_at %(notification_created_at)s for job %(job_id)s",
+            extra,
+            extra=extra,
         )
 
     except SQLAlchemyError as e:
@@ -356,7 +398,16 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         reply_to_text = template.reply_to_text
 
     if not service_allowed_to_send_to(notification["to"], service, KEY_TYPE_NORMAL):
-        current_app.logger.info("Email %s failed as restricted service", notification_id)
+        extra = {
+            "notification_id": notification_id,
+            "job_id": notification.get("job", None),
+            "job_row_number": notification.get("row_number", None),
+        }
+        current_app.logger.warning(
+            "Email notification %(notification_id)s for job %(job_id)s failed as restricted service",
+            extra,
+            extra=extra,
+        )
         return
 
     try:
@@ -383,10 +434,16 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             queue=QueueNames.SEND_EMAIL,
         )
 
+        extra = {
+            "notification_id": saved_notification.id,
+            "notification_created_at": saved_notification.created_at.isoformat(),
+            "job_id": notification.get("job", None),
+            "job_row_number": notification.get("row_number", None),
+        }
         current_app.logger.info(
-            "Email %s created at %s",
-            saved_notification.id,
-            saved_notification.created_at,
+            "Saving Email notification %(notification_id)s created_at %(notification_created_at)s for job %(job_id)s",
+            extra,
+            extra=extra,
         )
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
@@ -435,10 +492,16 @@ def save_letter(
             [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
         )
 
+        extra = {
+            "notification_id": saved_notification.id,
+            "notification_created_at": saved_notification.created_at.isoformat(),
+            "job_id": notification.get("job", None),
+            "job_row_number": notification.get("row_number", None),
+        }
         current_app.logger.info(
-            "Letter %s created at %s",
-            saved_notification.id,
-            saved_notification.created_at,
+            "Saving Letter notification %(notification_id)s created_at %(notification_created_at)s for job %(job_id)s",
+            extra,
+            extra=extra,
         )
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
