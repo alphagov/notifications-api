@@ -1152,7 +1152,9 @@ def test_weekly_user_research_email_skips_environments_with_setting_disabled(
     with set_config(notify_api, "WEEKLY_USER_RESEARCH_EMAIL_ENABLED", False):
         weekly_user_research_email()
 
-    assert "Skipping weekly user research email run in test" in caplog.messages
+    assert (
+        "Not running weekly-user-research-email - configured not to send weekly user research email" in caplog.messages
+    )
     assert not mock_send_email.called
 
 
@@ -1242,7 +1244,9 @@ class TestWeeklyDWPReport:
         ):
             weekly_dwp_report()
 
-        assert (f"Skipping DWP report run in {environment}" in caplog.messages) != should_run
+        assert (
+            "Not running weekly-dwp-report - configured not to send zendesk alerts" in caplog.messages
+        ) != should_run
 
         # 'Successful' runs for this test still don't get to the zendesk_update_ticket call because of other checks.
         assert mock_zendesk_update_ticket.call_args_list == []

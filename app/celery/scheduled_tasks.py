@@ -515,7 +515,13 @@ def delete_old_records_from_events_table():
 
     deleted_count = event_query.delete()
 
-    current_app.logger.info("Deleted %s historical events from before %s.", deleted_count, delete_events_before)
+    extra = {
+        "deleted_record_count": deleted_count,
+        "delete_events_before": delete_events_before.isoformat(),
+    }
+    current_app.logger.info(
+        "Deleting %(deleted_record_count)s historical events from before %(delete_events_before)s.", extra, extra=extra
+    )
 
     db.session.commit()
 
@@ -542,7 +548,13 @@ def zendesk_new_email_branding_report():
         .all()
     )
 
-    current_app.logger.info("%s new email brands to review since %s.", len(new_email_brands), previous_weekday)
+    extra = {
+        "email_brand_count": len(new_email_brands),
+        "review_since": previous_weekday.isoformat(),
+    }
+    current_app.logger.info(
+        "%(email_brand_count)s new email brands to review since %(review_since)s.", extra, extra=extra
+    )
 
     if not new_email_brands:
         return
@@ -579,15 +591,23 @@ def zendesk_new_email_branding_report():
         zendesk_client.send_ticket_to_zendesk(ticket)
 
 
-@notify_celery.task(name="check-for-low-available-inbound-sms-numbers")
+@notify_celery.task(bind=True, name="check-for-low-available-inbound-sms-numbers")
 @cronitor("check-for-low-available-inbound-sms-numbers")
-def check_for_low_available_inbound_sms_numbers():
+def check_for_low_available_inbound_sms_numbers(self):
     if not current_app.should_send_zendesk_alerts:
-        current_app.logger.info("Skipping report run on in %s", current_app.config["NOTIFY_ENVIRONMENT"])
+        current_app.logger.info(
+            "Not running %s - configured not to send zendesk alerts",
+            self.name,
+            extra={"celery_task": self.name},
+        )
         return
 
     num_available_inbound_numbers = len(dao_get_available_inbound_numbers())
-    current_app.logger.info("There are %s available inbound SMS numbers.", num_available_inbound_numbers)
+    current_app.logger.info(
+        "There are %s available inbound SMS numbers.",
+        num_available_inbound_numbers,
+        extra={"inbound_number_count": num_available_inbound_numbers},
+    )
     if num_available_inbound_numbers > current_app.config["LOW_INBOUND_SMS_NUMBER_THRESHOLD"]:
         return
 
@@ -608,12 +628,16 @@ def check_for_low_available_inbound_sms_numbers():
     zendesk_client.send_ticket_to_zendesk(ticket)
 
 
-@notify_celery.task(name="weekly-dwp-report")
-def weekly_dwp_report():
+@notify_celery.task(bind=True, name="weekly-dwp-report")
+def weekly_dwp_report(self):
     report_config = current_app.config["ZENDESK_REPORTING"].get("weekly-dwp-report")
 
     if not current_app.should_send_zendesk_alerts:
-        current_app.logger.info("Skipping DWP report run in %s", current_app.config["NOTIFY_ENVIRONMENT"])
+        current_app.logger.info(
+            "Not running %s - configured not to send zendesk alerts",
+            self.name,
+            extra={"celery_task": self.name},
+        )
         return
 
     if (
@@ -622,7 +646,7 @@ def weekly_dwp_report():
         or not report_config.get("query")
         or not report_config.get("ticket_id")
     ):
-        current_app.logger.info("Skipping DWP report run - invalid configuration.")
+        current_app.logger.warning("Skipping DWP report run - invalid configuration.")
         return
 
     attachments = []
@@ -653,15 +677,17 @@ def weekly_dwp_report():
     )
 
 
-@notify_celery.task(name="weekly-user-research-email")
-def weekly_user_research_email():
+@notify_celery.task(bind=True, name="weekly-user-research-email")
+def weekly_user_research_email(self):
     """
     Runs every Wednesday and finds all active users who were created the week starting on Monday 16 days ago.
     These users get emailed inviting them to give feedback on how they have found getting started with Notify.
     """
     if not current_app.should_send_weekly_user_research_email:
         current_app.logger.info(
-            "Skipping weekly user research email run in %s", current_app.config["NOTIFY_ENVIRONMENT"]
+            "Not running %s - configured not to send weekly user research email",
+            self.name,
+            extra={"celery_task": self.name},
         )
         return
 
@@ -673,7 +699,10 @@ def weekly_user_research_email():
 
     users = get_users_for_research(start_date=start_date, end_date=end_date)
 
-    current_app.logger.info("Sending weekly user research email to %s users", len(users))
+    extra = {
+        "user_count": len(users),
+    }
+    current_app.logger.info("Sending weekly user research email to %(user_count)s users", extra, extra=extra)
 
     for user in users:
         saved_notification = persist_notification(
