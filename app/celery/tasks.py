@@ -623,14 +623,20 @@ def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
         send_returned_letter_to_service.apply_async([returned_letter_data], queue=QueueNames.CALLBACKS)
 
 
-@notify_celery.task(name="process-report-request")
-def process_report_request(service_id, report_request_id):
+@notify_celery.task(bind=True, name="process-report-request")
+def process_report_request(self, service_id, report_request_id):
     report_request = dao_get_report_request_by_id(service_id=service_id, report_id=report_request_id)
 
+    extra = {
+        "report_request_id": report_request_id,
+        "report_request_status": report_request.status,
+        "celery_task": self.name,
+    }
     current_app.logger.info(
-        "Starting process-report-request task for report request id %s and status %s",
-        report_request_id,
-        report_request.status,
+        "Starting %(celery_task)s task for report request id %(report_request_id)s and "
+        "status %(report_request_status)s",
+        extra,
+        extra=extra,
     )
 
     if report_request.status != REPORT_REQUEST_PENDING:
@@ -644,7 +650,9 @@ def process_report_request(service_id, report_request_id):
         report_request.status = REPORT_REQUEST_STORED
         dao_update_report_request(report_request)
 
-        current_app.logger.info("Report request for id %s succeeded", report_request_id)
+        current_app.logger.info(
+            "Report request %s succeeded", report_request_id, extra={"report_request_id": report_request_id}
+        )
     except Exception as e:
         report_request.status = REPORT_REQUEST_FAILED
         dao_update_report_request(report_request)
