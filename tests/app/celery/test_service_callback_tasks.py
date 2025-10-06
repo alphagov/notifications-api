@@ -157,7 +157,12 @@ def test_send_delivery_status_to_service_sends_callback_to_service(notify_db_ses
     }
 
     send_callback_mock.assert_called_once_with(
-        mock.ANY, expected_data, callback_api.url, callback_api.bearer_token, "send_delivery_status_to_service"
+        mock.ANY,
+        expected_data,
+        callback_api.url,
+        callback_api.bearer_token,
+        expected_data["id"],
+        {"notification_id": expected_data["id"]},
     )
 
 
@@ -181,7 +186,12 @@ def test_send_complaint_to_service_sends_callback_to_service(notify_db_session, 
         }
 
         send_callback_mock.assert_called_once_with(
-            mock.ANY, expected_data, callback_api.url, callback_api.bearer_token, "send_complaint_to_service"
+            mock.ANY,
+            expected_data,
+            callback_api.url,
+            callback_api.bearer_token,
+            expected_data["notification_id"],
+            {"notification_id": expected_data["notification_id"], "complaint_id": expected_data["complaint_id"]},
         )
 
 
@@ -211,7 +221,7 @@ def test_send_inbound_sms_to_service_sends_callback_to_service(notify_api, sampl
 
     send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
     send_callback_mock.assert_called_once_with(
-        mock.ANY, data, "https://some.service.gov.uk/", "something_unique", "send_inbound_sms_to_service"
+        mock.ANY, data, "https://some.service.gov.uk/", "something_unique", data["id"], {"inbound_sms_id": data["id"]}
     )
 
 
@@ -268,27 +278,26 @@ def test_send_returned_letter_to_service_sends_callback_to_service(
     send_callback_mock = mocker.patch("app.celery.service_callback_tasks._send_data_to_service_callback_api")
     send_returned_letter_to_service(encoded_returned_letter=encoded_returned_letter)
     send_callback_mock.assert_called_once_with(
-        mock.ANY, expected_data, callback_api.url, callback_api.bearer_token, "send_returned_letter_to_service"
+        mock.ANY,
+        expected_data,
+        callback_api.url,
+        callback_api.bearer_token,
+        expected_data["notification_id"],
+        {"notification_id": expected_data["notification_id"]},
     )
-
-
-@pytest.mark.parametrize("data", [{"id": "hello"}, {"notification_id": "hello"}])
-def test__send_data_to_service_callback_api_handles_data_with_notification_id_or_id(notify_db_session, mocker, data):
-    callback_url = "https://www.example.com/callback"
-
-    with requests_mock.Mocker() as request_mock:
-        request_mock.post(callback_url, json={}, status_code=200)
-        _send_data_to_service_callback_api(mock.MagicMock(), data, callback_url, "my-token", "my_function_name")
 
 
 def test__send_data_to_service_callback_api_posts_https_request_to_service(notify_db_session, mocker):
     data = {"id": "hello"}
     callback_url = "https://www.example.com/callback"
     celery_task_mock = mock.MagicMock()
+    celery_task_mock.name = "my-task-name"
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post(callback_url, json={}, status_code=200)
-        _send_data_to_service_callback_api(celery_task_mock, data, callback_url, "my-token", "my_function_name")
+        _send_data_to_service_callback_api(
+            celery_task_mock, data, callback_url, "my-token", data["id"], {"foo_id": data["id"]}
+        )
 
     assert request_mock.call_count == 1
     assert request_mock.request_history[0].url == callback_url
@@ -308,10 +317,13 @@ def test__send_data_to_service_callback_api_retries_if_request_returns_retryable
     callback_url = "https://www.example.com/callback"
 
     celery_task_mock = mock.MagicMock()
+    celery_task_mock.name = "my-task-name"
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post(callback_url, json={}, status_code=status_code)
-        _send_data_to_service_callback_api(celery_task_mock, data, callback_url, "my-token", "my_function_name")
+        _send_data_to_service_callback_api(
+            celery_task_mock, data, callback_url, "my-token", data["id"], {"foo_id": data["id"]}
+        )
 
     celery_task_mock.retry.assert_called_once_with(queue="service-callbacks-retry")
 
@@ -321,10 +333,13 @@ def test__send_data_to_service_callback_api_retries_if_request_raises_unknown_ex
     callback_url = "https://www.example.com/callback"
 
     celery_task_mock = mock.MagicMock()
+    celery_task_mock.name = "my-task-name"
 
     mocker.patch("app.celery.service_callback_tasks.requests_session.request", side_effect=RequestException())
 
-    _send_data_to_service_callback_api(celery_task_mock, data, callback_url, "my-token", "my_function_name")
+    _send_data_to_service_callback_api(
+        celery_task_mock, data, callback_url, "my-token", data["id"], {"foo_id": data["id"]}
+    )
 
     celery_task_mock.retry.assert_called_once_with(queue="service-callbacks-retry")
 
@@ -337,9 +352,12 @@ def test__send_data_to_service_callback_api_doesnt_retry_if_non_retry_status_cod
     callback_url = "https://www.example.com/callback"
 
     celery_task_mock = mock.MagicMock()
+    celery_task_mock.name = "my-task-name"
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post(callback_url, json={}, status_code=status_code)
-        _send_data_to_service_callback_api(celery_task_mock, data, callback_url, "my-token", "my_function_name")
+        _send_data_to_service_callback_api(
+            celery_task_mock, data, callback_url, "my-token", data["id"], {"foo_id": data["id"]}
+        )
 
     celery_task_mock.retry.assert_not_called()
