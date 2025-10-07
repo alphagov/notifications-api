@@ -195,5 +195,5 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
         extra={
             **base_params,
             "duration": base_params["duration"].total_seconds(),
-        }
+        },
     )

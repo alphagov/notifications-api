@@ -42,7 +42,15 @@ def dao_get_provider_versions(provider_id):
 
 def _adjust_provider_priority(provider, new_priority):
     current_app.logger.info(
-        "Adjusting provider priority - %s going from %s to %s", provider.identifier, provider.priority, new_priority
+        "Adjusting provider priority - %s going from %s to %s",
+        provider.identifier,
+        provider.priority,
+        new_priority,
+        extra={
+            "provider_name": provider.identifier,
+            "provider_priority": provider.priority,
+            "provider_priority_new": new_priority,
+        },
     )
     provider.priority = new_priority
 
@@ -54,7 +62,7 @@ def _adjust_provider_priority(provider, new_priority):
     _update_provider_details_without_commit(provider)
 
 
-def _get_sms_providers_for_update(time_threshold):
+def _get_sms_providers_for_update(time_threshold: timedelta):
     """
     Returns a list of providers, while holding a for_update lock on the provider details table, guaranteeing that those
     providers won't change (but can still be read) until you've committed/rolled back your current transaction.
@@ -71,7 +79,11 @@ def _get_sms_providers_for_update(time_threshold):
 
     # if something updated recently, don't update again. If the updated_at is null, treat it as min time
     if any((provider.updated_at or datetime.min) > datetime.utcnow() - time_threshold for provider in q):
-        current_app.logger.info("Not adjusting providers, providers updated less than %s ago.", time_threshold)
+        current_app.logger.info(
+            "Not adjusting providers, providers updated less than %s ago.",
+            time_threshold,
+            extra={"time_threshold": time_threshold.total_seconds()},
+        )
         return []
 
     return q

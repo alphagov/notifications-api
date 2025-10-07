@@ -485,8 +485,7 @@ def update_jobs_archived_flag(start_date, end_date):
             "process_date": process_date.isoformat(),
         }
         current_app.logger.info(
-            "jobs: --- Completed took %(duration)s. "
-            "Archived %(updated_record_count)s jobs for %(process_date)s",
+            "jobs: --- Completed took %(duration)s. Archived %(updated_record_count)s jobs for %(process_date)s",
             base_params,
             extra={
                 **base_params,
