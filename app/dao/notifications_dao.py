@@ -936,7 +936,6 @@ def dao_precompiled_letters_still_pending_virus_check(max_minutes_ago_to_check):
 
 
 def _duplicate_update_warning(notification, status):
-    delay = datetime.utcnow() - (notification.updated_at or notification.created_at)
     base_params = {
         "service_id": notification.service_id,
         "notification_id": notification.id,
@@ -944,19 +943,17 @@ def _duplicate_update_warning(notification, status):
         "provider_name": notification.sent_by,
         "notification_status_new": status,
         "notification_status": notification.status,
+        "delay": datetime.utcnow() - (notification.updated_at or notification.created_at),
     }
     current_app.logger.info(
         "Duplicate callback received for service %(service_id)s. Notification ID %(notification_id)s with "
         "type %(notification_type)s sent by %(provider_name)s. "
         "New status was %(notification_status_new)s, current status is %(notification_status)s. "
         "This happened %(delay)s after being first set.",
-        {
-            **base_params,
-            "delay": delay,  # for pretty-printing
-        },
+        base_params,
         extra={
             **base_params,
-            "delay": delay.total_seconds(),
+            "delay": base_params["delay"].total_seconds(),
         },
     )
 

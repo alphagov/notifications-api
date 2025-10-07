@@ -78,14 +78,17 @@ def create_or_update_ft_billing_for_day(process_day: str):
     billing_data = fetch_billing_data_for_day(process_day=process_date)
     end = datetime.utcnow()
 
-    extra = {
+    base_params = {
         "process_day": process_date.isoformat(),
-        "duration": (end - start).total_seconds(),
+        "duration": end - start,
     }
     current_app.logger.info(
-        "create-or-update-ft-billing-for-day task for %(process_day)s: data fetched in %(duration).6g seconds",
-        extra,
-        extra=extra,
+        "create-or-update-ft-billing-for-day task for %(process_day)s: data fetched in %(duration)s",
+        base_params,
+        extra={
+            **base_params,
+            "duration": base_params["duration"].total_seconds(),
+        },
     )
 
     update_ft_billing(billing_data, process_date)
@@ -177,17 +180,20 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
 
     end = datetime.utcnow()
 
-    extra = {
+    base_params = {
         "service_id": service_id,
         "notification_type": notification_type,
         "process_day": process_day.isoformat(),
-        "duration": (end - start).total_seconds(),
+        "duration": end - start,
     }
     current_app.logger.info(
         (
             "create-nightly-notification-status-for-service-and-day task update for "
-            "%(service_id)s, %(notification_type)s for %(process_day)s: updated in %(duration).6g seconds"
+            "%(service_id)s, %(notification_type)s for %(process_day)s: updated in %(duration)s"
         ),
-        extra,
-        extra=extra,
+        base_params,
+        extra={
+            **base_params,
+            "duration": base_params["duration"].total_seconds(),
+        }
     )

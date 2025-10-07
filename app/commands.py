@@ -433,17 +433,20 @@ def populate_notification_postage(start_date):
         result = db.session.execute(text(sql.format("notification_history"), {"start": start_date, "end": end_date}))
         db.session.commit()
 
-        extra = {
-            "duration": (datetime.utcnow() - execution_start).total_seconds(),
+        base_params = {
+            "duration": datetime.utcnow() - execution_start,
             "migrated_row_count": result.rowcount,
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
         }
         current_app.logger.info(
-            "notification postage took %(duration).6g seconds. "
+            "notification postage took %(duration)s. "
             "Migrated %(migrated_row_count)s rows for %(start_date)s to %(end_date)s",
-            extra,
-            extra=extra,
+            base_params,
+            extra={
+                **base_params,
+                "duration": base_params["duration"].total_seconds(),
+            },
         )
 
         start_date += timedelta(days=10)
@@ -476,16 +479,19 @@ def update_jobs_archived_flag(start_date, end_date):
 
         result = db.session.execute(text(sql, {"start": process_date, "end": process_date + timedelta(days=1)}))
         db.session.commit()
-        extra = {
+        base_params = {
             "duration": (datetime.now() - start_time).total_seconds(),
             "updated_record_count": result.rowcount,
             "process_date": process_date.isoformat(),
         }
         current_app.logger.info(
-            "jobs: --- Completed took %(duration).6g seconds. "
+            "jobs: --- Completed took %(duration)s. "
             "Archived %(updated_record_count)s jobs for %(process_date)s",
-            extra,
-            extra=extra,
+            base_params,
+            extra={
+                **base_params,
+                "duration": base_params["duration"].total_seconds(),
+            },
         )
 
         process_date += timedelta(days=1)

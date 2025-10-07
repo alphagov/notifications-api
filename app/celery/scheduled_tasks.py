@@ -109,14 +109,17 @@ def delete_verify_codes():
         start = datetime.utcnow()
         deleted = delete_codes_older_created_more_than_a_day_ago()
 
-        extra = {
-            "duration": (datetime.utcnow() - start).total_seconds(),
+        base_params = {
+            "duration": datetime.utcnow() - start,
             "deleted_record_count": deleted,
         }
         current_app.logger.info(
-            "Delete job took %(duration).6g seconds and deleted %(deleted_record_count)s verify codes",
-            extra,
-            extra=extra,
+            "Delete job took %(duration)s and deleted %(deleted_record_count)s verify codes",
+            base_params,
+            extra={
+                **base_params,
+                "duration": base_params["duration"].total_seconds(),
+            },
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete verify codes")
@@ -130,14 +133,17 @@ def delete_invitations():
         deleted_invites = delete_invitations_created_more_than_two_days_ago()
         deleted_invites += delete_org_invitations_created_more_than_two_days_ago()
 
-        extra = {
-            "duration": (datetime.utcnow() - start).total_seconds(),
+        base_params = {
+            "duration": datetime.utcnow() - start,
             "deleted_record_count": deleted_invites,
         }
         current_app.logger.info(
-            "Delete job took %(duration).6g seconds and deleted %(deleted_record_count)s invitations",
-            extra,
-            extra=extra,
+            "Delete job took %(duration)s and deleted %(deleted_record_count)s invitations",
+            base_params,
+            extra={
+                **base_params,
+                "duration": base_params["duration"].total_seconds(),
+            },
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete invitations")

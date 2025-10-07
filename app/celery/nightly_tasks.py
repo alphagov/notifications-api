@@ -207,20 +207,23 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
     )
     if num_deleted:
         end = datetime.utcnow()
-        extra = {
+        base_params = {
             "service_id": service_id,
             "notification_type": notification_type,
             "deleted_record_count": num_deleted,
-            "duration": (end - start).total_seconds(),
+            "duration": end - start,
         }
         current_app.logger.info(
             (
                 "delete-notifications-for-service-and-type: "
                 "service: %(service_id)s, notification_type: %(notification_type)s, "
-                "count deleted: %(deleted_record_count)s, duration: %(duration).6g seconds"
+                "count deleted: %(deleted_record_count)s, duration: %(duration)s"
             ),
-            extra,
-            extra=extra,
+            base_params,
+            extra={
+                **base_params,
+                "duration": base_params["duration"].total_seconds(),
+            },
         )
         # if some things were deleted, there could be more! lets queue up a new task with the same params
         # if there was nothing deleted, we've got no more work to do
