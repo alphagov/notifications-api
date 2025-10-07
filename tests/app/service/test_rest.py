@@ -4842,7 +4842,7 @@ def test_create_report_request_by_type_returns_existing_request(
     assert response["data"]["parameter"] == existing_request.parameter
     assert (
         f"Duplicate report request detected for user {sample_user.id} (service {sample_service.id})"
-        f" with params {json.dumps(expected_params, separators=(',', ':'))} – returning existing "
+        f" with params {json.dumps(expected_params, separators=(',', ':'))!r} – returning existing "
         f"request {existing_request.id}" in caplog.messages
     )
     assert not process_task_mock.called
@@ -4918,7 +4918,7 @@ def test_create_report_request_by_type_creates_new_if_existing_is_stale(
     assert created_request_id != str(stale_request.id)
     assert (
         f"Report request {created_request_id} for user {sample_user.id} (service {sample_service.id}) "
-        f"created with params {json.dumps(expected_params, separators=(',', ':'))}" in caplog.messages
+        f"created with params {json.dumps(expected_params, separators=(',', ':'))!r}" in caplog.messages
     )
     process_task_mock.assert_called_once_with(
         kwargs={
