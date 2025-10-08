@@ -157,6 +157,12 @@ def send_pdf_letter_notification(service_id, post_data):
             "Letter %s.pdf not in transient %s bucket",
             post_data["file_id"],
             current_app.config["S3_BUCKET_TRANSIENT_UPLOADED_LETTERS"],
+            extra={
+                "service_id": service.id,
+                "file_id": post_data["file_id"],
+                "s3_key": file_location,
+                "s3_bucket": current_app.config["S3_BUCKET_TRANSIENT_UPLOADED_LETTERS"],
+            },
         )
 
         raise e
