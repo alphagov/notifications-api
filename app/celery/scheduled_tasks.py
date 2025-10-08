@@ -523,7 +523,7 @@ def delete_old_records_from_events_table():
 
     extra = {
         "deleted_record_count": deleted_count,
-        "delete_events_before": delete_events_before.isoformat(),
+        "delete_events_before": delete_events_before,
     }
     current_app.logger.info(
         "Deleting %(deleted_record_count)s historical events from before %(delete_events_before)s.", extra, extra=extra
@@ -556,7 +556,7 @@ def zendesk_new_email_branding_report():
 
     extra = {
         "email_brand_count": len(new_email_brands),
-        "review_since": previous_weekday.isoformat(),
+        "review_since": previous_weekday,
     }
     current_app.logger.info(
         "%(email_brand_count)s new email brands to review since %(review_since)s.", extra, extra=extra

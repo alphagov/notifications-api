@@ -71,7 +71,7 @@ def create_or_update_ft_billing_for_day(process_day: str):
     current_app.logger.info(
         "create-or-update-ft-billing-for-day task for %s: started",
         process_date,
-        extra={"process_day": process_date.isoformat()},
+        extra={"process_day": process_date},
     )
 
     start = datetime.utcnow()
@@ -79,7 +79,7 @@ def create_or_update_ft_billing_for_day(process_day: str):
     end = datetime.utcnow()
 
     base_params = {
-        "process_day": process_date.isoformat(),
+        "process_day": process_date,
         "duration": end - start,
     }
     current_app.logger.info(
@@ -94,7 +94,7 @@ def create_or_update_ft_billing_for_day(process_day: str):
     update_ft_billing(billing_data, process_date)
 
     extra = {
-        "process_day": process_date.isoformat(),
+        "process_day": process_date,
         "updated_record_count": len(billing_data),
     }
     current_app.logger.info(
@@ -110,12 +110,12 @@ def create_or_update_ft_billing_letter_despatch_for_day(process_day: str):
     current_app.logger.info(
         "create-or-update-ft-billing-letter-despatch-for-day task for %s: started",
         process_date,
-        extra={"process_day": process_date.isoformat()},
+        extra={"process_day": process_date},
     )
 
     created, deleted = update_ft_billing_letter_despatch(process_date)
 
-    extra = {"process_day": process_date.isoformat(), "deleted_record_count": deleted, "created_record_count": created}
+    extra = {"process_day": process_date, "deleted_record_count": deleted, "created_record_count": created}
     current_app.logger.info(
         "create-or-update-ft-billing-letter-despatch-for-day task for %(process_day)s: task complete. "
         "%(deleted_record_count)s old row(s) deleted, and %(created_record_count)s row(s) created.",
@@ -183,7 +183,7 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
     base_params = {
         "service_id": service_id,
         "notification_type": notification_type,
-        "process_day": process_day.isoformat(),
+        "process_day": process_day,
         "duration": end - start,
     }
     current_app.logger.info(

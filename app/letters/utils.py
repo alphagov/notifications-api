@@ -94,7 +94,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     extra = {
         "notification_id": notification.id,
         "notification_reference": notification.reference,
-        "notification_created_at": notification.created_at.isoformat(),
+        "notification_created_at": notification.created_at,
         "file_size": len(pdf_data),
     }
     current_app.logger.info(

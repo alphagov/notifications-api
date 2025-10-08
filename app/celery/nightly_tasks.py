@@ -278,16 +278,19 @@ def delete_inbound_sms():
     try:
         start = datetime.utcnow()
         deleted = delete_inbound_sms_older_than_retention()
-        extra = {
-            "start_time": start.isoformat(),
-            "duration": (datetime.utcnow() - start).total_seconds(),
+        base_params = {
+            "start_time": start,
+            "duration": datetime.utcnow() - start,
             "deleted_record_count": deleted,
         }
         current_app.logger.info(
-            "Delete inbound sms job started %(start_time)s duration %(duration).6g seconds deleted "
+            "Delete inbound sms job started %(start_time)s duration %(duration)s seconds deleted "
             "%(deleted_record_count)s inbound sms notifications",
-            extra,
-            extra=extra,
+            base_params,
+            extra={
+                **base_params,
+                "duration": base_params["duration"].total_seconds(),
+            },
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete inbound sms notifications")
@@ -321,7 +324,7 @@ def raise_alert_if_letter_notifications_still_sending():
                 "There are %s letters in the 'sending' state from %s",
                 still_sending_count,
                 sent_date.strftime("%A %d %B"),
-                extra={"notification_count": still_sending_count, "sent_date": sent_date.isoformat()},
+                extra={"notification_count": still_sending_count, "sent_date": sent_date},
             )
 
 
@@ -399,8 +402,8 @@ def delete_unneeded_notification_history_by_hour():
             queue=QueueNames.REPORTING,
         )
         extra = {
-            "start_time": start_datetime.isoformat(),
-            "end_time": end_datetime.isoformat(),
+            "start_time": start_datetime,
+            "end_time": end_datetime,
         }
         current_app.logger.info(
             "Created delete_unneeded_notification_history_for_specific_hour task between "

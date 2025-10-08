@@ -502,7 +502,7 @@ def delete_billing_data_for_day(process_day: date, service_ids=None):
 def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
-    extra = {"start_time": start_date.isoformat(), "end_time": end_date.isoformat()}
+    extra = {"start_time": start_date, "end_time": end_date}
     current_app.logger.info("Populate ft_billing for %(start_time)s to %(end_time)s", extra, extra=extra)
     billing_data = []
 

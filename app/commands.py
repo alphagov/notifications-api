@@ -328,7 +328,7 @@ def rebuild_ft_billing_for_day(service_id, day: date):
             "deleted %s existing billing rows for %s",
             deleted_rows,
             process_day,
-            extra={"deleted_record_count": deleted_rows, "process_day": process_day.isoformat()},
+            extra={"deleted_record_count": deleted_rows, "process_day": process_day},
         )
 
         billing_data = fetch_billing_data_for_day(process_day=process_day, service_ids=service_ids)
@@ -338,7 +338,7 @@ def rebuild_ft_billing_for_day(service_id, day: date):
             "added/updated %s billing rows for %s",
             updated_record_count,
             process_day,
-            extra={"updated_record_count": updated_record_count, "process_day": process_day.isoformat()},
+            extra={"updated_record_count": updated_record_count, "process_day": process_day},
         )
 
     if service_id:
@@ -436,8 +436,8 @@ def populate_notification_postage(start_date):
         base_params = {
             "duration": datetime.utcnow() - execution_start,
             "migrated_row_count": result.rowcount,
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat(),
+            "start_date": start_date,
+            "end_date": end_date,
         }
         current_app.logger.info(
             "notification postage took %(duration)s. "
@@ -482,7 +482,7 @@ def update_jobs_archived_flag(start_date, end_date):
         base_params = {
             "duration": (datetime.now() - start_time).total_seconds(),
             "updated_record_count": result.rowcount,
-            "process_date": process_date.isoformat(),
+            "process_date": process_date,
         }
         current_app.logger.info(
             "jobs: --- Completed took %(duration)s. Archived %(updated_record_count)s jobs for %(process_date)s",

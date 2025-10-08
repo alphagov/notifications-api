@@ -231,7 +231,7 @@ def verify_user_code(user_id):
             "user_id": user_id,
             "is_expired": expired,
             "is_used": used,
-            "expiry_time": code.expiry_datetime.isoformat(),
+            "expiry_time": code.expiry_datetime,
         }
         current_app.logger.warning(
             "Rejecting 2fa code for %(user_id)s because is_expired=%(is_expired)s, is_used=%(is_used)s",

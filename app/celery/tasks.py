@@ -184,15 +184,15 @@ def job_complete(job, resumed=False, start=None):
     job.processing_finished = finished
     dao_update_job(job)
 
-    extra = {"job_id": job.id, "job_processing_finished_at": job.processing_finished.isoformat()}
+    extra = {"job_id": job.id, "job_processing_finished_at": job.processing_finished}
     if resumed:
         current_app.logger.info(
             "Resumed Job %(job_id)s completed at %(job_processing_finished_at)s", extra, extra=extra
         )
     else:
         extra = {
-            "job_created_at": job.created_at and job.created_at.isoformat(),
-            "job_started_at": start and start.isoformat(),
+            "job_created_at": job.created_at,
+            "job_started_at": start,
             **extra,
         }
         current_app.logger.info(
@@ -367,7 +367,7 @@ def save_sms(
 
         extra = {
             "notification_id": saved_notification.id,
-            "notification_created_at": saved_notification.created_at.isoformat(),
+            "notification_created_at": saved_notification.created_at,
             "job_id": notification.get("job", None),
             "job_row_number": notification.get("row_number", None),
         }
@@ -436,7 +436,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
 
         extra = {
             "notification_id": saved_notification.id,
-            "notification_created_at": saved_notification.created_at.isoformat(),
+            "notification_created_at": saved_notification.created_at,
             "job_id": notification.get("job", None),
             "job_row_number": notification.get("row_number", None),
         }
@@ -494,7 +494,7 @@ def save_letter(
 
         extra = {
             "notification_id": saved_notification.id,
-            "notification_created_at": saved_notification.created_at.isoformat(),
+            "notification_created_at": saved_notification.created_at,
             "job_id": notification.get("job", None),
             "job_row_number": notification.get("row_number", None),
         }
