@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
-from sqlalchemy.sql import text
+from sqlalchemy import text
 
 RATE_CHANGE_DATE = datetime(2023, 11, 1, 0, 0)
 
@@ -49,15 +49,15 @@ def upgrade():
     conn.execute(
         text(
             """
-        UPDATE
-            letter_rates
-        SET
-            end_date = :rate_change_date
-        WHERE
-            end_date IS NULL
-    """
+            UPDATE
+                letter_rates
+            SET
+                end_date = :rate_change_date
+            WHERE
+                end_date IS NULL
+            """
         ),
-        rate_change_date=RATE_CHANGE_DATE,
+        {"rate_change_date": RATE_CHANGE_DATE},
     )
 
     for crown in [True, False]:
@@ -66,16 +66,18 @@ def upgrade():
             conn.execute(
                 text(
                     """
-                INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
-                    VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
-            """
+                    INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
+                        VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
+                    """
                 ),
-                id=id,
-                start_date=start_date,
-                sheet_count=sheet_count,
-                rate=rate,
-                crown=crown,
-                post_class=post_class,
+                {
+                    "id": uuid.uuid4(),
+                    "start_date": start_date,
+                    "sheet_count": sheet_count,
+                    "rate": rate,
+                    "crown": crown,
+                    "post_class": post_class,
+                }
             )
 
 
@@ -84,25 +86,25 @@ def downgrade():
     conn.execute(
         text(
             """
-        delete from
-            letter_rates
-        where
-            start_date = :rate_change_date
-    """
+            delete from
+                letter_rates
+            where
+                start_date = :rate_change_date
+            """
         ),
-        rate_change_date=RATE_CHANGE_DATE,
+        {"rate_change_date": RATE_CHANGE_DATE},
     )
 
     conn.execute(
         text(
             """
-        update
-            letter_rates
-        set
-            end_date = null
-        where
-            end_date = :rate_change_date
-    """
+            update
+                letter_rates
+            set
+                end_date = null
+            where
+                end_date = :rate_change_date
+            """
         ),
-        rate_change_date=RATE_CHANGE_DATE,
+        {"rate_change_date": RATE_CHANGE_DATE},
     )

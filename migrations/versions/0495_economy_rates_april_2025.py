@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from alembic import op
-from sqlalchemy.sql import text
+from sqlalchemy import text
 
 revision = '0495_economy_rates_april_2025'
 down_revision = '0494_add_intl_sms_limit_column'
@@ -30,20 +30,21 @@ def upgrade():
 
     for crown in [True, False]:
         for sheet_count, rate in NEW_RATES:
-            rates_id = uuid.uuid4()
             conn.execute(
                 text(
                     """
-                INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
-                    VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
-            """
+                    INSERT INTO letter_rates (id, start_date, sheet_count, rate, crown, post_class)
+                        VALUES (:id, :start_date, :sheet_count, :rate, :crown, :post_class)
+                    """
                 ),
-                id=rates_id,
-                start_date=RATE_CHANGE_DATE,
-                sheet_count=sheet_count,
-                rate=rate,
-                crown=crown,
-                post_class=POST_CLASS,
+                {
+                    "id": uuid.uuid4(),
+                    "start_date": RATE_CHANGE_DATE,
+                    "sheet_count": sheet_count,
+                    "rate": rate,
+                    "crown": crown,
+                    "post_class": POST_CLASS,
+                }
             )
 
 
@@ -53,9 +54,9 @@ def downgrade():
     conn.execute(
         text(
             """
-        DELETE FROM letter_rates WHERE post_class = :post_class
-    """
+            DELETE FROM letter_rates WHERE post_class = :post_class
+            """
         ),
-        post_class=POST_CLASS,
+        {"post_class": POST_CLASS},
     )
 
