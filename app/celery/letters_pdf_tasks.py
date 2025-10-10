@@ -125,11 +125,11 @@ def update_billable_units_for_letter(self, notification_id, page_count):
         extra = {
             "notification_id": notification_id,
             "notification_reference": notification.reference,
-            "units": billable_units,
+            "notification_billable_units": billable_units,
         }
         current_app.logger.info(
             "Letter notification id: %(notification_id)s reference %(notification_reference)s: "
-            "billable units set to %(units)s",
+            "billable units set to %(notification_billable_units)s",
             extra,
             extra=extra,
         )
