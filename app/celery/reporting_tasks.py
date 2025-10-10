@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
-import pytz
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 
@@ -59,7 +58,7 @@ def create_nightly_billing(
 def update_ft_billing_for_today():
     process_day = convert_utc_to_bst(datetime.utcnow()).date().isoformat()
     create_or_update_ft_billing_for_day(process_day=process_day)
-    redis_store.set(CacheKeys.FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT, datetime.now(tz=pytz.utc).isoformat())
+    redis_store.set(CacheKeys.FT_BILLING_FOR_TODAY_UPDATED_AT_UTC_ISOFORMAT, datetime.now(UTC).isoformat())
 
 
 @notify_celery.task(name="create-or-update-ft-billing-for-day")

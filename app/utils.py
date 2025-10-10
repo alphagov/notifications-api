@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from itertools import islice
 from urllib.parse import urljoin
 
-import pytz
 from flask import current_app, url_for
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
@@ -26,7 +25,6 @@ from app.constants import (
 DATETIME_FORMAT_NO_TIMEZONE = "%Y-%m-%d %H:%M:%S.%f"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
-local_timezone = pytz.timezone("Europe/London")
 
 
 def pagination_links(pagination, endpoint, **kwargs):

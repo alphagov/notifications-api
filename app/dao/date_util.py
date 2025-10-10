@@ -1,7 +1,6 @@
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
-import pytz
-from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst, local_timezone
 
 
 def get_months_for_financial_year(year):
@@ -41,9 +40,7 @@ def get_april_fools(year):
     :param year: the year to calculate the April 1, 00:00 BST for
     :return: the datetime of April 1 for the given year, for example 2016 = 2016-03-31 23:00:00
     """
-    return (
-        pytz.timezone("Europe/London").localize(datetime(year, 4, 1, 0, 0, 0)).astimezone(pytz.UTC).replace(tzinfo=None)
-    )
+    return datetime(year, 4, 1, 0, 0, 0, tzinfo=local_timezone).astimezone(UTC).replace(tzinfo=None)
 
 
 def get_month_start_and_end_date_in_utc(month_year):
