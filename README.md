@@ -9,7 +9,7 @@ Contains:
 
 ### Python version
 
-We run python 3.11 both locally and in production.
+We run python 3.13 both locally and in production.
 
 ### psycopg2
 
