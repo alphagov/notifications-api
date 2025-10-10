@@ -258,6 +258,8 @@ pyjwt==2.10.1
     # via
     #   -r requirements.txt
     #   notifications-python-client
+pyorc==0.10.0
+    # via -r requirements.txt
 pypdf==3.17.0
     # via
     #   -r requirements.txt
