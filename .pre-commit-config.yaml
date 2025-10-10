@@ -1,4 +1,4 @@
-# This file was automatically copied from notifications-utils@101.3.1
+# This file was automatically copied from notifications-utils@102.0.0
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks

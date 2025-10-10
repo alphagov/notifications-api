@@ -1,5 +1,6 @@
+from datetime import UTC
+
 import dateutil
-import pytz
 from flask import Blueprint, current_app, jsonify, request
 
 from app.aws.s3 import get_job_metadata_from_s3
@@ -190,7 +191,7 @@ def get_scheduled_job_stats(service_id):
         jsonify(
             count=count,
             soonest_scheduled_for=(
-                soonest_scheduled_for.replace(tzinfo=pytz.UTC).isoformat() if soonest_scheduled_for else None
+                soonest_scheduled_for.replace(tzinfo=UTC).isoformat() if soonest_scheduled_for else None
             ),
         ),
         200,
