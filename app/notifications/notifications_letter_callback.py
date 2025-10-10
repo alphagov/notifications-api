@@ -114,7 +114,9 @@ def process_letter_callback():
         current_app.logger.error("Received invalid json schema: %s", request_data)
         raise
 
-    current_app.logger.info("Letter callback for notification id %s received", notification_id)
+    current_app.logger.info(
+        "Letter callback for notification id %s received", notification_id, extra={"notification_id": notification_id}
+    )
 
     check_token_matches_payload(token_id=notification_id, json_id=request_data["data"]["jobId"])
 
@@ -139,7 +141,7 @@ def parse_token(token):
         notification_id = signing.decode(token)
         return notification_id
     except BadSignature:
-        current_app.logger.info("Letter callback with invalid token of %s received", token)
+        current_app.logger.info("Letter callback with invalid token of %s received", token, extra={"token": token})
         raise InvalidRequest("A valid token must be provided in the query string", 403) from None
 
 
@@ -149,6 +151,10 @@ def check_token_matches_payload(token_id, json_id):
             "Notification ID in token does not match json. token: %s - json: %s",
             token_id,
             json_id,
+            extra={
+                "notification_id": json_id,
+                "notification_id_token": token_id,
+            },
         )
         raise InvalidRequest("Notification ID in letter callback data does not match ID in token", 400)
 

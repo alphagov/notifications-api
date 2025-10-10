@@ -91,7 +91,11 @@ def send_sms_to_provider(notification):
                     f"{provider.name}-error-rate", SMS_PROVIDER_ERROR_THRESHOLD, SMS_PROVIDER_ERROR_INTERVAL
                 ):
                     dao_reduce_sms_provider_priority(provider.name, time_threshold=timedelta(minutes=1))
-                    current_app.logger.warning("Error threshold exceeded for provider %s", provider.name)
+                    current_app.logger.warning(
+                        "Error threshold exceeded for provider %s",
+                        provider.name,
+                        extra={"provider_name": provider.name},
+                    )
                 raise e
             else:
                 notification.billable_units = template.fragment_count
@@ -199,7 +203,11 @@ def provider_to_use(notification_type, international=False):
     ]
 
     if not active_providers:
-        current_app.logger.error("%s failed as no active providers", notification_type)
+        current_app.logger.error(
+            "%s notification failed as no active providers",
+            notification_type,
+            extra={"notification_type": notification_type},
+        )
         raise Exception(f"No active {notification_type} providers")
 
     if len(active_providers) == 1:

@@ -97,13 +97,15 @@ def get_pdf_for_templated_letter(self, notification_id):
     except Exception as e:
         try:
             current_app.logger.exception(
-                "RETRY: calling create-letter-pdf task for notification %s failed", notification_id
+                "RETRY: calling get-pdf-for-templated-letter task for notification %s failed",
+                notification_id,
+                extra={"notification_id": notification_id},
             )
             self.retry(exc=e, queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError as e:
             message = (
                 f"RETRY FAILED: Max retries reached. "
-                f"The task create-letter-pdf failed for notification id {notification_id}. "
+                f"The task get-pdf-for-templated-letter failed for notification id {notification_id}. "
                 f"Notification has been updated to technical-failure"
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
@@ -120,9 +122,16 @@ def update_billable_units_for_letter(self, notification_id, page_count):
         notification.billable_units = billable_units
         dao_update_notification(notification)
 
+        extra = {
+            "notification_id": notification_id,
+            "notification_reference": notification.reference,
+            "notification_billable_units": billable_units,
+        }
         current_app.logger.info(
-            "Letter notification id: %(id)s reference %(ref)s: billable units set to %(units)s",
-            {"id": notification_id, "ref": notification.reference, "units": billable_units},
+            "Letter notification id: %(notification_id)s reference %(notification_reference)s: "
+            "billable units set to %(notification_billable_units)s",
+            extra,
+            extra=extra,
         )
 
 
@@ -133,9 +142,11 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
     notification = get_notification_by_id(notification_id, _raise=True)
     notification.status = NOTIFICATION_VALIDATION_FAILED
     dao_update_notification(notification)
+    extra = {"page_count": page_count, "notification_id": notification_id}
     current_app.logger.info(
-        "Validation failed: letter is too long %(page_count)s for letter with id: %(id)s",
-        {"page_count": page_count, "id": notification_id},
+        "Validation failed: letter is too long %(page_count)s for letter with id: %(notification_id)s",
+        extra,
+        extra=extra,
     )
 
 
@@ -261,11 +272,17 @@ def sanitise_letter(self, filename):
         reference = get_reference_from_filename(filename)
         notification = dao_get_notification_by_reference(reference)
 
-        current_app.logger.info("Notification ID %s Virus scan passed: %s", notification.id, filename)
+        extra = {"notification_id": notification.id, "file_name": filename}
+        current_app.logger.info(
+            "Notification ID %(notification_id)s Virus scan passed: %(file_name)s", extra, extra=extra
+        )
 
         if notification.status != NOTIFICATION_PENDING_VIRUS_CHECK:
             current_app.logger.info(
-                "Sanitise letter called for notification %s which is in %s state", notification.id, notification.status
+                "Sanitise letter called for notification %s which is in %s state",
+                notification.id,
+                notification.status,
+                extra={"notification_id": notification.id, "notification_status": notification.status},
             )
             return
 
@@ -281,7 +298,9 @@ def sanitise_letter(self, filename):
     except Exception:
         try:
             current_app.logger.exception(
-                "RETRY: calling sanitise_letter task for notification %s failed", notification.id
+                "RETRY: calling sanitise_letter task for notification %s failed",
+                notification.id,
+                extra={"notification_id": notification.id},
             )
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError as e:
@@ -301,7 +320,11 @@ def process_sanitised_letter(self, sanitise_data):
     filename = letter_details["filename"]
     notification_id = letter_details["notification_id"]
 
-    current_app.logger.info("Processing sanitised letter with id %s", notification_id)
+    current_app.logger.info(
+        "Processing sanitised letter with id %s",
+        notification_id,
+        extra={"notification_id": notification_id},
+    )
     notification = get_notification_by_id(notification_id, _raise=True)
 
     if notification.status != NOTIFICATION_PENDING_VIRUS_CHECK:
@@ -309,6 +332,7 @@ def process_sanitised_letter(self, sanitise_data):
             "process-sanitised-letter task called for notification %s which is in %s state",
             notification.id,
             notification.status,
+            extra={"notification_id": notification.id, "notification_status": notification.status},
         )
         return
 
@@ -317,13 +341,18 @@ def process_sanitised_letter(self, sanitise_data):
 
         if letter_details["validation_status"] == "failed":
             current_app.logger.info(
-                "Processing invalid precompiled pdf with id %s (file %s)", notification_id, filename
+                "Processing invalid precompiled pdf with id %s (file %s)",
+                notification_id,
+                filename,
+                extra={"notification_id": notification_id, "file_name": filename},
             )
 
             # Log letters that fail with no fixed abode error so we can check for false positives
             if letter_details["message"] == "no-fixed-abode-address":
                 current_app.logger.info(
-                    "Precomiled PDF with id %s was invalid due to no fixed abode address", notification_id
+                    "Precomiled PDF with id %s was invalid due to no fixed abode address",
+                    notification_id,
+                    extra={"notification_id": notification_id},
                 )
 
             _move_invalid_letter_and_update_status(
@@ -336,7 +365,12 @@ def process_sanitised_letter(self, sanitise_data):
             )
             return
 
-        current_app.logger.info("Processing valid precompiled pdf with id %s (file %s)", notification_id, filename)
+        current_app.logger.info(
+            "Processing valid precompiled pdf with id %s (file %s)",
+            notification_id,
+            filename,
+            extra={"notification_id": notification_id, "file_name": filename},
+        )
 
         billable_units = get_billable_units_for_letter_page_count(letter_details["page_count"])
         is_test_key = notification.key_type == KEY_TYPE_TEST
@@ -372,14 +406,19 @@ def process_sanitised_letter(self, sanitise_data):
         # Boto exceptions are likely to be caused by the file(s) being in the wrong place, so retrying won't help -
         # we'll need to manually investigate
         current_app.logger.exception(
-            "Boto error when processing sanitised letter for notification %s (file %s)", notification.id, filename
+            "Boto error when processing sanitised letter for notification %s (file %s)",
+            notification.id,
+            filename,
+            extra={"notification_id": notification.id, "file_name": filename},
         )
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException from e
     except Exception:
         try:
             current_app.logger.exception(
-                "RETRY: calling process_sanitised_letter task for notification %s failed", notification.id
+                "RETRY: calling process_sanitised_letter task for notification %s failed",
+                notification.id,
+                extra={"notification_id": notification.id},
             )
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError as e:
@@ -405,7 +444,11 @@ def _move_invalid_letter_and_update_status(
             reference=notification.reference, status=NOTIFICATION_VALIDATION_FAILED, billable_units=0
         )
     except BotoClientError as e:
-        current_app.logger.exception("Error when moving letter with id %s to invalid PDF bucket", notification.id)
+        current_app.logger.exception(
+            "Error when moving letter with id %s to invalid PDF bucket",
+            notification.id,
+            extra={"notification_id": notification.id},
+        )
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException from e
 
@@ -437,7 +480,12 @@ def process_virus_scan_error(filename):
         raise Exception(
             f"There should only be one letter notification for each reference. Found {updated_count} notifications"
         )
-    current_app.logger.error("notification id %s Virus scan error: %s", notification.id, filename)
+    current_app.logger.error(
+        "notification id %s Virus scan error: %s",
+        notification.id,
+        filename,
+        extra={"notification_id": notification.id, "file_name": filename},
+    )
     raise VirusScanError(f"notification id {notification.id} Virus scan error: {filename}")
 
 
@@ -464,7 +512,7 @@ def replay_letters_in_error(filename=None):
     if filename:
         move_error_pdf_to_scan_bucket(filename)
         # call task to add the filename to anti virus queue
-        current_app.logger.info("Calling scan_file for: %s", filename)
+        current_app.logger.info("Calling scan_file for: %s", filename, extra={"file_name": filename})
 
         if current_app.config["ANTIVIRUS_ENABLED"]:
             notify_celery.send_task(
@@ -479,7 +527,7 @@ def replay_letters_in_error(filename=None):
         error_files = get_file_names_from_error_bucket()
         for item in error_files:
             moved_file_name = item.key.split("/")[1]
-            current_app.logger.info("Calling scan_file for: %s", moved_file_name)
+            current_app.logger.info("Calling scan_file for: %s", moved_file_name, extra={"file_name": moved_file_name})
             move_error_pdf_to_scan_bucket(moved_file_name)
             # call task to add the filename to anti virus queue
             if current_app.config["ANTIVIRUS_ENABLED"]:

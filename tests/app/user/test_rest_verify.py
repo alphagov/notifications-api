@@ -107,7 +107,7 @@ def test_user_verify_code_expired_code_and_increments_failed_login_count(code_ty
     assert sample_user.logged_in_at is None
     assert sample_user.current_session_id is None
     assert sample_user.failed_login_count == 1
-    assert f"Rejecting 2fa code for {sample_user.id} because expired=True, used=False" in caplog.messages
+    assert f"Rejecting 2fa code for {sample_user.id} because is_expired=True, is_used=False" in caplog.messages
 
 
 @freeze_time("2016-01-01 10:00:00.000000")

@@ -444,7 +444,7 @@ def test_delete_test_notifications_copes_if_letter_not_in_s3(sample_letter_templ
         datetime(2020, 1, 2),
     )
 
-    assert f"No S3 object to delete for letter: {notification_id}" in caplog.messages
+    assert f"No S3 object to delete for letter notification {notification_id}" in caplog.messages
 
 
 @freeze_time("2020-03-20 14:00")

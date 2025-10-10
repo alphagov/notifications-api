@@ -52,9 +52,10 @@ def one_click_unsubscribe(notification_id, token):
 
     if unsubscribe_user_from_notify_services(unsubscribe_data["service_id"], unsubscribe_data["email_address"]):
         current_app.logger.info(
-            "Unsubscribe request processed for Notify service %s and notification_id: %s",
+            "Unsubscribe request processed for Notify service %s and notification %s",
             unsubscribe_data["service_id"],
             notification_id,
+            extra={"notification_id": notification_id, "service_id": unsubscribe_data["service_id"]},
         )
         return jsonify(result="success", message="Unsubscribe successful"), 200
 
@@ -62,7 +63,11 @@ def one_click_unsubscribe(notification_id, token):
     redis_store.delete(f"service-{unsubscribe_data['service_id']}-unsubscribe-request-statistics")
     redis_store.delete(f"service-{unsubscribe_data['service_id']}-unsubscribe-request-reports-summary")
 
-    current_app.logger.info("Received unsubscribe request for notification_id: %s", notification_id)
+    current_app.logger.info(
+        "Received unsubscribe request for notification %s",
+        notification_id,
+        extra={"notification_id": notification_id},
+    )
 
     return jsonify(result="success", message="Unsubscribe successful"), 200
 

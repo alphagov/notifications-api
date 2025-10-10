@@ -502,7 +502,8 @@ def delete_billing_data_for_day(process_day: date, service_ids=None):
 def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
-    current_app.logger.info("Populate ft_billing for %s to %s", start_date, end_date)
+    extra = {"start_time": start_date, "end_time": end_date}
+    current_app.logger.info("Populate ft_billing for %(start_time)s to %(end_time)s", extra, extra=extra)
     billing_data = []
 
     for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
