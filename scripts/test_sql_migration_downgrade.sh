@@ -9,8 +9,8 @@ export FLASK_APP="application.py"
 export NOTIFY_ENVIRONMENT="development"
 MIGRATION_TEST_DATABASE_DB_NAME="migration_test"
 
-# default to localhost
-POSTGRES_SERVER_URI=${SQLALCHEMY_DATABASE_URI:-"postgresql://postgres:postgres@localhost:5432/"}
+# can’t use URI from environment variable because it uses a different protocol
+POSTGRES_SERVER_URI=${POSTGRES_SERVER_URI:-"postgresql://postgres:postgres@localhost:5432/"}
 # remove any existing db name, and replace with migration_test
 POSTGRES_SERVER_URI="${POSTGRES_SERVER_URI%/*}/"
 MIGRATION_TEST_DATABASE_URI="$POSTGRES_SERVER_URI$MIGRATION_TEST_DATABASE_DB_NAME"
@@ -20,6 +20,9 @@ CURRENT_VERSION=$(curl -s https://raw.githubusercontent.com/alphagov/notificatio
 
 # what is the most recent version? note this depends on us only ever having one head
 NEWEST_VERSION=$(flask db heads | tail -n 1 | cut -d " " -f 1)
+
+# Always check that this script can connect to the database
+psql $POSTGRES_SERVER_URI -c "BEGIN;COMMIT;"
 
 if [[ "${CURRENT_VERSION}" == "${NEWEST_VERSION}" ]]; then
     echo "No migrations to check"
