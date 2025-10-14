@@ -1281,7 +1281,7 @@ def mock_onwards_request_headers(mocker):
 
 
 def datetime_in_past(days=0, seconds=0):
-    return datetime.now(tz=UTC) - timedelta(days=days, seconds=seconds)
+    return datetime.now(UTC) - timedelta(days=days, seconds=seconds)
 
 
 def merge_fields(dct, merge_dct):
