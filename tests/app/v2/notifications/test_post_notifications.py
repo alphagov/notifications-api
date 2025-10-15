@@ -466,13 +466,16 @@ def test_notification_returns_400_and_for_schema_problems(
     } in error_resp["errors"]
 
 
+@pytest.mark.parametrize(
+    "email_address", ("notify@digital.cabinet-office.gov.uk", "\nnotify@digital.cabinet-office.gov.uk ")
+)
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
 def test_post_email_notification_returns_201(
-    api_client_request, sample_email_template_with_placeholders, mocker, reference
+    api_client_request, sample_email_template_with_placeholders, mocker, reference, email_address
 ):
     mocked = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     data = {
-        "email_address": sample_email_template_with_placeholders.service.users[0].email_address,
+        "email_address": email_address,
         "template_id": sample_email_template_with_placeholders.id,
         "personalisation": {"name": "Bob"},
     }
@@ -488,6 +491,7 @@ def test_post_email_notification_returns_201(
 
     assert validate(resp_json, post_email_response) == resp_json
     notification = Notification.query.one()
+    assert notification.to == "notify@digital.cabinet-office.gov.uk"
     assert notification.status == NOTIFICATION_CREATED
     assert notification.postage is None
     assert resp_json["id"] == str(notification.id)
@@ -983,10 +987,16 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_to_uk_landline
     assert error_json["errors"] == [{"error": "InvalidPhoneError", "message": "Not a UK mobile number"}]
 
 
-def test_post_sms_should_persist_supplied_sms_number(api_client_request, sample_template_with_placeholders, mocker):
+@pytest.mark.parametrize("supplied_number", ("+(44) 77009-00855", "  +(44) 77009-00855\n"))
+def test_post_sms_should_persist_supplied_sms_number(
+    api_client_request,
+    sample_template_with_placeholders,
+    mocker,
+    supplied_number,
+):
     mocked = mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
     data = {
-        "phone_number": "+(44) 77009-00855",
+        "phone_number": supplied_number,
         "template_id": str(sample_template_with_placeholders.id),
         "personalisation": {" Name": "Jo"},
     }
