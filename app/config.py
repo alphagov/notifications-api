@@ -490,6 +490,7 @@ class Config:
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = os.environ.get("S3_BUCKET_TRANSIENT_UPLOADED_LETTERS")
     S3_BUCKET_LETTER_SANITISE = os.environ.get("S3_BUCKET_LETTER_SANITISE")
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = os.environ.get("S3_BUCKET_REPORT_REQUESTS_DOWNLOAD")
+    S3_BUCKET_NOTIFICATION_DEEP_HISTORY = os.environ.get("S3_BUCKET_NOTIFICATION_DEEP_HISTORY")
     FROM_NUMBER = os.environ.get("FROM_NUMBER")
     API_RATE_LIMIT_ENABLED = os.environ.get("API_RATE_LIMIT_ENABLED", "1") == "1"
 
@@ -498,6 +499,13 @@ class Config:
     SEND_ZENDESK_ALERTS_ENABLED = os.environ.get("SEND_ZENDESK_ALERTS_ENABLED", "0") == "1"
     CHECK_SLOW_TEXT_MESSAGE_DELIVERY = os.environ.get("CHECK_SLOW_TEXT_MESSAGE_DELIVERY", "0") == "1"
     WEEKLY_USER_RESEARCH_EMAIL_ENABLED = os.environ.get("WEEKLY_USER_RESEARCH_EMAIL_ENABLED", "0") == "1"
+
+    NOTIFICATION_DEEP_HISTORY_MIN_AGE_DAYS = int(os.environ.get("NOTIFICATION_DEEP_HISTORY_MIN_AGE_DAYS", 365))
+    NOTIFICATION_DEEP_HISTORY_MAX_HOURS_ARCHIVED_IN_RUN = int(
+        os.environ.get("NOTIFICATION_DEEP_HISTORY_MAX_HOURS_ARCHIVED_IN_RUN", 24 * 5)
+    )
+    NOTIFICATION_DEEP_HISTORY_S3_KEY_PREFIX = os.environ.get("NOTIFICATION_DEEP_HISTORY_S3_KEY_PREFIX", "")
+    NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED = os.environ.get("NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", "1") == "1"
 
     REPORT_REQUEST_NOTIFICATIONS_TIMEOUT_MINUTES = 30
     REPORT_REQUEST_NOTIFICATIONS_CSV_BATCH_SIZE = 2500
@@ -534,6 +542,7 @@ class Development(Config):
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "development-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "development-letters-sanitise"
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = "development-report-requests-download"
+    S3_BUCKET_NOTIFICATION_DEEP_HISTORY = "development-notification-deep-history"
 
     INTERNAL_CLIENT_API_KEYS = {
         Config.ADMIN_CLIENT_ID: ["dev-notify-secret-key"],
@@ -581,6 +590,7 @@ class Test(Development):
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "test-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "test-letters-sanitise"
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = "test-report-requests-download"
+    S3_BUCKET_NOTIFICATION_DEEP_HISTORY = "test-notification-deep-history"
 
     # when testing, the SQLALCHEMY_DATABASE_URI is used for the postgres server's location
     # but the database name is set in the _notify_db fixture
