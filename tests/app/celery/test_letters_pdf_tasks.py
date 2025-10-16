@@ -1,11 +1,10 @@
 import uuid
 from collections import namedtuple
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import ANY, call
 
 import boto3
 import pytest
-import pytz
 from botocore.exceptions import ClientError
 from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
@@ -283,15 +282,15 @@ class TestCollateLetterPdfsToBeSent:
             (
                 # The 16:50 UTC run ran a second ago:
                 # the next run should be in 3,599 seconds at 17:50 UTC
-                datetime(2023, 6, 1, 16, 50, 0, tzinfo=pytz.UTC),
-                datetime(2023, 6, 1, 16, 50, 1, tzinfo=pytz.UTC),
+                datetime(2023, 6, 1, 16, 50, 0, tzinfo=UTC),
+                datetime(2023, 6, 1, 16, 50, 1, tzinfo=UTC),
                 3599,
             ),
             (
                 # The 17:50 UTC run ran a second ago:
                 # the next run should be in 82,799 seconds at 16:50 UTC the next day
-                datetime(2023, 6, 1, 17, 50, 0, tzinfo=pytz.UTC),
-                datetime(2023, 6, 1, 17, 50, 1, tzinfo=pytz.UTC),
+                datetime(2023, 6, 1, 17, 50, 0, tzinfo=UTC),
+                datetime(2023, 6, 1, 17, 50, 1, tzinfo=UTC),
                 82799,
             ),
         ),
