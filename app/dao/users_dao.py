@@ -3,8 +3,8 @@ from datetime import date, datetime, timedelta
 from random import SystemRandom
 
 from flask import current_app
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db, redis_store
@@ -116,6 +116,21 @@ def count_user_verify_codes(user):
 
 def get_user_by_id(user_id):
     return User.query.filter_by(id=user_id).one()
+
+
+def get_user_by_id_read(user_id):
+    stmt = select(User).where(User.id == str(user_id))
+
+    # Get the engine for the replica bind.
+    replica_engine = db.get_engine("replica")
+
+    # Create a temporary session and execute the query.
+    with Session(replica_engine) as replica_session:
+        users = replica_session.execute(stmt).scalar_one()
+
+        # The session is now closed. The `user` object is detached.
+        # Be careful not to access any lazy-loaded relationships from it.
+        return [x.serialize() for x in users] if isinstance(users, list) else users.serialize()
 
 
 def get_user_by_email(email):

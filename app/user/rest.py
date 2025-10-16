@@ -29,6 +29,7 @@ from app.dao.users_dao import (
     get_user_and_accounts,
     get_user_by_email,
     get_user_by_id,
+    get_user_by_id_read,
     get_user_code,
     get_users_by_partial_email,
     increment_failed_login_count,
@@ -440,9 +441,8 @@ def send_already_registered_email(user_id):
 
 @user_blueprint.route("/<uuid:user_id>", methods=["GET"])
 def get_user(user_id):
-    users = get_user_by_id(user_id=user_id)
-    result = [x.serialize() for x in users] if isinstance(users, list) else users.serialize()
-    return jsonify(data=result)
+    users = get_user_by_id_read(user_id=user_id)
+    return jsonify(data=users)
 
 
 @user_blueprint.route("/<uuid:user_id>/service/<uuid:service_id>/permission", methods=["POST"])
