@@ -529,7 +529,7 @@ def test_check_token_bucket_service_over_api_rate_limit_when_exceed_rate_limit_r
         assert e.value.fields == []
 
 
-@pytest.mark.parametrize("remaining_tokens", (1, 999))
+@pytest.mark.parametrize("remaining_tokens", (1, 999, None))
 def test_check_token_bucket_service_over_api_rate_limit_when_rate_limit_has_not_exceeded_limit_succeeds(
     mocker,
     remaining_tokens,
