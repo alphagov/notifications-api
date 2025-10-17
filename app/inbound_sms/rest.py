@@ -85,7 +85,9 @@ def remove_inbound_sms_for_service(service_id):
         return jsonify({}), 200
 
     except Exception as e:
-        current_app.logger.error("error removing inbound SMS for service %s: %s", service_id, e)
+        current_app.logger.error(
+            "error removing inbound SMS for service %s: %s", service_id, e, extra={"service_id": service_id}
+        )
         return jsonify({"message": str(e)}), 500
 
 

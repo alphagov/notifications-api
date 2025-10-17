@@ -108,12 +108,17 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
         service_stats = 0
 
     if int(service_stats) + num_notifications > limit_value:
+        extra = {
+            "service_id": service.id,
+            "sent_count": int(service_stats),
+            "notification_type": limit_name,
+            "limit": limit_value,
+        }
         current_app.logger.info(
-            "service %s has been rate limited for %s daily use sent %s limit %s",
-            service.id,
-            int(service_stats),
-            limit_name,
-            limit_value,
+            "Service %(service_id)s has been rate limited for %(sent_count)s daily use "
+            "sent %(notification_type)s limit %(limit)s",
+            extra,
+            extra=extra,
         )
         raise TooManyRequestsError(limit_name, limit_value)
 

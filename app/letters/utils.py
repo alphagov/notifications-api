@@ -91,12 +91,17 @@ def get_reference_from_filename(filename):
 
 
 def upload_letter_pdf(notification, pdf_data, precompiled=False):
+    extra = {
+        "notification_id": notification.id,
+        "notification_reference": notification.reference,
+        "notification_created_at": notification.created_at,
+        "file_size": len(pdf_data),
+    }
     current_app.logger.info(
-        "PDF Letter %s reference %s created at %s, %s bytes",
-        notification.id,
-        notification.reference,
-        notification.created_at,
-        len(pdf_data),
+        "PDF Letter notification %(notification_id)s reference %(notification_reference)s "
+        "created at %(notification_created_at)s, %(file_size)s bytes",
+        extra,
+        extra=extra,
     )
 
     upload_file_name = generate_letter_pdf_filename(
@@ -120,8 +125,13 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
         file_location=upload_file_name,
     )
 
+    extra = {
+        "notification_id": notification.id,
+        "s3_bucket": bucket_name,
+        "s3_key": upload_file_name,
+    }
     current_app.logger.info(
-        "Uploaded letters PDF %s to %s for notification id %s", upload_file_name, bucket_name, notification.id
+        "Uploaded letters PDF %(s3_key)s to %(s3_bucket)s for notification id %(notification_id)s", extra, extra=extra
     )
     return upload_file_name
 
@@ -213,8 +223,16 @@ def _move_s3_object(source_bucket, source_filename, target_bucket, target_filena
 
     s3.Object(source_bucket, source_filename).delete()
 
+    extra = {
+        "s3_bucket": source_bucket,
+        "s3_key": source_filename,
+        "s3_bucket_new": target_bucket,
+        "s3_key_new": target_filename,
+    }
     current_app.logger.info(
-        "Moved letter PDF: %s/%s to %s/%s", source_bucket, source_filename, target_bucket, target_filename
+        "Moved letter PDF: %(s3_bucket)s/%(s3_key)s to %(s3_bucket_new)s/%(s3_key_new)s",
+        extra,
+        extra=extra,
     )
 
 

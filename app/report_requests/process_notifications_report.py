@@ -148,16 +148,21 @@ class ReportRequestProcessor:
             upload_id=self.upload_id,
             data_bytes=data_bytes,
         )
+        extra = {
+            "part_number": self.part_number,
+            "report_request_id": self.report_request_id,
+            "s3_bucket": self.s3_bucket,
+            "s3_key": self.filename,
+            "row_count": data_bytes.count(b"\n"),
+        }
+        current_app.logger.info(
+            "Uploaded part %(part_number)s of report request %(report_request_id)s to bucket %(s3_bucket)s "
+            "with filename %(s3_key)s. Rows per part: %(row_count)s",
+            extra,
+            extra=extra,
+        )
         self.parts.append({"PartNumber": self.part_number, "ETag": response["ETag"]})
         self.part_number += 1
-        current_app.logger.info(
-            "Uploaded part %s of report request %s to bucket %s with filename %s. Rows per part: %s.",
-            self.part_number - 1,
-            self.report_request_id,
-            self.s3_bucket,
-            self.filename,
-            data_bytes.count(b"\n"),
-        )
 
     def _finalize_upload(self) -> None:
         s3_multipart_upload_complete(
@@ -166,12 +171,17 @@ class ReportRequestProcessor:
             upload_id=self.upload_id,
             parts=self.parts,
         )
+        extra = {
+            "report_request_id": self.report_request_id,
+            "s3_bucket": self.s3_bucket,
+            "s3_key": self.filename,
+            "part_count": len(self.parts),
+        }
         current_app.logger.info(
-            "Upload complete for report request %s to bucket %s with filename %s. Total parts: %s.",
-            self.report_request_id,
-            self.s3_bucket,
-            self.filename,
-            len(self.parts),
+            "Upload complete for report request %(report_request_id)s to bucket %(s3_bucket)s "
+            "with filename %(s3_key)s. Total parts: %(part_count)s.",
+            extra,
+            extra=extra,
         )
 
     def _abort_upload(self) -> None:
