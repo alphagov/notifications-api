@@ -63,15 +63,18 @@ def check_service_over_api_rate_limit(service, key_type):
 
 def token_bucket_rate_limit_exceeded(service, key_type):
     with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.labels(algorithm="token_bucket").time():
-        return (
-            redis_store.get_remaining_bucket_tokens(
-                key=f"{service.id}-tokens-{key_type}",
-                replenish_per_sec=int(service.rate_limit / SECONDS_IN_1_MINUTE),
-                bucket_max=TOKEN_BUCKET_MAX,
-                bucket_min=TOKEN_BUCKET_MIN,
-            )
-            < 1
+        remaining = redis_store.get_remaining_bucket_tokens(
+            key=f"{service.id}-tokens-{key_type}",
+            replenish_per_sec=int(service.rate_limit / SECONDS_IN_1_MINUTE),
+            bucket_max=TOKEN_BUCKET_MAX,
+            bucket_min=TOKEN_BUCKET_MIN,
         )
+
+        if remaining is None:
+            # we have troubles reaching redis and should allow this
+            return False
+
+        return remaining < 1
 
 
 def sliding_window_rate_limit_exceeded(service, key_type):
