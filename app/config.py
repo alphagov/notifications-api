@@ -99,6 +99,11 @@ class Config:
 
     # DB conection string
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")
+    SQLALCHEMY_BINDS = {
+        "bulk": {
+            "url": "postgresql+psycopg2://localhost/notification_api",
+        },
+    }
 
     # MMG API Key
     MMG_API_KEY = os.getenv("MMG_API_KEY")
