@@ -468,12 +468,25 @@ def setup_sqlalchemy_events(app):  # noqa: C901
             ["method", "host", "path", "bind"],
         )
 
-        for bind_label, engine in db.engines.items():
+        # do not be tempted to reference _bind_key & _engine from inside a closure - the for-loop
+        # will reassign them, hence why we have to "fix" them via kwarg defaults
+        for _bind_key, _engine in db.engines.items():
 
-            @event.listens_for(engine, "connect")
-            def connect(dbapi_connection, connection_record):
+            @event.listens_for(_engine, "connect")
+            def connect(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
                 # connection first opened with db
-                TOTAL_DB_CONNECTIONS.labels(str(bind_label)).inc()
+                TOTAL_DB_CONNECTIONS.labels(str(bind_key)).inc()
+
+                # ensure the following connection parameters get retained as the session-scoped
+                # parameters - they won't if they are set inside a transaction that gets rolled
+                # back for some reason (*despite* our explicit use of SET SESSION) and .readonly
+                # won't work at all
+                dbapi_connection.autocommit = True
+
+                if bind_key == "bulk":
+                    # ensure even in dev/test (where we don't want to have to set up read
+                    # replicas these connections will behave as expected
+                    dbapi_connection.readonly = True
 
                 cursor = dbapi_connection.cursor()
 
@@ -506,26 +519,18 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                     # round-trip of latency to every request.
                     cursor.execute("SET SESSION max_parallel_workers_per_gather = 0")
 
-                # ensure these connection parameters get retained as the session-scoped
-                # parameters. psycopg by default opens connections with a transaction
-                # already open. if this initial transaction happens to get rolled-back
-                # instead of committed, the connection parameters would be reverted
-                # (*despite* our explicit use of SET SESSION)
-                cursor.execute("COMMIT")
-                # open a new transaction to leave us back in the expected open-transaction
-                # state
-                cursor.execute("BEGIN")
+                dbapi_connection.autocommit = False
 
-            @event.listens_for(engine, "close")
-            def close(dbapi_connection, connection_record):
+            @event.listens_for(_engine, "close")
+            def close(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
                 # connection closed (probably only happens with overflow connections)
-                TOTAL_DB_CONNECTIONS.labels(str(bind_label)).dec()
+                TOTAL_DB_CONNECTIONS.labels(str(bind_key)).dec()
 
-            @event.listens_for(engine, "checkout")
-            def checkout(dbapi_connection, connection_record, connection_proxy):
+            @event.listens_for(_engine, "checkout")
+            def checkout(dbapi_connection, connection_record, connection_proxy, bind_key=_bind_key, engine=_engine):
                 try:
                     # connection given to a web worker
-                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(str(bind_label)).inc()
+                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(str(bind_key)).inc()
 
                     # this will overwrite any previous checkout_at timestamp
                     connection_record.info["checkout_at"] = time.monotonic()
@@ -559,15 +564,15 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 except Exception:
                     current_app.logger.exception("Exception caught for checkout event.")
 
-            @event.listens_for(engine, "checkin")
-            def checkin(dbapi_connection, connection_record):
+            @event.listens_for(_engine, "checkin")
+            def checkin(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
                 if "checkout_at" not in connection_record.info or "request_data" not in connection_record.info:
                     # we can get in this inconsistent state if the database is shutting down
                     return
 
                 try:
                     # connection returned by a web worker
-                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(str(bind_label)).dec()
+                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(str(bind_key)).dec()
 
                     # duration that connection was held by a single web request
                     duration = time.monotonic() - connection_record.info["checkout_at"]
@@ -576,7 +581,7 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                         connection_record.info["request_data"]["method"],
                         connection_record.info["request_data"]["host"],
                         connection_record.info["request_data"]["url_rule"],
-                        str(bind_label),
+                        str(bind_key),
                     ).observe(duration)
                 except Exception:
                     current_app.logger.exception("Exception caught for checkin event.")
