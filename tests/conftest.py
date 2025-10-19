@@ -96,6 +96,11 @@ def _notify_db(notify_api, worker_id):
 
     # create a database for this worker thread -
     current_app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
+    current_app.config["SQLALCHEMY_BINDS"] = {
+        "bulk": {
+            "url": db_uri,
+        },
+    }
 
     # get rid of the old SQLAlchemy instance because we can’t have multiple on the same app
     notify_api.extensions.pop("sqlalchemy")
