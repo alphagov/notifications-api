@@ -574,6 +574,11 @@ class Test(Development):
     FROM_NUMBER = "testing"
     NOTIFY_ENVIRONMENT = "test"
     TESTING = True
+    SQLALCHEMY_BINDS = {
+        "bulk": {
+            "url": "postgresql+psycopg2://localhost/notification_api",
+        },
+    }
 
     CELERY_WORKER_LOG_LEVEL = "INFO"
 
