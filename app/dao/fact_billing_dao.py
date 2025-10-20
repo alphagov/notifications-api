@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import case, literal, tuple_
 
 from app import db
+from app import models
 from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_POSTAGE_TYPES,
@@ -499,7 +500,7 @@ def delete_billing_data_for_day(process_day: date, service_ids=None):
     return FactBilling.query.filter(*filters).delete()
 
 
-def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False):
+def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False, models_module=models):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
     current_app.logger.info("Populate ft_billing for %s to %s", start_date, end_date)
@@ -512,32 +513,34 @@ def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permis
             end_date=end_date,
             service_ids=service_ids,
             check_permissions=check_permissions,
+            models_module=models_module,
         )
         billing_data += partial_billing_data
 
     return billing_data
 
 
-def _query_for_billing_data(notification_type, start_date, end_date, service_ids, check_permissions):
-    base_query = db.session.query(NotificationAllTimeView).join(
-        Service, NotificationAllTimeView.service_id == Service.id
+def _query_for_billing_data(notification_type, start_date, end_date, service_ids, check_permissions, models_module=models):
+    m = models_module
+    base_query = db.session.query(m.NotificationAllTimeView).join(
+        m.Service, m.NotificationAllTimeView.service_id == m.Service.id
     )
 
     if check_permissions:
         base_query = base_query.join(
-            ServicePermission,
+            m.ServicePermission,
             and_(
-                NotificationAllTimeView.service_id == ServicePermission.service_id,
-                ServicePermission.permission == notification_type,
+                m.NotificationAllTimeView.service_id == m.ServicePermission.service_id,
+                m.ServicePermission.permission == notification_type,
             ),
         )
 
     def _email_query():
         return (
             base_query.with_entities(
-                NotificationAllTimeView.template_id,
-                Service.crown.label("crown"),
-                Service.id.label("service_id"),
+                m.NotificationAllTimeView.template_id,
+                m.Service.crown.label("crown"),
+                m.Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 literal("ses").label("sent_by"),
                 literal(0).label("rate_multiplier"),
@@ -548,48 +551,48 @@ def _query_for_billing_data(notification_type, start_date, end_date, service_ids
                 func.count().label("notifications_sent"),
             )
             .filter(
-                NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
-                NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
-                NotificationAllTimeView.notification_type == notification_type,
-                *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
+                m.NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
+                m.NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+                m.NotificationAllTimeView.created_at >= start_date,
+                m.NotificationAllTimeView.created_at < end_date,
+                m.NotificationAllTimeView.notification_type == notification_type,
+                *(() if service_ids is None else (m.NotificationAllTimeView.service_id.in_(service_ids),)),
             )
             .group_by(
-                Service.id,
-                NotificationAllTimeView.template_id,
+                m.Service.id,
+                m.NotificationAllTimeView.template_id,
             )
         )
 
     def _sms_query():
-        sent_by = func.coalesce(NotificationAllTimeView.sent_by, "unknown")
-        rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
-        international = func.coalesce(NotificationAllTimeView.international, False)
+        sent_by = func.coalesce(m.NotificationAllTimeView.sent_by, "unknown")
+        rate_multiplier = func.coalesce(m.NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
+        international = func.coalesce(m.NotificationAllTimeView.international, False)
         return (
             base_query.with_entities(
-                NotificationAllTimeView.template_id,
-                Service.crown.label("crown"),
-                Service.id.label("service_id"),
+                m.NotificationAllTimeView.template_id,
+                m.Service.crown.label("crown"),
+                m.Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 sent_by.label("sent_by"),
                 rate_multiplier.label("rate_multiplier"),
                 international.label("international"),
                 literal(None).label("letter_page_count"),
                 literal("none").label("postage"),
-                func.sum(NotificationAllTimeView.billable_units).label("billable_units"),
+                func.sum(m.NotificationAllTimeView.billable_units).label("billable_units"),
                 func.count().label("notifications_sent"),
             )
             .filter(
-                NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
-                NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
-                NotificationAllTimeView.notification_type == notification_type,
-                *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
+                m.NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
+                m.NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+                m.NotificationAllTimeView.created_at >= start_date,
+                m.NotificationAllTimeView.created_at < end_date,
+                m.NotificationAllTimeView.notification_type == notification_type,
+                *(() if service_ids is None else (m.NotificationAllTimeView.service_id.in_(service_ids),)),
             )
             .group_by(
-                Service.id,
-                NotificationAllTimeView.template_id,
+                m.Service.id,
+                m.NotificationAllTimeView.template_id,
                 sent_by,
                 rate_multiplier,
                 international,
@@ -597,37 +600,37 @@ def _query_for_billing_data(notification_type, start_date, end_date, service_ids
         )
 
     def _letter_query():
-        rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
-        postage = func.coalesce(NotificationAllTimeView.postage, "none")
+        rate_multiplier = func.coalesce(m.NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
+        postage = func.coalesce(m.NotificationAllTimeView.postage, "none")
         return (
             base_query.with_entities(
-                NotificationAllTimeView.template_id,
-                Service.crown.label("crown"),
-                Service.id.label("service_id"),
+                m.NotificationAllTimeView.template_id,
+                m.Service.crown.label("crown"),
+                m.Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 literal("dvla").label("sent_by"),
                 rate_multiplier.label("rate_multiplier"),
-                NotificationAllTimeView.international,
-                NotificationAllTimeView.billable_units.label("letter_page_count"),
+                m.NotificationAllTimeView.international,
+                m.NotificationAllTimeView.billable_units.label("letter_page_count"),
                 postage.label("postage"),
-                func.sum(NotificationAllTimeView.billable_units).label("billable_units"),
+                func.sum(m.NotificationAllTimeView.billable_units).label("billable_units"),
                 func.count().label("notifications_sent"),
             )
             .filter(
-                NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
-                NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
-                NotificationAllTimeView.notification_type == notification_type,
-                *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
+                m.NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
+                m.NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+                m.NotificationAllTimeView.created_at >= start_date,
+                m.NotificationAllTimeView.created_at < end_date,
+                m.NotificationAllTimeView.notification_type == notification_type,
+                *(() if service_ids is None else (m.NotificationAllTimeView.service_id.in_(service_ids),)),
             )
             .group_by(
-                Service.id,
-                NotificationAllTimeView.template_id,
+                m.Service.id,
+                m.NotificationAllTimeView.template_id,
                 rate_multiplier,
-                NotificationAllTimeView.billable_units,
+                m.NotificationAllTimeView.billable_units,
                 postage,
-                NotificationAllTimeView.international,
+                m.NotificationAllTimeView.international,
             )
         )
 

@@ -4,6 +4,7 @@ from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 
 from app import notify_celery, redis_store
+from app.models import bulk as bulk_models
 from app.config import QueueNames
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, CacheKeys
 from app.cronitor import cronitor
@@ -67,7 +68,7 @@ def create_or_update_ft_billing_for_day(process_day: str):
     current_app.logger.info("create-or-update-ft-billing-for-day task for %s: started", process_date)
 
     start = datetime.utcnow()
-    billing_data = fetch_billing_data_for_day(process_day=process_date)
+    billing_data = fetch_billing_data_for_day(process_day=process_date, models_module=bulk_models)
     end = datetime.utcnow()
 
     current_app.logger.info(
