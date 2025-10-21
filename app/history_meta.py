@@ -74,7 +74,7 @@ def _history_mapper(local_mapper):
         *cols,
         schema=local_mapper.local_table.schema,
     )
-    versioned_cls = type.__new__(type, f"{cls.__name__}History", cls.__bases__, {})
+    versioned_cls = type.__new__(type, f"{cls.__name__}History", cls.__bases__, {"__module__": cls.__module__})
 
     m = local_mapper.registry.map_imperatively(
         versioned_cls,
