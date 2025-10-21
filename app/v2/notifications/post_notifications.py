@@ -229,7 +229,11 @@ def process_sms_or_email_notification(
             notification_id=notification_id,
         )
     else:
-        current_app.logger.info("POST simulated notification for id: %s", notification_id)
+        current_app.logger.info(
+            "POST simulated notification for notification %s",
+            notification_id,
+            extra={"notification_id": notification_id},
+        )
 
     return response
 
@@ -372,7 +376,9 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
 
     # call task to add the filename to anti virus queue
     if current_app.config["ANTIVIRUS_ENABLED"]:
-        current_app.logger.info("Calling task scan-file for %s", filename)
+        current_app.logger.info(
+            "Calling task scan-file for %s", filename, extra={"file_name": filename, "notification_id": notification.id}
+        )
         notify_celery.send_task(
             name=TaskNames.SCAN_FILE,
             kwargs={"filename": filename},

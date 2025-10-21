@@ -117,10 +117,10 @@ class AwsSesClient(EmailClient):
         else:
             elapsed_time = monotonic() - start_time
             current_app.logger.info(
-                "AWS SES request finished in %s",
+                "AWS SES request finished in %.4g seconds",
                 elapsed_time,
                 extra={
-                    "elapsed_time": elapsed_time,
+                    "duration": elapsed_time,
                 },
             )
             self.statsd_client.timing("clients.ses.request-time", elapsed_time)

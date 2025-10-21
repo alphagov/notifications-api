@@ -194,4 +194,4 @@ def test_create_fake_letter_callback_logs_if_max_retries_exceeded(notify_api, fa
     with caplog.at_level("WARN"):
         create_fake_letter_callback(uuid.UUID(fake_uuid), 2, "second")
 
-    assert f"Fake letter callback cound not be created for {fake_uuid}" in caplog.messages
+    assert f"Fake letter callback could not be created for notification {fake_uuid}" in caplog.messages

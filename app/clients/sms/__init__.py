@@ -47,12 +47,22 @@ class SmsClient(Client):
 
     def record_outcome(self, success):
         if success:
-            self.current_app.logger.info("Provider request for %s %s", self.name, "succeeded" if success else "failed")
+            self.current_app.logger.info(
+                "Provider request for %s succeeded",
+                self.name,
+                extra={
+                    "provider_name": self.name,
+                },
+            )
             self.statsd_client.incr(f"clients.{self.name}.success")
         else:
             self.statsd_client.incr(f"clients.{self.name}.error")
             self.current_app.logger.warning(
-                "Provider request for %s %s", self.name, "succeeded" if success else "failed"
+                "Provider request for %s failed",
+                self.name,
+                extra={
+                    "provider_name": self.name,
+                },
             )
 
     def send_sms(self, to, content, reference, international, sender):
@@ -68,14 +78,14 @@ class SmsClient(Client):
             elapsed_time = monotonic() - start_time
             self.statsd_client.timing(f"clients.{self.name}.request-time", elapsed_time)
             self.current_app.logger.info(
-                "%s request for %s finished in %s",
+                "%s request for %s finished in %.4g",
                 self.name,
                 reference,
                 elapsed_time,
                 extra={
                     "provider_name": self.name,
-                    "reference": reference,
-                    "elapsed_time": elapsed_time,
+                    "notification_reference": reference,
+                    "duration": elapsed_time,
                 },
             )
 

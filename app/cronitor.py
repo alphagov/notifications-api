@@ -12,11 +12,15 @@ def cronitor(task_name):
 
             # it's useful to have a log that a periodic task has started in case it
             # get stuck without generating any other logs - we know it got this far
-            current_app.logger.info("Pinging Cronitor for Celery task %s", task_name)
+            current_app.logger.info("Pinging Cronitor for Celery task %s", task_name, extra={"celery_task": task_name})
 
             task_slug = current_app.config["CRONITOR_KEYS"].get(task_name)
             if not task_slug:
-                current_app.logger.error("Cronitor enabled but task_name %s not found in environment", task_name)
+                current_app.logger.error(
+                    "Cronitor enabled but task_name %s not found in environment",
+                    task_name,
+                    extra={"celery_task": task_name},
+                )
                 return
 
             if command not in {"run", "complete", "fail"}:
@@ -32,7 +36,12 @@ def cronitor(task_name):
                 )
                 resp.raise_for_status()
             except requests.RequestException as e:
-                current_app.logger.warning("Cronitor API failed for task %s due to %s", task_name, repr(e))
+                current_app.logger.warning(
+                    "Cronitor API failed for task %s due to %s",
+                    task_name,
+                    repr(e),
+                    extra={"celery_task": task_name, "exception": repr(e)},
+                )
 
         @wraps(func)
         def inner_decorator(*args, **kwargs):

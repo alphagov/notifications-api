@@ -1379,6 +1379,7 @@ def send_service_invite_request(
                 "request-to-join-service email not sent to user %s - they are not part of service %s",
                 recipient.id,
                 service.id,
+                extra={"user_id": recipient.id, "service_id": service.id},
             )
 
     if number_of_notifications_generated == 0:
@@ -1566,12 +1567,17 @@ def create_report_request_by_type(service_id):
     existing_request = dao_get_oldest_ongoing_report_request(report_request, timeout_minutes=timeout_minutes)
 
     if existing_request:
+        extra = {
+            "user_id": existing_request.user_id,
+            "service_id": existing_request.service_id,
+            "report_request_parameter": json.dumps(existing_request.parameter, separators=(",", ":")),
+            "report_request_id": existing_request.id,
+        }
         current_app.logger.info(
-            "Duplicate report request detected for user %s (service %s) with params %s – returning existing request %s",
-            existing_request.user_id,
-            existing_request.service_id,
-            json.dumps(existing_request.parameter, separators=(",", ":")),
-            existing_request.id,
+            "Duplicate report request detected for user %(user_id)s (service %(service_id)s) "
+            "with params %(report_request_parameter)r – returning existing request %(report_request_id)s",
+            extra,
+            extra=extra,
         )
 
         return jsonify(data=existing_request.serialize()), 200
@@ -1579,12 +1585,17 @@ def create_report_request_by_type(service_id):
     # 2. If no ongoing request is present, create and enqueue the request
     created_request = dao_create_report_request(report_request)
 
+    extra = {
+        "report_request_id": created_request.id,
+        "user_id": created_request.user_id,
+        "service_id": created_request.service_id,
+        "report_request_parameter": json.dumps(created_request.parameter, separators=(",", ":")),
+    }
     current_app.logger.info(
-        "Report request %s for user %s (service %s) created with params %s",
-        created_request.id,
-        created_request.user_id,
-        created_request.service_id,
-        json.dumps(created_request.parameter, separators=(",", ":")),
+        "Report request %(report_request_id)s for user %(user_id)s (service %(service_id)s) "
+        "created with params %(report_request_parameter)r",
+        extra,
+        extra=extra,
     )
 
     process_report_request.apply_async(

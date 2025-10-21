@@ -50,11 +50,16 @@ def process_letter_callback_data(
 
 def validate_billable_units(notification, dvla_page_count):
     if notification.billable_units != int(dvla_page_count):
+        extra = {
+            "notification_id": notification.id,
+            "notification_billable_units": notification.billable_units,
+            "page_count": dvla_page_count,
+        }
         current_app.logger.error(
-            "Notification with id %s has %s billable_units but DVLA says page count is %s",
-            notification.id,
-            notification.billable_units,
-            dvla_page_count,
+            "Notification with id %(notification_id)s has %(notification_billable_units)s billable_units but "
+            "DVLA says page count is %(page_count)s",
+            extra,
+            extra=extra,
         )
 
 
