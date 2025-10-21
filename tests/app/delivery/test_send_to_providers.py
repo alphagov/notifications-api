@@ -886,7 +886,7 @@ def test_send_email_to_provider_sends_unsubscribe_link(
     mock_html_email = mocker.patch("app.delivery.send_to_providers.HTMLEmailTemplate")
     mock_plain_text_email = mocker.patch("app.delivery.send_to_providers.PlainTextEmailTemplate")
     mocker.patch(
-        "app.models.url_with_token",
+        "app.models.default.url_with_token",
         return_value="https://www.notify.example.com",
     )
 
@@ -916,7 +916,7 @@ def test_send_email_to_provider_sends_unsubscribe_link(
 def test_send_email_to_provider_sends_unsubscribe_link_if_template_is_unsubscribable(sample_service, mocker):
     mocker.patch("app.aws_ses_client.send_email", return_value="reference")
     mock_url_with_token = mocker.patch(
-        "app.models.url_with_token",
+        "app.models.default.url_with_token",
         side_effect=[
             "https://www.notify.example.com",
             "https://api.notify.example.com",
