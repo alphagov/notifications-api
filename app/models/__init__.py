@@ -1,1 +1,2 @@
-from .default import *  # noqa: F403
+from app.models.default import *  # noqa
+from app.models import bulk  # noqa
