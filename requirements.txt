@@ -6,6 +6,8 @@ amqp==5.1.1
     # via kombu
 arrow==1.2.3
     # via isoduration
+async-timeout==4.0.3
+    # via redis
 attrs==24.3.0
     # via
     #   jsonschema
