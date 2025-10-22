@@ -32,10 +32,11 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
     except ValueError as e:
         extra = {
             "client_name": client_name,
-            "notification_reference": provider_reference,
+            # for sms, we happen to use notification id as the "provider reference"
+            "notification_id": provider_reference,
         }
         current_app.logger.exception(
-            "%(client_name)s callback with invalid reference %(notification_reference)s",
+            "%(client_name)s callback with invalid reference %(notification_id)s",
             extra,
             extra=extra,
         )
@@ -52,11 +53,12 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
             "provider_status": status,
             "detailed_status": detailed_status,
             "detailed_status_code": detailed_status_code,
-            "notification_reference": provider_reference,
+            # for sms, we happen to use notification id as the "provider reference"
+            "notification_id": provider_reference,
         }
         current_app.logger.info(
             "%(client_name)s callback returned status of %(notification_status)s(%(provider_status)s): "
-            "%(detailed_status)s(%(detailed_status_code)s) for reference: %(notification_reference)s",
+            "%(detailed_status)s(%(detailed_status_code)s) for reference: %(notification_id)s",
             extra,
             extra=extra,
         )
