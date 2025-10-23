@@ -477,6 +477,17 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 # connection first opened with db
                 TOTAL_DB_CONNECTIONS.labels(str(bind_key)).inc()
 
+                # ensure the following connection parameters get retained as the session-scoped
+                # parameters - they won't if they are set inside a transaction that gets rolled
+                # back for some reason (*despite* our explicit use of SET SESSION) and .readonly
+                # won't work at all
+                dbapi_connection.autocommit = True
+
+                if bind_key == "bulk":
+                    # ensure even in dev/test (where we don't want to have to set up read
+                    # replicas these connections will behave as expected
+                    dbapi_connection.readonly = True
+
                 cursor = dbapi_connection.cursor()
 
                 # why not set most of these using connect_args/options? just to avoid the
@@ -508,15 +519,7 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                     # round-trip of latency to every request.
                     cursor.execute("SET SESSION max_parallel_workers_per_gather = 0")
 
-                # ensure these connection parameters get retained as the session-scoped
-                # parameters. psycopg by default opens connections with a transaction
-                # already open. if this initial transaction happens to get rolled-back
-                # instead of committed, the connection parameters would be reverted
-                # (*despite* our explicit use of SET SESSION)
-                cursor.execute("COMMIT")
-                # open a new transaction to leave us back in the expected open-transaction
-                # state
-                cursor.execute("BEGIN")
+                dbapi_connection.autocommit = False
 
             @event.listens_for(_engine, "close")
             def close(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
