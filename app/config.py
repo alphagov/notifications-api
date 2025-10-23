@@ -99,6 +99,13 @@ class Config:
 
     # DB conection string
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")
+    SQLALCHEMY_BINDS = {
+        "bulk": {
+            # see https://docs.sqlalchemy.org/en/20/dialects/postgresql.html#specifying-multiple-fallback-hosts for
+            # the unusual uri syntax sqlalchemy requires if specifying multiple postgres hosts here
+            "url": os.getenv("SQLALCHEMY_DATABASE_URI_BULK") or os.getenv("SQLALCHEMY_DATABASE_URI"),
+        },
+    }
 
     # MMG API Key
     MMG_API_KEY = os.getenv("MMG_API_KEY")
@@ -163,6 +170,10 @@ class Config:
             # as a fallback
             "options": "-c statement_timeout=1200000",
         },
+    }
+    SQLALCHEMY_BINDS["bulk"] = {
+        **SQLALCHEMY_ENGINE_OPTIONS,
+        **SQLALCHEMY_BINDS["bulk"],
     }
     DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY = (
         os.getenv(
@@ -559,6 +570,13 @@ class Development(Config):
     NOTIFY_EMAIL_DOMAIN = "notify.tools"
 
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", "postgresql+psycopg2://localhost/notification_api")
+    SQLALCHEMY_BINDS = {
+        **Config.SQLALCHEMY_BINDS,
+        "bulk": {
+            **Config.SQLALCHEMY_BINDS["bulk"],
+            "url": SQLALCHEMY_DATABASE_URI,
+        },
+    }
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     ANTIVIRUS_ENABLED = os.getenv("ANTIVIRUS_ENABLED") == "1"
