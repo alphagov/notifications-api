@@ -534,7 +534,7 @@ def test_check_token_bucket_service_over_api_rate_limit_when_exceed_rate_limit_r
     (
         ({}, 50, 1_000),
         ({"rate_limit": 24_000}, 400, 1_000),
-        ({"rate_limit": 10}, 0, 1_000),
+        ({"rate_limit": 10}, 0.16666666666666666, 1_000),
     ),
 )
 @pytest.mark.parametrize("remaining_tokens", (1, 999, None))
