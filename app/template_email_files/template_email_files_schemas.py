@@ -1,6 +1,6 @@
 from app.schema_validation.definitions import uuid
 
-post_create_template_schema = {
+post_create_template_email_files_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST create new email linked file",
     "type": "object",
@@ -15,15 +15,9 @@ post_create_template_schema = {
         "created_at": {"type": "string", "format": "date-time"},
         "updated_at": {"type": "string", "format": "date-time"},
         "archived_at": {"type": "string", "format": "date-time"},
-        "created_by": uuid,
-        "parent_folder_id": uuid,
-        "postage": {"type": "string", "format": "postage"},
+        "template_id": uuid,
+        "template_version": int,
+        "created_by_id": uuid,
+        "archived_by_id": uuid,
     },
-    "allOf": [
-        {
-            "if": {"properties": {"template_type": {"enum": ["email", "letter"]}}},
-            "then": {"required": ["subject"]},
-            "required": ["name", "template_type", "content", "service", "created_by"],
-        },
-    ],
 }
