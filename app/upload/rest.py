@@ -49,6 +49,7 @@ def get_paginated_uploads(service_id, limit_days, page):
             upload_dict["statistics"] = get_possibly_cached_notification_outcomes_for_job(
                 upload.id, upload.notification_count, upload.processing_started
             )
+            upload_dict["job_status"] = upload.status
         else:
             upload_dict["statistics"] = []
         data.append(upload_dict)
