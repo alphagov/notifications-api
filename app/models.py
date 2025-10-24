@@ -1301,6 +1301,15 @@ class TemplateEmailFile(TemplateEmailFileBase):
 
     version = db.Column(db.Integer, default=0, nullable=False)
 
+    @classmethod
+    def from_json(cls, data):
+        """
+        Assumption: data has been validated appropriately.
+
+        Returns a Service object based on the provided data. Deserialises created_by to created_by_id as marshmallow
+        would.
+        """
+        fields = data.copy()
 
 class TemplateEmailFileHistory(TemplateEmailFileBase):
     __tablename__ = "template_email_files_history"
