@@ -122,6 +122,7 @@ def create_service(
     billing_contact_email_addresses=None,
     billing_reference=None,
     contact_link=None,
+    rate_limit=None,
 ):
     if check_if_service_exists:
         service = Service.query.filter_by(name=service_name).first()
@@ -149,6 +150,8 @@ def create_service(
         )
         if service_id:
             service.id = service_id
+        if rate_limit is not None:
+            service.rate_limit = rate_limit
         dao_create_service(
             service,
             service.created_by,

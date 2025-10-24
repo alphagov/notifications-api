@@ -529,12 +529,30 @@ def test_check_token_bucket_service_over_api_rate_limit_when_exceed_rate_limit_r
         assert e.value.fields == []
 
 
+@pytest.mark.parametrize(
+    "extra_create_service_args, expected_replenish_per_sec, expected_bucket_max",
+    (
+        ({}, 50, 1_000),
+        ({"rate_limit": 24_000}, 400, 1_000),
+        ({"rate_limit": 10}, 0.16666666666666666, 4),
+        ({"rate_limit": 1}, 0.016666666666666666, 1),
+        ({"rate_limit": 0}, 0, 0),
+    ),
+)
 @pytest.mark.parametrize("remaining_tokens", (1, 999, None))
 def test_check_token_bucket_service_over_api_rate_limit_when_rate_limit_has_not_exceeded_limit_succeeds(
     mocker,
     remaining_tokens,
+    extra_create_service_args,
+    expected_replenish_per_sec,
+    expected_bucket_max,
 ):
-    service = create_service(service_name=str(uuid4()), service_permissions=["token_bucket"], restricted=True)
+    service = create_service(
+        service_name=str(uuid4()),
+        service_permissions=["token_bucket"],
+        restricted=True,
+        **extra_create_service_args,
+    )
     with freeze_time("2016-01-01 12:00:00.000000"):
         mocker.patch("app.redis_store.get_remaining_bucket_tokens", return_value=remaining_tokens)
 
@@ -545,7 +563,10 @@ def test_check_token_bucket_service_over_api_rate_limit_when_rate_limit_has_not_
         check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
         assert app.redis_store.get_remaining_bucket_tokens.call_args_list == [
             mocker.call(
-                key=f"{str(service.id)}-tokens-{api_key.key_type}", replenish_per_sec=50, bucket_max=1_000, bucket_min=0
+                key=f"{str(service.id)}-tokens-{api_key.key_type}",
+                replenish_per_sec=expected_replenish_per_sec,
+                bucket_max=expected_bucket_max,
+                bucket_min=0,
             )
         ]
 
