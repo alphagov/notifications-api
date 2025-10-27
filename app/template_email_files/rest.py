@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from sqlalchemy.orm.exc import NoResultFound
-from template_email_files_schemas import post_create_template_email_files_schema
+from app.template_email_files.template_email_files_schemas import post_create_template_email_files_schema
 
 from app.constants import EMAIL_TYPE
 from app.dao.services_dao import dao_fetch_service_by_id

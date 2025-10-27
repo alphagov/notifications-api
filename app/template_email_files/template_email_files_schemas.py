@@ -13,11 +13,8 @@ post_create_template_email_files_schema = {
         "retention_period": int,
         "validate_users_email": bool,
         "created_at": {"type": "string", "format": "date-time"},
-        "updated_at": {"type": "string", "format": "date-time"},
-        "archived_at": {"type": "string", "format": "date-time"},
         "template_id": uuid,
         "template_version": int,
         "created_by_id": uuid,
-        "archived_by_id": uuid,
     },
 }
