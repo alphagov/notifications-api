@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 from sqlalchemy.orm.exc import NoResultFound
 from app.template_email_files.template_email_files_schemas import post_create_template_email_files_schema
 
@@ -33,3 +33,4 @@ def create_template(service_id, template_id):
         raise InvalidRequest(message="cannot create an email for non-email type", status_code=400)
     if not fetched_service.has_permission(EMAIL_TYPE):
         raise InvalidRequest(message="can't create email type", status_code=400)
+    return jsonify(result="success"), 201
