@@ -28,7 +28,7 @@ def create_template(service_id, template_id):
         Template.id == template_id,
         Template.service_id == service_id,
         Template.version == template_email_files_json.get("template_version"),
-    )
+    ).one()
     if fetched_template.template_type != EMAIL_TYPE:
         raise InvalidRequest(message="cannot create an email for non-email type", status_code=400)
     if not fetched_service.has_permission(EMAIL_TYPE):

@@ -9,7 +9,7 @@ def test_create_email_files_post(client, sample_service, sample_template):
         "linktext": "click this link!",
         "retention_period": 90,
         "validate_users_email": True,
-        "created_at": "2025-10-27T13:22:42.049542",
+        "created_at": "2025-03-31T13:15:07Z",
         "template_id": str(sample_template.id),
         "template_version": int(sample_template.version),
         "created_by_id" : str(sample_service.users[0].id),}
