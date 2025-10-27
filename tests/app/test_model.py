@@ -805,3 +805,146 @@ def test_letter_branding_serialization_only_returns_defined_fields(notify_db_ses
     }
 
     assert not hasattr(serialized, "fake_field")
+
+
+def test_organisation_serializes_with_all_fields(notify_db_session):
+    from app.models import Organisation, User
+
+    user = User(id=uuid.uuid4(), name="Test User", email_address="test@example.com", password="password")
+    notify_db_session.add(user)
+
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+        crown=True,
+        organisation_type="central",
+        letter_branding_id=uuid.uuid4(),
+        email_branding_id=uuid.uuid4(),
+        agreement_signed=True,
+        agreement_signed_at=datetime(2023, 1, 1, tzinfo=UTC),
+        agreement_signed_by_id=user.id,
+        agreement_signed_on_behalf_of_name="On Behalf",
+        agreement_signed_on_behalf_of_email_address="behalf@example.com",
+        agreement_signed_version=1.0,
+        request_to_go_live_notes="Ready to go live",
+        can_approve_own_go_live_requests=True,
+        notes="Some notes",
+        purchase_order_number="PO123",
+        billing_contact_names="Contact Name",
+        billing_contact_email_addresses="billing@example.com",
+        billing_reference="REF123",
+    )
+    notify_db_session.add(org)
+    notify_db_session.commit()
+
+    result = org.serialize()
+
+    assert result.id == str(org.id)
+    assert result.name == "Test Organisation"
+    assert result.active is True
+    assert result.crown is True
+    assert result.organisation_type == "central"
+    assert result.letter_branding_id == str(org.letter_branding_id)
+    assert result.email_branding_id == str(org.email_branding_id)
+    assert result.agreement_signed is True
+    assert result.agreement_signed_at == datetime(2023, 1, 1, tzinfo=UTC)
+    assert result.agreement_signed_by_id == str(user.id)
+    assert result.agreement_signed_on_behalf_of_name == "On Behalf"
+    assert result.agreement_signed_on_behalf_of_email_address == "behalf@example.com"
+    assert result.agreement_signed_version == 1.0
+    assert result.domains == []
+    assert result.request_to_go_live_notes == "Ready to go live"
+    assert result.count_of_live_services == 0
+    assert result.notes == "Some notes"
+    assert result.purchase_order_number == "PO123"
+    assert result.billing_contact_names == "Contact Name"
+    assert result.billing_contact_email_addresses == "billing@example.com"
+    assert result.billing_reference == "REF123"
+    assert result.can_approve_own_go_live_requests is True
+    assert result.permissions == []
+
+
+def test_organisation_serializes_with_minimal_fields(notify_db_session):
+    from app.models import Organisation
+
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+        can_approve_own_go_live_requests=False,
+    )
+    notify_db_session.add(org)
+    notify_db_session.commit()
+
+    result = org.serialize()
+
+    assert result.id == str(org.id)
+    assert result.name == "Test Organisation"
+    assert result.active is True
+    assert result.crown is None
+    assert result.organisation_type is None
+    assert result.letter_branding_id is None
+    assert result.email_branding_id is None
+    assert result.agreement_signed is None
+    assert result.agreement_signed_at is None
+    assert result.agreement_signed_by_id is None
+    assert result.agreement_signed_on_behalf_of_name is None
+    assert result.agreement_signed_on_behalf_of_email_address is None
+    assert result.agreement_signed_version is None
+    assert result.domains == []
+    assert result.request_to_go_live_notes is None
+    assert result.count_of_live_services == 0
+    assert result.notes is None
+    assert result.purchase_order_number is None
+    assert result.billing_contact_names is None
+    assert result.billing_contact_email_addresses is None
+    assert result.billing_reference is None
+    assert result.can_approve_own_go_live_requests is False
+    assert result.permissions == []
+
+
+def test_organisation_serialization_only_returns_defined_fields(notify_db_session):
+    """Test to ensure we only get fields that are defined in the serialization dataclass"""
+    from app.models import Organisation, SerializedOrganisation
+
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+        can_approve_own_go_live_requests=True,
+        fake_field="Should not be serialized"
+    )
+    notify_db_session.add(org)
+    notify_db_session.commit()
+
+    serialized = org.serialize()
+
+    # Should only contain fields defined in SerializedOrganisation dataclass
+    assert set(serialized.__annotations__.keys()) == {
+        'id',
+        'name',
+        'active',
+        'crown',
+        'organisation_type',
+        'letter_branding_id',
+        'email_branding_id',
+        'agreement_signed',
+        'agreement_signed_at',
+        'agreement_signed_by_id',
+        'agreement_signed_on_behalf_of_name',
+        'agreement_signed_on_behalf_of_email_address',
+        'agreement_signed_version',
+        'domains',
+        'request_to_go_live_notes',
+        'count_of_live_services',
+        'notes',
+        'purchase_order_number',
+        'billing_contact_names',
+        'billing_contact_email_addresses',
+        'billing_reference',
+        'can_approve_own_go_live_requests',
+        'permissions'
+    }
+
+    assert not hasattr(serialized, "fake_field")

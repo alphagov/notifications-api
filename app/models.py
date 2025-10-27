@@ -413,6 +413,33 @@ class OrganisationUserPermissions(db.Model):
     )
 
 
+@dataclass
+class SerializedOrganisation:
+    id: str
+    name: str
+    active: bool
+    crown: bool | None
+    organisation_type: str | None
+    letter_branding_id: str | None
+    email_branding_id: str | None
+    agreement_signed: bool | None
+    agreement_signed_at: datetime.datetime | None
+    agreement_signed_by_id: str | None
+    agreement_signed_on_behalf_of_name: str | None
+    agreement_signed_on_behalf_of_email_address: str | None
+    agreement_signed_version: float | None
+    domains: list[str]
+    request_to_go_live_notes: str | None
+    count_of_live_services: int
+    notes: str | None
+    purchase_order_number: str | None
+    billing_contact_names: str | None
+    billing_contact_email_addresses: str | None
+    billing_reference: str | None
+    can_approve_own_go_live_requests: bool
+    permissions: list[str]
+
+
 class Organisation(db.Model):
     __tablename__ = "organisation"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
@@ -490,32 +517,32 @@ class Organisation(db.Model):
 
         set_organisation_permission(self, permissions)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "active": self.active,
-            "crown": self.crown,
-            "organisation_type": self.organisation_type,
-            "letter_branding_id": self.letter_branding_id,
-            "email_branding_id": self.email_branding_id,
-            "agreement_signed": self.agreement_signed,
-            "agreement_signed_at": self.agreement_signed_at,
-            "agreement_signed_by_id": self.agreement_signed_by_id,
-            "agreement_signed_on_behalf_of_name": self.agreement_signed_on_behalf_of_name,
-            "agreement_signed_on_behalf_of_email_address": self.agreement_signed_on_behalf_of_email_address,
-            "agreement_signed_version": self.agreement_signed_version,
-            "domains": self.domain_list,
-            "request_to_go_live_notes": self.request_to_go_live_notes,
-            "count_of_live_services": len(self.live_services),
-            "notes": self.notes,
-            "purchase_order_number": self.purchase_order_number,
-            "billing_contact_names": self.billing_contact_names,
-            "billing_contact_email_addresses": self.billing_contact_email_addresses,
-            "billing_reference": self.billing_reference,
-            "can_approve_own_go_live_requests": self.can_approve_own_go_live_requests,
-            "permissions": [x.permission for x in self.permissions],
-        }
+    def serialize(self) -> SerializedOrganisation:
+        return SerializedOrganisation(
+            id=str(self.id),
+            name=self.name,
+            active=self.active,
+            crown=self.crown,
+            organisation_type=self.organisation_type,
+            letter_branding_id=str(self.letter_branding_id) if self.letter_branding_id else None,
+            email_branding_id=str(self.email_branding_id) if self.email_branding_id else None,
+            agreement_signed=self.agreement_signed,
+            agreement_signed_at=self.agreement_signed_at,
+            agreement_signed_by_id=str(self.agreement_signed_by_id) if self.agreement_signed_by_id else None,
+            agreement_signed_on_behalf_of_name=self.agreement_signed_on_behalf_of_name,
+            agreement_signed_on_behalf_of_email_address=self.agreement_signed_on_behalf_of_email_address,
+            agreement_signed_version=self.agreement_signed_version,
+            domains=self.domain_list,
+            request_to_go_live_notes=self.request_to_go_live_notes,
+            count_of_live_services=len(self.live_services),
+            notes=self.notes,
+            purchase_order_number=self.purchase_order_number,
+            billing_contact_names=self.billing_contact_names,
+            billing_contact_email_addresses=self.billing_contact_email_addresses,
+            billing_reference=self.billing_reference,
+            can_approve_own_go_live_requests=self.can_approve_own_go_live_requests,
+            permissions=[x.permission for x in self.permissions],
+        )
 
     def serialize_for_list(self):
         return {
