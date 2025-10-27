@@ -1311,6 +1311,7 @@ class TemplateEmailFile(TemplateEmailFileBase):
         """
         fields = data.copy()
 
+
 class TemplateEmailFileHistory(TemplateEmailFileBase):
     __tablename__ = "template_email_files_history"
 
