@@ -1,3 +1,7 @@
+# THIS FILE WILL BE IMPORTED MULTIPLE TIMES VIA SYMLINKS. any self-references by e.g. fully-qualified
+# module path must take this into account, and ensure model-model references are made to the
+# model in the same module.
+
 import datetime
 import enum
 import uuid
@@ -88,6 +92,22 @@ from app.utils import (
     utc_string_to_bst_string,
 )
 
+# because this file will be imported multiple times via symlinks, each time we have to bind
+# the models we define to a different sqlalchemy metadata, and we do this based on the apparent
+# module name. this allows us to have multiple identical "universes" of models, each bound to a
+# different sqlalchemy engine.
+_import_bind_key = {
+    "app.models.default": None,
+    "app.models.bulk": "bulk",
+}[__name__]
+
+
+# if db.init_app() hasn't run by this point, not all metadatas will have been created
+# yet, so at least create a placeholder entry to allow the model metaclasses to run.
+# db.init_app() should configure it fully when it is run.
+if _import_bind_key not in db.metadatas:
+    db._make_metadata(_import_bind_key)  # APIFRAGILE
+
 
 def filter_null_value_fields(obj):
     return dict(filter(lambda x: x[1] is not None, obj.items()))
@@ -99,6 +119,7 @@ template_types = db.Enum(*TEMPLATE_TYPES, name="template_type")
 
 
 class User(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "users"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -126,8 +147,8 @@ class User(db.Model):
     # either email auth or a mobile number must be provided
     __table_args__ = (CheckConstraint("auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null"),)
 
-    services = db.relationship("Service", secondary="user_to_service", backref="users")
-    organisations = db.relationship("Organisation", secondary="user_to_organisation", backref="users")
+    services = db.relationship(lambda: Service, secondary=lambda: ServiceUser.__table__, backref="users")
+    organisations = db.relationship(lambda: Organisation, secondary=lambda: user_to_organisation, backref="users")
 
     @property
     def password(self):
@@ -219,6 +240,7 @@ class User(db.Model):
 
 
 class ServiceUser(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "user_to_service"
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), primary_key=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), primary_key=True)
@@ -228,7 +250,7 @@ class ServiceUser(db.Model):
 
 user_to_organisation = db.Table(
     "user_to_organisation",
-    db.Model.metadata,
+    db.metadatas[_import_bind_key],
     db.Column("user_id", UUID(as_uuid=True), db.ForeignKey("users.id")),
     db.Column("organisation_id", UUID(as_uuid=True), db.ForeignKey("organisation.id")),
     UniqueConstraint("user_id", "organisation_id", name="uix_user_to_organisation"),
@@ -236,7 +258,7 @@ user_to_organisation = db.Table(
 
 user_folder_permissions = db.Table(
     "user_folder_permissions",
-    db.Model.metadata,
+    db.metadatas[_import_bind_key],
     db.Column("user_id", UUID(as_uuid=True), primary_key=True),
     db.Column("template_folder_id", UUID(as_uuid=True), db.ForeignKey("template_folder.id"), primary_key=True),
     db.Column("service_id", UUID(as_uuid=True), primary_key=True),
@@ -246,11 +268,13 @@ user_folder_permissions = db.Table(
 
 
 class BrandingTypes(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "branding_type"
     name = db.Column(db.String(255), primary_key=True)
 
 
 class EmailBranding(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "email_branding"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     colour = db.Column(db.String(7), nullable=True)
@@ -297,7 +321,7 @@ class EmailBranding(db.Model):
 
 service_email_branding = db.Table(
     "service_email_branding",
-    db.Model.metadata,
+    db.metadatas[_import_bind_key],
     # service_id is a primary key as you can only have one email branding per service
     db.Column("service_id", UUID(as_uuid=True), db.ForeignKey("services.id"), primary_key=True, nullable=False),
     db.Column("email_branding_id", UUID(as_uuid=True), db.ForeignKey("email_branding.id"), nullable=False),
@@ -305,6 +329,7 @@ service_email_branding = db.Table(
 
 
 class LetterBranding(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "letter_branding"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), unique=True, nullable=False)
@@ -327,7 +352,7 @@ class LetterBranding(db.Model):
 
 service_letter_branding = db.Table(
     "service_letter_branding",
-    db.Model.metadata,
+    db.metadatas[_import_bind_key],
     # service_id is a primary key as you can only have one letter branding per service
     db.Column("service_id", UUID(as_uuid=True), db.ForeignKey("services.id"), primary_key=True, nullable=False),
     db.Column("letter_branding_id", UUID(as_uuid=True), db.ForeignKey("letter_branding.id"), nullable=False),
@@ -335,18 +360,21 @@ service_letter_branding = db.Table(
 
 
 class ServicePermissionTypes(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_permission_types"
 
     name = db.Column(db.String(255), primary_key=True)
 
 
 class Domain(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "domain"
     domain = db.Column(db.String(255), primary_key=True)
     organisation_id = db.Column("organisation_id", UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
 
 
 class OrganisationTypes(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "organisation_types"
 
     name = db.Column(db.String(255), primary_key=True)
@@ -354,11 +382,12 @@ class OrganisationTypes(db.Model):
 
 
 class OrganisationPermission(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "organisation_permissions"
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    organisation = db.relationship("Organisation", backref="permissions")
+    organisation = db.relationship(lambda: Organisation, backref="permissions")
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
     permission = db.Column(
         db.Enum(*ORGANISATION_PERMISSION_TYPES, name="organisation_permission_types"),
@@ -370,15 +399,16 @@ class OrganisationPermission(db.Model):
 
 
 class OrganisationUserPermissions(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "organisation_user_permissions"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True)
-    organisation = db.relationship("Organisation")
+    organisation = db.relationship(lambda: Organisation)
 
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    user = db.relationship("User")
+    user = db.relationship(User)
 
     permission = db.Column(
         db.Enum(OrganisationUserPermissionTypes, name="organisation_user_permission_types"), index=True
@@ -390,6 +420,7 @@ class OrganisationUserPermissions(db.Model):
 
 
 class Organisation(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "organisation"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
     name = db.Column(db.String(255), nullable=False, unique=True, index=True)
@@ -403,7 +434,7 @@ class Organisation(db.Model):
         db.ForeignKey("users.id"),
         nullable=True,
     )
-    agreement_signed_by = db.relationship("User")
+    agreement_signed_by = db.relationship(User)
     agreement_signed_on_behalf_of_name = db.Column(db.String(255), nullable=True)
     agreement_signed_on_behalf_of_email_address = db.Column(db.String(255), nullable=True)
     agreement_signed_version = db.Column(db.Float, nullable=True)
@@ -417,12 +448,10 @@ class Organisation(db.Model):
     request_to_go_live_notes = db.Column(db.Text)
     can_approve_own_go_live_requests = db.Column(db.Boolean, default=False, nullable=False)
 
-    domains = db.relationship(
-        "Domain",
-    )
+    domains = db.relationship(Domain)
 
     # this is default email branding for organisation, not to be confused with email branding pool
-    email_branding = db.relationship("EmailBranding")
+    email_branding = db.relationship(EmailBranding)
     email_branding_id = db.Column(
         UUID(as_uuid=True),
         db.ForeignKey("email_branding.id"),
@@ -430,11 +459,11 @@ class Organisation(db.Model):
     )
 
     email_branding_pool = db.relationship(
-        "EmailBranding", secondary="email_branding_to_organisation", backref="organisations"
+        EmailBranding, secondary=lambda: OrganisationEmailBranding.__table__, backref="organisations"
     )
 
     # this is default letter branding for organisation
-    letter_branding = db.relationship("LetterBranding")
+    letter_branding = db.relationship(LetterBranding)
     letter_branding_id = db.Column(
         UUID(as_uuid=True),
         db.ForeignKey("letter_branding.id"),
@@ -442,8 +471,8 @@ class Organisation(db.Model):
     )
 
     letter_branding_pool = db.relationship(
-        "LetterBranding",
-        secondary="letter_branding_to_organisation",
+        LetterBranding,
+        secondary=lambda: letter_branding_to_organisation,
         backref="organisations",
     )
 
@@ -505,6 +534,7 @@ class Organisation(db.Model):
 
 
 class OrganisationEmailBranding(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "email_branding_to_organisation"
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), primary_key=True)
     email_branding_id = db.Column(UUID(as_uuid=True), db.ForeignKey("email_branding.id"), primary_key=True)
@@ -516,7 +546,7 @@ class OrganisationEmailBranding(db.Model):
 
 letter_branding_to_organisation = db.Table(
     "letter_branding_to_organisation",
-    db.Model.metadata,
+    db.metadatas[_import_bind_key],
     db.Column(
         "organisation_id", UUID(as_uuid=True), db.ForeignKey("organisation.id"), primary_key=True, nullable=False
     ),
@@ -527,6 +557,7 @@ letter_branding_to_organisation = db.Table(
 
 
 class Service(db.Model, Versioned):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "services"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -542,7 +573,7 @@ class Service(db.Model, Versioned):
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    created_by = db.relationship("User", foreign_keys=[created_by_id])
+    created_by = db.relationship(User, foreign_keys=[created_by_id])
     prefix_sms = db.Column(db.Boolean, nullable=False, default=False)
     organisation_type = db.Column(
         db.String(255),
@@ -569,13 +600,13 @@ class Service(db.Model, Versioned):
 
     count_as_live = db.Column(db.Boolean, nullable=False, default=True)
     go_live_user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
-    go_live_user = db.relationship("User", foreign_keys=[go_live_user_id])
+    go_live_user = db.relationship(User, foreign_keys=[go_live_user_id])
     go_live_at = db.Column(db.DateTime, nullable=True)
     has_active_go_live_request = db.Column(db.Boolean, default=False, nullable=False)
     confirmed_unique = db.Column(db.Boolean, default=False, nullable=False)
 
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True, nullable=True)
-    organisation = db.relationship("Organisation", backref="services")
+    organisation = db.relationship(Organisation, backref="services")
 
     notes = db.Column(db.Text, nullable=True)
     purchase_order_number = db.Column(db.String(255), nullable=True)
@@ -584,10 +615,10 @@ class Service(db.Model, Versioned):
     billing_reference = db.Column(db.String(255), nullable=True)
 
     email_branding = db.relationship(
-        "EmailBranding", secondary=service_email_branding, uselist=False, backref=db.backref("services", lazy="dynamic")
+        EmailBranding, secondary=service_email_branding, uselist=False, backref=db.backref("services", lazy="dynamic")
     )
     letter_branding = db.relationship(
-        "LetterBranding",
+        LetterBranding,
         secondary=service_letter_branding,
         uselist=False,
         backref=db.backref("services", lazy="dynamic"),
@@ -682,6 +713,7 @@ class DefaultAnnualAllowance(db.Model):
     overridden on a per-service basis (eg some services may have their allowance reduced or removed).
     """
 
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "default_annual_allowance"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -703,6 +735,7 @@ class DefaultAnnualAllowance(db.Model):
 
 
 class AnnualBilling(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "annual_billing"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
@@ -741,6 +774,7 @@ class AnnualBilling(db.Model):
 
 
 class InboundNumber(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "inbound_numbers"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -768,6 +802,7 @@ class InboundNumber(db.Model):
 
 
 class ServiceSmsSender(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_sms_senders"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -800,6 +835,7 @@ class ServiceSmsSender(db.Model):
 
 
 class ServicePermission(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_permissions"
 
     service_id = db.Column(
@@ -817,11 +853,12 @@ class ServicePermission(db.Model):
 
 
 class ServiceGuestList(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_whitelist"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
-    service = db.relationship("Service", backref="guest_list")
+    service = db.relationship(Service, backref="guest_list")
     recipient_type = db.Column(guest_list_recipient_types, nullable=False)
     recipient = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
@@ -850,16 +887,17 @@ class ServiceGuestList(db.Model):
 
 
 class ServiceCallbackApi(db.Model, Versioned):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_callback_api"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
-    service = db.relationship("Service", backref="service_callback_api")
+    service = db.relationship(Service, backref="service_callback_api")
     url = db.Column(db.String(), nullable=False)
     callback_type = db.Column(db.String(), db.ForeignKey("service_callback_type.name"), nullable=True)
     _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True)
-    updated_by = db.relationship("User")
+    updated_by = db.relationship(User)
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
     __table_args__ = (UniqueConstraint("service_id", "callback_type", name="uix_service_callback_type"),)
@@ -887,24 +925,26 @@ class ServiceCallbackApi(db.Model, Versioned):
 
 
 class ServiceCallbackType(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_callback_type"
 
     name = db.Column(db.String, primary_key=True)
 
 
 class ApiKey(db.Model, Versioned):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "api_keys"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
     _secret = db.Column("secret", db.String(255), unique=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
-    service = db.relationship("Service", backref="api_keys")
+    service = db.relationship(Service, backref="api_keys")
     key_type = db.Column(db.String(255), db.ForeignKey("key_types.name"), nullable=False)
     expiry_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
-    created_by = db.relationship("User")
+    created_by = db.relationship(User)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
     __table_args__ = (
@@ -929,12 +969,14 @@ class ApiKey(db.Model, Versioned):
 
 
 class KeyTypes(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "key_types"
 
     name = db.Column(db.String(255), primary_key=True)
 
 
 class TemplateFolder(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "template_folder"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -942,14 +984,14 @@ class TemplateFolder(db.Model):
     name = db.Column(db.String, nullable=False)
     parent_id = db.Column(UUID(as_uuid=True), db.ForeignKey("template_folder.id"), nullable=True)
 
-    service = db.relationship("Service", backref="all_template_folders")
-    parent = db.relationship("TemplateFolder", remote_side=[id], backref="subfolders")
+    service = db.relationship(Service, backref="all_template_folders")
+    parent = db.relationship(lambda: TemplateFolder, remote_side=[id], backref="subfolders")
     users = db.relationship(
-        "ServiceUser",
+        ServiceUser,
         uselist=True,
-        backref=db.backref("folders", foreign_keys="user_folder_permissions.c.template_folder_id"),
-        secondary="user_folder_permissions",
-        primaryjoin="TemplateFolder.id == user_folder_permissions.c.template_folder_id",
+        backref=db.backref("folders", foreign_keys=user_folder_permissions.c.template_folder_id),
+        secondary=user_folder_permissions,
+        primaryjoin=lambda: TemplateFolder.id == user_folder_permissions.c.template_folder_id,
     )
 
     __table_args__ = (UniqueConstraint("id", "service_id", name="ix_id_service_id"), {})
@@ -984,7 +1026,7 @@ class TemplateFolder(db.Model):
 
 template_folder_map = db.Table(
     "template_folder_map",
-    db.Model.metadata,
+    db.metadatas[_import_bind_key],
     # template_id is a primary key as a template can only belong in one folder
     db.Column("template_id", UUID(as_uuid=True), db.ForeignKey("templates.id"), primary_key=True, nullable=False),
     db.Column("template_folder_id", UUID(as_uuid=True), db.ForeignKey("template_folder.id"), nullable=False),
@@ -1040,7 +1082,7 @@ class TemplateBase(db.Model):
 
     @declared_attr
     def created_by(cls):
-        return db.relationship("User")
+        return db.relationship(User)
 
     redact_personalisation = association_proxy("template_redacted", "redact_personalisation")
 
@@ -1050,7 +1092,7 @@ class TemplateBase(db.Model):
 
     @declared_attr
     def service_letter_contact(cls):
-        return db.relationship("ServiceLetterContact", viewonly=True)
+        return db.relationship(lambda: ServiceLetterContact, viewonly=True)
 
     @declared_attr
     def letter_attachment_id(cls):
@@ -1180,13 +1222,14 @@ class TemplateBase(db.Model):
 
 
 class Template(TemplateBase):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "templates"
 
-    service = db.relationship("Service", backref="templates")
+    service = db.relationship(Service, backref="templates")
     version = db.Column(db.Integer, default=0, nullable=False)
 
     folder = db.relationship(
-        "TemplateFolder",
+        TemplateFolder,
         secondary=template_folder_map,
         uselist=False,
         # eagerly load the folder whenever the template object is fetched
@@ -1195,7 +1238,7 @@ class Template(TemplateBase):
     )
 
     letter_attachment = db.relationship(
-        "LetterAttachment", uselist=False, backref=db.backref("template", uselist=False)
+        lambda: LetterAttachment, uselist=False, backref=db.backref("template", uselist=False)
     )
 
     def get_link(self):
@@ -1222,31 +1265,37 @@ class Template(TemplateBase):
 
 
 class TemplateRedacted(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "template_redacted"
 
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), primary_key=True, nullable=False)
     redact_personalisation = db.Column(db.Boolean, nullable=False, default=False)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True)
-    updated_by = db.relationship("User")
+    updated_by = db.relationship(User)
 
     # uselist=False as this is a one-to-one relationship
-    template = db.relationship("Template", uselist=False, backref=db.backref("template_redacted", uselist=False))
+    template = db.relationship(Template, uselist=False, backref=db.backref("template_redacted", uselist=False))
 
 
 class TemplateHistory(TemplateBase):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "templates_history"
 
-    service = db.relationship("Service")
+    service = db.relationship(Service)
     version = db.Column(db.Integer, primary_key=True, nullable=False)
 
     # multiple template history versions can have the same attachment
-    letter_attachment = db.relationship("LetterAttachment", uselist=False, backref=db.backref("template_versions"))
+    letter_attachment = db.relationship(
+        lambda: LetterAttachment, uselist=False, backref=db.backref("template_versions")
+    )
 
     @declared_attr
     def template_redacted(cls):
         return db.relationship(
-            "TemplateRedacted", foreign_keys=[cls.id], primaryjoin="TemplateRedacted.template_id == TemplateHistory.id"
+            TemplateRedacted,
+            foreign_keys=[cls.id],
+            primaryjoin=lambda: TemplateRedacted.template_id == TemplateHistory.id,
         )
 
     def get_link(self):
@@ -1277,7 +1326,7 @@ class TemplateEmailFileBase(db.Model):
 
     @declared_attr
     def template(cls):
-        return db.relationship("Template", foreign_keys=[cls.template_id])
+        return db.relationship(Template, foreign_keys=[cls.template_id])
 
     @declared_attr
     def created_by_id(cls):
@@ -1285,7 +1334,7 @@ class TemplateEmailFileBase(db.Model):
 
     @declared_attr
     def created_by(cls):
-        return db.relationship("User", foreign_keys=[cls.created_by_id])
+        return db.relationship(User, foreign_keys=[cls.created_by_id])
 
     @declared_attr
     def archived_by_id(cls):
@@ -1293,22 +1342,25 @@ class TemplateEmailFileBase(db.Model):
 
     @declared_attr
     def archived_by(cls):
-        return db.relationship("User", foreign_keys=[cls.archived_by_id])
+        return db.relationship(User, foreign_keys=[cls.archived_by_id])
 
 
 class TemplateEmailFile(TemplateEmailFileBase):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "template_email_files"
 
     version = db.Column(db.Integer, default=0, nullable=False)
 
 
 class TemplateEmailFileHistory(TemplateEmailFileBase):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "template_email_files_history"
 
     version = db.Column(db.Integer, primary_key=True, nullable=False)
 
 
 class ProviderDetails(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "provider_details"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -1320,11 +1372,12 @@ class ProviderDetails(db.Model):
     version = db.Column(db.Integer, default=1, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
-    created_by = db.relationship("User")
+    created_by = db.relationship(User)
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
 
 class ProviderDetailsHistory(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "provider_details_history"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False)
@@ -1336,7 +1389,7 @@ class ProviderDetailsHistory(db.Model):
     version = db.Column(db.Integer, primary_key=True, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
-    created_by = db.relationship("User")
+    created_by = db.relationship(User)
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
     @classmethod
@@ -1350,20 +1403,22 @@ class ProviderDetailsHistory(db.Model):
 
 
 class JobStatus(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "job_status"
 
     name = db.Column(db.String(255), primary_key=True)
 
 
 class Job(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "jobs"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     original_file_name = db.Column(db.String, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False, nullable=False)
-    service = db.relationship("Service", backref=db.backref("jobs", lazy="dynamic"))
+    service = db.relationship(Service, backref=db.backref("jobs", lazy="dynamic"))
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), index=True, unique=False)
-    template = db.relationship("Template", backref=db.backref("jobs", lazy="dynamic"))
+    template = db.relationship(Template, backref=db.backref("jobs", lazy="dynamic"))
     template_version = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -1374,7 +1429,7 @@ class Job(db.Model):
 
     processing_started = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     processing_finished = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-    created_by = db.relationship("User")
+    created_by = db.relationship(User)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     scheduled_for = db.Column(db.DateTime, index=True, unique=False, nullable=True)
     job_status = db.Column(
@@ -1392,11 +1447,12 @@ class Job(db.Model):
 
 
 class VerifyCode(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "verify_codes"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    user = db.relationship("User", backref=db.backref("verify_codes", lazy="dynamic"))
+    user = db.relationship(User, backref=db.backref("verify_codes", lazy="dynamic"))
     _code = db.Column(db.String, nullable=False)
     code_type = db.Column(
         db.Enum(*VERIFY_CODE_TYPES, name="verify_code_types"), index=False, unique=False, nullable=False
@@ -1418,6 +1474,7 @@ class VerifyCode(db.Model):
 
 
 class NotificationStatusTypes(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "notification_status_types"
 
     name = db.Column(db.String(), primary_key=True)
@@ -1430,6 +1487,7 @@ class NotificationAllTimeView(db.Model):
     tables and therefore rely on *both* sets of indices.
     """
 
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "notifications_all_time_view"
 
     # Tell alembic not to create this as a table. We have a migration where we manually set this up as a view.
@@ -1462,21 +1520,22 @@ class NotificationAllTimeView(db.Model):
 
 
 class Notification(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "notifications"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     to = db.Column(db.String, nullable=False)
     normalised_to = db.Column(db.String, nullable=True)
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey("jobs.id"), index=True, unique=False)
-    job = db.relationship("Job", backref=db.backref("notifications", lazy="dynamic"))
+    job = db.relationship(Job, backref=db.backref("notifications", lazy="dynamic"))
     job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False)
-    service = db.relationship("Service")
+    service = db.relationship(Service)
     template_id = db.Column(UUID(as_uuid=True), index=True, unique=False)
     template_version = db.Column(db.Integer, nullable=False)
-    template = db.relationship("TemplateHistory")
+    template = db.relationship(TemplateHistory)
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey("api_keys.id"), unique=False)
-    api_key = db.relationship("ApiKey")
+    api_key = db.relationship(ApiKey)
     key_type = db.Column(db.String, db.ForeignKey("key_types.name"), unique=False, nullable=False)
     billable_units = db.Column(db.Integer, nullable=False, default=0)
     notification_type = db.Column(notification_types, nullable=False)
@@ -1500,7 +1559,7 @@ class Notification(db.Model):
     phone_prefix = db.Column(db.String, nullable=True)
     rate_multiplier = db.Column(db.Numeric(asdecimal=False), nullable=True)
 
-    created_by = db.relationship("User")
+    created_by = db.relationship(User)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
     reply_to_text = db.Column(db.String, nullable=True)
@@ -1887,18 +1946,19 @@ class Notification(db.Model):
 
 
 class NotificationHistory(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "notification_history"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True)
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey("jobs.id"), index=True, unique=False)
-    job = db.relationship("Job")
+    job = db.relationship(Job)
     job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False)
-    service = db.relationship("Service")
+    service = db.relationship(Service)
     template_id = db.Column(UUID(as_uuid=True), unique=False)
     template_version = db.Column(db.Integer, nullable=False)
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey("api_keys.id"), unique=False)
-    api_key = db.relationship("ApiKey")
+    api_key = db.relationship(ApiKey)
     key_type = db.Column(db.String, db.ForeignKey("key_types.name"), unique=False, nullable=False)
     billable_units = db.Column(db.Integer, nullable=False, default=0)
     notification_type = db.Column(notification_types, nullable=False)
@@ -1977,6 +2037,7 @@ class LetterCostThreshold(enum.StrEnum):
 
 
 class NotificationLetterDespatch(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "notifications_letter_despatch"
 
     notification_id = db.Column(UUID(as_uuid=True), primary_key=True)
@@ -1990,28 +2051,33 @@ class NotificationLetterDespatch(db.Model):
     # table by a nightly job and I haven't investigated whether that might break a strict FK yet or if it would
     # work smoothly. We can still have a relationship using an explicit join condition.
     notification = db.relationship(
-        "NotificationAllTimeView",
-        primaryjoin="NotificationLetterDespatch.notification_id == foreign(NotificationAllTimeView.id)",
+        NotificationAllTimeView,
+        primaryjoin=(
+            f"{__module__}.NotificationLetterDespatch.notification_id == "
+            f"foreign({__module__}.NotificationAllTimeView.id)"
+        ),
         uselist=False,
         viewonly=True,
     )
 
 
 class InviteStatusType(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "invite_status_type"
 
     name = db.Column(db.String, primary_key=True)
 
 
 class InvitedUser(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "invited_users"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email_address = db.Column(db.String(255), nullable=False)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    from_user = db.relationship("User")
+    from_user = db.relationship(User)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False)
-    service = db.relationship("Service")
+    service = db.relationship(Service)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name="invited_users_status_types"), nullable=False, default=INVITE_PENDING
@@ -2032,14 +2098,15 @@ class InvitedUser(db.Model):
 
 
 class InvitedOrganisationUser(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "invited_organisation_users"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email_address = db.Column(db.String(255), nullable=False)
     invited_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
-    invited_by = db.relationship("User")
+    invited_by = db.relationship(User)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
-    organisation = db.relationship("Organisation")
+    organisation = db.relationship(Organisation)
 
     permissions = db.Column(db.String, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
@@ -2064,14 +2131,15 @@ class InvitedOrganisationUser(db.Model):
 
 
 class Permission(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "permissions"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # Service id is optional, if the service is omitted we will assume the permission is not service specific.
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False, nullable=True)
-    service = db.relationship("Service")
+    service = db.relationship(Service)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    user = db.relationship("User")
+    user = db.relationship(User)
     permission = db.Column(
         db.Enum(*PERMISSION_LIST, name="permission_types"), index=False, unique=False, nullable=False
     )
@@ -2086,6 +2154,7 @@ class Permission(db.Model):
 
 
 class Event(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "events"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2095,6 +2164,7 @@ class Event(db.Model):
 
 
 class Rate(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "rates"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2116,12 +2186,13 @@ class Rate(db.Model):
 
 
 class InboundSms(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "inbound_sms"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
-    service = db.relationship("Service", backref="inbound_sms")
+    service = db.relationship(Service, backref="inbound_sms")
 
     notify_number = db.Column(db.String, nullable=False)  # the service's number, that the msg was sent to
     user_number = db.Column(db.String, nullable=False, index=True)  # the end user's number, that the msg was sent from
@@ -2155,11 +2226,12 @@ class InboundSms(db.Model):
 
 
 class InboundSmsHistory(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "inbound_sms_history"
     id = db.Column(UUID(as_uuid=True), primary_key=True)
     created_at = db.Column(db.DateTime, unique=False, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False)
-    service = db.relationship("Service")
+    service = db.relationship(Service)
     notify_number = db.Column(db.String, nullable=False)
     provider_date = db.Column(db.DateTime)
     provider_reference = db.Column(db.String)
@@ -2176,6 +2248,7 @@ class InboundSmsHistory(db.Model):
 
 
 class LetterRate(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "letter_rates"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2196,6 +2269,7 @@ class LetterRate(db.Model):
 
 
 class ServiceEmailReplyTo(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_email_reply_to"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2222,6 +2296,7 @@ class ServiceEmailReplyTo(db.Model):
 
 
 class ServiceLetterContact(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_letter_contacts"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2248,12 +2323,14 @@ class ServiceLetterContact(db.Model):
 
 
 class AuthType(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "auth_type"
 
     name = db.Column(db.String, primary_key=True)
 
 
 class FactBillingLetterDespatch(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "ft_billing_letter_despatch"
 
     bst_date = db.Column(db.Date, nullable=False, primary_key=True)
@@ -2273,6 +2350,7 @@ class FactBillingLetterDespatch(db.Model):
 
 
 class FactBilling(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "ft_billing"
 
     bst_date = db.Column(db.Date, nullable=False, primary_key=True, index=True)
@@ -2301,6 +2379,7 @@ class FactBilling(db.Model):
 
 
 class FactNotificationStatus(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "ft_notification_status"
 
     bst_date = db.Column(db.Date, index=True, primary_key=True, nullable=False)
@@ -2340,6 +2419,7 @@ class FactNotificationStatus(db.Model):
 
 
 class FactProcessingTime(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "ft_processing_time"
 
     bst_date = db.Column(db.Date, index=True, primary_key=True, nullable=False)
@@ -2350,6 +2430,7 @@ class FactProcessingTime(db.Model):
 
 
 class Complaint(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "complaints"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2375,6 +2456,7 @@ class Complaint(db.Model):
 
 
 class ServiceDataRetention(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_data_retention"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2402,6 +2484,7 @@ class ServiceDataRetention(db.Model):
 
 
 class ReturnedLetter(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "returned_letters"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2414,6 +2497,7 @@ class ReturnedLetter(db.Model):
 
 
 class ServiceContactList(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_contact_list"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2422,7 +2506,7 @@ class ServiceContactList(db.Model):
     template_type = db.Column(template_types, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
     service = db.relationship(Service, backref=db.backref("contact_list"))
-    created_by = db.relationship("User")
+    created_by = db.relationship(User)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -2475,6 +2559,7 @@ class WebauthnCredential(db.Model):
     A table that stores data for registered webauthn credentials.
     """
 
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "webauthn_credential"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
@@ -2508,6 +2593,7 @@ class WebauthnCredential(db.Model):
 
 
 class LetterAttachment(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "letter_attachment"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
@@ -2533,6 +2619,7 @@ class LetterAttachment(db.Model):
 
 
 class UnsubscribeRequestReport(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "unsubscribe_request_report"
     id = db.Column(UUID(as_uuid=True), primary_key=True)
 
@@ -2582,6 +2669,7 @@ class UnsubscribeRequestReport(db.Model):
 
 
 class UnsubscribeRequest(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "unsubscribe_request"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
@@ -2591,8 +2679,10 @@ class UnsubscribeRequest(db.Model):
     # work smoothly. We can still have a relationship using an explicit join condition.
     notification_id = db.Column(UUID(as_uuid=True), index=True, nullable=False)
     notification = db.relationship(
-        "NotificationAllTimeView",
-        primaryjoin="UnsubscribeRequest.notification_id == foreign(NotificationAllTimeView.id)",
+        NotificationAllTimeView,
+        primaryjoin=(
+            f"{__module__}.UnsubscribeRequest.notification_id == foreign({__module__}.NotificationAllTimeView.id)"
+        ),
         uselist=False,
         viewonly=True,
     )
@@ -2608,7 +2698,7 @@ class UnsubscribeRequest(db.Model):
     template = db.relationship(
         Template,
         foreign_keys=[template_id],
-        primaryjoin="Template.id == UnsubscribeRequest.template_id",
+        primaryjoin=f"{__module__}.Template.id == {__module__}.UnsubscribeRequest.template_id",
         backref=db.backref("unsubscribe_requests"),
         viewonly=True,
     )
@@ -2652,6 +2742,7 @@ class UnsubscribeRequest(db.Model):
 
 
 class UnsubscribeRequestHistory(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "unsubscribe_request_history"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2681,6 +2772,7 @@ class UnsubscribeRequestHistory(db.Model):
 
 
 class ProtectedSenderId(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "protected_sender_ids"
 
     sender_id = db.Column(db.String, primary_key=True, nullable=False)
@@ -2701,7 +2793,7 @@ class SerializedServiceJoinRequest:
 
 contacted_users = db.Table(
     "service_join_request_contacted_users",
-    db.Model.metadata,
+    db.metadatas[_import_bind_key],
     db.Column(
         "service_join_request_id", UUID(as_uuid=True), db.ForeignKey("service_join_requests.id"), primary_key=True
     ),
@@ -2710,6 +2802,7 @@ contacted_users = db.Table(
 
 
 class ServiceJoinRequest(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "service_join_requests"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -2725,13 +2818,13 @@ class ServiceJoinRequest(db.Model):
     status_changed_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
     reason = db.Column(db.Text, nullable=True)
 
-    requester = db.relationship("User", foreign_keys=[requester_id])
-    status_changed_by = db.relationship("User", foreign_keys=[status_changed_by_id])
+    requester = db.relationship(User, foreign_keys=[requester_id])
+    status_changed_by = db.relationship(User, foreign_keys=[status_changed_by_id])
 
     # Use lazy="joined" to load the contacted_service_users relationship with a SQL JOIN
     # This is a nice option as we expect to load this relationship frequently when querying ServiceJoinRequest
     contacted_service_users = db.relationship(
-        "User", secondary=contacted_users, backref="service_join_requests", lazy="joined"
+        User, secondary=contacted_users, backref="service_join_requests", lazy="joined"
     )
 
     def serialize(self) -> SerializedServiceJoinRequest:
@@ -2773,6 +2866,7 @@ class SerializedReportRequest:
 
 
 class ReportRequest(db.Model):
+    metadata = db.metadatas[_import_bind_key]
     __tablename__ = "report_requests"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
