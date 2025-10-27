@@ -98,6 +98,42 @@ notification_types = db.Enum(*NOTIFICATION_TYPE, name="notification_type")
 template_types = db.Enum(*TEMPLATE_TYPES, name="template_type")
 
 
+@dataclass
+class SerializedUser:
+    id: str
+    name: str
+    email_address: str
+    created_at: str
+    auth_type: str
+    current_session_id: str | None
+    failed_login_count: int
+    email_access_validated_at: str
+    logged_in_at: str | None
+    mobile_number: str | None
+    organisations: list[str]
+    password_changed_at: str
+    permissions: dict[str, list[str]]
+    organisation_permissions: dict[str, list[str]]
+    platform_admin: bool
+    services: list[str] | list[dict]
+    can_use_webauthn: bool
+    state: str
+    take_part_in_research: bool
+    receives_new_features_email: bool
+
+    def __iter__(self):
+        # Return an iterator of the instance's attributes as (key, value) pairs
+        return iter(self.__dict__.items())
+
+
+@dataclass
+class SerializedUserForList:
+    id: str
+    name: str
+    email_address: str
+    mobile_number: str | None
+
+
 class User(db.Model):
     __tablename__ = "users"
 
@@ -179,43 +215,43 @@ class User(db.Model):
 
         return retval
 
-    def serialize(self, service_filter_keys=None):
+    def serialize(self, service_filter_keys=None) -> SerializedUser:
         if service_filter_keys is None:
             services_data = [x.id for x in self.services if x.active]
         else:
             service_filter_keys = list(set(service_filter_keys) | {"id"})
             services_data = [dict_filter(x, service_filter_keys) for x in self.services if x.active]
 
-        return {
-            "id": self.id,
-            "name": self.name,
-            "email_address": self.email_address,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "auth_type": self.auth_type,
-            "current_session_id": self.current_session_id,
-            "failed_login_count": self.failed_login_count,
-            "email_access_validated_at": self.email_access_validated_at.strftime(DATETIME_FORMAT),
-            "logged_in_at": get_dt_string_or_none(self.logged_in_at),
-            "mobile_number": self.mobile_number,
-            "organisations": [x.id for x in self.organisations if x.active],
-            "password_changed_at": self.password_changed_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
-            "permissions": self.get_permissions(),
-            "organisation_permissions": self.get_organisation_permissions(),
-            "platform_admin": self.platform_admin,
-            "services": services_data,
-            "can_use_webauthn": self.can_use_webauthn,
-            "state": self.state,
-            "take_part_in_research": self.take_part_in_research,
-            "receives_new_features_email": self.receives_new_features_email,
-        }
+        return SerializedUser(
+            id=self.id,
+            name=self.name,
+            email_address=self.email_address,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            auth_type=self.auth_type,
+            current_session_id=self.current_session_id,
+            failed_login_count=self.failed_login_count,
+            email_access_validated_at=self.email_access_validated_at.strftime(DATETIME_FORMAT),
+            logged_in_at=get_dt_string_or_none(self.logged_in_at),
+            mobile_number=self.mobile_number,
+            organisations=[x.id for x in self.organisations if x.active],
+            password_changed_at=self.password_changed_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
+            permissions=self.get_permissions(),
+            organisation_permissions=self.get_organisation_permissions(),
+            platform_admin=self.platform_admin,
+            services=services_data,
+            can_use_webauthn=self.can_use_webauthn,
+            state=self.state,
+            take_part_in_research=self.take_part_in_research,
+            receives_new_features_email=self.receives_new_features_email,
+        )
 
-    def serialize_for_users_list(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "email_address": self.email_address,
-            "mobile_number": self.mobile_number,
-        }
+    def serialize_for_users_list(self) -> SerializedUserForList:
+        return SerializedUserForList(
+            id=self.id,
+            name=self.name,
+            email_address=self.email_address,
+            mobile_number=self.mobile_number,
+        )
 
 
 class ServiceUser(db.Model):
@@ -294,18 +330,16 @@ class EmailBranding(db.Model):
 
     def serialize(self) -> SerializedEmailBranding:
         return SerializedEmailBranding(
-            {
-                "id": str(self.id),
-                "colour": self.colour,
-                "logo": self.logo,
-                "name": self.name,
-                "text": self.text,
-                "brand_type": self.brand_type,
-                "alt_text": self.alt_text,
-                "created_by": self.created_by,
-                "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
-                "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
-            }
+            id=str(self.id),
+            colour=self.colour,
+            logo=self.logo,
+            name=self.name,
+            text=self.text,
+            brand_type=self.brand_type,
+            alt_text=self.alt_text,
+            created_by=self.created_by,
+            created_at=self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            updated_at=self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
         )
 
 
@@ -842,6 +876,9 @@ class SerializedInboundNumber:
     created_at: str
     updated_at: str | None
 
+    def get(self, key: str, default=None):
+        return getattr(self, key, default)
+
 
 class InboundNumber(db.Model):
     __tablename__ = "inbound_numbers"
@@ -881,7 +918,6 @@ class SerializedServiceSmsSender:
     created_at: str
     updated_at: str | None
 
-
 class ServiceSmsSender(db.Model):
     __tablename__ = "service_sms_senders"
 
@@ -909,7 +945,7 @@ class ServiceSmsSender(db.Model):
             is_default=self.is_default,
             archived=self.archived,
             inbound_number_id=str(self.inbound_number_id) if self.inbound_number_id else None,
-            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            created_at=self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
             updated_at=get_dt_string_or_none(self.updated_at),
         )
 

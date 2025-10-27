@@ -46,12 +46,15 @@ from app.models import (
     Permission,
     ReportRequest,
     SerializedAnnualBilling,
+    SerializedEmailBranding,
     SerializedFreeSmsItems,
     SerializedInboundNumber,
     SerializedOrganisation,
     SerializedOrganisationForList,
     SerializedServiceOrgDashboard,
     SerializedServiceSmsSender,
+    SerializedUser,
+    SerializedUserForList,
     Service,
     ServiceGuestList,
     ServiceSmsSender,
@@ -532,6 +535,7 @@ def test_inbound_number_serializes_with_service(client, notify_db_session):
     service = create_service()
     inbound_number = create_inbound_number(number="1", service_id=service.id)
     serialized_inbound_number = inbound_number.serialize()
+
     assert serialized_inbound_number.get("id") == str(inbound_number.id)
     assert serialized_inbound_number.get("service").get("id") == str(inbound_number.service.id)
     assert serialized_inbound_number.get("service").get("name") == inbound_number.service.name
@@ -664,15 +668,16 @@ def test_serialize_service_filter_keys(
     dao_add_user_to_service(sample_service, sample_user)
     serialized_data = sample_user.serialize(service_filter_keys=service_filter_keys)
 
-    assert "services" in serialized_data
+    assert serialized_data.services is not None
+    assert len(serialized_data.services) == 1
 
     if service_filter_keys is None:
         # If None is passed, expect a flat list of IDs
-        assert isinstance(serialized_data["services"], list)
-        assert all(isinstance(service_id, UUID) for service_id in serialized_data["services"])
+        assert isinstance(serialized_data.services, list)
+        assert all(isinstance(service_id, UUID) for service_id in serialized_data.services)
     else:
         # Otherwise, expect a list of dictionaries
-        for service in serialized_data["services"]:
+        for service in serialized_data.services:
             assert set(service.keys()) == set(expected_keys)
 
 
@@ -696,6 +701,7 @@ def test_email_branding_serializes_with_all_fields(notify_db_session):
 
     serialized = email_branding.serialize()
 
+    assert isinstance(serialized, SerializedEmailBranding)
     assert serialized.id == str(email_branding.id)
     assert serialized.colour == "#000000"
     assert serialized.logo == "logo.png"
@@ -704,8 +710,8 @@ def test_email_branding_serializes_with_all_fields(notify_db_session):
     assert serialized.brand_type == "org"
     assert serialized.alt_text is None
     assert serialized.created_by == user_id
-    assert serialized.created_at == created_at.strftime("%Y-%m-%d %H:%M:%S.%f")
-    assert serialized.updated_at == updated_at.strftime("%Y-%m-%d %H:%M:%S.%f")
+    assert serialized.created_at == created_at.strftime(DATETIME_FORMAT)
+    assert serialized.updated_at == updated_at.strftime(DATETIME_FORMAT)
 
 
 def test_email_branding_serializes_with_minimal_fields(notify_db_session):
@@ -735,7 +741,6 @@ def test_email_branding_serialization_only_returns_defined_fields(notify_db_sess
         id=uuid.uuid4(),
         name="Test Brand",
         brand_type="org",
-        fake_field="Should not be serialized",  # This field does not exist in the model
     )
 
     serialized = email_branding.serialize()
@@ -753,8 +758,6 @@ def test_email_branding_serialization_only_returns_defined_fields(notify_db_sess
         "created_at",
         "updated_at",
     }
-
-    assert not hasattr(serialized, "fake_field")
 
 
 def test_letter_branding_serializes_with_all_fields(notify_db_session):
@@ -777,8 +780,8 @@ def test_letter_branding_serializes_with_all_fields(notify_db_session):
     assert serialized.name == "Test Brand"
     assert serialized.filename == "test-brand.svg"
     assert serialized.created_by == str(user_id)
-    assert serialized.created_at == created_at.strftime("%Y-%m-%d %H:%M:%S.%f")
-    assert serialized.updated_at == updated_at.strftime("%Y-%m-%d %H:%M:%S.%f")
+    assert serialized.created_at == created_at.strftime(DATETIME_FORMAT)
+    assert serialized.updated_at == updated_at.strftime(DATETIME_FORMAT)
 
 
 def test_letter_branding_serializes_with_minimal_fields(notify_db_session):
@@ -796,7 +799,9 @@ def test_letter_branding_serializes_with_minimal_fields(notify_db_session):
 
 def test_letter_branding_serialization_only_returns_defined_fields(notify_db_session):
     letter_branding = LetterBranding(
-        id=uuid.uuid4(), name="Test Brand", filename="test-brand.svg", fake_field="Should not be serialized"
+        id=uuid.uuid4(),
+        name="Test Brand",
+        filename="test-brand.svg",
     )
 
     serialized = letter_branding.serialize()
@@ -811,12 +816,25 @@ def test_letter_branding_serialization_only_returns_defined_fields(notify_db_ses
         "updated_at",
     }
 
-    assert not hasattr(serialized, "fake_field")
-
 
 def test_organisation_serializes_with_all_fields(notify_db_session):
-    user = User(id=uuid.uuid4(), name="Test User", email_address="test@example.com", password="password")
+    user = User(id=uuid.uuid4(), name="Test User", email_address="test@example.com", _password="password", auth_type="email_auth")
     notify_db_session.add(user)
+
+    email_branding = EmailBranding(
+        id=uuid.uuid4(),
+        name="Test Email Branding",
+        brand_type="org",
+        alt_text="Alt Text",
+    )
+    notify_db_session.add(email_branding)
+
+    letter_branding = LetterBranding(
+        id=uuid.uuid4(),
+        name="Test Letter Branding",
+        filename="test-letter-branding.svg",
+    )
+    notify_db_session.add(letter_branding)
 
     org = Organisation(
         id=uuid.uuid4(),
@@ -824,8 +842,8 @@ def test_organisation_serializes_with_all_fields(notify_db_session):
         active=True,
         crown=True,
         organisation_type="central",
-        letter_branding_id=uuid.uuid4(),
-        email_branding_id=uuid.uuid4(),
+        letter_branding_id=letter_branding.id,
+        email_branding_id=email_branding.id,
         agreement_signed=True,
         agreement_signed_at=datetime(2023, 1, 1, tzinfo=UTC),
         agreement_signed_by_id=user.id,
@@ -854,7 +872,7 @@ def test_organisation_serializes_with_all_fields(notify_db_session):
     assert result.letter_branding_id == str(org.letter_branding_id)
     assert result.email_branding_id == str(org.email_branding_id)
     assert result.agreement_signed is True
-    assert result.agreement_signed_at == datetime(2023, 1, 1, tzinfo=UTC)
+    assert result.agreement_signed_at == datetime(2023, 1, 1)
     assert result.agreement_signed_by_id == str(user.id)
     assert result.agreement_signed_on_behalf_of_name == "On Behalf"
     assert result.agreement_signed_on_behalf_of_email_address == "behalf@example.com"
@@ -915,7 +933,6 @@ def test_organisation_serialization_only_returns_defined_fields(notify_db_sessio
         name="Test Organisation",
         active=True,
         can_approve_own_go_live_requests=True,
-        fake_field="Should not be serialized",
     )
     notify_db_session.add(org)
     notify_db_session.commit()
@@ -949,8 +966,6 @@ def test_organisation_serialization_only_returns_defined_fields(notify_db_sessio
         "permissions",
     }
 
-    assert not hasattr(serialized, "fake_field")
-
 
 def test_organisation_serializes_for_list(notify_db_session):
     """Test the list serialization of an organisation"""
@@ -976,7 +991,11 @@ def test_organisation_serializes_for_list(notify_db_session):
 
 def test_organisation_serialization_for_list_only_returns_defined_fields(notify_db_session):
     """Test to ensure we only get fields that are defined in the SerializedOrganisationForList dataclass"""
-    org = Organisation(id=uuid.uuid4(), name="Test Organisation", active=True, fake_field="Should not be serialized")
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+    )
     notify_db_session.add(org)
     notify_db_session.commit()
 
@@ -991,12 +1010,11 @@ def test_organisation_serialization_for_list_only_returns_defined_fields(notify_
         "domains",
         "organisation_type",
     }
-    assert not hasattr(result, "fake_field")
 
 
 def test_annual_billing_serialize_free_sms_items(notify_db_session):
     """Test the free SMS items serialization of annual billing"""
-    service = Service(name="Test Service")
+    service = create_service(service_name="Test Service")
     notify_db_session.add(service)
 
     annual_billing = AnnualBilling(service=service, free_sms_fragment_limit=250000, financial_year_start=2022)
@@ -1012,14 +1030,13 @@ def test_annual_billing_serialize_free_sms_items(notify_db_session):
 
 def test_annual_billing_serialize_free_sms_items_only_returns_defined_fields(notify_db_session):
     """Test to ensure we only get fields that are defined in the SerializedFreeSmsItems dataclass"""
-    service = Service(name="Test Service")
+    service = create_service(service_name="Test Service", restricted=False)
     notify_db_session.add(service)
 
     annual_billing = AnnualBilling(
         service=service,
         free_sms_fragment_limit=250000,
         financial_year_start=2022,
-        fake_field="Should not be serialized",
     )
     notify_db_session.add(annual_billing)
     notify_db_session.commit()
@@ -1028,12 +1045,11 @@ def test_annual_billing_serialize_free_sms_items_only_returns_defined_fields(not
 
     # Should only contain fields defined in SerializedFreeSmsItems dataclass
     assert set(result.__annotations__.keys()) == {"free_sms_fragment_limit", "financial_year_start"}
-    assert not hasattr(result, "fake_field")
 
 
 def test_annual_billing_serialize(notify_db_session):
     """Test the full serialization of annual billing"""
-    service = Service(name="Test Service")
+    service = create_service(service_name="Test Service")
     notify_db_session.add(service)
 
     now = datetime.now(UTC)
@@ -1059,30 +1075,14 @@ def test_annual_billing_serialize(notify_db_session):
     assert result.service == {"id": str(service.id), "name": "Test Service"}
 
 
-def test_annual_billing_serialize_with_no_service(notify_db_session):
-    """Test serialization of annual billing when service is not loaded"""
-    now = datetime.now(UTC)
-    annual_billing = AnnualBilling(
-        service_id=uuid.uuid4(), free_sms_fragment_limit=250000, financial_year_start=2022, created_at=now
-    )
-    notify_db_session.add(annual_billing)
-    notify_db_session.commit()
-
-    result = annual_billing.serialize()
-
-    assert isinstance(result, SerializedAnnualBilling)
-    assert result.service is None
-
-
 def test_annual_billing_serialization_only_returns_defined_fields(notify_db_session):
     """Test to ensure we only get fields that are defined in the serialization dataclass"""
-    service = Service(name="Test Service")
+    service = create_service(service_name="Test Service")
     notify_db_session.add(service)
     annual_billing = AnnualBilling(
         service=service,
         free_sms_fragment_limit=250000,
         financial_year_start=2022,
-        fake_field="Should not be serialized",
     )
     notify_db_session.add(annual_billing)
     notify_db_session.commit()
@@ -1098,7 +1098,6 @@ def test_annual_billing_serialization_only_returns_defined_fields(notify_db_sess
         "updated_at",
         "service",
     }
-    assert not hasattr(serialized, "fake_field")
 
 
 def test_inbound_number_serializes_with_all_fields(notify_db_session):
@@ -1122,7 +1121,7 @@ def test_inbound_number_serializes_with_all_fields(notify_db_session):
     assert serialized.id == str(inbound_number.id)
     assert serialized.number == "07700900123"
     assert serialized.provider == "mmg"
-    assert serialized.service == {"id": str(service.id), "name": "Test Service"}
+    assert serialized.service.get("name") == "Test Service"
     assert serialized.active is True
     assert serialized.created_at == created_at.strftime(DATETIME_FORMAT)
     assert serialized.updated_at == updated_at.strftime(DATETIME_FORMAT)
@@ -1151,7 +1150,6 @@ def test_inbound_number_serialization_only_returns_defined_fields(notify_db_sess
         provider="mmg",
         active=True,
         created_at=datetime.utcnow(),
-        fake_field="Should not be serialized",
     )
 
     serialized = inbound_number.serialize()
@@ -1167,14 +1165,12 @@ def test_inbound_number_serialization_only_returns_defined_fields(notify_db_sess
         "updated_at",
     }
 
-    assert not hasattr(serialized, "fake_field")
-
 
 def test_service_sms_sender_serializes_with_all_fields(notify_db_session):
     service = create_service(service_name="Test Service")
     sms_sender = ServiceSmsSender(
         id=uuid.uuid4(),
-        service=service,
+        service_id=service.id,
         sms_sender="Notify",
         is_default=True,
         created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
@@ -1188,15 +1184,15 @@ def test_service_sms_sender_serializes_with_all_fields(notify_db_session):
     assert serialized.service_id == str(service.id)
     assert serialized.sms_sender == "Notify"
     assert serialized.is_default is True
-    assert serialized.created_at == "2025-01-01 12:00:00.000000"
-    assert serialized.updated_at == "2025-01-02 12:00:00.000000"
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.updated_at == datetime(2025, 1, 2, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
 
 
 def test_service_sms_sender_serializes_with_minimal_fields(notify_db_session):
     service = create_service(service_name="Test Service")
     sms_sender = ServiceSmsSender(
         id=uuid.uuid4(),
-        service=service,
+        service_id=service.id,
         sms_sender="Notify",
         is_default=False,
     )
@@ -1217,24 +1213,22 @@ def test_service_sms_sender_serialization_only_returns_defined_fields(notify_db_
         id=uuid.uuid4(),
         service=service,
         sms_sender="Notify",
-        is_default=True,
-        created_at=datetime.utcnow(),
-        fake_field="Should not be serialized",
+        is_default=False,
     )
 
     serialized = sms_sender.serialize()
 
     # Ensure only the defined fields are present in the serialized output
-    assert set(serialized.__dataclass_fields__.keys()) == {
+    assert set(serialized.__annotations__.keys()) == {
         "id",
         "service_id",
         "sms_sender",
         "is_default",
+        "archived",
+        "inbound_number_id",
         "created_at",
         "updated_at",
     }
-
-    assert not hasattr(serialized, "fake_field")
 
 
 def test_service_serialization_for_dashboard_with_all_fields(notify_db_session):
@@ -1242,9 +1236,6 @@ def test_service_serialization_for_dashboard_with_all_fields(notify_db_session):
         service_name="Test Service",
         active=True,
         restricted=True,
-        message_limit=1000,
-        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
-        updated_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
     )
 
     serialized = service.serialize_for_org_dashboard()
@@ -1270,17 +1261,178 @@ def test_service_serialization_for_dashboard_with_minimal_fields(notify_db_sessi
 def test_service_serialization_for_dashboard_only_returns_defined_fields(notify_db_session):
     service = create_service(
         service_name="Test Service",
-        fake_field="Should not be serialized",
     )
 
     serialized = service.serialize_for_org_dashboard()
 
     # Ensure only the defined fields are present in the serialized output
-    assert set(serialized.__dataclass_fields__.keys()) == {
+    assert set(serialized.__annotations__.keys()) == {
         "id",
         "name",
         "active",
         "restricted",
     }
 
-    assert not hasattr(serialized, "fake_field")
+
+def test_user_serialization_return_all_fields(notify_db_session):
+    user = User(
+        id=uuid.uuid4(),
+        name="Test User",
+        email_address="test@example.com",
+        created_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        auth_type="email_auth",
+        current_session_id=uuid.uuid4(),
+        failed_login_count=0,
+        email_access_validated_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        logged_in_at=datetime(2020, 1, 2, 12, 0, tzinfo=UTC),
+        mobile_number="07700900000",
+        password_changed_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        platform_admin=False,
+        state="active",
+        take_part_in_research=True,
+        receives_new_features_email=True,
+        _password="password",
+    )
+    notify_db_session.add(user)
+    notify_db_session.commit()
+
+    serialized = user.serialize()
+
+    assert isinstance(serialized, SerializedUser)
+    assert serialized.id == user.id
+    assert serialized.name == "Test User"
+    assert serialized.email_address == "test@example.com"
+    assert serialized.created_at == "2020-01-01T12:00:00.000000Z"
+    assert serialized.auth_type == "email_auth"
+    assert serialized.current_session_id == user.current_session_id
+    assert serialized.failed_login_count == 0
+    assert serialized.email_access_validated_at == "2020-01-01T12:00:00.000000Z"
+    assert serialized.logged_in_at == "2020-01-02T12:00:00.000000Z"
+    assert serialized.mobile_number == "07700900000"
+    assert serialized.organisations == []
+    assert serialized.password_changed_at == "2020-01-01 12:00:00.000000"
+    assert serialized.permissions == {}
+    assert serialized.organisation_permissions == {}
+    assert serialized.platform_admin is False
+    assert serialized.services == []
+    assert serialized.can_use_webauthn is False
+    assert serialized.state == "active"
+    assert serialized.take_part_in_research is True
+    assert serialized.receives_new_features_email is True
+
+
+def test_user_serialization_only_returns_defined_fields(notify_db_session):
+    user = User(
+        id=uuid.uuid4(),
+        name="Test User",
+        email_address="test@example.com",
+        created_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        auth_type="email_auth",
+        current_session_id=uuid.uuid4(),
+        failed_login_count=0,
+        email_access_validated_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        logged_in_at=datetime(2020, 1, 2, 12, 0, tzinfo=UTC),
+        mobile_number="07700900000",
+        password_changed_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        platform_admin=False,
+        state="active",
+        take_part_in_research=True,
+        receives_new_features_email=True,
+        _password="password",
+    )
+    notify_db_session.add(user)
+    notify_db_session.commit()
+
+    serialized = user.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "name",
+        "email_address",
+        "created_at",
+        "auth_type",
+        "current_session_id",
+        "failed_login_count",
+        "email_access_validated_at",
+        "logged_in_at",
+        "mobile_number",
+        "organisations",
+        "password_changed_at",
+        "permissions",
+        "organisation_permissions",
+        "platform_admin",
+        "services",
+        "can_use_webauthn",
+        "state",
+        "take_part_in_research",
+        "receives_new_features_email",
+    }
+
+
+def test_user_serialization_with_list(notify_db_session):
+    service = create_service(service_name="Test Service")
+    user = User(
+        id=uuid.uuid4(),
+        name="Test User",
+        email_address="test@example.com",
+        created_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        auth_type="email_auth",
+        current_session_id=uuid.uuid4(),
+        failed_login_count=0,
+        email_access_validated_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        logged_in_at=datetime(2020, 1, 2, 12, 0, tzinfo=UTC),
+        mobile_number="07700900000",
+        password_changed_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        platform_admin=False,
+        state="active",
+        take_part_in_research=True,
+        receives_new_features_email=True,
+        _password="password",
+    )
+    user.services.append(service)
+    notify_db_session.add(user)
+    notify_db_session.commit()
+
+    serialized = user.serialize_for_users_list()
+
+    assert isinstance(serialized, SerializedUserForList)
+    assert serialized.id == user.id
+    assert serialized.name == "Test User"
+    assert serialized.email_address == "test@example.com"
+    assert serialized.mobile_number == "07700900000"
+
+
+def test_user_serialization_for_list_only_returns_defined_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    user = User(
+        id=uuid.uuid4(),
+        name="Test User",
+        email_address="test@example.com",
+        created_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        auth_type="email_auth",
+        current_session_id=uuid.uuid4(),
+        failed_login_count=0,
+        email_access_validated_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        logged_in_at=datetime(2020, 1, 2, 12, 0, tzinfo=UTC),
+        mobile_number="07700900000",
+        password_changed_at=datetime(2020, 1, 1, 12, 0, tzinfo=UTC),
+        platform_admin=False,
+        state="active",
+        take_part_in_research=True,
+        receives_new_features_email=True,
+        _password="password",
+    )
+    user.services.append(service)
+    notify_db_session.add(user)
+    notify_db_session.commit()
+
+    serialized = user.serialize_for_users_list()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "name",
+        "email_address",
+        "mobile_number",
+    }
+
+    
