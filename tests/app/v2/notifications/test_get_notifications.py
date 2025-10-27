@@ -241,6 +241,7 @@ def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(
         "v2_notifications.get_notification_by_id",
         notification_id=mocked_notification.id,
     )
+
     assert "estimated_delivery" not in json_response
 
 
