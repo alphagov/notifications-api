@@ -25,9 +25,11 @@ from app.constants import (
     PRECOMPILED_TEMPLATE_NAME,
     SMS_TYPE,
 )
+from app.utils import DATETIME_FORMAT
 from app.dao.services_dao import dao_add_user_to_service
 from app.models import (
     ApiKey,
+    AnnualBilling,
     EmailBranding,
     FactBilling,
     FactNotificationStatus,
@@ -44,6 +46,9 @@ from app.models import (
     Permission,
     ReportRequest,
     ServiceGuestList,
+    Service,
+    SerializedAnnualBilling,
+    SerializedFreeSmsItems,
     SerializedOrganisation,
     SerializedOrganisationForList,
     Template,
@@ -993,3 +998,121 @@ def test_organisation_serialization_for_list_only_returns_defined_fields(notify_
         'organisation_type'
     }
     assert not hasattr(result, "fake_field")
+
+
+def test_annual_billing_serialize_free_sms_items(notify_db_session):
+    """Test the free SMS items serialization of annual billing"""
+    service = Service(name="Test Service")
+    notify_db_session.add(service)
+
+    annual_billing = AnnualBilling(
+        service=service,
+        free_sms_fragment_limit=250000,
+        financial_year_start=2022
+    )
+    notify_db_session.add(annual_billing)
+    notify_db_session.commit()
+
+    result = annual_billing.serialize_free_sms_items()
+    
+    assert isinstance(result, SerializedFreeSmsItems)
+    assert result.free_sms_fragment_limit == 250000
+    assert result.financial_year_start == 2022
+
+
+def test_annual_billing_serialize_free_sms_items_only_returns_defined_fields(notify_db_session):
+    """Test to ensure we only get fields that are defined in the SerializedFreeSmsItems dataclass"""
+    service = Service(name="Test Service")
+    notify_db_session.add(service)
+
+    annual_billing = AnnualBilling(
+        service=service,
+        free_sms_fragment_limit=250000,
+        financial_year_start=2022,
+        fake_field="Should not be serialized"
+    )
+    notify_db_session.add(annual_billing)
+    notify_db_session.commit()
+
+    result = annual_billing.serialize_free_sms_items()
+
+    # Should only contain fields defined in SerializedFreeSmsItems dataclass
+    assert set(result.__annotations__.keys()) == {
+        'free_sms_fragment_limit',
+        'financial_year_start'
+    }
+    assert not hasattr(result, "fake_field")
+
+
+def test_annual_billing_serialize(notify_db_session):
+    """Test the full serialization of annual billing"""
+    service = Service(name="Test Service")
+    notify_db_session.add(service)
+
+    now = datetime.now(UTC)
+    annual_billing = AnnualBilling(
+        service=service,
+        free_sms_fragment_limit=250000,
+        financial_year_start=2022,
+        created_at=now,
+        updated_at=now + timedelta(days=1)
+    )
+    notify_db_session.add(annual_billing)
+    notify_db_session.commit()
+
+    result = annual_billing.serialize()
+    
+    assert isinstance(result, SerializedAnnualBilling)
+    assert result.id == str(annual_billing.id)
+    assert result.free_sms_fragment_limit == 250000
+    assert result.service_id == str(service.id)
+    assert result.financial_year_start == 2022
+    assert result.created_at == now.strftime(DATETIME_FORMAT)
+    assert result.updated_at == (now + timedelta(days=1)).strftime(DATETIME_FORMAT)
+    assert result.service == {"id": str(service.id), "name": "Test Service"}
+
+
+def test_annual_billing_serialize_with_no_service(notify_db_session):
+    """Test serialization of annual billing when service is not loaded"""
+    now = datetime.now(UTC)
+    annual_billing = AnnualBilling(
+        service_id=uuid.uuid4(),
+        free_sms_fragment_limit=250000,
+        financial_year_start=2022,
+        created_at=now
+    )
+    notify_db_session.add(annual_billing)
+    notify_db_session.commit()
+
+    result = annual_billing.serialize()
+    
+    assert isinstance(result, SerializedAnnualBilling)
+    assert result.service is None
+
+
+def test_annual_billing_serialization_only_returns_defined_fields(notify_db_session):
+    """Test to ensure we only get fields that are defined in the serialization dataclass"""
+    service = Service(name="Test Service")
+    notify_db_session.add(service) 
+    now = datetime.now(UTC)
+    annual_billing = AnnualBilling(
+        service=service,
+        free_sms_fragment_limit=250000,
+        financial_year_start=2022,
+        fake_field="Should not be serialized"
+    )
+    notify_db_session.add(annual_billing)
+    notify_db_session.commit()  
+    serialized = annual_billing.serialize()
+
+    # Should only contain fields defined in SerializedAnnualBilling dataclass
+    assert set(serialized.__annotations__.keys()) == {
+        'id',
+        'free_sms_fragment_limit',
+        'service_id',
+        'financial_year_start',
+        'created_at',
+        'updated_at',
+        'service'
+    }   
+    assert not hasattr(serialized, "fake_field")

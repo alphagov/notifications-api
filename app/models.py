@@ -763,6 +763,29 @@ class DefaultAnnualAllowance(db.Model):
         )
 
 
+@dataclass
+class SerializedFreeSmsItems:
+    free_sms_fragment_limit: int 
+    financial_year_start: int
+
+
+@dataclass
+class SeralizedService:
+    id: str
+    name: str
+
+
+@dataclass 
+class SerializedAnnualBilling:
+    id: str
+    free_sms_fragment_limit: int
+    service_id: str
+    financial_year_start: int
+    created_at: str
+    updated_at: str | None
+    service: SeralizedService | None
+
+
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
@@ -780,25 +803,25 @@ class AnnualBilling(db.Model):
         UniqueConstraint("service_id", "financial_year_start", name="uix_service_id_financial_year_start"),
     )
 
-    def serialize_free_sms_items(self):
-        return {
-            "free_sms_fragment_limit": self.free_sms_fragment_limit,
-            "financial_year_start": self.financial_year_start,
-        }
+    def serialize_free_sms_items(self) -> SerializedFreeSmsItems:
+        return SerializedFreeSmsItems(
+            free_sms_fragment_limit=self.free_sms_fragment_limit,
+            financial_year_start=self.financial_year_start,
+        )
 
-    def serialize(self):
-        def serialize_service():
+    def serialize(self) -> SerializedAnnualBilling:
+        def serialize_service() -> SeralizedService:
             return {"id": str(self.service_id), "name": self.service.name}
 
-        return {
-            "id": str(self.id),
-            "free_sms_fragment_limit": self.free_sms_fragment_limit,
-            "service_id": self.service_id,
-            "financial_year_start": self.financial_year_start,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-            "service": serialize_service() if self.service else None,
-        }
+        return SerializedAnnualBilling(
+            id=str(self.id),
+            free_sms_fragment_limit=self.free_sms_fragment_limit,
+            service_id=str(self.service_id),
+            financial_year_start=self.financial_year_start,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
+            service=serialize_service() if self.service else None,
+        )
 
 
 class InboundNumber(db.Model):
