@@ -862,6 +862,18 @@ class InboundNumber(db.Model):
         )
 
 
+@dataclass
+class SerializedServiceSmsSender:
+    id: str
+    sms_sender: str
+    service_id: str
+    is_default: bool
+    archived: bool
+    inbound_number_id: str | None
+    created_at: str
+    updated_at: str | None
+
+
 class ServiceSmsSender(db.Model):
     __tablename__ = "service_sms_senders"
 
@@ -881,17 +893,17 @@ class ServiceSmsSender(db.Model):
     def get_reply_to_text(self):
         return try_parse_and_format_phone_number(self.sms_sender)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "sms_sender": self.sms_sender,
-            "service_id": str(self.service_id),
-            "is_default": self.is_default,
-            "archived": self.archived,
-            "inbound_number_id": str(self.inbound_number_id) if self.inbound_number_id else None,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-        }
+    def serialize(self) -> SerializedServiceSmsSender:
+        return SerializedServiceSmsSender(
+            id=str(self.id),
+            sms_sender=self.sms_sender,
+            service_id=str(self.service_id),
+            is_default=self.is_default,
+            archived=self.archived,
+            inbound_number_id=str(self.inbound_number_id) if self.inbound_number_id else None,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
+        )
 
 
 class ServicePermission(db.Model):

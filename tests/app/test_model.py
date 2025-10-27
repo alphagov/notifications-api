@@ -50,8 +50,10 @@ from app.models import (
     SerializedInboundNumber,
     SerializedOrganisation,
     SerializedOrganisationForList,
+    SerializedServiceSmsSender,
     Service,
     ServiceGuestList,
+    ServiceSmsSender,
     Template,
     TemplateFolder,
     TemplateHistory,
@@ -1160,6 +1162,73 @@ def test_inbound_number_serialization_only_returns_defined_fields(notify_db_sess
         "provider",
         "service",
         "active",
+        "created_at",
+        "updated_at",
+    }
+
+    assert not hasattr(serialized, "fake_field")
+
+
+def test_service_sms_sender_serializes_with_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    sms_sender = ServiceSmsSender(
+        id=uuid.uuid4(),
+        service=service,
+        sms_sender="Notify",
+        is_default=True,
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        updated_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
+    )
+
+    serialized = sms_sender.serialize()
+
+    assert isinstance(serialized, SerializedServiceSmsSender)
+    assert serialized.id == str(sms_sender.id)
+    assert serialized.service_id == str(service.id)
+    assert serialized.sms_sender == "Notify"
+    assert serialized.is_default is True
+    assert serialized.created_at == "2025-01-01 12:00:00.000000"
+    assert serialized.updated_at == "2025-01-02 12:00:00.000000"
+
+
+def test_service_sms_sender_serializes_with_minimal_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    sms_sender = ServiceSmsSender(
+        id=uuid.uuid4(),
+        service=service,
+        sms_sender="Notify",
+        is_default=False,
+    )
+
+    serialized = sms_sender.serialize()
+
+    assert serialized.id == str(sms_sender.id)
+    assert serialized.service_id == str(service.id)
+    assert serialized.sms_sender == "Notify"
+    assert serialized.is_default is False
+    assert serialized.created_at is None
+    assert serialized.updated_at is None
+
+
+def test_service_sms_sender_serialization_only_returns_defined_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    sms_sender = ServiceSmsSender(
+        id=uuid.uuid4(),
+        service=service,
+        sms_sender="Notify",
+        is_default=True,
+        created_at=datetime.utcnow(),
+        fake_field="Should not be serialized",
+    )
+
+    serialized = sms_sender.serialize()
+
+    # Ensure only the defined fields are present in the serialized output
+    assert set(serialized.__dataclass_fields__.keys()) == {
+        "id",
+        "service_id",
+        "sms_sender",
+        "is_default",
         "created_at",
         "updated_at",
     }
