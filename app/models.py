@@ -765,7 +765,7 @@ class DefaultAnnualAllowance(db.Model):
 
 @dataclass
 class SerializedFreeSmsItems:
-    free_sms_fragment_limit: int 
+    free_sms_fragment_limit: int
     financial_year_start: int
 
 
@@ -775,7 +775,7 @@ class SeralizedService:
     name: str
 
 
-@dataclass 
+@dataclass
 class SerializedAnnualBilling:
     id: str
     free_sms_fragment_limit: int
@@ -824,6 +824,17 @@ class AnnualBilling(db.Model):
         )
 
 
+@dataclass
+class SerializedInboundNumber:
+    id: str
+    number: str
+    provider: str
+    service: SeralizedService | None
+    active: bool
+    created_at: str
+    updated_at: str | None
+
+
 class InboundNumber(db.Model):
     __tablename__ = "inbound_numbers"
 
@@ -836,19 +847,19 @@ class InboundNumber(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
-    def serialize(self):
-        def serialize_service():
+    def serialize(self) -> SerializedInboundNumber:
+        def serialize_service() -> SeralizedService:
             return {"id": str(self.service_id), "name": self.service.name}
 
-        return {
-            "id": str(self.id),
-            "number": self.number,
-            "provider": self.provider,
-            "service": serialize_service() if self.service else None,
-            "active": self.active,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-        }
+        return SerializedInboundNumber(
+            id=str(self.id),
+            number=self.number,
+            provider=self.provider,
+            service=serialize_service() if self.service else None,
+            active=self.active,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
+        )
 
 
 class ServiceSmsSender(db.Model):
