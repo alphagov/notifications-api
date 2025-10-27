@@ -50,6 +50,7 @@ from app.models import (
     SerializedInboundNumber,
     SerializedOrganisation,
     SerializedOrganisationForList,
+    SerializedServiceOrgDashboard,
     SerializedServiceSmsSender,
     Service,
     ServiceGuestList,
@@ -1231,6 +1232,55 @@ def test_service_sms_sender_serialization_only_returns_defined_fields(notify_db_
         "is_default",
         "created_at",
         "updated_at",
+    }
+
+    assert not hasattr(serialized, "fake_field")
+
+
+def test_service_serialization_for_dashboard_with_all_fields(notify_db_session):
+    service = create_service(
+        service_name="Test Service",
+        active=True,
+        restricted=True,
+        message_limit=1000,
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        updated_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
+    )
+
+    serialized = service.serialize_for_org_dashboard()
+
+    assert isinstance(serialized, SerializedServiceOrgDashboard)
+    assert serialized.id == str(service.id)
+    assert serialized.name == "Test Service"
+    assert serialized.active is True
+    assert serialized.restricted is True
+
+
+def test_service_serialization_for_dashboard_with_minimal_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+
+    serialized = service.serialize_for_org_dashboard()
+
+    assert serialized.id == str(service.id)
+    assert serialized.name == "Test Service"
+    assert serialized.active is True
+    assert serialized.restricted is False
+
+
+def test_service_serialization_for_dashboard_only_returns_defined_fields(notify_db_session):
+    service = create_service(
+        service_name="Test Service",
+        fake_field="Should not be serialized",
+    )
+
+    serialized = service.serialize_for_org_dashboard()
+
+    # Ensure only the defined fields are present in the serialized output
+    assert set(serialized.__dataclass_fields__.keys()) == {
+        "id",
+        "name",
+        "active",
+        "restricted",
     }
 
     assert not hasattr(serialized, "fake_field")

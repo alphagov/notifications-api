@@ -587,6 +587,14 @@ letter_branding_to_organisation = db.Table(
 )
 
 
+@dataclass
+class SerializedServiceOrgDashboard:
+    id: str
+    name: str
+    active: bool
+    restricted: bool
+
+
 class Service(db.Model, Versioned):
     __tablename__ = "services"
 
@@ -725,13 +733,13 @@ class Service(db.Model, Versioned):
     def has_permission(self, permission):
         return permission in [p.permission for p in self.permissions]
 
-    def serialize_for_org_dashboard(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "active": self.active,
-            "restricted": self.restricted,
-        }
+    def serialize_for_org_dashboard(self) -> SerializedServiceOrgDashboard:
+        return SerializedServiceOrgDashboard(
+            id=str(self.id),
+            name=self.name,
+            active=self.active,
+            restricted=self.restricted,
+        )
 
 
 class DefaultAnnualAllowance(db.Model):
