@@ -1,4 +1,5 @@
 import json
+import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import call
 from uuid import UUID
@@ -27,6 +28,7 @@ from app.constants import (
 from app.dao.services_dao import dao_add_user_to_service
 from app.models import (
     ApiKey,
+    EmailBranding,
     FactBilling,
     FactNotificationStatus,
     InboundSms,
@@ -657,3 +659,84 @@ def test_serialize_service_filter_keys(
         # Otherwise, expect a list of dictionaries
         for service in serialized_data["services"]:
             assert set(service.keys()) == set(expected_keys)
+
+
+def test_email_branding_serializes_with_all_fields(notify_db_session):
+    user_id = uuid.uuid4()
+    created_at = datetime(2025, 1, 1, 12, 0, tzinfo=UTC)
+    updated_at = datetime(2025, 1, 2, 12, 0, tzinfo=UTC)
+
+    email_branding = EmailBranding(
+        id=uuid.uuid4(),
+        colour="#000000",
+        logo="logo.png",
+        name="Test Brand",
+        text="Test Text",
+        brand_type="org",
+        alt_text=None,  # Since we have text, alt_text must be None due to constraint
+        created_by=user_id,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    serialized = email_branding.serialize()
+
+    assert serialized.id == str(email_branding.id)
+    assert serialized.colour == "#000000"
+    assert serialized.logo == "logo.png"
+    assert serialized.name == "Test Brand"
+    assert serialized.text == "Test Text"
+    assert serialized.brand_type == "org"
+    assert serialized.alt_text is None
+    assert serialized.created_by == user_id
+    assert serialized.created_at == created_at.strftime("%Y-%m-%d %H:%M:%S.%f")
+    assert serialized.updated_at == updated_at.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+
+def test_email_branding_serializes_with_minimal_fields(notify_db_session):
+    email_branding = EmailBranding(
+        id=uuid.uuid4(),
+        name="Test Brand",
+        brand_type="org",
+        alt_text="Alt Text",  # Using alt_text instead of text
+    )
+
+    serialized = email_branding.serialize()
+
+    assert serialized.id == str(email_branding.id)
+    assert serialized.name == "Test Brand"
+    assert serialized.brand_type == "org"
+    assert serialized.alt_text == "Alt Text"
+    assert serialized.text is None
+    assert serialized.colour is None
+    assert serialized.logo is None
+    assert serialized.created_by is None
+    assert serialized.created_at is None
+    assert serialized.updated_at is None
+
+
+def test_email_branding_serialization_only_returns_defined_fields(notify_db_session):
+    email_branding = EmailBranding(
+        id=uuid.uuid4(),
+        name="Test Brand",
+        brand_type="org",
+        fake_field="Should not be serialized",  # This field does not exist in the model
+    )
+
+    serialized = email_branding.serialize()
+
+    # Ensure only the defined fields are present in the serialized output
+    assert set(serialized.__dataclass_fields__.keys()) == {
+        "id",
+        "colour",
+        "logo",
+        "name",
+        "text",
+        "brand_type",
+        "alt_text",
+        "created_by",
+        "created_at",
+        "updated_at",
+    }
+
+    assert not hasattr(serialized, "fake_field")

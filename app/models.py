@@ -250,6 +250,20 @@ class BrandingTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+@dataclass
+class SerializedEmailBranding:
+    id: str
+    colour: str | None
+    logo: str | None
+    name: str
+    text: str | None
+    brand_type: str
+    alt_text: str | None
+    created_by: User | None
+    created_at: str | None
+    updated_at: str | None
+
+
 class EmailBranding(db.Model):
     __tablename__ = "email_branding"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -278,21 +292,21 @@ class EmailBranding(db.Model):
         ),
     )
 
-    def serialize(self):
-        serialized = {
-            "id": str(self.id),
-            "colour": self.colour,
-            "logo": self.logo,
-            "name": self.name,
-            "text": self.text,
-            "brand_type": self.brand_type,
-            "alt_text": self.alt_text,
-            "created_by": self.created_by,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
-        }
-
-        return serialized
+    def serialize(self) -> SerializedEmailBranding:
+        return SerializedEmailBranding(
+            {
+                "id": str(self.id),
+                "colour": self.colour,
+                "logo": self.logo,
+                "name": self.name,
+                "text": self.text,
+                "brand_type": self.brand_type,
+                "alt_text": self.alt_text,
+                "created_by": self.created_by,
+                "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+                "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            }
+        )
 
 
 service_email_branding = db.Table(
