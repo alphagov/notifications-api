@@ -318,6 +318,16 @@ service_email_branding = db.Table(
 )
 
 
+@dataclass
+class SerializedLetterBranding:
+    id: str
+    name: str
+    filename: str
+    created_by: str | None
+    created_at: str | None
+    updated_at: str | None
+
+
 class LetterBranding(db.Model):
     __tablename__ = "letter_branding"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -328,15 +338,15 @@ class LetterBranding(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "filename": self.filename,
-            "created_by": self.created_by_id,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
-        }
+    def serialize(self) -> SerializedLetterBranding:
+        return SerializedLetterBranding(
+            id=str(self.id),
+            name=self.name,
+            filename=self.filename,
+            created_by=str(self.created_by_id) if self.created_by_id else None,
+            created_at=self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            updated_at=self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+        )
 
 
 service_letter_branding = db.Table(

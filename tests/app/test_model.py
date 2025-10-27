@@ -36,6 +36,7 @@ from app.models import (
     InvitedOrganisationUser,
     InvitedUser,
     Job,
+    LetterBranding,
     LetterCostThreshold,
     Notification,
     NotificationHistory,
@@ -737,6 +738,70 @@ def test_email_branding_serialization_only_returns_defined_fields(notify_db_sess
         "created_by",
         "created_at",
         "updated_at",
+    }
+
+    assert not hasattr(serialized, "fake_field")
+
+
+def test_letter_branding_serializes_with_all_fields(notify_db_session):
+    user_id = uuid.uuid4()
+    created_at = datetime(2025, 1, 1, 12, 0, tzinfo=UTC)
+    updated_at = datetime(2025, 1, 2, 12, 0, tzinfo=UTC)
+    
+    letter_branding = LetterBranding(
+        id=uuid.uuid4(),
+        name="Test Brand",
+        filename="test-brand.svg",
+        created_by_id=user_id,
+        created_at=created_at,
+        updated_at=updated_at
+    )
+
+    serialized = letter_branding.serialize()
+
+    assert serialized.id == str(letter_branding.id)
+    assert serialized.name == "Test Brand"
+    assert serialized.filename == "test-brand.svg"
+    assert serialized.created_by == str(user_id)
+    assert serialized.created_at == created_at.strftime("%Y-%m-%d %H:%M:%S.%f")
+    assert serialized.updated_at == updated_at.strftime("%Y-%m-%d %H:%M:%S.%f")
+
+
+def test_letter_branding_serializes_with_minimal_fields(notify_db_session):
+    letter_branding = LetterBranding(
+        id=uuid.uuid4(),
+        name="Test Brand",
+        filename="test-brand.svg"
+    )
+
+    serialized = letter_branding.serialize()
+
+    assert serialized.id == str(letter_branding.id)
+    assert serialized.name == "Test Brand"
+    assert serialized.filename == "test-brand.svg"
+    assert serialized.created_by is None
+    assert serialized.created_at is None
+    assert serialized.updated_at is None
+
+
+def test_letter_branding_serialization_only_returns_defined_fields(notify_db_session):
+    letter_branding = LetterBranding(
+        id=uuid.uuid4(),
+        name="Test Brand",
+        filename="test-brand.svg",
+        fake_field="Should not be serialized"
+    )
+
+    serialized = letter_branding.serialize()
+
+    # Ensure only the defined fields are present in the serialized output
+    assert set(serialized.__dataclass_fields__.keys()) == {
+        "id",
+        "name",
+        "filename",
+        "created_by",
+        "created_at",
+        "updated_at"
     }
 
     assert not hasattr(serialized, "fake_field")
