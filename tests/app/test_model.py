@@ -40,14 +40,18 @@ from app.models import (
     LetterCostThreshold,
     Notification,
     NotificationHistory,
+    Organisation,
     Permission,
     ReportRequest,
     ServiceGuestList,
+    SerializedOrganisation,
+    SerializedOrganisationForList,
     Template,
     TemplateFolder,
     TemplateHistory,
     UnsubscribeRequest,
     UnsubscribeRequestHistory,
+    User,
 )
 from tests.app.db import (
     create_inbound_number,
@@ -806,10 +810,7 @@ def test_letter_branding_serialization_only_returns_defined_fields(notify_db_ses
 
     assert not hasattr(serialized, "fake_field")
 
-
 def test_organisation_serializes_with_all_fields(notify_db_session):
-    from app.models import Organisation, User
-
     user = User(id=uuid.uuid4(), name="Test User", email_address="test@example.com", password="password")
     notify_db_session.add(user)
 
@@ -839,6 +840,7 @@ def test_organisation_serializes_with_all_fields(notify_db_session):
     notify_db_session.commit()
 
     result = org.serialize()
+    assert isinstance(result, SerializedOrganisation)
 
     assert result.id == str(org.id)
     assert result.name == "Test Organisation"
@@ -866,8 +868,6 @@ def test_organisation_serializes_with_all_fields(notify_db_session):
 
 
 def test_organisation_serializes_with_minimal_fields(notify_db_session):
-    from app.models import Organisation
-
     org = Organisation(
         id=uuid.uuid4(),
         name="Test Organisation",
@@ -906,8 +906,6 @@ def test_organisation_serializes_with_minimal_fields(notify_db_session):
 
 def test_organisation_serialization_only_returns_defined_fields(notify_db_session):
     """Test to ensure we only get fields that are defined in the serialization dataclass"""
-    from app.models import Organisation, SerializedOrganisation
-
     org = Organisation(
         id=uuid.uuid4(),
         name="Test Organisation",
@@ -948,3 +946,50 @@ def test_organisation_serialization_only_returns_defined_fields(notify_db_sessio
     }
 
     assert not hasattr(serialized, "fake_field")
+
+
+def test_organisation_serializes_for_list(notify_db_session):
+    """Test the list serialization of an organisation"""
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+        organisation_type="central",
+    )
+    notify_db_session.add(org)
+    notify_db_session.commit()
+
+    result = org.serialize_for_list()
+    assert isinstance(result, SerializedOrganisationForList)
+
+    assert result.name == "Test Organisation"
+    assert result.id == str(org.id)
+    assert result.active is True
+    assert result.count_of_live_services == 0
+    assert result.domains == []
+    assert result.organisation_type == "central"
+
+
+def test_organisation_serialization_for_list_only_returns_defined_fields(notify_db_session):
+    """Test to ensure we only get fields that are defined in the SerializedOrganisationForList dataclass"""
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+        fake_field="Should not be serialized"
+    )
+    notify_db_session.add(org)
+    notify_db_session.commit()
+
+    result = org.serialize_for_list()
+
+    # Should only contain fields defined in SerializedOrganisationForList dataclass
+    assert set(result.__annotations__.keys()) == {
+        'name',
+        'id',
+        'active',
+        'count_of_live_services',
+        'domains',
+        'organisation_type'
+    }
+    assert not hasattr(result, "fake_field")

@@ -440,6 +440,16 @@ class SerializedOrganisation:
     permissions: list[str]
 
 
+@dataclass
+class SerializedOrganisationForList:
+    name: str
+    id: str
+    active: bool
+    count_of_live_services: int
+    domains: list[str]
+    organisation_type: str | None
+
+
 class Organisation(db.Model):
     __tablename__ = "organisation"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
@@ -544,15 +554,15 @@ class Organisation(db.Model):
             permissions=[x.permission for x in self.permissions],
         )
 
-    def serialize_for_list(self):
-        return {
-            "name": self.name,
-            "id": str(self.id),
-            "active": self.active,
-            "count_of_live_services": len(self.live_services),
-            "domains": self.domain_list,
-            "organisation_type": self.organisation_type,
-        }
+    def serialize_for_list(self) -> SerializedOrganisationForList:
+        return SerializedOrganisationForList(
+            name=self.name,
+            id=str(self.id),
+            active=self.active,
+            count_of_live_services=len(self.live_services),
+            domains=self.domain_list,
+            organisation_type=self.organisation_type,
+        )
 
 
 class OrganisationEmailBranding(db.Model):
