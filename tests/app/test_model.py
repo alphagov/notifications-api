@@ -61,6 +61,7 @@ from app.models import (
     SerializedRate,
     SerializedServiceCallbackApi,
     SerializedServiceEmailReplyTo,
+    SerializedServiceLetterContact,
     SerializedServiceOrgDashboard,
     SerializedServiceSmsSender,
     SerializedTemplateFolder,
@@ -69,6 +70,7 @@ from app.models import (
     ServiceCallbackApi,
     ServiceEmailReplyTo,
     ServiceGuestList,
+    ServiceLetterContact,
     ServiceSmsSender,
     Template,
     TemplateFolder,
@@ -1932,6 +1934,57 @@ def test_service_email_reply_to_serialization_only_returns_defined_fields(notify
         "service_id",
         "email_address",
         "is_default",
+        "created_at",
+        "updated_at",
+        "archived",
+    }
+
+
+def test_service_letter_contact_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+
+    service_letter = ServiceLetterContact(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        is_default=True,
+        contact_block="some content block",
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(service_letter)
+    notify_db_session.commit()
+
+    serialized = service_letter.serialize()
+
+    assert isinstance(serialized, SerializedServiceLetterContact)
+    assert serialized.id == str(service_letter.id)
+    assert serialized.service_id == str(service.id)
+    assert serialized.is_default is True
+    assert serialized.contact_block == "some content block"
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.updated_at is None
+    assert serialized.archived is False
+
+
+def test_service_letter_contact_serialization_only_returns_defined_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+
+    service_letter = ServiceLetterContact(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        is_default=True,
+        contact_block="some content block",
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(service_letter)
+    notify_db_session.commit()
+
+    serialized = service_letter.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "service_id",
+        "is_default",
+        "contact_block",
         "created_at",
         "updated_at",
         "archived",

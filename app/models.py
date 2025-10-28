@@ -2509,6 +2509,17 @@ class ServiceEmailReplyTo(db.Model):
         )
 
 
+@dataclass
+class SerializedServiceLetterContact:
+    id: str
+    service_id: str
+    contact_block: str
+    is_default: bool
+    archived: bool
+    created_at: str
+    updated_at: str | None
+
+
 class ServiceLetterContact(db.Model):
     __tablename__ = "service_letter_contacts"
 
@@ -2523,16 +2534,16 @@ class ServiceLetterContact(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "service_id": str(self.service_id),
-            "contact_block": self.contact_block,
-            "is_default": self.is_default,
-            "archived": self.archived,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-        }
+    def serialize(self) -> SerializedServiceLetterContact:
+        return SerializedServiceLetterContact(
+            id=str(self.id),
+            service_id=str(self.service_id),
+            contact_block=self.contact_block,
+            is_default=self.is_default,
+            archived=self.archived,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
+        )
 
 
 class AuthType(db.Model):
