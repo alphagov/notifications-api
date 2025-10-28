@@ -62,6 +62,7 @@ from app.models import (
     SerializedOrganisationForList,
     SerializedRate,
     SerializedServiceCallbackApi,
+    SerializedServiceContactList,
     SerializedServiceDataRetention,
     SerializedServiceEmailReplyTo,
     SerializedServiceLetterContact,
@@ -71,6 +72,7 @@ from app.models import (
     SerializedUser,
     SerializedUserForList,
     ServiceCallbackApi,
+    ServiceContactList,
     ServiceDataRetention,
     ServiceEmailReplyTo,
     ServiceGuestList,
@@ -2091,4 +2093,61 @@ def test_service_data_retention_serialization_only_returns_defined_fields(notify
         "days_of_retention",
         "created_at",
         "updated_at",
+    }
+
+
+def test_service_contact_list_serialization_returns_all_fields(notify_db_session, sample_user):
+    service = create_service(service_name="Test Service")
+    contact_list = ServiceContactList(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        original_file_name="test_contacts.csv",
+        row_count=100,
+        template_type=EMAIL_TYPE,
+        created_by_id=sample_user.id,
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(contact_list)
+    notify_db_session.commit()
+
+    serialized = contact_list.serialize()
+
+    assert isinstance(serialized, SerializedServiceContactList)
+    assert serialized.id == str(contact_list.id)
+    assert serialized.service_id == str(service.id)
+    assert serialized.original_file_name == "test_contacts.csv"
+    assert serialized.row_count == 100
+    assert serialized.recent_job_count == 0
+    assert serialized.has_jobs is False
+    assert serialized.template_type == EMAIL_TYPE
+    assert serialized.created_by == sample_user.name
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+
+def test_service_contact_list_serialization_only_returns_defined_fields(notify_db_session, sample_user):
+    service = create_service(service_name="Test Service")
+    contact_list = ServiceContactList(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        original_file_name="test_contacts.csv",
+        row_count=50,
+        template_type=SMS_TYPE,
+        created_by_id=sample_user.id,
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(contact_list)
+    notify_db_session.commit()
+
+    serialized = contact_list.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "original_file_name",
+        "row_count",
+        "recent_job_count",
+        "has_jobs",
+        "template_type",
+        "service_id",
+        "created_by",
+        "created_at",
     }

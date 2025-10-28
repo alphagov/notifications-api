@@ -2735,6 +2735,19 @@ class ReturnedLetter(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
+@dataclass
+class SerializedServiceContactList:
+    id: str
+    original_file_name: str
+    row_count: int
+    recent_job_count: int
+    has_jobs: bool
+    template_type: str
+    service_id: str
+    created_by: str
+    created_at: str
+
+
 class ServiceContactList(db.Model):
     __tablename__ = "service_contact_list"
 
@@ -2777,19 +2790,18 @@ class ServiceContactList(db.Model):
             ).first()
         )
 
-    def serialize(self):
-        contact_list = {
-            "id": str(self.id),
-            "original_file_name": self.original_file_name,
-            "row_count": self.row_count,
-            "recent_job_count": self.job_count,
-            "has_jobs": self.has_jobs,
-            "template_type": self.template_type,
-            "service_id": str(self.service_id),
-            "created_by": self.created_by.name,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-        }
-        return contact_list
+    def serialize(self) -> SerializedServiceContactList:
+        return SerializedServiceContactList(
+            id=str(self.id),
+            original_file_name=self.original_file_name,
+            row_count=self.row_count,
+            recent_job_count=self.job_count,
+            has_jobs=self.has_jobs,
+            template_type=self.template_type,
+            service_id=str(self.service_id),
+            created_by=self.created_by.name,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+        )
 
 
 class WebauthnCredential(db.Model):
