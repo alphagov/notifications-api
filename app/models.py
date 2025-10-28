@@ -1633,6 +1633,19 @@ class NotificationAllTimeView(db.Model):
 
 
 @dataclass
+class SmsCostDetails:
+    billable_sms_fragments: int
+    international_rate_multiplier: float
+    sms_rate: float
+
+
+@dataclass
+class LetterCostDetails:
+    billable_sheets_of_paper: int
+    postage: str
+
+
+@dataclass
 class SerializedNotificationForCSV:
     id: str
     row_number: str
@@ -1677,6 +1690,9 @@ class SerializedNotification:
     postage: str | None
     one_click_unsubscribe_url: str | None
     estimated_delivery: str | None
+    cost_details: SmsCostDetails | LetterCostDetails | dict | None = None
+    cost_in_pounds: float | None = None
+    is_cost_data_ready: bool | None = None
 
     def __getitem__(self, key):
         return getattr(self, key)
@@ -1981,11 +1997,11 @@ class Notification(db.Model):
 
         return serialized
 
-    def serialize_with_cost_data(self):
+    def serialize_with_cost_data(self) -> SerializedNotification:
         serialized = self.serialize()
-        serialized["cost_details"] = {}
-        serialized["cost_in_pounds"] = 0.00
-        serialized["is_cost_data_ready"] = True
+        serialized.cost_details = {}
+        serialized.cost_in_pounds = 0.00
+        serialized.is_cost_data_ready = True
 
         if self.notification_type == "sms":
             return self._add_cost_data_for_sms(serialized)
@@ -1994,34 +2010,40 @@ class Notification(db.Model):
 
         return serialized
 
-    def _add_cost_data_for_sms(self, serialized):
+    def _add_cost_data_for_sms(self, serialized) -> SerializedNotification:
         if not self._is_cost_data_ready_for_sms():
-            serialized["is_cost_data_ready"] = False
-            serialized["cost_details"] = {}
-            serialized["cost_in_pounds"] = None
+            serialized.is_cost_data_ready = False
+            serialized.cost_details = {}
+            serialized.cost_in_pounds = None
         else:
-            serialized["cost_details"]["billable_sms_fragments"] = self.billable_units
-            serialized["cost_details"]["international_rate_multiplier"] = self.rate_multiplier
             sms_rate = self._get_sms_rate()
-            serialized["cost_details"]["sms_rate"] = sms_rate
-            serialized["cost_in_pounds"] = self.billable_units * self.rate_multiplier * sms_rate
+            serialized.cost_details = SmsCostDetails(
+                billable_sms_fragments=self.billable_units,
+                international_rate_multiplier=self.rate_multiplier,
+                sms_rate=sms_rate,
+            )
+            serialized.cost_in_pounds = self.billable_units * self.rate_multiplier * sms_rate
 
         return serialized
 
-    def _add_cost_data_for_letter(self, serialized):
+    def _add_cost_data_for_letter(self, serialized) -> SerializedNotification:
         if not self._is_cost_data_ready_for_letter():
-            serialized["is_cost_data_ready"] = False
-            serialized["cost_details"] = {}
-            serialized["cost_in_pounds"] = None
+            serialized.is_cost_data_ready = False
+            serialized.cost_details = {}
+            serialized.cost_in_pounds = None
         # we don't bill users for letters that were not sent
         elif self._letter_was_never_sent():
-            serialized["cost_details"]["billable_sheets_of_paper"] = 0
-            serialized["cost_details"]["postage"] = self.postage
-            serialized["cost_in_pounds"] = 0.00
+            serialized.cost_details = LetterCostDetails(
+                billable_sheets_of_paper=0,
+                postage=self.postage,
+            )
+            serialized.cost_in_pounds = 0.00
         else:
-            serialized["cost_details"]["billable_sheets_of_paper"] = self.billable_units
-            serialized["cost_details"]["postage"] = self.postage
-            serialized["cost_in_pounds"] = self._get_letter_cost()
+            serialized.cost_details = LetterCostDetails(
+                billable_sheets_of_paper=self.billable_units,
+                postage=self.postage,
+            )
+            serialized.cost_in_pounds = self._get_letter_cost()
 
         return serialized
 

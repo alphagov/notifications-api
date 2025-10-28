@@ -44,6 +44,7 @@ from app.models import (
     NotificationHistory,
     Organisation,
     Permission,
+    Rate,
     ReportRequest,
     SerializedAnnualBilling,
     SerializedEmailBranding,
@@ -281,11 +282,9 @@ def test_notification_serialize_with_cost_data_for_sms(client, sample_template, 
     response = notification.serialize_with_cost_data()
 
     assert response["is_cost_data_ready"] is True
-    assert response["cost_details"] == {
-        "billable_sms_fragments": 2,
-        "international_rate_multiplier": 1.0,
-        "sms_rate": 0.0227,
-    }
+    assert response["cost_details"].billable_sms_fragments == 2
+    assert response["cost_details"].international_rate_multiplier == 1.0
+    assert response["cost_details"].sms_rate == 0.0227
     assert response["cost_in_pounds"] == 0.0454
 
 
@@ -296,7 +295,8 @@ def test_notification_serialize_with_cost_data_for_letter(client, sample_letter_
     response = notification.serialize_with_cost_data()
 
     assert response["is_cost_data_ready"] is True
-    assert response["cost_details"] == {"billable_sheets_of_paper": 1, "postage": "second"}
+    assert response["cost_details"].billable_sheets_of_paper == 1
+    assert response["cost_details"].postage == "second"
     assert response["cost_in_pounds"] == 0.54
 
 
@@ -331,11 +331,9 @@ def test_notification_serialize_with_cost_data_uses_cache_to_get_sms_rate(client
     ]
 
     # check that response returned from cache looks right
-    assert response["cost_details"] == {
-        "billable_sms_fragments": 2,
-        "international_rate_multiplier": 1.0,
-        "sms_rate": 0.0227,
-    }
+    assert response["cost_details"].billable_sms_fragments == 2
+    assert response["cost_details"].international_rate_multiplier == 1.0
+    assert response["cost_details"].sms_rate == 0.0227
     assert response["cost_in_pounds"] == 0.0454
 
 
@@ -433,7 +431,8 @@ def test_notification_serialize_with_with_cost_data_for_letter_that_wasnt_sent(
     response = notification.serialize_with_cost_data()
 
     assert response["is_cost_data_ready"] is True
-    assert response["cost_details"] == {"billable_sheets_of_paper": 0, "postage": "first"}
+    assert response["cost_details"].billable_sheets_of_paper == 0
+    assert response["cost_details"].postage == "first"
     assert response["cost_in_pounds"] == 0.00
 
 
@@ -1646,6 +1645,7 @@ def test_notification_serialization_returns_all_fields(notify_db_session, sample
     assert serialized.one_click_unsubscribe_url is None
     assert serialized.estimated_delivery is None
 
+
 def test_notification_serialization_only_returns_defined_fields(notify_db_session, sample_template):
     notification = create_notification(template=sample_template)
     notify_db_session.commit()
@@ -1678,4 +1678,26 @@ def test_notification_serialization_only_returns_defined_fields(notify_db_sessio
         "postage",
         "one_click_unsubscribe_url",
         "estimated_delivery",
+        "is_cost_data_ready",
+        "cost_in_pounds",
+        "cost_details",
     }
+
+
+def test_notification_serialization_with_cost_data_returns_all_fields(notify_db_session, sample_template):
+    rate = Rate(
+        notification_type=SMS_TYPE,
+        rate=0.05,
+        valid_from=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    notify_db_session.add(rate)
+    notification = create_notification(template=sample_template)
+    notify_db_session.commit()
+
+    serialized = notification.serialize_with_cost_data()
+
+    assert isinstance(serialized, SerializedNotification)
+    assert serialized.id == notification.id
+    assert serialized.cost_details is not None
+    assert serialized.cost_in_pounds == 0.05
+    assert serialized.is_cost_data_ready is True
