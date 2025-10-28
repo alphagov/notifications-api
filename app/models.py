@@ -3014,6 +3014,8 @@ class UnsubscribeRequest(db.Model):
         ),
     )
 
+    ## @TODO consider making this more explicit about which fields to include/exclude
+    ## This may cause data leakage issues if we add more fields in future.
     def serialize_for_history(self):
         return {
             column.key: getattr(self, column.key) for column in self.__table__.columns if column.key != "email_address"
