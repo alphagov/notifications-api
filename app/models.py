@@ -2276,6 +2276,17 @@ class InvitedUser(db.Model):
         return self.permissions.split(",")
 
 
+@dataclass
+class SerializedInvitedOrganisationUser:
+    id: str
+    email_address: str
+    invited_by: str
+    organisation: str
+    created_at: str
+    permissions: list[str]
+    status: str
+
+
 class InvitedOrganisationUser(db.Model):
     __tablename__ = "invited_organisation_users"
 
@@ -2296,16 +2307,16 @@ class InvitedOrganisationUser(db.Model):
         ("st_dep_inv_org_users_inv_by_id_org_id", ("invited_by_id", "organisation_id"), ("dependencies",)),
     )
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "email_address": self.email_address,
-            "invited_by": str(self.invited_by_id),
-            "organisation": str(self.organisation_id),
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "permissions": [p for p in self.permissions.split(",") if p],
-            "status": self.status,
-        }
+    def serialize(self) -> SerializedInvitedOrganisationUser:
+        return SerializedInvitedOrganisationUser(
+            id=str(self.id),
+            email_address=self.email_address,
+            invited_by=str(self.invited_by_id),
+            organisation=str(self.organisation_id),
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            permissions=[p for p in self.permissions.split(",") if p],
+            status=self.status,
+        )
 
 
 class Permission(db.Model):

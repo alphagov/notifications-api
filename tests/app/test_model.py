@@ -50,6 +50,7 @@ from app.models import (
     SerializedEmailBranding,
     SerializedFreeSmsItems,
     SerializedInboundNumber,
+    SerializedInvitedOrganisationUser,
     SerializedNotification,
     SerializedNotificationForCSV,
     SerializedOrganisation,
@@ -1701,3 +1702,52 @@ def test_notification_serialization_with_cost_data_returns_all_fields(notify_db_
     assert serialized.cost_details is not None
     assert serialized.cost_in_pounds == 0.05
     assert serialized.is_cost_data_ready is True
+
+
+def test_invited_organisation_user_serialization_returns_all_fields(
+    notify_db_session, sample_organisation, sample_user
+):
+    invite = InvitedOrganisationUser(
+        id=uuid.uuid4(),
+        email_address="test@example.com",
+        invited_by_id=sample_user.id,
+        organisation_id=sample_organisation.id,
+        permissions="manage_service,manage_api_keys",
+    )
+    notify_db_session.add(invite)
+    notify_db_session.commit()
+
+    serialized = invite.serialize()
+
+    assert isinstance(serialized, SerializedInvitedOrganisationUser)
+    assert serialized.id == str(invite.id)
+    assert serialized.email_address == "test@example.com"
+    assert serialized.invited_by == str(invite.invited_by_id)
+    assert serialized.organisation == str(invite.organisation_id)
+    assert serialized.created_at is not None
+
+
+def test_invited_organisation_user_serialization_only_returns_defined_fields(
+    notify_db_session, sample_organisation, sample_user
+):
+    invite = InvitedOrganisationUser(
+        id=uuid.uuid4(),
+        email_address="test@example.com",
+        invited_by_id=sample_user.id,
+        organisation_id=sample_organisation.id,
+        permissions="manage_service,manage_api_keys",
+    )
+    notify_db_session.add(invite)
+    notify_db_session.commit()
+
+    serialized = invite.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "email_address",
+        "invited_by",
+        "organisation",
+        "created_at",
+        "permissions",
+        "status",
+    }
