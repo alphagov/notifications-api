@@ -56,6 +56,7 @@ from app.models import (
     SerializedUser,
     SerializedUserForList,
     SerializedServiceCallbackApi,
+    SerializedTemplateFolder,
     ServiceCallbackApi,
     ServiceGuestList,
     ServiceSmsSender,
@@ -1481,4 +1482,33 @@ def test_service_callback_api_serialization_only_returns_defined_fields(notify_d
         "updated_by_id",
         "created_at",
         "updated_at",
+    }
+
+def test_template_folder_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    parent_folder = create_template_folder(service, name="Parent Folder")
+    folder = create_template_folder(service, name="Child Folder", parent=parent_folder)
+
+    serialized = folder.serialize()
+    assert isinstance(serialized, SerializedTemplateFolder)
+    assert serialized.id == str(folder.id)
+    assert serialized.name == "Child Folder"
+    assert serialized.parent_id == str(parent_folder.id)
+    assert serialized.service_id == str(service.id)
+    assert serialized.users_with_permission == []
+
+
+def test_template_folder_serialization_only_returns_defined_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    folder = create_template_folder(service, name="Child Folder")
+
+    serialized = folder.serialize()
+
+    # Ensure only the defined fields are present in the serialized output
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "name",
+        "parent_id",
+        "service_id",
+        "users_with_permission",
     }

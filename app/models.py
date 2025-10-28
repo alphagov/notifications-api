@@ -1094,6 +1094,14 @@ class KeyTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+@dataclass
+class SerializedTemplateFolder:
+    id: str
+    name: str
+    parent_id: str | None
+    service_id: str
+    users_with_permission: list[str]
+
 class TemplateFolder(db.Model):
     __tablename__ = "template_folder"
 
@@ -1119,14 +1127,14 @@ class TemplateFolder(db.Model):
         ("st_dep_template_folder_service_id_parent_id", ("service_id", "parent_id"), ("dependencies",)),
     )
 
-    def serialize(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "parent_id": self.parent_id,
-            "service_id": self.service_id,
-            "users_with_permission": self.get_users_with_permission(),
-        }
+    def serialize(self) -> SerializedTemplateFolder:
+        return SerializedTemplateFolder(
+            id=str(self.id),
+            name=self.name,
+            parent_id=str(self.parent_id) if self.parent_id else None,
+            service_id=str(self.service_id),
+            users_with_permission=self.get_users_with_permission(),
+        )
 
     def is_parent_of(self, other):
         while other.parent is not None:
