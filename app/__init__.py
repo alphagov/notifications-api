@@ -42,10 +42,14 @@ from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.letter.dvla import DVLAClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.session import BindForcingSession
 
 Base = declarative_base()
 
 db = SQLAlchemy(model_class=Base)
+# APIFRAGILE
+db.session_bulk = db._make_scoped_session({"bind_key": "bulk", "class_": BindForcingSession})
+
 migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
@@ -415,6 +419,10 @@ def init_app(app):
         response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
         return response
+
+    @app.teardown_appcontext
+    def teardown_session_bulk(exc):
+        db.session_bulk.remove()
 
     @app.errorhandler(Exception)
     def exception(error):

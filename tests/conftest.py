@@ -127,7 +127,9 @@ def _notify_db(notify_api, worker_id):
         yield db
 
         db.session.remove()
-        db.engine.dispose()
+        db.session_bulk.remove()
+        for engine in db.engines.values():
+            engine.dispose()
 
 
 @pytest.fixture(scope="function")
@@ -156,6 +158,7 @@ def notify_db_session(_notify_db, sms_providers):
 
 def _clean_database(_db):
     _db.session.remove()
+    _db.session_bulk.remove()
     for tbl in reversed(_db.metadata.sorted_tables):
         if tbl.name not in [
             "provider_details",
