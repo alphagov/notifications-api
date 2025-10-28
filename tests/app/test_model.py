@@ -40,6 +40,7 @@ from app.models import (
     Job,
     LetterBranding,
     LetterCostThreshold,
+    LetterRate,
     Notification,
     NotificationHistory,
     Organisation,
@@ -52,6 +53,7 @@ from app.models import (
     SerializedInboundNumber,
     SerializedInboundSms,
     SerializedInvitedOrganisationUser,
+    SerializedLetterRate,
     SerializedNotification,
     SerializedNotificationForCSV,
     SerializedOrganisation,
@@ -1840,4 +1842,47 @@ def test_inbound_sms_serialization_only_returns_defined_fields(notify_db_session
         "notify_number",
         "user_number",
         "content",
+    }
+
+
+def test_letter_rate_serialization_returns_all_fields(notify_db_session):
+    letter_rate = LetterRate(
+        id=uuid.uuid4(),
+        rate=0.75,
+        start_date=datetime(2024, 1, 1, tzinfo=UTC),
+        post_class="first",
+        crown=False,
+        sheet_count=2,
+    )
+    notify_db_session.add(letter_rate)
+    notify_db_session.commit()
+
+    serialized = letter_rate.serialize()
+
+    assert isinstance(serialized, SerializedLetterRate)
+    assert serialized.sheet_count == 2
+    assert serialized.start_date == letter_rate.start_date.strftime("%Y-%m-%dT%H:%M:%S")
+    assert serialized.rate == 0.75
+    assert serialized.post_class == "first"
+
+
+def test_letter_rate_serialization_only_returns_defined_fields(notify_db_session):
+    letter_rate = LetterRate(
+        id=uuid.uuid4(),
+        rate=0.75,
+        sheet_count=2,
+        start_date=datetime(2024, 1, 1, tzinfo=UTC),
+        post_class="first",
+        crown=False,
+    )
+    notify_db_session.add(letter_rate)
+    notify_db_session.commit()
+
+    serialized = letter_rate.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "sheet_count",
+        "start_date",
+        "rate",
+        "post_class",
     }
