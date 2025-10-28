@@ -2685,6 +2685,17 @@ class Complaint(db.Model):
         )
 
 
+@dataclass
+class SerializedServiceDataRetention:
+    id: str
+    service_id: str
+    service_name: str
+    notification_type: str
+    days_of_retention: int
+    created_at: str
+    updated_at: str | None
+
+
 class ServiceDataRetention(db.Model):
     __tablename__ = "service_data_retention"
 
@@ -2700,16 +2711,16 @@ class ServiceDataRetention(db.Model):
 
     __table_args__ = (UniqueConstraint("service_id", "notification_type", name="uix_service_data_retention"),)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "service_id": str(self.service_id),
-            "service_name": self.service.name,
-            "notification_type": self.notification_type,
-            "days_of_retention": self.days_of_retention,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-        }
+    def serialize(self) -> SerializedServiceDataRetention:
+        return SerializedServiceDataRetention(
+            id=str(self.id),
+            service_id=str(self.service_id),
+            service_name=self.service.name,
+            notification_type=self.notification_type,
+            days_of_retention=self.days_of_retention,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
+        )
 
 
 class ReturnedLetter(db.Model):

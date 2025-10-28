@@ -62,6 +62,7 @@ from app.models import (
     SerializedOrganisationForList,
     SerializedRate,
     SerializedServiceCallbackApi,
+    SerializedServiceDataRetention,
     SerializedServiceEmailReplyTo,
     SerializedServiceLetterContact,
     SerializedServiceOrgDashboard,
@@ -70,6 +71,7 @@ from app.models import (
     SerializedUser,
     SerializedUserForList,
     ServiceCallbackApi,
+    ServiceDataRetention,
     ServiceEmailReplyTo,
     ServiceGuestList,
     ServiceLetterContact,
@@ -2040,4 +2042,53 @@ def test_complaint_serialization_only_returns_defined_fields(notify_db_session, 
         "complaint_type",
         "complaint_date",
         "created_at",
+    }
+
+
+def test_service_data_retention_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    data_retention = ServiceDataRetention(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        notification_type=SMS_TYPE,
+        days_of_retention=30,
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        updated_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(data_retention)
+    notify_db_session.commit()
+
+    serialized = data_retention.serialize()
+
+    assert isinstance(serialized, SerializedServiceDataRetention)
+    assert serialized.id == str(data_retention.id)
+    assert serialized.service_id == str(service.id)
+    assert serialized.service_name == service.name
+    assert serialized.notification_type == SMS_TYPE
+    assert serialized.days_of_retention == 30
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.updated_at == datetime(2025, 1, 2, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+
+def test_service_data_retention_serialization_only_returns_defined_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    data_retention = ServiceDataRetention(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        notification_type=SMS_TYPE,
+        days_of_retention=30,
+    )
+    notify_db_session.add(data_retention)
+    notify_db_session.commit()
+
+    serialized = data_retention.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "service_id",
+        "service_name",
+        "notification_type",
+        "days_of_retention",
+        "created_at",
+        "updated_at",
     }
