@@ -2472,6 +2472,17 @@ class LetterRate(db.Model):
         )
 
 
+@dataclass
+class SerializedServiceEmailReplyTo:
+    id: str
+    service_id: str
+    email_address: str
+    is_default: bool
+    archived: bool
+    created_at: str
+    updated_at: str | None
+
+
 class ServiceEmailReplyTo(db.Model):
     __tablename__ = "service_email_reply_to"
 
@@ -2486,16 +2497,16 @@ class ServiceEmailReplyTo(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "service_id": str(self.service_id),
-            "email_address": self.email_address,
-            "is_default": self.is_default,
-            "archived": self.archived,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-        }
+    def serialize(self) -> SerializedServiceEmailReplyTo:
+        return SerializedServiceEmailReplyTo(
+            id=str(self.id),
+            service_id=str(self.service_id),
+            email_address=self.email_address,
+            is_default=self.is_default,
+            archived=self.archived,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
+        )
 
 
 class ServiceLetterContact(db.Model):

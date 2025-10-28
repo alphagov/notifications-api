@@ -60,12 +60,14 @@ from app.models import (
     SerializedOrganisationForList,
     SerializedRate,
     SerializedServiceCallbackApi,
+    SerializedServiceEmailReplyTo,
     SerializedServiceOrgDashboard,
     SerializedServiceSmsSender,
     SerializedTemplateFolder,
     SerializedUser,
     SerializedUserForList,
     ServiceCallbackApi,
+    ServiceEmailReplyTo,
     ServiceGuestList,
     ServiceSmsSender,
     Template,
@@ -1885,4 +1887,52 @@ def test_letter_rate_serialization_only_returns_defined_fields(notify_db_session
         "start_date",
         "rate",
         "post_class",
+    }
+
+
+def test_service_email_reply_to_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    email_reply_to = ServiceEmailReplyTo(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        email_address="test@example.com",
+        is_default=True,
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        updated_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(email_reply_to)
+    notify_db_session.commit()
+
+    serialized = email_reply_to.serialize()
+
+    assert isinstance(serialized, SerializedServiceEmailReplyTo)
+    assert serialized.id == str(email_reply_to.id)
+    assert serialized.service_id == str(service.id)
+    assert serialized.email_address == "test@example.com"
+    assert serialized.is_default is True
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.updated_at == datetime(2025, 1, 2, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+
+def test_service_email_reply_to_serialization_only_returns_defined_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    email_reply_to = ServiceEmailReplyTo(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        email_address="test@example.com",
+        is_default=True,
+    )
+    notify_db_session.add(email_reply_to)
+    notify_db_session.commit()
+
+    serialized = email_reply_to.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "service_id",
+        "email_address",
+        "is_default",
+        "created_at",
+        "updated_at",
+        "archived",
     }
