@@ -299,6 +299,12 @@ class SerializedEmailBranding:
     created_at: str | None
     updated_at: str | None
 
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
 
 class EmailBranding(db.Model):
     __tablename__ = "email_branding"
