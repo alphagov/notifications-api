@@ -71,6 +71,7 @@ from app.models import (
     SerializedServiceOrgDashboard,
     SerializedServiceSmsSender,
     SerializedTemplateFolder,
+    SerializedUnsubscribeRequestReport,
     SerializedUser,
     SerializedUserForList,
     SerializedWebauthnCredential,
@@ -86,6 +87,7 @@ from app.models import (
     TemplateHistory,
     UnsubscribeRequest,
     UnsubscribeRequestHistory,
+    UnsubscribeRequestReport,
     User,
     WebauthnCredential,
 )
@@ -2254,4 +2256,89 @@ def test_letter_attachment_serialization_only_returns_defined_fields(notify_db_s
         "archived_by_id",
         "original_filename",
         "page_count",
+    }
+
+
+def test_unsubscribe_request_report_serialization(notify_db_session, sample_service):
+    unsubscribe_request = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=5,
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        earliest_timestamp=datetime(2025, 1, 1, 10, 0, tzinfo=UTC),
+        latest_timestamp=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+        processed_by_service_at=datetime(2025, 1, 1, 13, 0, tzinfo=UTC),
+        service_id=sample_service.id,
+    )
+    notify_db_session.add(unsubscribe_request)
+    notify_db_session.commit()
+
+    serialized = unsubscribe_request.serialize()
+
+    assert isinstance(serialized, SerializedUnsubscribeRequestReport)
+    assert serialized.batch_id == str(unsubscribe_request.id)
+    assert serialized.count == 5
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.earliest_timestamp == datetime(2025, 1, 1, 10, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.latest_timestamp == datetime(2025, 1, 1, 11, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.processed_by_service_at == datetime(2025, 1, 1, 13, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.is_a_batched_report is True
+    assert serialized.service_id == str(sample_service.id)
+
+
+def test_unsubscribe_request_report_unbatched_requests_serialization(
+    notify_db_session, sample_notification, sample_service
+):
+    unsubscribe_request = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=1,
+        earliest_timestamp=datetime(2025, 1, 1, 10, 0, tzinfo=UTC),
+        latest_timestamp=datetime(2025, 1, 1, 10, 0, tzinfo=UTC),
+        service_id=sample_service.id,
+    )
+    notify_db_session.add(unsubscribe_request)
+    notify_db_session.commit()
+
+    unbatched_requests = [
+        UnsubscribeRequest(
+            id=uuid.uuid4(),
+            template_id=sample_notification.template.id,
+            template_version=sample_notification.template.version,
+            service_id=sample_service.id,
+            email_address="user@example.com",
+            created_at=datetime(2025, 1, 1, 10, 0, tzinfo=UTC),
+            unsubscribe_request_report_id=unsubscribe_request.id,
+            notification_id=sample_notification.id,
+        )
+    ]
+    notify_db_session.add_all(unbatched_requests)
+    notify_db_session.commit()
+
+    serialized = unsubscribe_request.serialize_unbatched_requests(unbatched_requests)
+
+    assert isinstance(serialized, SerializedUnsubscribeRequestReport)
+
+
+def test_unsubscribe_request_report_serialization_only_returns_defined_fields(notify_db_session, sample_service):
+    unsubscribe_request = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=3,
+        earliest_timestamp=datetime(2025, 1, 1, 10, 0, tzinfo=UTC),
+        latest_timestamp=datetime(2025, 1, 1, 11, 0, tzinfo=UTC),
+        service_id=sample_service.id,
+    )
+    notify_db_session.add(unsubscribe_request)
+    notify_db_session.commit()
+
+    serialized = unsubscribe_request.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "batch_id",
+        "count",
+        "created_at",
+        "earliest_timestamp",
+        "latest_timestamp",
+        "processed_by_service_at",
+        "is_a_batched_report",
+        "will_be_archived_at",
+        "service_id",
     }

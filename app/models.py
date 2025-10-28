@@ -2888,6 +2888,19 @@ class LetterAttachment(db.Model):
         )
 
 
+@dataclass
+class SerializedUnsubscribeRequestReport:
+    batch_id: str | None
+    count: int
+    created_at: str | None
+    earliest_timestamp: str
+    latest_timestamp: str
+    processed_by_service_at: str | None
+    is_a_batched_report: bool
+    will_be_archived_at: str
+    service_id: str
+
+
 class UnsubscribeRequestReport(db.Model):
     __tablename__ = "unsubscribe_request_report"
     id = db.Column(UUID(as_uuid=True), primary_key=True)
@@ -2905,36 +2918,36 @@ class UnsubscribeRequestReport(db.Model):
     def will_be_archived_at(self):
         return get_london_midnight_in_utc(self.created_at + datetime.timedelta(days=7))
 
-    def serialize(self):
-        return {
-            "batch_id": str(self.id),
-            "count": self.count,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "earliest_timestamp": self.earliest_timestamp.strftime(DATETIME_FORMAT),
-            "latest_timestamp": self.latest_timestamp.strftime(DATETIME_FORMAT),
-            "processed_by_service_at": (
+    def serialize(self) -> SerializedUnsubscribeRequestReport:
+        return SerializedUnsubscribeRequestReport(
+            batch_id=str(self.id),
+            count=self.count,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            earliest_timestamp=self.earliest_timestamp.strftime(DATETIME_FORMAT),
+            latest_timestamp=self.latest_timestamp.strftime(DATETIME_FORMAT),
+            processed_by_service_at=(
                 self.processed_by_service_at.strftime(DATETIME_FORMAT) if self.processed_by_service_at else None
             ),
-            "is_a_batched_report": True,
-            "will_be_archived_at": self.will_be_archived_at.strftime(DATETIME_FORMAT),
-            "service_id": str(self.service_id),
-        }
+            is_a_batched_report=True,
+            will_be_archived_at=self.will_be_archived_at.strftime(DATETIME_FORMAT),
+            service_id=str(self.service_id),
+        )
 
     @staticmethod
-    def serialize_unbatched_requests(unbatched_unsubscribe_requests):
-        return {
-            "batch_id": None,
-            "count": len(unbatched_unsubscribe_requests),
-            "created_at": None,
-            "earliest_timestamp": unbatched_unsubscribe_requests[-1].created_at.strftime(DATETIME_FORMAT),
-            "latest_timestamp": unbatched_unsubscribe_requests[0].created_at.strftime(DATETIME_FORMAT),
-            "processed_by_service_at": None,
-            "is_a_batched_report": False,
-            "will_be_archived_at": get_london_midnight_in_utc(
+    def serialize_unbatched_requests(unbatched_unsubscribe_requests) -> SerializedUnsubscribeRequestReport:
+        return SerializedUnsubscribeRequestReport(
+            batch_id=None,
+            count=len(unbatched_unsubscribe_requests),
+            created_at=None,
+            earliest_timestamp=unbatched_unsubscribe_requests[-1].created_at.strftime(DATETIME_FORMAT),
+            latest_timestamp=unbatched_unsubscribe_requests[0].created_at.strftime(DATETIME_FORMAT),
+            processed_by_service_at=None,
+            is_a_batched_report=False,
+            will_be_archived_at=get_london_midnight_in_utc(
                 unbatched_unsubscribe_requests[-1].created_at + datetime.timedelta(days=90)
             ).strftime(DATETIME_FORMAT),
-            "service_id": unbatched_unsubscribe_requests[0].service_id,
-        }
+            service_id=unbatched_unsubscribe_requests[0].service_id,
+        )
 
 
 class UnsubscribeRequest(db.Model):
