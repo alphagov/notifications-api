@@ -1629,6 +1629,25 @@ class NotificationAllTimeView(db.Model):
     document_download_count = db.Column(db.Integer)
 
 
+@dataclass
+class SerializedNotificationForCSV:
+    id: str
+    row_number: str
+    recipient: str
+    client_reference: str
+    template_name: str
+    template_type: str
+    job_name: str
+    status: str
+    created_at: str
+    created_by_name: str
+    created_by_email_address: str
+    api_key_name: str | None
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+
 class Notification(db.Model):
     __tablename__ = "notifications"
 
@@ -1858,23 +1877,21 @@ class Notification(db.Model):
         else:
             return None
 
-    def serialize_for_csv(self):
-        serialized = {
-            "id": self.id,
-            "row_number": "" if self.job_row_number is None else self.job_row_number + 1,
-            "recipient": self.to,
-            "client_reference": self.client_reference or "",
-            "template_name": self.template.name,
-            "template_type": self.template.template_type,
-            "job_name": self.job.original_file_name if self.job else "",
-            "status": self.formatted_status,
-            "created_at": utc_string_to_bst_string(self.created_at),
-            "created_by_name": self.get_created_by_name(),
-            "created_by_email_address": self.get_created_by_email_address(),
-            "api_key_name": self.api_key.name if self.api_key else None,
-        }
-
-        return serialized
+    def serialize_for_csv(self) -> SerializedNotificationForCSV:
+        return SerializedNotificationForCSV(
+            id=self.id,
+            row_number="" if self.job_row_number is None else self.job_row_number + 1,
+            recipient=self.to,
+            client_reference=self.client_reference or "",
+            template_name=self.template.name,
+            template_type=self.template.template_type,
+            job_name=self.job.original_file_name if self.job else "",
+            status=self.formatted_status,
+            created_at=utc_string_to_bst_string(self.created_at),
+            created_by_name=self.get_created_by_name(),
+            created_by_email_address=self.get_created_by_email_address(),
+            api_key_name=self.api_key.name if self.api_key else None,
+        )
 
     def serialize(self):
         template_dict = {"version": self.template.version, "id": self.template.id, "uri": self.template.get_link()}

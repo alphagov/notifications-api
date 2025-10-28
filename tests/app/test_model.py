@@ -49,6 +49,7 @@ from app.models import (
     SerializedEmailBranding,
     SerializedFreeSmsItems,
     SerializedInboundNumber,
+    SerializedNotificationForCSV,
     SerializedOrganisation,
     SerializedOrganisationForList,
     SerializedServiceOrgDashboard,
@@ -1511,4 +1512,99 @@ def test_template_folder_serialization_only_returns_defined_fields(notify_db_ses
         "parent_id",
         "service_id",
         "users_with_permission",
+    }
+
+
+def test_notification_serialization_for_csv_returns_all_fields(notify_db_session, sample_user, sample_job):
+    # Create notification with a job and all fields populated
+    with freeze_time("2025-01-15 12:00:00"):
+        api_key = ApiKey(
+            id=uuid.uuid4(),
+            name="Test API Key",
+            key_type="normal",
+            service=sample_job.service,
+            secret=uuid.uuid4(),
+            created_by=sample_user,
+        )
+        notify_db_session.add(api_key)
+        notify_db_session.commit()
+        
+        notification = create_notification(
+            template=sample_job.template,
+            job=sample_job,
+            job_row_number=5,
+            to_field="test@example.com",
+            status="delivered",
+            client_reference="test-ref-123",
+            created_by_id=sample_user.id,
+            api_key=api_key,
+        )
+        notify_db_session.commit()
+
+        serialized = notification.serialize_for_csv()
+
+        assert isinstance(serialized, SerializedNotificationForCSV)
+        assert serialized.id == notification.id
+        assert serialized.row_number == 6  # job_row_number is 0-indexed, displayed as 1-indexed
+        assert serialized.recipient == "test@example.com"
+        assert serialized.client_reference == "test-ref-123"
+        assert serialized.template_name == sample_job.template.name
+        assert serialized.template_type == sample_job.template.template_type
+        assert serialized.job_name == sample_job.original_file_name
+        assert serialized.status == notification.formatted_status
+        assert serialized.created_at  # BST string representation
+        assert serialized.created_by_name == sample_user.name
+        assert serialized.created_by_email_address == sample_user.email_address
+        assert serialized.api_key_name is not None
+
+
+def test_notification_serialization_for_csv_with_minimal_fields(notify_db_session, sample_template):
+    # Create notification without job and without created_by
+    notification = create_notification(
+        template=sample_template,
+        job=None,
+        to_field="minimal@example.com",
+        status="created",
+        client_reference=None,
+        created_by_id=None,
+    )
+    notify_db_session.commit()
+
+    serialized = notification.serialize_for_csv()
+
+    assert isinstance(serialized, SerializedNotificationForCSV)
+    assert serialized.id == notification.id
+    assert serialized.row_number == ""  # No job_row_number
+    assert serialized.recipient == "minimal@example.com"
+    assert serialized.client_reference == ""  # None becomes empty string
+    assert serialized.template_name == sample_template.name
+    assert serialized.template_type == sample_template.template_type
+    assert serialized.job_name == ""  # No job
+    assert serialized.status == notification.formatted_status
+    assert serialized.created_at  # BST string representation
+    assert serialized.created_by_name is None
+    assert serialized.created_by_email_address is None
+    assert serialized.api_key_name is not None  # Created by create_notification
+
+
+def test_notification_serialization_for_csv_only_returns_defined_fields(notify_db_session, sample_template):
+    notification = create_notification(template=sample_template)
+    notify_db_session.commit()
+
+    serialized = notification.serialize_for_csv()
+
+    # Ensure only the defined fields are present in the serialized output
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "row_number",
+        "recipient",
+        "client_reference",
+        "template_name",
+        "template_type",
+        "job_name",
+        "status",
+        "created_at",
+        "created_by_name",
+        "created_by_email_address",
+        "api_key_name",
     }
