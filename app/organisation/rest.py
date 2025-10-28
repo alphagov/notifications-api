@@ -29,7 +29,7 @@ from app.dao.organisation_dao import (
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.users_dao import get_user_by_id
+from app.dao.users_dao import get_user_from_replica
 from app.errors import InvalidRequest, register_errors
 from app.models import Organisation
 from app.notifications.process_notifications import (
@@ -220,7 +220,7 @@ def add_user_to_organisation(organisation_id, user_id):
 @organisation_blueprint.route("/<uuid:organisation_id>/users/<uuid:user_id>", methods=["DELETE"])
 def remove_user_from_organisation(organisation_id, user_id):
     organisation = dao_get_organisation_by_id(organisation_id)
-    user = get_user_by_id(user_id=user_id)
+    user = get_user_from_replica(user_id=user_id)
 
     if user not in organisation.users:
         error = "User not found"
