@@ -49,15 +49,16 @@ from app.models import (
     SerializedEmailBranding,
     SerializedFreeSmsItems,
     SerializedInboundNumber,
+    SerializedNotification,
     SerializedNotificationForCSV,
     SerializedOrganisation,
     SerializedOrganisationForList,
+    SerializedServiceCallbackApi,
     SerializedServiceOrgDashboard,
     SerializedServiceSmsSender,
+    SerializedTemplateFolder,
     SerializedUser,
     SerializedUserForList,
-    SerializedServiceCallbackApi,
-    SerializedTemplateFolder,
     ServiceCallbackApi,
     ServiceGuestList,
     ServiceSmsSender,
@@ -821,7 +822,13 @@ def test_letter_branding_serialization_only_returns_defined_fields(notify_db_ses
 
 
 def test_organisation_serializes_with_all_fields(notify_db_session):
-    user = User(id=uuid.uuid4(), name="Test User", email_address="test@example.com", _password="password", auth_type="email_auth")
+    user = User(
+        id=uuid.uuid4(),
+        name="Test User",
+        email_address="test@example.com",
+        _password="password",
+        auth_type="email_auth",
+    )
     notify_db_session.add(user)
 
     email_branding = EmailBranding(
@@ -1485,6 +1492,7 @@ def test_service_callback_api_serialization_only_returns_defined_fields(notify_d
         "updated_at",
     }
 
+
 def test_template_folder_serialization_returns_all_fields(notify_db_session):
     service = create_service(service_name="Test Service")
     parent_folder = create_template_folder(service, name="Parent Folder")
@@ -1528,7 +1536,7 @@ def test_notification_serialization_for_csv_returns_all_fields(notify_db_session
         )
         notify_db_session.add(api_key)
         notify_db_session.commit()
-        
+
         notification = create_notification(
             template=sample_job.template,
             job=sample_job,
@@ -1607,4 +1615,67 @@ def test_notification_serialization_for_csv_only_returns_defined_fields(notify_d
         "created_by_name",
         "created_by_email_address",
         "api_key_name",
+    }
+
+
+def test_notification_serialization_returns_all_fields(notify_db_session, sample_template):
+    notification = create_notification(template=sample_template)
+    notify_db_session.commit()
+
+    serialized = notification.serialize()
+
+    assert isinstance(serialized, SerializedNotification)
+    assert serialized.id == notification.id
+    assert serialized.reference == notification.client_reference
+    if notification.notification_type == EMAIL_TYPE:
+        assert serialized.email_address == notification.to
+    else:
+        assert serialized.email_address is None
+    assert serialized.phone_number == notification.to if notification.notification_type == SMS_TYPE else None
+    assert serialized.type == notification.notification_type
+    assert serialized.status == notification.status
+    assert serialized.template.get("id") == notification.template.id
+    assert serialized.body == notification.template.content
+    assert serialized.subject == notification.subject
+    assert serialized.created_at  # UTC string representation
+    assert serialized.created_by_name is None
+    assert serialized.sent_at is None
+    assert serialized.completed_at is None
+    assert serialized.scheduled_for is None
+    assert serialized.postage is None
+    assert serialized.one_click_unsubscribe_url is None
+    assert serialized.estimated_delivery is None
+
+def test_notification_serialization_only_returns_defined_fields(notify_db_session, sample_template):
+    notification = create_notification(template=sample_template)
+    notify_db_session.commit()
+
+    serialized = notification.serialize()
+
+    # Ensure only the defined fields are present in the serialized output
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "reference",
+        "email_address",
+        "phone_number",
+        "line_1",
+        "line_2",
+        "line_3",
+        "line_4",
+        "line_5",
+        "line_6",
+        "postcode",
+        "type",
+        "status",
+        "template",
+        "body",
+        "subject",
+        "created_at",
+        "created_by_name",
+        "sent_at",
+        "completed_at",
+        "scheduled_for",
+        "postage",
+        "one_click_unsubscribe_url",
+        "estimated_delivery",
     }

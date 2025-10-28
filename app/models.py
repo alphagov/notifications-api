@@ -918,6 +918,7 @@ class SerializedServiceSmsSender:
     created_at: str
     updated_at: str | None
 
+
 class ServiceSmsSender(db.Model):
     __tablename__ = "service_sms_senders"
 
@@ -1008,6 +1009,7 @@ class SerializedServiceCallbackApi:
     updated_by_id: str
     created_at: str
     updated_at: str | None
+
 
 class ServiceCallbackApi(db.Model, Versioned):
     __tablename__ = "service_callback_api"
@@ -1101,6 +1103,7 @@ class SerializedTemplateFolder:
     parent_id: str | None
     service_id: str
     users_with_permission: list[str]
+
 
 class TemplateFolder(db.Model):
     __tablename__ = "template_folder"
@@ -1648,6 +1651,40 @@ class SerializedNotificationForCSV:
         return getattr(self, key)
 
 
+@dataclass
+class SerializedNotification:
+    id: str
+    reference: str | None
+    email_address: str | None
+    phone_number: str | None
+    line_1: str | None
+    line_2: str | None
+    line_3: str | None
+    line_4: str | None
+    line_5: str | None
+    line_6: str | None
+    postcode: str | None
+    type: str
+    status: str
+    template: dict
+    body: str
+    subject: str | None
+    created_at: str
+    created_by_name: str | None
+    sent_at: str | None
+    completed_at: str | None
+    scheduled_for: str | None
+    postage: str | None
+    one_click_unsubscribe_url: str | None
+    estimated_delivery: str | None
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
+
 class Notification(db.Model):
     __tablename__ = "notifications"
 
@@ -1893,52 +1930,53 @@ class Notification(db.Model):
             api_key_name=self.api_key.name if self.api_key else None,
         )
 
-    def serialize(self):
+    def serialize(self) -> SerializedNotification:
         template_dict = {"version": self.template.version, "id": self.template.id, "uri": self.template.get_link()}
 
-        serialized = {
-            "id": self.id,
-            "reference": self.client_reference,
-            "email_address": self.to if self.notification_type == EMAIL_TYPE else None,
-            "phone_number": self.to if self.notification_type == SMS_TYPE else None,
-            "line_1": None,
-            "line_2": None,
-            "line_3": None,
-            "line_4": None,
-            "line_5": None,
-            "line_6": None,
-            "postcode": None,
-            "type": self.notification_type,
-            "status": self.get_letter_status() if self.notification_type == LETTER_TYPE else self.status,
-            "template": template_dict,
-            "body": self.content,
-            "subject": self.subject,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "created_by_name": self.get_created_by_name(),
-            "sent_at": get_dt_string_or_none(self.sent_at),
-            "completed_at": self.completed_at(),
-            "scheduled_for": None,
-            "postage": self.postage,
-            "one_click_unsubscribe_url": self.get_unsubscribe_link_for_headers(
+        serialized = SerializedNotification(
+            id=self.id,
+            reference=self.client_reference,
+            email_address=self.to if self.notification_type == EMAIL_TYPE else None,
+            phone_number=self.to if self.notification_type == SMS_TYPE else None,
+            line_1=None,
+            line_2=None,
+            line_3=None,
+            line_4=None,
+            line_5=None,
+            line_6=None,
+            postcode=None,
+            type=self.notification_type,
+            status=self.get_letter_status() if self.notification_type == LETTER_TYPE else self.status,
+            template=template_dict,
+            body=self.content,
+            subject=self.subject,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            created_by_name=self.get_created_by_name(),
+            sent_at=get_dt_string_or_none(self.sent_at),
+            completed_at=self.completed_at(),
+            scheduled_for=None,
+            postage=self.postage,
+            one_click_unsubscribe_url=self.get_unsubscribe_link_for_headers(
                 template_has_unsubscribe_link=self.template.has_unsubscribe_link
             ),
-        }
+            estimated_delivery=None,
+        )
 
         if self.notification_type == LETTER_TYPE:
             personalisation = InsensitiveDict(self.personalisation)
 
             (
-                serialized["line_1"],
-                serialized["line_2"],
-                serialized["line_3"],
-                serialized["line_4"],
-                serialized["line_5"],
-                serialized["line_6"],
-                serialized["postcode"],
+                serialized.line_1,
+                serialized.line_2,
+                serialized.line_3,
+                serialized.line_4,
+                serialized.line_5,
+                serialized.line_6,
+                serialized.postcode,
             ) = (personalisation.get(line) for line in address_lines_1_to_6_and_postcode_keys)
 
-            serialized["estimated_delivery"] = get_letter_timings(
-                serialized["created_at"], postage=self.postage
+            serialized.estimated_delivery = get_letter_timings(
+                serialized.created_at, postage=self.postage
             ).latest_delivery.strftime(DATETIME_FORMAT)
 
         return serialized
