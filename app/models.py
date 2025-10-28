@@ -2804,6 +2804,17 @@ class ServiceContactList(db.Model):
         )
 
 
+@dataclass
+class SerializedWebauthnCredential:
+    id: str
+    user_id: str
+    name: str
+    credential_data: str
+    created_at: str
+    updated_at: str | None
+    logged_in_at: str | None
+
+
 class WebauthnCredential(db.Model):
     """
     A table that stores data for registered webauthn credentials.
@@ -2829,16 +2840,16 @@ class WebauthnCredential(db.Model):
 
     logged_in_at = db.Column(db.DateTime, nullable=True)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "user_id": str(self.user_id),
-            "name": self.name,
-            "credential_data": self.credential_data,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-            "logged_in_at": get_dt_string_or_none(self.logged_in_at),
-        }
+    def serialize(self) -> SerializedWebauthnCredential:
+        return SerializedWebauthnCredential(
+            id=str(self.id),
+            user_id=str(self.user_id),
+            name=self.name,
+            credential_data=self.credential_data,
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
+            logged_in_at=get_dt_string_or_none(self.logged_in_at),
+        )
 
 
 class LetterAttachment(db.Model):

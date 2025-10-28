@@ -71,6 +71,7 @@ from app.models import (
     SerializedTemplateFolder,
     SerializedUser,
     SerializedUserForList,
+    SerializedWebauthnCredential,
     ServiceCallbackApi,
     ServiceContactList,
     ServiceDataRetention,
@@ -84,6 +85,7 @@ from app.models import (
     UnsubscribeRequest,
     UnsubscribeRequestHistory,
     User,
+    WebauthnCredential,
 )
 from app.utils import DATETIME_FORMAT
 from tests.app.db import (
@@ -2150,4 +2152,55 @@ def test_service_contact_list_serialization_only_returns_defined_fields(notify_d
         "service_id",
         "created_by",
         "created_at",
+    }
+
+
+def test_webauthn_credential_serialization_returns_all_fields(notify_db_session, sample_user):
+    webauthn_credential = WebauthnCredential(
+        id=uuid.uuid4(),
+        user_id=sample_user.id,
+        name="Test Key",
+        credential_data="credential-data-string",
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        updated_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
+        logged_in_at=datetime(2025, 1, 3, 12, 0, tzinfo=UTC),
+        registration_response="some-registration-response",
+    )
+    notify_db_session.add(webauthn_credential)
+    notify_db_session.commit()
+
+    serialized = webauthn_credential.serialize()
+
+    assert isinstance(serialized, SerializedWebauthnCredential)
+    assert serialized.id == str(webauthn_credential.id)
+    assert serialized.user_id == str(sample_user.id)
+    assert serialized.name == "Test Key"
+    assert serialized.credential_data == "credential-data-string"
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.updated_at == datetime(2025, 1, 2, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.logged_in_at == datetime(2025, 1, 3, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+
+def test_webauthn_credential_serialization_only_returns_defined_fields(notify_db_session, sample_user):
+    webauthn_credential = WebauthnCredential(
+        id=uuid.uuid4(),
+        user_id=sample_user.id,
+        name="Test Key",
+        credential_data="credential-data-string",
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        registration_response="some-registration-response",
+    )
+    notify_db_session.add(webauthn_credential)
+    notify_db_session.commit()
+
+    serialized = webauthn_credential.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "user_id",
+        "name",
+        "credential_data",
+        "created_at",
+        "updated_at",
+        "logged_in_at",
     }
