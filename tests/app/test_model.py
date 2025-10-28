@@ -39,6 +39,7 @@ from app.models import (
     InvitedOrganisationUser,
     InvitedUser,
     Job,
+    LetterAttachment,
     LetterBranding,
     LetterCostThreshold,
     LetterRate,
@@ -55,6 +56,7 @@ from app.models import (
     SerializedInboundNumber,
     SerializedInboundSms,
     SerializedInvitedOrganisationUser,
+    SerializedLetterAttachment,
     SerializedLetterRate,
     SerializedNotification,
     SerializedNotificationForCSV,
@@ -2203,4 +2205,53 @@ def test_webauthn_credential_serialization_only_returns_defined_fields(notify_db
         "created_at",
         "updated_at",
         "logged_in_at",
+    }
+
+
+def test_letter_attachment_serialization_returns_all_fields(notify_db_session, sample_service, sample_user):
+    letter_attachment = LetterAttachment(
+        id=uuid.uuid4(),
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        created_by_id=sample_user.id,
+        archived_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
+        archived_by_id=sample_user.id,
+        original_filename="attachment.pdf",
+        page_count=5,
+    )
+    notify_db_session.add(letter_attachment)
+    notify_db_session.commit()
+
+    serialized = letter_attachment.serialize()
+
+    assert isinstance(serialized, SerializedLetterAttachment)
+    assert serialized.id == str(letter_attachment.id)
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.created_by_id == str(sample_user.id)
+    assert serialized.archived_at == datetime(2025, 1, 2, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.archived_by_id == str(sample_user.id)
+    assert serialized.original_filename == "attachment.pdf"
+    assert serialized.page_count == 5
+
+
+def test_letter_attachment_serialization_only_returns_defined_fields(notify_db_session, sample_service, sample_user):
+    letter_attachment = LetterAttachment(
+        id=uuid.uuid4(),
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+        created_by_id=sample_user.id,
+        original_filename="attachment.pdf",
+        page_count=3,
+    )
+    notify_db_session.add(letter_attachment)
+    notify_db_session.commit()
+
+    serialized = letter_attachment.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "created_at",
+        "created_by_id",
+        "archived_at",
+        "archived_by_id",
+        "original_filename",
+        "page_count",
     }

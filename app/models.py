@@ -2852,6 +2852,17 @@ class WebauthnCredential(db.Model):
         )
 
 
+@dataclass
+class SerializedLetterAttachment:
+    id: str
+    created_at: str
+    created_by_id: str
+    archived_at: str | None
+    archived_by_id: str | None
+    original_filename: str
+    page_count: int
+
+
 class LetterAttachment(db.Model):
     __tablename__ = "letter_attachment"
 
@@ -2865,16 +2876,16 @@ class LetterAttachment(db.Model):
     original_filename = db.Column(db.String, nullable=False)
     page_count = db.Column(db.SmallInteger, nullable=False)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "created_by_id": str(self.created_by_id),
-            "archived_at": get_dt_string_or_none(self.archived_at),
-            "archived_by_id": get_uuid_string_or_none(self.archived_by_id),
-            "original_filename": self.original_filename,
-            "page_count": self.page_count,
-        }
+    def serialize(self) -> SerializedLetterAttachment:
+        return SerializedLetterAttachment(
+            id=str(self.id),
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            created_by_id=str(self.created_by_id),
+            archived_at=get_dt_string_or_none(self.archived_at),
+            archived_by_id=get_uuid_string_or_none(self.archived_by_id),
+            original_filename=self.original_filename,
+            page_count=self.page_count,
+        )
 
 
 class UnsubscribeRequestReport(db.Model):
