@@ -50,6 +50,7 @@ from app.models import (
     SerializedEmailBranding,
     SerializedFreeSmsItems,
     SerializedInboundNumber,
+    SerializedInboundSms,
     SerializedInvitedOrganisationUser,
     SerializedNotification,
     SerializedNotificationForCSV,
@@ -1786,4 +1787,57 @@ def test_rate_serialization_only_returns_defined_fields(notify_db_session):
     assert set(serialized.__annotations__.keys()) == {
         "rate",
         "valid_from",
+    }
+
+
+def test_imbound_sms_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    inbound_sms = InboundSms(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        user_number="07700900123",
+        notify_number="07700900456",
+        provider="mmg",
+        provider_reference="provider-ref-123",
+        content="Test inbound SMS",
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(inbound_sms)
+    notify_db_session.commit()
+
+    serialized = inbound_sms.serialize()
+
+    assert isinstance(serialized, SerializedInboundSms)
+    assert serialized.id == str(inbound_sms.id)
+    assert serialized.service_id == str(inbound_sms.service_id)
+    assert serialized.user_number == "07700900123"
+    assert serialized.notify_number == "07700900456"
+    assert serialized.content == "Test inbound SMS"
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+
+def test_inbound_sms_serialization_only_returns_defined_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    inbound_sms = InboundSms(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        user_number="07700900123",
+        notify_number="07700900456",
+        provider="mmg",
+        provider_reference="provider-ref-123",
+        content="Test inbound SMS",
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(inbound_sms)
+    notify_db_session.commit()
+
+    serialized = inbound_sms.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "created_at",
+        "service_id",
+        "notify_number",
+        "user_number",
+        "content",
     }

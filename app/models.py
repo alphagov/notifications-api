@@ -2374,6 +2374,16 @@ class Rate(db.Model):
         return SerializedRate(rate=float(self.rate), valid_from=self.valid_from.isoformat())
 
 
+@dataclass
+class SerializedInboundSms:
+    id: str
+    created_at: str
+    service_id: str
+    notify_number: str
+    user_number: str
+    content: str
+
+
 class InboundSms(db.Model):
     __tablename__ = "inbound_sms"
 
@@ -2402,15 +2412,15 @@ class InboundSms(db.Model):
     def content(self, content):
         self._content = signing.encode(content)
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "service_id": str(self.service_id),
-            "notify_number": self.notify_number,
-            "user_number": self.user_number,
-            "content": self.content,
-        }
+    def serialize(self) -> SerializedInboundSms:
+        return SerializedInboundSms(
+            id=str(self.id),
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            service_id=str(self.service_id),
+            notify_number=self.notify_number,
+            user_number=self.user_number,
+            content=self.content,
+        )
 
 
 class InboundSmsHistory(db.Model):
