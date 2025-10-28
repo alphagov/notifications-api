@@ -29,6 +29,7 @@ from app.dao.services_dao import dao_add_user_to_service
 from app.models import (
     AnnualBilling,
     ApiKey,
+    Complaint,
     EmailBranding,
     FactBilling,
     FactNotificationStatus,
@@ -48,6 +49,7 @@ from app.models import (
     Rate,
     ReportRequest,
     SerializedAnnualBilling,
+    SerializedComplaint,
     SerializedEmailBranding,
     SerializedFreeSmsItems,
     SerializedInboundNumber,
@@ -1988,4 +1990,54 @@ def test_service_letter_contact_serialization_only_returns_defined_fields(notify
         "created_at",
         "updated_at",
         "archived",
+    }
+
+
+def test_complaint_serialization_returns_all_fields(notify_db_session, sample_notification):
+    complaint = Complaint(
+        id=uuid.uuid4(),
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id,
+        ses_feedback_id="ses-feedback-123",
+        complaint_type="bounce",
+        complaint_date=datetime(2025, 1, 1, 10, 0, tzinfo=UTC),
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(complaint)
+    notify_db_session.commit()
+
+    serialized = complaint.serialize()
+
+    assert isinstance(serialized, SerializedComplaint)
+    assert serialized.id == str(complaint.id)
+    assert serialized.notification_id == str(sample_notification.id)
+    assert serialized.service_id == str(sample_notification.service_id)
+    assert serialized.service_name == sample_notification.service.name
+    assert serialized.ses_feedback_id == "ses-feedback-123"
+    assert serialized.complaint_type == "bounce"
+    assert serialized.complaint_date == datetime(2025, 1, 1, 10, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+    assert serialized.created_at == datetime(2025, 1, 1, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+
+def test_complaint_serialization_only_returns_defined_fields(notify_db_session, sample_notification):
+    complaint = Complaint(
+        id=uuid.uuid4(),
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id,
+        created_at=datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(complaint)
+    notify_db_session.commit()
+
+    serialized = complaint.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "notification_id",
+        "service_id",
+        "service_name",
+        "ses_feedback_id",
+        "complaint_type",
+        "complaint_date",
+        "created_at",
     }
