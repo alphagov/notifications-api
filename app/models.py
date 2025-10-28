@@ -1000,6 +1000,15 @@ class ServiceGuestList(db.Model):
         return f"Recipient {self.recipient} of type: {self.recipient_type}"
 
 
+@dataclass
+class SerializedServiceCallbackApi:
+    id: str
+    service_id: str
+    url: str
+    updated_by_id: str
+    created_at: str
+    updated_at: str | None
+
 class ServiceCallbackApi(db.Model, Versioned):
     __tablename__ = "service_callback_api"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -1026,15 +1035,15 @@ class ServiceCallbackApi(db.Model, Versioned):
         if bearer_token:
             self._bearer_token = signing.encode(str(bearer_token))
 
-    def serialize(self):
-        return {
-            "id": str(self.id),
-            "service_id": str(self.service_id),
-            "url": self.url,
-            "updated_by_id": str(self.updated_by_id),
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": get_dt_string_or_none(self.updated_at),
-        }
+    def serialize(self) -> SerializedServiceCallbackApi:
+        return SerializedServiceCallbackApi(
+            id=str(self.id),
+            service_id=str(self.service_id),
+            url=self.url,
+            updated_by_id=str(self.updated_by_id),
+            created_at=self.created_at.strftime(DATETIME_FORMAT),
+            updated_at=get_dt_string_or_none(self.updated_at),
+        )
 
 
 class ServiceCallbackType(db.Model):

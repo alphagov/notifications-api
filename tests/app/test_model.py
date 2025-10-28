@@ -55,7 +55,8 @@ from app.models import (
     SerializedServiceSmsSender,
     SerializedUser,
     SerializedUserForList,
-    Service,
+    SerializedServiceCallbackApi,
+    ServiceCallbackApi,
     ServiceGuestList,
     ServiceSmsSender,
     Template,
@@ -1435,4 +1436,49 @@ def test_user_serialization_for_list_only_returns_defined_fields(notify_db_sessi
         "mobile_number",
     }
 
-    
+
+def test_service_callback_api_serialization_returns_all_fields(notify_db_session, sample_user):
+    service = create_service(service_name="Test Service")
+    callback_api = ServiceCallbackApi(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        url="https://example.com/callback",
+        _bearer_token="secret-token",
+        updated_by_id=sample_user.id,
+        updated_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(callback_api)
+    notify_db_session.commit()
+
+    serialized = callback_api.serialize()
+    assert isinstance(serialized, SerializedServiceCallbackApi)
+    assert serialized.id == str(callback_api.id)
+    assert serialized.service_id == str(service.id)
+    assert serialized.url == "https://example.com/callback"
+    assert serialized.updated_at == datetime(2025, 1, 2, 12, 0, tzinfo=UTC).strftime(DATETIME_FORMAT)
+
+
+def test_service_callback_api_serialization_only_returns_defined_fields(notify_db_session, sample_user):
+    service = create_service(service_name="Test Service")
+    callback_api = ServiceCallbackApi(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        url="https://example.com/callback",
+        _bearer_token="secret-token",
+        updated_by_id=sample_user.id,
+        updated_at=datetime(2025, 1, 2, 12, 0, tzinfo=UTC),
+    )
+    notify_db_session.add(callback_api)
+    notify_db_session.commit()
+
+    serialized = callback_api.serialize()
+
+    # Ensure only the defined fields are present in the serialized output
+    assert set(serialized.__annotations__.keys()) == {
+        "id",
+        "service_id",
+        "url",
+        "updated_by_id",
+        "created_at",
+        "updated_at",
+    }
