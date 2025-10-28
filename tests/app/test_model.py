@@ -55,6 +55,7 @@ from app.models import (
     SerializedNotificationForCSV,
     SerializedOrganisation,
     SerializedOrganisationForList,
+    SerializedRate,
     SerializedServiceCallbackApi,
     SerializedServiceOrgDashboard,
     SerializedServiceSmsSender,
@@ -1750,4 +1751,39 @@ def test_invited_organisation_user_serialization_only_returns_defined_fields(
         "created_at",
         "permissions",
         "status",
+    }
+
+
+def test_rate_serialization_returns_all_fields(notify_db_session):
+    rate = Rate(
+        id=uuid.uuid4(),
+        notification_type=SMS_TYPE,
+        rate=0.05,
+        valid_from=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    notify_db_session.add(rate)
+    notify_db_session.commit()
+
+    serialized = rate.serialize()
+
+    assert isinstance(serialized, SerializedRate)
+    assert serialized.rate == 0.05
+    assert serialized.valid_from == "2024-01-01T00:00:00"
+
+
+def test_rate_serialization_only_returns_defined_fields(notify_db_session):
+    rate = Rate(
+        id=uuid.uuid4(),
+        notification_type=SMS_TYPE,
+        rate=0.05,
+        valid_from=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    notify_db_session.add(rate)
+    notify_db_session.commit()
+
+    serialized = rate.serialize()
+
+    assert set(serialized.__annotations__.keys()) == {
+        "rate",
+        "valid_from",
     }

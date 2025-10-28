@@ -2350,6 +2350,12 @@ class Event(db.Model):
     data = db.Column(JSON, nullable=False)
 
 
+@dataclass
+class SerializedRate:
+    rate: float
+    valid_from: str
+
+
 class Rate(db.Model):
     __tablename__ = "rates"
 
@@ -2364,11 +2370,8 @@ class Rate(db.Model):
         the_string += f" {self.valid_from}"
         return the_string
 
-    def serialize(self):
-        return {
-            "rate": self.rate,
-            "valid_from": self.valid_from.isoformat(),
-        }
+    def serialize(self) -> SerializedRate:
+        return SerializedRate(rate=float(self.rate), valid_from=self.valid_from.isoformat())
 
 
 class InboundSms(db.Model):
