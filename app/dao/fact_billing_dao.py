@@ -499,7 +499,7 @@ def delete_billing_data_for_day(process_day: date, service_ids=None):
     return FactBilling.query.filter(*filters).delete()
 
 
-def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False):
+def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False, sess=db.session):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
     extra = {"start_time": start_date, "end_time": end_date}
@@ -513,16 +513,15 @@ def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permis
             end_date=end_date,
             service_ids=service_ids,
             check_permissions=check_permissions,
+            sess=sess,
         )
         billing_data += partial_billing_data
 
     return billing_data
 
 
-def _query_for_billing_data(notification_type, start_date, end_date, service_ids, check_permissions):
-    base_query = db.session.query(NotificationAllTimeView).join(
-        Service, NotificationAllTimeView.service_id == Service.id
-    )
+def _query_for_billing_data(notification_type, start_date, end_date, service_ids, check_permissions, sess=db.session):
+    base_query = sess.query(NotificationAllTimeView).join(Service, NotificationAllTimeView.service_id == Service.id)
 
     if check_permissions:
         base_query = base_query.join(
