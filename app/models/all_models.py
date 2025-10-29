@@ -33,7 +33,8 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
-from app import db, redis_store, signing
+from app.models.context import proxied_db as db
+from app import redis_store, signing
 from app.constants import (
     ALL_TYPE,
     BRANDING_ORG,
