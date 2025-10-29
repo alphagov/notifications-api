@@ -33,7 +33,6 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
-from app.models.context import proxied_db as db
 from app import redis_store, signing
 from app.constants import (
     ALL_TYPE,
@@ -77,6 +76,7 @@ from app.constants import (
 )
 from app.hashing import check_hash, hashpw
 from app.history_meta import Versioned
+from app.models.context import proxied_db as db
 from app.utils import (
     DATETIME_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,

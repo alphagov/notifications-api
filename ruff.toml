@@ -7,6 +7,8 @@ extend-exclude = [
     "migrations",
     "build",
     "sample_cap_xml_documents.py",
+    "app/models/__init__.py",
+    "app/models/bulk.py",
 ]
 
 line-length = 120
