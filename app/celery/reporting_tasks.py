@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 
-from app import notify_celery, redis_store
+from app import db, notify_celery, redis_store
 from app.config import QueueNames
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, CacheKeys
 from app.cronitor import cronitor
@@ -74,7 +74,7 @@ def create_or_update_ft_billing_for_day(process_day: str):
     )
 
     start = datetime.utcnow()
-    billing_data = fetch_billing_data_for_day(process_day=process_date)
+    billing_data = fetch_billing_data_for_day(process_day=process_date, session=db.session_bulk)
     end = datetime.utcnow()
 
     base_params = {
