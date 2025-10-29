@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db, redis_store
+from app import models as default_models
 from app.constants import EMAIL_AUTH_TYPE, NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID, NOTIFY_RESEARCH_SERVICE_ID
 from app.dao.dao_utils import autocommit
 from app.dao.organisation_dao import dao_remove_user_from_organisation
@@ -17,6 +18,7 @@ from app.dao.service_user_dao import dao_get_service_users_by_user_id
 from app.dao.services_dao import dao_remove_user_from_service
 from app.errors import InvalidRequest
 from app.models import ApiKey, Organisation, Service, User, VerifyCode
+from app.models import bulk as bulk_models
 from app.utils import escape_special_characters, get_archived_db_column_value
 
 
@@ -114,8 +116,13 @@ def count_user_verify_codes(user):
     return query.count()
 
 
-def get_user_by_id(user_id):
+def get_user_by_id(user_id, models_module=default_models):
     return User.query.filter_by(id=user_id).one()
+
+
+def get_user_from_replica(user_id):
+    user = get_user_by_id(user_id, models_module=bulk_models)
+    return user
 
 
 def get_user_by_email(email):
