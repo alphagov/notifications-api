@@ -3,6 +3,7 @@ import json
 from app.models import TemplateEmailFile
 from tests import create_admin_authorization_header
 import freezegun
+import datetime
 
 @freezegun.freeze_time("2025-01-01 11:09:00.000000")
 def test_create_email_files_post(client, sample_service, sample_email_template):
@@ -41,3 +42,4 @@ def test_create_email_files_post(client, sample_service, sample_email_template):
     assert template_email_file.template_id == sample_email_template.id
     assert template_email_file.template_version == int(sample_email_template.version)
     assert template_email_file.created_by_id == sample_service.users[0].id
+    assert str(template_email_file.created_at) == "2025-01-01 11:09:00"
