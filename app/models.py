@@ -1,5 +1,6 @@
 import datetime
 import enum
+from typing import TypedDict
 import uuid
 from dataclasses import dataclass
 
@@ -2742,7 +2743,7 @@ class ReturnedLetter(db.Model):
 
 
 @dataclass
-class SerializedServiceContactList:
+class SerializedServiceContactList(TypedDict):
     id: str
     original_file_name: str
     row_count: int
