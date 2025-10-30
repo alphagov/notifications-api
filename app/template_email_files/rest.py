@@ -21,7 +21,7 @@ def validate_template_id(template_id, service_id):
 
 
 @template_email_files_blueprint.route("", methods=["POST"])
-def create_template(service_id, template_id):
+def create_template_email_files(service_id, template_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     template_email_files_json = validate(request.get_json(), post_create_template_email_files_schema)
     fetched_template = Template.query.filter(
