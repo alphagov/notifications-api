@@ -6,7 +6,7 @@ import freezegun
 import datetime
 
 @freezegun.freeze_time("2025-01-01 11:09:00.000000")
-def test_create_email_files_post(client, sample_service, sample_email_template):
+def test_valid_input_creates_template_email_files_post(client, sample_service, sample_email_template):
     data = {
         "id": "d963f496-b075-4e13-90ae-1f009feddbc6",
         "filename": "example.pdf",
