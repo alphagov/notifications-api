@@ -31,7 +31,13 @@ def test_create_email_files_post(client, sample_service, sample_email_template):
     assert json_resp['data']['link_text'] == "click this link!"
     assert json_resp['data']['validate_users_email']
     assert json_resp['data']['template_id'] == str(sample_email_template.id)
-    assert json_resp['data']['template_version'] == int(sample_email_template.version)
+    assert json_resp['data']['template_version'] ==  int(sample_email_template.version)
     assert json_resp['data']['created_by_id'] == str(sample_service.users[0].id)
     template_email_file = TemplateEmailFile.query.get("d963f496-b075-4e13-90ae-1f009feddbc6")
     assert template_email_file.filename == "example.pdf"
+    assert template_email_file.retention_period == 90
+    assert template_email_file.link_text == "click this link!"
+    assert template_email_file.validate_users_email
+    assert template_email_file.template_id == sample_email_template.id
+    assert template_email_file.template_version == int(sample_email_template.version)
+    assert template_email_file.created_by_id == sample_service.users[0].id
