@@ -2,10 +2,11 @@ import uuid
 import json
 from tests import create_admin_authorization_header
 import datetime
+from app.models import TemplateEmailFile
 
 def test_create_email_files_post(client, sample_service, sample_email_template):
     data = {
-        "id": "d963f496-b075-4e13-90ae-1f009feddbc5",
+        "id": "d963f496-b075-4e13-90ae-1f009feddbc6",
         "filename": "example.pdf",
         "link_text": "click this link!",
         "retention_period": 90,
@@ -19,3 +20,6 @@ def test_create_email_files_post(client, sample_service, sample_email_template):
     assert response.status_code == 201
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp.get("data").get("filename") == "example.pdf"
+    breakpoint()
+    template_email_file = TemplateEmailFile.query.get("d963f496-b075-4e13-90ae-1f009feddbc6")
+    assert template_email_file.link_text == "example.pdf"

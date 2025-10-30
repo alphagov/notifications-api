@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy.orm.exc import NoResultFound
+from app.dao.dao_utils import autocommit
 from app.template_email_files.template_email_files_schemas import post_create_template_email_files_schema
 
 from app.constants import EMAIL_TYPE
@@ -21,6 +22,7 @@ def validate_template_id(template_id, service_id):
     except NoResultFound as e:
         raise InvalidRequest("template_not_found", status_code=400) from e
 
+@autocommit
 def dao_create_template_email_files(template_email_file: TemplateEmailFile):
 
     db.session.add(template_email_file)
