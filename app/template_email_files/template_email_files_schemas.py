@@ -8,11 +8,10 @@ post_create_template_email_files_schema = {
     "properties": {
         "id": uuid,
         "filename": {"type": "string"},
-        "linktext": {"type": "string"},
+        "link_text": {"type": "string"},
         "service": uuid,
         "retention_period": {"type": "integer"},
         "validate_users_email": {"type": "boolean"},
-        "created_at": {"type": "string", "format": "date-time"},
         "template_id": uuid,
         "template_version": {"type": "integer"},
         "created_by_id": uuid,

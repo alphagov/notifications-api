@@ -1310,6 +1310,9 @@ class TemplateEmailFile(TemplateEmailFileBase):
         would.
         """
         fields = data.copy()
+        created_at = datetime.datetime.now(datetime.timezone.utc)
+        fields["created_at"] = created_at
+        return cls(**fields)
 
 
 class TemplateEmailFileHistory(TemplateEmailFileBase):

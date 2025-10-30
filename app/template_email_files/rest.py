@@ -5,8 +5,10 @@ from app.template_email_files.template_email_files_schemas import post_create_te
 from app.constants import EMAIL_TYPE
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import InvalidRequest
-from app.models import Template
+from app.models import Template, TemplateEmailFile
 from app.schema_validation import validate
+from app.schemas import template_email_files_schema
+from app import db
 
 template_email_files_blueprint = Blueprint(
     "template_email_files", __name__, url_prefix="/service/<uuid:service_id>/<uuid:template_id>/template_email_files"
@@ -19,6 +21,9 @@ def validate_template_id(template_id, service_id):
     except NoResultFound as e:
         raise InvalidRequest("template_not_found", status_code=400) from e
 
+def dao_create_template_email_files(template_email_file: TemplateEmailFile):
+
+    db.session.add(template_email_file)
 
 @template_email_files_blueprint.route("", methods=["POST"])
 def create_template_email_files(service_id, template_id):
@@ -33,4 +38,6 @@ def create_template_email_files(service_id, template_id):
         raise InvalidRequest(message="cannot create an email for non-email type", status_code=400)
     if not fetched_service.has_permission(EMAIL_TYPE):
         raise InvalidRequest(message="can't create email type", status_code=400)
-    return jsonify(result="success"), 201
+    template_email_file = TemplateEmailFile.from_json(template_email_files_json)
+    dao_create_template_email_files(template_email_file)
+    return jsonify(data = template_email_files_schema.dump(template_email_file)), 201
