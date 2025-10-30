@@ -527,18 +527,18 @@ def test_check_token_bucket_service_over_api_rate_limit_when_rate_limit_has_not_
 
 
 def test_check_service_over_api_rate_limit_should_do_nothing_if_limiting_is_disabled(mocker):
-    service = create_service(service_name=str(uuid4()), service_permissions=[], restricted=True)
+    service = create_service(service_name=str(uuid4()))
     with freeze_time("2016-01-01 12:00:00.000000"):
         current_app.config["API_RATE_LIMIT_ENABLED"] = False
 
-        mocker.patch("app.redis_store.exceeded_rate_limit", return_value=False)
+        mock_get_remaining_bucket_tokens = mocker.patch("app.redis_store.get_remaining_bucket_tokens")
 
         create_api_key(service)
         serialised_service = SerialisedService.from_id(service.id)
         serialised_api_key = SerialisedAPIKeyCollection.from_service_id(serialised_service.id)[0]
 
         check_service_over_api_rate_limit(serialised_service, serialised_api_key.key_type)
-        assert app.redis_store.exceeded_rate_limit.call_args_list == []
+        assert mock_get_remaining_bucket_tokens.call_args_list == []
 
 
 @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
