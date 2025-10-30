@@ -447,19 +447,18 @@ class TemplateHistorySchema(BaseTemplateSchema, UUIDsAsStringsMixin):
         model = models.TemplateHistory
         exclude = tuple(set(BaseTemplateSchema.Meta.exclude) - {"jobs"})
 
+
 class TemplateEmailFilesSchema(BaseSchema):
     filename = field_for(models.TemplateEmailFile, "filename", required=True)
-    link_text = field_for(models.TemplateEmailFile, "link_text", required = False)
-    retention_period = field_for(models.TemplateEmailFile, "retention_period", required = False)
-    validate_users_email = field_for(models.TemplateEmailFile, "validate_users_email", required = True)
+    link_text = field_for(models.TemplateEmailFile, "link_text", required=False)
+    retention_period = field_for(models.TemplateEmailFile, "retention_period", required=False)
+    validate_users_email = field_for(models.TemplateEmailFile, "validate_users_email", required=True)
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
     archived_at = FlexibleDateTime()
-    # created_at = field_for(models.TemplateEmailFile, "created_at", required = True, format=DATETIME_FORMAT_NO_TIMEZONE)
-    # updated_at = field_for(models.TemplateEmailFile, "updated_at", required = False, format=DATETIME_FORMAT_NO_TIMEZONE)
-    # archived_at = field_for(models.TemplateEmailFile, "archived_at", required = False, format=DATETIME_FORMAT_NO_TIMEZONE)
-    template_id = field_for(models.TemplateEmailFile, "template_id", required = True)
-    template_version = field_for(models.TemplateEmailFile, "template_version", required = True)
+    template_id = field_for(models.TemplateEmailFile, "template_id", required=True)
+    template_version = field_for(models.TemplateEmailFile, "template_version", required=True)
+
 
 class ApiKeySchema(BaseSchema):
     created_by = field_for(models.ApiKey, "created_by", required=True)

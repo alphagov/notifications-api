@@ -6,7 +6,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '01ce5c92472b'
+revision = '0538_update_constraints_templates_email_files'
 down_revision = '0537_templates_email_files'
 
 
