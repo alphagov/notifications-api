@@ -98,7 +98,13 @@ class Config:
     DANGEROUS_SALT = os.getenv("DANGEROUS_SALT")
 
     # DB conection string
-    SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "SQLALCHEMY_DATABASE_URI", "postgresql+psycopg2://notify:notify@localhost:5432/notification_api"
+    )
+    SQLALCHEMY_BULK_DATABASE_URI = os.getenv(
+        "SQLALCHEMY_BULK_DATABASE_URI",
+        "postgresql+psycopg2://notify_replica:notify_replica@localhost:5433/notification_api",
+    )
 
     # MMG API Key
     MMG_API_KEY = os.getenv("MMG_API_KEY")
@@ -548,8 +554,12 @@ class Development(Config):
 
     NOTIFY_ENVIRONMENT = "development"
     NOTIFY_EMAIL_DOMAIN = "notify.tools"
-
-    SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", "postgresql+psycopg2://localhost/notification_api")
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        "SQLALCHEMY_DATABASE_URI", "postgresql+psycopg2://notify:notify@localhost:5432/notification_api"
+    )
+    SQLALCHEMY_BULK_DATABASE_URI = os.getenv(
+        "SQLALCHEMY_BULK_DATABASE_URI", "postgresql+psycopg2://notify:notify@localhost:5432/notification_api"
+    )
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     ANTIVIRUS_ENABLED = os.getenv("ANTIVIRUS_ENABLED") == "1"

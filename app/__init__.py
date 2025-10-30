@@ -30,8 +30,8 @@ from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.eventlet import EventletTimeout
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.logging import flask as utils_logging
-from sqlalchemy import event
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import MetaData, create_engine, event
+from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
@@ -44,8 +44,10 @@ from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
 
 Base = declarative_base()
+BaseBulk = declarative_base(metadata=MetaData())
 
 db = SQLAlchemy(model_class=Base)
+db_bulk = SQLAlchemy(model_class=BaseBulk)
 migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
@@ -169,12 +171,24 @@ def create_app(application):
         application.config.from_object(Config)
 
     application.config["NOTIFY_APP_NAME"] = application.name
+    application.config.setdefault("SQLALCHEMY_BULK_DATABASE_URI", application.config["SQLALCHEMY_DATABASE_URI"])
+
     init_app(application)
 
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
     metrics.init_app(application)
     request_helper.init_app(application)
     db.init_app(application)
+    db_bulk.app = application
+    bulk_engine = create_engine(application.config["SQLALCHEMY_BULK_DATABASE_URI"])
+    db_bulk.session = scoped_session(sessionmaker(bind=bulk_engine, class_=db.Session))
+    db_bulk.Model.query = db_bulk.session.query_property()
+
+    @application.teardown_appcontext
+    def shutdown_bulk_session(response_or_exc):
+        db_bulk.session.remove()
+        return response_or_exc
+
     migrate.init_app(application, db=db)
     ma.init_app(application)
     statsd_client.init_app(application)
@@ -193,8 +207,7 @@ def create_app(application):
     setup_commands(application)
 
     # set up sqlalchemy events
-    setup_sqlalchemy_events(application)
-
+    setup_sqlalchemy_events(application, bulk_engine)
     return application
 
 
@@ -447,7 +460,7 @@ def create_random_identifier():
     return "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
 
 
-def setup_sqlalchemy_events(app):  # noqa: C901
+def setup_sqlalchemy_events(app, bulk_engine_from_factory):  # noqa: C901
     TOTAL_DB_CONNECTIONS = Gauge(
         "db_connection_total_connected",
         "How many db connections are currently held (potentially idle) by the server",
@@ -576,3 +589,13 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 ).observe(duration)
             except Exception:
                 current_app.logger.exception("Exception caught for checkin event.")
+
+        @event.listens_for(bulk_engine_from_factory, "connect")
+        def set_readonly_on_connect_bulk(dbapi_connection, connection_record):
+            """Set session characteristics to read-only for bulk engine."""
+            try:
+                cursor = dbapi_connection.cursor()
+                cursor.execute("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY;")
+                cursor.close()
+            except Exception as e:
+                app.logger.warning("Warning: Could not set read-only mode for bulk engine %s", str(e))
