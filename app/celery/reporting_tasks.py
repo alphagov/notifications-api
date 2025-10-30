@@ -97,7 +97,8 @@ def create_or_update_ft_billing_for_day(process_day: str):
         "updated_record_count": len(billing_data),
     }
     current_app.logger.info(
-        "create-nightly-billing-for-day task for %(process_day)s: task complete. %(updated_record_count)s rows updated",
+        "create-or-update-ft-billing-for-day task for %(process_day)s: task complete. "
+        "%(updated_record_count)s rows updated",
         extra,
         extra=extra,
     )
