@@ -1878,7 +1878,7 @@ def test_letter_rate_serialization_returns_all_fields(notify_db_session):
     assert isinstance(serialized, SerializedLetterRate)
     assert serialized.sheet_count == 2
     assert serialized.start_date == letter_rate.start_date.strftime("%Y-%m-%dT%H:%M:%S")
-    assert serialized.rate == 0.75
+    assert serialized.rate == "0.75"
     assert serialized.post_class == "first"
 
 

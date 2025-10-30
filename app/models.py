@@ -2454,7 +2454,7 @@ class InboundSmsHistory(db.Model):
 class SerializedLetterRate:
     sheet_count: int
     start_date: str
-    rate: float
+    rate: str
     post_class: str
 
 
@@ -2473,7 +2473,7 @@ class LetterRate(db.Model):
         return SerializedLetterRate(
             sheet_count=self.sheet_count,
             start_date=self.start_date.isoformat(),
-            rate=float(self.rate),
+            rate=str(self.rate),
             post_class=self.post_class,
         )
 
