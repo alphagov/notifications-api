@@ -1,5 +1,5 @@
-from dataclasses import asdict
 import uuid
+from dataclasses import asdict
 
 import pytest
 from flask import current_app, json

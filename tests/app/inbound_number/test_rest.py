@@ -1,4 +1,5 @@
 from dataclasses import asdict
+
 import pytest
 
 from app.dao.inbound_numbers_dao import (
