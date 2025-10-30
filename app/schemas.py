@@ -459,6 +459,7 @@ class TemplateEmailFilesSchema(BaseSchema):
     archived_at = FlexibleDateTime()
     template_id = field_for(models.TemplateEmailFile, "template_id", required=True)
     template_version = field_for(models.TemplateEmailFile, "template_version", required=True)
+    created_by_id = fields.UUID()
 
 
 class ApiKeySchema(BaseSchema):

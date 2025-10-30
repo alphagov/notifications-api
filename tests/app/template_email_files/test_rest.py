@@ -2,8 +2,9 @@ import json
 
 from app.models import TemplateEmailFile
 from tests import create_admin_authorization_header
+import freezegun
 
-
+@freezegun.freeze_time("2025-01-01 11:09:00.000000")
 def test_create_email_files_post(client, sample_service, sample_email_template):
     data = {
         "id": "d963f496-b075-4e13-90ae-1f009feddbc6",
@@ -13,7 +14,7 @@ def test_create_email_files_post(client, sample_service, sample_email_template):
         "validate_users_email": True,
         "template_id": str(sample_email_template.id),
         "template_version": int(sample_email_template.version),
-        "created_by_id": int(sample_service.users[0].id),
+        "created_by_id": str(sample_service.users[0].id),
     }
     data = json.dumps(data)
     auth_header = create_admin_authorization_header()
