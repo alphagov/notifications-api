@@ -449,6 +449,7 @@ class TemplateHistorySchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 
 
 class TemplateEmailFilesSchema(BaseSchema):
+    id = fields.UUID()
     filename = field_for(models.TemplateEmailFile, "filename", required=True)
     link_text = field_for(models.TemplateEmailFile, "link_text", required=False)
     retention_period = field_for(models.TemplateEmailFile, "retention_period", required=False)
