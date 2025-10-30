@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from datetime import datetime
 
 import pytest
@@ -293,7 +294,7 @@ def test_create_email_branding_400s_on_unique_violation(admin_request, notify_db
 def test_update_email_branding_400s_on_unique_violation(admin_request, notify_db_session):
     create_email_branding(name="test 1")
     email_branding = create_email_branding(name="test 2")
-    data = email_branding.serialize()
+    data = asdict(email_branding.serialize())
     data["name"] = "test 1"
 
     response = admin_request.post(
