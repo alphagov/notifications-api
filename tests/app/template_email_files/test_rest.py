@@ -4,6 +4,8 @@ from app.models import TemplateEmailFile
 from tests import create_admin_authorization_header
 import freezegun
 import datetime
+import pytest
+
 
 @freezegun.freeze_time("2025-01-01 11:09:00.000000")
 def test_valid_input_creates_template_email_files_post(client, sample_service, sample_email_template):
@@ -26,14 +28,14 @@ def test_valid_input_creates_template_email_files_post(client, sample_service, s
     )
     assert response.status_code == 201
     json_resp = json.loads(response.get_data(as_text=True))
-    assert json_resp['data']['id'] == 'd963f496-b075-4e13-90ae-1f009feddbc6'
-    assert json_resp['data']['filename'] == "example.pdf"
-    assert json_resp['data']['retention_period'] == 90
-    assert json_resp['data']['link_text'] == "click this link!"
-    assert json_resp['data']['validate_users_email']
-    assert json_resp['data']['template_id'] == str(sample_email_template.id)
-    assert json_resp['data']['template_version'] ==  int(sample_email_template.version)
-    assert json_resp['data']['created_by_id'] == str(sample_service.users[0].id)
+    assert json_resp["data"]["id"] == "d963f496-b075-4e13-90ae-1f009feddbc6"
+    assert json_resp["data"]["filename"] == "example.pdf"
+    assert json_resp["data"]["retention_period"] == 90
+    assert json_resp["data"]["link_text"] == "click this link!"
+    assert json_resp["data"]["validate_users_email"]
+    assert json_resp["data"]["template_id"] == str(sample_email_template.id)
+    assert json_resp["data"]["template_version"] == int(sample_email_template.version)
+    assert json_resp["data"]["created_by_id"] == str(sample_service.users[0].id)
     template_email_file = TemplateEmailFile.query.get("d963f496-b075-4e13-90ae-1f009feddbc6")
     assert template_email_file.filename == "example.pdf"
     assert template_email_file.retention_period == 90
@@ -43,3 +45,42 @@ def test_valid_input_creates_template_email_files_post(client, sample_service, s
     assert template_email_file.template_version == int(sample_email_template.version)
     assert template_email_file.created_by_id == sample_service.users[0].id
     assert str(template_email_file.created_at) == "2025-01-01 11:09:00"
+
+
+@pytest.mark.parametrize(
+    "data, expected_error_message",
+    [
+        (
+            {
+                "id": "d963f496-b075-4e13-90ae-1f009feddbc6",
+                "filename": "example.pdf",
+                "link_text": "click this link!",
+                "retention_period": "not an integer",
+                "validate_users_email": True,
+            },
+            '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "retention_period not an integer is not of type integer"}]}',
+        )
+    ],
+)
+def test_invalid_input_raises_exception_template_email_files_post(
+    client, sample_service, sample_email_template, data, expected_error_message
+):
+    # default to function-scoped fixture if not set as test parameter
+    if "template_id" not in data.keys():
+        data["template_id"] = str(sample_email_template.id)
+    if "template_version" not in data.keys():
+        data["template_version"] =  int(sample_email_template.version)
+    if "created_by_id" not in data.keys():
+        data["created_by_id"] = str(sample_service.users[0].id)
+    data = json.dumps(data)
+    auth_header = create_admin_authorization_header()
+    with pytest.raises(Exception) as e:
+        client.post(
+            f"/service/{sample_service.id}/{sample_email_template.id}/template_email_files",
+            headers=[("Content-Type", "application/json"), auth_header],
+            data=data,
+        )
+    assert (
+        e.value.message
+        == expected_error_message
+    )
