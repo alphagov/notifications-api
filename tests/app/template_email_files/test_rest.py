@@ -59,7 +59,17 @@ def test_valid_input_creates_template_email_files_post(client, sample_service, s
                 "validate_users_email": True,
             },
             '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "retention_period not an integer is not of type integer"}]}',
-        )
+        ),
+        (
+            {
+                "id": "d963f496-b075-4e13-90ae-1f009feddbc6",
+                "filename": "example.pdf",
+                "link_text": "click this link!",
+                "retention_period": 90,
+                "validate_users_email": "not a boolean!",
+            },
+            '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "validate_users_email not a boolean! is not of type boolean"}]}',
+        ),
     ],
 )
 def test_invalid_input_raises_exception_template_email_files_post(
