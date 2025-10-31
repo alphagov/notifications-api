@@ -28,6 +28,11 @@ def dao_create_template_email_files(template_email_file: TemplateEmailFile):
     db.session.add(template_email_file)
 
 
+@autocommit
+def dao_get_template_email_files_by_template_id_and_version(template_id, template_version):
+    pass
+
+
 @template_email_files_blueprint.route("", methods=["POST"])
 def create_template_email_files(service_id, template_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
@@ -44,3 +49,22 @@ def create_template_email_files(service_id, template_id):
     template_email_file = TemplateEmailFile.from_json(template_email_files_json)
     dao_create_template_email_files(template_email_file)
     return jsonify(data=template_email_files_schema.dump(template_email_file)), 201
+
+
+@template_email_files_blueprint.route("", methods=["GET"])
+def get_template_email_files(service_id, template_id):
+    fetched_template = Template.query.filter(
+        Template.id == template_id,
+        Template.service_id == service_id,
+    ).one()
+
+    fetched_template_email_files = TemplateEmailFile.query.filter(
+        TemplateEmailFile.template_id == fetched_template.id,
+        TemplateEmailFile.template_version == fetched_template.version,
+    ).all()
+
+    template_email_files = []
+    for template_email_file in fetched_template_email_files:
+        template_email_files+=[template_email_files_schema.dump(template_email_file)]
+
+    return jsonify(data=template_email_files), 201

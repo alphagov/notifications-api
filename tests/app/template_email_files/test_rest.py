@@ -5,6 +5,7 @@ import pytest
 
 from app.models import TemplateEmailFile
 from tests import create_admin_authorization_header
+from tests.app.db import create_template
 
 
 @freezegun.freeze_time("2025-01-01 11:09:00.000000")
@@ -91,3 +92,60 @@ def test_invalid_input_raises_exception_template_email_files_post(
             data=data,
         )
     assert e.value.message == expected_error_message
+
+def test_get_all_template_files(client, sample_service, sample_email_template):
+    data_file_one = {
+        "id": "d963f496-b075-4e13-90ae-1f009feddbc6",
+        "filename": "example.pdf",
+        "link_text": "click this link!",
+        "retention_period": 90,
+        "validate_users_email": True,
+        "template_id": str(sample_email_template.id),
+        "template_version": int(sample_email_template.version),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    data_file_two = {
+        "id": "02d35635-c358-44d5-bcb3-62a366e63543",
+        "filename": "another_example.pdf",
+        "link_text": "click for an exciting pdf!",
+        "retention_period": 30,
+        "validate_users_email": False,
+        "template_id": str(sample_email_template.id),
+        "template_version": int(sample_email_template.version),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    auth_header = create_admin_authorization_header()
+    client.post(
+        f"/service/{sample_service.id}/{sample_email_template.id}/template_email_files",
+        headers=[("Content-Type", "application/json"), auth_header],
+        data=json.dumps(data_file_one),
+    )
+    client.post(
+        f"/service/{sample_service.id}/{sample_email_template.id}/template_email_files",
+        headers=[("Content-Type", "application/json"), auth_header],
+        data=json.dumps(data_file_two),
+    )
+    response = client.get(
+        f"/service/{sample_service.id}/{sample_email_template.id}/template_email_files",
+        headers=[("Content-Type", "application/json"), auth_header],
+    )
+    assert response.status_code == 201
+    json_resp = json.loads(response.get_data(as_text=True))
+    json_resp_data_file_one = json_resp['data'][0]
+    json_resp_data_file_two = json_resp['data'][1]
+    assert json_resp_data_file_one["id"] == "d963f496-b075-4e13-90ae-1f009feddbc6"
+    assert json_resp_data_file_one["filename"] == "example.pdf"
+    assert json_resp_data_file_one["retention_period"] == 90
+    assert json_resp_data_file_one["link_text"] == "click this link!"
+    assert json_resp_data_file_one["validate_users_email"]
+    assert json_resp_data_file_one["template_id"] == str(sample_email_template.id)
+    assert json_resp_data_file_one["template_version"] == int(sample_email_template.version)
+    assert json_resp_data_file_one["created_by_id"] == str(sample_service.users[0].id)
+    assert json_resp_data_file_two["id"] == "02d35635-c358-44d5-bcb3-62a366e63543"
+    assert json_resp_data_file_two["filename"] == "another_example.pdf"
+    assert json_resp_data_file_two["retention_period"] == 30
+    assert json_resp_data_file_two["link_text"] == "click for an exciting pdf!"
+    assert not json_resp_data_file_two["validate_users_email"]
+    assert json_resp_data_file_two["template_id"] == str(sample_email_template.id)
+    assert json_resp_data_file_two["template_version"] == int(sample_email_template.version)
+    assert json_resp_data_file_two["created_by_id"] == str(sample_service.users[0].id)
