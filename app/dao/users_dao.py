@@ -118,6 +118,10 @@ def get_user_by_id(user_id):
     return User.query.filter_by(id=user_id).one()
 
 
+def get_user_from_replica(user_id):
+    return db.session().using_bind("replica").query(User).filter_by(id=user_id).one()
+
+
 def get_user_by_email(email):
     return User.query.filter(func.lower(User.email_address) == func.lower(email)).one()
 
