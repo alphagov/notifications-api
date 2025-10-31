@@ -1,21 +1,35 @@
+import logging
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from io import BytesIO
+from itertools import islice
 from unittest.mock import ANY, call
+from uuid import UUID
 
+import boto3
+import botocore
+import pyorc
 import pytest
 from flask import current_app
 from freezegun import freeze_time
+from moto import mock_aws
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
     NotifyTicketType,
 )
+from notifications_utils.testing.comparisons import AnyStringMatching, AnySupersetOf
+from sqlalchemy import delete, select, text
+from sqlalchemy.exc import OperationalError
 
+from app import db
 from app.celery import nightly_tasks
 from app.celery.nightly_tasks import (
+    _deep_archive_notification_history_hour_starting,
     _delete_notifications_older_than_retention_by_type,
     archive_batched_unsubscribe_requests,
     archive_old_unsubscribe_requests,
     archive_unsubscribe_requests,
+    deep_archive_notification_history_up_to_limit,
     delete_email_notifications_older_than_retention,
     delete_inbound_sms,
     delete_letter_notifications_older_than_retention,
@@ -34,11 +48,18 @@ from app.celery.nightly_tasks import (
     update_report_status_to_deleted,
 )
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
-from app.models import FactProcessingTime, UnsubscribeRequest, UnsubscribeRequestHistory, UnsubscribeRequestReport
+from app.models import (
+    FactProcessingTime,
+    NotificationHistory,
+    UnsubscribeRequest,
+    UnsubscribeRequestHistory,
+    UnsubscribeRequestReport,
+)
 from app.utils import midnight_n_days_ago
 from tests.app.db import (
     create_job,
     create_notification,
+    create_notification_history,
     create_service,
     create_service_data_retention,
     create_template,
@@ -764,3 +785,477 @@ def test_delete_unneeded_notification_history_for_specific_hour2(mocker):
     update_report_status_to_deleted()
 
     delete_mock.assert_called_once_with()
+
+
+def _populate_notification_history(sample_template, sample_job):
+    create_notification_history(template=sample_template, status="delivered", created_at=datetime(2020, 2, 3, 4, 0, 0))
+    create_notification_history(
+        job=sample_job, job_row_number=2, status="delivered", created_at=datetime(2020, 2, 3, 4, 5, 6)
+    )
+    create_notification_history(template=sample_template, status="delivered", created_at=datetime(2020, 2, 3, 4, 10, 2))
+    create_notification_history(template=sample_template, status="delivered", created_at=datetime(2020, 2, 3, 5, 0, 0))
+    create_notification_history(
+        template=sample_template, status="delivered", created_at=datetime(2020, 2, 3, 5, 0, 0, 123)
+    )
+    create_notification_history(
+        job=sample_job, job_row_number=5, status="failed", created_at=datetime(2020, 2, 3, 5, 1, 0, 123)
+    )
+    create_notification_history(
+        job=sample_job, job_row_number=7, status="delivered", created_at=datetime(2020, 2, 3, 5, 2, 0, 123)
+    )
+    create_notification_history(
+        template=sample_template, status="delivered", created_at=datetime(2020, 2, 3, 5, 59, 59, 999999)
+    )
+    create_notification_history(template=sample_template, status="created", created_at=datetime(2020, 2, 5, 9, 23, 23))
+    create_notification_history(template=sample_template, status="delivered", created_at=datetime(2020, 2, 5, 10, 0, 0))
+    create_notification_history(
+        template=sample_template, status="delivered", created_at=datetime(2020, 2, 8, 12, 34, 56)
+    )
+
+
+@pytest.mark.parametrize("max_inner_calls", (1, 2, 50))
+@pytest.mark.parametrize("delete_archived", (False, True))
+@freeze_time("2021-02-04 10:11")
+def test_deep_archive_notification_history_up_to_limit(
+    caplog,
+    notify_db_session,
+    notify_api,
+    sample_template,
+    sample_job,
+    delete_archived,
+    max_inner_calls,
+    mocker,
+):
+    from tests.conftest import set_config
+
+    table = NotificationHistory.__table__
+    with (
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", delete_archived),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_MAX_HOURS_ARCHIVED_IN_RUN", max_inner_calls),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_MIN_AGE_DAYS", 365),
+    ):
+        _populate_notification_history(sample_template, sample_job)
+
+        inner_exhausted = False
+
+        def inner_side_effect():
+            nonlocal inner_exhausted
+            if delete_archived:
+                db.session.execute(
+                    delete(table).where(
+                        table.c.created_at >= datetime(2020, 2, 3, 4, 0, 0),
+                        table.c.created_at < datetime(2020, 2, 3, 5, 0, 0),
+                    )
+                )
+            db.session.commit()
+            yield datetime(2020, 2, 3, 4, 10, 2)
+
+            if delete_archived:
+                db.session.execute(
+                    delete(table).where(
+                        table.c.created_at >= datetime(2020, 2, 3, 5, 0, 0),
+                        table.c.created_at < datetime(2020, 2, 3, 6, 0, 0),
+                    )
+                )
+            db.session.commit()
+            yield datetime(2020, 2, 3, 5, 59, 59, 999999)
+
+            if delete_archived:
+                db.session.execute(
+                    delete(table).where(
+                        table.c.created_at >= datetime(2020, 2, 5, 9, 0, 0),
+                        table.c.created_at < datetime(2020, 2, 5, 10, 0, 0),
+                    )
+                )
+            db.session.commit()
+            inner_exhausted = True
+            yield datetime(2020, 2, 5, 9, 23, 23)
+
+        mock_inner = mocker.patch(
+            "app.celery.nightly_tasks._deep_archive_notification_history_hour_starting",
+            autospec=True,
+            side_effect=islice(inner_side_effect(), max_inner_calls),
+        )
+
+        deep_archive_notification_history_up_to_limit()
+
+        assert (
+            mock_inner.mock_calls
+            == [
+                call(datetime(2020, 2, 3, 4, 0)),
+                call(datetime(2020, 2, 3, 5, 0)),
+                call(datetime(2020, 2, 5, 9, 0)),
+            ][:max_inner_calls]
+        )
+
+        assert caplog.record_tuples == [
+            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-03T04:00:00"),
+            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-03T05:00:00"),
+            ("test", logging.INFO, "Archiving created_at hour beginning 2020-02-05T09:00:00"),
+        ][:max_inner_calls] + [
+            (
+                "test",
+                logging.INFO,
+                "No more archivable notification_history rows"
+                if inner_exhausted
+                else f"Archived maximum number of hours allowed in this run ({max_inner_calls})",
+            ),
+        ]
+
+
+@pytest.mark.parametrize(
+    ("start_datetime", "expected_retval", "expected_rows", "expected_s3dir"),
+    (
+        (
+            datetime(2020, 2, 3, 4, 0, 0),
+            datetime(2020, 2, 3, 4, 10, 2),
+            3,
+            "created_at_date_hour=2020-02-03T04/",
+        ),
+        (
+            datetime(2020, 2, 3, 5, 0, 0),
+            datetime(2020, 2, 3, 5, 59, 59, 999999),
+            5,
+            "created_at_date_hour=2020-02-03T05/",
+        ),
+        (
+            datetime(2020, 2, 5, 9, 0, 0),
+            datetime(2020, 2, 5, 9, 23, 23),
+            1,
+            "created_at_date_hour=2020-02-05T09/",
+        ),
+        (
+            datetime(2020, 2, 8, 12, 0, 0),
+            datetime(2020, 2, 8, 12, 34, 56),
+            1,
+            "created_at_date_hour=2020-02-08T12/",
+        ),
+        (
+            datetime(2020, 2, 8, 13, 0, 0),
+            None,
+            0,
+            "created_at_date_hour=2020-02-08T13/",
+        ),
+    ),
+)
+@pytest.mark.parametrize("delete_archived", (False, True))
+@freeze_time("2021-02-04 10:11")
+@mock_aws
+def test_deep_archive_notification_history_hour_starting_happy_path(
+    caplog,
+    notify_db_session,
+    notify_api,
+    sample_template,
+    sample_job,
+    start_datetime,
+    delete_archived,
+    expected_retval,
+    expected_rows,
+    expected_s3dir,
+):
+    from tests.conftest import set_config
+
+    table = NotificationHistory.__table__
+    with (
+        set_config(notify_api, "S3_BUCKET_NOTIFICATION_DEEP_HISTORY", "deep-bucket"),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_S3_KEY_PREFIX", "foo/"),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", delete_archived),
+    ):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket="deep-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+
+        _populate_notification_history(sample_template, sample_job)
+
+        all_before = db.session.execute(select(table).order_by(table.c.created_at)).all()
+
+        assert (
+            _deep_archive_notification_history_hour_starting(
+                start_datetime,
+                written_rows_log_every=2,
+            )
+            == expected_retval
+        )
+
+        all_after = db.session.execute(select(table).order_by(table.c.created_at)).all()
+
+        removed_rows = frozenset(all_before) - frozenset(all_after)
+
+        if delete_archived:
+            assert len(removed_rows) == expected_rows
+
+            assert all(
+                r.created_at.date() == start_datetime.date() and r.created_at.hour == start_datetime.hour
+                for r in removed_rows
+            )
+            assert not any(
+                r.created_at.date() == start_datetime.date() and r.created_at.hour == start_datetime.hour
+                for r in all_after
+            )
+        else:
+            assert not removed_rows
+
+        s3_listing = s3.list_objects_v2(
+            Bucket="deep-bucket",
+        )
+        assert s3_listing == AnySupersetOf(
+            {
+                "Contents": [
+                    AnySupersetOf(
+                        {
+                            "Key": AnyStringMatching(rf"foo/{expected_s3dir}[0-9a-f-]+\.orc"),
+                        }
+                    ),
+                ],
+            }
+        )
+
+        s3_object_tags = {
+            item["Key"]: item["Value"]
+            for item in s3.get_object_tagging(
+                Bucket="deep-bucket",
+                Key=s3_listing["Contents"][0]["Key"],
+            )["TagSet"]
+        }
+        assert s3_object_tags == (
+            {
+                "contents_deleted": "true",
+                "contents_deleted_at": "2021-02-04T10:11:00+00:00",
+            }
+            if delete_archived
+            else {
+                "contents_deleted": "false",
+            }
+        )
+
+        s3_object = s3.get_object(
+            Bucket="deep-bucket",
+            Key=s3_listing["Contents"][0]["Key"],
+        )
+        reader = pyorc.Reader(BytesIO(s3_object["Body"].read()), struct_repr=pyorc.StructRepr.DICT)
+
+        if delete_archived:
+            expected_exported_rows = sorted(removed_rows, key=lambda r: r.created_at)
+        else:
+            expected_exported_rows = db.session.execute(
+                select(table)
+                .where(table.c.created_at >= start_datetime, table.c.created_at < start_datetime + timedelta(hours=1))
+                .order_by(table.c.created_at)
+            ).all()
+            assert len(expected_exported_rows) == expected_rows
+
+        # a little bit of type-massaging on both sides to satisfy equality
+        assert tuple(
+            {k: UUID(bytes=v) if isinstance(v, bytes) else v for k, v in row.items()} for row in reader
+        ) == tuple(
+            {
+                k: int(v)
+                if isinstance(v, bool)
+                else (v.replace(tzinfo=v.tzinfo or UTC) if isinstance(v, datetime) else v)
+                for k, v in r._mapping.items()
+            }
+            for r in expected_exported_rows
+        )
+
+        assert caplog.record_tuples == [
+            ("test", logging.INFO, f"{(i + 1) * 2} rows of ORC file written") for i in range(expected_rows // 2)
+        ] + [
+            (
+                "test",
+                20,
+                AnyStringMatching(rf"Finished writing \d+ byte ORC file with {expected_rows} rows"),
+            ),
+            (
+                "test",
+                20,
+                AnyStringMatching(
+                    rf"Uploading \d+ byte file to foo/{expected_s3dir}[0-9a-f-]+\.orc "
+                    "in bucket deep-bucket"
+                ),
+            ),
+            (
+                "test",
+                20,
+                AnyStringMatching(
+                    rf"Successfully uploaded foo/{expected_s3dir}[0-9a-f-]+\.orc "
+                    "to bucket deep-bucket"
+                ),
+            ),
+        ] + (
+            [
+                (
+                    "test",
+                    20,
+                    AnyStringMatching(
+                        rf"Tagging foo/{expected_s3dir}[0-9a-f-]+\.orc "
+                        r"in bucket deep-bucket with contents_deleted=true, "
+                        r"contents_deleted_at=2021-02-04T10:11:00\+00:00"
+                    ),
+                ),
+                (
+                    "test",
+                    20,
+                    AnyStringMatching(
+                        rf"Successfully archived foo/{expected_s3dir}[0-9a-f-]+\.orc "
+                        rf"to bucket deep-bucket and deleted {expected_rows} rows of "
+                        "NotificationHistory"
+                    ),
+                ),
+            ]
+            if delete_archived
+            else []
+        )
+
+
+@pytest.mark.parametrize("delete_archived", (False, True))
+@freeze_time("2021-02-04 10:11")
+@mock_aws
+def test_deep_archive_notification_history_hour_starting_upload_fails(
+    caplog,
+    notify_db_session,
+    notify_api,
+    sample_template,
+    sample_job,
+    delete_archived,
+):
+    from tests.conftest import set_config
+
+    table = NotificationHistory.__table__
+    with (
+        set_config(notify_api, "S3_BUCKET_NOTIFICATION_DEEP_HISTORY", "deep-bucket"),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_S3_KEY_PREFIX", "foo/"),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", delete_archived),
+    ):
+        # deliberately not setting up destination bucket to cause upload failure
+
+        _populate_notification_history(sample_template, sample_job)
+
+        all_before = db.session.execute(select(table).order_by(table.c.created_at)).all()
+
+        with pytest.raises(botocore.exceptions.ClientError):
+            _deep_archive_notification_history_hour_starting(
+                datetime(2020, 2, 3, 5, 0, 0),
+            )
+
+        all_after = db.session.execute(select(table).order_by(table.c.created_at)).all()
+
+        # nothing should have been deleted
+        assert all_after == all_before
+
+        assert caplog.record_tuples == [
+            (
+                "test",
+                20,
+                AnyStringMatching(r"Finished writing \d+ byte ORC file with 5 rows"),
+            ),
+            (
+                "test",
+                20,
+                AnyStringMatching(
+                    r"Uploading \d+ byte file to foo/created_at_date_hour=2020-02-03T05/[0-9a-f-]+\.orc "
+                    "in bucket deep-bucket"
+                ),
+            ),
+        ]
+
+
+@freeze_time("2021-02-04 10:11")
+@mock_aws
+def test_deep_archive_notification_history_hour_starting_delete_fails(
+    caplog,
+    notify_db_session,
+    notify_api,
+    sample_template,
+    sample_job,
+):
+    from tests.conftest import set_config
+
+    table = NotificationHistory.__table__
+    with (
+        set_config(notify_api, "S3_BUCKET_NOTIFICATION_DEEP_HISTORY", "deep-bucket"),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_S3_KEY_PREFIX", "foo/"),
+        set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", True),
+        db.engine.connect() as alt_conn,
+    ):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket="deep-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+
+        _populate_notification_history(sample_template, sample_job)
+
+        all_before = db.session.execute(select(table).order_by(table.c.created_at)).all()
+
+        # take a share-lock from another session - this will allow the export to occur but
+        # will cause the deletion attempt to block
+        alt_conn.execute(text("SELECT * FROM notification_history FOR SHARE"))
+
+        # ensure the archiving connection will timeout & fail after 2s waiting for the lock
+        # when attempting the deletion
+        db.session.execute(text("SET statement_timeout = 2000"))
+
+        with pytest.raises(OperationalError):
+            _deep_archive_notification_history_hour_starting(
+                datetime(2020, 2, 3, 5, 0, 0),
+            )
+
+        db.session.rollback()
+
+        all_after = db.session.execute(select(table).order_by(table.c.created_at)).all()
+
+        # nothing should have been deleted
+        assert all_after == all_before
+
+        # export should be present in s3
+        s3_listing = s3.list_objects_v2(
+            Bucket="deep-bucket",
+        )
+        assert s3_listing == AnySupersetOf(
+            {
+                "Contents": [
+                    AnySupersetOf(
+                        {
+                            "Key": AnyStringMatching(r"foo/created_at_date_hour=2020-02-03T05/[0-9a-f-]+\.orc"),
+                        }
+                    ),
+                ],
+            }
+        )
+
+        # but critically shouldn't be marked as contents_deleted
+        s3_object_tags = {
+            item["Key"]: item["Value"]
+            for item in s3.get_object_tagging(
+                Bucket="deep-bucket",
+                Key=s3_listing["Contents"][0]["Key"],
+            )["TagSet"]
+        }
+        assert s3_object_tags == {
+            "contents_deleted": "false",
+        }
+
+        assert caplog.record_tuples == [
+            (
+                "test",
+                20,
+                AnyStringMatching(r"Finished writing \d+ byte ORC file with 5 rows"),
+            ),
+            (
+                "test",
+                20,
+                AnyStringMatching(
+                    r"Uploading \d+ byte file to foo/created_at_date_hour=2020-02-03T05/[0-9a-f-]+\.orc "
+                    "in bucket deep-bucket"
+                ),
+            ),
+            (
+                "test",
+                20,
+                AnyStringMatching(
+                    r"Successfully uploaded foo/created_at_date_hour=2020-02-03T05/[0-9a-f-]+\.orc "
+                    "to bucket deep-bucket"
+                ),
+            ),
+        ]
+
+
+def test_deep_archive_notification_history_hour_starting_non_hour_refused():
+    with pytest.raises(ValueError, match="not on-the-hour"):
+        _deep_archive_notification_history_hour_starting(datetime(2025, 1, 2, 3, 0, 0, 123))
