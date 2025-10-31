@@ -1,8 +1,6 @@
 import datetime
 import enum
-from typing import TypedDict
 import uuid
-from dataclasses import dataclass
 
 from flask import current_app, url_for
 from jsonschema import ValidationError, validate
@@ -77,6 +75,40 @@ from app.constants import (
 )
 from app.hashing import check_hash, hashpw
 from app.history_meta import Versioned
+from app.models_types import (
+    LetterCostDetails,
+    SeralizedService,
+    SerializedAnnualBilling,
+    SerializedComplaint,
+    SerializedEmailBranding,
+    SerializedFreeSmsItems,
+    SerializedInboundNumber,
+    SerializedInboundSms,
+    SerializedInvitedOrganisationUser,
+    SerializedLetterAttachment,
+    SerializedLetterBranding,
+    SerializedLetterRate,
+    SerializedNotification,
+    SerializedNotificationForCSV,
+    SerializedOrganisation,
+    SerializedOrganisationForList,
+    SerializedRate,
+    SerializedReportRequest,
+    SerializedServiceCallbackApi,
+    SerializedServiceContactList,
+    SerializedServiceDataRetention,
+    SerializedServiceEmailReplyTo,
+    SerializedServiceJoinRequest,
+    SerializedServiceLetterContact,
+    SerializedServiceOrgDashboard,
+    SerializedServiceSmsSender,
+    SerializedTemplateFolder,
+    SerializedUnsubscribeRequestReport,
+    SerializedUser,
+    SerializedUserForList,
+    SerializedWebauthnCredential,
+    SmsCostDetails,
+)
 from app.utils import (
     DATETIME_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
@@ -97,42 +129,6 @@ def filter_null_value_fields(obj):
 guest_list_recipient_types = db.Enum(*GUEST_LIST_RECIPIENT_TYPE, name="recipient_type")
 notification_types = db.Enum(*NOTIFICATION_TYPE, name="notification_type")
 template_types = db.Enum(*TEMPLATE_TYPES, name="template_type")
-
-
-@dataclass
-class SerializedUser:
-    id: str
-    name: str
-    email_address: str
-    created_at: str
-    auth_type: str
-    current_session_id: str | None
-    failed_login_count: int
-    email_access_validated_at: str
-    logged_in_at: str | None
-    mobile_number: str | None
-    organisations: list[str]
-    password_changed_at: str
-    permissions: dict[str, list[str]]
-    organisation_permissions: dict[str, list[str]]
-    platform_admin: bool
-    services: list[str] | list[dict]
-    can_use_webauthn: bool
-    state: str
-    take_part_in_research: bool
-    receives_new_features_email: bool
-
-    def __iter__(self):
-        # Return an iterator of the instance's attributes as (key, value) pairs
-        return iter(self.__dict__.items())
-
-
-@dataclass
-class SerializedUserForList:
-    id: str
-    name: str
-    email_address: str
-    mobile_number: str | None
 
 
 class User(db.Model):
@@ -287,26 +283,6 @@ class BrandingTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-@dataclass
-class SerializedEmailBranding:
-    id: str
-    colour: str | None
-    logo: str | None
-    name: str
-    text: str | None
-    brand_type: str
-    alt_text: str | None
-    created_by: User | None
-    created_at: str | None
-    updated_at: str | None
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
-
-
 class EmailBranding(db.Model):
     __tablename__ = "email_branding"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -357,16 +333,6 @@ service_email_branding = db.Table(
     db.Column("service_id", UUID(as_uuid=True), db.ForeignKey("services.id"), primary_key=True, nullable=False),
     db.Column("email_branding_id", UUID(as_uuid=True), db.ForeignKey("email_branding.id"), nullable=False),
 )
-
-
-@dataclass
-class SerializedLetterBranding:
-    id: str
-    name: str
-    filename: str
-    created_by: str | None
-    created_at: str | None
-    updated_at: str | None
 
 
 class LetterBranding(db.Model):
@@ -452,43 +418,6 @@ class OrganisationUserPermissions(db.Model):
     __table_args__ = (
         UniqueConstraint("organisation_id", "user_id", "permission", name="uix_organisation_user_permission"),
     )
-
-
-@dataclass
-class SerializedOrganisation:
-    id: str
-    name: str
-    active: bool
-    crown: bool | None
-    organisation_type: str | None
-    letter_branding_id: str | None
-    email_branding_id: str | None
-    agreement_signed: bool | None
-    agreement_signed_at: datetime.datetime | None
-    agreement_signed_by_id: str | None
-    agreement_signed_on_behalf_of_name: str | None
-    agreement_signed_on_behalf_of_email_address: str | None
-    agreement_signed_version: float | None
-    domains: list[str]
-    request_to_go_live_notes: str | None
-    count_of_live_services: int
-    notes: str | None
-    purchase_order_number: str | None
-    billing_contact_names: str | None
-    billing_contact_email_addresses: str | None
-    billing_reference: str | None
-    can_approve_own_go_live_requests: bool
-    permissions: list[str]
-
-
-@dataclass
-class SerializedOrganisationForList:
-    name: str
-    id: str
-    active: bool
-    count_of_live_services: int
-    domains: list[str]
-    organisation_type: str | None
 
 
 class Organisation(db.Model):
@@ -626,14 +555,6 @@ letter_branding_to_organisation = db.Table(
         "letter_branding_id", UUID(as_uuid=True), db.ForeignKey("letter_branding.id"), primary_key=True, nullable=False
     ),
 )
-
-
-@dataclass
-class SerializedServiceOrgDashboard:
-    id: str
-    name: str
-    active: bool
-    restricted: bool
 
 
 class Service(db.Model, Versioned):
@@ -812,29 +733,6 @@ class DefaultAnnualAllowance(db.Model):
         )
 
 
-@dataclass
-class SerializedFreeSmsItems:
-    free_sms_fragment_limit: int
-    financial_year_start: int
-
-
-@dataclass
-class SeralizedService:
-    id: str
-    name: str
-
-
-@dataclass
-class SerializedAnnualBilling:
-    id: str
-    free_sms_fragment_limit: int
-    service_id: str
-    financial_year_start: int
-    created_at: str
-    updated_at: str | None
-    service: SeralizedService | None
-
-
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
@@ -873,20 +771,6 @@ class AnnualBilling(db.Model):
         )
 
 
-@dataclass
-class SerializedInboundNumber:
-    id: str
-    number: str
-    provider: str
-    service: SeralizedService | None
-    active: bool
-    created_at: str
-    updated_at: str | None
-
-    def get(self, key: str, default=None):
-        return getattr(self, key, default)
-
-
 class InboundNumber(db.Model):
     __tablename__ = "inbound_numbers"
 
@@ -912,18 +796,6 @@ class InboundNumber(db.Model):
             created_at=self.created_at.strftime(DATETIME_FORMAT),
             updated_at=get_dt_string_or_none(self.updated_at),
         )
-
-
-@dataclass
-class SerializedServiceSmsSender:
-    id: str
-    sms_sender: str
-    service_id: str
-    is_default: bool
-    archived: bool
-    inbound_number_id: str | None
-    created_at: str
-    updated_at: str | None
 
 
 class ServiceSmsSender(db.Model):
@@ -1006,16 +878,6 @@ class ServiceGuestList(db.Model):
 
     def __repr__(self):
         return f"Recipient {self.recipient} of type: {self.recipient_type}"
-
-
-@dataclass
-class SerializedServiceCallbackApi:
-    id: str
-    service_id: str
-    url: str
-    updated_by_id: str
-    created_at: str
-    updated_at: str | None
 
 
 class ServiceCallbackApi(db.Model, Versioned):
@@ -1101,15 +963,6 @@ class KeyTypes(db.Model):
     __tablename__ = "key_types"
 
     name = db.Column(db.String(255), primary_key=True)
-
-
-@dataclass
-class SerializedTemplateFolder:
-    id: str
-    name: str
-    parent_id: str | None
-    service_id: str
-    users_with_permission: list[str]
 
 
 class TemplateFolder(db.Model):
@@ -1637,75 +1490,6 @@ class NotificationAllTimeView(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True))
     postage = db.Column(db.String)
     document_download_count = db.Column(db.Integer)
-
-
-@dataclass
-class SmsCostDetails:
-    billable_sms_fragments: int
-    international_rate_multiplier: float
-    sms_rate: float
-
-
-@dataclass
-class LetterCostDetails:
-    billable_sheets_of_paper: int
-    postage: str
-
-
-@dataclass
-class SerializedNotificationForCSV:
-    id: str
-    row_number: str
-    recipient: str
-    client_reference: str
-    template_name: str
-    template_type: str
-    job_name: str
-    status: str
-    created_at: str
-    created_by_name: str
-    created_by_email_address: str
-    api_key_name: str | None
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-
-@dataclass
-class SerializedNotification:
-    id: str
-    reference: str | None
-    email_address: str | None
-    phone_number: str | None
-    line_1: str | None
-    line_2: str | None
-    line_3: str | None
-    line_4: str | None
-    line_5: str | None
-    line_6: str | None
-    postcode: str | None
-    type: str
-    status: str
-    template: dict
-    body: str
-    subject: str | None
-    created_at: str
-    created_by_name: str | None
-    sent_at: str | None
-    completed_at: str | None
-    scheduled_for: str | None
-    postage: str | None
-    one_click_unsubscribe_url: str | None
-    estimated_delivery: str | None
-    cost_details: SmsCostDetails | LetterCostDetails | dict | None = None
-    cost_in_pounds: float | None = None
-    is_cost_data_ready: bool | None = None
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
 
 
 class Notification(db.Model):
@@ -2283,17 +2067,6 @@ class InvitedUser(db.Model):
         return self.permissions.split(",")
 
 
-@dataclass
-class SerializedInvitedOrganisationUser:
-    id: str
-    email_address: str
-    invited_by: str
-    organisation: str
-    created_at: str
-    permissions: list[str]
-    status: str
-
-
 class InvitedOrganisationUser(db.Model):
     __tablename__ = "invited_organisation_users"
 
@@ -2357,12 +2130,6 @@ class Event(db.Model):
     data = db.Column(JSON, nullable=False)
 
 
-@dataclass
-class SerializedRate:
-    rate: float
-    valid_from: str
-
-
 class Rate(db.Model):
     __tablename__ = "rates"
 
@@ -2379,16 +2146,6 @@ class Rate(db.Model):
 
     def serialize(self) -> SerializedRate:
         return SerializedRate(rate=float(self.rate), valid_from=self.valid_from.isoformat())
-
-
-@dataclass
-class SerializedInboundSms:
-    id: str
-    created_at: str
-    service_id: str
-    notify_number: str
-    user_number: str
-    content: str
 
 
 class InboundSms(db.Model):
@@ -2451,14 +2208,6 @@ class InboundSmsHistory(db.Model):
     )
 
 
-@dataclass
-class SerializedLetterRate:
-    sheet_count: int
-    start_date: str
-    rate: str
-    post_class: str
-
-
 class LetterRate(db.Model):
     __tablename__ = "letter_rates"
 
@@ -2477,17 +2226,6 @@ class LetterRate(db.Model):
             rate=str(self.rate),
             post_class=self.post_class,
         )
-
-
-@dataclass
-class SerializedServiceEmailReplyTo:
-    id: str
-    service_id: str
-    email_address: str
-    is_default: bool
-    archived: bool
-    created_at: str
-    updated_at: str | None
 
 
 class ServiceEmailReplyTo(db.Model):
@@ -2514,17 +2252,6 @@ class ServiceEmailReplyTo(db.Model):
             created_at=self.created_at.strftime(DATETIME_FORMAT),
             updated_at=get_dt_string_or_none(self.updated_at),
         )
-
-
-@dataclass
-class SerializedServiceLetterContact:
-    id: str
-    service_id: str
-    contact_block: str
-    is_default: bool
-    archived: bool
-    created_at: str
-    updated_at: str | None
 
 
 class ServiceLetterContact(db.Model):
@@ -2655,18 +2382,6 @@ class FactProcessingTime(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
-@dataclass
-class SerializedComplaint:
-    id: str
-    notification_id: str
-    service_id: str
-    service_name: str
-    ses_feedback_id: str | None
-    complaint_type: str | None
-    complaint_date: str | None
-    created_at: str
-
-
 class Complaint(db.Model):
     __tablename__ = "complaints"
 
@@ -2690,17 +2405,6 @@ class Complaint(db.Model):
             complaint_date=get_dt_string_or_none(self.complaint_date),
             created_at=self.created_at.strftime(DATETIME_FORMAT),
         )
-
-
-@dataclass
-class SerializedServiceDataRetention:
-    id: str
-    service_id: str
-    service_name: str
-    notification_type: str
-    days_of_retention: int
-    created_at: str
-    updated_at: str | None
 
 
 class ServiceDataRetention(db.Model):
@@ -2740,19 +2444,6 @@ class ReturnedLetter(db.Model):
     notification_id = db.Column(UUID(as_uuid=True), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
-
-
-@dataclass
-class SerializedServiceContactList(TypedDict):
-    id: str
-    original_file_name: str
-    row_count: int
-    recent_job_count: int
-    has_jobs: bool
-    template_type: str
-    service_id: str
-    created_by: str
-    created_at: str
 
 
 class ServiceContactList(db.Model):
@@ -2811,17 +2502,6 @@ class ServiceContactList(db.Model):
         )
 
 
-@dataclass
-class SerializedWebauthnCredential:
-    id: str
-    user_id: str
-    name: str
-    credential_data: str
-    created_at: str
-    updated_at: str | None
-    logged_in_at: str | None
-
-
 class WebauthnCredential(db.Model):
     """
     A table that stores data for registered webauthn credentials.
@@ -2859,17 +2539,6 @@ class WebauthnCredential(db.Model):
         )
 
 
-@dataclass
-class SerializedLetterAttachment:
-    id: str
-    created_at: str
-    created_by_id: str
-    archived_at: str | None
-    archived_by_id: str | None
-    original_filename: str
-    page_count: int
-
-
 class LetterAttachment(db.Model):
     __tablename__ = "letter_attachment"
 
@@ -2893,19 +2562,6 @@ class LetterAttachment(db.Model):
             original_filename=self.original_filename,
             page_count=self.page_count,
         )
-
-
-@dataclass
-class SerializedUnsubscribeRequestReport:
-    batch_id: str | None
-    count: int
-    created_at: str | None
-    earliest_timestamp: str
-    latest_timestamp: str
-    processed_by_service_at: str | None
-    is_a_batched_report: bool
-    will_be_archived_at: str
-    service_id: str
 
 
 class UnsubscribeRequestReport(db.Model):
@@ -3064,19 +2720,6 @@ class ProtectedSenderId(db.Model):
     sender_id = db.Column(db.String, primary_key=True, nullable=False)
 
 
-@dataclass
-class SerializedServiceJoinRequest:
-    id: str
-    service_id: str
-    created_at: str
-    status: str
-    status_changed_at: str | None
-    reason: str | None
-    contacted_service_users: list[str]
-    status_changed_by: User
-    requester: User
-
-
 contacted_users = db.Table(
     "service_join_request_contacted_users",
     db.Model.metadata,
@@ -3136,18 +2779,6 @@ class ServiceJoinRequest(db.Model):
             reason=self.reason,
             contacted_service_users=[get_uuid_string_or_none(user.id) for user in self.contacted_service_users],
         )
-
-
-@dataclass
-class SerializedReportRequest:
-    id: str
-    user_id: str
-    service_id: str
-    report_type: str
-    status: str
-    parameter: dict
-    created_at: str
-    updated_at: str
 
 
 class ReportRequest(db.Model):
