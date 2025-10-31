@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import asdict
 
 import pytest
 
@@ -131,7 +132,7 @@ def test_fetch_service_callback_api(admin_request, sample_service, callback_type
         callback_api_id=service_callback_api.id,
         callback_type=callback_type,
     )
-    assert response["data"] == service_callback_api.serialize()
+    assert response["data"] == asdict(service_callback_api.serialize())
 
 
 @pytest.mark.parametrize(

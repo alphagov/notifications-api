@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import asdict
 
 import pytest
 from flask import current_app, json
@@ -195,7 +196,7 @@ def test_validate_invitation_token_returns_200_when_token_valid(client, sample_i
 
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
-    assert json_resp["data"] == sample_invited_org_user.serialize()
+    assert json_resp["data"] == asdict(sample_invited_org_user.serialize())
 
 
 def test_validate_invitation_token_for_expired_token_returns_400(client):

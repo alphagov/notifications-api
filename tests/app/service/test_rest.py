@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections import namedtuple
+from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import ANY
 
@@ -183,7 +184,7 @@ def test_find_services_by_name_handles_special_characters(notify_db_session, adm
     service_2 = create_service(service_name="ZYX % WVU")
     create_service(service_name="123456")
     response = admin_request.get("service.find_services_by_name", service_name="%")
-    assert response["data"] == [service_2.serialize_for_org_dashboard()]
+    assert response["data"] == [asdict(service_2.serialize_for_org_dashboard())]
 
 
 def test_find_services_by_name_handles_no_service_name(notify_db_session, admin_request, mocker):
@@ -2629,7 +2630,7 @@ def test_add_service_reply_to_email_address(admin_request, sample_service):
 
     results = ServiceEmailReplyTo.query.all()
     assert len(results) == 1
-    assert response["data"] == results[0].serialize()
+    assert response["data"] == asdict(results[0].serialize())
 
 
 def test_add_service_reply_to_email_address_doesnt_allow_duplicates(admin_request, notify_db_session, mocker):
@@ -2654,7 +2655,7 @@ def test_add_service_reply_to_email_address_can_add_multiple_addresses(admin_req
     results = ServiceEmailReplyTo.query.all()
     assert len(results) == 2
     default = [x for x in results if x.is_default]
-    assert response["data"] == default[0].serialize()
+    assert response["data"] == asdict(default[0].serialize())
     first_reply_to_not_default = [x for x in results if not x.is_default]
     assert first_reply_to_not_default[0].email_address == "first@reply.com"
 
@@ -2689,7 +2690,7 @@ def test_update_service_reply_to_email_address(admin_request, sample_service):
 
     results = ServiceEmailReplyTo.query.all()
     assert len(results) == 1
-    assert response["data"] == results[0].serialize()
+    assert response["data"] == asdict(results[0].serialize())
 
 
 def test_update_service_reply_to_email_address_returns_400_when_no_default(admin_request, sample_service):
@@ -2759,7 +2760,7 @@ def test_get_email_reply_to_address(client, notify_db_session):
     )
 
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == reply_to.serialize()
+    assert json.loads(response.get_data(as_text=True)) == asdict(reply_to.serialize())
 
 
 def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_service):
@@ -2820,7 +2821,7 @@ def test_get_letter_contact_by_id(client, notify_db_session):
     )
 
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == letter_contact.serialize()
+    assert json.loads(response.get_data(as_text=True)) == asdict(letter_contact.serialize())
 
 
 def test_get_letter_contact_return_404_when_invalid_contact_id(client, notify_db_session):
@@ -2846,7 +2847,7 @@ def test_add_service_contact_block(client, sample_service):
     json_resp = json.loads(response.get_data(as_text=True))
     results = ServiceLetterContact.query.all()
     assert len(results) == 1
-    assert json_resp["data"] == results[0].serialize()
+    assert json_resp["data"] == asdict(results[0].serialize())
 
 
 def test_add_service_letter_contact_can_add_multiple_addresses(client, sample_service):
@@ -2868,7 +2869,7 @@ def test_add_service_letter_contact_can_add_multiple_addresses(client, sample_se
     results = ServiceLetterContact.query.all()
     assert len(results) == 2
     default = [x for x in results if x.is_default]
-    assert json_resp["data"] == default[0].serialize()
+    assert json_resp["data"] == asdict(default[0].serialize())
     first_letter_contact_not_default = [x for x in results if not x.is_default]
     assert first_letter_contact_not_default[0].contact_block == "London, E1 8QS"
 
@@ -2909,7 +2910,7 @@ def test_update_service_letter_contact(client, sample_service):
     json_resp = json.loads(response.get_data(as_text=True))
     results = ServiceLetterContact.query.all()
     assert len(results) == 1
-    assert json_resp["data"] == results[0].serialize()
+    assert json_resp["data"] == asdict(results[0].serialize())
 
 
 def test_update_service_letter_contact_returns_200_when_no_default(client, sample_service):
@@ -3119,7 +3120,7 @@ def test_get_service_sms_sender_by_id(client, notify_db_session):
         headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
     )
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == service_sms_sender.serialize()
+    assert json.loads(response.get_data(as_text=True)) == asdict(service_sms_sender.serialize())
 
 
 def test_get_service_sms_sender_by_id_returns_404_when_service_does_not_exist(client, notify_db_session):
@@ -3167,7 +3168,7 @@ def test_get_service_sms_senders_for_service_returns_empty_list_when_service_doe
 def test_get_organisation_for_service_id(admin_request, sample_service, sample_organisation):
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
     response = admin_request.get("service.get_organisation_for_service", service_id=sample_service.id)
-    assert response == sample_organisation.serialize()
+    assert response == asdict(sample_organisation.serialize())
 
 
 def test_get_organisation_for_service_id_return_empty_dict_if_service_not_in_organisation(admin_request, fake_uuid):

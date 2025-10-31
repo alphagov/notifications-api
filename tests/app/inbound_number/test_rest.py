@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 import pytest
 
 from app.dao.inbound_numbers_dao import (
@@ -21,14 +23,14 @@ def test_rest_get_inbound_numbers(admin_request, sample_inbound_numbers):
     result = admin_request.get("inbound_number.get_inbound_numbers")
 
     assert len(result["data"]) == len(sample_inbound_numbers)
-    assert result["data"] == [i.serialize() for i in sample_inbound_numbers]
+    assert result["data"] == [asdict(i.serialize()) for i in sample_inbound_numbers]
 
 
 def test_rest_get_inbound_number(admin_request, sample_service):
     inbound_number = create_inbound_number(number="1", provider="mmg", active=False, service_id=sample_service.id)
 
     result = admin_request.get("inbound_number.get_inbound_number_for_service", service_id=sample_service.id)
-    assert result["data"] == inbound_number.serialize()
+    assert result["data"] == asdict(inbound_number.serialize())
 
 
 def test_rest_get_inbound_number_when_service_is_not_assigned_returns_empty_dict(
@@ -58,7 +60,7 @@ def test_get_available_inbound_numbers(admin_request, sample_inbound_numbers):
     result = admin_request.get("inbound_number.get_available_inbound_numbers")
 
     assert len(result["data"]) == 1
-    assert result["data"] == [i.serialize() for i in sample_inbound_numbers if i.service_id is None]
+    assert result["data"] == [asdict(i.serialize()) for i in sample_inbound_numbers if i.service_id is None]
 
 
 @pytest.mark.parametrize("inbound_number_provided", [True, False])

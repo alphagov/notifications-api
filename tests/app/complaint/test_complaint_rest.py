@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 from datetime import date
 
 from flask import url_for
@@ -21,11 +22,12 @@ def test_get_all_complaints_returns_complaints_for_multiple_services(client, not
     complaint_2 = create_complaint(service=service, notification=notification)
 
     response = client.get("/complaint", headers=[create_admin_authorization_header()])
+    complaints = json.loads(response.get_data(as_text=True))["complaints"]
 
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True))["complaints"] == [
-        complaint_2.serialize(),
-        complaint_1.serialize(),
+    assert complaints == [
+        asdict(complaint_2.serialize()),
+        asdict(complaint_1.serialize()),
     ]
 
 

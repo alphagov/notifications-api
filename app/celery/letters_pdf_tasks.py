@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from datetime import datetime, timedelta
 from datetime import time as dt_time
 
@@ -67,7 +68,9 @@ def get_pdf_for_templated_letter(self, notification_id):
         )
 
         letter_attachment_json = (
-            notification.template.letter_attachment.serialize() if notification.template.letter_attachment_id else None
+            asdict(notification.template.letter_attachment.serialize())
+            if notification.template.letter_attachment_id
+            else None
         )
 
         letter_data = {

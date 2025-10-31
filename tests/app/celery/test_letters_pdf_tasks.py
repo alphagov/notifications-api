@@ -1,5 +1,6 @@
 import uuid
 from collections import namedtuple
+from dataclasses import asdict
 from datetime import UTC, datetime
 from unittest.mock import ANY, call
 
@@ -121,7 +122,7 @@ def test_get_pdf_for_templated_letter_with_letter_attachment(mocker, sample_lett
 
     actual_data = signing.decode(mock_celery.call_args.kwargs["args"][0])
 
-    assert actual_data["template"]["letter_attachment"] == attachment.serialize()
+    assert actual_data["template"]["letter_attachment"] == asdict(attachment.serialize())
 
 
 def test_get_pdf_for_templated_letter_non_existent_notification(notify_db_session, fake_uuid):

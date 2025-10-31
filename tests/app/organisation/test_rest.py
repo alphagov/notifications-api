@@ -1,5 +1,6 @@
 import random
 import uuid
+from dataclasses import asdict
 from datetime import datetime, timedelta
 from unittest.mock import ANY
 
@@ -174,7 +175,8 @@ def test_organisation_search_finds_organisations(notify_db_session, admin_reques
     create_organisation(name="ZYSWVU")
     response = admin_request.get("organisation.search", name="ABC")
     assert sorted(response["data"], key=lambda x: x["id"]) == sorted(
-        [organisation_1.serialize_for_list(), organisation_2.serialize_for_list()], key=lambda x: x["id"]
+        [asdict(organisation_1.serialize_for_list()), asdict(organisation_2.serialize_for_list())],
+        key=lambda x: x["id"],
     )
 
 
@@ -189,7 +191,7 @@ def test_organisation_search_handles_special_characters(notify_db_session, admin
     organisation_2 = create_organisation(name="ZYX % WVU")
     create_organisation(name="123456")
     response = admin_request.get("organisation.search", name="%")
-    assert response["data"] == [organisation_2.serialize_for_list()]
+    assert response["data"] == [asdict(organisation_2.serialize_for_list())]
 
 
 def test_organisation_search_handles_no_organisation_name(notify_db_session, admin_request):
@@ -802,7 +804,7 @@ def test_rest_get_organisation_services(admin_request, sample_organisation, samp
         "organisation.get_organisation_services", organisation_id=str(sample_organisation.id), _expected_status=200
     )
 
-    assert response == [sample_service.serialize_for_org_dashboard()]
+    assert response == [asdict(sample_service.serialize_for_org_dashboard())]
 
 
 def test_rest_get_organisation_services_is_ordered_by_name(admin_request, sample_organisation, sample_service):

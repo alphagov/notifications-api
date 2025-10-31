@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 import pytest
 
 from app.models import LetterBranding
@@ -15,9 +17,9 @@ def test_get_all_letter_brands(admin_request, notify_db_session):
     assert len(response) == 2
     for brand in response:
         if brand["id"] == str(hm_gov.id):
-            assert hm_gov.serialize() == brand
+            assert asdict(hm_gov.serialize()) == brand
         elif brand["id"] == str(test_branding.id):
-            assert test_branding.serialize() == brand
+            assert asdict(test_branding.serialize()) == brand
         else:
             raise AssertionError
 
@@ -27,7 +29,7 @@ def test_get_letter_branding_by_id(admin_request, notify_db_session):
     create_letter_branding(name="test domain", filename="test-domain")
     response = admin_request.get("letter_branding.get_letter_brand_by_id", letter_branding_id=hm_gov.id)
 
-    assert response == hm_gov.serialize()
+    assert response == asdict(hm_gov.serialize())
 
 
 def test_get_letter_branding_by_id_returns_404_if_does_not_exist(admin_request, notify_db_session, fake_uuid):
