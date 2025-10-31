@@ -1,10 +1,10 @@
 import json
 
+import freezegun
+import pytest
+
 from app.models import TemplateEmailFile
 from tests import create_admin_authorization_header
-import freezegun
-import datetime
-import pytest
 
 
 @freezegun.freeze_time("2025-01-01 11:09:00.000000")
@@ -58,7 +58,7 @@ def test_valid_input_creates_template_email_files_post(client, sample_service, s
                 "retention_period": "not an integer",
                 "validate_users_email": True,
             },
-            '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "retention_period not an integer is not of type integer"}]}',
+            '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "retention_period not an integer is not of type integer"}]}',  # noqa: E501
         ),
         (
             {
@@ -68,7 +68,7 @@ def test_valid_input_creates_template_email_files_post(client, sample_service, s
                 "retention_period": 90,
                 "validate_users_email": "not a boolean!",
             },
-            '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "validate_users_email not a boolean! is not of type boolean"}]}',
+            '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "validate_users_email not a boolean! is not of type boolean"}]}',  # noqa: E501
         ),
     ],
 )
@@ -79,7 +79,7 @@ def test_invalid_input_raises_exception_template_email_files_post(
     if "template_id" not in data.keys():
         data["template_id"] = str(sample_email_template.id)
     if "template_version" not in data.keys():
-        data["template_version"] =  int(sample_email_template.version)
+        data["template_version"] = int(sample_email_template.version)
     if "created_by_id" not in data.keys():
         data["created_by_id"] = str(sample_service.users[0].id)
     data = json.dumps(data)
@@ -90,7 +90,4 @@ def test_invalid_input_raises_exception_template_email_files_post(
             headers=[("Content-Type", "application/json"), auth_header],
             data=data,
         )
-    assert (
-        e.value.message
-        == expected_error_message
-    )
+    assert e.value.message == expected_error_message
