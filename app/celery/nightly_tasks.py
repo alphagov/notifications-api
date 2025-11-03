@@ -1,5 +1,11 @@
 from datetime import UTC, datetime, timedelta
+from tempfile import TemporaryFile
+from urllib.parse import urlencode
+from uuid import UUID, uuid4
 
+import boto3
+import pyorc
+from boto3.s3.transfer import TransferConfig
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
@@ -10,10 +16,10 @@ from notifications_utils.letter_timings import (
     is_dvla_working_day,
 )
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import func
+from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, statsd_client, zendesk_client
+from app import db, notify_celery, statsd_client, zendesk_client
 from app.aws import s3
 from app.config import QueueNames
 from app.constants import (
@@ -49,7 +55,7 @@ from app.dao.unsubscribe_request_dao import (
     dao_archive_old_unsubscribe_requests,
     get_service_ids_with_unsubscribe_requests,
 )
-from app.models import FactProcessingTime, Notification
+from app.models import FactProcessingTime, Notification, NotificationHistory
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
@@ -440,3 +446,298 @@ def update_report_status_to_deleted():
     except SQLAlchemyError as e:
         current_app.logger.error("Failed to update report status to deleted: %s", str(e))
         raise
+
+
+# in order of priority (type hierarchies can overlap!)
+_python_types_orc_type_constructors = (
+    (int, lambda: pyorc.Int()),
+    (float, lambda: pyorc.Double()),
+    (UUID, lambda: pyorc.Binary()),
+    (str, lambda: pyorc.String()),
+    (datetime, lambda: pyorc.Timestamp()),
+    (bool, lambda: pyorc.Boolean()),
+)
+
+
+def _get_orc_type_from_python_type(python_type):
+    for candidate_python_type, orc_type_ctr in _python_types_orc_type_constructors:
+        if issubclass(python_type, candidate_python_type):
+            return orc_type_ctr()
+
+    raise ValueError(f"Don't know what orc type to use for python type {python_type!r}")
+
+
+@notify_celery.task(name="deep-archive-notification-history-up-to-limit")
+def deep_archive_notification_history_up_to_limit():
+    delete_archived = current_app.config["NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED"]
+    max_hours_archived = current_app.config["NOTIFICATION_DEEP_HISTORY_MAX_HOURS_ARCHIVED_IN_RUN"]
+    min_archivable_age = timedelta(days=current_app.config["NOTIFICATION_DEEP_HISTORY_MIN_AGE_DAYS"])
+    earliest_unarchivable_datetime = (datetime.now(UTC) - min_archivable_age).replace(minute=0, second=0, microsecond=0)
+
+    table = NotificationHistory.__table__
+
+    latest_created_at_archived = None
+
+    for _ in range(max_hours_archived):
+        query = (
+            select(table.c.created_at)
+            .where(table.c.created_at < earliest_unarchivable_datetime)
+            .order_by(table.c.created_at)
+            .limit(1)
+        )
+        if latest_created_at_archived and not delete_archived:
+            # extra clause needed to progress the run since rows aren't being deleted
+            query = query.where(table.c.created_at > latest_created_at_archived)
+
+        oldest_created_at_row = db.session.execute(query).scalars().all()
+        if not oldest_created_at_row:
+            current_app.logger.info("No more archivable notification_history rows")
+            return
+
+        oldest_created_at_hour = oldest_created_at_row[0].replace(minute=0, second=0, microsecond=0)
+        oldest_created_at_hour_str = oldest_created_at_hour.isoformat()
+        current_app.logger.info(
+            "Archiving created_at hour beginning %s",
+            oldest_created_at_hour_str,
+            extra={"hour_beginning": oldest_created_at_hour_str},
+        )
+
+        latest_created_at_archived = _deep_archive_notification_history_hour_starting(oldest_created_at_hour)
+    else:
+        current_app.logger.info(
+            "Archived maximum number of hours allowed in this run (%s)",
+            max_hours_archived,
+            extra={"max_hours_archived": max_hours_archived},
+        )
+
+
+def _deep_archive_notification_history_hour_starting(
+    start_datetime: datetime,
+    written_rows_log_every: int = 1_000_000,
+) -> datetime:
+    if start_datetime.minute or start_datetime.second or start_datetime.microsecond:
+        raise ValueError(f"start_datetime {start_datetime!r} is not on-the-hour")
+
+    end_datetime = start_datetime + timedelta(hours=1)
+
+    s3_bucket = current_app.config["S3_BUCKET_NOTIFICATION_DEEP_HISTORY"]
+    s3_key_prefix = current_app.config["NOTIFICATION_DEEP_HISTORY_S3_KEY_PREFIX"]
+    delete_archived = current_app.config["NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED"]
+
+    s3 = boto3.client("s3")
+
+    table = NotificationHistory.__table__
+    orc_type_description = pyorc.Struct(
+        **{col.name: _get_orc_type_from_python_type(col.type.python_type) for col in inspect(table).c}
+    )
+
+    latest_created_at = None
+
+    with TemporaryFile() as f:
+        with pyorc.Writer(
+            f,
+            orc_type_description,
+            struct_repr=pyorc.StructRepr.DICT,
+            compression=pyorc.CompressionKind.ZSTD,
+            bloom_filter_columns=tuple(col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)),
+        ) as writer:
+            # here we take a share-lock on all our rows we intend to archive to ensure the
+            # version we export is the *final* version the database saw. share-lock is taken
+            # even if we're not deleting so that it simulates the performance impact of doing
+            # it for real
+            history_rows = db.session.execute(
+                select(table)
+                .where(
+                    table.c.created_at >= start_datetime,
+                    table.c.created_at < end_datetime,
+                )
+                .order_by(
+                    table.c.created_at,
+                    table.c.id,
+                )
+                .with_for_update(
+                    read=True,
+                )
+            ).all()
+
+            for row in history_rows:
+                latest_created_at = row.created_at
+                writer.write({k: (v.bytes if isinstance(v, UUID) else v) for k, v in row._mapping.items()})
+                if not writer.current_row % written_rows_log_every:
+                    current_app.logger.info(
+                        "%s rows of ORC file written",
+                        writer.current_row,
+                        extra={"row_count": writer.current_row},
+                    )
+
+            final_current_row = writer.current_row
+
+        f.seek(0, 2)  # end of file
+        final_file_size = f.tell()
+        f.seek(0)
+
+        current_app.logger.info(
+            "Finished writing %s byte ORC file with %s rows",
+            final_file_size,
+            final_current_row,
+            extra={
+                "row_count": final_current_row,
+                "file_size": final_file_size,
+            },
+        )
+
+        s3_key = (
+            f"{s3_key_prefix}"
+            f"created_at_date_hour={start_datetime.date().isoformat()}T{start_datetime.hour:02}/"
+            f"{uuid4()}.orc"
+        )
+
+        current_app.logger.info(
+            "Uploading %s byte file to %s in bucket %s",
+            final_file_size,
+            s3_key,
+            s3_bucket,
+            extra={
+                "s3_key": s3_key,
+                "s3_bucket": s3_bucket,
+                "file_size": final_file_size,
+            },
+        )
+
+        s3.upload_fileobj(
+            f,
+            s3_bucket,
+            s3_key,
+            Config=TransferConfig(use_threads=False),
+            ExtraArgs={
+                "ServerSideEncryption": "AES256",
+                "Tagging": urlencode({"contents_deleted": "false"}),
+            },
+        )
+
+        current_app.logger.info(
+            "Successfully uploaded %s to bucket %s",
+            s3_key,
+            s3_bucket,
+            extra={
+                "s3_key": s3_key,
+                "s3_bucket": s3_bucket,
+                "file_size": final_file_size,
+            },
+        )
+
+        if delete_archived:
+            # this will attempt to upgrade our share-locks to exclusive locks, waiting
+            # until it is able to do so. in case of contention between two concurrent
+            # tasks trying to delete the same rows, only one of the transactions will
+            # be able to pass this point (due to the share-lock) and that one will
+            # get to mark its uploaded archive as contents_deleted (thereby preventing
+            # a lifecycle rule from reaping it). any other ones will have been killed
+            # by the deadlock detector.
+            deleted_row_count = db.session.execute(
+                delete(table).where(
+                    table.c.created_at >= start_datetime,
+                    table.c.created_at < end_datetime,
+                )
+            ).rowcount
+
+            if deleted_row_count != final_current_row:
+                raise RuntimeError(
+                    f"Number of deleted rows ({deleted_row_count}) would not be the same as "
+                    f"number of rows exported ({final_current_row}) - cowardly refusing "
+                    "to commit transaction"
+                )
+
+            db.session.commit()
+
+            try:
+                deleted_timestamp_iso = datetime.now(UTC).isoformat()
+
+                current_app.logger.info(
+                    "Tagging %s in bucket %s with contents_deleted=true, contents_deleted_at=%s",
+                    s3_key,
+                    s3_bucket,
+                    deleted_timestamp_iso,
+                    extra={
+                        "s3_key": s3_key,
+                        "s3_bucket": s3_bucket,
+                        "file_size": final_file_size,
+                    },
+                )
+
+                tag_set = s3.get_object_tagging(
+                    Bucket=s3_bucket,
+                    Key=s3_key,
+                )["TagSet"]
+
+                if existing_tag := next((tag for tag in tag_set if tag["Key"] == "contents_deleted_at"), None):
+                    current_app.logger.warning(
+                        "Found existing contents_deleted_at tag on object %s in bucket %s with value %s",
+                        s3_key,
+                        s3_bucket,
+                        repr(existing_tag["Value"]),
+                        extra={
+                            "s3_key": s3_key,
+                            "s3_bucket": s3_bucket,
+                            "tag_value": existing_tag["Value"],
+                        },
+                    )
+                if next((tag for tag in tag_set if tag["Key"] == "contents_deleted"), {}).get("Value") == "true":
+                    current_app.logger.warning(
+                        "Existing contents_deleted tag on object %s in bucket %s already has value 'true'",
+                        s3_key,
+                        s3_bucket,
+                        extra={
+                            "s3_key": s3_key,
+                            "s3_bucket": s3_bucket,
+                        },
+                    )
+
+                tag_set = [tag for tag in tag_set if tag["Key"] not in ("contents_deleted", "contents_deleted_at")]
+                tag_set += [
+                    {"Key": "contents_deleted", "Value": "true"},
+                    {"Key": "contents_deleted_at", "Value": deleted_timestamp_iso},
+                ]
+
+                s3.put_object_tagging(
+                    Bucket=s3_bucket,
+                    Key=s3_key,
+                    Tagging={
+                        "TagSet": tag_set,
+                    },
+                )
+            except Exception:
+                current_app.logger.warning(
+                    "Failed to tag archived notification file %s in bucket %s as contents_deleted=true, even "
+                    "though the corresponding %s rows of NotificationHistory *were* successfully deleted - you "
+                    "may need to manually find this s3 object and set this tag (note it may have been given a "
+                    "delete marker by a lifecycle rule)",
+                    s3_key,
+                    s3_bucket,
+                    deleted_row_count,
+                    extra={
+                        "s3_key": s3_key,
+                        "s3_bucket": s3_bucket,
+                        "deleted_row_count": deleted_row_count,
+                        "file_size": final_file_size,
+                    },
+                )
+                raise
+
+            current_app.logger.info(
+                "Successfully archived %s to bucket %s and deleted %s rows of NotificationHistory",
+                s3_key,
+                s3_bucket,
+                deleted_row_count,
+                extra={
+                    "s3_key": s3_key,
+                    "s3_bucket": s3_bucket,
+                    "deleted_row_count": deleted_row_count,
+                    "file_size": final_file_size,
+                },
+            )
+        else:
+            # release share-locks
+            db.session.commit()
+
+        return latest_created_at

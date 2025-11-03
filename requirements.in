@@ -18,6 +18,7 @@ requests==2.32.2
 psycopg2-binary==2.9.10
 PyJWT==2.10.1
 SQLAlchemy==2.0.41
+pyorc==0.10.0
 
 # temporary for debug output
 psutil>=6.0.0,<7.0.0
