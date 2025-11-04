@@ -541,36 +541,43 @@ def _deep_archive_notification_history_hour_starting(
             compression=pyorc.CompressionKind.ZSTD,
             bloom_filter_columns=tuple(col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)),
         ) as writer:
-            # here we take a share-lock on all our rows we intend to archive to ensure the
-            # version we export is the *final* version the database saw. share-lock is taken
-            # even if we're not deleting so that it simulates the performance impact of doing
-            # it for real
-            history_rows = db.session.execute(
-                select(table)
-                .where(
-                    table.c.created_at >= start_datetime,
-                    table.c.created_at < end_datetime,
-                )
-                .order_by(
-                    table.c.created_at,
-                    table.c.id,
-                )
-                .with_for_update(
-                    read=True,
-                )
-            ).all()
+            try:
+                # hundreds of thousands of rows can occupy gigabytes of memory that this machine may not have
+                db.session.connection().execution_options(stream_results=True, max_row_buffer=50_000)
 
-            for row in history_rows:
-                latest_created_at = row.created_at
-                writer.write({k: (v.bytes if isinstance(v, UUID) else v) for k, v in row._mapping.items()})
-                if not writer.current_row % written_rows_log_every:
-                    current_app.logger.info(
-                        "%s rows of ORC file written",
-                        writer.current_row,
-                        extra={"row_count": writer.current_row},
+                # here we take a share-lock on all our rows we intend to archive to ensure the
+                # version we export is the *final* version the database saw. share-lock is taken
+                # even if we're not deleting so that it simulates the performance impact of doing
+                # it for real
+                history_rows = db.session.execute(
+                    select(table)
+                    .where(
+                        table.c.created_at >= start_datetime,
+                        table.c.created_at < end_datetime,
                     )
+                    .order_by(
+                        table.c.created_at,
+                        table.c.id,
+                    )
+                    .with_for_update(
+                        read=True,
+                    )
+                ).all()
 
-            final_current_row = writer.current_row
+                for row in history_rows:
+                    latest_created_at = row.created_at
+                    writer.write({k: (v.bytes if isinstance(v, UUID) else v) for k, v in row._mapping.items()})
+                    if not writer.current_row % written_rows_log_every:
+                        current_app.logger.info(
+                            "%s rows of ORC file written",
+                            writer.current_row,
+                            extra={"row_count": writer.current_row},
+                        )
+
+                final_current_row = writer.current_row
+            finally:
+                # connections configured to stream results must be used sparingly (and won't work for everything)
+                db.session.connection().execution_options(stream_results=False)
 
         f.seek(0, 2)  # end of file
         final_file_size = f.tell()
