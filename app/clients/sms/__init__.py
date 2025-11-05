@@ -84,7 +84,8 @@ class SmsClient(Client):
                 elapsed_time,
                 extra={
                     "provider_name": self.name,
-                    "notification_reference": reference,
+                    # for SMS, we happen to use the notification id as the "reference" for the provider
+                    "notification_id": reference,
                     "duration": elapsed_time,
                 },
             )
