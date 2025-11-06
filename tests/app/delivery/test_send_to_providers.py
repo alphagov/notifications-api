@@ -27,7 +27,7 @@ from app.delivery import send_to_providers
 from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import EmailBranding, Notification
-from app.serialised_models import SerialisedService
+from app.serialised_models import SerialisedProvider, SerialisedService
 from app.utils import parse_and_format_phone_number
 from tests.app.db import (
     create_email_branding,
@@ -55,7 +55,9 @@ def test_provider_to_use_should_return_random_provider(mocker, notify_db_session
 
     ret = send_to_providers.provider_to_use("sms", international=False)
 
-    mock_choices.assert_called_once_with([mmg, firetext], weights=[25, 75])
+    mock_choices.assert_called_once_with(
+        [SerialisedProvider(mmg.serialize()), SerialisedProvider(firetext.serialize())], weights=[25, 75]
+    )
     assert ret.name == "mmg"
 
 
@@ -92,7 +94,7 @@ def test_provider_to_use_should_only_return_mmg_for_international(
 
     ret = send_to_providers.provider_to_use("sms", international=True)
 
-    mock_choices.assert_called_once_with([mmg], weights=[100])
+    mock_choices.assert_called_once_with([SerialisedProvider(mmg.serialize())], weights=[100])
     assert ret.name == "mmg"
 
 
@@ -104,7 +106,7 @@ def test_provider_to_use_should_only_return_active_providers(mocker, restore_pro
 
     ret = send_to_providers.provider_to_use("sms")
 
-    mock_choices.assert_called_once_with([firetext], weights=[100])
+    mock_choices.assert_called_once_with([SerialisedProvider(firetext.serialize())], weights=[100])
     assert ret.name == "firetext"
 
 

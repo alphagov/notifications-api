@@ -12,6 +12,7 @@ from werkzeug.utils import cached_property
 
 from app import db, redis_store
 from app.dao.api_key_dao import get_model_api_keys
+from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.utils import is_classmethod
 
@@ -147,3 +148,27 @@ class SerialisedAPIKeyCollection(SerialisedModelCollection):
         ]
         db.session.commit()
         return cls(keys)
+
+
+class SerialisedProvider(SerialisedModel):
+    identifier: str
+    priority: int
+    active: bool
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.identifier == other.identifier
+
+
+class SerialisedProviders(SerialisedModelCollection):
+    model = SerialisedProvider
+
+    @classmethod
+    def from_notification_type(cls, notification_type, international):
+        return cls(
+            [
+                provider.serialize()
+                for provider in get_provider_details_by_notification_type(notification_type, international)
+            ]
+        )

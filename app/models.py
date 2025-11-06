@@ -1323,6 +1323,13 @@ class ProviderDetails(db.Model):
     created_by = db.relationship("User")
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
+    def serialize(self):
+        return {
+            "identifier": self.identifier,
+            "priority": self.priority,
+            "active": self.active,
+        }
+
 
 class ProviderDetailsHistory(db.Model):
     __tablename__ = "provider_details_history"
