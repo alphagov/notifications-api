@@ -165,6 +165,7 @@ class SerialisedProviders(SerialisedModelCollection):
     model = SerialisedProvider
 
     @classmethod
+    @memory_cache(ttl=10)
     def from_notification_type(cls, notification_type, international):
         return cls(
             [

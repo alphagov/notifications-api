@@ -27,7 +27,12 @@ from app.delivery import send_to_providers
 from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import EmailBranding, Notification
-from app.serialised_models import SerialisedProvider, SerialisedService
+from app.serialised_models import (
+    SerialisedProvider,
+    SerialisedProviders,
+    SerialisedService,
+    get_provider_details_by_notification_type,
+)
 from app.utils import parse_and_format_phone_number
 from tests.app.db import (
     create_email_branding,
@@ -44,6 +49,7 @@ def setup_function(_function):
     # pytest will run this function before each test. It makes sure the
     # state of the cache is not shared between tests.
     send_to_providers.provider_cache.clear()
+    SerialisedProviders.from_notification_type.cache_clear()
 
 
 def test_provider_to_use_should_return_random_provider(mocker, notify_db_session):
@@ -71,6 +77,18 @@ def test_provider_to_use_should_cache_repeated_calls(mocker, notify_db_session):
 
     assert all(result == results[0] for result in results)
     assert len(mock_choices.call_args_list) == 1
+
+
+def test_provider_to_use_should_only_call_database_once(mocker, notify_db_session):
+    mock_dao = mocker.patch(
+        "app.serialised_models.get_provider_details_by_notification_type",
+        wraps=get_provider_details_by_notification_type,
+    )
+
+    results = [send_to_providers.provider_to_use("sms", international=False) for _ in range(10)]
+
+    assert all(result == results[0] for result in results)
+    assert len(mock_dao.call_args_list) == 1
 
 
 @pytest.mark.parametrize(
