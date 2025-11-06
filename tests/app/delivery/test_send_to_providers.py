@@ -48,7 +48,6 @@ from tests.app.db import (
 def setup_function(_function):
     # pytest will run this function before each test. It makes sure the
     # state of the cache is not shared between tests.
-    send_to_providers.provider_cache.clear()
     SerialisedProviders.from_notification_type.cache_clear()
 
 
@@ -67,7 +66,7 @@ def test_provider_to_use_should_return_random_provider(mocker, notify_db_session
     assert ret.name == "mmg"
 
 
-def test_provider_to_use_should_cache_repeated_calls(mocker, notify_db_session):
+def test_provider_to_use_should_call_random_choice_every_time(mocker, notify_db_session):
     mock_choices = mocker.patch(
         "app.delivery.send_to_providers.random.choices",
         wraps=send_to_providers.random.choices,
@@ -76,7 +75,7 @@ def test_provider_to_use_should_cache_repeated_calls(mocker, notify_db_session):
     results = [send_to_providers.provider_to_use("sms", international=False) for _ in range(10)]
 
     assert all(result == results[0] for result in results)
-    assert len(mock_choices.call_args_list) == 1
+    assert len(mock_choices.call_args_list) == 10
 
 
 def test_provider_to_use_should_only_call_database_once(mocker, notify_db_session):

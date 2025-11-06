@@ -1,9 +1,7 @@
 import random
 from datetime import datetime, timedelta
-from threading import RLock
 from urllib import parse
 
-from cachetools import TTLCache, cached
 from flask import current_app
 from notifications_utils.template import (
     HTMLEmailTemplate,
@@ -191,11 +189,6 @@ def update_notification_to_sending(notification, provider):
     dao_update_notification(notification)
 
 
-provider_cache = TTLCache(maxsize=8, ttl=10)
-provider_cache_lock = RLock()
-
-
-@cached(cache=provider_cache, lock=provider_cache_lock)
 def provider_to_use(notification_type, international=False):
     active_providers = [
         p for p in SerialisedProviders.from_notification_type(notification_type, international) if p.active
