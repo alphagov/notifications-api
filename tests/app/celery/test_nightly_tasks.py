@@ -939,6 +939,7 @@ def test_deep_archive_notification_history_up_to_limit(
     ),
 )
 @pytest.mark.parametrize("delete_archived", (False, True))
+@pytest.mark.parametrize("db_batch_size", (1, 2, 1000))
 @freeze_time("2021-02-04 10:11")
 @mock_aws
 def test_deep_archive_notification_history_hour_starting_happy_path(
@@ -948,6 +949,7 @@ def test_deep_archive_notification_history_hour_starting_happy_path(
     sample_template,
     sample_job,
     start_datetime,
+    db_batch_size,
     delete_archived,
     expected_retval,
     expected_rows,
@@ -971,6 +973,7 @@ def test_deep_archive_notification_history_hour_starting_happy_path(
         assert (
             _deep_archive_notification_history_hour_starting(
                 start_datetime,
+                db_batch_size=db_batch_size,
                 written_rows_log_every=2,
             )
             == expected_retval

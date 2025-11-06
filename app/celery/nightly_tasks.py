@@ -16,7 +16,7 @@ from notifications_utils.letter_timings import (
     is_dvla_working_day,
 )
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import delete, func, inspect, select
+from sqlalchemy import Table, delete, func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db, notify_celery, statsd_client, zendesk_client
@@ -513,6 +513,7 @@ def deep_archive_notification_history_up_to_limit():
 
 def _deep_archive_notification_history_hour_starting(
     start_datetime: datetime,
+    db_batch_size: int = 50_000,
     written_rows_log_every: int = 1_000_000,
 ) -> datetime:
     if start_datetime.minute or start_datetime.second or start_datetime.microsecond:
@@ -541,24 +542,9 @@ def _deep_archive_notification_history_hour_starting(
             compression=pyorc.CompressionKind.ZSTD,
             bloom_filter_columns=tuple(col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)),
         ) as writer:
-            # here we take a share-lock on all our rows we intend to archive to ensure the
-            # version we export is the *final* version the database saw. share-lock is taken
-            # even if we're not deleting so that it simulates the performance impact of doing
-            # it for real
-            history_rows = db.session.execute(
-                select(table)
-                .where(
-                    table.c.created_at >= start_datetime,
-                    table.c.created_at < end_datetime,
-                )
-                .order_by(
-                    table.c.created_at,
-                    table.c.id,
-                )
-                .with_for_update(
-                    read=True,
-                )
-            ).all()
+            history_rows = _deep_archive_notification_history_row_gen(
+                table, start_datetime, end_datetime, db_batch_size
+            )
 
             for row in history_rows:
                 latest_created_at = row.created_at
@@ -741,3 +727,49 @@ def _deep_archive_notification_history_hour_starting(
             db.session.commit()
 
         return latest_created_at
+
+
+# a generator that will issue successive queries in batch_size chunks (mostly so
+# we don't have to keep huge result sets in memory on client or server) to ultimately
+# yield all applicable results
+def _deep_archive_notification_history_row_gen(
+    table: Table, start_datetime: datetime, end_datetime: datetime, batch_size: int
+):
+    prev_results_len = prev_results_lastrow = None
+
+    while prev_results_len is None or prev_results_len == batch_size:
+        # here we take a share-lock on all our rows we intend to archive to ensure the
+        # version we export is the *final* version the database saw. share-lock is taken
+        # even if we're not deleting so that it simulates the performance impact of doing
+        # it for real
+        results = db.session.execute(
+            select(table)
+            .where(
+                table.c.created_at >= start_datetime,
+                table.c.created_at < end_datetime,
+                *(
+                    ()
+                    if prev_results_lastrow is None
+                    else (
+                        # because id is unique, we can be confident the "next" result we want is
+                        # the one that sorts directly after this tuple (whose columns match
+                        # the order_by clause)
+                        func.ROW(table.c.created_at, table.c.id)
+                        > func.ROW(prev_results_lastrow.created_at, prev_results_lastrow.id),
+                    )
+                ),
+            )
+            .order_by(
+                table.c.created_at,
+                table.c.id,
+            )
+            .with_for_update(
+                read=True,
+            )
+            .limit(batch_size)
+        ).all()
+
+        yield from results
+
+        prev_results_len = len(results)
+        prev_results_lastrow = results[-1] if prev_results_len else None
