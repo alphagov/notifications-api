@@ -1,9 +1,7 @@
 import random
 from datetime import datetime, timedelta
-from threading import RLock
 from urllib import parse
 
-from cachetools import TTLCache, cached
 from flask import current_app
 from notifications_utils.template import (
     HTMLEmailTemplate,
@@ -33,11 +31,10 @@ from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.notifications_dao import dao_update_notification
 from app.dao.provider_details_dao import (
     dao_reduce_sms_provider_priority,
-    get_provider_details_by_notification_type,
 )
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import Notification
-from app.serialised_models import SerialisedService, SerialisedTemplate
+from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
 
 
 def send_sms_to_provider(notification):
@@ -192,14 +189,9 @@ def update_notification_to_sending(notification, provider):
     dao_update_notification(notification)
 
 
-provider_cache = TTLCache(maxsize=8, ttl=10)
-provider_cache_lock = RLock()
-
-
-@cached(cache=provider_cache, lock=provider_cache_lock)
 def provider_to_use(notification_type, international=False):
     active_providers = [
-        p for p in get_provider_details_by_notification_type(notification_type, international) if p.active
+        p for p in SerialisedProviders.from_notification_type(notification_type, international) if p.active
     ]
 
     if not active_providers:
