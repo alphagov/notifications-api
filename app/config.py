@@ -305,6 +305,11 @@ class Config:
                 "schedule": crontab(hour=0, minute=5),
                 "options": {"queue": QueueNames.REPORTING},
             },
+            "deep-archive-notification-history-up-to-limit": {
+                "task": "deep-archive-notification-history-up-to-limit",
+                "schedule": crontab(hour=1, minute=45),
+                "options": {"queue": QueueNames.REPORTING},
+            },
             "create-nightly-billing": {
                 "task": "create-nightly-billing",
                 "schedule": crontab(hour=0, minute=15),
