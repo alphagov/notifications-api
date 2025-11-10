@@ -84,7 +84,6 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
         LETTER_TYPE: service.letter_message_limit,
     }
 
-    limit_name = notification_type
     limit_value = rate_limits[notification_type]
 
     cache_key = daily_limit_cache_key(service.id, notification_type=notification_type)
@@ -98,7 +97,7 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
         extra = {
             "service_id": service.id,
             "sent_count": int(service_stats),
-            "notification_type": limit_name,
+            "notification_type": notification_type,
             "limit": limit_value,
         }
         current_app.logger.info(
@@ -107,7 +106,7 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
             extra,
             extra=extra,
         )
-        raise TooManyRequestsError(limit_name, limit_value)
+        raise TooManyRequestsError(notification_type, limit_value)
 
 
 def check_rate_limiting(service, api_key, notification_type):
