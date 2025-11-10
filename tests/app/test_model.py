@@ -1,4 +1,5 @@
 import json
+import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import call
 from uuid import UUID
@@ -26,26 +27,46 @@ from app.constants import (
 )
 from app.dao.services_dao import dao_add_user_to_service
 from app.models import (
+    AnnualBilling,
     ApiKey,
+    Complaint,
+    EmailBranding,
     FactBilling,
     FactNotificationStatus,
+    InboundNumber,
     InboundSms,
     InboundSmsHistory,
     InvitedOrganisationUser,
     InvitedUser,
     Job,
+    LetterAttachment,
+    LetterBranding,
     LetterCostThreshold,
+    LetterRate,
     Notification,
     NotificationHistory,
+    Organisation,
     Permission,
+    Rate,
     ReportRequest,
+    ServiceCallbackApi,
+    ServiceContactList,
+    ServiceDataRetention,
+    ServiceEmailReplyTo,
     ServiceGuestList,
+    ServiceJoinRequest,
+    ServiceLetterContact,
+    ServiceSmsSender,
     Template,
     TemplateFolder,
     TemplateHistory,
     UnsubscribeRequest,
     UnsubscribeRequestHistory,
+    UnsubscribeRequestReport,
+    User,
+    WebauthnCredential,
 )
+from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_inbound_number,
     create_letter_contact,
@@ -216,6 +237,7 @@ def test_letter_notification_serializes_with_address(client, sample_letter_notif
         "postcode": "SW1 1AA",
     }
     res = sample_letter_notification.serialize()
+
     assert res["line_1"] == "foo"
     assert res["line_2"] is None
     assert res["line_3"] == "bar"
@@ -515,6 +537,7 @@ def test_inbound_number_serializes_with_service(client, notify_db_session):
     service = create_service()
     inbound_number = create_inbound_number(number="1", service_id=service.id)
     serialized_inbound_number = inbound_number.serialize()
+
     assert serialized_inbound_number.get("id") == str(inbound_number.id)
     assert serialized_inbound_number.get("service").get("id") == str(inbound_number.service.id)
     assert serialized_inbound_number.get("service").get("name") == inbound_number.service.name
@@ -657,3 +680,1080 @@ def test_serialize_service_filter_keys(
         # Otherwise, expect a list of dictionaries
         for service in serialized_data["services"]:
             assert set(service.keys()) == set(expected_keys)
+
+
+def test_email_branding_serializes_with_all_fields(notify_db_session):
+    user_id = uuid.uuid4()
+    created_at = datetime(2025, 1, 1, 12, 0)
+    updated_at = datetime(2025, 1, 2, 12, 0)
+
+    email_branding = EmailBranding(
+        id=uuid.uuid4(),
+        colour="#000000",
+        logo="logo.png",
+        name="Test Brand",
+        text="Test Text",
+        brand_type="org",
+        alt_text=None,  # Since we have text, alt_text must be None due to constraint
+        created_by=user_id,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    serialized = email_branding.serialize()
+
+    assert serialized == {
+        "id": str(email_branding.id),
+        "colour": "#000000",
+        "logo": "logo.png",
+        "name": "Test Brand",
+        "text": "Test Text",
+        "brand_type": "org",
+        "alt_text": None,
+        "created_by": user_id,
+        "created_at": created_at.strftime(DATETIME_FORMAT),
+        "updated_at": updated_at.strftime(DATETIME_FORMAT),
+    }
+
+
+def test_email_branding_serializes_with_minimal_fields(notify_db_session):
+    email_branding = EmailBranding(
+        id=uuid.uuid4(),
+        name="Test Brand",
+        brand_type="org",
+        alt_text="Alt Text",  # Using alt_text instead of text
+    )
+
+    serialized = email_branding.serialize()
+
+    assert serialized == {
+        "id": str(email_branding.id),
+        "name": "Test Brand",
+        "brand_type": "org",
+        "alt_text": "Alt Text",
+        "colour": None,
+        "logo": None,
+        "text": None,
+        "created_by": None,
+        "created_at": None,
+        "updated_at": None,
+    }
+
+
+def test_letter_branding_serializes_with_all_fields(notify_db_session):
+    user_id = uuid.uuid4()
+    created_at = datetime(2025, 1, 1, 12, 0)
+    updated_at = datetime(2025, 1, 2, 12, 0)
+
+    letter_branding = LetterBranding(
+        id=uuid.uuid4(),
+        name="Test Brand",
+        filename="test-brand.svg",
+        created_by_id=user_id,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    serialized = letter_branding.serialize()
+
+    assert serialized == {
+        "id": str(letter_branding.id),
+        "name": "Test Brand",
+        "filename": "test-brand.svg",
+        "created_by": str(user_id),
+        "created_at": created_at.strftime(DATETIME_FORMAT),
+        "updated_at": updated_at.strftime(DATETIME_FORMAT),
+    }
+
+
+def test_letter_branding_serializes_with_minimal_fields(notify_db_session):
+    letter_branding = LetterBranding(id=uuid.uuid4(), name="Test Brand", filename="test-brand.svg")
+
+    serialized = letter_branding.serialize()
+
+    assert serialized == {
+        "id": str(letter_branding.id),
+        "name": "Test Brand",
+        "filename": "test-brand.svg",
+        "created_by": None,
+        "created_at": None,
+        "updated_at": None,
+    }
+
+
+def test_organisation_serializes_with_all_fields(notify_db_session):
+    user = User(
+        id=uuid.uuid4(),
+        name="Test User",
+        email_address="test@example.com",
+        _password="password",
+        auth_type="email_auth",
+    )
+    notify_db_session.add(user)
+
+    email_branding = EmailBranding(
+        id=uuid.uuid4(),
+        name="Test Email Branding",
+        brand_type="org",
+        alt_text="Alt Text",
+    )
+    notify_db_session.add(email_branding)
+
+    letter_branding = LetterBranding(
+        id=uuid.uuid4(),
+        name="Test Letter Branding",
+        filename="test-letter-branding.svg",
+    )
+    notify_db_session.add(letter_branding)
+
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+        crown=True,
+        organisation_type="central",
+        letter_branding_id=letter_branding.id,
+        email_branding_id=email_branding.id,
+        agreement_signed=True,
+        agreement_signed_at=datetime(2023, 1, 1),
+        agreement_signed_by_id=user.id,
+        agreement_signed_on_behalf_of_name="On Behalf",
+        agreement_signed_on_behalf_of_email_address="behalf@example.com",
+        agreement_signed_version=1.0,
+        request_to_go_live_notes="Ready to go live",
+        can_approve_own_go_live_requests=True,
+        notes="Some notes",
+        purchase_order_number="PO123",
+        billing_contact_names="Contact Name",
+        billing_contact_email_addresses="billing@example.com",
+        billing_reference="REF123",
+    )
+    notify_db_session.add(org)
+    notify_db_session.commit()
+
+    result = org.serialize()
+
+    assert result == {
+        "id": str(org.id),
+        "name": "Test Organisation",
+        "active": True,
+        "crown": True,
+        "organisation_type": "central",
+        "letter_branding_id": str(letter_branding.id),
+        "email_branding_id": str(email_branding.id),
+        "agreement_signed": True,
+        "agreement_signed_at": datetime(2023, 1, 1),
+        "agreement_signed_by_id": str(user.id),
+        "agreement_signed_on_behalf_of_name": "On Behalf",
+        "agreement_signed_on_behalf_of_email_address": "behalf@example.com",
+        "agreement_signed_version": 1.0,
+        "domains": [],
+        "request_to_go_live_notes": "Ready to go live",
+        "count_of_live_services": 0,
+        "notes": "Some notes",
+        "purchase_order_number": "PO123",
+        "billing_contact_names": "Contact Name",
+        "billing_contact_email_addresses": "billing@example.com",
+        "billing_reference": "REF123",
+        "can_approve_own_go_live_requests": True,
+        "permissions": [],
+    }
+
+
+def test_organisation_serializes_with_minimal_fields(notify_db_session):
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+        can_approve_own_go_live_requests=False,
+    )
+    notify_db_session.add(org)
+    notify_db_session.commit()
+
+    result = org.serialize()
+
+    assert result == {
+        "id": str(org.id),
+        "name": "Test Organisation",
+        "active": True,
+        "crown": None,
+        "organisation_type": None,
+        "letter_branding_id": None,
+        "email_branding_id": None,
+        "agreement_signed": None,
+        "agreement_signed_at": None,
+        "agreement_signed_by_id": None,
+        "agreement_signed_on_behalf_of_name": None,
+        "agreement_signed_on_behalf_of_email_address": None,
+        "agreement_signed_version": None,
+        "domains": [],
+        "request_to_go_live_notes": None,
+        "count_of_live_services": 0,
+        "notes": None,
+        "purchase_order_number": None,
+        "billing_contact_names": None,
+        "billing_contact_email_addresses": None,
+        "billing_reference": None,
+        "can_approve_own_go_live_requests": False,
+        "permissions": [],
+    }
+
+
+def test_organisation_serializes_for_list(notify_db_session):
+    """Test the list serialization of an organisation"""
+    org = Organisation(
+        id=uuid.uuid4(),
+        name="Test Organisation",
+        active=True,
+        organisation_type="central",
+    )
+    notify_db_session.add(org)
+    notify_db_session.commit()
+
+    result = org.serialize_for_list()
+
+    assert result == {
+        "name": "Test Organisation",
+        "id": str(org.id),
+        "active": True,
+        "count_of_live_services": 0,
+        "domains": [],
+        "organisation_type": "central",
+    }
+
+
+def test_annual_billing_serialize_free_sms_items(notify_db_session):
+    """Test the free SMS items serialization of annual billing"""
+    service = create_service(service_name="Test Service")
+    notify_db_session.add(service)
+
+    annual_billing = AnnualBilling(service=service, free_sms_fragment_limit=250000, financial_year_start=2022)
+    notify_db_session.add(annual_billing)
+    notify_db_session.commit()
+
+    result = annual_billing.serialize_free_sms_items()
+
+    assert result == {
+        "free_sms_fragment_limit": 250000,
+        "financial_year_start": 2022,
+    }
+
+
+def test_annual_billing_serialize(notify_db_session):
+    """Test the full serialization of annual billing"""
+    service = create_service(service_name="Test Service")
+    notify_db_session.add(service)
+
+    now = datetime.now()
+    annual_billing = AnnualBilling(
+        service=service,
+        free_sms_fragment_limit=250000,
+        financial_year_start=2022,
+        created_at=now,
+        updated_at=now + timedelta(days=1),
+    )
+    notify_db_session.add(annual_billing)
+    notify_db_session.commit()
+
+    result = annual_billing.serialize()
+
+    assert result == {
+        "id": str(annual_billing.id),
+        "free_sms_fragment_limit": 250000,
+        "service_id": str(service.id),
+        "financial_year_start": 2022,
+        "created_at": now.strftime(DATETIME_FORMAT),
+        "updated_at": (now + timedelta(days=1)).strftime(DATETIME_FORMAT),
+        "service": {"id": str(service.id), "name": "Test Service"},
+    }
+
+
+def test_inbound_number_serializes_with_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    created_at = datetime(2025, 1, 1, 12, 0)
+    updated_at = datetime(2025, 1, 2, 12, 0)
+
+    inbound_number = InboundNumber(
+        id=uuid.uuid4(),
+        number="07700900123",
+        provider="mmg",
+        service_id=service.id,
+        service=service,
+        active=True,
+        created_at=created_at,
+        updated_at=updated_at,
+    )
+
+    serialized = inbound_number.serialize()
+
+    assert serialized == {
+        "id": str(inbound_number.id),
+        "number": "07700900123",
+        "provider": "mmg",
+        "service": {"id": str(service.id), "name": "Test Service"},
+        "active": True,
+        "created_at": created_at.strftime(DATETIME_FORMAT),
+        "updated_at": updated_at.strftime(DATETIME_FORMAT),
+    }
+
+
+def test_inbound_number_serializes_with_minimal_fields(notify_db_session):
+    inbound_number = InboundNumber(
+        id=uuid.uuid4(), number="07700900123", provider="mmg", active=True, created_at=datetime.utcnow()
+    )
+
+    serialized = inbound_number.serialize()
+
+    assert serialized == {
+        "id": str(inbound_number.id),
+        "number": "07700900123",
+        "provider": "mmg",
+        "service": None,
+        "active": True,
+        "created_at": serialized["created_at"],  # dynamic value
+        "updated_at": None,
+    }
+
+
+def test_service_sms_sender_serializes_with_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    sms_sender = ServiceSmsSender(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        sms_sender="Notify",
+        is_default=True,
+        created_at=datetime(2025, 1, 1, 12, 0),
+        updated_at=datetime(2025, 1, 2, 12, 0),
+    )
+
+    serialized = sms_sender.serialize()
+
+    assert serialized == {
+        "id": str(sms_sender.id),
+        "service_id": str(service.id),
+        "sms_sender": "Notify",
+        "is_default": True,
+        "archived": None,
+        "inbound_number_id": None,
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "updated_at": datetime(2025, 1, 2, 12, 0).strftime(DATETIME_FORMAT),
+    }
+
+
+def test_service_sms_sender_serializes_with_minimal_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    sms_sender = ServiceSmsSender(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        sms_sender="Notify",
+        is_default=False,
+        created_at=datetime(2025, 1, 1, 12, 0),
+    )
+
+    serialized = sms_sender.serialize()
+
+    assert serialized == {
+        "id": str(sms_sender.id),
+        "service_id": str(service.id),
+        "sms_sender": "Notify",
+        "is_default": False,
+        "archived": None,
+        "inbound_number_id": None,
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "updated_at": None,
+    }
+
+
+def test_service_serialization_for_dashboard_with_all_fields(notify_db_session):
+    service = create_service(
+        service_name="Test Service",
+        active=True,
+        restricted=True,
+    )
+
+    serialized = service.serialize_for_org_dashboard()
+
+    assert serialized == {
+        "id": str(service.id),
+        "name": "Test Service",
+        "active": True,
+        "restricted": True,
+    }
+
+
+def test_service_serialization_for_dashboard_with_minimal_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+
+    serialized = service.serialize_for_org_dashboard()
+
+    assert serialized == {
+        "id": str(service.id),
+        "name": "Test Service",
+        "active": True,
+        "restricted": False,
+    }
+
+
+def test_user_serialization_return_all_fields(notify_db_session):
+    user = User(
+        id=uuid.uuid4(),
+        name="Test User",
+        email_address="test@example.com",
+        created_at=datetime(2020, 1, 1, 12, 0),
+        auth_type="email_auth",
+        current_session_id=uuid.uuid4(),
+        failed_login_count=0,
+        email_access_validated_at=datetime(2020, 1, 1, 12, 0),
+        logged_in_at=datetime(2020, 1, 2, 12, 0),
+        mobile_number="07700900000",
+        password_changed_at=datetime(2020, 1, 1, 12, 0),
+        platform_admin=False,
+        state="active",
+        take_part_in_research=True,
+        receives_new_features_email=True,
+        _password="password",
+    )
+    notify_db_session.add(user)
+    notify_db_session.commit()
+
+    serialized = user.serialize()
+
+    assert serialized == {
+        "id": user.id,
+        "name": "Test User",
+        "email_address": "test@example.com",
+        "created_at": "2020-01-01T12:00:00.000000Z",
+        "auth_type": "email_auth",
+        "current_session_id": user.current_session_id,
+        "failed_login_count": 0,
+        "email_access_validated_at": "2020-01-01T12:00:00.000000Z",
+        "logged_in_at": "2020-01-02T12:00:00.000000Z",
+        "mobile_number": "07700900000",
+        "organisations": [],
+        "password_changed_at": "2020-01-01 12:00:00.000000",
+        "permissions": {},
+        "organisation_permissions": {},
+        "platform_admin": False,
+        "services": [],
+        "can_use_webauthn": False,
+        "state": "active",
+        "take_part_in_research": True,
+        "receives_new_features_email": True,
+    }
+
+
+def test_user_serialization_with_list(notify_db_session):
+    service = create_service(service_name="Test Service")
+    user = User(
+        id=uuid.uuid4(),
+        name="Test User",
+        email_address="test@example.com",
+        created_at=datetime(2020, 1, 1, 12, 0),
+        auth_type="email_auth",
+        current_session_id=uuid.uuid4(),
+        failed_login_count=0,
+        email_access_validated_at=datetime(2020, 1, 1, 12, 0),
+        logged_in_at=datetime(2020, 1, 2, 12, 0),
+        mobile_number="07700900000",
+        password_changed_at=datetime(2020, 1, 1, 12, 0),
+        platform_admin=False,
+        state="active",
+        take_part_in_research=True,
+        receives_new_features_email=True,
+        _password="password",
+    )
+    user.services.append(service)
+    notify_db_session.add(user)
+    notify_db_session.commit()
+
+    serialized = user.serialize_for_users_list()
+
+    assert serialized == {
+        "id": user.id,
+        "name": "Test User",
+        "email_address": "test@example.com",
+        "mobile_number": "07700900000",
+    }
+
+
+def test_service_callback_api_serialization_returns_all_fields(notify_db_session, sample_user):
+    service = create_service(service_name="Test Service")
+    callback_api = ServiceCallbackApi(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        url="https://example.com/callback",
+        _bearer_token="secret-token",
+        updated_by_id=sample_user.id,
+        updated_at=datetime(2025, 1, 2, 12, 0),
+        created_at=datetime(2025, 1, 1, 12, 0),
+    )
+    notify_db_session.add(callback_api)
+    notify_db_session.commit()
+
+    serialized = callback_api.serialize()
+
+    assert serialized == {
+        "id": str(callback_api.id),
+        "service_id": str(service.id),
+        "url": "https://example.com/callback",
+        "updated_by_id": str(sample_user.id),
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "updated_at": datetime(2025, 1, 2, 12, 0).strftime(DATETIME_FORMAT),
+    }
+
+
+def test_template_folder_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    parent_folder = create_template_folder(service, name="Parent Folder")
+    folder = create_template_folder(service, name="Child Folder", parent=parent_folder)
+
+    serialized = folder.serialize()
+
+    assert serialized == {
+        "id": folder.id,
+        "name": "Child Folder",
+        "parent_id": parent_folder.id,
+        "service_id": service.id,
+        "users_with_permission": [],
+    }
+
+
+def test_notification_serialization_for_csv_returns_all_fields(notify_db_session, sample_user, sample_job):
+    # Create notification with a job and all fields populated
+    with freeze_time("2025-01-15 12:00:00"):
+        api_key = ApiKey(
+            id=uuid.uuid4(),
+            name="Test API Key",
+            key_type="normal",
+            service=sample_job.service,
+            secret=uuid.uuid4(),
+            created_by=sample_user,
+        )
+        notify_db_session.add(api_key)
+        notify_db_session.commit()
+
+        notification = create_notification(
+            template=sample_job.template,
+            job=sample_job,
+            job_row_number=5,
+            to_field="test@example.com",
+            status="delivered",
+            client_reference="test-ref-123",
+            created_by_id=sample_user.id,
+            api_key=api_key,
+        )
+        notify_db_session.commit()
+
+        serialized = notification.serialize_for_csv()
+
+        assert serialized == {
+            "id": notification.id,
+            "row_number": 6,
+            "recipient": "test@example.com",
+            "client_reference": "test-ref-123",
+            "template_name": sample_job.template.name,
+            "template_type": sample_job.template.template_type,
+            "job_name": sample_job.original_file_name,
+            "status": notification.formatted_status,
+            "created_at": "2025-01-15 12:00:00",
+            "created_by_name": sample_user.name,
+            "created_by_email_address": sample_user.email_address,
+            "api_key_name": "Test API Key",
+        }
+
+
+def test_notification_serialization_for_csv_with_minimal_fields(notify_db_session, sample_template):
+    # Create notification without job and without created_by
+    notification = create_notification(
+        template=sample_template,
+        job=None,
+        to_field="minimal@example.com",
+        status="created",
+        client_reference=None,
+        created_by_id=None,
+    )
+    notify_db_session.commit()
+
+    serialized = notification.serialize_for_csv()
+
+    assert serialized == {
+        "id": notification.id,
+        "row_number": "",
+        "recipient": "minimal@example.com",
+        "client_reference": "",
+        "template_name": sample_template.name,
+        "template_type": sample_template.template_type,
+        "job_name": "",
+        "status": notification.formatted_status,
+        "created_at": notification.created_at.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),  # @TODO review created_at format consistency
+        "created_by_name": None,
+        "created_by_email_address": None,
+        "api_key_name": notification.api_key.name,
+    }
+
+
+def test_notification_serialization_returns_all_fields(client, notify_db_session, sample_template):
+    notification = create_notification(template=sample_template)
+    notify_db_session.commit()
+
+    serialized = notification.serialize()
+
+    assert serialized == {
+        "id": notification.id,
+        "reference": notification.client_reference,
+        "email_address": None,
+        "phone_number": notification.to,
+        "line_1": None,
+        "line_2": None,
+        "line_3": None,
+        "line_4": None,
+        "line_5": None,
+        "line_6": None,
+        "postcode": None,
+        "type": notification.notification_type,
+        "status": notification.status,
+        "template": {
+            "id": notification.template.id,
+            "uri": notification.template.get_link(),
+            "version": notification.template.version,
+        },
+        "body": notification.template.content,
+        "subject": notification.subject,
+        "created_at": notification.created_at.strftime(DATETIME_FORMAT),
+        "created_by_name": None,
+        "sent_at": None,
+        "completed_at": None,
+        "scheduled_for": None,
+        "postage": None,
+        "one_click_unsubscribe_url": None,
+    }
+
+
+def test_notification_serialization_with_cost_data_returns_all_fields(client, notify_db_session, sample_template):
+    rate = Rate(
+        notification_type=SMS_TYPE,
+        rate=0.05,
+        valid_from=datetime(2024, 1, 1),
+    )
+    notify_db_session.add(rate)
+    notification = create_notification(template=sample_template)
+    notify_db_session.commit()
+
+    serialized = notification.serialize_with_cost_data()
+
+    assert serialized["id"] == notification.id
+    assert serialized["cost_in_pounds"] == 0.05
+    assert serialized["is_cost_data_ready"] is True
+    assert serialized["cost_details"] == {
+        "sms_rate": 0.05,
+        "billable_sms_fragments": 1,
+        "international_rate_multiplier": 1.0,
+    }
+
+
+def test_invited_organisation_user_serialization_returns_all_fields(
+    notify_db_session, sample_organisation, sample_user
+):
+    invite = InvitedOrganisationUser(
+        id=uuid.uuid4(),
+        email_address="test@example.com",
+        invited_by_id=sample_user.id,
+        organisation_id=sample_organisation.id,
+        permissions="manage_service,manage_api_keys",
+    )
+    notify_db_session.add(invite)
+    notify_db_session.commit()
+
+    serialized = invite.serialize()
+
+    assert serialized == {
+        "id": str(invite.id),
+        "email_address": "test@example.com",
+        "invited_by": str(invite.invited_by_id),
+        "organisation": str(invite.organisation_id),
+        "created_at": invite.created_at.strftime(DATETIME_FORMAT),
+        "permissions": ["manage_service", "manage_api_keys"],
+        "status": "pending",
+    }
+
+
+def test_rate_serialization_returns_all_fields(notify_db_session):
+    rate = Rate(
+        id=uuid.uuid4(),
+        notification_type=SMS_TYPE,
+        rate=0.05,
+        valid_from=datetime(2024, 1, 1),
+    )
+    notify_db_session.add(rate)
+    notify_db_session.commit()
+
+    serialized = rate.serialize()
+
+    assert serialized == {
+        "rate": 0.05,
+        "valid_from": datetime(2024, 1, 1).strftime("%Y-%m-%dT00:00:00"),  # @TODO review date format consistency
+    }
+
+
+def test_imbound_sms_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    inbound_sms = InboundSms(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        user_number="07700900123",
+        notify_number="07700900456",
+        provider="mmg",
+        provider_reference="provider-ref-123",
+        content="Test inbound SMS",
+        created_at=datetime(2025, 1, 1, 12, 0),
+    )
+    notify_db_session.add(inbound_sms)
+    notify_db_session.commit()
+
+    serialized = inbound_sms.serialize()
+
+    assert serialized == {
+        "id": str(inbound_sms.id),
+        "service_id": str(inbound_sms.service_id),
+        "user_number": "07700900123",
+        "notify_number": "07700900456",
+        "content": "Test inbound SMS",
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+    }
+
+
+def test_letter_rate_serialization_returns_all_fields(notify_db_session):
+    letter_rate = LetterRate(
+        id=uuid.uuid4(),
+        rate=0.75,
+        start_date=datetime(2024, 1, 1),
+        post_class="first",
+        crown=False,
+        sheet_count=2,
+    )
+    notify_db_session.add(letter_rate)
+    notify_db_session.commit()
+
+    serialized = letter_rate.serialize()
+
+    assert serialized == {
+        "sheet_count": 2,
+        "start_date": letter_rate.start_date.strftime("%Y-%m-%dT00:00:00"),
+        "rate": 0.75,
+        "post_class": "first",
+    }
+
+
+def test_service_email_reply_to_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    email_reply_to = ServiceEmailReplyTo(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        email_address="test@example.com",
+        is_default=True,
+        created_at=datetime(2025, 1, 1, 12, 0),
+        updated_at=datetime(2025, 1, 2, 12, 0),
+    )
+    notify_db_session.add(email_reply_to)
+    notify_db_session.commit()
+
+    serialized = email_reply_to.serialize()
+
+    assert serialized == {
+        "id": str(email_reply_to.id),
+        "service_id": str(service.id),
+        "email_address": "test@example.com",
+        "is_default": True,
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "updated_at": datetime(2025, 1, 2, 12, 0).strftime(DATETIME_FORMAT),
+        "archived": False,
+    }
+
+
+def test_service_letter_contact_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+
+    service_letter = ServiceLetterContact(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        is_default=True,
+        contact_block="some content block",
+        created_at=datetime(2025, 1, 1, 12, 0),
+    )
+    notify_db_session.add(service_letter)
+    notify_db_session.commit()
+
+    serialized = service_letter.serialize()
+
+    assert serialized == {
+        "id": str(service_letter.id),
+        "service_id": str(service.id),
+        "is_default": True,
+        "contact_block": "some content block",
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "updated_at": None,
+        "archived": False,
+    }
+
+
+def test_complaint_serialization_returns_all_fields(notify_db_session, sample_notification):
+    complaint = Complaint(
+        id=uuid.uuid4(),
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id,
+        ses_feedback_id="ses-feedback-123",
+        complaint_type="bounce",
+        complaint_date=datetime(2025, 1, 1, 10, 0),
+        created_at=datetime(2025, 1, 1, 12, 0),
+    )
+    notify_db_session.add(complaint)
+    notify_db_session.commit()
+
+    serialized = complaint.serialize()
+
+    assert serialized == {
+        "id": str(complaint.id),
+        "notification_id": str(sample_notification.id),
+        "service_id": str(sample_notification.service_id),
+        "service_name": sample_notification.service.name,
+        "ses_feedback_id": "ses-feedback-123",
+        "complaint_type": "bounce",
+        "complaint_date": datetime(2025, 1, 1, 10, 0).strftime(DATETIME_FORMAT),
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+    }
+
+
+def test_service_data_retention_serialization_returns_all_fields(notify_db_session):
+    service = create_service(service_name="Test Service")
+    data_retention = ServiceDataRetention(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        notification_type=SMS_TYPE,
+        days_of_retention=30,
+        created_at=datetime(2025, 1, 1, 12, 0),
+        updated_at=datetime(2025, 1, 2, 12, 0),
+    )
+    notify_db_session.add(data_retention)
+    notify_db_session.commit()
+
+    serialized = data_retention.serialize()
+
+    assert serialized == {
+        "id": str(data_retention.id),
+        "service_id": str(service.id),
+        "service_name": service.name,
+        "notification_type": SMS_TYPE,
+        "days_of_retention": 30,
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "updated_at": datetime(2025, 1, 2, 12, 0).strftime(DATETIME_FORMAT),
+    }
+
+
+def test_service_contact_list_serialization_returns_all_fields(notify_db_session, sample_user):
+    service = create_service(service_name="Test Service")
+    contact_list = ServiceContactList(
+        id=uuid.uuid4(),
+        service_id=service.id,
+        original_file_name="test_contacts.csv",
+        row_count=100,
+        template_type=EMAIL_TYPE,
+        created_by_id=sample_user.id,
+        created_at=datetime(2025, 1, 1, 12, 0),
+    )
+    notify_db_session.add(contact_list)
+    notify_db_session.commit()
+
+    serialized = contact_list.serialize()
+
+    assert serialized == {
+        "id": str(contact_list.id),
+        "service_id": str(service.id),
+        "original_file_name": "test_contacts.csv",
+        "row_count": 100,
+        "recent_job_count": 0,
+        "has_jobs": False,
+        "template_type": EMAIL_TYPE,
+        "created_by": sample_user.name,
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+    }
+
+
+def test_webauthn_credential_serialization_returns_all_fields(notify_db_session, sample_user):
+    webauthn_credential = WebauthnCredential(
+        id=uuid.uuid4(),
+        user_id=sample_user.id,
+        name="Test Key",
+        credential_data="credential-data-string",
+        created_at=datetime(2025, 1, 1, 12, 0),
+        updated_at=datetime(2025, 1, 2, 12, 0),
+        logged_in_at=datetime(2025, 1, 3, 12, 0),
+        registration_response="some-registration-response",
+    )
+    notify_db_session.add(webauthn_credential)
+    notify_db_session.commit()
+
+    serialized = webauthn_credential.serialize()
+
+    assert serialized == {
+        "id": str(webauthn_credential.id),
+        "user_id": str(sample_user.id),
+        "name": "Test Key",
+        "credential_data": "credential-data-string",
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "updated_at": datetime(2025, 1, 2, 12, 0).strftime(DATETIME_FORMAT),
+        "logged_in_at": datetime(2025, 1, 3, 12, 0).strftime(DATETIME_FORMAT),
+    }
+
+
+def test_letter_attachment_serialization_returns_all_fields(notify_db_session, sample_service, sample_user):
+    letter_attachment = LetterAttachment(
+        id=uuid.uuid4(),
+        created_at=datetime(2025, 1, 1, 12, 0),
+        created_by_id=sample_user.id,
+        archived_at=datetime(2025, 1, 2, 12, 0),
+        archived_by_id=sample_user.id,
+        original_filename="attachment.pdf",
+        page_count=5,
+    )
+    notify_db_session.add(letter_attachment)
+    notify_db_session.commit()
+
+    serialized = letter_attachment.serialize()
+
+    assert serialized == {
+        "id": str(letter_attachment.id),
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "created_by_id": str(sample_user.id),
+        "archived_at": datetime(2025, 1, 2, 12, 0).strftime(DATETIME_FORMAT),
+        "archived_by_id": str(sample_user.id),
+        "original_filename": "attachment.pdf",
+        "page_count": 5,
+    }
+
+
+def test_unsubscribe_request_report_serialization(notify_db_session, sample_service):
+    unsubscribe_request = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=5,
+        created_at=datetime(2025, 1, 1, 12, 0),
+        earliest_timestamp=datetime(2025, 1, 1, 10, 0),
+        latest_timestamp=datetime(2025, 1, 1, 11, 0),
+        processed_by_service_at=datetime(2025, 1, 1, 13, 0),
+        service_id=sample_service.id,
+    )
+    notify_db_session.add(unsubscribe_request)
+    notify_db_session.commit()
+
+    serialized = unsubscribe_request.serialize()
+
+    assert serialized == {
+        "batch_id": str(unsubscribe_request.id),
+        "count": 5,
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "earliest_timestamp": datetime(2025, 1, 1, 10, 0).strftime(DATETIME_FORMAT),
+        "latest_timestamp": datetime(2025, 1, 1, 11, 0).strftime(DATETIME_FORMAT),
+        "processed_by_service_at": datetime(2025, 1, 1, 13, 0).strftime(DATETIME_FORMAT),
+        "is_a_batched_report": True,
+        "will_be_archived_at": (datetime(2025, 1, 1, 0, 0) + timedelta(days=7)).strftime(DATETIME_FORMAT),
+        "service_id": str(sample_service.id),
+    }
+
+
+def test_unsubscribe_request_report_unbatched_requests_serialization(
+    notify_db_session, sample_notification, sample_service
+):
+    unsubscribe_request = UnsubscribeRequestReport(
+        id=uuid.uuid4(),
+        count=1,
+        earliest_timestamp=datetime(2025, 1, 1, 10, 0),
+        latest_timestamp=datetime(2025, 1, 1, 10, 0),
+        service_id=sample_service.id,
+    )
+    notify_db_session.add(unsubscribe_request)
+    notify_db_session.commit()
+
+    unbatched_requests = [
+        UnsubscribeRequest(
+            id=uuid.uuid4(),
+            template_id=sample_notification.template.id,
+            template_version=sample_notification.template.version,
+            service_id=sample_service.id,
+            email_address="user@example.com",
+            created_at=datetime(2025, 1, 1, 10, 0),
+            unsubscribe_request_report_id=unsubscribe_request.id,
+            notification_id=sample_notification.id,
+        )
+    ]
+    notify_db_session.add_all(unbatched_requests)
+    notify_db_session.commit()
+
+    serialized = unsubscribe_request.serialize_unbatched_requests(unbatched_requests)
+
+    assert len(serialized) == 9
+
+
+def test_service_join_request_serialization_returns_all_fields(notify_db_session, sample_user):
+    service = create_service(service_name="Test Service")
+    service_join_request = ServiceJoinRequest(
+        id=uuid.uuid4(),
+        requester_id=sample_user.id,
+        service_id=service.id,
+        status="pending",
+        created_at=datetime(2025, 1, 1, 12, 0),
+        status_changed_at=datetime(2025, 1, 2, 12, 0),
+    )
+    notify_db_session.add(service_join_request)
+    notify_db_session.commit()
+
+    serialized = service_join_request.serialize()
+
+    assert serialized == {
+        "id": str(service_join_request.id),
+        "service_id": str(service_join_request.service_id),
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "status": "pending",
+        "status_changed_at": datetime(2025, 1, 2, 12, 0).strftime(DATETIME_FORMAT),
+        "reason": None,
+        "contacted_service_users": [],
+        "status_changed_by": None,
+        "requester": {
+            "belongs_to_service": [],
+            "email_address": sample_user.email_address,
+            "id": sample_user.id,
+            "name": sample_user.name,
+        },
+    }
+
+
+def test_service_join_request_serialization_with_minimal_fields(notify_db_session, sample_user):
+    service = create_service(service_name="Test Service")
+    service_join_request = ServiceJoinRequest(
+        id=uuid.uuid4(),
+        requester_id=sample_user.id,
+        service_id=service.id,
+        status="pending",
+        created_at=datetime(2025, 1, 1, 12, 0),
+    )
+    notify_db_session.add(service_join_request)
+    notify_db_session.commit()
+
+    serialized = service_join_request.serialize()
+
+    assert serialized == {
+        "id": str(service_join_request.id),
+        "service_id": str(service_join_request.service_id),
+        "created_at": datetime(2025, 1, 1, 12, 0).strftime(DATETIME_FORMAT),
+        "status": "pending",
+        "reason": None,
+        "contacted_service_users": [],
+        "status_changed_by": None,
+        "status_changed_at": None,
+        "requester": {
+            "belongs_to_service": [],
+            "email_address": sample_user.email_address,
+            "id": sample_user.id,
+            "name": sample_user.name,
+        },
+    }
