@@ -42,10 +42,11 @@ from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.letter.dvla import DVLAClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.dbsetup import RoutingSession
 
 Base = declarative_base()
 
-db = SQLAlchemy(model_class=Base)
+db = SQLAlchemy(model_class=Base, session_options={"class_": RoutingSession})
 migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
