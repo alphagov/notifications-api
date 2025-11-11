@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import timedelta
+from typing import Any
 
 from celery.schedules import crontab
 from kombu import Exchange, Queue
@@ -161,7 +162,7 @@ class Config:
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = "api"
 
-    SQLALCHEMY_ENGINE_OPTIONS = {
+    SQLALCHEMY_ENGINE_OPTIONS: dict[str, Any] = {
         "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 5)),
         "pool_timeout": 30,
         "pool_recycle": 300,
