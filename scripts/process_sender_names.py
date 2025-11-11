@@ -10,7 +10,7 @@ headers = next(reader)
 column_for_vertical = headers.index("Vertical:")
 column_for_sender_id = headers.index("SenderID:")
 
-sender_ids = []
+sender_ids: list[str] = []
 
 for line in reader:
     # We don't want to forbid people using government sender ids
@@ -19,10 +19,10 @@ for line in reader:
             # Sender_ids are comma seperated in the spreadsheet so split them
             new_sender_ids = line[column_for_sender_id].lower().split(",")
             # Do the split/join dance to remove whitespace
-            new_sender_ids = ("".join(x.split()) for x in new_sender_ids)
+            new_sender_ids_cleaned = ["".join(x.split()) for x in new_sender_ids]
             # Sometimes there are trailing commas remove them
-            new_sender_ids = filter(lambda x: x != "", new_sender_ids)
-            sender_ids = sender_ids + list(new_sender_ids)
+            new_sender_ids_filtered = [x for x in new_sender_ids_cleaned if x != ""]
+            sender_ids = sender_ids + new_sender_ids_filtered
 
 
 joined_sender_ids = "'),('".join(sender_ids)
