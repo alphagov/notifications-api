@@ -67,6 +67,8 @@ dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
+docutils==0.16
+    # via awscli
 eventlet==0.39.1
     # via
     #   -r requirements.in
@@ -160,7 +162,6 @@ ordered-set==4.1.0
 packaging==23.2
     # via
     #   gunicorn
-    #   kombu
     #   marshmallow
 phonenumbers==9.0.9
     # via notifications-utils
@@ -174,14 +175,14 @@ psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
     # via -r requirements.in
-pycurl==7.45.6
-    # via
-    #   celery
-    #   kombu
 py-spy==0.4.0
     # via -r requirements.in
 pyasn1==0.6.1
     # via rsa
+pycurl==7.45.6
+    # via
+    #   celery
+    #   kombu
 pyjwt==2.10.1
     # via
     #   -r requirements.in
