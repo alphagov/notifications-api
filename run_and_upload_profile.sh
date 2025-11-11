@@ -39,7 +39,7 @@ sleep 1200
 echo "Starting py-spy to profile Celery Master (PID: ${MAIN_CELERY_PID}) and all subprocesses..."
 py-spy record \
   --format speedscope \
-  -r 100 \
+  -r 50 \
   -o "$LOCAL_PROFILE_PATH" \
   -d "$PROFILE_DURATION" \
   -p "$MAIN_CELERY_PID" \

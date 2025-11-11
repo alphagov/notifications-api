@@ -29,7 +29,7 @@ bcrypt==4.0.0
     #   flask-bcrypt
 beautifulsoup4==4.12.3
     # via -r requirements_for_test_common.in
-billiard==4.2.2
+billiard==4.2.0
     # via
     #   -r requirements.txt
     #   celery
@@ -54,7 +54,7 @@ cachetools==5.5.0
     # via
     #   -r requirements.txt
     #   notifications-utils
-celery==5.5.3
+celery==5.4.0
     # via -r requirements.txt
 certifi==2024.7.4
     # via
@@ -108,10 +108,6 @@ docopt==0.6.2
     # via
     #   -r requirements.txt
     #   notifications-python-client
-docutils==0.16
-    # via
-    #   -r requirements.txt
-    #   awscli
 eventlet==0.39.1
     # via
     #   -r requirements.txt
@@ -197,7 +193,7 @@ jsonschema-specifications==2024.10.1
     # via
     #   -r requirements.txt
     #   jsonschema
-kombu==5.5.4
+kombu==5.3.7
     # via
     #   -r requirements.txt
     #   celery
@@ -237,7 +233,6 @@ packaging==23.2
     # via
     #   -r requirements.txt
     #   gunicorn
-    #   kombu
     #   marshmallow
     #   pytest
 phonenumbers==9.0.9
@@ -266,6 +261,8 @@ pyasn1==0.6.1
     #   rsa
 pycparser==2.21
     # via cffi
+pycurl==7.45.6
+    # via -r requirements.txt
 pyjwt==2.10.1
     # via
     #   -r requirements.txt
@@ -390,10 +387,10 @@ typing-extensions==4.14.1
     # via
     #   -r requirements.txt
     #   sqlalchemy
-tzdata==2025.2
+tzdata==2024.1
     # via
     #   -r requirements.txt
-    #   kombu
+    #   celery
 uri-template==1.2.0
     # via -r requirements.txt
 urllib3==1.26.19
