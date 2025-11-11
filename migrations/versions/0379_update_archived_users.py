@@ -34,7 +34,7 @@ def upgrade():
     results = conn.execute(
         text(
             textwrap.dedent(
-                """
+                r"""
                 SELECT
                     users.id as user_id,
                     events.id AS event_id,
