@@ -437,7 +437,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
             "name",
             "template_type",
         ]
-        exclude = []
+        exclude: list[str] = []
 
 
 class TemplateHistorySchema(BaseTemplateSchema, UUIDsAsStringsMixin):
