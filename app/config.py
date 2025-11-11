@@ -51,6 +51,7 @@ class QueueNames:
             QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
         ]
 
+    @staticmethod
     def external_queues():
         return [
             QueueNames.ANTIVIRUS,
@@ -247,7 +248,11 @@ class Config:
             "region": AWS_REGION,
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
             "is_secure": True,
-            "predefined_queues": QueueNames.predefined_queues(NOTIFICATION_QUEUE_PREFIX, AWS_REGION, AWS_ACCOUNT_ID),
+            "predefined_queues": QueueNames.predefined_queues(
+                NOTIFICATION_QUEUE_PREFIX or "",  # type: ignore[arg-type]
+                AWS_REGION,
+                AWS_ACCOUNT_ID,
+            ),
         },
         "result_expires": 0,
         "timezone": "UTC",
@@ -552,7 +557,9 @@ class Development(Config):
     CELERY = {
         **Config.CELERY,
         "broker_transport_options": {
-            key: value for key, value in Config.CELERY["broker_transport_options"].items() if key != "predefined_queues"
+            key: value
+            for key, value in Config.CELERY["broker_transport_options"].items()  # type: ignore[union-attr,attr-defined]
+            if key != "predefined_queues"
         },
     }
 
@@ -635,7 +642,9 @@ class Test(Development):
         "broker_url": "you-forgot-to-mock-celery-in-your-tests://",
         "broker_transport": None,
         "broker_transport_options": {
-            key: value for key, value in Config.CELERY["broker_transport_options"].items() if key != "predefined_queues"
+            key: value
+            for key, value in Config.CELERY["broker_transport_options"].items()  # type: ignore[union-attr,attr-defined]
+            if key != "predefined_queues"
         },
     }
 
