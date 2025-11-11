@@ -1474,7 +1474,7 @@ def update_service_join_request_by_id(service_id: uuid.UUID, request_id: uuid.UU
     return jsonify(updated_request.serialize()), 200
 
 
-def create_personalisation(requester_name: str, approver_name: str, service_name: str, service_id: uuid):
+def create_personalisation(requester_name: str, approver_name: str, service_name: str, service_id: uuid.UUID):
     admin_base_url = current_app.config["ADMIN_BASE_URL"]
     return {
         "requester_name": requester_name,
