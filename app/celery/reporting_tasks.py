@@ -77,16 +77,17 @@ def create_or_update_ft_billing_for_day(process_day: str):
     billing_data = fetch_billing_data_for_day(process_day=process_date, session=db.session_bulk)
     end = datetime.utcnow()
 
+    duration = end - start
     base_params = {
         "process_day": process_date,
-        "duration": end - start,
+        "duration": duration,
     }
     current_app.logger.info(
         "create-or-update-ft-billing-for-day task for %(process_day)s: data fetched in %(duration)s",
         base_params,
         extra={
             **base_params,
-            "duration": base_params["duration"].total_seconds(),
+            "duration": duration.total_seconds(),
         },
     )
 
