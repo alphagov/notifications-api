@@ -17,7 +17,7 @@ class VirusScanError(Exception):
 
 class InvalidRequest(Exception):
     code = None
-    fields = []
+    fields: list[dict] = []
 
     def __init__(self, message, status_code):
         super().__init__()
