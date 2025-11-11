@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import timedelta
+from typing import Any
 
 from celery.schedules import crontab
 from kombu import Exchange, Queue
@@ -51,6 +52,7 @@ class QueueNames:
             QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
         ]
 
+    @staticmethod
     def external_queues():
         return [
             QueueNames.ANTIVIRUS,
@@ -160,7 +162,7 @@ class Config:
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = "api"
 
-    SQLALCHEMY_ENGINE_OPTIONS = {
+    SQLALCHEMY_ENGINE_OPTIONS: dict[str, Any] = {
         "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 5)),
         "pool_timeout": 30,
         "pool_recycle": 300,
@@ -184,13 +186,16 @@ class Config:
     # note how alternate db settings are explicitly targeted at the actual *replica*,
     # rather than just the "bulk" binding, which could potentially fall back to the
     # primary database if no replica is available.
+    _db_max_parallel_workers = os.getenv("DATABASE_MAX_PARALLEL_WORKERS")
+    _db_max_parallel_workers_replica = os.getenv("DATABASE_MAX_PARALLEL_WORKERS_REPLICA")
+
     DATABASE_MAX_PARALLEL_WORKERS = (
         0
         if (os.getenv("DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY") == "1")
-        else (int(x) if (x := os.getenv("DATABASE_MAX_PARALLEL_WORKERS")) else None)
+        else (int(_db_max_parallel_workers) if _db_max_parallel_workers else None)
     )
     DATABASE_MAX_PARALLEL_WORKERS_REPLICA = (
-        int(x) if (x := os.getenv("DATABASE_MAX_PARALLEL_WORKERS_REPLICA")) else None
+        int(_db_max_parallel_workers_replica) if _db_max_parallel_workers_replica else None
     )
     DATABASE_STATEMENT_TIMEOUT_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_MS", 1_200_000))
     DATABASE_STATEMENT_TIMEOUT_REPLICA_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_REPLICA_MS", 1_200_000))
@@ -247,7 +252,11 @@ class Config:
             "region": AWS_REGION,
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
             "is_secure": True,
-            "predefined_queues": QueueNames.predefined_queues(NOTIFICATION_QUEUE_PREFIX, AWS_REGION, AWS_ACCOUNT_ID),
+            "predefined_queues": QueueNames.predefined_queues(
+                NOTIFICATION_QUEUE_PREFIX or "",
+                AWS_REGION,
+                AWS_ACCOUNT_ID,
+            ),
         },
         "result_expires": 0,
         "timezone": "UTC",
@@ -552,7 +561,9 @@ class Development(Config):
     CELERY = {
         **Config.CELERY,
         "broker_transport_options": {
-            key: value for key, value in Config.CELERY["broker_transport_options"].items() if key != "predefined_queues"
+            key: value
+            for key, value in Config.CELERY["broker_transport_options"].items()  # type: ignore[union-attr,attr-defined]
+            if key != "predefined_queues"
         },
     }
 
@@ -635,7 +646,9 @@ class Test(Development):
         "broker_url": "you-forgot-to-mock-celery-in-your-tests://",
         "broker_transport": None,
         "broker_transport_options": {
-            key: value for key, value in Config.CELERY["broker_transport_options"].items() if key != "predefined_queues"
+            key: value
+            for key, value in Config.CELERY["broker_transport_options"].items()  # type: ignore[union-attr,attr-defined]
+            if key != "predefined_queues"
         },
     }
 
