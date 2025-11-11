@@ -49,10 +49,8 @@ def dao_allocate_number_for_service(service_id, inbound_number_id):
 def archive_or_release_inbound_number_for_service(service_id: UUID, archive: bool, commit=True):
     update_data = {
         "service_id": None,
+        "active": False if archive else True,
     }
-
-    if archive:
-        update_data["active"] = False
 
     result = InboundNumber.query.filter_by(service_id=service_id, active=True).update(
         update_data, synchronize_session="fetch"
