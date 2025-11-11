@@ -231,7 +231,7 @@ def can_letter_job_be_cancelled(job):
     return True, None
 
 
-def find_jobs_with_missing_rows() -> (list[Job], list[Job]):
+def find_jobs_with_missing_rows() -> tuple[list[Job], list[Job]]:
     """
     Returns a tuple of two lists of "finished" jobs, the first with missing rows, the
     second with all rows created
