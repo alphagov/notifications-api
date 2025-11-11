@@ -668,7 +668,8 @@ def _deep_archive_notification_history_hour_starting(
                             "tag_value": existing_tag["Value"],
                         },
                     )
-                if next((tag for tag in tag_set if tag["Key"] == "contents_deleted"), {}).get("Value") == "true":
+                contents_deleted_tag = next((tag for tag in tag_set if tag["Key"] == "contents_deleted"), None)
+                if contents_deleted_tag and contents_deleted_tag.get("Value") == "true":
                     current_app.logger.warning(
                         "Existing contents_deleted tag on object %s in bucket %s already has value 'true'",
                         s3_key,
@@ -726,7 +727,7 @@ def _deep_archive_notification_history_hour_starting(
             # release share-locks
             db.session.commit()
 
-        return latest_created_at
+        return latest_created_at  # type: ignore[return-value]
 
 
 # a generator that will issue successive queries in batch_size chunks (mostly so
