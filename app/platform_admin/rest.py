@@ -3,7 +3,7 @@ from contextlib import suppress
 from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import NoResultFound
 
-from app import db
+from app.db import Model
 from app.dao.date_util import parse_date_range
 from app.dao.users_dao import get_users_list
 from app.errors import register_errors
@@ -77,10 +77,10 @@ FIND_BY_UUID_EXTRA_CONTEXT = {
 }
 
 
-def _find_model_by_uuid(uuid_: str) -> tuple[db.Model, str]:
+def _find_model_by_uuid(uuid_: str) -> tuple[Model, str]:
     for entity_name, model in FIND_BY_UUID_MODELS.items():
         with suppress(NoResultFound):
-            if instance := model.query.get(uuid_):
+            if instance := model.query.get(uuid_):  # type: ignore[attr-defined]
                 return instance, entity_name
 
     raise NoResultFound
