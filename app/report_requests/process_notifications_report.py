@@ -1,6 +1,7 @@
 import csv
 from io import StringIO
 from typing import Any
+from uuid import UUID
 
 from flask import current_app
 from notifications_utils.s3 import (
@@ -21,7 +22,7 @@ class ReportRequestProcessor:
     def __init__(self, service_id: str, report_request_id: str):
         self.service_id = service_id
         self.report_request_id = report_request_id
-        self.report_request = dao_get_report_request_by_id(service_id, report_request_id)
+        self.report_request = dao_get_report_request_by_id(UUID(service_id), UUID(report_request_id))
         self.notification_type = self.report_request.parameter["notification_type"]
         self.notification_status = self.report_request.parameter["notification_status"]
         self.page_size = current_app.config.get("REPORT_REQUEST_NOTIFICATIONS_CSV_BATCH_SIZE")
