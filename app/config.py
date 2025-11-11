@@ -318,7 +318,7 @@ class Config:
             },
             "deep-archive-notification-history-up-to-limit": {
                 "task": "deep-archive-notification-history-up-to-limit",
-                "schedule": crontab(hour=1, minute=45),
+                "schedule": crontab(hour=1, minute=35),
                 "options": {"queue": QueueNames.REPORTING},
             },
             "create-nightly-billing": {
