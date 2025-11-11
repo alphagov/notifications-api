@@ -84,8 +84,8 @@ class Config:
     API_HOST_NAME_INTERNAL = os.getenv("API_HOST_NAME_INTERNAL")
 
     # Celery log levels
-    CELERY_WORKER_LOG_LEVEL = os.getenv("CELERY_WORKER_LOG_LEVEL", "CRITICAL").upper()
-    CELERY_BEAT_LOG_LEVEL = os.getenv("CELERY_BEAT_LOG_LEVEL", "INFO").upper()
+    CELERY_WORKER_LOG_LEVEL = os.getenv("CELERY_WORKER_LOG_LEVEL", "DEBUG").upper()
+    CELERY_BEAT_LOG_LEVEL = os.getenv("CELERY_BEAT_LOG_LEVEL", "DEBUG").upper()
 
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = "notify-admin"
@@ -547,7 +547,7 @@ class Development(Config):
     DEBUG = True
     SQLALCHEMY_ECHO = False
 
-    CELERY_WORKER_LOG_LEVEL = "INFO"
+    CELERY_WORKER_LOG_LEVEL = "DEBUG"
 
     CELERY = {
         **Config.CELERY,
@@ -613,7 +613,7 @@ class Test(Development):
     NOTIFY_ENVIRONMENT = "test"
     TESTING = True
 
-    CELERY_WORKER_LOG_LEVEL = "INFO"
+    CELERY_WORKER_LOG_LEVEL = "DEBUG"
 
     S3_BUCKET_CSV_UPLOAD = "test-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "test-contact-list"
