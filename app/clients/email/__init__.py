@@ -26,5 +26,15 @@ class EmailClient(Client):
     """
 
     @abstractmethod
-    def send_email(self):
+    def send_email(
+        self,
+        *,
+        from_address: str,
+        to_address: str,
+        subject: str,
+        body: str,
+        html_body: str,
+        reply_to_address: str | None,
+        headers: list[dict[str, str]],
+    ) -> str:
         pass
