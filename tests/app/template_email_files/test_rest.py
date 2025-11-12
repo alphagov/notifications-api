@@ -341,3 +341,33 @@ def test_get_template_email_files_by_id(client, sample_service, sample_email_tem
     assert json_resp["data"]["created_by_id"] == str(sample_service.users[0].id)
 
 
+def test_archive_template_email_files(client, sample_service, sample_email_template):
+    data = {
+        "filename": "example.pdf",
+        "link_text": "click this link!",
+        "retention_period": 90,
+        "validate_users_email": True,
+        "template_id": str(sample_email_template.id),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    with freezegun.freeze_time("2025-01-01 11:09:00.000000"):
+        template_email_file = create_template_email_file(**data)
+    assert template_email_file.version == 1
+    data = {"archived_by_id": str(sample_service.users[0].id)}
+    with freezegun.freeze_time("2025-10-10 22:13:00.000000"):
+        auth_header = create_admin_authorization_header()
+        response = client.post(
+            f"/service/{sample_service.id}/{sample_email_template.id}/template_email_files/{template_email_file.id}/archive",
+            headers=[("Content-Type", "application/json"), auth_header],
+            data=json.dumps(data),
+        )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp["data"]["archived_at"] == "2025-10-10 22:13:00"
+    assert json_resp["data"]["archived_by"] == str(sample_service.users[0].id)
+    archived_file = TemplateEmailFile.query.get(template_email_file.id)
+    assert str(archived_file.archived_at) == "2025-10-10 22:13:00"
+    assert archived_file.archived_by.id == sample_service.users[0].id
+    assert archived_file.version == 2
+    file_history = TemplateEmailFileHistory.query.filter(TemplateEmailFileHistory.id == template_email_file.id).all()
+    assert len(file_history) == 2
