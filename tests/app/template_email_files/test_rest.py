@@ -5,6 +5,8 @@ import freezegun
 import pytest
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.dao.template_email_files_dao import dao_update_template_email_files
+from app.dao.templates_dao import dao_update_template
 from app.errors import InvalidRequest
 from app.models import TemplateEmailFile, TemplateEmailFileHistory
 from app.template_email_files.rest import dao_create_template_email_files
@@ -87,6 +89,50 @@ def test_create_fails_if_template_does_not_exist(client, sample_service):
         )
 
 
+def test_template_update_bumps_new_file_template_version(client, sample_service, sample_email_template):
+    file_one_data = {
+        "filename": "example.pdf",
+        "link_text": "click this link!",
+        "retention_period": 90,
+        "validate_users_email": True,
+        "template_id": str(sample_email_template.id),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    data = json.dumps(file_one_data)
+    auth_header = create_admin_authorization_header()
+    response = client.post(
+        f"/service/{sample_service.id}/{sample_email_template.id}/template_email_files",
+        headers=[("Content-Type", "application/json"), auth_header],
+        data=data,
+    )
+    assert response.status_code == 201
+    json_resp = json.loads(response.get_data(as_text=True))
+    file_one_id = json_resp["data"]["id"]
+    assert json_resp["data"]["template_version"] == 1
+    sample_email_template.content = "here is some new content"
+    dao_update_template(sample_email_template)
+    file_two_data = {
+        "filename": "example_two.pdf",
+        "link_text": "here's a pdf",
+        "retention_period": 30,
+        "validate_users_email": True,
+        "template_id": str(sample_email_template.id),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    data = json.dumps(file_two_data)
+    response = client.post(
+        f"/service/{sample_service.id}/{sample_email_template.id}/template_email_files",
+        headers=[("Content-Type", "application/json"), auth_header],
+        data=data,
+    )
+    assert response.status_code == 201
+    json_resp = json.loads(response.get_data(as_text=True))
+    file_two_id = json_resp["data"]["id"]
+    assert json_resp["data"]["template_version"] == 2
+    file_one_fetched = TemplateEmailFile.query.get(str(file_one_id))
+    file_two_fetched = TemplateEmailFile.query.get(str(file_two_id))
+    assert file_one_fetched.template_version == 1
+    assert file_two_fetched.template_version == 2
 
 
 @pytest.mark.parametrize(
@@ -213,6 +259,58 @@ def test_get_template_email_file_by_template_version(client, sample_service, sam
     assert json_resp["data"]["retention_period"] == 30
 
 
+def test_update_template_email_files(client, sample_service, sample_email_template):
+    data_original = {
+        "filename": "example.pdf",
+        "link_text": "click this link!",
+        "retention_period": 90,
+        "validate_users_email": True,
+        "template_id": str(sample_email_template.id),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    file_original = create_template_email_file(**data_original)
+    data_updated = data_original.copy()
+    assert file_original.template_version == 1
+    assert file_original.version == 1
+    data_updated["link_text"] = "click this new link!"
+    data_updated["retention_period"] = 30
+    data_updated["validate_users_email"] = False
+    auth_header = create_admin_authorization_header()
+    response = client.post(
+        f"/service/{sample_service.id}/{file_original.template_id}/template_email_files/{file_original.id}",
+        headers=[("Content-Type", "application/json"), auth_header],
+        data=json.dumps(data_updated),
+    )
+    assert sample_email_template.version == 2
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert json_resp["data"]["link_text"] == "click this new link!"
+    assert json_resp["data"]["retention_period"] == 30
+    assert not json_resp["data"]["validate_users_email"]
+    assert json_resp["data"]["template_version"] == 2
+    assert json_resp["data"]["version"] == 2
+    template_email_file = TemplateEmailFile.query.get(str(file_original.id))
+    assert template_email_file.link_text == "click this new link!"
+    assert template_email_file.retention_period == 30
+    assert not template_email_file.validate_users_email
+    assert template_email_file.template_version == 2
+    assert template_email_file.version == 2
+    template_email_file_history_version_one = TemplateEmailFileHistory.query.get(
+        {"id": str(file_original.id), "version": 1}
+    )
+    assert template_email_file_history_version_one.link_text == "click this link!"
+    assert template_email_file_history_version_one.retention_period == 90
+    assert template_email_file_history_version_one.validate_users_email
+    assert template_email_file_history_version_one.template_version == 1
+    assert template_email_file_history_version_one.version == 1
+    template_email_file_history_version_two = TemplateEmailFileHistory.query.get(
+        {"id": str(file_original.id), "version": 2}
+    )
+    assert template_email_file_history_version_two.link_text == "click this new link!"
+    assert template_email_file_history_version_two.retention_period == 30
+    assert not template_email_file_history_version_two.validate_users_email
+    assert template_email_file_history_version_two.template_version == 2
+    assert template_email_file_history_version_two.version == 2
 
 
 def test_get_template_email_files_by_id(client, sample_service, sample_email_template):
