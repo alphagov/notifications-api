@@ -1,6 +1,6 @@
 import uuid
 from datetime import date, datetime, timedelta
-from random import SystemRandom
+from secrets import SystemRandom
 
 from flask import current_app
 from sqlalchemy import func
