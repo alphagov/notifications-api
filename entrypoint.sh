@@ -56,7 +56,10 @@ case "$1" in
     exec $COMMON_CMD ses-callbacks,sms-callbacks,letter-callbacks
     ;;
   api-worker-service-callbacks)
-    exec $COMMON_CMD service-callbacks,service-callbacks-retry
+    exec $COMMON_CMD service-callbacks
+    ;;
+  api-worker-service-callbacks-retry)
+    exec $COMMON_CMD service-callbacks-retry
     ;;
   api-worker-report-requests-notifications)
     exec $COMMON_CMD report-requests-notifications-tasks
