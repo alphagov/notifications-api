@@ -507,10 +507,6 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                     "SET SESSION statement_timeout = %s",
                     (current_app.config["DATABASE_STATEMENT_TIMEOUT_MS"],),
                 )
-                cursor.execute(
-                    "SET SESSION application_name = %s",
-                    (current_app.config["NOTIFY_APP_NAME"],),
-                )
 
                 if current_app.config["DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY"]:
                     # by default disable parallel query because it allows large analytic-style
