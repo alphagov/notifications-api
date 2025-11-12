@@ -56,6 +56,7 @@ def get_template_email_file_by_id(service_id, template_id, template_email_files_
     data = template_email_files_schema.dump(fetched_template_email_files)
     return jsonify(data=data)
 
+
 @template_email_files_blueprint.route("/<uuid:template_email_files_id>/version/<int:template_version>")
 def get_template_email_file_by_id_and_version(service_id, template_id, template_email_files_id, template_version):
     return get_template_email_file_by_id(service_id, template_id, template_email_files_id, template_version)

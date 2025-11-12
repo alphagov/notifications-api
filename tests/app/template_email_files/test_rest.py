@@ -225,6 +225,7 @@ def test_get_all_template_files(client, sample_service, sample_email_template, f
         assert file_from_response["version"] == int(file_objects[i].template_version)
         assert file_from_response["created_by_id"] == str(file_objects[i].created_by_id)
 
+
 def test_get_template_email_file_by_template_version(client, sample_service, sample_email_template):
     data = {
         "filename": "example.pdf",
