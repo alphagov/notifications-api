@@ -34,3 +34,13 @@ update_template_email_files_schema = {
         "archived_by_id": uuid,
     },
 }
+
+post_archive_template_email_files_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST schema for archiving letter_attachment",
+    "type": "object",
+    "properties": {
+        "archived_by_id": uuid,
+    },
+    "required": ["archived_by_id"],
+}
