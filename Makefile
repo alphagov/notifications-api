@@ -89,11 +89,16 @@ drop-test-dbs-in-docker:
 test: ## Run tests
 	ruff check .
 	ruff format --check .
+	make check-static-types
 	pytest -n logical --maxfail=10 -v
 
 .PHONY: watch-tests
 watch-tests: ## Watch tests and run on change
 	ptw --runner "pytest --testmon -n auto"
+
+.PHONY: check-static-types
+check-static-types: ## Run static type checks
+	mypy
 
 .PHONY: freeze-requirements
 freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt
