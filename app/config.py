@@ -84,8 +84,8 @@ class Config:
     API_HOST_NAME_INTERNAL = os.getenv("API_HOST_NAME_INTERNAL")
 
     # Celery log levels
-    CELERY_WORKER_LOG_LEVEL = os.getenv("CELERY_WORKER_LOG_LEVEL", "DEBUG").upper()
-    CELERY_BEAT_LOG_LEVEL = os.getenv("CELERY_BEAT_LOG_LEVEL", "DEBUG").upper()
+    CELERY_WORKER_LOG_LEVEL = "DEBUG"
+    CELERY_BEAT_LOG_LEVEL = "DEBUG"
 
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = "notify-admin"
