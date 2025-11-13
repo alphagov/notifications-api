@@ -498,35 +498,30 @@ def setup_sqlalchemy_events(app):  # noqa: C901
 
                 cursor = dbapi_connection.cursor()
 
-                # why not set most of these using connect_args/options? we need to probe the
-                # connection to see which database we're actually connected to and decide
-                # which connection settings we want to use
-
-                cursor.execute("SELECT pg_is_in_recovery()")
-                if cursor.fetchone()[0]:
-                    statement_timeout = current_app.config["DATABASE_STATEMENT_TIMEOUT_REPLICA_MS"]
-                    max_parallel_workers = current_app.config["DATABASE_MAX_PARALLEL_WORKERS_REPLICA"]
-                else:
-                    statement_timeout = current_app.config["DATABASE_STATEMENT_TIMEOUT_MS"]
-                    max_parallel_workers = current_app.config["DATABASE_MAX_PARALLEL_WORKERS"]
-
-                # the following can be overridden on a case-by-case basis by executing e.g.
-                # SET LOCAL max_par... = ... before the intended query.
-                #
-                # because we only set these values once at connection-creation time, there's a
-                # small danger that e.g. SET max_par... (instead of SET LOCAL max_par...) will be
-                # used by the application somewhere, which may persist across checkouts. however,
-                # (re-)setting these app.config-based values on every checkout would likely add
-                # a database round-trip of latency to every request.
+                # why not set most of these using connect_args/options? just to avoid the
+                # early-binding issues cross-referencing config vars in the config object
+                # raises, and it's neater to compose these calls than to overwrite connect_args
+                # with our own constructed one
 
                 cursor.execute(
                     "SET SESSION statement_timeout = %s",
-                    (statement_timeout,),
+                    (current_app.config["DATABASE_STATEMENT_TIMEOUT_MS"],),
                 )
 
-                if max_parallel_workers is not None:
-                    cursor.execute("SET SESSION max_parallel_workers_per_gather = %s", max_parallel_workers)
-                # else use db default max_parallel_workers_per_gather
+                if current_app.config["DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY"]:
+                    # by default disable parallel query because it allows large analytic-style
+                    # queries to consume more resources than smaller transactional queries
+                    # typically will, and if anything we want to prioritize the small
+                    # transactional queries. this can be re-enabled on a case-by-case basis by
+                    # executing SET LOCAL max_parallel_workers_per_gather = ... before the
+                    # intended query.
+                    #
+                    # because this is only done once at connection-creation time, there's a small
+                    # danger that SET max_par... (instead of SET LOCAL max_par...) will be used
+                    # by the application somewhere, which would persist across checkouts.
+                    # however, (re-)setting this on every checkout would likely add a database
+                    # round-trip of latency to every request.
+                    cursor.execute("SET SESSION max_parallel_workers_per_gather = 0")
 
                 dbapi_connection.autocommit = False
 
