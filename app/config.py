@@ -175,14 +175,25 @@ class Config:
         **SQLALCHEMY_ENGINE_OPTIONS,
         **SQLALCHEMY_BINDS["bulk"],
     }
-    DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY = (
-        os.getenv(
-            "DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY",
-            "1",
-        )
-        == "1"
+
+    # allow different settings for connections that end up on the replica or primary
+    # database, as we will want to prioritize small transactional queries on the
+    # primary, rather than potentially allowing long-running, resource-occupying
+    # analytic-style queries to inhibit our critical transactional workload.
+    #
+    # note how alternate db settings are explicitly targeted at the actual *replica*,
+    # rather than just the "bulk" binding, which could potentially fall back to the
+    # primary database if no replica is available.
+    DATABASE_MAX_PARALLEL_WORKERS = (
+        0
+        if (os.getenv("DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY") == "1")
+        else (int(x) if (x := os.getenv("DATABASE_MAX_PARALLEL_WORKERS")) else None)
+    )
+    DATABASE_MAX_PARALLEL_WORKERS_REPLICA = (
+        int(x) if (x := os.getenv("DATABASE_MAX_PARALLEL_WORKERS_REPLICA")) else None
     )
     DATABASE_STATEMENT_TIMEOUT_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_MS", 1_200_000))
+    DATABASE_STATEMENT_TIMEOUT_REPLICA_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_REPLICA_MS", 1_200_000))
 
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250
