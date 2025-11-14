@@ -69,35 +69,35 @@ def test_dao_get_template_email_files_by_template_id(sample_template_email_file,
     create_template_email_file(
         filename="example_three", template_id=template_two.id, created_by_id=template_two.created_by_id
     )
-    template_email_file_fetched = dao_get_template_email_files_by_template_id(
+    fetched_file_list = dao_get_template_email_files_by_template_id(
         str(sample_template_email_file.template_id)
     )
-    assert len(template_email_file_fetched) == 2
-    assert template_email_file_fetched[0].template_id == template_email_file_fetched[1].template_id
-    assert template_email_file_fetched[1].filename == file_two.filename
-    assert template_email_file_fetched[0].id == sample_template_email_file.id
-    assert template_email_file_fetched[0].filename == sample_template_email_file.filename
-    assert template_email_file_fetched[0].link_text == sample_template_email_file.link_text
-    assert template_email_file_fetched[0].retention_period == sample_template_email_file.retention_period
-    assert template_email_file_fetched[0].validate_users_email == sample_template_email_file.validate_users_email
-    assert template_email_file_fetched[0].template_version == sample_template_email_file.template_version
-    assert template_email_file_fetched[0].created_by_id == sample_template_email_file.created_by_id
+    assert len(fetched_file_list) == 2
+    assert fetched_file_list[0].template_id == fetched_file_list[1].template_id
+    assert fetched_file_list[1].filename == file_two.filename
+    assert fetched_file_list[0].id == sample_template_email_file.id
+    assert fetched_file_list[0].filename == sample_template_email_file.filename
+    assert fetched_file_list[0].link_text == sample_template_email_file.link_text
+    assert fetched_file_list[0].retention_period == sample_template_email_file.retention_period
+    assert fetched_file_list[0].validate_users_email == sample_template_email_file.validate_users_email
+    assert fetched_file_list[0].template_version == sample_template_email_file.template_version
+    assert fetched_file_list[0].created_by_id == sample_template_email_file.created_by_id
 
 def test_dao_get_template_email_files_by_template_id_does_not_return_archived_file(sample_template_email_file):
     sample_template_email_file.archived_at = datetime.datetime.now()
     sample_template_email_file.archived_by_id = sample_template_email_file.created_by_id
-    template_email_file_fetched = dao_get_template_email_files_by_template_id(
+    fetched_file_list = dao_get_template_email_files_by_template_id(
         str(sample_template_email_file.template_id)
     )
-    assert not template_email_file_fetched
+    assert not fetched_file_list
 
 def test_dao_get_template_email_files_by_template_id_and_version_does_not_return_archived_file(sample_template_email_file):
     sample_template_email_file.archived_at = datetime.datetime.now()
     sample_template_email_file.archived_by_id = sample_template_email_file.created_by_id
-    template_email_file_fetched = dao_get_template_email_files_by_template_id(
+    fetched_file_list = dao_get_template_email_files_by_template_id(
         str(sample_template_email_file.template_id), template_version=1
     )
-    assert not template_email_file_fetched
+    assert not fetched_file_list
 
 
 def test_dao_get_template_email_files_by_template_id_historical(sample_email_template, sample_service):
