@@ -33,7 +33,7 @@ def create_template_email_files(service_id, template_id):
     if fetched_template.template_type != EMAIL_TYPE:
         raise InvalidRequest(message="Cannot add an email file to a non-email template", status_code=400)
     if not fetched_service.has_permission(EMAIL_TYPE):
-        raise InvalidRequest(message="can't create email type", status_code=400)
+        raise InvalidRequest(message="Updating email templates is not allowed", status_code=400)
     template_email_file = TemplateEmailFile.from_json(template_email_files_json)
     dao_create_template_email_files(template_email_file)
     return jsonify(data=template_email_files_schema.dump(template_email_file)), 201
