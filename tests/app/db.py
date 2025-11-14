@@ -193,12 +193,12 @@ def create_service_with_defined_sms_sender(sms_sender_value="1234567", *args, **
 
 
 def create_template_email_file(
-    filename,
-    link_text,
-    retention_period,
-    validate_users_email,
     template_id,
     created_by_id,
+    filename="example.pdf",
+    link_text="follow this link",
+    retention_period=90,
+    validate_users_email=True,
 ):
     data = {
         "filename": filename,
