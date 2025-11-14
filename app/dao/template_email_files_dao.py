@@ -20,6 +20,7 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
         template_email_files_all_template_versions = TemplateEmailFileHistory.query.filter(
             TemplateEmailFileHistory.template_id == template_id,
             TemplateEmailFileHistory.template_version <= template_version,
+            TemplateEmailFileHistory.archived_at is None
         ).order_by(TemplateEmailFileHistory.template_version.desc())
 
         email_files_grouped_by_id = defaultdict(list)
@@ -30,7 +31,7 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
             max(email_file_versions, key=lambda x: x.template_version)
             for _, email_file_versions in email_files_grouped_by_id.items()
         ]
-    return TemplateEmailFile.query.filter(TemplateEmailFile.template_id == template_id).all()
+    return TemplateEmailFile.query.filter(TemplateEmailFile.template_id == template_id, TemplateEmailFile.archived_at is None).all()
 
 
 @autocommit

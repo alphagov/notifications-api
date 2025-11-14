@@ -83,6 +83,13 @@ def test_dao_get_template_email_files_by_template_id(sample_template_email_file,
     assert template_email_file_fetched[0].template_version == sample_template_email_file.template_version
     assert template_email_file_fetched[0].created_by_id == sample_template_email_file.created_by_id
 
+def test_dao_get_template_email_files_by_template_id_does_not_return_archived_file(sample_template_email_file):
+    sample_template_email_file.archived_at = datetime.datetime.now()
+    sample_template_email_file.archived_by_id = sample_template_email_file.created_by_id
+    template_email_file_fetched = dao_get_template_email_files_by_template_id(
+        str(sample_template_email_file.template_id)
+    )
+    assert not template_email_file_fetched
 
 def test_dao_get_template_email_files_by_template_id_historical(sample_email_template, sample_service):
     data = {
