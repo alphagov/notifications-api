@@ -1,4 +1,4 @@
-# This file was automatically copied from notifications-utils@103.0.0
+# This file was automatically copied from notifications-utils@7772125aec72ccc5651bfd53c0ab1bb9ce6a3efe
 
 beautifulsoup4==4.12.3
 pytest==8.3.4
