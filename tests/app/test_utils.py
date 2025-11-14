@@ -3,16 +3,25 @@ import uuid
 from datetime import date, datetime
 
 import pytest
+from flask import current_app
 from freezegun import freeze_time
+from notifications_utils.s3 import S3ObjectNotFound
 from notifications_utils.url_safe_token import generate_token
 
+from app.constants import EMAIL_TYPE
+from app.serialised_models import SerialisedTemplate
 from app.utils import (
+    EmailFilePlaceholder,
+    extract_email_file_placeholders,
     format_sequential_number,
     get_london_midnight_in_utc,
     get_midnight_for_day_before,
     midnight_n_days_ago,
+    try_download_template_email_file_from_s3,
     url_with_token,
 )
+from app.v2.errors import BadRequestError
+from tests.app.db import create_template
 
 
 @pytest.mark.parametrize(
@@ -91,3 +100,69 @@ def test_url_with_token__create_confirmation_url(hostnames, notify_api):
     generated_unsubscribe_link = url_with_token(data, url=url, base_url=base_url)
 
     assert generated_unsubscribe_link == expected_unsubscribe_link
+
+
+def test_EmailFilePlaceholder_happy_path():
+    email_file_placeholder = EmailFilePlaceholder("file::invitation.pdf::36fb0730-6259-4da1-8a80-c8de22ad4246")
+    assert email_file_placeholder.string == "file::invitation.pdf::36fb0730-6259-4da1-8a80-c8de22ad4246"
+    assert email_file_placeholder.id == "36fb0730-6259-4da1-8a80-c8de22ad4246"
+
+
+def test_EmailFilePlaceholder_invalid_uuid():
+    with pytest.raises(BadRequestError) as e:
+        EmailFilePlaceholder("file::invitation.pdf::blah")
+
+    assert e.value.status_code == 400
+    assert e.value.message == "template_email_file_id blah is not a valid UUID."
+
+
+def test_extract_email_file_placeholders(notify_api, mocker, sample_service):
+    content = """
+    Dear ((name)),
+
+    Here is your invitation:
+    ((file::invitation.pdf::36fb0730-6259-4da1-8a80-c8de22ad4246))
+
+    And here is the form to bring to the appointment:
+    ((file::form.pdf::429c0b16-704e-41cb-8181-6448567f7042))
+    """
+    template_id = create_template(sample_service, content=content, template_type=EMAIL_TYPE).id
+    template = SerialisedTemplate.from_id_and_service_id(template_id=template_id, service_id=sample_service.id)
+    email_files = extract_email_file_placeholders(template)
+
+    assert email_files[0].string == "file::invitation.pdf::36fb0730-6259-4da1-8a80-c8de22ad4246"
+
+    assert email_files[1].string == "file::form.pdf::429c0b16-704e-41cb-8181-6448567f7042"
+
+
+def test_extract_email_file_placeholders_when_none_found(notify_api, mocker, sample_service):
+    content = """
+    Dear ((name)),
+
+    Your verification code is: 123 456
+    """
+    template_id = create_template(sample_service, content=content, template_type=EMAIL_TYPE).id
+    template = SerialisedTemplate.from_id_and_service_id(template_id=template_id, service_id=sample_service.id)
+    assert extract_email_file_placeholders(template) == []
+
+
+def test_try_download_template_email_file_from_s3(mocker, sample_service, fake_uuid):
+    mock_utils_s3download = mocker.patch("app.utils.utils_s3download")
+
+    try_download_template_email_file_from_s3(service_id=sample_service.id, template_email_file_id=fake_uuid)
+    mock_utils_s3download.assert_called_once_with(
+        bucket_name=current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"],
+        filename=f"{sample_service.id}/{fake_uuid}",
+    )
+
+
+def test_try_download_template_email_file_from_s3_raises_error_when_file_not_in_bucket(
+    mocker, sample_service, fake_uuid
+):
+    mocker.patch(
+        "app.utils.utils_s3download",
+        side_effect=S3ObjectNotFound({}, ""),
+    )
+
+    with pytest.raises(S3ObjectNotFound):
+        try_download_template_email_file_from_s3(service_id=sample_service.id, template_email_file_id=fake_uuid)

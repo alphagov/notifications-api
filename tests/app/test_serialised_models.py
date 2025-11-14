@@ -17,6 +17,7 @@ EXPECTED_TEMPLATE_ATTRIBUTES = {
     "has_unsubscribe_link",
     "id",
     "postage",
+    "service",
     "reply_to_text",
     "subject",
     "template_type",

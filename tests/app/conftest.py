@@ -284,6 +284,25 @@ def sample_email_template_with_placeholders(sample_service):
 
 
 @pytest.fixture(scope="function")
+def sample_email_template_with_email_file_placeholders(sample_service):
+    content = """
+    Dear ((name)),
+
+    Here is your invitation:
+    ((file::invitation.pdf::36fb0730-6259-4da1-8a80-c8de22ad4246))
+
+    And here is the form to bring to the appointment:
+    ((file::form.pdf::429c0b16-704e-41cb-8181-6448567f7042))
+    """
+    return create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+        subject="Your appointment invitation",
+        content=content,
+    )
+
+
+@pytest.fixture(scope="function")
 def sample_email_template_with_html(sample_service):
     return create_template(
         sample_service,
@@ -1420,3 +1439,35 @@ def sample_report_request(sample_user, sample_service):
     dao_create_report_request(report_request)
 
     return report_request
+
+
+@pytest.fixture(scope="function")
+def mock_utils_s3_download(mocker):
+    return mocker.patch(
+        "app.utils.utils_s3download",
+        side_effect=["file_from_s3_1", "file_from_s3_2"],
+    )
+
+
+@pytest.fixture(scope="function")
+def mock_document_download_client_upload(mocker):
+    return mocker.patch(
+        "app.document_download_client.upload_document",
+        side_effect=["documents.gov.uk/link1", "documents.gov.uk/link2"],
+    )
+
+
+@pytest.fixture(scope="function")
+def mock_get_template_email_files(mocker):
+    # TODO: use real template email file objects when endpoints PR gets merged
+    mocker.patch(
+        "app.notifications.process_notifications.dao_get_template_email_file_by_id",
+        side_effect=[
+            mocker.Mock(
+                filename="invitation.pdf",
+                validate_users_email=True,
+                retention_period=26,
+            ),
+            mocker.Mock(filename="form.pdf", validate_users_email=True, retention_period=26),
+        ],
+    )

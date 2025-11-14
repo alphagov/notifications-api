@@ -49,6 +49,7 @@ class SerialisedTemplate(SerialisedModel):
     archived: bool
     content: str
     id: Any
+    service: Any
     postage: str
     reply_to_text: str
     subject: str
