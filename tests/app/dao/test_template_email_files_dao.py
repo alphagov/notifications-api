@@ -1,5 +1,6 @@
 import datetime
 
+from app.constants import EMAIL_TYPE
 from app.dao.template_email_files_dao import (
     dao_create_template_email_files,
     dao_get_template_email_file_by_id,
@@ -8,6 +9,7 @@ from app.dao.template_email_files_dao import (
 )
 from app.dao.templates_dao import dao_update_template
 from app.models import Template, TemplateEmailFile
+from tests.app.db import create_template, create_template_email_file
 
 
 def test_create_template_email_files_dao(sample_email_template, sample_service):
@@ -57,15 +59,29 @@ def test_dao_get_template_email_file_by_id(sample_email_template, sample_service
     assert template_email_file_fetched.created_by_id == sample_service.users[0].id
 
 
-def test_dao_get_template_email_files_by_template_id(sample_template_email_file):
-    template_email_file_fetched = dao_get_template_email_files_by_template_id(str(sample_template_email_file.template_id))[0]
-    assert template_email_file_fetched.id == sample_template_email_file.id
-    assert template_email_file_fetched.filename == sample_template_email_file.filename
-    assert template_email_file_fetched.link_text == sample_template_email_file.link_text
-    assert template_email_file_fetched.retention_period == sample_template_email_file.retention_period
-    assert template_email_file_fetched.validate_users_email == sample_template_email_file.validate_users_email
-    assert template_email_file_fetched.template_version == sample_template_email_file.template_version
-    assert template_email_file_fetched.created_by_id == sample_template_email_file.created_by_id
+def test_dao_get_template_email_files_by_template_id(sample_template_email_file, sample_email_template, sample_service):
+    file_two = create_template_email_file(
+        filename="example_two",
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+    )
+    template_two = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="other_template")
+    create_template_email_file(
+        filename="example_three", template_id=template_two.id, created_by_id=template_two.created_by_id
+    )
+    template_email_file_fetched = dao_get_template_email_files_by_template_id(
+        str(sample_template_email_file.template_id)
+    )
+    assert len(template_email_file_fetched) == 2
+    assert template_email_file_fetched[0].template_id == template_email_file_fetched[1].template_id
+    assert template_email_file_fetched[1].filename == file_two.filename
+    assert template_email_file_fetched[0].id == sample_template_email_file.id
+    assert template_email_file_fetched[0].filename == sample_template_email_file.filename
+    assert template_email_file_fetched[0].link_text == sample_template_email_file.link_text
+    assert template_email_file_fetched[0].retention_period == sample_template_email_file.retention_period
+    assert template_email_file_fetched[0].validate_users_email == sample_template_email_file.validate_users_email
+    assert template_email_file_fetched[0].template_version == sample_template_email_file.template_version
+    assert template_email_file_fetched[0].created_by_id == sample_template_email_file.created_by_id
 
 
 def test_dao_get_template_email_files_by_template_id_historical(sample_email_template, sample_service):
