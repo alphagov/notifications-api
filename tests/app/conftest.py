@@ -260,8 +260,10 @@ def sample_email_template(sample_user):
         "created_by": sample_user,
         "subject": "Email Subject",
     }
-    template = Template(**data)
-    dao_create_template(template)
+    template = Template.query.get(template_id)
+    if not template:
+        template = Template(**data)
+        dao_create_template(template)
     return template
 
 
