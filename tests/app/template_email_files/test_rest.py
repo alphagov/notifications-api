@@ -154,9 +154,9 @@ def test_template_update_bumps_new_file_template_version(client, sample_service,
                 "filename": "example.pdf",
                 "link_text": "click this link!",
                 "retention_period": 90,
-                "validate_users_email": "not a boolean!",
+                "validate_users_email": "this is a string",
             },
-            '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "validate_users_email not a boolean! is not of type boolean"}]}',  # noqa: E501
+            '{"status_code": 400, "errors": [{"error": "ValidationError", "message": "validate_users_email this is a string is not of type boolean"}]}',  # noqa: E501
         ),
     ],
 )
