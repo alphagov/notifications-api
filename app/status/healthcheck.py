@@ -20,6 +20,7 @@ def show_status():
                 git_commit=version.__git_commit__,
                 build_time=version.__time__,
                 db_version=get_db_version(),
+                db_bulk_version=get_db_version(session=db.session_bulk),
             ),
             200,
         )
@@ -36,7 +37,7 @@ def live_service_and_organisation_counts():
     )
 
 
-def get_db_version():
+def get_db_version(session=db.session):
     query = "SELECT version_num FROM alembic_version"
-    full_name = db.session.execute(text(query)).fetchone()[0]
+    full_name = session.execute(text(query)).fetchone()[0]
     return full_name

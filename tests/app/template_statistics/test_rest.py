@@ -62,7 +62,9 @@ def test_get_template_statistics_for_service_by_day_accepts_old_query_string(
 
 
 @freeze_time("2018-01-02 12:00:00")
-def test_get_template_statistics_for_service_by_day_goes_to_db(admin_request, mocker, sample_template):
+def test_get_template_statistics_for_service_by_day_goes_to_db(
+    admin_request, mocker, sample_template, notify_db_session_bulk
+):
     # first time it is called redis returns data, second time returns none
     mock_dao = mocker.patch(
         "app.template_statistics.rest.fetch_notification_status_for_service_for_today_and_7_previous_days",
@@ -94,7 +96,9 @@ def test_get_template_statistics_for_service_by_day_goes_to_db(admin_request, mo
         }
     ]
     # dao only called for 2nd, since redis returned values for first call
-    mock_dao.assert_called_once_with(str(sample_template.service_id), limit_days=1, by_template=True)
+    mock_dao.assert_called_once_with(
+        str(sample_template.service_id), limit_days=1, by_template=True, session=notify_db_session_bulk
+    )
 
 
 def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_templates(
