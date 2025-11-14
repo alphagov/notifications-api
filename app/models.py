@@ -1342,8 +1342,7 @@ class TemplateEmailFile(TemplateEmailFileBase):
         marshmallow would.
         """
         fields = data.copy()
-        created_at = datetime.datetime.now(datetime.UTC)
-        fields["created_at"] = created_at
+        fields["created_at"] = datetime.datetime.now(datetime.UTC)
         return cls(**fields)
 
 
