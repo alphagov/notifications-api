@@ -76,6 +76,7 @@ from tests.app.db import (
     create_rate,
     create_service,
     create_template,
+    create_template_email_file,
     create_user,
 )
 
@@ -247,8 +248,10 @@ def sample_sms_template_with_html(sample_service):
 
 @pytest.fixture(scope="function")
 def sample_email_template(sample_user):
+    template_id = "c8348bc6-e43c-465c-8468-1cd693366f4e"
     service = create_service(user=sample_user, service_permissions=[EMAIL_TYPE, SMS_TYPE], check_if_service_exists=True)
     data = {
+        "id": template_id,
         "name": "Email Template Name",
         "template_type": EMAIL_TYPE,
         "has_unsubscribe_link": False,
@@ -291,6 +294,11 @@ def sample_email_template_with_html(sample_service):
         subject="((name)) <em>some HTML</em>",
         content="Hello ((name))\nThis is an email from GOV.UK with <em>some HTML</em>",
     )
+
+
+@pytest.fixture(scope="function")
+def sample_template_email_file(sample_template):
+    return create_template_email_file(template_id=sample_template.id, created_by_id=sample_template.created_by_id)
 
 
 @pytest.fixture(scope="function")
