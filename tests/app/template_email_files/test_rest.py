@@ -226,7 +226,7 @@ def test_get_template_email_files_returns_all_files(client, sample_service, samp
         assert file_from_response["created_by_id"] == str(file_objects[i].created_by_id)
 
 
-def test_get_template_email_file_by_template_version(client, sample_service, sample_email_template):
+def test_get_template_email_file_by_id_and_version_returns_correct_file(client, sample_service, sample_email_template):
     data = {
         "filename": "example.pdf",
         "link_text": "click this link!",
