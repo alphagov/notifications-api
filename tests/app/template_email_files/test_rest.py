@@ -200,7 +200,7 @@ def test_invalid_input_raises_exception_template_email_files_post(
         )
     ],
 )
-def test_get_all_template_files(client, sample_service, sample_email_template, files):
+def test_get_template_email_files_returns_all_files(client, sample_service, sample_email_template, files):
     file_objects = []
     for file in files:
         file["template_id"] = str(sample_email_template.id)
