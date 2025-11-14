@@ -299,8 +299,10 @@ def sample_email_template_with_html(sample_service):
 
 
 @pytest.fixture(scope="function")
-def sample_template_email_file(sample_template):
-    return create_template_email_file(template_id=sample_template.id, created_by_id=sample_template.created_by_id)
+def sample_template_email_file(sample_email_template):
+    return create_template_email_file(
+        template_id=sample_email_template.id, created_by_id=sample_email_template.created_by_id
+    )
 
 
 @pytest.fixture(scope="function")
