@@ -386,7 +386,9 @@ def test_check_is_message_too_long_passes_for_long_email(sample_service):
 def test_check_notification_content_is_not_empty_passes(notify_api, mocker, sample_service):
     template_id = create_template(sample_service, content="Content is not empty").id
     template = SerialisedTemplate.from_id_and_service_id(template_id=template_id, service_id=sample_service.id)
-    template_with_content = create_content_for_notification(template, {})
+    template_with_content = create_content_for_notification(
+        template=template, personalisation={}, recipient="07900111222"
+    )
     assert check_notification_content_is_not_empty(template_with_content) is None
 
 
@@ -396,7 +398,9 @@ def test_check_notification_content_is_not_empty_fails(
 ):
     template_id = create_template(sample_service, content=template_content).id
     template = SerialisedTemplate.from_id_and_service_id(template_id=template_id, service_id=sample_service.id)
-    template_with_content = create_content_for_notification(template, notification_values)
+    template_with_content = create_content_for_notification(
+        template=template, personalisation=notification_values, recipient="07900111222"
+    )
     with pytest.raises(BadRequestError) as e:
         check_notification_content_is_not_empty(template_with_content)
     assert e.value.status_code == 400
@@ -425,7 +429,7 @@ def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_servic
 
     mock_check_type.assert_called_once_with("email", "email")
     mock_check_if_active.assert_called_once_with(template)
-    mock_create_conent.assert_called_once_with(template, {})
+    mock_create_conent.assert_called_once_with(template, {}, None)
     mock_check_not_empty.assert_called_once_with("content")
     if check_char_count:
         mock_check_message_is_too_long.assert_called_once_with("content")
@@ -448,7 +452,7 @@ def test_validate_template_calls_all_validators_exception_message_too_long(mocke
 
     mock_check_type.assert_called_once_with("email", "email")
     mock_check_if_active.assert_called_once_with(template)
-    mock_create_conent.assert_called_once_with(template, {})
+    mock_create_conent.assert_called_once_with(template, {}, None)
     mock_check_not_empty.assert_called_once_with("content")
     assert not mock_check_message_is_too_long.called
 

@@ -131,6 +131,7 @@ def post_notification(notification_type):
         authenticated_service,
         notification_type,
         check_char_count=False,
+        recipient=form.get("email_address"),
     )
 
     reply_to = get_reply_to_text(notification_type, form, template)
