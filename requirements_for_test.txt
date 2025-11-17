@@ -51,7 +51,7 @@ cachetools==5.5.0
     # via
     #   -r requirements.txt
     #   notifications-utils
-celery==5.5.4
+celery==5.5.3
     # via -r requirements.txt
 certifi==2024.7.4
     # via
@@ -101,7 +101,7 @@ docopt==0.6.2
     # via
     #   -r requirements.txt
     #   notifications-python-client
-eventlet==0.39.1
+eventlet==0.40.0
     # via
     #   -r requirements.txt
     #   gunicorn
@@ -186,7 +186,7 @@ jsonschema-specifications==2024.10.1
     # via
     #   -r requirements.txt
     #   jsonschema
-kombu==5.6.0
+kombu==5.5.4
     # via
     #   -r requirements.txt
     #   celery
@@ -216,7 +216,7 @@ moto==5.0.11
     # via -r requirements_for_test.in
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@b2c6b779da8f2da0edc885059f91ca8fb9733913
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@d1369afa9234d851e6141a5d37c9e5c9dbbc7acb
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
@@ -247,10 +247,10 @@ psutil==6.1.1
     # via -r requirements.txt
 psycopg2-binary==2.9.10
     # via -r requirements.txt
+py-spy==0.4.0
+    # via -r requirements.txt
 pycparser==2.21
     # via cffi
-pycurl==7.45.6
-    # via -r requirements.txt
 pyjwt==2.10.1
     # via
     #   -r requirements.txt

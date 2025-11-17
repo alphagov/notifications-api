@@ -32,7 +32,7 @@ botocore==1.34.100
     #   s3transfer
 cachetools==5.5.0
     # via notifications-utils
-celery==5.5.4
+celery==5.5.3
     # via
     #   -r requirements.in
     #   sentry-sdk
@@ -148,7 +148,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@b2c6b779da8f2da0edc885059f91ca8fb9733913
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@5c030d51f30cebf7800787fb68d8789b5f9757ef
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
