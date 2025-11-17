@@ -62,7 +62,7 @@ dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-eventlet==0.39.1
+eventlet==0.40.0
     # via
     #   -r requirements.in
     #   gunicorn
@@ -126,7 +126,7 @@ jsonschema==4.23.0
     # via -r requirements.in
 jsonschema-specifications==2024.10.1
     # via jsonschema
-kombu==5.6.0
+kombu==5.5.4
     # via celery
 mako==1.2.3
     # via alembic
@@ -148,7 +148,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@5c030d51f30cebf7800787fb68d8789b5f9757ef
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@d1369afa9234d851e6141a5d37c9e5c9dbbc7acb
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -169,10 +169,8 @@ psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
     # via -r requirements.in
-pycurl==7.45.6
-    # via
-    #   celery
-    #   kombu
+py-spy==0.4.0
+    # via -r requirements.in
 pyjwt==2.10.1
     # via
     #   -r requirements.in
