@@ -15,7 +15,7 @@ application = NotifyApiFlaskApp("app")
 create_app(application)
 
 if utils_eventlet.using_eventlet:
-    application.wsgi_app = utils_eventlet.EventletTimeoutMiddleware(
+    application.wsgi_app = utils_eventlet.EventletTimeoutMiddleware(  # type: ignore[method-assign]
         application.wsgi_app,
         timeout_seconds=int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30)),
     )
@@ -24,4 +24,4 @@ if utils_eventlet.using_eventlet:
         import greenlet
 
         greenlet.settrace(utils_eventlet.account_greenlet_times)
-        application._server_greenlet = greenlet.getcurrent()
+        application._server_greenlet = greenlet.getcurrent()  # type: ignore[attr-defined]
