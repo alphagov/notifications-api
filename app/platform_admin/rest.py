@@ -1,11 +1,11 @@
 from contextlib import suppress
 
 from flask import Blueprint, jsonify, request
+from flask_sqlalchemy import Model
 from sqlalchemy.exc import NoResultFound
 
 from app.dao.date_util import parse_date_range
 from app.dao.users_dao import get_users_list
-from app.db import Model
 from app.errors import register_errors
 from app.models import (
     ApiKey,
