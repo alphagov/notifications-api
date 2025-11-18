@@ -12,10 +12,6 @@ arrow==1.2.3
     # via
     #   -r requirements.txt
     #   isoduration
-async-timeout==5.0.1
-    # via
-    #   -r requirements.txt
-    #   redis
 attrs==24.3.0
     # via
     #   -r requirements.txt
@@ -374,6 +370,12 @@ statsd==4.0.1
     #   -r requirements.txt
     #   notifications-utils
 trustme==0.9.0
+    # via -r requirements_for_test.in
+types-cachetools==6.2.0.20251022
+    # via -r requirements_for_test.in
+types-pycurl==7.45.7.20251101
+    # via -r requirements_for_test.in
+types-python-dateutil==2.9.0.20251115
     # via -r requirements_for_test.in
 typing-extensions==4.14.1
     # via
