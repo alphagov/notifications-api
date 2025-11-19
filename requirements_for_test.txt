@@ -377,6 +377,10 @@ types-pycurl==7.45.7.20251101
     # via -r requirements_for_test.in
 types-python-dateutil==2.9.0.20251115
     # via -r requirements_for_test.in
+types-requests==2.31.0.6
+    # via -r requirements_for_test.in
+types-urllib3==1.26.25.14
+    # via types-requests
 typing-extensions==4.14.1
     # via
     #   -r requirements.txt
