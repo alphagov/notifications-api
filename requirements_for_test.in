@@ -10,3 +10,4 @@ mypy==1.18.2
 types-cachetools==6.2.0.20251022
 types-python-dateutil==2.9.0.20251115
 types-pycurl
+types-requests
