@@ -4002,7 +4002,7 @@ def test_count_notifications_for_service(admin_request, sample_template, test_ca
 
 
 ServiceJoinRequestTestCase = namedtuple(
-    "TestCase",
+    "ServiceJoinRequestTestCase",
     [
         "requester_id",
         "service_id",
