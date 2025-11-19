@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import timedelta
+from typing import Any
 
 from celery.schedules import crontab
 from kombu import Exchange, Queue
@@ -51,6 +52,7 @@ class QueueNames:
             QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
         ]
 
+    @staticmethod
     def external_queues():
         return [
             QueueNames.ANTIVIRUS,
@@ -160,7 +162,7 @@ class Config:
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = "api"
 
-    SQLALCHEMY_ENGINE_OPTIONS = {
+    SQLALCHEMY_ENGINE_OPTIONS: dict[str, Any] = {
         "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 5)),
         "pool_timeout": 30,
         "pool_recycle": 300,
@@ -187,11 +189,14 @@ class Config:
     DATABASE_MAX_PARALLEL_WORKERS = (
         0
         if (os.getenv("DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY") == "1")
-        else (int(x) if (x := os.getenv("DATABASE_MAX_PARALLEL_WORKERS")) else None)
+        else (lambda: int(x) if (x := os.getenv("DATABASE_MAX_PARALLEL_WORKERS")) else None)
     )
-    DATABASE_MAX_PARALLEL_WORKERS_REPLICA = (
-        int(x) if (x := os.getenv("DATABASE_MAX_PARALLEL_WORKERS_REPLICA")) else None
-    )
+
+    def _get_database_max_parallel_workers_replica(self) -> int | None:
+        x = os.getenv("DATABASE_MAX_PARALLEL_WORKERS_REPLICA")
+        return int(x) if x else None
+
+    DATABASE_MAX_PARALLEL_WORKERS_REPLICA = _get_database_max_parallel_workers_replica
     DATABASE_STATEMENT_TIMEOUT_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_MS", 1_200_000))
     DATABASE_STATEMENT_TIMEOUT_REPLICA_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_REPLICA_MS", 1_200_000))
 
@@ -247,7 +252,11 @@ class Config:
             "region": AWS_REGION,
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
             "is_secure": True,
-            "predefined_queues": QueueNames.predefined_queues(NOTIFICATION_QUEUE_PREFIX, AWS_REGION, AWS_ACCOUNT_ID),
+            "predefined_queues": QueueNames.predefined_queues(
+                NOTIFICATION_QUEUE_PREFIX or "",  # type: ignore[arg-type]
+                AWS_REGION,
+                AWS_ACCOUNT_ID,
+            ),
         },
         "result_expires": 0,
         "timezone": "UTC",
@@ -552,7 +561,9 @@ class Development(Config):
     CELERY = {
         **Config.CELERY,
         "broker_transport_options": {
-            key: value for key, value in Config.CELERY["broker_transport_options"].items() if key != "predefined_queues"
+            key: value
+            for key, value in Config.CELERY["broker_transport_options"].items()  # type: ignore[union-attr,attr-defined]
+            if key != "predefined_queues"
         },
     }
 
@@ -635,7 +646,9 @@ class Test(Development):
         "broker_url": "you-forgot-to-mock-celery-in-your-tests://",
         "broker_transport": None,
         "broker_transport_options": {
-            key: value for key, value in Config.CELERY["broker_transport_options"].items() if key != "predefined_queues"
+            key: value
+            for key, value in Config.CELERY["broker_transport_options"].items()  # type: ignore[union-attr,attr-defined]
+            if key != "predefined_queues"
         },
     }
 
