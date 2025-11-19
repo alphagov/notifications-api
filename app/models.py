@@ -1304,7 +1304,7 @@ class TemplateEmailFileBase(db.Model):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), index=True, nullable=False)
 
     @declared_attr
-    def template_version(cls):
+    def template_version_on_update(cls):
         return db.Column(db.Integer(), index=True, nullable=False)
 
     @declared_attr
