@@ -390,7 +390,7 @@ class DVLAClient:
 
         return recipient, {"unstructuredAddress": self._build_address(address_lines, "postcode")}
 
-    def _truncate_long_address_lines(self, address_data: dict) -> tuple[str, dict]:  # type: ignore[return]
+    def _truncate_long_address_lines(self, address_data: dict) -> dict[str, dict]:
         def truncate_line(key: str, value):
             if not isinstance(value, str):
                 return value
@@ -400,6 +400,6 @@ class DVLAClient:
 
         # there'll only ever be one nested dict in address_data, but we dont know what the key is so we need to iterate
         for address_dict_type, address_dict in address_data.items():
-            return (address_dict_type, {k: truncate_line(k, v) for k, v in address_dict.items()})
+            return {address_dict_type: {k: truncate_line(k, v) for k, v in address_dict.items()}}
 
         raise RuntimeError(f"Expected values in {address_data}")
