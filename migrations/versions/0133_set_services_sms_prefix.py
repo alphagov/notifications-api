@@ -18,11 +18,11 @@ down_revision = "0132_add_sms_prefix_setting"
 
 notify_environment = os.environ["NOTIFY_ENVIRONMENT"]
 if notify_environment in config.configs:
-    config_instance: config.Config = config.configs[notify_environment]  # type: ignore[assignment]
+    config = config.configs[notify_environment]
 else:
-    config_instance = config.Config()
+    config = config.Config()
 
-default_sms_sender = config_instance.FROM_NUMBER
+default_sms_sender = config.FROM_NUMBER
 
 
 def upgrade():
