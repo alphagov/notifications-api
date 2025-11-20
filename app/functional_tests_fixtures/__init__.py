@@ -359,7 +359,7 @@ def _create_user(name, email_address, password, auth_type="sms_auth", organisati
 
     user.state = "active"
     user.auth_type = auth_type
-    save_model_user(user, password=password)
+    save_model_user(user, password=password, validated_email_access=True)
 
     return user
 
