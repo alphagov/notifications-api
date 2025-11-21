@@ -256,6 +256,7 @@ def register_blueprint(application):
     from app.sms.rest import sms_rate_blueprint
     from app.status.healthcheck import status as status_blueprint
     from app.template.rest import template_blueprint
+    from app.template_email_files.rest import template_email_files_blueprint
     from app.template_folder.rest import template_folder_blueprint
     from app.template_statistics.rest import (
         template_statistics as template_statistics_blueprint,
@@ -280,6 +281,9 @@ def register_blueprint(application):
 
     template_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_blueprint)
+
+    template_email_files_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(template_email_files_blueprint)
 
     status_blueprint.before_request(requires_no_auth)
     application.register_blueprint(status_blueprint)
