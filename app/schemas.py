@@ -451,7 +451,7 @@ class TemplateHistorySchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 class TemplateEmailFilesSchema(BaseSchema):
     filename = field_for(models.TemplateEmailFile, "filename", required=True)
     link_text = field_for(models.TemplateEmailFile, "link_text", required=False)
-    retention_period = field_for(models.TemplateEmailFile, "retention_period", required=False)
+    retention_period = field_for(models.TemplateEmailFile, "retention_period", required=True)
     validate_users_email = field_for(models.TemplateEmailFile, "validate_users_email", required=True)
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()

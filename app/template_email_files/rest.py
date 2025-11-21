@@ -6,7 +6,6 @@ from app.constants import EMAIL_TYPE
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_email_files_dao import (
     dao_create_template_email_files,
-    dao_get_template_email_file_by_id,
     dao_get_template_email_files_by_template_id,
     dao_update_template_email_files,
 )
@@ -31,9 +30,9 @@ def create_template_email_files(service_id, template_id):
     template_email_files_json = validate(request.get_json(), post_create_template_email_files_schema)
     fetched_template = dao_get_template_by_id_and_service_id(template_id, service_id)
     if fetched_template.template_type != EMAIL_TYPE:
-        raise InvalidRequest(message="cannot create an email for non-email type", status_code=400)
+        raise InvalidRequest(message="Cannot add an email file to a non-email template", status_code=400)
     if not fetched_service.has_permission(EMAIL_TYPE):
-        raise InvalidRequest(message="can't create email type", status_code=400)
+        raise InvalidRequest(message="Updating email templates is not allowed", status_code=400)
     template_email_file = TemplateEmailFile.from_json(template_email_files_json)
     dao_create_template_email_files(template_email_file)
     return jsonify(data=template_email_files_schema.dump(template_email_file)), 201
@@ -48,18 +47,6 @@ def get_template_email_files(service_id, template_id):
         template_email_files += [template_email_files_schema.dump(template_email_file)]
 
     return jsonify(data=template_email_files), 200
-
-
-@template_email_files_blueprint.route("/<uuid:template_email_files_id>", methods=["GET"])
-def get_template_email_file_by_id(service_id, template_id, template_email_files_id, template_version=None):
-    fetched_template_email_files = dao_get_template_email_file_by_id(template_email_files_id, template_version)
-    data = template_email_files_schema.dump(fetched_template_email_files)
-    return jsonify(data=data)
-
-
-@template_email_files_blueprint.route("/<uuid:template_email_files_id>/version/<int:template_version>")
-def get_template_email_file_by_id_and_version(service_id, template_id, template_email_files_id, template_version):
-    return get_template_email_file_by_id(service_id, template_id, template_email_files_id, template_version)
 
 
 @template_email_files_blueprint.route("/<uuid:template_email_files_id>", methods=["POST"])
@@ -77,7 +64,7 @@ def update_template_email_files(template_email_files_id, service_id, template_id
 
 @template_email_files_blueprint.route("/<uuid:template_email_files_id>/archive", methods=["POST"])
 def archive_template_email_files(template_email_files_id, template_id, service_id):
-    current_data = TemplateEmailFile.query.get_or_404(template_email_files_id)
+    current_data = TemplateEmailFile.query.get(template_email_files_id)
     current_data_json = template_email_files_schema.dump(current_data)
     updated_data_json = validate(request.get_json(), post_archive_template_email_files_schema)
     updated_data_json = current_data_json | updated_data_json
