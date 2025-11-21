@@ -149,3 +149,7 @@ All flask commands and command options have a --help command if you need more in
 
 - [Writing public APIs](docs/writing-public-apis.md)
 - [Updating dependencies](https://github.com/alphagov/notifications-manuals/wiki/Dependencies)
+
+## Licence
+
+Unless stated otherwise, the codebase is released under [the MIT License](LICENSE). This covers both the codebase and any sample code in the documentation.
