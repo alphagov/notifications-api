@@ -1338,12 +1338,11 @@ class TemplateEmailFile(TemplateEmailFileBase):
         """
         Assumption: data has been validated appropriately.
 
-        Returns a Service object based on the provided data. Deserialises created_by to created_by_id as marshmallow
-        would.
+        Returns a TemplateEmailFile object based on the provided data. Deserialises created_by to created_by_id as
+        marshmallow would.
         """
         fields = data.copy()
-        created_at = datetime.datetime.now(datetime.UTC)
-        fields["created_at"] = created_at
+        fields["created_at"] = datetime.datetime.now(datetime.UTC)
         return cls(**fields)
 
 
