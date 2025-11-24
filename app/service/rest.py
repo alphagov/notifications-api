@@ -1537,8 +1537,8 @@ def _fetch_returned_letter_data(service_id, report_date):
 
 
 @service_blueprint.route("/<uuid:service_id>/report-request/<uuid:request_id>", methods=["GET"])
-def get_report_request_by_id(service_id, request_id):
-    request = dao_get_active_report_request_by_id(UUID(service_id), UUID(request_id))
+def get_report_request_by_id(service_id: UUID, request_id: UUID):
+    request = dao_get_active_report_request_by_id(service_id, request_id)
     return jsonify(data=request.serialize())
 
 
