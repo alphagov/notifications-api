@@ -152,4 +152,4 @@ All flask commands and command options have a --help command if you need more in
 
 ## Licence
 
-Unless stated otherwise, the codebase is released under [the MIT License](LICENSE). This covers both the codebase and any sample code in the documentation.
+Unless stated otherwise, the codebase is released under [the MIT License](LICENCE). This covers both the codebase and any sample code in the documentation.
