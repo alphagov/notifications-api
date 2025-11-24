@@ -19,10 +19,10 @@ from app.dao.service_data_retention_dao import fetch_service_data_retention_by_n
 
 
 class ReportRequestProcessor:
-    def __init__(self, service_id: str, report_request_id: str):
+    def __init__(self, service_id: UUID, report_request_id: UUID):
         self.service_id = service_id
         self.report_request_id = report_request_id
-        self.report_request = dao_get_report_request_by_id(UUID(service_id), UUID(report_request_id))
+        self.report_request = dao_get_report_request_by_id(service_id, report_request_id)
         self.notification_type = self.report_request.parameter["notification_type"]
         self.notification_status = self.report_request.parameter["notification_status"]
         self.page_size = current_app.config.get("REPORT_REQUEST_NOTIFICATIONS_CSV_BATCH_SIZE")
