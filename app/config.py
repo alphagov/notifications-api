@@ -253,7 +253,7 @@ class Config:
             "queue_name_prefix": NOTIFICATION_QUEUE_PREFIX,
             "is_secure": True,
             "predefined_queues": QueueNames.predefined_queues(
-                NOTIFICATION_QUEUE_PREFIX or "",  # type: ignore[arg-type]
+                NOTIFICATION_QUEUE_PREFIX or "",
                 AWS_REGION,
                 AWS_ACCOUNT_ID,
             ),
