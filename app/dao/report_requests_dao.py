@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from uuid import UUID
 
 from sqlalchemy import and_, or_
 
@@ -19,11 +20,11 @@ def dao_create_report_request(report_request: ReportRequest):
     return report_request
 
 
-def dao_get_report_request_by_id(service_id: str, report_id: str) -> ReportRequest:
+def dao_get_report_request_by_id(service_id: UUID, report_id: UUID) -> ReportRequest:
     return ReportRequest.query.filter_by(service_id=service_id, id=report_id).one()
 
 
-def dao_get_active_report_request_by_id(service_id: str, report_id: str) -> ReportRequest:
+def dao_get_active_report_request_by_id(service_id: UUID, report_id: UUID) -> ReportRequest:
     return ReportRequest.query.filter(
         ReportRequest.service_id == service_id,
         ReportRequest.id == report_id,
