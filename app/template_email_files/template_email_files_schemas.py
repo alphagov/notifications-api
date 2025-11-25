@@ -28,7 +28,6 @@ update_template_email_files_schema = {
         "service": uuid,
         "retention_period": {"type": "integer"},
         "validate_users_email": {"type": "boolean"},
-        "template_id": uuid,
         "template_version": {"type": "integer"},
         "archived_by_id": uuid,
     },

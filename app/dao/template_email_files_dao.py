@@ -57,3 +57,16 @@ def dao_get_template_email_file_by_id(template_email_files_id, template_version=
         )
 
     return TemplateEmailFile.query.get(template_email_files_id)
+
+
+@autocommit
+@version_class(
+    VersionOptions(TemplateEmailFile, history_class=TemplateEmailFileHistory),
+    VersionOptions(Template, history_class=TemplateHistory),
+)
+def dao_update_template_email_file(template_email_file: TemplateEmailFile):
+    template = Template.query.get(template_email_file.template_id)
+    template.updated_at = datetime.datetime.utcnow()
+    template_email_file.template_version = template.version + 1
+    db.session.add(template_email_file)
+    db.session.add(template)

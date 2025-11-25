@@ -125,3 +125,15 @@ def test_dao_get_template_email_files_by_template_id_historical(sample_email_tem
     assert template_email_file_fetched.template_version == template_version_to_get
     assert template_email_file_fetched.created_by_id == sample_template_email_file.created_by_id
 
+
+def test_dao_update_template_email_file(sample_email_template, sample_template_email_file):
+    sample_template_email_file.link_text = "click this new link"
+    sample_template_email_file.retention_period = 30
+    dao_update_template_email_file(sample_template_email_file)
+    fetched_template_email_file = TemplateEmailFile.query.get(sample_template_email_file.id)
+    fetched_template = Template.query.get(sample_email_template.id)
+    assert fetched_template_email_file.version == 2
+    assert fetched_template_email_file.template_version == 3
+    assert fetched_template_email_file.link_text == "click this new link"
+    assert fetched_template_email_file.retention_period == 30
+    assert fetched_template.version == 3
