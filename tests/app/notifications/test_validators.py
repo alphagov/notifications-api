@@ -125,7 +125,7 @@ class TestCheckServiceMessageLimit:
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_message_limit_over_message_limit_fails_with_cold_ie_missing_cache_value(
         self, mocker, notify_db_session, notification_type, key_type
-    ):
+    ) -> None:
         service = create_service(
             email_message_limit=4, letter_message_limit=4, sms_message_limit=4, international_sms_message_limit=4
         )
@@ -146,7 +146,7 @@ class TestCheckServiceMessageLimit:
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_message_limit_over_message_limit_fails(
         self, mocker, notify_db_session, notification_type, key_type
-    ):
+    ) -> None:
         service = create_service(
             email_message_limit=4,
             letter_message_limit=4,
@@ -168,7 +168,7 @@ class TestCheckServiceMessageLimit:
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_message_limit_check_with_multiple_notifications_for_jobs(
         self, mocker, notify_db_session, notification_type, key_type
-    ):
+    ) -> None:
         service = create_service(
             email_message_limit=10,
             letter_message_limit=10,
@@ -587,7 +587,7 @@ def test_validate_and_format_recipient_succeeds_with_international_numbers_if_se
 
 def test_validate_and_format_recipient_raises_when_service_over_daily_limit_for_international_sms(
     sample_service_full_permissions, mocker
-):
+) -> None:
     service = create_service(international_sms_message_limit=4, service_permissions=["sms", "international_sms"])
     mocker.patch("app.redis_store.get", return_value="5")
 
