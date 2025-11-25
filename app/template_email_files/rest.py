@@ -6,6 +6,7 @@ from app.constants import EMAIL_TYPE
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_email_files_dao import (
     dao_create_template_email_file,
+    dao_get_template_email_file_by_id,
     dao_get_template_email_files_by_template_id,
     dao_update_template_email_file,
 )
@@ -37,3 +38,19 @@ def create_template_email_file(service_id, template_id):
     template_email_file = TemplateEmailFile.from_json(template_email_files_json)
     dao_create_template_email_file(template_email_file)
     return jsonify(data=template_email_files_schema.dump(template_email_file)), 201
+
+
+@template_email_files_blueprint.route("", methods=["GET"])
+def get_template_email_files(service_id, template_id):
+    fetched_template = dao_get_template_by_id_and_service_id(template_id, service_id)
+    fetched_template_email_files = dao_get_template_email_files_by_template_id(template_id, fetched_template.version)
+    template_email_files = []
+    for template_email_file in fetched_template_email_files:
+        template_email_files += [template_email_files_schema.dump(template_email_file)]
+
+    return jsonify(data=template_email_files), 200
+
+@template_email_files_blueprint.route("/<uuid:template_email_files_id>")
+def get_template_email_file_by_id(service_id, template_id, template_email_files_id):
+    file = dao_get_template_email_file_by_id(template_email_files_id)
+    return jsonify(data=template_email_files_schema.dump(file))
