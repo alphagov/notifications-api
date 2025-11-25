@@ -186,17 +186,17 @@ class Config:
     # note how alternate db settings are explicitly targeted at the actual *replica*,
     # rather than just the "bulk" binding, which could potentially fall back to the
     # primary database if no replica is available.
+    _db_max_parallel_workers = os.getenv("DATABASE_MAX_PARALLEL_WORKERS")
+    _db_max_parallel_workers_replica = os.getenv("DATABASE_MAX_PARALLEL_WORKERS_REPLICA")
+
     DATABASE_MAX_PARALLEL_WORKERS = (
         0
         if (os.getenv("DATABASE_DEFAULT_DISABLE_PARALLEL_QUERY") == "1")
-        else (lambda: int(x) if (x := os.getenv("DATABASE_MAX_PARALLEL_WORKERS")) else None)
+        else (int(_db_max_parallel_workers) if _db_max_parallel_workers else None)
     )
-
-    def _get_database_max_parallel_workers_replica(self) -> int | None:
-        x = os.getenv("DATABASE_MAX_PARALLEL_WORKERS_REPLICA")
-        return int(x) if x else None
-
-    DATABASE_MAX_PARALLEL_WORKERS_REPLICA = _get_database_max_parallel_workers_replica
+    DATABASE_MAX_PARALLEL_WORKERS_REPLICA = (
+        int(_db_max_parallel_workers_replica) if _db_max_parallel_workers_replica else None
+    )
     DATABASE_STATEMENT_TIMEOUT_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_MS", 1_200_000))
     DATABASE_STATEMENT_TIMEOUT_REPLICA_MS = int(os.getenv("DATABASE_STATEMENT_TIMEOUT_REPLICA_MS", 1_200_000))
 
