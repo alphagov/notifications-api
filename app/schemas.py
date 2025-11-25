@@ -448,6 +448,22 @@ class TemplateHistorySchema(BaseTemplateSchema, UUIDsAsStringsMixin):
         exclude = tuple(set(BaseTemplateSchema.Meta.exclude) - {"jobs"})
 
 
+class TemplateEmailFilesSchema(BaseSchema):
+    filename = field_for(models.TemplateEmailFile, "filename", required=True)
+    link_text = field_for(models.TemplateEmailFile, "link_text", required=False)
+    retention_period = field_for(models.TemplateEmailFile, "retention_period", required=True)
+    validate_users_email = field_for(models.TemplateEmailFile, "validate_users_email", required=True)
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
+    archived_at = FlexibleDateTime()
+    template_id = field_for(models.TemplateEmailFile, "template_id", required=True)
+    template_version = field_for(models.TemplateEmailFile, "template_version", required=True)
+    created_by_id = fields.UUID()
+
+    class Meta(BaseSchema.Meta):
+        model = models.TemplateEmailFile
+
+
 class ApiKeySchema(BaseSchema):
     created_by = field_for(models.ApiKey, "created_by", required=True)
     key_type = field_for(models.ApiKey, "key_type", required=True)
@@ -714,6 +730,7 @@ service_schema = ServiceSchema()
 detailed_service_schema = DetailedServiceSchema()
 template_schema = TemplateSchema()
 template_schema_no_detail = TemplateSchemaNoDetail()
+template_email_files_schema = TemplateEmailFilesSchema()
 api_key_schema = ApiKeySchema()
 job_schema = JobSchema()
 notification_schema = NotificationModelSchema()
