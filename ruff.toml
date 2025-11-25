@@ -1,4 +1,4 @@
-# This file was automatically copied from notifications-utils@103.0.0
+# This file was automatically copied from notifications-utils@104.0.1
 
 extend-exclude = [
     "migrations/versions/",
@@ -11,7 +11,7 @@ extend-exclude = [
 
 line-length = 120
 
-target-version = "py311"
+target-version = "py313"
 
 [lint]
 select = [
