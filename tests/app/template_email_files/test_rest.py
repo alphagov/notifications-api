@@ -2,10 +2,8 @@ import uuid
 
 import freezegun
 import pytest
-from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.templates_dao import dao_update_template
-from app.errors import InvalidRequest
 from app.models import TemplateEmailFile, TemplateEmailFileHistory
 from tests.app.db import create_template_email_file
 
@@ -136,7 +134,7 @@ def test_template_update_bumps_new_file_template_version(sample_service, sample_
                 "retention_period": "not an integer",
                 "validate_users_email": True,
             },
-            [{'error': 'ValidationError', 'message': 'retention_period not an integer is not of type integer'}],
+            [{"error": "ValidationError", "message": "retention_period not an integer is not of type integer"}],
         ),
         (
             {
@@ -146,7 +144,7 @@ def test_template_update_bumps_new_file_template_version(sample_service, sample_
                 "retention_period": 90,
                 "validate_users_email": "this is a string",
             },
-            [{"error": "ValidationError", "message": "validate_users_email this is a string is not of type boolean"}]
+            [{"error": "ValidationError", "message": "validate_users_email this is a string is not of type boolean"}],
         ),
     ],
 )

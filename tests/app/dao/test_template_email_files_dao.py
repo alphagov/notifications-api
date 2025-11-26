@@ -2,6 +2,7 @@ import datetime
 
 import pytest
 from sqlalchemy.exc import NoResultFound
+
 from app.constants import EMAIL_TYPE
 from app.dao.template_email_files_dao import (
     dao_create_template_email_file,
@@ -61,7 +62,6 @@ def test_dao_get_template_email_file_by_id(sample_template_email_file, sample_se
 def test_dao_get_template_email_file_by_id_returns_none_when_not_found():
     with pytest.raises(NoResultFound):
         dao_get_template_email_file_by_id("2117b6ab-0219-4bfa-aaa4-a3248dafa1a0")
-
 
 
 def test_dao_get_template_email_files_by_template_id(sample_template_email_file, sample_email_template, sample_service):
