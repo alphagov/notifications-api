@@ -45,18 +45,8 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
 
 
 @autocommit
-def dao_get_template_email_file_by_id(template_email_files_id, template_version=None):
-    if template_version is not None:
-        return (
-            TemplateEmailFileHistory.query.filter(
-                TemplateEmailFileHistory.id == template_email_files_id,
-                TemplateEmailFileHistory.template_version <= template_version,
-            )
-            .order_by(TemplateEmailFileHistory.template_version.desc())
-            .first()
-        )
-
-    return TemplateEmailFile.query.get(template_email_files_id)
+def dao_get_template_email_file_by_id(template_email_files_id):
+    return TemplateEmailFile.query.filter(TemplateEmailFile.id == template_email_files_id).one()
 
 
 @autocommit

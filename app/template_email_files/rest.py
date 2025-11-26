@@ -11,7 +11,7 @@ from app.dao.template_email_files_dao import (
     dao_update_template_email_file,
 )
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
-from app.errors import InvalidRequest
+from app.errors import InvalidRequest, register_errors
 from app.models import TemplateEmailFile
 from app.schema_validation import validate
 from app.schemas import template_email_files_schema
@@ -23,6 +23,8 @@ from app.template_email_files.template_email_files_schemas import (
 template_email_files_blueprint = Blueprint(
     "template_email_files", __name__, url_prefix="/service/<uuid:service_id>/<uuid:template_id>/template_email_files"
 )
+
+register_errors(template_email_files_blueprint)
 
 
 @template_email_files_blueprint.route("", methods=["POST"])
@@ -50,10 +52,12 @@ def get_template_email_files(service_id, template_id):
 
     return jsonify(data=template_email_files), 200
 
+
 @template_email_files_blueprint.route("/<uuid:template_email_files_id>")
 def get_template_email_file_by_id(service_id, template_id, template_email_files_id):
     file = dao_get_template_email_file_by_id(template_email_files_id)
-    return jsonify(data=template_email_files_schema.dump(file))
+    return jsonify(data=template_email_files_schema.dump(file)), 200
+
 
 @template_email_files_blueprint.route("/<uuid:template_email_files_id>", methods=["POST"])
 def update_template_email_file(template_email_files_id, service_id, template_id):

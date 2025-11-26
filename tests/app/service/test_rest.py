@@ -329,7 +329,6 @@ def test_get_service_by_id_has_default_service_permissions(admin_request, sample
 
 def test_get_service_by_id_should_404_if_no_service(admin_request, notify_db_session):
     json_resp = admin_request.get("service.get_service_by_id", service_id=uuid.uuid4(), _expected_status=404)
-
     assert json_resp["result"] == "error"
     assert json_resp["message"] == "No result found"
 
