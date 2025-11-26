@@ -53,15 +53,15 @@ def get_template_email_files(service_id, template_id):
     return jsonify(data=template_email_files), 200
 
 
-@template_email_files_blueprint.route("/<uuid:template_email_files_id>")
-def get_template_email_file_by_id(service_id, template_id, template_email_files_id):
-    file = dao_get_template_email_file_by_id(template_email_files_id)
+@template_email_files_blueprint.route("/<uuid:template_email_file_id>")
+def get_template_email_file_by_id(service_id, template_id, template_email_file_id):
+    file = dao_get_template_email_file_by_id(template_email_file_id)
     return jsonify(data=template_email_files_schema.dump(file)), 200
 
 
-@template_email_files_blueprint.route("/<uuid:template_email_files_id>", methods=["POST"])
-def update_template_email_file(template_email_files_id, service_id, template_id):
-    current_data = TemplateEmailFile.query.filter(TemplateEmailFile.id == template_email_files_id).one()
+@template_email_files_blueprint.route("/<uuid:template_email_file_id>", methods=["POST"])
+def update_template_email_file(template_email_file_id, service_id, template_id):
+    current_data = TemplateEmailFile.query.filter(TemplateEmailFile.id == template_email_file_id).one()
     current_data_json = template_email_files_schema.dump(current_data)
     updated_data_json = validate(request.get_json(), post_create_template_email_files_schema)
     updated_data_json = current_data_json | updated_data_json
@@ -72,9 +72,9 @@ def update_template_email_file(template_email_files_id, service_id, template_id)
     return jsonify(data=template_email_files_schema.dump(update_dict)), 200
 
 
-@template_email_files_blueprint.route("/<uuid:template_email_files_id>/archive", methods=["POST"])
-def archive_template_email_file(template_email_files_id, template_id, service_id):
-    current_data = TemplateEmailFile.query.get(template_email_files_id)
+@template_email_files_blueprint.route("/<uuid:template_email_file_id>/archive", methods=["POST"])
+def archive_template_email_file(template_email_file_id, template_id, service_id):
+    current_data = TemplateEmailFile.query.get(template_email_file_id)
     current_data_json = template_email_files_schema.dump(current_data)
     updated_data_json = validate(request.get_json(), post_archive_template_email_files_schema)
     updated_data_json = current_data_json | updated_data_json

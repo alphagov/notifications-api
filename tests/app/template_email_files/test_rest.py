@@ -226,7 +226,7 @@ def test_get_template_email_file_by_id_returns_correct_file(sample_template_emai
     response = admin_request.get(
         "template_email_files.get_template_email_file_by_id",
         template_id=sample_template_email_file.template_id,
-        template_email_files_id=sample_template_email_file.id,
+        template_email_file_id=sample_template_email_file.id,
         service_id=sample_service.id,
         _expected_status=200,
     )
@@ -234,13 +234,13 @@ def test_get_template_email_file_by_id_returns_correct_file(sample_template_emai
     assert response["data"]["version"] == sample_template_email_file.version
 
 
-def test_get_template_email_file_by_id_when_file_does_not_exist_returns(
+def test_get_template_email_file_by_id_when_file_does_not_exist_returns_404(
     sample_service, sample_email_template, admin_request, fake_uuid
 ):
     admin_request.get(
         "template_email_files.get_template_email_file_by_id",
         template_id=sample_email_template.id,
-        template_email_files_id=fake_uuid,
+        template_email_file_id=fake_uuid,
         service_id=sample_service.id,
         _expected_status=404,
     )
@@ -267,7 +267,7 @@ def test_update_template_email_files(client, sample_service, sample_email_templa
         "template_email_files.update_template_email_file",
         service_id=sample_service.id,
         template_id=file_original.template_id,
-        template_email_files_id=file_original.id,
+        template_email_file_id=file_original.id,
         _expected_status=200,
         _data=data_updated,
     )
@@ -319,7 +319,7 @@ def test_archive_template_email_file(client, sample_service, sample_email_templa
             "template_email_files.archive_template_email_file",
             service_id=sample_service.id,
             template_id=sample_email_template.id,
-            template_email_files_id=template_email_file.id,
+            template_email_file_id=template_email_file.id,
             _expected_status=200,
             _data=data,
         )
