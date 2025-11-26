@@ -36,6 +36,7 @@ from app.notifications.validators import (
     check_service_sms_sender_id,
     check_template_is_active,
     check_template_is_for_notification_type,
+    get_daily_rate_limit_value,
     service_can_send_to_recipient,
     validate_address,
     validate_and_format_recipient,
@@ -195,6 +196,24 @@ def test_check_template_is_for_notification_type_pass(template_type, notificatio
         check_template_is_for_notification_type(notification_type=notification_type, template_type=template_type)
         is None
     )
+
+
+@pytest.mark.parametrize(
+    "notification_type, expected_value", [(SMS_TYPE, 50_000), (LETTER_TYPE, 50_000), (EMAIL_TYPE, 50_000)]
+)
+def test_get_daily_rate_limit_value_for_test_keys_for_live_services(sample_service, notification_type, expected_value):
+    sample_service.email_message_limit = 50_000
+    sample_service.sms_message_limit = 50_000
+    sample_service.letter_message_limit = 50_000
+    result = get_daily_rate_limit_value(sample_service, "test", notification_type)
+    assert result == expected_value
+
+
+@pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
+def test_get_daily_rate_limit_value_for_test_keys_for_trial_services(sample_service, notification_type):
+    sample_service.restricted = True
+    result = get_daily_rate_limit_value(sample_service, "test", notification_type)
+    assert result == current_app.config["DEFAULT_LIVE_SERVICE_RATE_LIMITS"][notification_type]
 
 
 @pytest.mark.parametrize("template_type, notification_type", [(SMS_TYPE, EMAIL_TYPE), (EMAIL_TYPE, SMS_TYPE)])

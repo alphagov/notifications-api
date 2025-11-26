@@ -95,6 +95,13 @@ class Config:
 
     INTERNAL_CLIENT_API_KEYS = json.loads(os.environ.get("INTERNAL_CLIENT_API_KEYS", "{}"))
 
+    DEFAULT_SERVICE_INTERNATIONAL_SMS_LIMIT = 100
+    DEFAULT_LIVE_SERVICE_RATE_LIMITS = {
+        "email": 250_000,
+        "sms": 250_000,
+        "letter": 20_000,
+    }
+
     # encyption secret/salt
     SECRET_KEY = os.getenv("SECRET_KEY")
     DANGEROUS_SALT = os.getenv("DANGEROUS_SALT")
