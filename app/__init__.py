@@ -465,19 +465,19 @@ def setup_sqlalchemy_events(app):  # noqa: C901
         TOTAL_DB_CONNECTIONS = Gauge(
             "db_connection_total_connected",
             "How many db connections are currently held (potentially idle) by the server",
-            ["bind"],
+            ["bind", "inet_server_addr"],
         )
 
         TOTAL_CHECKED_OUT_DB_CONNECTIONS = Gauge(
             "db_connection_total_checked_out",
             "How many db connections are currently checked out by web requests",
-            ["bind"],
+            ["bind", "inet_server_addr"],
         )
 
         DB_CONNECTION_OPEN_DURATION_SECONDS = Histogram(
             "db_connection_open_duration_seconds",
             "How long db connections are held open for in seconds",
-            ["method", "host", "path", "bind"],
+            ["method", "host", "path", "bind", "inet_server_addr"],
         )
 
         # do not be tempted to reference _bind_key & _engine from inside a closure - the for-loop
@@ -486,9 +486,6 @@ def setup_sqlalchemy_events(app):  # noqa: C901
 
             @event.listens_for(_engine, "connect")
             def connect(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
-                # connection first opened with db
-                TOTAL_DB_CONNECTIONS.labels(str(bind_key)).inc()
-
                 # ensure the following connection parameters get retained as the session-scoped
                 # parameters - they won't if they are set inside a transaction that gets rolled
                 # back for some reason (*despite* our explicit use of SET SESSION) and .readonly
@@ -532,18 +529,27 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                     cursor.execute("SET SESSION max_parallel_workers_per_gather = %s", (max_parallel_workers,))
                 # else use db default max_parallel_workers_per_gather
 
+                # inet_server_addr is how we can know which db instance (primary or replica(s)) we're
+                # *actually* connected to
+                cursor.execute("SELECT inet_server_addr()")
+                connection_record.info["inet_server_addr"] = cursor.fetchone()[0]
+
                 dbapi_connection.autocommit = False
+
+                TOTAL_DB_CONNECTIONS.labels(str(bind_key), str(connection_record.info["inet_server_addr"])).inc()
 
             @event.listens_for(_engine, "close")
             def close(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
                 # connection closed (probably only happens with overflow connections)
-                TOTAL_DB_CONNECTIONS.labels(str(bind_key)).dec()
+                TOTAL_DB_CONNECTIONS.labels(str(bind_key), str(connection_record.info["inet_server_addr"])).dec()
 
             @event.listens_for(_engine, "checkout")
             def checkout(dbapi_connection, connection_record, connection_proxy, bind_key=_bind_key, engine=_engine):
                 try:
                     # connection given to a web worker
-                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(str(bind_key)).inc()
+                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(
+                        str(bind_key), str(connection_record.info["inet_server_addr"])
+                    ).inc()
 
                     # this will overwrite any previous checkout_at timestamp
                     connection_record.info["checkout_at"] = time.monotonic()
@@ -586,7 +592,9 @@ def setup_sqlalchemy_events(app):  # noqa: C901
 
                 try:
                     # connection returned by a web worker
-                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(str(bind_key)).dec()
+                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(
+                        str(bind_key), str(connection_record.info["inet_server_addr"])
+                    ).dec()
 
                     # duration that connection was held by a single web request
                     duration = time.monotonic() - connection_record.info["checkout_at"]
@@ -596,6 +604,7 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                         connection_record.info["request_data"]["host"],
                         connection_record.info["request_data"]["url_rule"],
                         str(bind_key),
+                        str(connection_record.info["inet_server_addr"]),
                     ).observe(duration)
                 except Exception:
                     current_app.logger.exception("Exception caught for checkin event.")
