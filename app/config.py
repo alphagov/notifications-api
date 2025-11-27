@@ -6,6 +6,8 @@ from typing import Any
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 
+from app.constants import EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, SMS_TYPE
+
 
 class QueueNames:
     PERIODIC = "periodic-tasks"
@@ -95,11 +97,11 @@ class Config:
 
     INTERNAL_CLIENT_API_KEYS = json.loads(os.environ.get("INTERNAL_CLIENT_API_KEYS", "{}"))
 
-    DEFAULT_SERVICE_INTERNATIONAL_SMS_LIMIT = 100
     DEFAULT_LIVE_SERVICE_RATE_LIMITS = {
-        "email": 250_000,
-        "sms": 250_000,
-        "letter": 20_000,
+        EMAIL_TYPE: 250_000,
+        SMS_TYPE: 250_000,
+        LETTER_TYPE: 20_000,
+        INTERNATIONAL_SMS_TYPE: 100,
     }
 
     # encyption secret/salt
