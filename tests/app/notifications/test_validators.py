@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+from unittest.mock import call
 from uuid import uuid4
 
 import pytest
@@ -89,14 +91,15 @@ class TestCheckServiceMessageLimit:
         assert mock_set.call_args_list == []
 
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
-    def test_check_service_over_daily_message_limit_should_not_interact_with_cache_for_test_key(
+    def test_check_service_over_daily_message_limit_interacts_with_cache_for_test_key(
         self, sample_service, mocker, notification_type
     ):
+        yyyy_mm_dd = datetime.now(UTC).strftime("%Y-%m-%d")
         mocker.patch("app.notifications.validators.redis_store")
         mock_get = mocker.patch("app.notifications.validators.redis_store.get", side_effect=[None])
         serialised_service = SerialisedService.from_id(sample_service.id)
         check_service_over_daily_message_limit(serialised_service, "test", notification_type=notification_type)
-        assert mock_get.call_args_list == []
+        assert mock_get.call_args_list == [call(f"{sample_service.id}-test-{notification_type}-{yyyy_mm_dd}-count")]
 
     @pytest.mark.parametrize("key_type", ["team", "normal"])
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
