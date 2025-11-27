@@ -31,6 +31,7 @@ from app.dao.service_sms_sender_dao import (
     update_existing_sms_sender_with_inbound_number,
 )
 from app.dao.services_dao import dao_add_user_to_service, dao_create_service
+from app.dao.template_email_files_dao import dao_create_template_email_file
 from app.dao.templates_dao import dao_create_template, dao_update_template
 from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao, create_unsubscribe_request_reports_dao
 from app.dao.users_dao import save_model_user
@@ -67,6 +68,7 @@ from app.models import (
     ServicePermission,
     ServiceSmsSender,
     Template,
+    TemplateEmailFile,
     TemplateFolder,
     UnsubscribeRequestReport,
     User,
@@ -188,6 +190,27 @@ def create_service_with_defined_sms_sender(sms_sender_value="1234567", *args, **
     )
 
     return service
+
+
+def create_template_email_file(
+    template_id,
+    created_by_id,
+    filename="example.pdf",
+    link_text="follow this link",
+    retention_period=90,
+    validate_users_email=True,
+):
+    data = {
+        "filename": filename,
+        "link_text": link_text,
+        "retention_period": retention_period,
+        "validate_users_email": validate_users_email,
+        "template_id": template_id,
+        "created_by_id": created_by_id,
+    }
+    template_email_file = TemplateEmailFile(**data)
+    dao_create_template_email_file(template_email_file)
+    return template_email_file
 
 
 def create_template(
