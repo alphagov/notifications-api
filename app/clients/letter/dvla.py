@@ -296,6 +296,7 @@ class DVLAClient:
                     callback_url=callback_url,
                 ),
             )
+            current_app.logger.info("Sent letter to DVLA for notification %s", notification_id)
             response.raise_for_status()
             return response.json()
 
