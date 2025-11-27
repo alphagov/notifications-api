@@ -1,11 +1,13 @@
 import os
 import re
+from datetime import datetime, timedelta
 from tempfile import NamedTemporaryFile
 
 import boto3
 from moto import mock_aws
 
-from app.functional_tests_fixtures import _create_db_objects, apply_fixtures
+from app import db
+from app.functional_tests_fixtures import _create_db_objects, _create_user, apply_fixtures
 from tests.conftest import set_config_values
 
 
@@ -92,6 +94,14 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
 
     for value in variables:
         assert "'" not in value, "value cannot contain single quote"
+
+
+def test_create_user_revalidates_email():
+    test_user = _create_user("test_user", "test@example.com", "passw@rd", auth_type="email_auth")
+    test_user.email_access_validated_at = datetime.utcnow() - timedelta(days=365)
+    db.session.commit()
+    test_user = _create_user("test_user", "test@example.com", "passw@rd", auth_type="email_auth")
+    assert (datetime.utcnow() - test_user.email_access_validated_at).total_seconds() < 60
 
 
 @mock_aws
