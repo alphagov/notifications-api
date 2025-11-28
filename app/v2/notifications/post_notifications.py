@@ -257,13 +257,14 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
     personalisation_data = personalisation_data.copy()
 
     check_if_service_can_send_files_by_email(
-        service_contact_link=authenticated_service.contact_link, service_id=authenticated_service.id
+        service_contact_link=authenticated_service.contact_link,  # type: ignore[attr-defined]
+        service_id=authenticated_service.id,  # type: ignore[attr-defined]
     )
 
     for key in file_keys:
         if simulated:
             personalisation_data[key] = (
-                document_download_client.get_upload_url_for_simulated_email(service.id) + "/test-document"
+                document_download_client.get_upload_url_for_simulated_email(service.id) + "/test-document"  # type: ignore[attr-defined]
             )
         else:
             confirm_email = personalisation_data[key].get("confirm_email_before_download", True)
@@ -274,7 +275,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
 
             filename = personalisation_data[key].get("filename")
 
-            personalisation_data[key] = document_download_client.upload_document(
+            personalisation_data[key] = document_download_client.upload_document(  # type: ignore[attr-defined]
                 service.id,
                 personalisation_data[key]["file"],
                 personalisation_data[key].get("is_csv"),

@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from itertools import groupby
 from operator import attrgetter
 
@@ -662,8 +662,8 @@ def get_slow_text_message_delivery_reports_by_provider(
     )
 
     providers_slow_delivery_reports = []
-    for provider, rows in groupby(slow_notification_counts, key=attrgetter("identifier")):
-        rows = list(rows)
+    for provider, rows_iter in groupby(slow_notification_counts, key=attrgetter("identifier")):
+        rows = list(rows_iter)
         total_notifications = sum(row.count for row in rows)
         slow_notifications = sum(row.count for row in rows if row.slow)
         providers_slow_delivery_reports.append(
@@ -994,7 +994,7 @@ def get_service_ids_with_notifications_on_date(notification_type, date):
 @autocommit
 def dao_record_letter_despatched_on_by_id(
     notification_id: uuid.UUID,
-    despatched_on: datetime.date,
+    despatched_on: date,
     cost_threshold: LetterCostThreshold,
 ):
     stmt = (

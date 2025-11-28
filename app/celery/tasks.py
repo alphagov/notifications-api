@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 from datetime import datetime
+from uuid import UUID
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
@@ -624,7 +625,7 @@ def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
 
 
 @notify_celery.task(bind=True, name="process-report-request")
-def process_report_request(self, service_id, report_request_id):
+def process_report_request(self, service_id: UUID, report_request_id: UUID):
     report_request = dao_get_report_request_by_id(service_id=service_id, report_id=report_request_id)
 
     extra = {
