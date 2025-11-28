@@ -9,7 +9,7 @@ from tests.app.db import create_template_email_file
 
 
 @freezegun.freeze_time("2025-01-01 11:09:00.000000")
-def test_valid_input_creates_template_email_files_post(sample_service, sample_email_template, admin_request):
+def test_create_template_email_file_happy_path(sample_service, sample_email_template, admin_request):
     data = {
         "filename": "example.pdf",
         "link_text": "click this link!",
@@ -24,6 +24,8 @@ def test_valid_input_creates_template_email_files_post(sample_service, sample_em
         _data=data,
         _expected_status=201,
     )
+
+    # test response contains created email file data
     assert response["data"]["filename"] == "example.pdf"
     assert response["data"]["retention_period"] == 90
     assert response["data"]["link_text"] == "click this link!"
@@ -31,6 +33,8 @@ def test_valid_input_creates_template_email_files_post(sample_service, sample_em
     assert response["data"]["template_id"] == str(sample_email_template.id)
     assert response["data"]["template_version"] == int(sample_email_template.version)
     assert response["data"]["created_by_id"] == str(sample_service.users[0].id)
+
+    # test that email file gets persisted into the database
     template_email_file = TemplateEmailFile.query.get(str(response["data"]["id"]))
     assert template_email_file.filename == "example.pdf"
     assert template_email_file.retention_period == 90
@@ -43,7 +47,9 @@ def test_valid_input_creates_template_email_files_post(sample_service, sample_em
     assert str(template_email_file.created_at) == "2025-01-01 11:09:00"
 
 
-def test_create_fails_if_template_not_email_type(sample_service, sample_sms_template, admin_request):
+def test_create_template_email_file_fails_if_template_not_email_type(
+    sample_service, sample_sms_template, admin_request
+):
     data = {
         "filename": "example.pdf",
         "link_text": "click this link!",
@@ -62,7 +68,7 @@ def test_create_fails_if_template_not_email_type(sample_service, sample_sms_temp
     assert response["result"] == "error"
 
 
-def test_create_fails_if_template_does_not_exist(sample_service, admin_request):
+def test_create_template_email_file_fails_if_template_does_not_exist(sample_service, admin_request):
     non_existent_template_id = uuid.uuid4()
     data = {
         "filename": "example.pdf",
@@ -82,7 +88,7 @@ def test_create_fails_if_template_does_not_exist(sample_service, admin_request):
     assert response["result"] == "error"
 
 
-def test_create_fails_if_template_already_has_file_with_same_name(
+def test_create_template_email_file_fails_if_template_already_has_file_with_same_name(
     sample_service, admin_request, sample_email_template, sample_template_email_file
 ):
     data = {
@@ -103,25 +109,18 @@ def test_create_fails_if_template_already_has_file_with_same_name(
     assert response["result"] == "error"
 
 
-def test_template_update_bumps_new_file_template_version(sample_service, sample_email_template, admin_request):
-    file_one_data = {
-        "filename": "example.pdf",
-        "link_text": "click this link!",
-        "retention_period": 90,
-        "validate_users_email": True,
-        "created_by_id": str(sample_service.users[0].id),
-    }
-    response = admin_request.post(
-        "template_email_files.create_template_email_file",
-        service_id=sample_service.id,
-        template_id=sample_email_template.id,
-        _data=file_one_data,
-        _expected_status=201,
-    )
-    file_one_id = response["data"]["id"]
-    assert response["data"]["template_version"] == 2
+def test_create_template_email_file_creates_file_with_latest_template_version(
+    sample_service, sample_email_template, sample_template_email_file, admin_request
+):
+    # template version after creating the first email file
+    assert sample_template_email_file.template_version == 2
+
+    # updating the template
     sample_email_template.content = "here is some new content"
     dao_update_template(sample_email_template)
+    assert sample_email_template.version == 3
+
+    # create second email file
     file_two_data = {
         "filename": "example_two.pdf",
         "link_text": "here's a pdf",
@@ -136,11 +135,10 @@ def test_template_update_bumps_new_file_template_version(sample_service, sample_
         _data=file_two_data,
         _expected_status=201,
     )
+
+    # test that second email file is created with newest template version
     file_two_id = response["data"]["id"]
-    assert response["data"]["template_version"] == 4
-    file_one_fetched = TemplateEmailFile.query.get(str(file_one_id))
     file_two_fetched = TemplateEmailFile.query.get(str(file_two_id))
-    assert file_one_fetched.template_version == 2
     assert file_two_fetched.template_version == 4
 
 
@@ -169,7 +167,7 @@ def test_template_update_bumps_new_file_template_version(sample_service, sample_
         ),
     ],
 )
-def test_invalid_input_raises_exception_template_email_files_post(
+def test_create_template_email_file_raises_exception_for_invalid_data(
     client, sample_service, sample_email_template, data, expected_errors, admin_request
 ):
     # default to function-scoped fixture if not set as test parameter
