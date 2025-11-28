@@ -89,7 +89,7 @@ drop-test-dbs-in-docker:
 test: ## Run tests
 	ruff check .
 	ruff format --check .
-	pytest -n logical --maxfail=10 -v
+	pytest -n logical --maxfail=10
 
 .PHONY: watch-tests
 watch-tests: ## Watch tests and run on change
