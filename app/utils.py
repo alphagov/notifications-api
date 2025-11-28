@@ -6,6 +6,8 @@ from urllib.parse import urljoin
 from flask import current_app, url_for
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
+from notifications_utils.s3 import S3ObjectNotFound
+from notifications_utils.s3 import s3download as utils_s3download
 from notifications_utils.template import (
     HTMLEmailTemplate,
     LetterPrintTemplate,
@@ -195,3 +197,24 @@ def is_classmethod(method, cls):
     with suppress(AttributeError, KeyError):
         return isinstance(cls.__dict__[method.__name__], classmethod)
     return False
+
+
+def try_download_template_email_file_from_s3(service_id, template_email_file_id):
+    file_path = f"{service_id}/{template_email_file_id}"
+    try:
+        return utils_s3download(bucket_name=current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"], filename=file_path)
+
+    except S3ObjectNotFound as e:
+        current_app.logger.warning(
+            "Template email file %s not in %s bucket",
+            template_email_file_id,
+            current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"],
+            extra={
+                "service_id": service_id,
+                "file_id": template_email_file_id,
+                "s3_key": file_path,
+                "s3_bucket": current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"],
+            },
+        )
+
+        raise e
