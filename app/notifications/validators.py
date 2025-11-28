@@ -73,21 +73,28 @@ def token_bucket_rate_limit_exceeded(service, key_type):
         return remaining < 1
 
 
+def get_daily_rate_limit_value(service, key_type, notification_type):
+    if key_type == KEY_TYPE_TEST and service.restricted:
+        rate_limits = current_app.config["DEFAULT_LIVE_SERVICE_RATE_LIMITS"]
+    else:
+        rate_limits = {
+            EMAIL_TYPE: service.email_message_limit,
+            SMS_TYPE: service.sms_message_limit,
+            INTERNATIONAL_SMS_TYPE: service.international_sms_message_limit,
+            LETTER_TYPE: service.letter_message_limit,
+        }
+
+    return rate_limits[notification_type]
+
+
 def check_service_over_daily_message_limit(service, key_type, notification_type, num_notifications=1):
-    if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
+    if not current_app.config["REDIS_ENABLED"]:
         return
 
-    rate_limits = {
-        EMAIL_TYPE: service.email_message_limit,
-        SMS_TYPE: service.sms_message_limit,
-        INTERNATIONAL_SMS_TYPE: service.international_sms_message_limit,
-        LETTER_TYPE: service.letter_message_limit,
-    }
-
     limit_name = notification_type
-    limit_value = rate_limits[notification_type]
+    limit_value = get_daily_rate_limit_value(service, key_type, notification_type)
 
-    cache_key = daily_limit_cache_key(service.id, notification_type=notification_type)
+    cache_key = daily_limit_cache_key(service.id, notification_type=notification_type, key_type=key_type)
     if (service_stats := redis_store.get(cache_key)) is None:
         # first message of the day, set the cache to 0 and the expiry to 24 hours
         redis_store.set(cache_key, 0, ex=86400)
