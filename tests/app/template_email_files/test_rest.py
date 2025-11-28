@@ -82,6 +82,27 @@ def test_create_fails_if_template_does_not_exist(sample_service, admin_request):
     assert response["result"] == "error"
 
 
+def test_create_fails_if_template_already_has_file_with_same_name(
+    sample_service, admin_request, sample_email_template, sample_template_email_file
+):
+    data = {
+        "filename": "example.pdf",
+        "link_text": "click this link!",
+        "retention_period": 90,
+        "validate_users_email": True,
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    response = admin_request.post(
+        "template_email_files.create_template_email_file",
+        service_id=sample_service.id,
+        template_id=sample_email_template.id,
+        _data=data,
+        _expected_status=400,
+    )
+    assert response["message"] == f"File named example.pdf already exists for template id {sample_email_template.id}"
+    assert response["result"] == "error"
+
+
 def test_template_update_bumps_new_file_template_version(sample_service, sample_email_template, admin_request):
     file_one_data = {
         "filename": "example.pdf",
