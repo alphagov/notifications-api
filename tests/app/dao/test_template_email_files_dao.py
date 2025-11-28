@@ -65,16 +65,20 @@ def test_dao_get_template_email_file_by_id_returns_none_when_not_found():
 
 
 def test_dao_get_template_email_files_by_template_id(sample_template_email_file, sample_email_template, sample_service):
+    # should be fetched
     file_two = create_template_email_file(
         filename="example_two",
         template_id=sample_email_template.id,
         created_by_id=sample_email_template.created_by_id,
     )
     template_two = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="other_template")
+    # shouldn't be fetched
     create_template_email_file(
         filename="example_three", template_id=template_two.id, created_by_id=template_two.created_by_id
     )
+
     fetched_file_list = dao_get_template_email_files_by_template_id(str(sample_template_email_file.template_id))
+
     assert len(fetched_file_list) == 2
     assert fetched_file_list[0].template_id == fetched_file_list[1].template_id
     assert fetched_file_list[1].filename == file_two.filename

@@ -20,7 +20,7 @@ def dao_create_template_email_file(template_email_file: TemplateEmailFile):
 
 @autocommit
 def dao_get_template_email_files_by_template_id(template_id, template_version=None):
-    if template_version is not None:
+    if template_version:
         template_email_files_all_template_versions = TemplateEmailFileHistory.query.filter(
             TemplateEmailFileHistory.template_id == template_id,
             TemplateEmailFileHistory.template_version <= template_version,
@@ -38,6 +38,7 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
                 ],
             )
         )
+
     return TemplateEmailFile.query.filter(
         TemplateEmailFile.template_id == template_id,
         TemplateEmailFile.archived_at == None,  # noqa: E711
