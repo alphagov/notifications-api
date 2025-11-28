@@ -289,6 +289,25 @@ def sample_email_template_with_placeholders(sample_service):
 
 
 @pytest.fixture(scope="function")
+def sample_email_template_with_email_file_placeholders(sample_service):
+    content = """
+    Dear ((name)),
+
+    Here is your invitation:
+    ((invitation.pdf))
+
+    And here is the form to bring to the appointment:
+    ((form.pdf))
+    """
+    return create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+        subject="Your appointment invitation",
+        content=content,
+    )
+
+
+@pytest.fixture(scope="function")
 def sample_email_template_with_html(sample_service):
     return create_template(
         sample_service,
@@ -303,6 +322,28 @@ def sample_template_email_file(sample_email_template):
     return create_template_email_file(
         template_id=sample_email_template.id, created_by_id=sample_email_template.created_by_id
     )
+
+
+@pytest.fixture(scope="function")
+def sample_email_template_with_template_email_files(sample_email_template_with_email_file_placeholders):
+    template = sample_email_template_with_email_file_placeholders
+    create_template_email_file(
+        template_id=template.id,
+        created_by_id=template.created_by_id,
+        filename="invitation.pdf",
+        validate_users_email=True,
+        retention_period=26,
+    )
+
+    create_template_email_file(
+        template_id=template.id,
+        created_by_id=template.created_by_id,
+        filename="form.pdf",
+        validate_users_email=True,
+        retention_period=26,
+    )
+
+    return template
 
 
 @pytest.fixture(scope="function")
@@ -1432,3 +1473,19 @@ def sample_report_request(sample_user, sample_service):
     dao_create_report_request(report_request)
 
     return report_request
+
+
+@pytest.fixture(scope="function")
+def mock_utils_s3_download(mocker):
+    return mocker.patch(
+        "app.utils.utils_s3download",
+        side_effect=["file_from_s3_1", "file_from_s3_2"],
+    )
+
+
+@pytest.fixture(scope="function")
+def mock_document_download_client_upload(mocker):
+    return mocker.patch(
+        "app.document_download_client.upload_document",
+        side_effect=["documents.gov.uk/link1", "documents.gov.uk/link2"],
+    )
