@@ -1,5 +1,7 @@
 # app/queues.py
 
+from flask import current_app
+
 from app.config import QueueNames
 
 
@@ -38,3 +40,23 @@ def get_message_group_id_for_queue(
     # default to per service for now, this includes:
     # callbacks, antivirus, scheduled tasks, reporting, retry, etc.
     return str(service_id)
+
+
+def get_queue_group_id(request):
+    group_id = None
+    if hasattr(request, "headers") and request.headers:
+        group_id = request.headers.get("MessageGroupId")
+
+    return group_id
+
+
+def log_queue_details(request, function_name, queue_name):
+    group_id = get_queue_group_id(request)
+
+    current_app.logger.info(
+        "Fair queue DEBUG - operation: %s, queue name %s and group_id: %s",
+        function_name,
+        queue_name,
+        group_id,
+        extra={"message_group_id": group_id},
+    )

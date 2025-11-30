@@ -52,11 +52,14 @@ from app.letters.utils import (
     move_scan_to_invalid_pdf_bucket,
 )
 from app.models import Service
+from app.queues import log_queue_details
 from app.utils import batched
 
 
 @notify_celery.task(bind=True, name="get-pdf-for-templated-letter", max_retries=15, default_retry_delay=300)
 def get_pdf_for_templated_letter(self, notification_id):
+    log_queue_details(self.request, "get_pdf_for_templated_letter", QueueNames.CREATE_LETTERS_PDF)
+
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
         letter_filename = generate_letter_pdf_filename(

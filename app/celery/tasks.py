@@ -50,7 +50,7 @@ from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
 )
-from app.queues import get_message_group_id_for_queue
+from app.queues import get_message_group_id_for_queue, log_queue_details
 from app.report_requests.process_notifications_report import ReportRequestProcessor
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
@@ -68,16 +68,19 @@ class ProcessReportRequestException(Exception):
     pass
 
 
-@notify_celery.task(name="process-job")
-def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
+@notify_celery.task(bind=True, name="process-job")
+def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
+
     current_app.logger.info(
         "Starting process-job task for job id %s with status: %s",
         job_id,
         job.job_status,
         extra={"job_id": job_id, "job_status": job.job_status},
     )
+
+    log_queue_details(self.request, "process_job", QueueNames.JOBS)
 
     if job.job_status != JOB_STATUS_PENDING:
         return
@@ -165,11 +168,14 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, group_id,
             )
 
 
-@notify_celery.task(name="shatter-job-rows")
+@notify_celery.task(bind=True, name="shatter-job-rows")
 def shatter_job_rows(
+    self,
     template_type: str,
     args_kwargs_seq: Sequence,
 ):
+    log_queue_details(self.request, "shatter_job_rows", QueueNames.JOBS)
+
     for task_args_kwargs in args_kwargs_seq:
         process_job_row(template_type, task_args_kwargs)
 
@@ -289,6 +295,8 @@ def save_sms(
     encoded_notification,
     sender_id=None,
 ):
+    log_queue_details(self.request, "save_sms", QueueNames.DATABASE)
+
     notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_service_id_and_version(
@@ -401,6 +409,8 @@ def save_sms(
 
 @notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
 def save_email(self, service_id, notification_id, encoded_notification, sender_id=None, early_log_level=logging.DEBUG):
+    log_queue_details(self.request, "save_email", QueueNames.DATABASE)
+
     notification = signing.decode(encoded_notification)
 
     service = SerialisedService.from_id(service_id)
@@ -482,6 +492,8 @@ def save_letter(
     notification_id,
     encoded_notification,
 ):
+    log_queue_details(self.request, "save_letter", QueueNames.DATABASE)
+
     notification = signing.decode(encoded_notification)
 
     postal_address = PostalAddress.from_personalisation(InsensitiveDict(notification["personalisation"]))
