@@ -38,11 +38,27 @@ from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
     bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300, early_log_level=logging.DEBUG
 )
 def deliver_sms(self, notification_id):
+    group_id = None
+    if hasattr(self.request, "headers") and self.request.headers:
+        group_id = self.request.headers.get("MessageGroupId")
+
     try:
         current_app.logger.info(
             "Start sending SMS for notification id: %s", notification_id, extra={"notification_id": notification_id}
         )
         notification = notifications_dao.get_notification_by_id(notification_id)
+
+        current_app.logger.info(
+            "FAIR-QUEUE DEBUG: Provider task received",
+            extra={
+                "task_name": self.name,
+                "notification_id": notification_id,
+                "service_id": notification.service_id,
+                "message_group_id": group_id,
+                "queue_name": QueueNames.SEND_SMS,
+            },
+        )
+
         if not notification:
             raise NoResultFound
         send_to_providers.send_sms_to_provider(notification)
@@ -79,11 +95,27 @@ def deliver_sms(self, notification_id):
     bind=True, name="deliver_email", max_retries=48, default_retry_delay=300, early_log_level=logging.DEBUG
 )
 def deliver_email(self, notification_id):
+    group_id = None
+    if hasattr(self.request, "headers") and self.request.headers:
+        group_id = self.request.headers.get("MessageGroupId")
+
     try:
         current_app.logger.info(
             "Start sending email for notification id: %s", notification_id, extra={"notification_id": notification_id}
         )
         notification = notifications_dao.get_notification_by_id(notification_id)
+
+        current_app.logger.info(
+            "FAIR-QUEUE DEBUG: Provider task received",
+            extra={
+                "task_name": self.name,
+                "notification_id": notification_id,
+                "service_id": notification.service_id,
+                "message_group_id": group_id,
+                "queue_name": QueueNames.SEND_EMAIL,
+            },
+        )
+
         if not notification:
             raise NoResultFound
         send_to_providers.send_email_to_provider(notification)
@@ -118,12 +150,27 @@ def deliver_email(self, notification_id):
 
 @notify_celery.task(bind=True, name="deliver_letter", max_retries=55, retry_backoff=True, retry_backoff_max=300)
 def deliver_letter(self, notification_id):
+    group_id = None
+    if hasattr(self.request, "headers") and self.request.headers:
+        group_id = self.request.headers.get("MessageGroupId")
+
     # 55 retries with exponential backoff gives a retry time of approximately 4 hours
     current_app.logger.info(
         "Start sending letter for notification id: %s", notification_id, extra={"notification_id": notification_id}
     )
     notification = notifications_dao.get_notification_by_id(notification_id, _raise=True)
     postal_address = PostalAddress(notification.to, allow_international_letters=True)
+
+    current_app.logger.info(
+        "FAIR-QUEUE DEBUG: Provider task received",
+        extra={
+            "task_name": self.name,
+            "notification_id": notification_id,
+            "service_id": notification.service_id,
+            "message_group_id": group_id,
+            "queue_name": QueueNames.SEND_LETTER,
+        },
+    )
 
     if notification.status != NOTIFICATION_CREATED:
         current_app.logger.warning(

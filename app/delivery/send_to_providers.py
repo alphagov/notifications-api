@@ -4,16 +4,10 @@ from urllib import parse
 
 from flask import current_app
 from notifications_utils.template import (
-    HTMLEmailTemplate,
-    PlainTextEmailTemplate,
     SMSMessageTemplate,
 )
 
 from app import create_uuid, db, notification_provider_clients, redis_store, statsd_client
-from app.celery.research_mode_tasks import (
-    send_email_response,
-    send_sms_response,
-)
 from app.constants import (
     BRANDING_BOTH,
     BRANDING_ORG_BANNER,
@@ -59,10 +53,11 @@ def send_sms_to_provider(notification):
         )
         created_at = notification.created_at
         key_type = notification.key_type
+
         if notification.key_type == KEY_TYPE_TEST:
             update_notification_to_sending(notification, provider)
-            send_sms_response(provider.name, str(notification.id), notification.to)
-
+            # send_sms_response(provider.name, str(notification.id), notification.to)
+            current_app.logger.info("FAIR-QUEUE DEBUG: (SKIPPED REAL DELIVERY OF SMS)")
         else:
             try:
                 # End DB session here so that we don't have a connection stuck open waiting on the call
@@ -71,15 +66,17 @@ def send_sms_to_provider(notification):
                 # providers as a slow down of our providers can cause us to run out of DB connections
                 # Therefore we pull all the data from our DB models into `send_sms_kwargs`now before
                 # closing the session (as otherwise it would be reopened immediately)
-                send_sms_kwargs = {
-                    "to": notification.normalised_to,
-                    "content": str(template),
-                    "reference": str(notification.id),
-                    "sender": notification.reply_to_text,
-                    "international": notification.international,
-                }
+                # send_sms_kwargs = {
+                #     "to": notification.normalised_to,
+                #     "content": str(template),
+                #     "reference": str(notification.id),
+                #     "sender": notification.reply_to_text,
+                #     "international": notification.international,
+                # }
                 db.session.close()  # no commit needed as no changes to objects have been made above
-                provider.send_sms(**send_sms_kwargs)
+                # provider.send_sms(**send_sms_kwargs)
+
+                current_app.logger.info("FAIR-QUEUE DEBUG: (SKIPPED REAL DELIVERY OF SMS)")
             except Exception as e:
                 notification.billable_units = template.fragment_count
                 dao_update_notification(notification)
@@ -130,48 +127,51 @@ def send_email_to_provider(notification):
     if notification.status == "created":
         provider = provider_to_use(EMAIL_TYPE)
 
-        template = SerialisedTemplate.from_id_service_id_and_version(
-            template_id=notification.template_id, service_id=service.id, version=notification.template_version
-        )
+        # template = SerialisedTemplate.from_id_service_id_and_version(
+        #     template_id=notification.template_id, service_id=service.id, version=notification.template_version
+        # )
 
-        unsubscribe_link_for_body = notification.get_unsubscribe_link_for_body(
-            template_has_unsubscribe_link=template.has_unsubscribe_link
-        )
+        # unsubscribe_link_for_body = notification.get_unsubscribe_link_for_body(
+        #     template_has_unsubscribe_link=template.has_unsubscribe_link
+        # )
 
-        html_email = HTMLEmailTemplate(
-            template.__dict__,
-            values=notification.personalisation,
-            unsubscribe_link=unsubscribe_link_for_body,
-            **get_html_email_options(service),
-        )
-
-        plain_text_email = PlainTextEmailTemplate(
-            template.__dict__,
-            values=notification.personalisation,
-            unsubscribe_link=unsubscribe_link_for_body,
-        )
+        # html_email = HTMLEmailTemplate(
+        #     template.__dict__,
+        #     values=notification.personalisation,
+        #     unsubscribe_link=unsubscribe_link_for_body,
+        #     **get_html_email_options(service),
+        # )
+        #
+        # plain_text_email = PlainTextEmailTemplate(
+        #     template.__dict__,
+        #     values=notification.personalisation,
+        #     unsubscribe_link=unsubscribe_link_for_body,
+        # )
         created_at = notification.created_at
         key_type = notification.key_type
         if notification.key_type == KEY_TYPE_TEST:
             notification.reference = str(create_uuid())
             update_notification_to_sending(notification, provider)
-            send_email_response(notification.reference, notification.to)
-        else:
-            email_sender_name = service.custom_email_sender_name or service.name
-            from_address = (
-                f'"{email_sender_name}" <{service.email_sender_local_part}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
-            )
+            # send_email_response(notification.reference, notification.to)
+            current_app.logger.info("FAIR-QUEUE DEBUG: (SKIPPED REAL DELIVERY OF EMAIL)")
 
-            reference = provider.send_email(
-                from_address=from_address,
-                to_address=notification.normalised_to,
-                subject=plain_text_email.subject,
-                body=str(plain_text_email),
-                html_body=str(html_email),
-                reply_to_address=notification.reply_to_text,
-                headers=_get_email_headers(notification, template),
-            )
-            notification.reference = reference
+        else:
+            # email_sender_name = service.custom_email_sender_name or service.name
+            # from_address = (
+            #     f'"{email_sender_name}" <{service.email_sender_local_part}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
+            # )
+
+            # reference = provider.send_email(
+            #     from_address=from_address,
+            #     to_address=notification.normalised_to,
+            #     subject=plain_text_email.subject,
+            #     body=str(plain_text_email),
+            #     html_body=str(html_email),
+            #     reply_to_address=notification.reply_to_text,
+            #     headers=_get_email_headers(notification, template),
+            # )
+            current_app.logger.info("FAIR-QUEUE DEBUG: (SKIPPED REAL DELIVERY OF EMAIL)")
+            notification.reference = None
             update_notification_to_sending(notification, provider)
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
 
