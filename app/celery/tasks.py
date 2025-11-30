@@ -50,6 +50,7 @@ from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
 )
+from app.queues import get_message_group_id_for_queue
 from app.report_requests.process_notifications_report import ReportRequestProcessor
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
@@ -115,12 +116,20 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
             get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=sender_id)[1]
             for row in shatter_batch
         ]
-        _shatter_job_rows_with_subdivision(template.template_type, batch_args_kwargs)
+        _shatter_job_rows_with_subdivision(
+            template.template_type,
+            batch_args_kwargs,
+            group_id=get_message_group_id_for_queue(
+                queue_name=QueueNames.JOBS,
+                service_id=service.id,
+                notification_type=template.template_type,
+            ),
+        )
 
     job_complete(job, start=start)
 
 
-def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level=True):
+def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, group_id, top_level=True):
     try:
         shatter_job_rows.apply_async(
             (
@@ -128,6 +137,7 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level
                 args_kwargs_seq,
             ),
             queue=QueueNames.JOBS,
+            headers={"MessageGroupId": group_id},
         )
     except BotoClientError as e:
         # this information is helpfully not preserved outside the message string of the exception, so
@@ -145,7 +155,7 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level
             raise UnprocessableJobRow from e
 
         for sub_batch in (args_kwargs_seq[:split_batch_size], args_kwargs_seq[split_batch_size:]):
-            _shatter_job_rows_with_subdivision(template_type, sub_batch, top_level=False)
+            _shatter_job_rows_with_subdivision(template_type, sub_batch, group_id, top_level=False)
 
     else:
         if not top_level:
@@ -352,6 +362,14 @@ def save_sms(
             provider_tasks.deliver_sms.apply_async(
                 [str(saved_notification.id)],
                 queue=QueueNames.SEND_SMS,
+                headers={
+                    "MessageGroupId": get_message_group_id_for_queue(
+                        queue_name=QueueNames.SEND_SMS,
+                        service_id=service_id,
+                        origin="dashboard" if notification.get("job", None) else "api",
+                        key_type=KEY_TYPE_NORMAL,
+                    )
+                },
             )
         else:
             extra = {
@@ -432,6 +450,14 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
             queue=QueueNames.SEND_EMAIL,
+            headers={
+                "MessageGroupId": get_message_group_id_for_queue(
+                    queue_name=QueueNames.SEND_EMAIL,
+                    service_id=service_id,
+                    origin="dashboard" if notification.get("job", None) else "api",
+                    key_type=KEY_TYPE_NORMAL,
+                )
+            },
         )
 
         extra = {
@@ -489,7 +515,16 @@ def save_letter(
         )
 
         letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
-            [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
+            [str(saved_notification.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF,
+            headers={
+                "MessageGroupId": get_message_group_id_for_queue(
+                    queue_name=QueueNames.CREATE_LETTERS_PDF,
+                    service_id=service_id,
+                    origin="dashboard" if notification["job"] else "api",
+                    key_type=KEY_TYPE_NORMAL,
+                )
+            },
         )
 
         extra = {
@@ -575,7 +610,15 @@ def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_B
             get_id_task_args_kwargs_for_job_row(row, template, job, job.service, sender_id=sender_id)[1]
             for row in shatter_batch
         ]
-        _shatter_job_rows_with_subdivision(template.template_type, batch_args_kwargs)
+        _shatter_job_rows_with_subdivision(
+            template.template_type,
+            batch_args_kwargs,
+            group_id=get_message_group_id_for_queue(
+                queue_name=QueueNames.JOBS,
+                service_id=job.service_id,
+                notification_type=template.template_type,
+            ),
+        )
 
     job_complete(job, resumed=True)
 
