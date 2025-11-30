@@ -96,7 +96,11 @@ from app.utils import get_london_midnight_in_utc
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
-            process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
+            process_job.apply_async(
+                [str(job.id)],
+                queue=QueueNames.JOBS,
+                headers={"MessageGroupId": str(job.service_id)},  # key for fairer queueu
+            )
             current_app.logger.info("Job ID %s added to process job queue", job.id, extra={"job_id": job.id})
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
