@@ -40,7 +40,7 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
         )
     return TemplateEmailFile.query.filter(
         TemplateEmailFile.template_id == template_id,
-        TemplateEmailFile.archived_at == None,  # noqa: E711
+        TemplateEmailFile.archived_at.is_(None),
     ).all()
 
 
