@@ -103,8 +103,6 @@ def add_email_file_links_to_personalisation(template, personalisation, recipient
         doc_download_link = document_download_client.upload_document(
             template.service,
             template_email_file_from_s3,
-            # do we want to check if is_csv some other way? Do we want to save in db/as metadata?
-            (email_file.filename).endswith(".csv"),
             confirmation_email=validate_and_format_email_address(recipient)
             if email_file.validate_users_email
             else None,

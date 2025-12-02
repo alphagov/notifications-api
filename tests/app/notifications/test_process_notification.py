@@ -162,7 +162,6 @@ def test_add_email_file_links_to_personalisation(
         call(
             str(sample_service.id),
             "file_from_s3_1",
-            False,
             confirmation_email="anne@example.com",
             retention_period=26,
             filename="invitation.pdf",
@@ -170,7 +169,6 @@ def test_add_email_file_links_to_personalisation(
         call(
             str(sample_service.id),
             "file_from_s3_2",
-            False,
             confirmation_email="anne@example.com",
             retention_period=26,
             filename="form.pdf",

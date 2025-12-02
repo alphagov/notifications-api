@@ -1591,7 +1591,6 @@ def test_send_email_with_template_email_files_from_old_template_version(
         call(
             mocker.ANY,
             "file_from_s3_1",
-            False,
             confirmation_email="anne@example.com",
             retention_period=26,
             filename="invitation.pdf",
@@ -1599,7 +1598,6 @@ def test_send_email_with_template_email_files_from_old_template_version(
         call(
             mocker.ANY,
             "file_from_s3_2",
-            False,
             confirmation_email="anne@example.com",
             retention_period=26,
             filename="form.pdf",
