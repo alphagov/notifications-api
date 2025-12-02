@@ -88,11 +88,12 @@ def test_create_template_email_file_fails_if_template_does_not_exist(sample_serv
     assert response["result"] == "error"
 
 
+@pytest.mark.parametrize("filename", ("example.pdf", "EXAMPLE.PDF", "Exa mple.pdf"))
 def test_create_template_email_file_fails_if_template_already_has_file_with_same_name(
-    sample_service, admin_request, sample_email_template, sample_template_email_file
+    sample_service, admin_request, sample_email_template, sample_template_email_file, filename
 ):
     data = {
-        "filename": "example.pdf",
+        "filename": filename,
         "link_text": "click this link!",
         "retention_period": 90,
         "validate_users_email": True,
@@ -105,7 +106,7 @@ def test_create_template_email_file_fails_if_template_already_has_file_with_same
         _data=data,
         _expected_status=400,
     )
-    assert response["message"] == f"File named example.pdf already exists for template id {sample_email_template.id}"
+    assert response["message"] == f"File named {filename} already exists for template id {sample_email_template.id}"
     assert response["result"] == "error"
 
 
@@ -324,8 +325,9 @@ def test_update_template_email_file(
     assert template_email_file_history_version_two.version == 2
 
 
+@pytest.mark.parametrize("filename", ("invitation.pdf", "INVITATION.PDF", "Invi Tation.pdf"))
 def test_update_template_email_file_fails_if_template_already_has_file_with_same_name(
-    client, sample_service, sample_template_email_file, sample_email_template, admin_request
+    client, sample_service, sample_template_email_file, sample_email_template, admin_request, filename
 ):
     # create a second file
     create_template_email_file(
@@ -336,7 +338,7 @@ def test_update_template_email_file_fails_if_template_already_has_file_with_same
 
     # try to update the first file, filename is a duplicate of the second file's filename
     update_data = {
-        "filename": "invitation.pdf",
+        "filename": filename,
         "link_text": "click this new link!",
         "retention_period": 30,
     }
@@ -348,7 +350,7 @@ def test_update_template_email_file_fails_if_template_already_has_file_with_same
         _expected_status=400,
         _data=update_data,
     )
-    assert response["message"] == f"File named invitation.pdf already exists for template id {sample_email_template.id}"
+    assert response["message"] == f"File named {filename} already exists for template id {sample_email_template.id}"
     assert response["result"] == "error"
 
 

@@ -1,6 +1,7 @@
 import datetime
 
 from flask import Blueprint, jsonify, request
+from notifications_utils.insensitive_dict import InsensitiveSet
 
 from app.constants import EMAIL_TYPE
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -98,7 +99,7 @@ def _check_if_filename_unique_for_email_files_within_one_template(filename, temp
     email_files = dao_get_template_email_files_by_template_id(template_id)
 
     for email_file in email_files:
-        if email_file.filename == filename and template_email_file_id != email_file.id:
+        if email_file.filename in InsensitiveSet((filename,)) and template_email_file_id != email_file.id:
             error_message = f"File named {filename} already exists for template id {template_id}"
             raise InvalidRequest(message=error_message, status_code=400)
 
