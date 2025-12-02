@@ -1,5 +1,6 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from app import db, version
 from app.dao.organisation_dao import dao_count_organisations_with_live_services
@@ -20,6 +21,7 @@ def show_status():
                 git_commit=version.__git_commit__,
                 build_time=version.__time__,
                 db_version=get_db_version(),
+                db_bulk_version=get_db_version(session=db.session_bulk, raise_db_exception=False),
             ),
             200,
         )
@@ -36,7 +38,14 @@ def live_service_and_organisation_counts():
     )
 
 
-def get_db_version():
-    query = "SELECT version_num FROM alembic_version"
-    full_name = db.session.execute(text(query)).fetchone()[0]
-    return full_name
+def get_db_version(session=db.session, raise_db_exception=True):
+    try:
+        query = "SELECT version_num FROM alembic_version"
+        full_name = session.execute(text(query)).fetchone()[0]
+        return full_name
+    except DBAPIError as e:
+        if raise_db_exception:
+            raise
+
+        current_app.logger.exception("Ignoring exception %s", e)
+        return None
