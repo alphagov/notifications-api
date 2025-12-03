@@ -821,14 +821,18 @@ def dao_get_last_notification_added_for_job_id(job_id):
     return last_notification_added
 
 
-def notifications_not_yet_sent(should_be_sending_after_seconds, notification_type):
+def notifications_not_yet_sent(should_be_sending_after_seconds, notification_type, session=db.session):
     older_than_date = datetime.utcnow() - timedelta(seconds=should_be_sending_after_seconds)
 
-    notifications = Notification.query.filter(
-        Notification.created_at <= older_than_date,
-        Notification.notification_type == notification_type,
-        Notification.status == NOTIFICATION_CREATED,
-    ).all()
+    notifications = (
+        session.query(Notification)
+        .filter(
+            Notification.created_at <= older_than_date,
+            Notification.notification_type == notification_type,
+            Notification.status == NOTIFICATION_CREATED,
+        )
+        .all()
+    )
     return notifications
 
 
@@ -899,11 +903,12 @@ def dao_old_letters_with_created_status():
     return notifications
 
 
-def letters_missing_from_sending_bucket(seconds_to_subtract):
+def letters_missing_from_sending_bucket(seconds_to_subtract, session=db.session):
     older_than_date = datetime.utcnow() - timedelta(seconds=seconds_to_subtract)
     # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
     notifications = (
-        Notification.query.filter(
+        session.query(Notification)
+        .filter(
             Notification.billable_units == 0,
             Notification.updated_at == None,  # noqa
             Notification.status == NOTIFICATION_CREATED,
