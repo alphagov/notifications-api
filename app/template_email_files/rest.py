@@ -1,6 +1,7 @@
 import datetime
 
 from flask import Blueprint, jsonify, request
+from notifications_utils.insensitive_dict import InsensitiveSet
 
 from app.constants import EMAIL_TYPE
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -30,14 +31,20 @@ register_errors(template_email_files_blueprint)
 @template_email_files_blueprint.route("", methods=["POST"])
 def create_template_email_file(service_id, template_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    template_email_files_json = validate(request.get_json(), post_create_template_email_files_schema)
+    template_email_file_json = validate(request.get_json(), post_create_template_email_files_schema)
     fetched_template = dao_get_template_by_id_and_service_id(template_id, service_id)
+
     if fetched_template.template_type != EMAIL_TYPE:
         raise InvalidRequest(message="Cannot add an email file to a non-email template", status_code=400)
+
     if not fetched_service.has_permission(EMAIL_TYPE):
         raise InvalidRequest(message="Updating email templates is not allowed", status_code=400)
-    template_email_files_json["template_id"] = template_id
-    template_email_file = TemplateEmailFile.from_json(template_email_files_json)
+
+    template_email_file_json["template_id"] = template_id
+    template_email_file = TemplateEmailFile.from_json(template_email_file_json)
+
+    _check_if_filename_unique_for_email_files_within_one_template(template_email_file.filename, template_id)
+
     dao_create_template_email_file(template_email_file)
     return jsonify(data=template_email_files_schema.dump(template_email_file)), 201
 
@@ -67,9 +74,12 @@ def update_template_email_file(template_email_file_id, service_id, template_id):
     updated_data_json = current_data_json | updated_data_json
     if updated_data_json == current_data_json:
         return jsonify(data=updated_data_json), 200
-    update_dict = template_email_files_schema.load(updated_data_json)
-    dao_update_template_email_file(update_dict)
-    return jsonify(data=template_email_files_schema.dump(update_dict)), 200
+    updated_email_file = template_email_files_schema.load(updated_data_json)
+    _check_if_filename_unique_for_email_files_within_one_template(
+        updated_email_file.filename, template_id, template_email_file_id
+    )
+    dao_update_template_email_file(updated_email_file)
+    return jsonify(data=template_email_files_schema.dump(updated_email_file)), 200
 
 
 @template_email_files_blueprint.route("/<uuid:template_email_file_id>/archive", methods=["POST"])
@@ -83,3 +93,15 @@ def archive_template_email_file(template_email_file_id, template_id, service_id)
     update_dict = template_email_files_schema.load(updated_data_json)
     dao_update_template_email_file(update_dict)
     return jsonify(data=updated_data_json), 200
+
+
+def _check_if_filename_unique_for_email_files_within_one_template(filename, template_id, template_email_file_id=None):
+    email_files = dao_get_template_email_files_by_template_id(template_id)
+
+    if filename in InsensitiveSet(
+        email_file.filename for email_file in email_files if email_file.id != template_email_file_id
+    ):
+        error_message = f"File named {filename} already exists for template id {template_id}"
+        raise InvalidRequest(message=error_message, status_code=400)
+
+    return
