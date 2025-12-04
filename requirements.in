@@ -1,7 +1,7 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements.in
-
-celery[sqs]==5.4.0
+awscli==1.33.0
+celery[sqs]==5.5.3
 Flask-Bcrypt==1.0.1
 flask-marshmallow==1.3.0
 Flask-Migrate==3.1.0
@@ -16,6 +16,7 @@ marshmallow==3.21.3
 # Requests pinned to 2.32.2 until https://github.com/psf/requests/issues/6730 is fixed. Once so, we can remove this pin
 requests==2.32.2
 psycopg2-binary==2.9.10
+py-spy==0.4.0
 PyJWT==2.10.1
 SQLAlchemy==2.0.41
 pyorc==0.10.0
