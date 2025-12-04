@@ -22,7 +22,9 @@ from app.template_email_files.template_email_files_schemas import (
 )
 
 template_email_files_blueprint = Blueprint(
-    "template_email_files", __name__, url_prefix="/service/<uuid:service_id>/<uuid:template_id>/template_email_files"
+    "template_email_files",
+    __name__,
+    url_prefix="/service/<uuid:service_id>/templates/<uuid:template_id>/template_email_files",
 )
 
 register_errors(template_email_files_blueprint)
