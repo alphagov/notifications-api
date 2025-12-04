@@ -72,7 +72,7 @@ def send_letter_response(notification_id: uuid.UUID, billable_units: int, postag
         response = requests_session.request("POST", api_call, headers=headers, data=json.dumps(data), timeout=30)  # type: ignore[attr-defined]
         response.raise_for_status()
     except requests.HTTPError as e:
-        current_app.logger.error(  # type: ignore[attr-defined]
+        current_app.logger.error(
             "API POST request on %s failed with status %s",
             api_call,
             e.response.status_code,
@@ -80,7 +80,7 @@ def send_letter_response(notification_id: uuid.UUID, billable_units: int, postag
         )
         raise e
     finally:
-        current_app.logger.info(  # type: ignore[attr-defined]
+        current_app.logger.info(
             "Mocked letter callback request for notification %s finished",
             notification_id,
             extra={"notification_id": notification_id},
