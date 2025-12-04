@@ -36,8 +36,6 @@ from app.celery.nightly_tasks import (
     delete_notifications_for_service_and_type,
     delete_sms_notifications_older_than_retention,
     delete_test_notifications_for_service_and_type,
-    delete_unneeded_notification_history_by_hour,
-    delete_unneeded_notification_history_for_specific_hour,
     get_letter_notifications_still_sending_when_they_shouldnt_be,
     raise_alert_if_letter_notifications_still_sending,
     remove_letter_csv_files,
@@ -45,7 +43,6 @@ from app.celery.nightly_tasks import (
     s3,
     save_daily_notification_processing_time,
     timeout_notifications,
-    update_report_status_to_deleted,
 )
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from app.models import (
@@ -677,37 +674,6 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
     ]
 
 
-def test_delete_unneeded_notification_history_for_specific_hour(mocker):
-    delete_mock = mocker.patch("app.celery.nightly_tasks.delete_notification_history_between_two_datetimes")
-
-    start = "2022-04-04T01:00:00"
-    end = "2022-04-04T02:00:00"
-    delete_unneeded_notification_history_for_specific_hour(start, end)
-
-    delete_mock.assert_called_once_with(start, end)
-
-
-def test_delete_unneeded_notification_history_by_hour(mock_celery_task):
-    # we're passing in datetimes to the task call but expecting strings on the far side, so specifically turn off
-    # assert_types for this
-    mock_subtask = mock_celery_task(delete_unneeded_notification_history_for_specific_hour, assert_types=False)
-
-    delete_unneeded_notification_history_by_hour()
-
-    assert mock_subtask.call_args_list[0] == call(
-        [datetime(2020, 8, 1, 0, 0, 0), datetime(2020, 8, 1, 1, 0, 0)], queue=ANY
-    )
-    assert mock_subtask.call_args_list[1] == call(
-        [datetime(2020, 8, 1, 1, 0, 0), datetime(2020, 8, 1, 2, 0, 0)], queue=ANY
-    )
-    assert mock_subtask.call_args_list[-2] == call(
-        [datetime(2022, 12, 31, 22, 0, 0), datetime(2022, 12, 31, 23, 0, 0)], queue=ANY
-    )
-    assert mock_subtask.call_args_list[-1] == call(
-        [datetime(2022, 12, 31, 23, 0, 0), datetime(2023, 1, 1, 0, 0, 0)], queue=ANY
-    )
-
-
 def test_delete_notifications_for_service_and_type_queues_up_second_task_if_things_deleted(mocker, mock_celery_task):
     mock_move = mocker.patch("app.celery.nightly_tasks.move_notifications_to_notification_history", return_value=1)
     mock_task_call = mock_celery_task(delete_notifications_for_service_and_type)
@@ -777,14 +743,6 @@ def test_delete_test_notifications_for_service_and_type_stops_if_nothing_deleted
 
     mock_delete.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
     assert not mock_task_call.called
-
-
-def test_delete_unneeded_notification_history_for_specific_hour2(mocker):
-    delete_mock = mocker.patch("app.celery.nightly_tasks.update_report_requests_status_to_deleted")
-
-    update_report_status_to_deleted()
-
-    delete_mock.assert_called_once_with()
 
 
 def _populate_notification_history(sample_template, sample_job):
