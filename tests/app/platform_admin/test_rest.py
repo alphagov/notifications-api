@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 import pytest
+from notifications_utils.testing.comparisons import RestrictedAny
 
 from app.dao.organisation_dao import dao_add_user_to_organisation
 from app.dao.permissions_dao import default_service_permissions
@@ -189,6 +190,8 @@ def test_fetch_users_list_returns_correct_fields(
 
     assert len(users) == 1
     assert user["created_at"] == fixed_date.strftime(DATETIME_FORMAT)
-    assert user["permissions"] == {str(sample_service.id): default_service_permissions}
+    assert user["permissions"] == {
+        str(sample_service.id): RestrictedAny(lambda x: set(x) == set(default_service_permissions))
+    }
     assert user["take_part_in_research"] is True
     assert user["services"] == [{"id": str(sample_service.id), "name": sample_service.name}]
