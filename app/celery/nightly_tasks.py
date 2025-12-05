@@ -36,9 +36,6 @@ from app.dao.jobs_dao import (
     dao_archive_job,
     dao_get_jobs_older_than_data_retention,
 )
-from app.dao.notification_history_dao import (
-    delete_notification_history_between_two_datetimes,
-)
 from app.dao.notifications_dao import (
     dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
@@ -375,66 +372,6 @@ def save_daily_notification_processing_time(bst_date=None):
             messages_within_10_secs=result.messages_within_10_secs,
         )
     )
-
-
-@notify_celery.task(name="delete_unneeded_notification_history_by_hour")
-def delete_unneeded_notification_history_by_hour():
-    # This task will delete all of the notification_history table older than 1 Jan 2023 BST
-    #
-    # This task will create lots of tasks, each one responsible for deleting a particular hour of
-    # notification_history that is no longer needed
-    #
-    # This retention limit is hardcoded and was originally picked from
-    # https://github.com/alphagov/notifications-aws/blob/main/decisions/2022-12-01-notification-history-retention-period.md
-    # It was supposed to be 2023-4-1.
-    # However, at the time of writing this code we realised the FtBillingLetterDispatch table has been introduced
-    # which means we need to store letters older than 2023-4-1 in order to rebuild that table (because that table
-    # uses the date of dispatch, not the date of creation for which date to bill for). To keep it simple, we keep
-    # an extra quarters worth of data giving us plenty of buffer
-    #
-    # In the future, we will be able to update this retention_limit value when we have progressed 3 quarters
-    # into the next financial year
-    #
-    # Arbitrary start_datetime, just slightly older than the oldest notification in the notification_history
-    # table at the time of writing
-    start_datetime = datetime(2020, 8, 1, 0, 0, 0)
-    retention_limit = datetime(2023, 1, 1, 0, 0, 0)
-
-    while start_datetime < retention_limit:
-        end_datetime = start_datetime + timedelta(hours=1)
-        delete_unneeded_notification_history_for_specific_hour.apply_async(
-            # We pass datetimes as args to the next task but celery will actually call `isoformat` on these
-            # and send them over as strings
-            [start_datetime, end_datetime],
-            # We use the reporting queue as it's not used for most of the day
-            queue=QueueNames.REPORTING,
-        )
-        extra = {
-            "start_time": start_datetime,
-            "end_time": end_datetime,
-        }
-        current_app.logger.info(
-            "Created delete_unneeded_notification_history_for_specific_hour task between "
-            "%(start_time)s and %(end_time)s",
-            extra,
-            extra=extra,
-        )
-        start_datetime = end_datetime
-
-
-@notify_celery.task(name="delete_unneeded_notification_history_for_specific_hour")
-def delete_unneeded_notification_history_for_specific_hour(start_datetime: str, end_datetime: str):
-    extra = {
-        "start_time": start_datetime,
-        "end_time": end_datetime,
-    }
-    current_app.logger.info(
-        "Beginning delete_unneeded_notification_history_for_specific_hour between %(start_time)s and %(end_time)s",
-        extra,
-        extra=extra,
-    )
-
-    delete_notification_history_between_two_datetimes(start_datetime, end_datetime)
 
 
 @notify_celery.task(name="update-report-status-to-deleted")
