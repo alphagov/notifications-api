@@ -7,6 +7,7 @@ from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
+from app import db
 from app.constants import (
     JOB_STATUS_IN_PROGRESS,
     KEY_TYPE_NORMAL,
@@ -1592,8 +1593,9 @@ def test_dao_get_notification_or_history_by_reference_with_no_matches_raises_err
         dao_get_notification_or_history_by_reference("REF1")
 
 
+@pytest.mark.parametrize("session", (db.session, db.session_bulk), ids=("default", "bulk"))
 @pytest.mark.parametrize("notification_type", ["letter", "email", "sms"])
-def test_notifications_not_yet_sent(sample_service, notification_type):
+def test_notifications_not_yet_sent(sample_service, notification_type, session):
     older_than = 4  # number of seconds the notification can not be older than
     template = create_template(service=sample_service, template_type=notification_type)
     old_notification = create_notification(
@@ -1604,20 +1606,21 @@ def test_notifications_not_yet_sent(sample_service, notification_type):
     )
     create_notification(template=template, created_at=datetime.utcnow(), status="created")
 
-    results = notifications_not_yet_sent(older_than, notification_type)
+    results = notifications_not_yet_sent(older_than, notification_type, session=session)
     assert len(results) == 1
-    assert results[0] == old_notification
+    assert results[0].id == old_notification.id
 
 
+@pytest.mark.parametrize("session", (db.session, db.session_bulk), ids=("default", "bulk"))
 @pytest.mark.parametrize("notification_type", ["letter", "email", "sms"])
-def test_notifications_not_yet_sent_return_no_rows(sample_service, notification_type):
+def test_notifications_not_yet_sent_return_no_rows(sample_service, notification_type, session):
     older_than = 5  # number of seconds the notification can not be older than
     template = create_template(service=sample_service, template_type=notification_type)
     create_notification(template=template, created_at=datetime.utcnow(), status="created")
     create_notification(template=template, created_at=datetime.utcnow(), status="sending")
     create_notification(template=template, created_at=datetime.utcnow(), status="delivered")
 
-    results = notifications_not_yet_sent(older_than, notification_type)
+    results = notifications_not_yet_sent(older_than, notification_type, session=session)
     assert len(results) == 0
 
 
