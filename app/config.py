@@ -5,6 +5,8 @@ from datetime import timedelta
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 
+from app.constants import EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, SMS_TYPE
+
 
 class QueueNames:
     PERIODIC = "periodic-tasks"
@@ -92,6 +94,13 @@ class Config:
     FUNCTIONAL_TESTS_CLIENT_ID = "notify-functional-tests"
 
     INTERNAL_CLIENT_API_KEYS = json.loads(os.environ.get("INTERNAL_CLIENT_API_KEYS", "{}"))
+
+    DEFAULT_LIVE_SERVICE_RATE_LIMITS = {
+        EMAIL_TYPE: 250_000,
+        SMS_TYPE: 250_000,
+        LETTER_TYPE: 20_000,
+        INTERNATIONAL_SMS_TYPE: 100,
+    }
 
     # encyption secret/salt
     SECRET_KEY = os.getenv("SECRET_KEY")
