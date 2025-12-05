@@ -135,10 +135,12 @@ def fetch_notification_status_for_service_for_day(bst_day, service_id):
     )
 
 
-def fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, by_template=False, limit_days=7):
+def fetch_notification_status_for_service_for_today_and_7_previous_days(
+    service_id, by_template=False, limit_days=7, session=db.session
+):
     start_date = midnight_n_days_ago(limit_days)
     now = datetime.utcnow()
-    stats_for_7_days = db.session.query(
+    stats_for_7_days = session.query(
         FactNotificationStatus.notification_type.label("notification_type"),
         FactNotificationStatus.notification_status.label("status"),
         *([FactNotificationStatus.template_id.label("template_id")] if by_template else []),
@@ -150,7 +152,7 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
     )
 
     stats_for_today = (
-        db.session.query(
+        session.query(
             Notification.notification_type.cast(db.Text),
             Notification.status,
             *([Notification.template_id] if by_template else []),
@@ -169,7 +171,7 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
     all_stats_table = stats_for_7_days.union_all(stats_for_today).subquery()
 
     aggregation = (
-        db.session.query(
+        session.query(
             *([all_stats_table.c.template_id] if by_template else []),
             all_stats_table.c.notification_type,
             all_stats_table.c.status,
@@ -183,7 +185,7 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
         .subquery()
     )
 
-    query = db.session.query(
+    query = session.query(
         *(
             [Template.name.label("template_name"), Template.is_precompiled_letter, aggregation.c.template_id]
             if by_template
