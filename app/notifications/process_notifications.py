@@ -7,6 +7,7 @@ from notifications_utils.clients import redis
 from notifications_utils.formatters import strip_and_remove_obscure_whitespace
 from notifications_utils.recipient_validation.email_address import (
     format_email_address,
+    validate_and_format_email_address,
 )
 from notifications_utils.recipient_validation.phone_number import UK_PREFIX
 from notifications_utils.template import (
@@ -15,7 +16,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
 )
 
-from app import redis_store
+from app import document_download_client, redis_store
 from app.celery import provider_tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.config import QueueNames
@@ -33,7 +34,10 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_by_id,
 )
 from app.models import Notification
-from app.utils import parse_and_format_phone_number
+from app.utils import (
+    parse_and_format_phone_number,
+    try_download_template_email_file_from_s3,
+)
 from app.v2.errors import BadRequestError, QrCodeTooLongError
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
@@ -42,8 +46,10 @@ REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
 )
 
 
-def create_content_for_notification(template, personalisation):
+def create_content_for_notification(template, personalisation, recipient):
     if template.template_type == EMAIL_TYPE:
+        if template.email_files:
+            personalisation = add_email_file_links_to_personalisation(template, personalisation, recipient)
         template_object = PlainTextEmailTemplate(
             {
                 "content": template.content,
@@ -89,6 +95,23 @@ def check_placeholders(template_object):
     if template_object.missing_data:
         message = "Missing personalisation: {}".format(", ".join(template_object.missing_data))
         raise BadRequestError(fields=[{"template": message}], message=message)
+
+
+def add_email_file_links_to_personalisation(template, personalisation, recipient):
+    for email_file in template.email_files:
+        template_email_file_from_s3 = try_download_template_email_file_from_s3(template.service, email_file.id)
+        doc_download_link = document_download_client.upload_document(
+            template.service,
+            template_email_file_from_s3,
+            confirmation_email=validate_and_format_email_address(recipient)
+            if email_file.validate_users_email
+            else None,
+            retention_period=email_file.retention_period,
+            filename=email_file.filename,
+        )
+        personalisation[email_file.filename] = doc_download_link
+
+    return personalisation
 
 
 def persist_notification(

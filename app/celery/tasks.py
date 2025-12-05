@@ -45,7 +45,7 @@ from app.dao.service_callback_api_dao import get_returned_letter_callback_api_fo
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.notifications.process_notifications import persist_notification
+from app.notifications.process_notifications import add_email_file_links_to_personalisation, persist_notification
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
@@ -392,6 +392,10 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         version=notification["template_version"],
     )
 
+    personalisation = add_email_file_links_to_personalisation(
+        template=template, personalisation=notification.get("personalisation", {}), recipient=notification["to"]
+    )
+
     if sender_id:
         reply_to_text = dao_get_reply_to_by_id(reply_to_id=sender_id, service_id=service_id).email_address
     else:
@@ -417,7 +421,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             template_has_unsubscribe_link=template.has_unsubscribe_link,
             recipient=notification["to"],
             service=service,
-            personalisation=notification.get("personalisation"),
+            personalisation=personalisation,
             notification_type=EMAIL_TYPE,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,

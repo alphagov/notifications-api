@@ -1504,6 +1504,111 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     )
 
 
+def test_send_email_with_template_email_files(
+    sample_service,
+    mocker,
+    mock_celery_task,
+    mock_utils_s3_download,
+    mock_document_download_client_upload,
+    sample_email_template_with_template_email_files,
+):
+    template = sample_email_template_with_template_email_files
+
+    notification = _notification_json(template, "anne@example.com", personalisation={"name": "Anne"})
+    notification_id = uuid.uuid4()
+
+    mock_celery_task(provider_tasks.deliver_email)
+
+    save_email(
+        sample_service.id,
+        notification_id,
+        signing.encode(notification),
+        sender_id=None,
+    )
+    persisted_notification = Notification.query.one()
+
+    assert persisted_notification.template_id == template.id
+    assert persisted_notification.status == "created"
+
+    assert persisted_notification.personalisation == {
+        "name": "Anne",
+        "invitation.pdf": "documents.gov.uk/link1",
+        "form.pdf": "documents.gov.uk/link2",
+    }
+    assert persisted_notification._personalisation == signing.encode(
+        {
+            "name": "Anne",
+            "invitation.pdf": "documents.gov.uk/link1",
+            "form.pdf": "documents.gov.uk/link2",
+        }
+    )
+
+
+def test_send_email_with_template_email_files_from_old_template_version(
+    sample_service,
+    mocker,
+    mock_celery_task,
+    mock_utils_s3_download,
+    mock_document_download_client_upload,
+    sample_email_template_with_template_email_files,
+):
+    from app.dao.template_email_files_dao import (
+        dao_get_template_email_files_by_template_id,
+        dao_update_template_email_file,
+    )
+
+    template = sample_email_template_with_template_email_files
+    one_of_email_files = dao_get_template_email_files_by_template_id(template.id)[0]
+    notification = _notification_json(template, "anne@example.com")
+    version_on_notification = template.version
+
+    # Start sending
+    mock_celery_task(provider_tasks.deliver_email)
+
+    # Update the template, including updating the email files
+    one_of_email_files.retention_period = 5
+    dao_update_template_email_file(one_of_email_files)
+
+    assert one_of_email_files.template_version > version_on_notification
+    assert one_of_email_files.retention_period == 5
+
+    save_email(
+        template.service_id,
+        uuid.uuid4(),
+        signing.encode(notification),
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.to == "anne@example.com"
+    assert persisted_notification.template_id == template.id
+
+    # notification created with old template version
+    assert persisted_notification.template_version == version_on_notification
+    assert persisted_notification.status == "created"
+
+    # files were uploaded using historical versions
+    assert mock_document_download_client_upload.call_args_list == [
+        call(
+            mocker.ANY,
+            "file_from_s3_1",
+            confirmation_email="anne@example.com",
+            retention_period=26,
+            filename="invitation.pdf",
+        ),
+        call(
+            mocker.ANY,
+            "file_from_s3_2",
+            confirmation_email="anne@example.com",
+            retention_period=26,
+            filename="form.pdf",
+        ),
+    ]
+
+    provider_tasks.deliver_email.apply_async.assert_called_once_with(
+        [str(persisted_notification.id)], queue="send-email-tasks"
+    )
+
+
 def test_save_sms_should_go_to_retry_queue_if_database_errors(sample_template, mocker, mock_celery_task):
     notification = _notification_json(sample_template, "+447234123123")
 
@@ -1557,21 +1662,21 @@ def test_save_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
 
 
 def test_save_email_does_not_send_duplicate_and_does_not_put_in_retry_queue(
-    sample_notification, mocker, mock_celery_task
+    sample_email_notification, mocker, mock_celery_task
 ):
     json = _notification_json(
-        sample_notification.template,
-        sample_notification.to,
+        sample_email_notification.template,
+        sample_email_notification.to,
         job_id=uuid.uuid4(),
         row_number=1,
     )
     mock_task = mock_celery_task(provider_tasks.deliver_email)
     retry = mocker.patch("app.celery.tasks.save_email.retry", side_effect=Exception())
 
-    notification_id = sample_notification.id
+    notification_id = sample_email_notification.id
 
     save_email(
-        sample_notification.service_id,
+        sample_email_notification.service_id,
         notification_id,
         signing.encode(json),
     )

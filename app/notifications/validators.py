@@ -235,7 +235,7 @@ def check_notification_content_is_not_empty(template_with_content):
         raise BadRequestError(message=message)
 
 
-def validate_template(template_id, personalisation, service, notification_type, check_char_count=True):
+def validate_template(template_id, personalisation, service, notification_type, check_char_count=True, recipient=None):
     try:
         template = SerialisedTemplate.from_id_and_service_id(template_id, service.id)
     except NoResultFound as e:
@@ -245,7 +245,7 @@ def validate_template(template_id, personalisation, service, notification_type, 
     check_template_is_for_notification_type(notification_type, template.template_type)
     check_template_is_active(template)
 
-    template_with_content = create_content_for_notification(template, personalisation)
+    template_with_content = create_content_for_notification(template, personalisation, recipient)
 
     check_notification_content_is_not_empty(template_with_content)
 
