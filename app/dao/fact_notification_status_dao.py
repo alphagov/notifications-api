@@ -1,7 +1,10 @@
-from datetime import datetime, timedelta
+from collections.abc import Sequence
+from datetime import date, datetime, timedelta
+from uuid import UUID
 
-from sqlalchemy import Date, case, func
+from sqlalchemy import Date, Row, case, delete, func
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session, scoped_session
 from sqlalchemy.sql.expression import extract, literal
 from sqlalchemy.types import DateTime, Integer
 
@@ -36,60 +39,72 @@ from app.utils import (
 )
 
 
-@autocommit
-def update_fact_notification_status(process_day, notification_type, service_id):
-    start_date = get_london_midnight_in_utc(process_day)
-    end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
+def update_fact_notification_status(process_day: date, notification_type: str, service_id: UUID | str):
+    rows = generate_fact_notification_status_rows(process_day, notification_type, service_id)
+    _update_fact_notification_status(rows, process_day, notification_type, service_id)
 
-    # delete any existing rows in case some no longer exist e.g. if all messages are sent
-    FactNotificationStatus.query.filter(
-        FactNotificationStatus.bst_date == process_day,
-        FactNotificationStatus.notification_type == notification_type,
-        FactNotificationStatus.service_id == service_id,
-    ).delete()
 
-    query = (
-        db.session.query(
-            literal(process_day).label("process_day"),
+def generate_fact_notification_status_rows(
+    process_day: date, notification_type: str, service_id: UUID | str, session: Session | scoped_session = db.session
+) -> Sequence[Row]:
+    start_dt = get_london_midnight_in_utc(process_day)
+    end_dt = get_london_midnight_in_utc(process_day + timedelta(days=1))
+
+    return (
+        session.query(
+            literal(process_day).label("bst_date"),
             NotificationAllTimeView.template_id,
             literal(service_id).label("service_id"),
             func.coalesce(NotificationAllTimeView.job_id, "00000000-0000-0000-0000-000000000000").label("job_id"),
             literal(notification_type).label("notification_type"),
             NotificationAllTimeView.key_type,
-            NotificationAllTimeView.status,
+            NotificationAllTimeView.status.label("notification_status"),
             func.count().label("notification_count"),
         )
         .filter(
-            NotificationAllTimeView.created_at >= start_date,
-            NotificationAllTimeView.created_at < end_date,
+            NotificationAllTimeView.created_at >= start_dt,
+            NotificationAllTimeView.created_at < end_dt,
             NotificationAllTimeView.notification_type == notification_type,
             NotificationAllTimeView.service_id == service_id,
             NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
         )
         .group_by(
             NotificationAllTimeView.template_id,
-            NotificationAllTimeView.template_id,
             "job_id",
             NotificationAllTimeView.key_type,
             NotificationAllTimeView.status,
         )
+        .all()
     )
 
-    db.session.connection().execute(
-        insert(FactNotificationStatus.__table__).from_select(
-            [
-                FactNotificationStatus.bst_date,
-                FactNotificationStatus.template_id,
-                FactNotificationStatus.service_id,
-                FactNotificationStatus.job_id,
-                FactNotificationStatus.notification_type,
-                FactNotificationStatus.key_type,
-                FactNotificationStatus.notification_status,
-                FactNotificationStatus.notification_count,
-            ],
-            query,
+
+@autocommit
+def _update_fact_notification_status(
+    rows: Sequence[Row], process_day: date, notification_type: str, service_id: UUID | str
+) -> int:
+    if rows and {row.bst_date for row in rows} != {process_day}:
+        raise ValueError("Not all rows bst_date match process_day")
+
+    # delete any existing rows in case some no longer exist in `rows` e.g. if all messages are sent
+    # (an upsert alone would not be sufficient here)
+    deleted_row_count = db.session.execute(
+        delete(FactNotificationStatus)
+        .where(
+            FactNotificationStatus.bst_date == process_day,
+            FactNotificationStatus.notification_type == notification_type,
+            FactNotificationStatus.service_id == service_id,
         )
+        .execution_options(synchronize_session=False)
+    ).rowcount
+
+    db.session.execute(
+        insert(FactNotificationStatus)
+        .on_conflict_do_nothing(constraint="ft_notification_status_pkey")
+        .execution_options(synchronize_session=False),
+        (row._mapping for row in rows),  # type: ignore
     )
+
+    return deleted_row_count
 
 
 def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):
