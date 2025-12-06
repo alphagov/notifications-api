@@ -786,14 +786,14 @@ def test_update_status_of_fully_processed_jobs(mocker, sample_email_template, mo
 
 
 MockServicesSendingToTVNumbers = namedtuple(
-    "ServicesSendingToTVNumbers",
+    "MockServicesSendingToTVNumbers",
     [
         "service_id",
         "notification_count",
     ],
 )
 MockServicesWithHighFailureRate = namedtuple(
-    "ServicesWithHighFailureRate",
+    "MockServicesWithHighFailureRate",
     [
         "service_id",
         "permanent_failure_rate",

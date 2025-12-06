@@ -69,7 +69,7 @@ def send_letter_response(notification_id: uuid.UUID, billable_units: int, postag
     data = _create_fake_letter_callback_data(notification_id, billable_units, postage)
 
     try:
-        response = requests_session.request("POST", api_call, headers=headers, data=json.dumps(data), timeout=30)
+        response = requests_session.request("POST", api_call, headers=headers, data=json.dumps(data), timeout=30)  # type: ignore[attr-defined]
         response.raise_for_status()
     except requests.HTTPError as e:
         current_app.logger.error(
@@ -139,7 +139,7 @@ def make_request(notification_type, provider, data, headers):
     api_call = f"{current_app.config['API_HOST_NAME_INTERNAL']}/notifications/{notification_type}/{provider}"
 
     try:
-        response = requests_session.request("POST", api_call, headers=headers, data=data, timeout=60)
+        response = requests_session.request("POST", api_call, headers=headers, data=data, timeout=60)  # type: ignore[attr-defined]
         response.raise_for_status()
     except requests.HTTPError as e:
         current_app.logger.error(

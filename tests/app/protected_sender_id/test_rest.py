@@ -2,7 +2,7 @@ from app import db
 from app.models import ProtectedSenderId
 
 
-def test_get_check_protected_sender_id(admin_request, notify_db_session):
+def test_get_check_protected_sender_id(admin_request, notify_db_session) -> None:
     data: ProtectedSenderId = ProtectedSenderId(sender_id="famous_company")
     db.session.add(data)
     db.session.commit()
@@ -14,7 +14,7 @@ def test_get_check_protected_sender_id(admin_request, notify_db_session):
     assert response
 
 
-def test_get_check_unprotected_sender_id(admin_request, notify_db_session):
+def test_get_check_unprotected_sender_id(admin_request, notify_db_session) -> None:
     data: ProtectedSenderId = ProtectedSenderId(sender_id="famous_company")
     db.session.add(data)
     db.session.commit()

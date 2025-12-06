@@ -79,7 +79,7 @@ class AwsSesClient(EmailClient):
         reply_to_addresses = [punycode_encode_email(reply_to_address)] if reply_to_address else []
         to_addresses = [punycode_encode_email(to_address)]
 
-        body = {"Text": {"Data": body}, "Html": {"Data": html_body}}
+        email_body = {"Text": {"Data": body}, "Html": {"Data": html_body}}
 
         start_time = monotonic()
 
@@ -94,7 +94,7 @@ class AwsSesClient(EmailClient):
                 Content={
                     "Simple": {
                         "Subject": {"Data": subject},
-                        "Body": body,
+                        "Body": email_body,
                         "Headers": headers,
                     },
                 },

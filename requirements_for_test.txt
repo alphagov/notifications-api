@@ -147,6 +147,7 @@ greenlet==3.2.2
     # via
     #   -r requirements.txt
     #   eventlet
+    #   sqlalchemy
 gunicorn==23.0.0
     # via
     #   -r requirements.txt
@@ -214,6 +215,10 @@ mistune==0.8.4
     #   notifications-utils
 moto==5.0.11
     # via -r requirements_for_test.in
+mypy==1.18.2
+    # via -r requirements_for_test.in
+mypy-extensions==1.1.0
+    # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@554de4ebb7ecfef3ca9091f9becfa5a0e38a6966
@@ -228,6 +233,8 @@ packaging==23.2
     #   gunicorn
     #   marshmallow
     #   pytest
+pathspec==0.12.1
+    # via mypy
 phonenumbers==9.0.9
     # via
     #   -r requirements.txt
@@ -364,9 +371,20 @@ statsd==4.0.1
     #   notifications-utils
 trustme==0.9.0
     # via -r requirements_for_test.in
+types-cachetools==6.2.0.20251022
+    # via -r requirements_for_test.in
+types-pycurl==7.45.7.20251101
+    # via -r requirements_for_test.in
+types-python-dateutil==2.9.0.20251115
+    # via -r requirements_for_test.in
+types-requests==2.31.0.6
+    # via -r requirements_for_test.in
+types-urllib3==1.26.25.14
+    # via types-requests
 typing-extensions==4.14.1
     # via
     #   -r requirements.txt
+    #   mypy
     #   sqlalchemy
 tzdata==2024.1
     # via
