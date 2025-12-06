@@ -14,7 +14,7 @@ from notifications_utils.international_billing_rates import (
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import String, and_, asc, column, desc, func, not_, or_, select, text, union, values
+from sqlalchemy import String, and_, asc, column, desc, func, not_, or_, select, text, union_all, values
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, defer, joinedload, scoped_session, undefer
 from sqlalchemy.orm.exc import NoResultFound
@@ -1033,28 +1033,35 @@ def get_service_ids_with_notifications_before(notification_type, timestamp):
     }
 
 
-def get_service_ids_with_notifications_on_date(notification_type, date):
-    start_date = get_london_midnight_in_utc(date)
-    end_date = get_london_midnight_in_utc(date + timedelta(days=1))
+def get_service_ids_with_notifications_on_date(
+    notification_type: str, process_day: date, session: Session | scoped_session = db.session
+) -> set[uuid.UUID]:
+    start_datetime = get_london_midnight_in_utc(process_day)
+    end_datetime = get_london_midnight_in_utc(process_day + timedelta(days=1))
 
-    notification_table_query = db.session.query(Notification.service_id.label("service_id")).filter(
-        Notification.notification_type == notification_type,
-        # using >= + < is much more efficient than date(created_at)
-        Notification.created_at >= start_date,
-        Notification.created_at < end_date,
+    notification_table_query = (
+        session.query(Notification.service_id.label("service_id"))
+        .filter(
+            Notification.notification_type == notification_type,
+            # using >= + < is much more efficient than date(created_at)
+            Notification.created_at >= start_datetime,
+            Notification.created_at < end_datetime,
+        )
+        .group_by(Notification.service_id)
     )
 
     # Looking at this table is more efficient for historical notifications,
     # provided the task to populate it has run before they were archived.
-    ft_status_table_query = db.session.query(FactNotificationStatus.service_id.label("service_id")).filter(
-        FactNotificationStatus.notification_type == notification_type,
-        FactNotificationStatus.bst_date == date,
+    ft_status_table_query = (
+        session.query(FactNotificationStatus.service_id.label("service_id"))
+        .filter(
+            FactNotificationStatus.notification_type == notification_type,
+            FactNotificationStatus.bst_date == process_day,
+        )
+        .group_by(FactNotificationStatus.service_id)
     )
 
-    return {
-        row.service_id
-        for row in db.session.query(union(notification_table_query, ft_status_table_query).subquery()).distinct()
-    }
+    return set(session.execute(union_all(notification_table_query, ft_status_table_query)).scalars().all())
 
 
 @autocommit
