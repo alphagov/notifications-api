@@ -51,7 +51,12 @@ def get_queue_group_id(request):
 
 
 def should_apply_group_id(template_id):
-    if template_id in ["6fdc77ad-35b9-4b67-a240-d52690b3f6e0", "d34bde15-109b-4972-a1a6-79608c0138aa"]:
+    if template_id in [
+        "6fdc77ad-35b9-4b67-a240-d52690b3f6e0",
+        "d34bde15-109b-4972-a1a6-79608c0138aa",
+        "10d87bf0-73b9-4aae-a306-e5f17fb6c400",
+        "b128c368-e6c5-40ed-8d53-6445466ec6cc",
+    ]:
         return False
     else:
         return True
