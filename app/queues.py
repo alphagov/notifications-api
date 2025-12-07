@@ -50,11 +50,30 @@ def get_queue_group_id(request):
     return group_id
 
 
-def log_queue_details(request, function_name, queue_name):
+def should_apply_group_id(template_id):
+    if template_id in ["6fdc77ad-35b9-4b67-a240-d52690b3f6e0", "d34bde15-109b-4972-a1a6-79608c0138aa"]:
+        return False
+    else:
+        return True
+
+
+def log_queue_details(request, template_id, service_id, function_name, queue_name):
     group_id = get_queue_group_id(request)
 
+    if should_apply_group_id(template_id):
+        current_app.logger.info(
+            "Fair queue DEBUG for service %s - operation: %s, queue name %s and group_id: %s",
+            service_id,
+            function_name,
+            queue_name,
+            group_id,
+            extra={"message_group_id": group_id},
+        )
+        return
+
     current_app.logger.info(
-        "Fair queue DEBUG - operation: %s, queue name %s and group_id: %s",
+        "Fair queue DEBUG No Group ID for service %s - operation: %s, queue name %s and group_id: %s",
+        service_id,
         function_name,
         queue_name,
         group_id,

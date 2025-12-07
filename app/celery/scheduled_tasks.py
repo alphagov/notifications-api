@@ -439,7 +439,7 @@ def check_for_missing_rows_in_completed_jobs():
 
             extra = {"job_row_number": row_to_process.missing_row, "job_id": job.id}
             current_app.logger.info("Processing missing row %(job_row_number)s for job %(job_id)s", extra, extra=extra)
-            process_job_row(template.template_type, task_args_kwargs)
+            process_job_row(job.service.id, template.id, template.template_type, task_args_kwargs)
 
 
 @notify_celery.task(name="update-status-of-fully-processed-jobs")

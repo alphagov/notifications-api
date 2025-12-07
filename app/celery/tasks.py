@@ -50,7 +50,7 @@ from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
 )
-from app.queues import get_message_group_id_for_queue, log_queue_details
+from app.queues import get_message_group_id_for_queue, log_queue_details, should_apply_group_id
 from app.report_requests.process_notifications_report import ReportRequestProcessor
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
@@ -80,8 +80,6 @@ def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER
         extra={"job_id": job_id, "job_status": job.job_status},
     )
 
-    log_queue_details(self.request, "process_job", QueueNames.JOBS)
-
     if job.job_status != JOB_STATUS_PENDING:
         return
 
@@ -106,6 +104,7 @@ def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER
         return
 
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
+    log_queue_details(self.request, template.id, service.id, "process_job", QueueNames.JOBS)
 
     current_app.logger.info(
         "Starting job %s processing %s notifications",
@@ -120,6 +119,8 @@ def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER
             for row in shatter_batch
         ]
         _shatter_job_rows_with_subdivision(
+            service.id,
+            template.id,
             template.template_type,
             batch_args_kwargs,
             group_id=get_message_group_id_for_queue(
@@ -132,15 +133,24 @@ def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER
     job_complete(job, start=start)
 
 
-def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, group_id, top_level=True):
+def _shatter_job_rows_with_subdivision(
+    service_id, template_id, template_type, args_kwargs_seq, group_id, top_level=True
+):
+    headers = {}
+
+    if should_apply_group_id(template_id):
+        headers = {"MessageGroupId": group_id}
+
     try:
         shatter_job_rows.apply_async(
             (
+                service_id,
+                template_id,
                 template_type,
                 args_kwargs_seq,
             ),
             queue=QueueNames.JOBS,
-            headers={"MessageGroupId": group_id},
+            headers=headers,
         )
     except BotoClientError as e:
         # this information is helpfully not preserved outside the message string of the exception, so
@@ -158,7 +168,7 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, group_id,
             raise UnprocessableJobRow from e
 
         for sub_batch in (args_kwargs_seq[:split_batch_size], args_kwargs_seq[split_batch_size:]):
-            _shatter_job_rows_with_subdivision(template_type, sub_batch, group_id, top_level=False)
+            _shatter_job_rows_with_subdivision(template_id, template_type, sub_batch, group_id, top_level=False)
 
     else:
         if not top_level:
@@ -171,25 +181,37 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, group_id,
 @notify_celery.task(bind=True, name="shatter-job-rows")
 def shatter_job_rows(
     self,
+    service_id: str,
+    template_id: str,
     template_type: str,
     args_kwargs_seq: Sequence,
 ):
-    log_queue_details(self.request, "shatter_job_rows", QueueNames.JOBS)
+    log_queue_details(self.request, template_id, service_id, "shatter_job_rows", QueueNames.JOBS)
 
     for task_args_kwargs in args_kwargs_seq:
-        process_job_row(template_type, task_args_kwargs)
+        process_job_row(service_id, template_id, template_type, task_args_kwargs)
 
 
-def process_job_row(template_type, task_args_kwargs):
+def process_job_row(service_id, template_id, template_type, task_args_kwargs):
     send_fn = {
         SMS_TYPE: save_sms,
         EMAIL_TYPE: save_email,
         LETTER_TYPE: save_letter,
     }[template_type]
 
+    headers = {}
+
+    if should_apply_group_id(template_id):
+        headers = {
+            "MessageGroupId": get_message_group_id_for_queue(
+                queue_name=QueueNames.DATABASE, service_id=service_id, notification_type=template_type
+            )
+        }
+
     send_fn.apply_async(
         *task_args_kwargs,
         queue=QueueNames.DATABASE,
+        headers=headers,
     )
 
 
@@ -295,8 +317,6 @@ def save_sms(
     encoded_notification,
     sender_id=None,
 ):
-    log_queue_details(self.request, "save_sms", QueueNames.DATABASE)
-
     notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_service_id_and_version(
@@ -304,6 +324,8 @@ def save_sms(
         service_id=service.id,
         version=notification["template_version"],
     )
+
+    log_queue_details(self.request, template.id, service_id, "save_sms", QueueNames.DATABASE)
 
     if sender_id:
         reply_to_text = dao_get_service_sms_senders_by_id(service_id, sender_id).sms_sender
@@ -367,17 +389,22 @@ def save_sms(
         )
 
         if saved_notification.status != NOTIFICATION_VALIDATION_FAILED:
-            provider_tasks.deliver_sms.apply_async(
-                [str(saved_notification.id)],
-                queue=QueueNames.SEND_SMS,
-                headers={
+            headers = {}
+
+            if should_apply_group_id(template.id):
+                headers = {
                     "MessageGroupId": get_message_group_id_for_queue(
                         queue_name=QueueNames.SEND_SMS,
                         service_id=service_id,
                         origin="dashboard" if notification.get("job", None) else "api",
                         key_type=KEY_TYPE_NORMAL,
                     )
-                },
+                }
+
+            provider_tasks.deliver_sms.apply_async(
+                [str(saved_notification.id)],
+                queue=QueueNames.SEND_SMS,
+                headers=headers,
             )
         else:
             extra = {
@@ -409,8 +436,6 @@ def save_sms(
 
 @notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
 def save_email(self, service_id, notification_id, encoded_notification, sender_id=None, early_log_level=logging.DEBUG):
-    log_queue_details(self.request, "save_email", QueueNames.DATABASE)
-
     notification = signing.decode(encoded_notification)
 
     service = SerialisedService.from_id(service_id)
@@ -419,6 +444,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         service_id=service.id,
         version=notification["template_version"],
     )
+    log_queue_details(self.request, template.id, service_id, "save_email", QueueNames.DATABASE)
 
     if sender_id:
         reply_to_text = dao_get_reply_to_by_id(reply_to_id=sender_id, service_id=service_id).email_address
@@ -457,17 +483,21 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             client_reference=notification.get("client_reference", None),
         )
 
-        provider_tasks.deliver_email.apply_async(
-            [str(saved_notification.id)],
-            queue=QueueNames.SEND_EMAIL,
-            headers={
+        headers = {}
+        if should_apply_group_id(template.id):
+            headers = {
                 "MessageGroupId": get_message_group_id_for_queue(
                     queue_name=QueueNames.SEND_EMAIL,
                     service_id=service_id,
                     origin="dashboard" if notification.get("job", None) else "api",
                     key_type=KEY_TYPE_NORMAL,
                 )
-            },
+            }
+
+        provider_tasks.deliver_email.apply_async(
+            [str(saved_notification.id)],
+            queue=QueueNames.SEND_EMAIL,
+            headers=headers,
         )
 
         extra = {
@@ -492,8 +522,6 @@ def save_letter(
     notification_id,
     encoded_notification,
 ):
-    log_queue_details(self.request, "save_letter", QueueNames.DATABASE)
-
     notification = signing.decode(encoded_notification)
 
     postal_address = PostalAddress.from_personalisation(InsensitiveDict(notification["personalisation"]))
@@ -504,6 +532,7 @@ def save_letter(
         service_id=service.id,
         version=notification["template_version"],
     )
+    log_queue_details(self.request, template.id, notification.service_id, "save_letter", QueueNames.DATABASE)
 
     try:
         saved_notification = persist_notification(
@@ -526,17 +555,21 @@ def save_letter(
             status=NOTIFICATION_CREATED,
         )
 
-        letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
-            [str(saved_notification.id)],
-            queue=QueueNames.CREATE_LETTERS_PDF,
-            headers={
+        headers = {}
+        if should_apply_group_id(notification.template_id):
+            headers = {
                 "MessageGroupId": get_message_group_id_for_queue(
                     queue_name=QueueNames.CREATE_LETTERS_PDF,
                     service_id=service_id,
                     origin="dashboard" if notification["job"] else "api",
                     key_type=KEY_TYPE_NORMAL,
                 )
-            },
+            }
+
+        letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
+            [str(saved_notification.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF,
+            headers=headers,
         )
 
         extra = {
@@ -623,6 +656,7 @@ def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_B
             for row in shatter_batch
         ]
         _shatter_job_rows_with_subdivision(
+            template.id,
             template.template_type,
             batch_args_kwargs,
             group_id=get_message_group_id_for_queue(

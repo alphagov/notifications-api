@@ -58,8 +58,6 @@ from app.utils import batched
 
 @notify_celery.task(bind=True, name="get-pdf-for-templated-letter", max_retries=15, default_retry_delay=300)
 def get_pdf_for_templated_letter(self, notification_id):
-    log_queue_details(self.request, "get_pdf_for_templated_letter", QueueNames.CREATE_LETTERS_PDF)
-
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
         letter_filename = generate_letter_pdf_filename(
@@ -67,6 +65,13 @@ def get_pdf_for_templated_letter(self, notification_id):
             created_at=notification.created_at,
             ignore_folder=notification.key_type == KEY_TYPE_TEST,
             postage=notification.postage,
+        )
+        log_queue_details(
+            self.request,
+            notification.template_id,
+            notification.service_id,
+            "get_pdf_for_templated_letter",
+            QueueNames.CREATE_LETTERS_PDF,
         )
 
         letter_attachment_json = (
