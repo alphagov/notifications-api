@@ -3,6 +3,7 @@ import uuid
 from collections import namedtuple
 from datetime import UTC, date, datetime, timedelta
 from unittest.mock import ANY
+from uuid import UUID
 
 import pytest
 from flask import current_app, url_for
@@ -4002,7 +4003,7 @@ def test_count_notifications_for_service(admin_request, sample_template, test_ca
 
 
 ServiceJoinRequestTestCase = namedtuple(
-    "TestCase",
+    "ServiceJoinRequestTestCase",
     [
         "requester_id",
         "service_id",
@@ -4768,7 +4769,7 @@ def test_create_report_request_by_type(
 
     json_resp = admin_request.post(
         "service.create_report_request_by_type",
-        service_id=str(sample_service.id),
+        service_id=sample_service.id,
         _data={
             "user_id": str(sample_service.created_by_id),
             "report_type": "notifications_report",
@@ -4780,8 +4781,8 @@ def test_create_report_request_by_type(
 
     process_task_mock.assert_called_once_with(
         kwargs={
-            "report_request_id": json_resp["data"]["id"],
-            "service_id": str(sample_service.id),
+            "report_request_id": UUID(json_resp["data"]["id"]),
+            "service_id": sample_service.id,
         },
         queue="report-requests-notifications-tasks",
     )
@@ -4863,8 +4864,8 @@ def test_create_report_request_by_type_creates_new_when_no_existing(admin_reques
 
     process_task_mock.assert_called_once_with(
         kwargs={
-            "report_request_id": response["data"]["id"],
-            "service_id": str(sample_service.id),
+            "report_request_id": UUID(response["data"]["id"]),
+            "service_id": sample_service.id,
         },
         queue="report-requests-notifications-tasks",
     )
@@ -4911,8 +4912,8 @@ def test_create_report_request_by_type_creates_new_if_existing_is_stale(
     )
     process_task_mock.assert_called_once_with(
         kwargs={
-            "report_request_id": response["data"]["id"],
-            "service_id": str(sample_service.id),
+            "report_request_id": UUID(response["data"]["id"]),
+            "service_id": sample_service.id,
         },
         queue="report-requests-notifications-tasks",
     )

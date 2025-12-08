@@ -54,9 +54,9 @@ def _handle_common_dvla_errors(custom_httperror_exc_handler: Callable[[requests.
         if e.response.status_code == 429:
             raise DvlaThrottlingException from e
         elif e.response.status_code >= 500:
-            raise DvlaRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e
+            raise DvlaRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e  # type: ignore[union-attr]
         else:
-            raise DvlaNonRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e
+            raise DvlaNonRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e  # type: ignore[union-attr]
 
 
 class SSMParameter:
@@ -390,7 +390,7 @@ class DVLAClient:
 
         return recipient, {"unstructuredAddress": self._build_address(address_lines, "postcode")}
 
-    def _truncate_long_address_lines(self, address_data: dict) -> tuple[str, dict]:
+    def _truncate_long_address_lines(self, address_data: dict) -> dict[str, dict]:
         def truncate_line(key: str, value):
             if not isinstance(value, str):
                 return value

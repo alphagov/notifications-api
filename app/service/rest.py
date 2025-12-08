@@ -2,6 +2,7 @@ import itertools
 import json
 import uuid
 from datetime import datetime
+from uuid import UUID
 
 from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.letter_timings import (
@@ -1474,7 +1475,7 @@ def update_service_join_request_by_id(service_id: uuid.UUID, request_id: uuid.UU
     return jsonify(updated_request.serialize()), 200
 
 
-def create_personalisation(requester_name: str, approver_name: str, service_name: str, service_id: uuid):
+def create_personalisation(requester_name: str, approver_name: str, service_name: str, service_id: uuid.UUID):
     admin_base_url = current_app.config["ADMIN_BASE_URL"]
     return {
         "requester_name": requester_name,
@@ -1536,7 +1537,7 @@ def _fetch_returned_letter_data(service_id, report_date):
 
 
 @service_blueprint.route("/<uuid:service_id>/report-request/<uuid:request_id>", methods=["GET"])
-def get_report_request_by_id(service_id, request_id):
+def get_report_request_by_id(service_id: UUID, request_id: UUID):
     request = dao_get_active_report_request_by_id(service_id, request_id)
     return jsonify(data=request.serialize())
 
@@ -1599,7 +1600,7 @@ def create_report_request_by_type(service_id):
     )
 
     process_report_request.apply_async(
-        kwargs={"service_id": str(report_request.service_id), "report_request_id": str(report_request.id)},
+        kwargs={"service_id": report_request.service_id, "report_request_id": report_request.id},
         queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
     )
 

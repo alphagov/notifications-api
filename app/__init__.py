@@ -48,7 +48,7 @@ Base = declarative_base()
 
 db = SQLAlchemy(model_class=Base)
 # APIFRAGILE
-db.session_bulk = db._make_scoped_session({"bind_key": "bulk", "class_": BindForcingSession})
+db.session_bulk = db._make_scoped_session({"bind_key": "bulk", "class_": BindForcingSession})  # type: ignore[attr-defined]
 
 migrate = Migrate()
 ma = Marshmallow()

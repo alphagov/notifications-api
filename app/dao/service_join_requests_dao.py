@@ -53,7 +53,7 @@ def dao_update_service_join_request_by_id(
     service_id: UUID,
     status: Literal["approved", "rejected", "pending", "cancelled"],
     status_changed_by_id: UUID,
-    reason: str = None,
+    reason: str | None = None,
 ) -> ServiceJoinRequest:
     service_join_request = dao_get_service_join_request_by_id_and_service_id(
         request_id=request_id, service_id=service_id

@@ -86,14 +86,18 @@ drop-test-dbs-in-docker:
 	@echo "Done."
 
 .PHONY: test
-test: ## Run tests
-	ruff check .
-	ruff format --check .
+test: lint ## Run tests
 	pytest -n logical --maxfail=10 -v
 
 .PHONY: watch-tests
 watch-tests: ## Watch tests and run on change
 	ptw --runner "pytest --testmon -n auto"
+
+.PHONY: lint
+lint: ## Run static type checks
+	ruff check .
+	ruff format --check .
+	mypy
 
 .PHONY: freeze-requirements
 freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt

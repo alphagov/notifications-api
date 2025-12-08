@@ -1368,10 +1368,10 @@ def mock_celery_task(mocker):
             Checks all the args/kwargs provided match type hints if necessary by using the inspect module to introspect
             the params and extract annotations. Handles partial args and kwargs, parameters without type hints, etc
             """
-            args = args or []
+            args = list(args or [])
             kwargs = kwargs or {}
             # get an iterator so we can loop through args in step with inspect
-            args = iter(args)
+            args_iter = iter(args)
 
             # try and check types are correct
             for parameter_signature in inspect.signature(celery_task).parameters.values():
@@ -1382,7 +1382,7 @@ def mock_celery_task(mocker):
                 # try and match with a provided arg - if there are no more args, then we must be calling with a kwarg
                 # instead. if there's no kwarg, then we're just falling back on a provided default
                 try:
-                    param_value = next(args)
+                    param_value = next(args_iter)
                 except StopIteration:
                     if parameter_signature.name in kwargs:
                         param_value = kwargs[parameter_signature.name]

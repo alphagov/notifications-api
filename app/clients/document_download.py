@@ -10,6 +10,8 @@ class DocumentDownloadError(Exception):
 
     @classmethod
     def from_exception(cls, e: requests.RequestException, status_code: int | None = None):
+        if e.response is None:
+            raise ValueError("RequestException has no response") from e
         message = e.response.json()["error"]
         status_code = status_code or e.response.status_code
         return cls(message, status_code)

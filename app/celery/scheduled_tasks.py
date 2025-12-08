@@ -374,7 +374,7 @@ def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 3
 
             Notifications: {sorted(letter_ids)}"""
 
-        if current_app.should_send_zendesk_alerts:
+        if current_app.should_send_zendesk_alerts:  # type: ignore[attr-defined]
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still pending virus check",
                 message=msg,
@@ -382,7 +382,7 @@ def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 3
                 notify_ticket_type=NotifyTicketType.TECHNICAL,
                 notify_task_type="notify_task_letters_pending_scan",
             )
-            zendesk_client.send_ticket_to_zendesk(ticket)
+            zendesk_client.send_ticket_to_zendesk(ticket)  # type: ignore[attr-defined]
 
 
 @notify_celery.task(name="check-if-letters-still-in-created")
