@@ -477,7 +477,8 @@ def _deep_archive_notification_history_hour_starting(
             orc_type_description,
             struct_repr=pyorc.StructRepr.DICT,
             compression=pyorc.CompressionKind.ZSTD,
-            bloom_filter_columns=[col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)],
+            bloom_filter_columns=[col.name for col in inspect(table).c if issubclass(col.type.python_type, UUID)]
+            + ["reference", "client_reference"],
         ) as writer:
             history_rows = _deep_archive_notification_history_row_gen(
                 table, start_datetime, end_datetime, db_batch_size
