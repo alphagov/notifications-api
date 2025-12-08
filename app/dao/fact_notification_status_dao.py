@@ -39,11 +39,6 @@ from app.utils import (
 )
 
 
-def update_fact_notification_status(process_day: date, notification_type: str, service_id: UUID | str):
-    rows = generate_fact_notification_status_rows(process_day, notification_type, service_id)
-    _update_fact_notification_status(rows, process_day, notification_type, service_id)
-
-
 def generate_fact_notification_status_rows(
     process_day: date, notification_type: str, service_id: UUID | str, session: Session | scoped_session = db.session
 ) -> Sequence[Row]:
@@ -79,7 +74,7 @@ def generate_fact_notification_status_rows(
 
 
 @autocommit
-def _update_fact_notification_status(
+def update_fact_notification_status(
     rows: Sequence[Row], process_day: date, notification_type: str, service_id: UUID | str
 ) -> int:
     if rows and {row.bst_date for row in rows} != {process_day}:
