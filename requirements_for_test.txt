@@ -36,12 +36,15 @@ blinker==1.9.0
     #   -r requirements.txt
     #   flask
     #   gds-metrics
-boto3==1.34.100
+    #   sentry-sdk
+boto3[crt]==1.34.100
     # via
     #   -r requirements.txt
+    #   celery
+    #   kombu
     #   moto
     #   notifications-utils
-botocore==1.34.100
+botocore[crt]==1.34.100
     # via
     #   -r requirements.txt
     #   boto3
@@ -51,8 +54,10 @@ cachetools==5.5.0
     # via
     #   -r requirements.txt
     #   notifications-utils
-celery==5.4.0
-    # via -r requirements.txt
+celery[sqs]==5.4.0
+    # via
+    #   -r requirements.txt
+    #   sentry-sdk
 certifi==2024.7.4
     # via
     #   -r requirements.txt
@@ -119,6 +124,7 @@ flask==3.1.1
     #   flask-sqlalchemy
     #   gds-metrics
     #   notifications-utils
+    #   sentry-sdk
 flask-bcrypt==1.0.1
     # via -r requirements.txt
 flask-marshmallow==1.3.0
@@ -134,7 +140,9 @@ flask-sqlalchemy==3.1.1
     #   -r requirements.txt
     #   flask-migrate
 fqdn==1.5.1
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   jsonschema
 freezegun==1.5.1
     # via -r requirements_for_test_common.in
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
@@ -147,14 +155,14 @@ greenlet==3.2.2
     # via
     #   -r requirements.txt
     #   eventlet
-    #   sqlalchemy
-gunicorn==23.0.0
+gunicorn[eventlet]==23.0.0
     # via
     #   -r requirements.txt
     #   notifications-utils
 idna==3.7
     # via
     #   -r requirements.txt
+    #   jsonschema
     #   requests
     #   trustme
 iniconfig==2.0.0
@@ -162,7 +170,9 @@ iniconfig==2.0.0
 iso8601==2.1.0
     # via -r requirements.txt
 isoduration==20.11.0
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   jsonschema
 itsdangerous==2.2.0
     # via
     #   -r requirements.txt
@@ -180,14 +190,16 @@ jmespath==1.0.1
     #   boto3
     #   botocore
 jsonpointer==2.3
-    # via -r requirements.txt
-jsonschema==4.23.0
+    # via
+    #   -r requirements.txt
+    #   jsonschema
+jsonschema[format]==4.23.0
     # via -r requirements.txt
 jsonschema-specifications==2024.10.1
     # via
     #   -r requirements.txt
     #   jsonschema
-kombu==5.3.7
+kombu[sqs]==5.3.7
     # via
     #   -r requirements.txt
     #   celery
@@ -201,6 +213,7 @@ markupsafe==2.1.1
     #   flask
     #   jinja2
     #   mako
+    #   sentry-sdk
     #   werkzeug
 marshmallow==3.21.3
     # via
@@ -221,7 +234,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@554de4ebb7ecfef3ca9091f9becfa5a0e38a6966
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@104.0.1
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
@@ -256,7 +269,10 @@ psycopg2-binary==2.9.10
 pycparser==2.21
     # via cffi
 pycurl==7.45.6
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   celery
+    #   kombu
 pyjwt==2.10.1
     # via
     #   -r requirements.txt
@@ -325,9 +341,13 @@ requests-mock==1.12.1
 responses==0.25.3
     # via moto
 rfc3339-validator==0.1.4
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   jsonschema
 rfc3987==1.3.8
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   jsonschema
 rpds-py==0.22.3
     # via
     #   -r requirements.txt
@@ -343,7 +363,7 @@ segno==1.6.1
     # via
     #   -r requirements.txt
     #   notifications-utils
-sentry-sdk==1.45.1
+sentry-sdk[celery,flask,sqlalchemy]==1.45.1
     # via -r requirements.txt
 six==1.16.0
     # via
@@ -363,6 +383,7 @@ sqlalchemy==2.0.41
     #   alembic
     #   flask-sqlalchemy
     #   marshmallow-sqlalchemy
+    #   sentry-sdk
 squawk-cli==1.4.0
     # via -r requirements_for_test.in
 statsd==4.0.1
@@ -391,11 +412,15 @@ tzdata==2024.1
     #   -r requirements.txt
     #   celery
 uri-template==1.2.0
-    # via -r requirements.txt
-urllib3==1.26.19
+    # via
+    #   -r requirements.txt
+    #   jsonschema
+urllib3==2.6.0
     # via
     #   -r requirements.txt
     #   botocore
+    #   celery
+    #   kombu
     #   requests
     #   responses
     #   sentry-sdk
@@ -410,7 +435,9 @@ wcwidth==0.2.5
     #   -r requirements.txt
     #   prompt-toolkit
 webcolors==1.12
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   jsonschema
 werkzeug==3.1.3
     # via
     #   -r requirements.txt
