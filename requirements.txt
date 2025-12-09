@@ -159,9 +159,7 @@ packaging==23.2
 phonenumbers==9.0.9
     # via notifications-utils
 prometheus-client==0.14.1
-    # via
-    #   -r requirements.in
-    #   gds-metrics
+    # via gds-metrics
 prompt-toolkit==3.0.31
     # via click-repl
 psutil==6.1.1
@@ -198,7 +196,6 @@ referencing==0.35.1
     #   jsonschema-specifications
 requests==2.32.2
     # via
-    #   -r requirements.in
     #   govuk-bank-holidays
     #   notifications-python-client
     #   notifications-utils
