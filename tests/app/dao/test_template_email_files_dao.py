@@ -1,7 +1,7 @@
 import datetime
 
 import pytest
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from app.constants import EMAIL_TYPE
 from app.dao.template_email_files_dao import (
@@ -144,3 +144,65 @@ def test_dao_update_template_email_file(sample_email_template, sample_template_e
     assert fetched_template_email_file.link_text == "click this new link"
     assert fetched_template_email_file.retention_period == 30
     assert fetched_template.version == 3
+
+
+def test_duplicate_files_for_same_template_raises_error(sample_email_template, sample_service):
+    file_one_data = {
+        "filename": "example.pdf",
+        "link_text": "click this link!",
+        "retention_period": 90,
+        "validate_users_email": True,
+        "template_id": str(sample_email_template.id),
+        "template_version": int(sample_email_template.version),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+
+    file_two_data = {
+        "filename": "example.pdf",
+        "link_text": "click this other link!",
+        "retention_period": 30,
+        "validate_users_email": False,
+        "template_id": str(sample_email_template.id),
+        "template_version": int(sample_email_template.version),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    file_one = TemplateEmailFile(**file_one_data)
+    dao_create_template_email_file(file_one)
+    file_two = TemplateEmailFile(**file_two_data)
+    with pytest.raises(IntegrityError):
+        dao_create_template_email_file(file_two)
+
+
+def test_duplicate_filename_for_different_templates_creates(sample_service):
+    template_one = create_template(sample_service, template_type=EMAIL_TYPE, template_name="template_one")
+    template_two = create_template(sample_service, template_type=EMAIL_TYPE, template_name="template_two")
+
+    file_one_data = {
+        "filename": "example.pdf",
+        "link_text": "click this link!",
+        "retention_period": 90,
+        "validate_users_email": True,
+        "template_id": str(template_one.id),
+        "template_version": int(template_one.version),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+
+    file_two_data = {
+        "filename": "example.pdf",
+        "link_text": "click this other link!",
+        "retention_period": 30,
+        "validate_users_email": False,
+        "template_id": str(template_two.id),
+        "template_version": int(template_two.version),
+        "created_by_id": str(sample_service.users[0].id),
+    }
+    file_one = TemplateEmailFile(**file_one_data)
+    dao_create_template_email_file(file_one)
+    file_two = TemplateEmailFile(**file_two_data)
+    dao_create_template_email_file(file_two)
+    file_one_query = TemplateEmailFile.query.filter(TemplateEmailFile.id == file_one.id).one()
+    file_two_query = TemplateEmailFile.query.filter(TemplateEmailFile.id == file_two.id).one()
+    assert file_one_query.template_id == template_one.id
+    assert file_one_query.filename == "example.pdf"
+    assert file_two_query.template_id == template_two.id
+    assert file_two_query.filename == "example.pdf"
