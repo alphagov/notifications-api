@@ -517,16 +517,22 @@ class Config:
     ZENDESK_REPORTING = json.loads(os.environ.get("ZENDESK_REPORTING", "{}").encode().decode("unicode-escape"))
 
     NOTIFY_EMAIL_DOMAIN = os.environ.get("NOTIFY_EMAIL_DOMAIN")
+
     S3_BUCKET_CSV_UPLOAD = os.environ.get("S3_BUCKET_CSV_UPLOAD")
     S3_BUCKET_CONTACT_LIST = os.environ.get("S3_BUCKET_CONTACT_LIST")
+    S3_BUCKET_TEMPLATE_EMAIL_FILES = os.environ.get("S3_BUCKET_TEMPLATE_EMAIL_FILES")
+
     S3_BUCKET_TEST_LETTERS = os.environ.get("S3_BUCKET_TEST_LETTERS")
     S3_BUCKET_LETTERS_PDF = os.environ.get("S3_BUCKET_LETTERS_PDF")
     S3_BUCKET_LETTERS_SCAN = os.environ.get("S3_BUCKET_LETTERS_SCAN")
     S3_BUCKET_INVALID_PDF = os.environ.get("S3_BUCKET_INVALID_PDF")
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = os.environ.get("S3_BUCKET_TRANSIENT_UPLOADED_LETTERS")
     S3_BUCKET_LETTER_SANITISE = os.environ.get("S3_BUCKET_LETTER_SANITISE")
+
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = os.environ.get("S3_BUCKET_REPORT_REQUESTS_DOWNLOAD")
+
     S3_BUCKET_NOTIFICATION_DEEP_HISTORY = os.environ.get("S3_BUCKET_NOTIFICATION_DEEP_HISTORY")
+
     FROM_NUMBER = os.environ.get("FROM_NUMBER")
     API_RATE_LIMIT_ENABLED = os.environ.get("API_RATE_LIMIT_ENABLED", "1") == "1"
 
@@ -573,12 +579,15 @@ class Development(Config):
 
     S3_BUCKET_CSV_UPLOAD = "development-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "development-contact-list"
+    S3_BUCKET_TEMPLATE_EMAIL_FILES = "development-template-email-files"
+
     S3_BUCKET_TEST_LETTERS = "development-test-letters"
     S3_BUCKET_LETTERS_PDF = "development-letters-pdf"
     S3_BUCKET_LETTERS_SCAN = "development-letters-scan"
     S3_BUCKET_INVALID_PDF = "development-letters-invalid-pdf"
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "development-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "development-letters-sanitise"
+
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = "development-report-requests-download"
     S3_BUCKET_NOTIFICATION_DEEP_HISTORY = "development-notification-deep-history"
 
@@ -628,12 +637,15 @@ class Test(Development):
 
     S3_BUCKET_CSV_UPLOAD = "test-notifications-csv-upload"
     S3_BUCKET_CONTACT_LIST = "test-contact-list"
+    S3_BUCKET_TEMPLATE_EMAIL_FILES = "test-template-email-files"
+
     S3_BUCKET_TEST_LETTERS = "test-test-letters"
     S3_BUCKET_LETTERS_PDF = "test-letters-pdf"
     S3_BUCKET_LETTERS_SCAN = "test-letters-scan"
     S3_BUCKET_INVALID_PDF = "test-letters-invalid-pdf"
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "test-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "test-letters-sanitise"
+
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = "test-report-requests-download"
     S3_BUCKET_NOTIFICATION_DEEP_HISTORY = "test-notification-deep-history"
 

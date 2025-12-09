@@ -1,6 +1,7 @@
 import datetime
 import uuid
 from collections import namedtuple
+from unittest.mock import call
 
 import pytest
 from boto3.exceptions import Boto3Error
@@ -18,6 +19,7 @@ from app.constants import (
 )
 from app.models import Notification, NotificationHistory
 from app.notifications.process_notifications import (
+    add_email_file_links_to_personalisation,
     create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
@@ -32,7 +34,7 @@ from tests.conftest import set_config
 
 def test_create_content_for_notification_passes(sample_email_template):
     template = SerialisedTemplate.from_id_and_service_id(sample_email_template.id, sample_email_template.service_id)
-    content = create_content_for_notification(template, None)
+    content = create_content_for_notification(template=template, personalisation=None, recipient="amanda@example.com")
     assert str(content) == template.content + "\n"
 
 
@@ -43,9 +45,33 @@ def test_create_content_for_notification_with_placeholders_passes(
         sample_template_with_placeholders.id,
         sample_template_with_placeholders.service_id,
     )
-    content = create_content_for_notification(template, {"name": "Bobby"})
+    content = create_content_for_notification(
+        template=template, personalisation={"name": "Bobby"}, recipient="amanda@example.com"
+    )
     assert content.content == template.content
     assert "Bobby" in str(content)
+
+
+def test_create_content_for_notification_with_email_file_placeholder_passes(
+    sample_service,
+    mocker,
+    mock_utils_s3_download,
+    mock_document_download_client_upload,
+    sample_email_template_with_template_email_files,
+):
+    template_id = sample_email_template_with_template_email_files.id
+    template = SerialisedTemplate.from_id_and_service_id(template_id=template_id, service_id=sample_service.id)
+
+    content = create_content_for_notification(
+        template=template,
+        personalisation={"name": "Bobby"},
+        recipient="amanda@example.com",
+    )
+    assert content.content == template.content
+    assert "Bobby" in str(content)
+    # assert secure links to files made it to notification content:
+    assert "documents.gov.uk/link1" in str(content)
+    assert "documents.gov.uk/link2" in str(content)
 
 
 def test_create_content_for_notification_fails_with_missing_personalisation(
@@ -56,7 +82,7 @@ def test_create_content_for_notification_fails_with_missing_personalisation(
         sample_template_with_placeholders.service_id,
     )
     with pytest.raises(BadRequestError):
-        create_content_for_notification(template, None)
+        create_content_for_notification(template=template, personalisation=None, recipient="07900111222")
 
 
 def test_create_content_for_notification_allows_additional_personalisation(
@@ -66,7 +92,11 @@ def test_create_content_for_notification_allows_additional_personalisation(
         sample_template_with_placeholders.id,
         sample_template_with_placeholders.service_id,
     )
-    create_content_for_notification(template, {"name": "Bobby", "Additional placeholder": "Data"})
+    create_content_for_notification(
+        template=template,
+        personalisation={"name": "Bobby", "Additional placeholder": "Data"},
+        recipient="07900111222",
+    )
 
 
 def test_create_content_for_notification_raises_error_on_qr_code_too_long(
@@ -76,12 +106,74 @@ def test_create_content_for_notification_raises_error_on_qr_code_too_long(
     template = SerialisedTemplate.from_id_and_service_id(db_template.id, db_template.service_id)
 
     with pytest.raises(QrCodeTooLongError) as e:
-        create_content_for_notification(template, {"code": "too much data " * 50})
+        create_content_for_notification(
+            template=template, personalisation={"code": "too much data " * 50}, recipient=None
+        )
 
     assert e.value.message == "Cannot create a usable QR code - the link is too long"
     assert e.value.num_bytes == 700
     assert e.value.max_bytes == 504
     assert e.value.data == "too much data " * 50
+
+
+def test_create_content_for_notification_should_raise_if_email_files_not_found(
+    notify_api, mocker, sample_service, sample_email_template_with_email_file_placeholders
+):
+    template = SerialisedTemplate.from_id_and_service_id(
+        template_id=sample_email_template_with_email_file_placeholders.id, service_id=sample_service.id
+    )
+
+    mock_upload = mocker.patch("app.notifications.process_notifications.document_download_client.upload_document")
+
+    with pytest.raises(BadRequestError) as e:
+        create_content_for_notification(template, {"name": "Anne"}, recipient="anne@example.com")
+
+    assert e.value.status_code == 400
+    assert e.value.message == "Missing personalisation: invitation.pdf, form.pdf"
+    mock_upload.assert_not_called()
+
+
+def test_add_email_file_links_to_personalisation(
+    notify_api, mocker, sample_service, sample_email_template_with_template_email_files
+):
+    template = SerialisedTemplate.from_id_and_service_id(
+        template_id=sample_email_template_with_template_email_files.id, service_id=sample_service.id
+    )
+
+    mocker.patch(
+        "app.utils.utils_s3download",
+        side_effect=["file_from_s3_1", "file_from_s3_2"],
+    )
+
+    mock_upload = mocker.patch(
+        "app.notifications.process_notifications.document_download_client.upload_document",
+        side_effect=["documents.gov.uk/link1", "documents.gov.uk/link2"],
+    )
+
+    personalisation = add_email_file_links_to_personalisation(template, {"name": "Anne"}, recipient="anne@example.com")
+
+    assert personalisation == {
+        "name": "Anne",
+        "invitation.pdf": "documents.gov.uk/link1",
+        "form.pdf": "documents.gov.uk/link2",
+    }
+
+    assert mock_upload.mock_calls == [
+        call(
+            str(sample_service.id),
+            "file_from_s3_1",
+            confirmation_email="anne@example.com",
+            retention_period=26,
+            filename="invitation.pdf",
+        ),
+        call(
+            str(sample_service.id),
+            "file_from_s3_2",
+            confirmation_email="anne@example.com",
+            retention_period=26,
+            filename="form.pdf",
+        ),
+    ]
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

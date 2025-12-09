@@ -410,7 +410,7 @@ class BaseTemplateSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.Template
-        exclude = ("service_id", "jobs", "service_letter_contact_id", "unsubscribe_requests")
+        exclude = ("jobs", "service_letter_contact_id", "unsubscribe_requests")
 
 
 class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
