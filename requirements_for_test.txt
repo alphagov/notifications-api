@@ -311,7 +311,7 @@ referencing==0.35.1
     #   -r requirements.txt
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.2
+requests==2.32.5
     # via
     #   -r requirements.txt
     #   govuk-bank-holidays
