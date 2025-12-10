@@ -520,9 +520,7 @@ def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permis
     return billing_data
 
 
-def _query_for_billing_data(
-    notification_type, start_date, end_date, service_ids, check_permissions, session=db.session
-):
+def _query_for_billing_data(notification_type, start_dt, end_dt, service_ids, check_permissions, session=db.session):
     base_query = session.query(NotificationAllTimeView).join(Service, NotificationAllTimeView.service_id == Service.id)
 
     if check_permissions:
@@ -552,8 +550,8 @@ def _query_for_billing_data(
             .filter(
                 NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
                 NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.created_at >= start_dt,
+                NotificationAllTimeView.created_at < end_dt,
                 NotificationAllTimeView.notification_type == notification_type,
                 *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
@@ -584,8 +582,8 @@ def _query_for_billing_data(
             .filter(
                 NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
                 NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.created_at >= start_dt,
+                NotificationAllTimeView.created_at < end_dt,
                 NotificationAllTimeView.notification_type == notification_type,
                 *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
@@ -618,8 +616,8 @@ def _query_for_billing_data(
             .filter(
                 NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
                 NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.created_at >= start_dt,
+                NotificationAllTimeView.created_at < end_dt,
                 NotificationAllTimeView.notification_type == notification_type,
                 *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
