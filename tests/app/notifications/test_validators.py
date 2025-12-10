@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+from unittest.mock import call
 from uuid import uuid4
 
 import pytest
@@ -36,6 +38,7 @@ from app.notifications.validators import (
     check_service_sms_sender_id,
     check_template_is_active,
     check_template_is_for_notification_type,
+    get_daily_rate_limit_value,
     service_can_send_to_recipient,
     validate_address,
     validate_and_format_recipient,
@@ -73,7 +76,7 @@ def enable_redis(notify_api):
 
 
 class TestCheckServiceMessageLimit:
-    @pytest.mark.parametrize("key_type", ["team", "normal"])
+    @pytest.mark.parametrize("key_type", ["team", "normal", "test"])
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_message_limit_in_cache_under_message_limit_passes(
         self, sample_service, mocker, notification_type, key_type
@@ -83,21 +86,24 @@ class TestCheckServiceMessageLimit:
         mock_set = mocker.patch("app.notifications.validators.redis_store.set")
         check_service_over_daily_message_limit(serialised_service, key_type, notification_type=notification_type)
         assert mock_get.call_args_list == [
-            mocker.call(daily_limit_cache_key(sample_service.id, notification_type=notification_type)),
+            mocker.call(
+                daily_limit_cache_key(sample_service.id, notification_type=notification_type, key_type=key_type)
+            ),
         ]
         assert mock_set.call_args_list == []
 
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
-    def test_check_service_over_daily_message_limit_should_not_interact_with_cache_for_test_key(
+    def test_check_service_over_daily_message_limit_interacts_with_cache_for_test_key(
         self, sample_service, mocker, notification_type
     ):
+        yyyy_mm_dd = datetime.now(UTC).strftime("%Y-%m-%d")
         mocker.patch("app.notifications.validators.redis_store")
         mock_get = mocker.patch("app.notifications.validators.redis_store.get", side_effect=[None])
         serialised_service = SerialisedService.from_id(sample_service.id)
         check_service_over_daily_message_limit(serialised_service, "test", notification_type=notification_type)
-        assert mock_get.call_args_list == []
+        assert mock_get.call_args_list == [call(f"{sample_service.id}-test-{notification_type}-{yyyy_mm_dd}-count")]
 
-    @pytest.mark.parametrize("key_type", ["team", "normal"])
+    @pytest.mark.parametrize("key_type", ["team", "normal", "test"])
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_over_daily_message_limit_should_set_cache_value_as_zero_if_cache_not_set(
         self, sample_service, mocker, notification_type, key_type
@@ -108,20 +114,25 @@ class TestCheckServiceMessageLimit:
             check_service_over_daily_message_limit(serialised_service, key_type, notification_type=notification_type)
 
             assert mock_set.call_args_list == [
-                mocker.call(daily_limit_cache_key(sample_service.id, notification_type=notification_type), 0, ex=86400),
+                mocker.call(
+                    daily_limit_cache_key(sample_service.id, notification_type=notification_type, key_type=key_type),
+                    0,
+                    ex=86400,
+                ),
             ]
 
+    @pytest.mark.parametrize("key_type", ["team", "normal", "test"])
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_over_daily_message_limit_does_nothing_if_redis_disabled(
-        self, notify_api, sample_service, mocker, notification_type
+        self, notify_api, sample_service, mocker, notification_type, key_type
     ):
         serialised_service = SerialisedService.from_id(sample_service.id)
         with set_config(notify_api, "REDIS_ENABLED", False):
             mock_cache_key = mocker.patch("notifications_utils.clients.redis.daily_limit_cache_key")
-            check_service_over_daily_message_limit(serialised_service, "normal", notification_type=notification_type)
+            check_service_over_daily_message_limit(serialised_service, key_type, notification_type=notification_type)
             assert mock_cache_key.method_calls == []
 
-    @pytest.mark.parametrize("key_type", ["team", "normal"])
+    @pytest.mark.parametrize("key_type", ["team", "normal", "test"])
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_message_limit_over_message_limit_fails_with_cold_ie_missing_cache_value(
         self, mocker, notify_db_session, notification_type, key_type
@@ -142,7 +153,7 @@ class TestCheckServiceMessageLimit:
         assert tmr_error.message == f"Exceeded send limits ({notification_type}: 4) for today"
         assert tmr_error.fields == []
 
-    @pytest.mark.parametrize("key_type", ["team", "normal"])
+    @pytest.mark.parametrize("key_type", ["team", "normal", "test"])
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_message_limit_over_message_limit_fails(
         self, mocker, notify_db_session, notification_type, key_type
@@ -164,7 +175,7 @@ class TestCheckServiceMessageLimit:
         assert tmr_error.message == f"Exceeded send limits ({notification_type}: 4) for today"
         assert tmr_error.fields == []
 
-    @pytest.mark.parametrize("key_type", ["team", "normal"])
+    @pytest.mark.parametrize("key_type", ["team", "normal", "test"])
     @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES + [INTERNATIONAL_SMS_TYPE])
     def test_check_service_message_limit_check_with_multiple_notifications_for_jobs(
         self, mocker, notify_db_session, notification_type, key_type
@@ -197,6 +208,31 @@ def test_check_template_is_for_notification_type_pass(template_type, notificatio
     )
 
 
+@pytest.mark.parametrize(
+    "notification_type, expected_value",
+    [(SMS_TYPE, 200), (LETTER_TYPE, 300), (EMAIL_TYPE, 100), (INTERNATIONAL_SMS_TYPE, 400)],
+)
+def test_get_daily_rate_limit_value_for_test_keys_for_live_services(sample_service, notification_type, expected_value):
+    sample_service.email_message_limit = 100
+    sample_service.sms_message_limit = 200
+    sample_service.letter_message_limit = 300
+    sample_service.international_sms_message_limit = 400
+    result = get_daily_rate_limit_value(sample_service, "test", notification_type)
+    assert result == expected_value
+
+
+@pytest.mark.parametrize(
+    "notification_type, expected_value",
+    [(SMS_TYPE, 250_000), (LETTER_TYPE, 20_000), (EMAIL_TYPE, 250_000), (INTERNATIONAL_SMS_TYPE, 100)],
+)
+def test_get_daily_rate_limit_value_for_test_keys_for_trial_services(sample_service, notification_type, expected_value):
+    # This test checks that the default live service limit rates are returned for a test API key for a service in
+    # trial services.
+    sample_service.restricted = True
+    result = get_daily_rate_limit_value(sample_service, "test", notification_type)
+    assert result == expected_value
+
+
 @pytest.mark.parametrize("template_type, notification_type", [(SMS_TYPE, EMAIL_TYPE), (EMAIL_TYPE, SMS_TYPE)])
 def test_check_template_is_for_notification_type_fails_when_template_type_does_not_match_notification_type(
     template_type, notification_type
@@ -225,7 +261,7 @@ def test_check_template_is_active_fails(sample_template):
     assert e.value.fields == [{"template": "Template has been deleted"}]
 
 
-@pytest.mark.parametrize("key_type", ["test", "normal"])
+@pytest.mark.parametrize("key_type", ["test", "normal", "test"])
 def test_service_can_send_to_recipient_passes(key_type, notify_db_session):
     trial_mode_service = create_service(service_name="trial mode", restricted=True)
     serialised_service = SerialisedService.from_id(trial_mode_service.id)
@@ -266,7 +302,7 @@ def test_service_can_send_to_recipient_passes_with_non_normalised_email(sample_s
     assert service_can_send_to_recipient(recipient_email, "team", serialised_service) is None
 
 
-@pytest.mark.parametrize("key_type", ["test", "normal"])
+@pytest.mark.parametrize("key_type", ["test", "normal", "test"])
 def test_service_can_send_to_recipient_passes_for_live_service_non_team_member(key_type, sample_service):
     serialised_service = SerialisedService.from_id(sample_service.id)
     assert service_can_send_to_recipient("some_other_email@test.com", key_type, serialised_service) is None
