@@ -466,9 +466,10 @@ def test_fetch_billing_data_for_day_sets_postage_for_emails_and_sms_to_none(
         results = fetch_billing_data_for_day(today.date(), session=session)
 
     assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
-    assert len(results) == 2
-    assert results[0].postage == "none"
-    assert results[1].postage == "none"
+    assert [r.postage for r in results] == [
+        "none",
+        "none",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -513,11 +514,10 @@ def test_fetch_billing_data_for_day_uses_correct_table(notify_db_session, sessio
         )
 
     assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
-    assert len(results) == 2
-    assert results[0].notification_type == "sms"
-    assert results[0].notifications_sent == 1
-    assert results[1].notification_type == "email"
-    assert results[1].notifications_sent == 1
+    assert sorted((r.notification_type, r.notifications_sent) for r in results) == [
+        ("email", 1),
+        ("sms", 1),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -542,8 +542,7 @@ def test_fetch_billing_data_for_day_returns_list_for_given_service(notify_db_ses
         results = fetch_billing_data_for_day(process_day=today.date(), service_ids=[service_id], session=session)
 
     assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
-    assert len(results) == 1
-    assert results[0].service_id == service_id
+    assert [r.service_id for r in results] == [service_id]
 
 
 @pytest.mark.parametrize(
@@ -571,13 +570,20 @@ def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session
         results = fetch_billing_data_for_day(process_day=today.date(), service_ids=[service_id], session=session)
 
     assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
-    sms_results = [x for x in results if x.notification_type == "sms"]
-    email_results = [x for x in results if x.notification_type == "email"]
-    letter_results = [x for x in results if x.notification_type == "letter"]
-    # we expect as many rows as we check for notification types
-    assert 6 == sms_results[0].notifications_sent
-    assert 4 == email_results[0].notifications_sent
-    assert 3 == letter_results[0].notifications_sent
+    assert sorted((r.notification_type, r.notifications_sent) for r in results) == [
+        (
+            "email",
+            4,
+        ),
+        (
+            "letter",
+            3,
+        ),
+        (
+            "sms",
+            6,
+        ),
+    ]
 
 
 def test_get_rates_for_billing(notify_db_session):
