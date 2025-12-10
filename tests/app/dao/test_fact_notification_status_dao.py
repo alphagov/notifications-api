@@ -652,7 +652,7 @@ def test_generate_fact_notification_status_rows_respects_gmt_bst(
     with QueryRecorder() as query_recorder:
         rows = generate_fact_notification_status_rows(process_day, notification_type, service_id, session=session)
 
-    assert [row._mapping for row in rows] == (
+    assert [row._asdict() for row in rows] == (
         [
             {
                 "bst_date": process_day,
@@ -673,8 +673,9 @@ def test_generate_fact_notification_status_rows_respects_gmt_bst(
 
 
 def _mock_row_from_dict(row_dict):
-    m = mock.Mock(_mapping=row_dict.copy(), spec_set=list(row_dict.keys()) + ["_mapping"])
+    m = mock.Mock(spec_set=list(row_dict.keys()) + ["_asdict"])
     m.configure_mock(**row_dict)
+    m._asdict.return_value = row_dict.copy()
     return m
 
 
