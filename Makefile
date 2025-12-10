@@ -87,7 +87,7 @@ drop-test-dbs-in-docker:
 
 .PHONY: test
 test: lint ## Run tests
-	pytest -n logical --maxfail=10 -v
+	pytest -n logical --maxfail=10
 
 .PHONY: watch-tests
 watch-tests: ## Watch tests and run on change
