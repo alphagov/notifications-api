@@ -1518,7 +1518,6 @@ def test_send_email_with_template_email_files(
     notification_id = uuid.uuid4()
 
     mock_celery_task(provider_tasks.deliver_email)
-
     save_email(
         sample_service.id,
         notification_id,

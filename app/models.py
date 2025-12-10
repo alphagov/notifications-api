@@ -103,6 +103,7 @@ from app.models_types import (
     SerializedServiceLetterContact,
     SerializedServiceOrgDashboard,
     SerializedServiceSmsSender,
+    SerializedTemplateEmailFile,
     SerializedTemplateFolder,
     SerializedUnsubscribeRequestReport,
     SerializedUser,
@@ -1299,6 +1300,15 @@ class TemplateEmailFileBase(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, onupdate=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     archived_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self) -> SerializedTemplateEmailFile:
+        return SerializedTemplateEmailFile(
+            id=str(self.id),
+            filename=self.filename,
+            link_text=self.link_text,
+            retention_period=self.retention_period,
+            validate_users_email=self.validate_users_email,
+        )
 
     @declared_attr
     def template_id(cls):
