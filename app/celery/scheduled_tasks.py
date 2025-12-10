@@ -96,7 +96,11 @@ from app.utils import get_london_midnight_in_utc
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
-            process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
+            process_job.apply_async(
+                [str(job.id)],
+                queue=QueueNames.JOBS,
+                headers={"MessageGroupId": str(job.service_id)},  # key for fairer queueu
+            )
             current_app.logger.info("Job ID %s added to process job queue", job.id, extra={"job_id": job.id})
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
@@ -435,7 +439,7 @@ def check_for_missing_rows_in_completed_jobs():
 
             extra = {"job_row_number": row_to_process.missing_row, "job_id": job.id}
             current_app.logger.info("Processing missing row %(job_row_number)s for job %(job_id)s", extra, extra=extra)
-            process_job_row(template.template_type, task_args_kwargs)
+            process_job_row(job.service.id, template.id, template.template_type, task_args_kwargs)
 
 
 @notify_celery.task(name="update-status-of-fully-processed-jobs")

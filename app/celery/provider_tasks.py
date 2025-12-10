@@ -32,6 +32,7 @@ from app.dao.provider_details_dao import (
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
+from app.queues import log_queue_details
 
 
 @notify_celery.task(
@@ -43,6 +44,11 @@ def deliver_sms(self, notification_id):
             "Start sending SMS for notification id: %s", notification_id, extra={"notification_id": notification_id}
         )
         notification = notifications_dao.get_notification_by_id(notification_id)
+
+        log_queue_details(
+            self.request, notification.template_id, notification.service_id, "deliver_sms", QueueNames.SEND_SMS
+        )
+
         if not notification:
             raise NoResultFound
         send_to_providers.send_sms_to_provider(notification)
@@ -84,6 +90,11 @@ def deliver_email(self, notification_id):
             "Start sending email for notification id: %s", notification_id, extra={"notification_id": notification_id}
         )
         notification = notifications_dao.get_notification_by_id(notification_id)
+
+        log_queue_details(
+            self.request, notification.template_id, notification_id.service_id, "deliver_email", QueueNames.SEND_EMAIL
+        )
+
         if not notification:
             raise NoResultFound
         send_to_providers.send_email_to_provider(notification)
@@ -124,6 +135,10 @@ def deliver_letter(self, notification_id):
     )
     notification = notifications_dao.get_notification_by_id(notification_id, _raise=True)
     postal_address = PostalAddress(notification.to, allow_international_letters=True)
+
+    log_queue_details(
+        self.request, notification.template_id, notification_id.service_id, "deliver_letter", QueueNames.SEND_EMAIL
+    )
 
     if notification.status != NOTIFICATION_CREATED:
         current_app.logger.warning(

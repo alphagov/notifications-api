@@ -184,6 +184,8 @@ def create_app(application):
     statsd_client.init_app(application)
     utils_logging.init_app(application, statsd_client)
 
+    import app.celery.sqs_fair_patch
+
     notify_celery.init_app(application)
     signing.init_app(application)
     redis_store.init_app(application)

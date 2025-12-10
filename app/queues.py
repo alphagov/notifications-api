@@ -1,0 +1,86 @@
+# app/queues.py
+
+from flask import current_app
+
+from app.config import QueueNames
+
+
+def get_message_group_id_for_queue(
+    queue_name: QueueNames,
+    service_id: str,
+    notification_type: str | None = None,
+    origin: str | None = None,  # "api" or "dashboard"
+    key_type: str | None = None,  # normal, team, test
+    emergency: bool | None = None,  # True/False
+) -> str:
+    if queue_name in (QueueNames.JOBS, QueueNames.DATABASE):
+        # service + notif type
+        return f"{service_id}#{notification_type}"
+
+    if queue_name in (
+        QueueNames.SEND_SMS,
+        QueueNames.SEND_EMAIL,
+        QueueNames.CREATE_LETTERS_PDF,
+    ):
+        # service + origin + key type because these are shared with API requests
+        # emergency optional
+        parts = [service_id]
+
+        if origin:
+            parts.append(origin)
+
+        if key_type:
+            parts.append(key_type)
+
+        if emergency:
+            parts.append("emergency")
+
+        return "#".join(parts)
+
+    # default to per service for now, this includes:
+    # callbacks, antivirus, scheduled tasks, reporting, retry, etc.
+    return str(service_id)
+
+
+def get_queue_group_id(request):
+    group_id = None
+    if hasattr(request, "headers") and request.headers:
+        group_id = request.headers.get("MessageGroupId")
+
+    return group_id
+
+
+def should_apply_group_id(template_id):
+    if template_id in [
+        "6fdc77ad-35b9-4b67-a240-d52690b3f6e0",
+        "d34bde15-109b-4972-a1a6-79608c0138aa",
+        "10d87bf0-73b9-4aae-a306-e5f17fb6c400",
+        "b128c368-e6c5-40ed-8d53-6445466ec6cc",
+    ]:
+        return False
+    else:
+        return True
+
+
+def log_queue_details(request, template_id, service_id, function_name, queue_name):
+    group_id = get_queue_group_id(request)
+
+    if should_apply_group_id(template_id):
+        current_app.logger.info(
+            "Fair queue DEBUG for service %s - operation: %s, queue name %s and group_id: %s",
+            service_id,
+            function_name,
+            queue_name,
+            group_id,
+            extra={"message_group_id": group_id},
+        )
+        return
+
+    current_app.logger.info(
+        "Fair queue DEBUG No Group ID for service %s - operation: %s, queue name %s and group_id: %s",
+        service_id,
+        function_name,
+        queue_name,
+        group_id,
+        extra={"message_group_id": group_id},
+    )

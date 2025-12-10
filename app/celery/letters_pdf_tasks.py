@@ -52,6 +52,7 @@ from app.letters.utils import (
     move_scan_to_invalid_pdf_bucket,
 )
 from app.models import Service
+from app.queues import log_queue_details
 from app.utils import batched
 
 
@@ -64,6 +65,13 @@ def get_pdf_for_templated_letter(self, notification_id):
             created_at=notification.created_at,
             ignore_folder=notification.key_type == KEY_TYPE_TEST,
             postage=notification.postage,
+        )
+        log_queue_details(
+            self.request,
+            notification.template_id,
+            notification.service_id,
+            "get_pdf_for_templated_letter",
+            QueueNames.CREATE_LETTERS_PDF,
         )
 
         letter_attachment_json = (

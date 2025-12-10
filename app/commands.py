@@ -785,7 +785,7 @@ def process_row_from_job(job_id, job_row_number):
         if row.index == job_row_number:
             notification_id, task_args_kwargs = get_id_task_args_kwargs_for_job_row(row, template, job, job.service)
 
-            process_job_row(template.template_type, task_args_kwargs)
+            process_job_row(job.service.id, template.id, template.template_type, task_args_kwargs)
 
             extra = {
                 "job_row_number": job_row_number,
