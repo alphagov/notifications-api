@@ -537,11 +537,15 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                 dbapi_connection.autocommit = False
 
                 TOTAL_DB_CONNECTIONS.labels(str(bind_key), str(connection_record.info["inet_server_addr"])).inc()
+                connection_record.info["counted_in_TOTAL_DB_CONNECTIONS"] = True
 
             @event.listens_for(_engine, "close")
             def close(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
-                # connection closed (probably only happens with overflow connections)
-                TOTAL_DB_CONNECTIONS.labels(str(bind_key), str(connection_record.info["inet_server_addr"])).dec()
+                if connection_record.info.get("counted_in_TOTAL_DB_CONNECTIONS"):
+                    TOTAL_DB_CONNECTIONS.labels(str(bind_key), str(connection_record.info["inet_server_addr"])).dec()
+
+                # otherwise we presumably had some failure before we got a chance to increment
+                # TOTAL_DB_CONNECTIONS for this connection so shouldn't decrement it accordingly
 
             @event.listens_for(_engine, "checkout")
             def checkout(dbapi_connection, connection_record, connection_proxy, bind_key=_bind_key, engine=_engine):
