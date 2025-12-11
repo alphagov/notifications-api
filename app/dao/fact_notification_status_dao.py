@@ -1,4 +1,6 @@
+from collections import namedtuple
 from datetime import datetime, timedelta
+from itertools import groupby
 
 from sqlalchemy import Date, case, func
 from sqlalchemy.dialects.postgresql import insert
@@ -135,69 +137,101 @@ def fetch_notification_status_for_service_for_day(bst_day, service_id):
     )
 
 
-def fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, by_template=False, limit_days=7):
+def fetch_notification_status_for_service_for_today_and_7_previous_days(
+    service_id, by_template=False, limit_days=7, chunk_timedelta=timedelta(hours=1)
+):
     start_date = midnight_n_days_ago(limit_days)
     now = datetime.utcnow()
-    stats_for_7_days = db.session.query(
-        FactNotificationStatus.notification_type.label("notification_type"),
-        FactNotificationStatus.notification_status.label("status"),
-        *([FactNotificationStatus.template_id.label("template_id")] if by_template else []),
-        FactNotificationStatus.notification_count.label("count"),
-    ).filter(
-        FactNotificationStatus.service_id == service_id,
-        FactNotificationStatus.bst_date >= start_date,
-        FactNotificationStatus.key_type != KEY_TYPE_TEST,
-    )
-
-    stats_for_today = (
+    all_stats = (
         db.session.query(
-            Notification.notification_type.cast(db.Text),
-            Notification.status,
-            *([Notification.template_id] if by_template else []),
-            func.count().label("count"),
+            *([FactNotificationStatus.template_id.label("template_id")] if by_template else []),
+            FactNotificationStatus.notification_type.label("notification_type"),
+            FactNotificationStatus.notification_status.label("status"),
+            func.sum(FactNotificationStatus.notification_count).label("count"),
         )
         .filter(
-            Notification.created_at >= get_london_midnight_in_utc(now),
-            Notification.service_id == service_id,
-            Notification.key_type != KEY_TYPE_TEST,
+            FactNotificationStatus.service_id == service_id,
+            FactNotificationStatus.bst_date >= start_date,
+            FactNotificationStatus.key_type != KEY_TYPE_TEST,
         )
         .group_by(
-            Notification.notification_type, *([Notification.template_id] if by_template else []), Notification.status
+            *([FactNotificationStatus.template_id] if by_template else []),
+            FactNotificationStatus.notification_type,
+            FactNotificationStatus.notification_status,
         )
+        .all()
     )
 
-    all_stats_table = stats_for_7_days.union_all(stats_for_today).subquery()
-
-    aggregation = (
-        db.session.query(
-            *([all_stats_table.c.template_id] if by_template else []),
-            all_stats_table.c.notification_type,
-            all_stats_table.c.status,
-            func.cast(func.sum(all_stats_table.c.count), Integer).label("count"),
+    chunk_start_dt = get_london_midnight_in_utc(now)
+    while chunk_start_dt <= now:
+        all_stats += (
+            db.session.query(
+                *([Notification.template_id] if by_template else []),
+                Notification.notification_type.cast(db.Text).label("notification_type"),
+                Notification.status,
+                func.count().label("count"),
+            )
+            .filter(
+                Notification.created_at >= chunk_start_dt,
+                # any overshoot will be into the future so doesn't matter
+                Notification.created_at < chunk_start_dt + chunk_timedelta,
+                Notification.service_id == service_id,
+                Notification.key_type != KEY_TYPE_TEST,
+            )
+            .group_by(
+                *([Notification.template_id] if by_template else []),
+                Notification.notification_type,
+                Notification.status,
+            )
+            .all()
         )
-        .group_by(
-            *([all_stats_table.c.template_id] if by_template else []),
-            all_stats_table.c.notification_type,
-            all_stats_table.c.status,
+        chunk_start_dt += chunk_timedelta
+
+    if not all_stats:
+        return all_stats
+
+    # sqlalchemy's public api doesn't give us a way of constructing a new instance of a Row type.
+    # it shouldn't matter whether all_stats[0] is a row from the FactNotificationStatus query or
+    # the Notification query - their fields should be compatible
+    StatsRow = namedtuple("StatsRow", all_stats[0]._fields)  # type: ignore
+
+    all_stats_reaggregated = [
+        StatsRow(
+            *k,  # grp's common fields
+            *(sum(v) for v in zip(*(r[-1:] for r in grp), strict=True)),  # summed values of grp's last field
         )
-        .subquery()
-    )
+        for k, grp in groupby(sorted(all_stats), key=lambda r: r[:-1])
+    ]
 
-    query = db.session.query(
-        *(
-            [Template.name.label("template_name"), Template.is_precompiled_letter, aggregation.c.template_id]
-            if by_template
-            else []
-        ),
-        aggregation.c.notification_type,
-        aggregation.c.status,
-        aggregation.c.count,
-    )
+    if not by_template:
+        return all_stats_reaggregated
 
-    if by_template:
-        query = query.filter(aggregation.c.template_id == Template.id)
+    all_template_ids = {r.template_id for r in all_stats_reaggregated}
+    templates = {
+        r.template_id: r
+        for r in db.session.query(
+            Template.name.label("template_name"), Template.is_precompiled_letter, Template.id.label("template_id")
+        )
+        .filter(Template.id.in_(all_template_ids))
+        .all()
+    }
 
-    return query.all()
+    # again, we can't create our own instances of sqlalchemy Row types
+    TemplateStatsRow = namedtuple(
+        "TemplateStatsRow",
+        # don't need final template_id field from templates row type, already have it
+        next(iter(templates.values()))._fields[:-1] + all_stats_reaggregated[0]._fields,
+    )  # type: ignore
+
+    return [
+        TemplateStatsRow(
+            # fill out template fields with None if for some reason we didn't find it (just deleted?),
+            # also again stripping off final unneeded template_id field
+            *templates.get(r.template_id, (None, None, None))[:-1],
+            *r,
+        )
+        for r in all_stats_reaggregated
+    ]
 
 
 def fetch_notification_status_totals_for_all_services(start_date, end_date):
