@@ -411,6 +411,8 @@ class BaseTemplateSchema(BaseSchema):
         return app.constants.LetterLanguageOptions(value) if value else None
 
     def get_template_email_files(self, template):
+        if template.template_type != EMAIL_TYPE:
+            return []
         files = dao_get_template_email_files_by_template_id(template.id, template.version)
         if files == []:
             return []
