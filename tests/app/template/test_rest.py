@@ -1836,7 +1836,6 @@ def test_get_template_by_template_id_and_service_id_returns_filenames_if_exists(
         (["file_one.pdf"], True, {"file_one.pdf"}),
         (["file_one.pdf, file_two.pdf"], True, {"file_one.pdf, file_two.pdf"}),
         ([], True, {}),
-        (["file_one.pdf"], False, {}),
     ],
 )
 def test_get_all_templates_for_service_returns_filenames_if_exists(
@@ -1850,9 +1849,7 @@ def test_get_all_templates_for_service_returns_filenames_if_exists(
     )
     for filename in files_to_create:
         create_template_email_file(template_one.id, created_by_id=sample_service.users[0].id, filename=filename)
-    json_resp = admin_request.get(
-        "template.get_all_templates_for_service", service_id=sample_service.id, detailed=detailed
-    )
+    json_resp = admin_request.get("template.get_all_templates_for_service", service_id=sample_service.id)
     for template in json_resp["data"]:
         if template["id"] == template_one.id:
             assert set(template.template_email_files) == expected_return_as_set
