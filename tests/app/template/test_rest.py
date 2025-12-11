@@ -1830,9 +1830,17 @@ def test_get_template_by_template_id_and_service_id_returns_filenames_if_exists(
     assert set(json_resp["data"]["template_email_files"]) == set(files_to_create)
 
 
-@pytest.mark.parametrize("files_to_create", [["file_one.pdf"], ["file_one.pdf, file_two.pdf"], []])
+@pytest.mark.parametrize(
+    "files_to_create, detailed, expected_return_as_set",
+    [
+        (["file_one.pdf"], True, {"file_one.pdf"}),
+        (["file_one.pdf, file_two.pdf"], True, {"file_one.pdf, file_two.pdf"}),
+        ([], True, {}),
+        (["file_one.pdf"], False, {}),
+    ],
+)
 def test_get_all_templates_for_service_returns_filenames_if_exists(
-    client, admin_request, sample_service, mocker, files_to_create
+    client, admin_request, sample_service, files_to_create, detailed, expected_return_as_set
 ):
     template_one = create_template(
         service=sample_service, template_type=EMAIL_TYPE, template_name="sample_template_one"
@@ -1842,9 +1850,11 @@ def test_get_all_templates_for_service_returns_filenames_if_exists(
     )
     for filename in files_to_create:
         create_template_email_file(template_one.id, created_by_id=sample_service.users[0].id, filename=filename)
-    json_resp = admin_request.get("template.get_all_templates_for_service", service_id=sample_service.id)
+    json_resp = admin_request.get(
+        "template.get_all_templates_for_service", service_id=sample_service.id, detailed=detailed
+    )
     for template in json_resp["data"]:
         if template["id"] == template_one.id:
-            assert set(template.template_email_files) == set(files_to_create)
+            assert set(template.template_email_files) == expected_return_as_set
         if template["id"] == template_two.id:
             assert set(template.template_email_files) == {}
