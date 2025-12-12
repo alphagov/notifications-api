@@ -48,8 +48,7 @@ REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
 
 def create_content_for_notification(template, personalisation, recipient):
     if template.template_type == EMAIL_TYPE:
-        if template.email_files:
-            personalisation = add_email_file_links_to_personalisation(template, personalisation, recipient)
+        personalisation = add_email_file_links_to_personalisation(template, personalisation, recipient)
         template_object = PlainTextEmailTemplate(
             {
                 "content": template.content,
