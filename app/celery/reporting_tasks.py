@@ -12,7 +12,7 @@ from app.dao.fact_billing_dao import (
     update_ft_billing,
     update_ft_billing_letter_despatch,
 )
-from app.dao.fact_notification_status_dao import update_fact_notification_status
+from app.dao.fact_notification_status_dao import generate_fact_notification_status_rows, update_fact_notification_status
 from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
 
 
@@ -159,7 +159,9 @@ def create_nightly_notification_status():
         for i in range(days):
             process_day = yesterday - timedelta(days=i)
 
-            relevant_service_ids = get_service_ids_with_notifications_on_date(notification_type, process_day)
+            relevant_service_ids = get_service_ids_with_notifications_on_date(
+                notification_type, process_day, session=db.session_bulk
+            )
 
             for service_id in relevant_service_ids:
                 create_nightly_notification_status_for_service_and_day.apply_async(
@@ -176,25 +178,22 @@ def create_nightly_notification_status():
 def create_nightly_notification_status_for_service_and_day(process_day, service_id, notification_type):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
 
-    start = datetime.utcnow()
-    update_fact_notification_status(process_day=process_day, notification_type=notification_type, service_id=service_id)
+    rows = generate_fact_notification_status_rows(process_day, notification_type, service_id, session=db.session_bulk)
+    deleted_rows = update_fact_notification_status(rows, process_day, notification_type, service_id)
 
-    end = datetime.utcnow()
-
-    base_params = {
+    extra = {
         "service_id": service_id,
         "notification_type": notification_type,
         "process_day": process_day,
-        "duration": end - start,
+        "deleted_record_count": deleted_rows,
+        "inserted_record_count": len(rows),
     }
     current_app.logger.info(
         (
-            "create-nightly-notification-status-for-service-and-day task update for "
-            "%(service_id)s, %(notification_type)s for %(process_day)s: updated in %(duration)s"
+            "create-nightly-notification-status-for-service-and-day for "
+            "%(service_id)s, %(notification_type)s for %(process_day)s: replaced %(deleted_record_count)s "
+            "rows with %(inserted_record_count)s"
         ),
-        base_params,
-        extra={
-            **base_params,
-            "duration": base_params["duration"].total_seconds(),
-        },
+        extra,
+        extra=extra,
     )
