@@ -98,7 +98,7 @@ def check_placeholders(template_object):
 
 
 def add_email_file_links_to_personalisation(template, personalisation, recipient):
-    for email_file in template.email_files:
+    for email_file in template.email_file_objects:
         template_email_file_from_s3 = try_download_template_email_file_from_s3(template.service, email_file.id)
         doc_download_link = document_download_client.upload_document(
             template.service,

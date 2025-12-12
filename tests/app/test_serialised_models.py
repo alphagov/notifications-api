@@ -12,6 +12,7 @@ EXPECTED_TEMPLATE_ATTRIBUTES = {
     "coerce_value_to_type",
     "content",
     "email_files",
+    "email_file_objects",
     "from_id_and_service_id",
     "from_id_service_id_and_version",
     "get_dict",
