@@ -414,8 +414,6 @@ class BaseTemplateSchema(BaseSchema):
         if template.template_type != EMAIL_TYPE:
             return []
         files = dao_get_template_email_files_by_template_id(template.id, template.version)
-        if files == []:
-            return []
 
         return [file.filename for file in files]
 
