@@ -568,6 +568,7 @@ class Service(db.Model, Versioned):
     _normalised_service_name = db.Column("normalised_service_name", db.String, nullable=False, unique=True)
     _custom_email_sender_name = db.Column("custom_email_sender_name", db.String(255), nullable=True)
     _email_sender_local_part = db.Column("email_sender_local_part", db.String(255), nullable=False)
+    confirmed_email_sender_name = db.Column(db.Boolean, nullable=True, default=False)
 
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
