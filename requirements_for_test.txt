@@ -27,7 +27,7 @@ bcrypt==4.0.0
     #   flask-bcrypt
 beautifulsoup4==4.12.3
     # via -r requirements_for_test_common.in
-billiard==4.2.0
+billiard==4.2.1
     # via
     #   -r requirements.txt
     #   celery
@@ -147,7 +147,6 @@ greenlet==3.2.2
     # via
     #   -r requirements.txt
     #   eventlet
-    #   sqlalchemy
 gunicorn==23.0.0
     # via
     #   -r requirements.txt
@@ -187,7 +186,7 @@ jsonschema-specifications==2024.10.1
     # via
     #   -r requirements.txt
     #   jsonschema
-kombu==5.3.7
+kombu==5.6.0
     # via
     #   -r requirements.txt
     #   celery
@@ -221,7 +220,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@554de4ebb7ecfef3ca9091f9becfa5a0e38a6966
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@53a126faa6175df6b2528b8a0b0972c2abb25d22
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
@@ -231,6 +230,7 @@ packaging==23.2
     # via
     #   -r requirements.txt
     #   gunicorn
+    #   kombu
     #   marshmallow
     #   pytest
 pathspec==0.12.1
@@ -386,10 +386,11 @@ typing-extensions==4.14.1
     #   -r requirements.txt
     #   mypy
     #   sqlalchemy
-tzdata==2024.1
+tzdata==2025.2
     # via
     #   -r requirements.txt
     #   celery
+    #   kombu
 uri-template==1.2.0
     # via -r requirements.txt
 urllib3==1.26.19
