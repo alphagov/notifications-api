@@ -1,4 +1,6 @@
+from collections import namedtuple
 from datetime import date, datetime, timedelta
+from itertools import groupby
 from typing import Any
 
 from flask import current_app
@@ -499,30 +501,46 @@ def delete_billing_data_for_day(process_day: date, service_ids=None):
     return FactBilling.query.filter(*filters).delete()
 
 
-def fetch_billing_data_for_day(process_day: date, service_ids=None, check_permissions=False, session=db.session):
-    start_date = get_london_midnight_in_utc(process_day)
-    end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
-    extra = {"start_time": start_date, "end_time": end_date}
+def fetch_billing_data_for_day(
+    process_day: date, service_ids=None, check_permissions=False, chunk_timedelta=timedelta(hours=1), session=db.session
+):
+    start_dt = get_london_midnight_in_utc(process_day)
+    end_dt = get_london_midnight_in_utc(process_day + timedelta(days=1))
+    extra = {"start_time": start_dt, "end_time": end_dt}
     current_app.logger.info("Populate ft_billing for %(start_time)s to %(end_time)s", extra, extra=extra)
     billing_data = []
 
-    for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
-        partial_billing_data = _query_for_billing_data(
-            notification_type=notification_type,
-            start_date=start_date,
-            end_date=end_date,
-            service_ids=service_ids,
-            check_permissions=check_permissions,
-            session=session,
+    chunk_start_dt = start_dt
+    while chunk_start_dt < end_dt:
+        for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
+            partial_billing_data = _query_for_billing_data(
+                notification_type=notification_type,
+                start_dt=chunk_start_dt,
+                end_dt=min(chunk_start_dt + chunk_timedelta, end_dt),
+                service_ids=service_ids,
+                check_permissions=check_permissions,
+                session=session,
+            )
+            billing_data += partial_billing_data
+
+        chunk_start_dt += chunk_timedelta
+
+    if not billing_data:
+        return billing_data
+
+    # sqlalchemy's public api doesn't give us a way of constructing a new instance of a Row type
+    BillingRow = namedtuple("BillingRow", billing_data[0]._fields)  # type: ignore
+
+    return [
+        BillingRow(
+            *k,  # grp's common fields
+            *(sum(v) for v in zip(*(r[-2:] for r in grp), strict=True)),  # summed values of grp's last 2 fields
         )
-        billing_data += partial_billing_data
+        for k, grp in groupby(sorted(billing_data), key=lambda r: r[:-2])
+    ]
 
-    return billing_data
 
-
-def _query_for_billing_data(
-    notification_type, start_date, end_date, service_ids, check_permissions, session=db.session
-):
+def _query_for_billing_data(notification_type, start_dt, end_dt, service_ids, check_permissions, session=db.session):
     base_query = session.query(NotificationAllTimeView).join(Service, NotificationAllTimeView.service_id == Service.id)
 
     if check_permissions:
@@ -552,8 +570,8 @@ def _query_for_billing_data(
             .filter(
                 NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
                 NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.created_at >= start_dt,
+                NotificationAllTimeView.created_at < end_dt,
                 NotificationAllTimeView.notification_type == notification_type,
                 *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
@@ -584,8 +602,8 @@ def _query_for_billing_data(
             .filter(
                 NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
                 NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.created_at >= start_dt,
+                NotificationAllTimeView.created_at < end_dt,
                 NotificationAllTimeView.notification_type == notification_type,
                 *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
@@ -618,8 +636,8 @@ def _query_for_billing_data(
             .filter(
                 NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
                 NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-                NotificationAllTimeView.created_at >= start_date,
-                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.created_at >= start_dt,
+                NotificationAllTimeView.created_at < end_dt,
                 NotificationAllTimeView.notification_type == notification_type,
                 *(() if service_ids is None else (NotificationAllTimeView.service_id.in_(service_ids),)),
             )
