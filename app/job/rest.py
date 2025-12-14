@@ -31,6 +31,7 @@ from app.dao.notifications_dao import (
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.errors import InvalidRequest, register_errors
+from app.job.queues import fifo_message_kwargs
 from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters
 from app.schemas import (
     job_schema,
@@ -176,7 +177,16 @@ def create_job(service_id):
     sender_id = data.get("sender_id")
 
     if job.job_status == JOB_STATUS_PENDING:
-        process_job.apply_async([str(job.id)], {"sender_id": sender_id}, queue=QueueNames.JOBS)
+        process_job.apply_async(
+            arg=[str(job.id)],
+            kwargs={"sender_id": sender_id},
+            queue=QueueNames.JOBS,
+            **fifo_message_kwargs(
+                queue_name=QueueNames.JOBS,
+                service_id=service_id,
+                notification_type=template.template_type,
+            ),
+        )
 
     job_json = job_schema.dump(job)
     job_json["statistics"] = []

@@ -29,7 +29,6 @@ from app.dao.notifications_dao import update_notification_status_by_id
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
 )
-from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 
@@ -45,7 +44,10 @@ def deliver_sms(self, notification_id):
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
             raise NoResultFound
-        send_to_providers.send_sms_to_provider(notification)
+        # send_to_providers.send_sms_to_provider(notification)
+        current_app.logger.info(
+            "Skipping SMS delivery for notification id: %s", notification_id, extra={"notification_id": notification_id}
+        )
     except Exception as e:
         if isinstance(e, SmsClientResponseException):
             current_app.logger.warning(
@@ -86,7 +88,12 @@ def deliver_email(self, notification_id):
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
             raise NoResultFound
-        send_to_providers.send_email_to_provider(notification)
+        # send_to_providers.send_email_to_provider(notification)
+        current_app.logger.info(
+            "Skipping sending email for notification id: %s",
+            notification_id,
+            extra={"notification_id": notification_id},
+        )
     except EmailClientNonRetryableException as e:
         current_app.logger.exception(
             "Email notification %s failed: %s", notification_id, e, extra={"notification_id": notification_id}

@@ -537,6 +537,8 @@ class Config:
     REPORT_REQUEST_NOTIFICATIONS_TIMEOUT_MINUTES = 30
     REPORT_REQUEST_NOTIFICATIONS_CSV_BATCH_SIZE = 2500
 
+    ENABLE_SQS_FAIR_GROUPING = True
+
 
 ######################
 # Config overrides ###

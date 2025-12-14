@@ -45,6 +45,7 @@ from app.dao.service_callback_api_dao import get_returned_letter_callback_api_fo
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.templates_dao import dao_get_template_by_id
+from app.job.queues import fifo_message_kwargs, get_message_group_id_for_queue
 from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
@@ -121,6 +122,9 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
 
 
 def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level=True):
+    first_task_args, _ = args_kwargs_seq[0]
+    service_id = first_task_args[0]
+
     try:
         shatter_job_rows.apply_async(
             (
@@ -128,6 +132,11 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level
                 args_kwargs_seq,
             ),
             queue=QueueNames.JOBS,
+            **fifo_message_kwargs(
+                queue_name=QueueNames.JOBS,
+                service_id=service_id,
+                notification_type=template_type,
+            ),
         )
     except BotoClientError as e:
         # this information is helpfully not preserved outside the message string of the exception, so
@@ -165,6 +174,9 @@ def shatter_job_rows(
 
 
 def process_job_row(template_type, task_args_kwargs):
+    first_task_args, _ = task_args_kwargs[0]
+    service_id = first_task_args[0]
+
     send_fn = {
         SMS_TYPE: save_sms,
         EMAIL_TYPE: save_email,
@@ -174,6 +186,9 @@ def process_job_row(template_type, task_args_kwargs):
     send_fn.apply_async(
         *task_args_kwargs,
         queue=QueueNames.DATABASE,
+        MessageGroupId=get_message_group_id_for_queue(
+            queue_name=QueueNames.DATABASE, service_id=service_id, notification_type=template_type
+        ),
     )
 
 
@@ -352,6 +367,12 @@ def save_sms(
             provider_tasks.deliver_sms.apply_async(
                 [str(saved_notification.id)],
                 queue=QueueNames.SEND_SMS,
+                **fifo_message_kwargs(
+                    queue_name=QueueNames.SEND_SMS,
+                    service_id=service_id,
+                    origin="dashboard" if notification.get("job") else "api",
+                    key_type=KEY_TYPE_NORMAL,
+                ),
             )
         else:
             extra = {
@@ -432,6 +453,12 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
             queue=QueueNames.SEND_EMAIL,
+            **fifo_message_kwargs(
+                queue_name=QueueNames.SEND_EMAIL,
+                service_id=service_id,
+                origin="dashboard" if notification.get("job") else "api",
+                key_type=KEY_TYPE_NORMAL,
+            ),
         )
 
         extra = {
