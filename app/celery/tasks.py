@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import Sequence
 from datetime import datetime
 
@@ -174,6 +175,7 @@ def shatter_job_rows(
 
 
 def process_job_row(template_type, task_args_kwargs):
+    time.sleep(5)
     first_task_args, _ = task_args_kwargs[0]
     service_id = first_task_args[0]
 
