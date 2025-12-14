@@ -178,7 +178,7 @@ def create_job(service_id):
 
     if job.job_status == JOB_STATUS_PENDING:
         process_job.apply_async(
-            args=[str(job.id)],
+            args=(str(job.id),),
             kwargs={"sender_id": sender_id},
             queue=QueueNames.JOBS,
             **fifo_message_kwargs(
