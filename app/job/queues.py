@@ -55,6 +55,11 @@ def fifo_message_kwargs(*, queue_name, service_id, **grouping_kwargs):
         return {}
 
     is_fifo = is_fifo_queue(queue_name)
+    group_id = get_message_group_id_for_queue(
+        queue_name=queue_name,
+        service_id=service_id,
+        **grouping_kwargs,
+    )
 
     current_app.logger.info(
         "Is queue FIFO",
@@ -62,18 +67,11 @@ def fifo_message_kwargs(*, queue_name, service_id, **grouping_kwargs):
             "queue": queue_name,
             "service_id": service_id,
             "is_fifo_queue": is_fifo,
+            "group_id": group_id,
         },
     )
 
-    return {
-        "message_properties": {
-            "MessageGroupId": get_message_group_id_for_queue(
-                queue_name=queue_name,
-                service_id=service_id,
-                **grouping_kwargs,
-            )
-        }
-    }
+    return {"message_properties": {"MessageGroupId": group_id}}
 
 
 def get_queue_url(queue_name: str) -> str:
@@ -91,7 +89,7 @@ def is_fifo_queue(queue_name: str) -> bool:
     )
 
     current_app.logger.info(
-        "SQS fair grouping attributes",
+        "SQS fair grouping attributes all",
         extra={
             "queue": queue_name,
             "attributes": response["Attributes"],
