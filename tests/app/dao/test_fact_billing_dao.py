@@ -199,7 +199,6 @@ def test_fetch_billing_data_for_today_includes_data_with_the_right_date(notify_d
     create_notification(template=template, status="sending", created_at=process_day + timedelta(days=1))
 
     day_under_test = convert_utc_to_bst(process_day)
-    results = fetch_billing_data_for_day(day_under_test.date(), session=session)
     with QueryRecorder() as query_recorder:
         results = fetch_billing_data_for_day(day_under_test.date(), session=session)
 
