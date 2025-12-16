@@ -23,6 +23,7 @@ from notifications_utils.recipient_validation.phone_number import (
 import app.constants
 from app import db, ma, models
 from app.dao.permissions_dao import permission_dao
+from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id
 from app.models import ServicePermission
 from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, parse_and_format_phone_number
 
@@ -389,6 +390,7 @@ class BaseTemplateSchema(BaseSchema):
     is_precompiled_letter = fields.Method("get_is_precompiled_letter")
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
+    email_files = fields.Method("get_template_email_files", allow_none=True)
 
     def get_is_precompiled_letter(self, template):
         return template.is_precompiled_letter
@@ -407,6 +409,13 @@ class BaseTemplateSchema(BaseSchema):
 
     def load_letter_languages(self, value):
         return app.constants.LetterLanguageOptions(value) if value else None
+
+    def get_template_email_files(self, template):
+        if template.template_type != app.constants.EMAIL_TYPE:
+            return []
+        files = dao_get_template_email_files_by_template_id(template.id, template.version)
+
+        return [file.serialize() for file in files]
 
     class Meta(BaseSchema.Meta):
         model = models.Template

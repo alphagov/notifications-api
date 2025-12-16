@@ -27,6 +27,7 @@ from tests.app.db import (
     create_notification,
     create_service,
     create_template,
+    create_template_email_file,
     create_template_folder,
 )
 from tests.conftest import set_config_values
@@ -545,11 +546,21 @@ def test_should_be_able_to_get_all_templates_for_a_service(client, sample_user, 
     assert response.status_code == 200
     update_json_resp = json.loads(response.get_data(as_text=True))
     assert update_json_resp["data"][0]["name"] == "my template 1"
-    assert update_json_resp["data"][0]["version"] == 1
-    assert update_json_resp["data"][0]["created_at"]
+    assert update_json_resp["data"][0]["template_type"] == EMAIL_TYPE
     assert update_json_resp["data"][1]["name"] == "my template 2"
-    assert update_json_resp["data"][1]["version"] == 1
-    assert update_json_resp["data"][1]["created_at"]
+    assert update_json_resp["data"][1]["template_type"] == EMAIL_TYPE
+
+
+def test_get_all_templates_for_service_returns_data_with_the_correct_keys(client, sample_user, sample_service):
+    create_template(sample_service, EMAIL_TYPE, "my template 1")
+    create_template(sample_service, EMAIL_TYPE, "my template 2")
+    auth_header = create_admin_authorization_header()
+
+    response = client.get(f"/service/{sample_service.id}/template", headers=[auth_header])
+    assert response.status_code == 200
+    update_json_resp = json.loads(response.get_data(as_text=True))
+    for resp in update_json_resp["data"]:
+        assert resp.keys() == {"folder", "id", "is_precompiled_letter", "name", "template_type"}
 
 
 def test_should_get_only_templates_for_that_service(admin_request, notify_db_session):
@@ -566,58 +577,12 @@ def test_should_get_only_templates_for_that_service(admin_request, notify_db_ses
     assert {template["id"] for template in json_resp_2["data"]} == {str(id_3)}
 
 
-@pytest.mark.parametrize(
-    "extra_args",
-    (
-        {},
-        {"detailed": True},
-        {"detailed": "True"},
-    ),
-)
-def test_should_get_return_all_fields_by_default(
-    admin_request,
-    sample_email_template,
-    extra_args,
-):
-    json_response = admin_request.get(
-        "template.get_all_templates_for_service", service_id=sample_email_template.service.id, **extra_args
-    )
-    assert json_response["data"][0].keys() == {
-        "archived",
-        "content",
-        "created_at",
-        "created_by",
-        "folder",
-        "has_unsubscribe_link",
-        "hidden",
-        "id",
-        "is_precompiled_letter",
-        "letter_attachment",
-        "letter_languages",
-        "letter_welsh_content",
-        "letter_welsh_subject",
-        "name",
-        "postage",
-        "redact_personalisation",
-        "reply_to_text",
-        "reply_to",
-        "service_letter_contact",
-        "service",
-        "subject",
-        "template_redacted",
-        "template_type",
-        "updated_at",
-        "version",
-    }
-
-
 @pytest.mark.parametrize("template_type", (EMAIL_TYPE, SMS_TYPE, LETTER_TYPE))
 def test_should_not_return_content_and_subject_if_requested(admin_request, sample_service, template_type):
     create_template(sample_service, template_type=template_type)
     json_response = admin_request.get(
         "template.get_all_templates_for_service",
         service_id=sample_service.id,
-        detailed=False,
     )
     assert json_response["data"][0].keys() == {
         "folder",
@@ -1813,3 +1778,14 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
                 f"Error extracting requested page from PDF file for notification_id {notification.id} "
                 f"type {type(PdfReadError())} {error_message}"
             )
+
+
+@pytest.mark.parametrize("files_to_create", [["file_one.pdf"], ["file_one.pdf, file_two.pdf"], []])
+def test_get_email_template_with_file_returns_files(client, admin_request, sample_service, mocker, files_to_create):
+    template = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="sample_template")
+    for filename in files_to_create:
+        [create_template_email_file(template.id, created_by_id=sample_service.users[0].id, filename=filename)]
+    json_resp = admin_request.get(
+        "template.get_template_by_id_and_service_id", service_id=sample_service.id, template_id=template.id
+    )
+    assert {file.get("filename") for file in json_resp["data"]["email_files"]} == set(files_to_create)

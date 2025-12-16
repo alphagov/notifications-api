@@ -351,3 +351,11 @@ class SerializedReportRequest(TypedDict):
     parameter: dict
     created_at: str
     updated_at: str | None
+
+
+class SerializedTemplateEmailFile(TypedDict):
+    id: str
+    filename: str
+    link_text: str
+    retention_period: int
+    validate_users_email: bool
