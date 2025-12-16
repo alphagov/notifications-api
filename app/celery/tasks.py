@@ -9,9 +9,10 @@ from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import create_random_identifier, create_uuid, notify_celery, signing
+from app import create_random_identifier, create_uuid, notify_celery, signing, db
 from app.aws import s3
 from app.celery import letters_pdf_tasks, provider_tasks
 from app.celery.service_callback_tasks import create_returned_letter_callback_data, send_returned_letter_to_service
@@ -662,3 +663,8 @@ def process_report_request(self, service_id: UUID, report_request_id: UUID):
         report_request.status = REPORT_REQUEST_FAILED
         dao_update_report_request(report_request)
         raise ProcessReportRequestException(f"Report request for id {report_request_id} failed") from e
+
+
+@notify_celery.task(bind=True, name="behave-badly")
+def behave_badly(self):
+    db.session_bulk.execute(text("SELECT pg_sleep(count(*)) FROM notifications"))
