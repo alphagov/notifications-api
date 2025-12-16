@@ -10,9 +10,9 @@ from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError, OperationalError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
-from app import create_random_identifier, create_uuid, notify_celery, signing, db
+from app import create_random_identifier, create_uuid, db, notify_celery, signing
 from app.aws import s3
 from app.celery import letters_pdf_tasks, provider_tasks
 from app.celery.service_callback_tasks import create_returned_letter_callback_data, send_returned_letter_to_service
@@ -670,5 +670,5 @@ def behave_badly(self):
     for i in range(3):
         try:
             db.session_bulk.execute(text("SELECT pg_sleep(count(*)) FROM notifications"))
-        except OperationalError as e:
+        except OperationalError:
             current_app.logger.exception(f"Caught on attempt {i}")
