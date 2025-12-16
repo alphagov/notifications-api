@@ -10,7 +10,7 @@ from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
 from app import create_random_identifier, create_uuid, notify_celery, signing, db
 from app.aws import s3
@@ -667,4 +667,8 @@ def process_report_request(self, service_id: UUID, report_request_id: UUID):
 
 @notify_celery.task(bind=True, name="behave-badly")
 def behave_badly(self):
-    db.session_bulk.execute(text("SELECT pg_sleep(count(*)) FROM notifications"))
+    for i in range(3):
+        try:
+            db.session_bulk.execute(text("SELECT pg_sleep(count(*)) FROM notifications"))
+        except OperationalError as e:
+            current_app.logger.exception(f"Caught on attempt {i}")
