@@ -672,3 +672,4 @@ def behave_badly(self):
             db.session_bulk.execute(text("SELECT pg_sleep(count(*)) FROM notifications"))
         except OperationalError:
             current_app.logger.exception(f"Caught on attempt {i}")
+            db.session_bulk.rollback()
