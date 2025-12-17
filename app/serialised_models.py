@@ -14,7 +14,6 @@ from app import db, redis_store
 from app.dao.api_key_dao import get_model_api_keys
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id
 from app.utils import is_classmethod
 
 redis_cache = RequestCache(redis_store)
@@ -57,6 +56,7 @@ class SerialisedTemplate(SerialisedModel):
     template_type: str
     version: int
     has_unsubscribe_link: bool
+    email_files: list
 
     @classmethod
     @memory_cache
@@ -92,8 +92,8 @@ class SerialisedTemplate(SerialisedModel):
         return {"data": template_dict}
 
     @cached_property
-    def email_files(self):
-        return SerialisedTemplateEmailFileCollection.from_template_id(self.id, self.version)
+    def email_file_objects(self):
+        return SerialisedTemplateEmailFileCollection(self.email_files)
 
 
 class SerialisedTemplateEmailFile(SerialisedModel):
@@ -106,16 +106,6 @@ class SerialisedTemplateEmailFile(SerialisedModel):
 
 class SerialisedTemplateEmailFileCollection(SerialisedModelCollection):
     model = SerialisedTemplateEmailFile
-
-    @classmethod
-    @memory_cache
-    def from_template_id(cls, template_id, template_version):
-        keys = [
-            {k: getattr(key, k) for k in SerialisedTemplateEmailFile.__annotations__}
-            for key in dao_get_template_email_files_by_template_id(template_id, template_version)
-        ]
-        db.session.commit()
-        return cls(keys)
 
 
 class SerialisedService(SerialisedModel):
