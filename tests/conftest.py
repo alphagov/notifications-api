@@ -144,6 +144,17 @@ def sms_providers(_notify_db):
 
 
 @pytest.fixture(scope="function")
+def notify_db_session_bulk(_notify_db, sms_providers):
+    """
+    This fixture clears down all non static data after your test run. It yields the SQLAlchemy bulk session variable,
+    which is used for bulk/replica DB operations. Use this session to manually route queries to the replica database.
+    """
+    yield _notify_db.session_bulk
+
+    _clean_database(_notify_db)
+
+
+@pytest.fixture(scope="function")
 def notify_db_session(_notify_db, sms_providers):
     """
     This fixture clears down all non static data after your test run. It yields the sqlalchemy session variable
