@@ -16,6 +16,7 @@ from werkzeug.datastructures import MultiDict
 
 from app import db
 from app.aws import s3
+from app.celery.queue_utils import get_message_group_id_for_queue
 from app.celery.tasks import process_report_request
 from app.config import QueueNames
 from app.constants import (
@@ -1599,9 +1600,20 @@ def create_report_request_by_type(service_id):
         extra=extra,
     )
 
+    queue_name = QueueNames.REPORT_REQUESTS_NOTIFICATIONS
+
+    message_group_kwargs = get_message_group_id_for_queue(
+        queue_name=queue_name,
+        service_id=str(report_request.service_id),
+    )
+
     process_report_request.apply_async(
-        kwargs={"service_id": report_request.service_id, "report_request_id": report_request.id},
-        queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
+        kwargs={
+            "service_id": report_request.service_id,
+            "report_request_id": report_request.id,
+        },
+        queue=queue_name,
+        **message_group_kwargs,
     )
 
     return jsonify(data=created_request.serialize()), 201
