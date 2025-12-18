@@ -79,6 +79,7 @@ from tests.app.db import (
     create_template_email_file,
     create_user,
 )
+from tests.conftest import set_config
 
 
 @pytest.yield_fixture
@@ -1489,3 +1490,9 @@ def mock_document_download_client_upload(mocker):
         "app.document_download_client.upload_document",
         side_effect=["documents.gov.uk/link1", "documents.gov.uk/link2"],
     )
+
+
+@pytest.fixture(scope="function")
+def enable_sqs_fair_grouping(notify_api):
+    with set_config(notify_api, "ENABLE_SQS_FAIR_GROUPING", True):
+        yield
