@@ -1,6 +1,6 @@
 from collections import namedtuple
 from datetime import date, datetime, timedelta
-from itertools import groupby
+from itertools import chain, groupby
 from typing import Any
 
 from flask import current_app
@@ -502,13 +502,22 @@ def delete_billing_data_for_day(process_day: date, service_ids=None):
 
 
 def fetch_billing_data_for_day(
-    process_day: date, service_ids=None, check_permissions=False, chunk_timedelta=timedelta(hours=1), session=db.session
+    process_day: date,
+    service_ids=None,
+    check_permissions=False,
+    chunk_timedelta=timedelta(minutes=5),
+    session=db.session,
 ):
     start_dt = get_london_midnight_in_utc(process_day)
     end_dt = get_london_midnight_in_utc(process_day + timedelta(days=1))
     extra = {"start_time": start_dt, "end_time": end_dt}
     current_app.logger.info("Populate ft_billing for %(start_time)s to %(end_time)s", extra, extra=extra)
-    billing_data = []
+    billing_data = []  # type: ignore
+
+    # sqlalchemy's public api doesn't give us a way of constructing a new instance of a Row type, so
+    # to do in-python aggregation, we need our own namedtuple based of the fields of the Rows. but we
+    # can't set it up until we have the first Row
+    nt_type = None
 
     chunk_start_dt = start_dt
     while chunk_start_dt < end_dt:
@@ -521,23 +530,25 @@ def fetch_billing_data_for_day(
                 check_permissions=check_permissions,
                 session=session,
             )
-            billing_data += partial_billing_data
+
+            if partial_billing_data:
+                if nt_type is None:
+                    nt_type = namedtuple("BillingRow", partial_billing_data[0]._fields)  # type: ignore
+
+                # fold into running aggregation
+                billing_data = [
+                    nt_type(  # type: ignore
+                        # grp's common fields
+                        *k,
+                        # summed values of grp's last 2 fields
+                        *(sum(v) for v in zip(*(r[-2:] for r in grp), strict=True)),
+                    )
+                    for k, grp in groupby(sorted(chain(billing_data, partial_billing_data)), key=lambda r: r[:-2])
+                ]
 
         chunk_start_dt += chunk_timedelta
 
-    if not billing_data:
-        return billing_data
-
-    # sqlalchemy's public api doesn't give us a way of constructing a new instance of a Row type
-    BillingRow = namedtuple("BillingRow", billing_data[0]._fields)  # type: ignore
-
-    return [
-        BillingRow(
-            *k,  # grp's common fields
-            *(sum(v) for v in zip(*(r[-2:] for r in grp), strict=True)),  # summed values of grp's last 2 fields
-        )
-        for k, grp in groupby(sorted(billing_data), key=lambda r: r[:-2])
-    ]
+    return billing_data
 
 
 def _query_for_billing_data(notification_type, start_dt, end_dt, service_ids, check_permissions, session=db.session):

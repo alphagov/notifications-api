@@ -199,13 +199,54 @@ def test_fetch_billing_data_for_today_includes_data_with_the_right_date(notify_d
     create_notification(template=template, status="sending", created_at=process_day + timedelta(days=1))
 
     day_under_test = convert_utc_to_bst(process_day)
-    results = fetch_billing_data_for_day(day_under_test.date(), session=session)
     with QueryRecorder() as query_recorder:
         results = fetch_billing_data_for_day(day_under_test.date(), session=session)
 
     assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 1
     assert results[0].notifications_sent == 2
+
+
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+@pytest.mark.parametrize(
+    "row0_constructor",
+    (
+        create_notification,
+        create_notification_history,
+    ),
+    ids=("notifications", "notification_history"),
+)
+@pytest.mark.parametrize(
+    "row1_constructor",
+    (
+        create_notification,
+        create_notification_history,
+    ),
+    ids=("notifications", "notification_history"),
+)
+def test_fetch_billing_data_for_day_straddling(
+    notify_db_session, session, expected_bind_key, row0_constructor, row1_constructor
+):
+    service = create_service()
+    email_template = create_template(service=service, template_type="email")
+    row0_constructor(template=email_template, status="delivered", created_at=datetime(2021, 2, 3, 6, 59, 59, 999999))
+    row1_constructor(template=email_template, status="delivered", created_at=datetime(2021, 2, 3, 7))
+
+    with QueryRecorder() as query_recorder:
+        results = fetch_billing_data_for_day(date(2021, 2, 3), chunk_timedelta=timedelta(hours=1), session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+    # no matter the combination, these should all get aggregated into the same bucket
+    assert sorted(results) == [
+        (email_template.id, service.crown, service.id, "email", "ses", 0, False, None, "none", 0, 2),
+    ]
 
 
 @pytest.mark.parametrize(
