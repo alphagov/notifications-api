@@ -13,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.celery.provider_tasks import deliver_email
 from app.celery.tasks import process_report_request
+from app.config import QueueNames
 from app.constants import (
     EMAIL_AUTH_TYPE,
     EMAIL_TYPE,
@@ -90,6 +91,27 @@ from tests.app.db import (
     create_unsubscribe_request_report,
     create_user,
 )
+
+
+def assert_report_request_task_called(
+    process_task_mock,
+    *,
+    report_request_id,
+    service_id,
+    queue,
+    expect_message_group_id: bool = False,
+):
+    call = process_task_mock.call_args
+
+    kwargs = call.kwargs["kwargs"]
+    assert kwargs["report_request_id"] == report_request_id
+    assert kwargs["service_id"] == service_id
+    assert call.kwargs["queue"] == queue
+
+    if expect_message_group_id:
+        assert call.kwargs["MessageGroupId"] == str(service_id)
+    else:
+        assert "MessageGroupId" not in call.kwargs
 
 
 def test_get_service_list(client, service_factory):
@@ -4764,7 +4786,7 @@ def test_create_report_request_by_type_should_return_validation_error(
     ],
 )
 def test_create_report_request_by_type(
-    admin_request, sample_service, notification_type, notification_status, mock_celery_task
+    admin_request, sample_service, notification_type, notification_status, mock_celery_task, notify_api
 ):
     process_task_mock = mock_celery_task(process_report_request)
 
@@ -4780,12 +4802,11 @@ def test_create_report_request_by_type(
         _expected_status=201,
     )
 
-    process_task_mock.assert_called_once_with(
-        kwargs={
-            "report_request_id": UUID(json_resp["data"]["id"]),
-            "service_id": sample_service.id,
-        },
-        queue="report-requests-notifications-tasks",
+    assert_report_request_task_called(
+        process_task_mock,
+        report_request_id=UUID(json_resp["data"]["id"]),
+        service_id=sample_service.id,
+        queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
     )
 
     assert json_resp["data"]["id"]
@@ -4863,12 +4884,11 @@ def test_create_report_request_by_type_creates_new_when_no_existing(admin_reques
         "notification_status": "failed",
     }
 
-    process_task_mock.assert_called_once_with(
-        kwargs={
-            "report_request_id": UUID(response["data"]["id"]),
-            "service_id": sample_service.id,
-        },
-        queue="report-requests-notifications-tasks",
+    assert_report_request_task_called(
+        process_task_mock,
+        report_request_id=UUID(response["data"]["id"]),
+        service_id=sample_service.id,
+        queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
     )
 
 
@@ -4911,10 +4931,49 @@ def test_create_report_request_by_type_creates_new_if_existing_is_stale(
         f"Report request {created_request_id} for user {sample_user.id} (service {sample_service.id}) "
         f"created with params {json.dumps(expected_params, separators=(',', ':'))!r}" in caplog.messages
     )
-    process_task_mock.assert_called_once_with(
-        kwargs={
-            "report_request_id": UUID(response["data"]["id"]),
-            "service_id": sample_service.id,
+
+    assert_report_request_task_called(
+        process_task_mock,
+        report_request_id=UUID(response["data"]["id"]),
+        service_id=sample_service.id,
+        queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
+    )
+
+
+@pytest.mark.parametrize(
+    "notification_type, notification_status",
+    [
+        ("email", "all"),
+        ("sms", "failed"),
+        ("letter", "sending"),
+    ],
+)
+def test_create_report_request_by_type_with_fair_grouping(
+    enable_sqs_fair_grouping,
+    admin_request,
+    sample_service,
+    notification_type,
+    notification_status,
+    mock_celery_task,
+):
+    process_task_mock = mock_celery_task(process_report_request)
+
+    json_resp = admin_request.post(
+        "service.create_report_request_by_type",
+        service_id=sample_service.id,
+        _data={
+            "user_id": str(sample_service.created_by_id),
+            "report_type": "notifications_report",
+            "notification_type": notification_type,
+            "notification_status": notification_status,
         },
-        queue="report-requests-notifications-tasks",
+        _expected_status=201,
+    )
+
+    assert_report_request_task_called(
+        process_task_mock,
+        report_request_id=UUID(json_resp["data"]["id"]),
+        service_id=sample_service.id,
+        expect_message_group_id=True,
+        queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
     )
