@@ -309,9 +309,9 @@ def check_job_status():
 @notify_celery.task(name="replay-created-notifications")
 def replay_created_notifications():
     # if the notification has not be sent after 1 hour, then try to resend.
-    resend_created_notifications_older_than = 60 * 60
+    grace_period = timedelta(hours=1)
     for notification_type in (EMAIL_TYPE, SMS_TYPE):
-        notifications_to_resend = notifications_not_yet_sent(resend_created_notifications_older_than, notification_type)
+        notifications_to_resend = notifications_not_yet_sent(grace_period, notification_type, session=db.session_bulk)
 
         for n in notifications_to_resend:
             current_app.logger.warning(
@@ -322,8 +322,8 @@ def replay_created_notifications():
             )
             send_notification_to_queue(notification=n)
 
-    # if the letter has not be send after an hour, then create a zendesk ticket
-    letters = letters_missing_from_sending_bucket(resend_created_notifications_older_than)
+    # if the letter has not be sent after an hour, then create a zendesk ticket
+    letters = letters_missing_from_sending_bucket(grace_period, session=db.session_bulk)
 
     for letter in letters:
         current_app.logger.warning(

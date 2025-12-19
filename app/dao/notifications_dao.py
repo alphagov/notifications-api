@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from itertools import groupby
@@ -15,7 +16,7 @@ from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy import String, and_, asc, column, desc, func, not_, or_, select, text, union, values
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import defer, joinedload, undefer
+from sqlalchemy.orm import Session, defer, joinedload, scoped_session, undefer
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
@@ -821,14 +822,32 @@ def dao_get_last_notification_added_for_job_id(job_id):
     return last_notification_added
 
 
-def notifications_not_yet_sent(should_be_sending_after_seconds, notification_type):
-    older_than_date = datetime.utcnow() - timedelta(seconds=should_be_sending_after_seconds)
+def notifications_not_yet_sent(
+    grace_period: timedelta,
+    notification_type: str,
+    age_limit: timedelta = timedelta(days=7),
+    chunk_timedelta: timedelta = timedelta(hours=12),
+    session: Session | scoped_session = db.session,
+) -> Sequence[Notification]:
+    uniform_now = datetime.utcnow()
+    start_dt = uniform_now - age_limit
+    end_dt = uniform_now - grace_period
 
-    notifications = Notification.query.filter(
-        Notification.created_at <= older_than_date,
-        Notification.notification_type == notification_type,
-        Notification.status == NOTIFICATION_CREATED,
-    ).all()
+    notifications = []
+
+    while start_dt < end_dt:
+        notifications += (
+            session.query(Notification)
+            .filter(
+                Notification.notification_type == notification_type,
+                Notification.status == NOTIFICATION_CREATED,
+                Notification.created_at >= start_dt,
+                Notification.created_at < min(end_dt, start_dt + chunk_timedelta),
+            )
+            .all()
+        )
+        start_dt += chunk_timedelta
+
     return notifications
 
 
@@ -899,21 +918,35 @@ def dao_old_letters_with_created_status():
     return notifications
 
 
-def letters_missing_from_sending_bucket(seconds_to_subtract):
-    older_than_date = datetime.utcnow() - timedelta(seconds=seconds_to_subtract)
-    # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
-    notifications = (
-        Notification.query.filter(
-            Notification.billable_units == 0,
-            Notification.updated_at == None,  # noqa
-            Notification.status == NOTIFICATION_CREATED,
-            Notification.created_at <= older_than_date,
-            Notification.notification_type == LETTER_TYPE,
-            Notification.key_type == KEY_TYPE_NORMAL,
+def letters_missing_from_sending_bucket(
+    grace_period: timedelta,
+    age_limit: timedelta = timedelta(days=7),
+    chunk_timedelta: timedelta = timedelta(hours=12),
+    session: Session | scoped_session = db.session,
+) -> Sequence[Notification]:
+    uniform_now = datetime.utcnow()
+    start_dt = uniform_now - age_limit
+    end_dt = uniform_now - grace_period
+
+    notifications = []
+
+    while start_dt < end_dt:
+        # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
+        notifications += (
+            session.query(Notification)
+            .filter(
+                Notification.billable_units == 0,
+                Notification.updated_at == None,  # noqa
+                Notification.status == NOTIFICATION_CREATED,
+                Notification.notification_type == LETTER_TYPE,
+                Notification.key_type == KEY_TYPE_NORMAL,
+                Notification.created_at >= start_dt,
+                Notification.created_at < min(end_dt, start_dt + chunk_timedelta),
+            )
+            .order_by(Notification.created_at)
+            .all()
         )
-        .order_by(Notification.created_at)
-        .all()
-    )
+        start_dt += chunk_timedelta
 
     return notifications
 
