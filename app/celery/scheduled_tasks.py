@@ -314,11 +314,12 @@ def replay_created_notifications():
         notifications_to_resend = notifications_not_yet_sent(grace_period, notification_type, session=db.session_bulk)
 
         for n in notifications_to_resend:
+            extra = {"notification_id": n.id, "notification_status": n.status}
             current_app.logger.warning(
-                "Re-sending notification %s to the delivery queue becasue the "
-                "notification status was created and it is over an hour old",
-                n.id,
-                extra={"notification_id": n.id},
+                "Re-sending notification %(notification_id)s to the delivery queue because the "
+                "notification status is %(notification_status)r and it is over an hour old",
+                extra,
+                extra=extra,
             )
             send_notification_to_queue(notification=n)
 
