@@ -37,7 +37,7 @@ from app.models import Notification
 from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
 
 
-def send_sms_to_provider(notification):
+def send_sms_to_provider(notification: Notification) -> None:
     service = SerialisedService.from_id(notification.service_id)
 
     if not service.active:
