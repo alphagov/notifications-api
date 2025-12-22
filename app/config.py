@@ -176,6 +176,8 @@ class Config:
         "pool_timeout": 30,
         "pool_recycle": 300,
         "connect_args": {
+            "connect_timeout": "5",  # seconds
+            "tcp_user_timeout": "5000",  # milliseconds
             # statement_timeout is overridden in setup_sqlalchemy_events, but not all our
             # invocations heed those event hooks (e.g. alembic migrations), so this is set
             # as a fallback
