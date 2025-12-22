@@ -58,6 +58,7 @@ from app.utils import (
     escape_special_characters,
     get_london_midnight_in_utc,
     midnight_n_days_ago,
+    retryable_query,
     try_parse_and_format_phone_number,
 )
 
@@ -822,29 +823,46 @@ def dao_get_last_notification_added_for_job_id(job_id):
     return last_notification_added
 
 
+@retryable_query()
+def _notifications_not_yet_sent_inner(
+    notification_type: str,
+    start_dt: datetime,
+    end_dt: datetime,
+    session: Session | scoped_session = db.session,
+) -> Sequence[Notification]:
+    return (
+        session.query(Notification)
+        .filter(
+            Notification.notification_type == notification_type,
+            Notification.status == NOTIFICATION_CREATED,
+            Notification.created_at >= start_dt,
+            Notification.created_at < end_dt,
+        )
+        .all()
+    )
+
+
 def notifications_not_yet_sent(
     grace_period: timedelta,
     notification_type: str,
     age_limit: timedelta = timedelta(days=7),
     chunk_timedelta: timedelta = timedelta(hours=12),
     session: Session | scoped_session = db.session,
+    inner_retry_attempts: int = 0,
 ) -> Sequence[Notification]:
     uniform_now = datetime.utcnow()
     start_dt = uniform_now - age_limit
     end_dt = uniform_now - grace_period
 
-    notifications = []
+    notifications: list[Notification] = []
 
     while start_dt < end_dt:
-        notifications += (
-            session.query(Notification)
-            .filter(
-                Notification.notification_type == notification_type,
-                Notification.status == NOTIFICATION_CREATED,
-                Notification.created_at >= start_dt,
-                Notification.created_at < min(end_dt, start_dt + chunk_timedelta),
-            )
-            .all()
+        notifications += _notifications_not_yet_sent_inner(
+            notification_type,
+            start_dt,
+            min(end_dt, start_dt + chunk_timedelta),
+            session=session,
+            retry_attempts=inner_retry_attempts,  # type: ignore
         )
         start_dt += chunk_timedelta
 
@@ -918,33 +936,48 @@ def dao_old_letters_with_created_status():
     return notifications
 
 
+@retryable_query()
+def _letters_missing_from_sending_bucket_inner(
+    start_dt: datetime,
+    end_dt: datetime,
+    session: Session | scoped_session = db.session,
+) -> Sequence[Notification]:
+    # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
+    return (
+        session.query(Notification)
+        .filter(
+            Notification.billable_units == 0,
+            Notification.updated_at == None,  # noqa
+            Notification.status == NOTIFICATION_CREATED,
+            Notification.notification_type == LETTER_TYPE,
+            Notification.key_type == KEY_TYPE_NORMAL,
+            Notification.created_at >= start_dt,
+            Notification.created_at < end_dt,
+        )
+        .order_by(Notification.created_at)
+        .all()
+    )
+
+
 def letters_missing_from_sending_bucket(
     grace_period: timedelta,
     age_limit: timedelta = timedelta(days=7),
     chunk_timedelta: timedelta = timedelta(hours=12),
     session: Session | scoped_session = db.session,
+    inner_retry_attempts: int = 0,
 ) -> Sequence[Notification]:
     uniform_now = datetime.utcnow()
     start_dt = uniform_now - age_limit
     end_dt = uniform_now - grace_period
 
-    notifications = []
+    notifications: list[Notification] = []
 
     while start_dt < end_dt:
-        # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
-        notifications += (
-            session.query(Notification)
-            .filter(
-                Notification.billable_units == 0,
-                Notification.updated_at == None,  # noqa
-                Notification.status == NOTIFICATION_CREATED,
-                Notification.notification_type == LETTER_TYPE,
-                Notification.key_type == KEY_TYPE_NORMAL,
-                Notification.created_at >= start_dt,
-                Notification.created_at < min(end_dt, start_dt + chunk_timedelta),
-            )
-            .order_by(Notification.created_at)
-            .all()
+        notifications += _letters_missing_from_sending_bucket_inner(
+            start_dt,
+            min(end_dt, start_dt + chunk_timedelta),
+            session=session,
+            retry_attempts=inner_retry_attempts,  # type: ignore
         )
         start_dt += chunk_timedelta
 

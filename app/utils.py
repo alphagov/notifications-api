@@ -1,6 +1,10 @@
+from collections.abc import Callable
 from contextlib import suppress
 from datetime import datetime, timedelta
+from functools import wraps
+from inspect import signature
 from itertools import islice
+from typing import Any  # noqa
 from urllib.parse import urljoin
 
 from flask import current_app, url_for
@@ -16,6 +20,7 @@ from notifications_utils.template import (
 from notifications_utils.timezones import convert_bst_to_utc, utc_string_to_aware_gmt_datetime
 from notifications_utils.url_safe_token import generate_token
 from sqlalchemy import func
+from sqlalchemy.exc import OperationalError
 
 from app.constants import (
     EMAIL_TYPE,
@@ -197,6 +202,55 @@ def is_classmethod(method, cls):
     with suppress(AttributeError, KeyError):
         return isinstance(cls.__dict__[method.__name__], classmethod)
     return False
+
+
+def retryable_query[**A, R](
+    default_retry_attempts: int = 0,  # note dormant by default
+    exception_cls: type[BaseException] = OperationalError,
+) -> Callable[[Callable[A, R]], Callable[A, R]]:
+    """
+    Returns a decorator that will, if activated either through `default_retry_attempts` or
+    the "direct" argument `retry_attempts` being non-zero, will catch exceptions of type
+    `exception_cls` and re-run the function body following a session.rollback() (note
+    therefore this can only wrap functions that have a `session` argument so we know what
+    to roll back).
+
+    Beware it is not always appropriate to quietly roll back a transaction, so this should
+    only be "activated" in cases where this is ok - this is why it defaults to having no
+    action.
+    """
+
+    def retry_decorator(inner: Callable[A, R]) -> Callable[A, R]:
+        sig = signature(inner)
+        if "session" not in sig.parameters:
+            raise TypeError("retryable_query can only decorate functions with an argument named `session`")
+
+        @wraps(inner)
+        def retry_wrapper(*args, **kwargs):
+            retry_attempts = kwargs.pop("retry_attempts", default_retry_attempts)
+
+            for attempt in range(retry_attempts + 1):
+                try:
+                    return inner(*args, **kwargs)
+                except exception_cls:
+                    if attempt >= retry_attempts:
+                        raise
+
+                    extra = {"retry_number": attempt}  # type: dict[str, Any]
+                    current_app.logger.warning(
+                        "Attempt %(retry_number)s of query failed", extra, exc_info=True, extra=extra
+                    )
+
+                    # need to figure out what session we're supposed to be rolling back
+                    bound_args = sig.bind(*args, **kwargs)
+                    bound_args.apply_defaults()
+                    session = bound_args.arguments["session"]
+
+                    session.rollback()
+
+        return retry_wrapper  # type: ignore  # Concatenate can't handle kwargs (yet?)
+
+    return retry_decorator
 
 
 def try_download_template_email_file_from_s3(service_id, template_email_file_id):

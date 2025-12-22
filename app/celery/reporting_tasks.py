@@ -74,7 +74,7 @@ def create_or_update_ft_billing_for_day(process_day: str):
     )
 
     start = datetime.utcnow()
-    billing_data = fetch_billing_data_for_day(process_day=process_date, session=db.session_bulk)
+    billing_data = fetch_billing_data_for_day(process_day=process_date, session=db.session_bulk, inner_retry_attempts=2)
     end = datetime.utcnow()
 
     duration = end - start

@@ -40,7 +40,12 @@ from app.models import (
     Service,
     ServicePermission,
 )
-from app.utils import get_ft_billing_data_for_today_updated_at, get_london_midnight_in_utc, midnight_n_days_ago
+from app.utils import (
+    get_ft_billing_data_for_today_updated_at,
+    get_london_midnight_in_utc,
+    midnight_n_days_ago,
+    retryable_query,
+)
 
 
 def fetch_usage_for_all_services_sms(start_date, end_date, organisation_id=None, exclude_restricted=False):
@@ -507,6 +512,7 @@ def fetch_billing_data_for_day(
     check_permissions=False,
     chunk_timedelta=timedelta(minutes=5),
     session=db.session,
+    inner_retry_attempts=0,
 ):
     start_dt = get_london_midnight_in_utc(process_day)
     end_dt = get_london_midnight_in_utc(process_day + timedelta(days=1))
@@ -529,6 +535,7 @@ def fetch_billing_data_for_day(
                 service_ids=service_ids,
                 check_permissions=check_permissions,
                 session=session,
+                retry_attempts=inner_retry_attempts,  # type: ignore
             )
 
             if partial_billing_data:
@@ -551,6 +558,7 @@ def fetch_billing_data_for_day(
     return billing_data
 
 
+@retryable_query()
 def _query_for_billing_data(notification_type, start_dt, end_dt, service_ids, check_permissions, session=db.session):
     base_query = session.query(NotificationAllTimeView).join(Service, NotificationAllTimeView.service_id == Service.id)
 
