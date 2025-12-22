@@ -37,7 +37,7 @@ from app.models import Notification
 from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
 
 
-def send_sms_to_provider(notification):
+def send_sms_to_provider(notification: Notification) -> None:
     service = SerialisedService.from_id(notification.service_id)
 
     if not service.active:
@@ -107,6 +107,14 @@ def send_sms_to_provider(notification):
             statsd_client.timing("sms.test-key.total-time", delta_seconds)
         else:
             statsd_client.timing("sms.live-key.total-time", delta_seconds)
+    else:
+        extra = {"notification_id": notification.id, "notification_status": notification.status}
+        current_app.logger.warning(
+            "Not sending SMS notification %(notification_id)s because status "
+            "is %(notification_status)r (not 'created')",
+            extra,
+            extra=extra,
+        )
 
 
 def _get_email_headers(notification: Notification, template: SerialisedTemplate) -> list[dict[str, str]]:
