@@ -307,7 +307,7 @@ def check_job_status():
 
 
 @notify_celery.task(name="replay-created-notifications")
-def replay_created_notifications():
+def replay_created_notifications() -> None:
     # if the notification has not be sent after 1 hour, then try to resend.
     grace_period = timedelta(hours=1)
     for notification_type in (EMAIL_TYPE, SMS_TYPE):
