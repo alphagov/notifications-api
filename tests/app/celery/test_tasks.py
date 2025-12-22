@@ -69,6 +69,7 @@ from tests.app.db import (
     create_service,
     create_service_with_defined_sms_sender,
     create_template,
+    create_template_email_file,
     create_user,
 )
 
@@ -1504,16 +1505,56 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     )
 
 
+@pytest.mark.parametrize(
+    "template_email_files, expected_personalisation",
+    [
+        (
+            [
+                {"filename": "invitation.pdf", "validate_users_email": True, "retention_period": 26, "link_text": ""},
+                {"filename": "form.pdf", "validate_users_email": True, "retention_period": 26, "link_text": ""},
+            ],
+            {
+                "name": "Anne",
+                "invitation.pdf": "documents.gov.uk/link1",
+                "form.pdf": "documents.gov.uk/link2",
+            },
+        ),
+        (
+            [
+                {
+                    "filename": "invitation.pdf",
+                    "validate_users_email": True,
+                    "retention_period": 26,
+                    "link_text": "click this first link",
+                },
+                {
+                    "filename": "form.pdf",
+                    "validate_users_email": True,
+                    "retention_period": 26,
+                    "link_text": "click this second link",
+                },
+            ],
+            {
+                "name": "Anne",
+                "invitation.pdf": "[click this first link](documents.gov.uk/link1)",
+                "form.pdf": "[click this second link](documents.gov.uk/link2)",
+            },
+        ),
+    ],
+)
 def test_send_email_with_template_email_files(
     sample_service,
     mocker,
     mock_celery_task,
     mock_utils_s3_download,
     mock_document_download_client_upload,
-    sample_email_template_with_template_email_files,
+    template_email_files,
+    expected_personalisation,
+    sample_email_template_with_email_file_placeholders,
 ):
-    template = sample_email_template_with_template_email_files
-
+    template = sample_email_template_with_email_file_placeholders
+    for file_data in template_email_files:
+        create_template_email_file(template_id=template.id, created_by_id=template.created_by_id, **file_data)
     notification = _notification_json(template, "anne@example.com", personalisation={"name": "Anne"})
     notification_id = uuid.uuid4()
 
@@ -1528,19 +1569,8 @@ def test_send_email_with_template_email_files(
 
     assert persisted_notification.template_id == template.id
     assert persisted_notification.status == "created"
-
-    assert persisted_notification.personalisation == {
-        "name": "Anne",
-        "invitation.pdf": "documents.gov.uk/link1",
-        "form.pdf": "documents.gov.uk/link2",
-    }
-    assert persisted_notification._personalisation == signing.encode(
-        {
-            "name": "Anne",
-            "invitation.pdf": "documents.gov.uk/link1",
-            "form.pdf": "documents.gov.uk/link2",
-        }
-    )
+    assert persisted_notification.personalisation == expected_personalisation
+    assert persisted_notification._personalisation == signing.encode(expected_personalisation)
 
 
 def test_send_email_with_template_email_files_from_old_template_version(

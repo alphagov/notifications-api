@@ -108,7 +108,10 @@ def add_email_file_links_to_personalisation(template, personalisation, recipient
             retention_period=email_file.retention_period,
             filename=email_file.filename,
         )
-        personalisation[email_file.filename] = doc_download_link
+        if email_file.link_text:
+            personalisation[email_file.filename] = f"[{email_file.link_text}]({doc_download_link})"
+        else:
+            personalisation[email_file.filename] = doc_download_link
 
     return personalisation
 
