@@ -28,7 +28,7 @@ from app.notifications.process_notifications import (
 from app.serialised_models import SerialisedTemplate
 from app.utils import parse_and_format_phone_number
 from app.v2.errors import BadRequestError, QrCodeTooLongError
-from tests.app.db import create_api_key, create_job, create_service, create_template
+from tests.app.db import create_api_key, create_job, create_service, create_template, create_template_email_file
 from tests.conftest import set_config
 
 
@@ -133,11 +133,60 @@ def test_create_content_for_notification_should_raise_if_email_files_not_found(
     mock_upload.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "template_email_files, expected_personalisation",
+    [
+        (
+            [
+                {"filename": "invitation.pdf", "validate_users_email": True, "retention_period": 26, "link_text": ""},
+                {"filename": "form.pdf", "validate_users_email": True, "retention_period": 26, "link_text": ""},
+            ],
+            {
+                "name": "Anne",
+                "invitation.pdf": "documents.gov.uk/link1",
+                "form.pdf": "documents.gov.uk/link2",
+            },
+        ),
+        (
+            [
+                {
+                    "filename": "invitation.pdf",
+                    "validate_users_email": True,
+                    "retention_period": 26,
+                    "link_text": "click this first link",
+                },
+                {
+                    "filename": "form.pdf",
+                    "validate_users_email": True,
+                    "retention_period": 26,
+                    "link_text": "click this second link",
+                },
+            ],
+            {
+                "name": "Anne",
+                "invitation.pdf": "[click this first link](documents.gov.uk/link1)",
+                "form.pdf": "[click this second link](documents.gov.uk/link2)",
+            },
+        ),
+    ],
+)
 def test_add_email_file_links_to_personalisation(
-    notify_api, mocker, sample_service, sample_email_template_with_template_email_files
+    notify_api,
+    mocker,
+    sample_service,
+    sample_email_template_with_email_file_placeholders,
+    template_email_files,
+    expected_personalisation,
 ):
+    for file_data in template_email_files:
+        create_template_email_file(
+            template_id=sample_email_template_with_email_file_placeholders.id,
+            created_by_id=sample_service.users[0].id,
+            **file_data,
+        )
+
     template = SerialisedTemplate.from_id_and_service_id(
-        template_id=sample_email_template_with_template_email_files.id, service_id=sample_service.id
+        template_id=sample_email_template_with_email_file_placeholders.id, service_id=sample_service.id
     )
 
     mocker.patch(
@@ -152,11 +201,7 @@ def test_add_email_file_links_to_personalisation(
 
     personalisation = add_email_file_links_to_personalisation(template, {"name": "Anne"}, recipient="anne@example.com")
 
-    assert personalisation == {
-        "name": "Anne",
-        "invitation.pdf": "documents.gov.uk/link1",
-        "form.pdf": "documents.gov.uk/link2",
-    }
+    assert personalisation == expected_personalisation
 
     assert mock_upload.mock_calls == [
         call(
