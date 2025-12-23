@@ -116,9 +116,8 @@ def deliver_email(self, notification_id):
             raise NotificationTechnicalFailureException(message) from e
 
 
-@notify_celery.task(bind=True, name="deliver_letter", max_retries=55, retry_backoff=True, retry_backoff_max=300)
+@notify_celery.task(bind=True, name="deliver_letter", max_retries=55)
 def deliver_letter(self, notification_id):
-    # 55 retries with exponential backoff gives a retry time of approximately 4 hours
     current_app.logger.info(
         "Start sending letter for notification id: %s", notification_id, extra={"notification_id": notification_id}
     )
