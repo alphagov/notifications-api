@@ -160,7 +160,10 @@ def create_nightly_notification_status():
             process_day = yesterday - timedelta(days=i)
 
             relevant_service_ids = get_service_ids_with_notifications_on_date(
-                notification_type, process_day, session=db.session_bulk
+                notification_type,
+                process_day,
+                session=db.session_bulk,
+                retry_attempts=2,  # type: ignore
             )
 
             for service_id in relevant_service_ids:

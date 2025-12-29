@@ -1033,6 +1033,7 @@ def get_service_ids_with_notifications_before(notification_type, timestamp):
     }
 
 
+@retryable_query()
 def get_service_ids_with_notifications_on_date(
     notification_type: str, process_day: date, session: Session | scoped_session = db.session
 ) -> set[uuid.UUID]:
