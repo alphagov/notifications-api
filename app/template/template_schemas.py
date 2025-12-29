@@ -91,6 +91,7 @@ post_update_template_schema = {
         "created_by": uuid,
         "archived": {"type": "boolean"},
         "current_user": uuid,
+        "archive_email_file_ids": {"type": "array", "items": uuid},
     },
     "allOf": [letter_languages_subschema],
 }
