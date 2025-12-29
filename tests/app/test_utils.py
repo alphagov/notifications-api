@@ -1,18 +1,21 @@
 import json
 import uuid
 from datetime import date, datetime
+from unittest import mock
 
 import pytest
 from flask import current_app
 from freezegun import freeze_time
 from notifications_utils.s3 import S3ObjectNotFound
 from notifications_utils.url_safe_token import generate_token
+from sqlalchemy.orm import Session
 
 from app.utils import (
     format_sequential_number,
     get_london_midnight_in_utc,
     get_midnight_for_day_before,
     midnight_n_days_ago,
+    retryable_query,
     try_download_template_email_file_from_s3,
     url_with_token,
 )
@@ -116,3 +119,131 @@ def test_try_download_template_email_file_from_s3_raises_error_when_file_not_in_
 
     with pytest.raises(S3ObjectNotFound):
         try_download_template_email_file_from_s3(service_id=sample_service.id, template_email_file_id=fake_uuid)
+
+
+class _ExampleException(Exception):
+    pass
+
+
+def test_retryable_query_no_success(caplog):
+    mock_default_session = mock.Mock(autospec=Session)
+    mock_explicit_session = mock.Mock(autospec=Session)
+
+    @retryable_query(default_retry_attempts=2, exception_cls=_ExampleException)
+    def dummy_function(foo, bar=123, session=mock_default_session):
+        assert foo == "baz"
+        assert bar == 123
+
+        session.execute(321)
+
+        raise _ExampleException("example reason")
+
+    with pytest.raises(_ExampleException):
+        dummy_function("baz", session=mock_explicit_session)
+
+    assert mock_default_session.mock_calls == []
+    assert mock_explicit_session.mock_calls == [
+        mock.call.execute(321),
+        mock.call.rollback(),
+        mock.call.execute(321),
+        mock.call.rollback(),
+        mock.call.execute(321),
+    ]
+    assert caplog.messages == [
+        "Attempt 0 of query failed",
+        "Attempt 1 of query failed",
+    ]
+
+
+def test_retryable_query_eventual_success(caplog):
+    mock_default_session = mock.Mock(autospec=Session)
+    mock_explicit_session = mock.Mock(autospec=Session)
+    n = 0
+
+    @retryable_query(default_retry_attempts=2, exception_cls=_ExampleException)
+    def dummy_function(foo, bar=123, session=mock_default_session):
+        assert foo == "baz"
+        assert bar == 123
+
+        session.execute(321)
+        nonlocal n
+        n += 1
+
+        if n < 2:
+            raise _ExampleException("example reason")
+
+    dummy_function("baz", session=mock_explicit_session)
+
+    assert mock_default_session.mock_calls == []
+    assert mock_explicit_session.mock_calls == [
+        mock.call.execute(321),
+        mock.call.rollback(),
+        mock.call.execute(321),
+    ]
+    assert caplog.messages == [
+        "Attempt 0 of query failed",
+    ]
+
+
+def test_retryable_query_default_session(caplog):
+    mock_default_session = mock.Mock(autospec=Session)
+    n = 0
+
+    @retryable_query(default_retry_attempts=2, exception_cls=_ExampleException)
+    def dummy_function(foo, bar=123, session=mock_default_session):
+        assert foo == "baz"
+        assert bar == 123
+
+        session.execute(321)
+        nonlocal n
+        n += 1
+
+        if n < 2:
+            raise _ExampleException("example reason")
+
+    dummy_function("baz")
+
+    assert mock_default_session.mock_calls == [
+        mock.call.execute(321),
+        mock.call.rollback(),
+        mock.call.execute(321),
+    ]
+    assert caplog.messages == [
+        "Attempt 0 of query failed",
+    ]
+
+
+def test_retryable_query_positional_session(caplog):
+    mock_session = mock.Mock(autospec=Session)
+    n = 0
+
+    @retryable_query(default_retry_attempts=3, exception_cls=_ExampleException)
+    def dummy_function(foo, session, bar=123):
+        assert foo == "baz"
+        assert bar == 123
+
+        session.execute(321)
+        nonlocal n
+        n += 1
+
+        if n < 2:
+            raise _ExampleException("example reason")
+
+    dummy_function("baz", mock_session)
+
+    assert mock_session.mock_calls == [
+        mock.call.execute(321),
+        mock.call.rollback(),
+        mock.call.execute(321),
+    ]
+    assert caplog.messages == [
+        "Attempt 0 of query failed",
+    ]
+
+
+def test_retryable_query_no_session_arg():
+    with pytest.raises(TypeError, match=r".*session.*"):
+
+        @retryable_query(default_retry_attempts=3, exception_cls=_ExampleException)
+        def dummy_function(foo, bar=123):
+            pass

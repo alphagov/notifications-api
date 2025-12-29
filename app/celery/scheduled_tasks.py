@@ -311,7 +311,9 @@ def replay_created_notifications() -> None:
     # if the notification has not be sent after 1 hour, then try to resend.
     grace_period = timedelta(hours=1)
     for notification_type in (EMAIL_TYPE, SMS_TYPE):
-        notifications_to_resend = notifications_not_yet_sent(grace_period, notification_type, session=db.session_bulk)
+        notifications_to_resend = notifications_not_yet_sent(
+            grace_period, notification_type, session=db.session_bulk, inner_retry_attempts=2
+        )
 
         for n in notifications_to_resend:
             extra = {"notification_id": n.id, "notification_status": n.status}
@@ -324,7 +326,7 @@ def replay_created_notifications() -> None:
             send_notification_to_queue(notification=n)
 
     # if the letter has not be sent after an hour, then create a zendesk ticket
-    letters = letters_missing_from_sending_bucket(grace_period, session=db.session_bulk)
+    letters = letters_missing_from_sending_bucket(grace_period, session=db.session_bulk, inner_retry_attempts=2)
 
     for letter in letters:
         current_app.logger.warning(
