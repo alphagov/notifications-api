@@ -181,7 +181,9 @@ def create_nightly_notification_status():
 def create_nightly_notification_status_for_service_and_day(process_day, service_id, notification_type):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
 
-    rows = generate_fact_notification_status_rows(process_day, notification_type, service_id, session=db.session_bulk)
+    rows = generate_fact_notification_status_rows(
+        process_day, notification_type, service_id, session=db.session_bulk, inner_retry_attempts=2
+    )
     deleted_rows = update_fact_notification_status(rows, process_day, notification_type, service_id)
 
     extra = {
