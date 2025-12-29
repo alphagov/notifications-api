@@ -711,14 +711,15 @@ def dao_get_unknown_references(references):
 
 
 def dao_get_notifications_by_recipient_or_reference(
-    service_id,
-    search_term,
-    notification_type=None,
-    statuses=None,
-    page=1,
-    page_size=None,
-    error_out=True,
-):
+    service_id: uuid.UUID | str,
+    search_term: str,
+    notification_type: str | None = None,
+    statuses: Sequence[str] | None = None,
+    page: int = 1,
+    page_size: int | None = None,
+    error_out: bool = True,
+    session: Session | scoped_session = db.session,
+) -> Sequence[Notification]:
     if notification_type == SMS_TYPE:
         normalised = try_parse_and_format_phone_number(search_term, with_country_code=False)
         for character in {"(", ")", " ", "-"}:
@@ -760,10 +761,10 @@ def dao_get_notifications_by_recipient_or_reference(
     if notification_type:
         filters.append(Notification.notification_type == notification_type)
     results = (
-        db.session.query(Notification)
+        session.query(Notification)
         .filter(*filters)
         .order_by(desc(Notification.created_at))
-        .paginate(page=page, per_page=page_size, count=False, error_out=error_out)
+        .paginate(page=page, per_page=page_size, count=False, error_out=error_out)  # type: ignore
     )
     return results
 
