@@ -74,7 +74,7 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
             )
             raise ClientException(f"{client_name} callback failed: status {status} not found.") from e
 
-        raise MyException()
+        raise OperationalError
 
         _process_for_status(
             notification_status=notification_status,
