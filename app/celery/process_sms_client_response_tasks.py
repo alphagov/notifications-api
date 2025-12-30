@@ -74,7 +74,7 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
             )
             raise ClientException(f"{client_name} callback failed: status {status} not found.") from e
 
-        raise OperationalError
+        raise MyException()
 
         _process_for_status(
             notification_status=notification_status,
@@ -82,7 +82,7 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
             provider_reference=provider_reference,
             detailed_status_code=detailed_status_code,
         )
-    except OperationalError:
+    except (OperationalError, MyException):
         self.retry(queue=QueueNames.RETRY)
 
 
