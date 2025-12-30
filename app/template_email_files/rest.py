@@ -90,10 +90,14 @@ def archive_template_email_file(template_email_file_id, template_id, service_id)
     current_data_json = template_email_files_schema.dump(current_data)
     updated_data_json = validate(request.get_json(), post_archive_template_email_files_schema)
     updated_data_json = current_data_json | updated_data_json
+
     updated_data_json["archived_by"] = updated_data_json.pop("archived_by_id")
     updated_data_json["archived_at"] = str(datetime.datetime.utcnow())
+
     update_dict = template_email_files_schema.load(updated_data_json)
+
     dao_update_template_email_file(update_dict)
+
     return jsonify(data=updated_data_json), 200
 
 

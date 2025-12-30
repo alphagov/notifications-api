@@ -61,3 +61,15 @@ def dao_update_template_email_file(template_email_file: TemplateEmailFile):
     template_email_file.template_version = template.version + 1
     db.session.add(template_email_file)
     db.session.add(template)
+
+
+@autocommit
+@version_class(
+    VersionOptions(TemplateEmailFile, history_class=TemplateEmailFileHistory),
+)
+def dao_archive_template_email_file(file_to_archive, archived_by_id, template_version):
+    if not file_to_archive.archived_at:
+        file_to_archive.archived_at = datetime.datetime.now(datetime.UTC)
+        file_to_archive.archived_by_id = archived_by_id
+        file_to_archive.template_version = template_version
+        db.session.add(file_to_archive)
