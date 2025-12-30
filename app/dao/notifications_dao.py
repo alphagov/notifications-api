@@ -710,6 +710,7 @@ def dao_get_unknown_references(references):
     )
 
 
+@retryable_query()
 def dao_get_notifications_by_recipient_or_reference(
     service_id: uuid.UUID | str,
     search_term: str,
