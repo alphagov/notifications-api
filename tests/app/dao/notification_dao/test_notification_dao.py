@@ -55,6 +55,7 @@ from tests.app.db import (
     create_service,
     create_template,
 )
+from tests.utils import QueryRecorder
 
 
 def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_provider):
@@ -1684,6 +1685,13 @@ def test_dao_get_letters_and_sheets_volume_by_postage(notify_db_session):
 
 
 @pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
+@pytest.mark.parametrize(
     "created_at_utc,date_to_check,expected_count",
     [
         # Clocks change on the 27th of March 2022, so the query needs to look at the
@@ -1695,21 +1703,32 @@ def test_dao_get_letters_and_sheets_volume_by_postage(notify_db_session):
     ],
 )
 def test_get_service_ids_with_notifications_on_date_respects_gmt_bst(
-    sample_template, created_at_utc, date_to_check, expected_count
+    sample_template, created_at_utc, date_to_check, expected_count, session, expected_bind_key
 ):
     create_notification(template=sample_template, created_at=created_at_utc)
-    service_ids = get_service_ids_with_notifications_on_date(SMS_TYPE, date_to_check)
+    with QueryRecorder() as query_recorder:
+        service_ids = get_service_ids_with_notifications_on_date(SMS_TYPE, date_to_check, session=session)
+
     assert len(service_ids) == expected_count
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
 
 
-def test_get_service_ids_with_notifications_on_date_checks_ft_status(
-    sample_template,
-):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
+def test_get_service_ids_with_notifications_on_date_checks_ft_status(sample_template, session, expected_bind_key):
     create_notification(template=sample_template, created_at="2022-01-01T09:30")
     create_ft_notification_status(template=sample_template, bst_date="2022-01-02")
 
-    assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 1))) == 1
-    assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 2))) == 1
+    with QueryRecorder() as query_recorder:
+        assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 1), session=session)) == 1
+        assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 2), session=session)) == 1
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
 
 
 def test_dao_get_notification_or_history_by_id_when_notification_exists(sample_notification):
