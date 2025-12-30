@@ -1297,9 +1297,9 @@ class TemplateEmailFileBase(db.Model):
     retention_period = db.Column(db.Integer, default=1, nullable=False)
     validate_users_email = db.Column(db.Boolean, default=True, nullable=False)
 
-    created_at = db.Column(db.DateTime, nullable=False, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
-    archived_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    archived_at = db.Column(db.DateTime, nullable=True)
 
     def serialize(self) -> SerializedTemplateEmailFile:
         return SerializedTemplateEmailFile(
@@ -1319,10 +1319,6 @@ class TemplateEmailFileBase(db.Model):
         return db.Column(db.Integer(), index=True, nullable=False)
 
     @declared_attr
-    def template(cls):
-        return db.relationship("Template", foreign_keys=[cls.template_id])
-
-    @declared_attr
     def created_by_id(cls):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
@@ -1332,7 +1328,7 @@ class TemplateEmailFileBase(db.Model):
 
     @declared_attr
     def archived_by_id(cls):
-        return db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
+        return db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
 
     @declared_attr
     def archived_by(cls):
@@ -1343,6 +1339,7 @@ class TemplateEmailFile(TemplateEmailFileBase):
     __tablename__ = "template_email_files"
 
     version = db.Column(db.Integer, default=0, nullable=False)
+    template = db.relationship("Template", backref="email_files")
 
     @classmethod
     def from_json(cls, data):
