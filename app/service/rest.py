@@ -643,6 +643,8 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
         notification_type=notification_type,
         page=1,
         page_size=current_app.config["PAGE_SIZE"],
+        session=db.session_bulk,
+        retry_attempts=2,
     )
 
     # We try and get the next page of results to work out if we need provide a pagination link to the next page
@@ -660,6 +662,8 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
         page=2,
         page_size=current_app.config["PAGE_SIZE"],
         error_out=False,  # False so that if there are no results, it doesn't end in aborting with a 404
+        session=db.session_bulk,
+        retry_attempts=2,
     )
 
     return (
