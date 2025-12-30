@@ -1543,7 +1543,7 @@ class Notification(db.Model):
     billable_units = db.Column(db.Integer, nullable=False, default=0)
     notification_type = db.Column(notification_types, nullable=False)
     created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)
-    sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
+    sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)  # can be null even if successfully sent
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
     status = db.Column(
@@ -1971,7 +1971,7 @@ class NotificationHistory(db.Model):
     billable_units = db.Column(db.Integer, nullable=False, default=0)
     notification_type = db.Column(notification_types, nullable=False)
     created_at = db.Column(db.DateTime, unique=False, nullable=False)
-    sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
+    sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)  # can be null even if successfully sent
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
     status = db.Column(
