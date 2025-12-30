@@ -24,6 +24,9 @@ sms_response_mapper = {
 }
 
 
+class MyException(Exception): pass
+
+
 @notify_celery.task(
     bind=True, name="process-sms-client-response", max_retries=5, default_retry_delay=300, early_log_level=logging.DEBUG
 )
@@ -70,6 +73,8 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
                 notification_status="technical-failure", client_name=client_name, provider_reference=provider_reference
             )
             raise ClientException(f"{client_name} callback failed: status {status} not found.") from e
+
+        raise MyException()
 
         _process_for_status(
             notification_status=notification_status,
