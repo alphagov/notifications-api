@@ -4,11 +4,13 @@ from datetime import datetime
 
 from flask import current_app
 from notifications_utils.template import SMSMessageTemplate
+from sqlalchemy.exc import OperationalError
 
 from app import notify_celery, statsd_client
 from app.clients import ClientException
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
+from app.config import QueueNames
 from app.constants import NOTIFICATION_PENDING
 from app.dao import notifications_dao
 from app.dao.templates_dao import dao_get_template_by_id
@@ -46,34 +48,37 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
 
     # validate status
     try:
-        notification_status, detailed_status = response_parser(status, detailed_status_code)
-        extra = {
-            "client_name": client_name,
-            "notification_status": notification_status,
-            "provider_status": status,
-            "detailed_status": detailed_status,
-            "detailed_status_code": detailed_status_code,
-            # for sms, we happen to use notification id as the "provider reference"
-            "notification_id": provider_reference,
-        }
-        current_app.logger.info(
-            "%(client_name)s callback returned status of %(notification_status)s(%(provider_status)s): "
-            "%(detailed_status)s(%(detailed_status_code)s) for reference: %(notification_id)s",
-            extra,
-            extra=extra,
-        )
-    except KeyError as e:
-        _process_for_status(
-            notification_status="technical-failure", client_name=client_name, provider_reference=provider_reference
-        )
-        raise ClientException(f"{client_name} callback failed: status {status} not found.") from e
+        try:
+            notification_status, detailed_status = response_parser(status, detailed_status_code)
+            extra = {
+                "client_name": client_name,
+                "notification_status": notification_status,
+                "provider_status": status,
+                "detailed_status": detailed_status,
+                "detailed_status_code": detailed_status_code,
+                # for sms, we happen to use notification id as the "provider reference"
+                "notification_id": provider_reference,
+            }
+            current_app.logger.info(
+                "%(client_name)s callback returned status of %(notification_status)s(%(provider_status)s): "
+                "%(detailed_status)s(%(detailed_status_code)s) for reference: %(notification_id)s",
+                extra,
+                extra=extra,
+            )
+        except KeyError as e:
+            _process_for_status(
+                notification_status="technical-failure", client_name=client_name, provider_reference=provider_reference
+            )
+            raise ClientException(f"{client_name} callback failed: status {status} not found.") from e
 
-    _process_for_status(
-        notification_status=notification_status,
-        client_name=client_name,
-        provider_reference=provider_reference,
-        detailed_status_code=detailed_status_code,
-    )
+        _process_for_status(
+            notification_status=notification_status,
+            client_name=client_name,
+            provider_reference=provider_reference,
+            detailed_status_code=detailed_status_code,
+        )
+    except OperationalError:
+        self.retry(queue=QueueNames.RETRY)
 
 
 def _process_for_status(notification_status, client_name, provider_reference, detailed_status_code=None):
