@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
+from app.celery.queue_utils import get_message_group_id_for_queue
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -350,9 +351,18 @@ def save_sms(
         )
 
         if saved_notification.status != NOTIFICATION_VALIDATION_FAILED:
+            queue_name = QueueNames.SEND_SMS
+            message_group_kwargs = get_message_group_id_for_queue(
+                queue_name=queue_name,
+                service_id=str(service.id),
+                origin=template.origin,
+                key_type=KEY_TYPE_NORMAL,
+            )
+
             provider_tasks.deliver_sms.apply_async(
                 [str(saved_notification.id)],
-                queue=QueueNames.SEND_SMS,
+                queue=queue_name,
+                **message_group_kwargs,
             )
         else:
             extra = {
