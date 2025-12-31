@@ -444,9 +444,18 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             client_reference=notification.get("client_reference", None),
         )
 
+        queue_name = QueueNames.SEND_EMAIL
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(service.id),
+            origin=template.origin,
+            key_type=KEY_TYPE_NORMAL,
+        )
+
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND_EMAIL,
+            queue=queue_name,
+            **message_group_kwargs,
         )
 
         extra = {
