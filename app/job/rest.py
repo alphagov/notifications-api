@@ -4,6 +4,7 @@ import dateutil
 from flask import Blueprint, current_app, jsonify, request
 
 from app.aws.s3 import get_job_metadata_from_s3
+from app.celery.queue_utils import get_message_group_id_for_queue
 from app.celery.tasks import process_job
 from app.config import QueueNames
 from app.constants import (
@@ -176,7 +177,15 @@ def create_job(service_id):
     sender_id = data.get("sender_id")
 
     if job.job_status == JOB_STATUS_PENDING:
-        process_job.apply_async([str(job.id)], {"sender_id": sender_id}, queue=QueueNames.JOBS)
+        queue_name = QueueNames.JOBS
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(service_id),
+            notification_type=template.template_type,
+            origin=template.origin,
+        )
+
+        process_job.apply_async([str(job.id)], {"sender_id": sender_id}, queue=queue_name, **message_group_kwargs)
 
     job_json = job_schema.dump(job)
     job_json["statistics"] = []

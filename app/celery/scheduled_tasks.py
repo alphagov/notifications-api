@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 import jinja2
+from app.celery.queue_utils import get_message_group_id_for_queue
 import sentry_sdk
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
@@ -96,7 +97,14 @@ from app.utils import get_london_midnight_in_utc
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
-            process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
+            queue_name = QueueNames.JOBS
+            message_group_kwargs = get_message_group_id_for_queue(
+                queue_name=queue_name,
+                service_id=str(job.service_id),
+                notification_type=KEY_TYPE_NORMAL,
+            )
+
+            process_job.apply_async([str(job.id)], queue=queue_name, **message_group_kwargs)
             current_app.logger.info("Job ID %s added to process job queue", job.id, extra={"job_id": job.id})
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
