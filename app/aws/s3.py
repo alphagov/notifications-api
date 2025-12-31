@@ -90,4 +90,5 @@ def stream_to_s3(
         Bucket=bucket_name,
         Key=object_key,
         Config=config,
+        ExtraArgs={"ServerSideEncryption": "AES256"},
     )
