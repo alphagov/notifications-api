@@ -1,6 +1,7 @@
 from datetime import datetime
 from urllib.parse import unquote
 
+from app.celery.queue_utils import get_message_group_id_for_queue
 import iso8601
 from flask import Blueprint, abort, current_app, jsonify, request
 from gds_metrics.metrics import Counter
@@ -69,8 +70,15 @@ def receive_mmg_sms():
         provider_name="mmg",
     )
 
+    queue_name = QueueNames.CALLBACKS
+    message_group_kwargs = get_message_group_id_for_queue(
+        queue_name=queue_name,
+        service_id=str(service.id),
+        notification_type=INBOUND_SMS_TYPE,
+    )
+
     service_callback_tasks.send_inbound_sms_to_service.apply_async(
-        [str(inbound.id), str(service.id)], queue=QueueNames.CALLBACKS
+        [str(inbound.id), str(service.id)], queue=queue_name, **message_group_kwargs
     )
 
     current_app.logger.info(
@@ -115,8 +123,15 @@ def receive_firetext_sms():
 
     INBOUND_SMS_COUNTER.labels("firetext").inc()
 
+    queue_name = QueueNames.CALLBACKS
+    message_group_kwargs = get_message_group_id_for_queue(
+        queue_name=queue_name,
+        service_id=str(service.id),
+        notification_type=INBOUND_SMS_TYPE,
+    )
+
     service_callback_tasks.send_inbound_sms_to_service.apply_async(
-        [str(inbound.id), str(service.id)], queue=QueueNames.CALLBACKS
+        [str(inbound.id), str(service.id)], queue=queue_name, **message_group_kwargs
     )
     current_app.logger.info(
         "%s received inbound SMS with reference %s from Firetext",

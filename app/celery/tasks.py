@@ -650,8 +650,15 @@ def _process_returned_letters_callback(notification_references):
 def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
     # queue callback task only if the service_callback_api exists
     if service_callback_api := get_returned_letter_callback_api_for_service(service_id=service_id):
+        queue_name = QueueNames.CALLBACKS
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(service_id),
+            notification_type=NOTIFICATION_RETURNED_LETTER,
+        )
+
         returned_letter_data = create_returned_letter_callback_data(notification_id, service_id, service_callback_api)
-        send_returned_letter_to_service.apply_async([returned_letter_data], queue=QueueNames.CALLBACKS)
+        send_returned_letter_to_service.apply_async([returned_letter_data], queue=queue_name, **message_group_kwargs)
 
 
 @notify_celery.task(bind=True, name="process-report-request")
