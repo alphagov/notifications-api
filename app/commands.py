@@ -319,7 +319,19 @@ def replay_create_pdf_for_templated_letter(notification_id):
 )
 def recreate_pdf_for_precompiled_or_uploaded_letter(notification_id):
     print(f"Call resanitise_pdf task for notification: {notification_id}")
-    resanitise_pdf.apply_async([str(notification_id)], queue=QueueNames.LETTERS)
+
+    queue_name = QueueNames.LETTERS
+    message_group_kwargs = {}
+    if (current_app.config.get("ENABLE_SQS_FAIR_GROUPING", False)):
+        notification = Notification.query.filter(Notification.id == notification_id).one()
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(notification.service_id),
+            origin=notification.template.origin,
+            key_type=notification.key_type,
+        )
+
+    resanitise_pdf.apply_async([str(notification_id)], queue=queue_name, **message_group_kwargs)
 
 
 def setup_commands(application):
