@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from flask import abort, current_app, jsonify, request
+from app.celery.queue_utils import get_message_group_id_for_queue
 from gds_metrics import Histogram
 
 from app import (
@@ -318,6 +319,11 @@ def process_letter_notification(
             updated_at = datetime.utcnow()
 
     queue = QueueNames.CREATE_LETTERS_PDF if not test_key else QueueNames.RESEARCH_MODE
+    message_group_kwargs = get_message_group_id_for_queue(
+        queue_name=queue,
+        service_id=str(service.id),
+        key_type=api_key.key_type,
+    )
 
     notification = create_letter_notification(
         letter_data=letter_data,
@@ -330,12 +336,13 @@ def process_letter_notification(
         postage=postage,
     )
 
-    get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue)
+    get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue, **message_group_kwargs)
 
     if test_key and current_app.config["TEST_LETTERS_FAKE_DELIVERY"]:
         create_fake_letter_callback.apply_async(
             [notification.id, notification.billable_units, notification.postage],
             queue=queue,
+            **message_group_kwargs,
         )
 
     resp = create_response_for_post_notification(

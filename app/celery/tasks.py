@@ -512,8 +512,15 @@ def save_letter(
             status=NOTIFICATION_CREATED,
         )
 
+        queue_name = QueueNames.CREATE_LETTERS_PDF
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(service.id),
+            key_type=KEY_TYPE_NORMAL,
+        )
+
         letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
-            [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
+            [str(saved_notification.id)], queue=queue_name, **message_group_kwargs
         )
 
         extra = {

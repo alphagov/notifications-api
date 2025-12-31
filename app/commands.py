@@ -13,6 +13,7 @@ from unittest import mock
 
 import click
 import flask
+from app.celery.queue_utils import get_message_group_id_for_queue
 from click_datetime import Datetime as click_dt
 from dateutil import rrule
 from flask import current_app, json
@@ -292,7 +293,20 @@ def insert_inbound_numbers_from_file(file_name):
 )
 def replay_create_pdf_for_templated_letter(notification_id):
     print(f"Create task to get_pdf_for_templated_letter for notification: {notification_id}")
-    get_pdf_for_templated_letter.apply_async([str(notification_id)], queue=QueueNames.CREATE_LETTERS_PDF)
+
+    queue_name = QueueNames.CREATE_LETTERS_PDF
+    message_group_kwargs = {}
+
+    if (current_app.config.get("ENABLE_SQS_FAIR_GROUPING", False)):
+        notification = Notification.query.filter(Notification.id == notification_id).one()
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(notification.service_id),
+            origin=notification.template.origin,
+            key_type=notification.key_type,
+        )
+
+    get_pdf_for_templated_letter.apply_async([str(notification_id)], queue=queue_name, **message_group_kwargs)
 
 
 @notify_command(name="recreate-pdf-for-precompiled-or-uploaded-letter")

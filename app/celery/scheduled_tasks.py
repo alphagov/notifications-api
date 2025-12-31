@@ -340,7 +340,15 @@ def replay_created_notifications():
             letter.id,
             extra={"notification_id": letter.id},
         )
-        get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+
+        queue_name = QueueNames.CREATE_LETTERS_PDF
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(letter.service_id),
+            key_type=letter.key_type,
+        )
+
+        get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=queue_name, **message_group_kwargs)
 
 
 @notify_celery.task(name="check-if-letters-still-pending-virus-check")
