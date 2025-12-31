@@ -6,6 +6,7 @@ from flask import current_app
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
+from app.celery.queue_utils import get_message_group_id_for_queue
 
 from app import notify_celery, signing
 from app.aws import s3
@@ -262,8 +263,20 @@ def shatter_deliver_letter_tasks(notification_ids):
     # If the number or size of arguments to this function change, then the default
     # `batch_size` argument of `send_dvla_letters_via_api` needs updating to keep
     # within SQS’s maximum message size
+    queue_name = QueueNames.SEND_LETTER
+
     for id in notification_ids:
-        deliver_letter.apply_async(kwargs={"notification_id": id}, queue=QueueNames.SEND_LETTER)
+        message_group_kwargs = {}
+        if (current_app.config.get("ENABLE_SQS_FAIR_GROUPING", False)):
+            notification = get_notification_by_id(id)
+            message_group_kwargs = get_message_group_id_for_queue(
+                queue_name=queue_name,
+                service_id=str(notification.service_id),
+                origin=notification.template.origin,
+                key_type=notification.key_type,
+            )
+
+        deliver_letter.apply_async(kwargs={"notification_id": id}, queue=queue_name, **message_group_kwargs)
 
 
 @notify_celery.task(bind=True, name="sanitise-letter", max_retries=15, default_retry_delay=300)

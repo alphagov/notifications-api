@@ -1,5 +1,6 @@
 from flask import current_app
 
+from app.celery.queue_utils import get_message_group_id_for_queue
 from app.celery.service_callback_tasks import (
     create_complaint_callback_data,
     create_delivery_status_callback_data,
@@ -73,8 +74,15 @@ def check_and_queue_callback_task(notification):
     service_callback_api = get_delivery_status_callback_api_for_service(service_id=notification.service_id)
     if service_callback_api:
         notification_data = create_delivery_status_callback_data(notification, service_callback_api)
+        queue_name = QueueNames.CALLBACKS
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(notification.service_id),
+            notification_type=notification.notification_type,
+        )
+
         send_delivery_status_to_service.apply_async(
-            [str(notification.id), notification_data], queue=QueueNames.CALLBACKS
+            [str(notification.id), notification_data], queue=queue_name, **message_group_kwargs
         )
 
 
@@ -83,4 +91,11 @@ def _check_and_queue_complaint_callback_task(complaint, notification, recipient)
     service_callback_api = get_complaint_callback_api_for_service(service_id=notification.service_id)
     if service_callback_api:
         complaint_data = create_complaint_callback_data(complaint, notification, service_callback_api, recipient)
-        send_complaint_to_service.apply_async([complaint_data], queue=QueueNames.CALLBACKS)
+        queue_name = QueueNames.CALLBACKS
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(notification.service_id),
+            notification_type=notification.notification_type,
+        )
+
+        send_complaint_to_service.apply_async([complaint_data], queue=queue_name, **message_group_kwargs)

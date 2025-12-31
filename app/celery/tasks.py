@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
+from app.celery.queue_utils import get_message_group_id_for_queue
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -350,9 +351,18 @@ def save_sms(
         )
 
         if saved_notification.status != NOTIFICATION_VALIDATION_FAILED:
+            queue_name = QueueNames.SEND_SMS
+            message_group_kwargs = get_message_group_id_for_queue(
+                queue_name=queue_name,
+                service_id=str(service.id),
+                origin=template.origin,
+                key_type=KEY_TYPE_NORMAL,
+            )
+
             provider_tasks.deliver_sms.apply_async(
                 [str(saved_notification.id)],
-                queue=QueueNames.SEND_SMS,
+                queue=queue_name,
+                **message_group_kwargs,
             )
         else:
             extra = {
@@ -434,9 +444,18 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             client_reference=notification.get("client_reference", None),
         )
 
+        queue_name = QueueNames.SEND_EMAIL
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(service.id),
+            origin=template.origin,
+            key_type=KEY_TYPE_NORMAL,
+        )
+
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND_EMAIL,
+            queue=queue_name,
+            **message_group_kwargs,
         )
 
         extra = {
@@ -493,8 +512,15 @@ def save_letter(
             status=NOTIFICATION_CREATED,
         )
 
+        queue_name = QueueNames.CREATE_LETTERS_PDF
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(service.id),
+            key_type=KEY_TYPE_NORMAL,
+        )
+
         letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
-            [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
+            [str(saved_notification.id)], queue=queue_name, **message_group_kwargs
         )
 
         extra = {
@@ -624,8 +650,15 @@ def _process_returned_letters_callback(notification_references):
 def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
     # queue callback task only if the service_callback_api exists
     if service_callback_api := get_returned_letter_callback_api_for_service(service_id=service_id):
+        queue_name = QueueNames.CALLBACKS
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue_name,
+            service_id=str(service_id),
+            notification_type=NOTIFICATION_RETURNED_LETTER,
+        )
+
         returned_letter_data = create_returned_letter_callback_data(notification_id, service_id, service_callback_api)
-        send_returned_letter_to_service.apply_async([returned_letter_data], queue=QueueNames.CALLBACKS)
+        send_returned_letter_to_service.apply_async([returned_letter_data], queue=queue_name, **message_group_kwargs)
 
 
 @notify_celery.task(bind=True, name="process-report-request")
