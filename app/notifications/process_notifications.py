@@ -2,6 +2,8 @@ import uuid
 from datetime import datetime
 
 from flask import current_app
+from app.celery.queue_utils import get_message_group_id_for_queue
+from app.dao import notifications_dao
 from gds_metrics import Histogram
 from notifications_utils.clients import redis
 from notifications_utils.formatters import strip_and_remove_obscure_whitespace
@@ -232,8 +234,18 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
             queue = QueueNames.CREATE_LETTERS_PDF
         deliver_task = get_pdf_for_templated_letter
 
+    message_group_kwargs = {}
+    if (current_app.config.get("ENABLE_SQS_FAIR_GROUPING", False)):
+        notification = notifications_dao.get_notification_by_id(notification_id)
+        message_group_kwargs = get_message_group_id_for_queue(
+            queue_name=queue,
+            service_id=str(notification.service_id),
+            origin=notification.template.origin,
+            key_type=key_type,
+        )
+
     try:
-        deliver_task.apply_async([str(notification_id)], queue=queue)
+        deliver_task.apply_async([str(notification_id)], queue=queue, **message_group_kwargs)
     except Exception:
         dao_delete_notifications_by_id(notification_id)
         raise
