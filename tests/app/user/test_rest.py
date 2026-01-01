@@ -659,7 +659,11 @@ def test_send_user_reset_password_should_send_reset_password_link(
     )
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
+    mocked.assert_called_once_with(
+        [str(notification.id)],
+        queue="notify-internal-tasks",
+        MessageGroupId=f"{notification.service_id}#email#normal#dashboard",
+    )
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
@@ -716,7 +720,11 @@ def test_send_user_reset_password_reset_password_link_contains_redirect_link_if_
 
     notification = Notification.query.first()
     assert "?next=blob" in notification.content
-    mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
+    mocked.assert_called_once_with(
+        [str(notification.id)],
+        queue="notify-internal-tasks",
+        MessageGroupId=f"{notification.service_id}#email#normal#dashboard",
+    )
 
 
 def test_send_user_reset_password_should_return_400_when_email_is_missing(admin_request, mocker):
@@ -775,7 +783,11 @@ def test_send_already_registered_email(admin_request, sample_user, already_regis
     )
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mocked.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify-internal-tasks",
+        MessageGroupId=f"{notification.service_id}#email#normal#dashboard",
+    )
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
@@ -807,7 +819,11 @@ def test_send_user_confirm_new_email_returns_204(
     )
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mocked.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify-internal-tasks",
+        MessageGroupId=f"{notification.service_id}#email#normal#dashboard",
+    )
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 

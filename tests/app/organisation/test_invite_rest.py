@@ -69,7 +69,11 @@ def test_create_invited_org_user(
     assert notification.personalisation["url"].startswith(expected_start_of_invite_url.format(hostnames=hostnames))
     assert len(notification.personalisation["url"]) > len(expected_start_of_invite_url.format(hostnames=hostnames))
 
-    mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
+    mocked.assert_called_once_with(
+        [(str(notification.id))],
+        queue="notify-internal-tasks",
+        MessageGroupId=f"{notification.service_id}#email#normal#dashboard",
+    )
 
 
 def test_create_invited_user_invalid_email(admin_request, sample_organisation, sample_user, mocker):
