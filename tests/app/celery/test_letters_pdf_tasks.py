@@ -97,7 +97,10 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
     }
 
     mock_celery.assert_called_once_with(
-        name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(ANY,), queue=QueueNames.SANITISE_LETTERS
+        name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER,
+        args=(ANY,),
+        queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=None,
     )
 
     actual_data = signing.decode(mock_celery.call_args.kwargs["args"][0])
@@ -391,8 +394,16 @@ def test_send_letters_volume_email_to_dvla(notify_db_session, mock_celery_task, 
     emails_to_dvla = Notification.query.all()
     assert len(emails_to_dvla) == 2
     send_mock.called = 2
-    send_mock.assert_any_call([str(emails_to_dvla[0].id)], queue=QueueNames.NOTIFY)
-    send_mock.assert_any_call([str(emails_to_dvla[1].id)], queue=QueueNames.NOTIFY)
+    send_mock.assert_any_call(
+        [str(emails_to_dvla[0].id)],
+        queue=QueueNames.NOTIFY,
+        MessageGroupId=f"{current_app.config['NOTIFY_SERVICE_ID']}#email#normal#scheduled",
+    )
+    send_mock.assert_any_call(
+        [str(emails_to_dvla[1].id)],
+        queue=QueueNames.NOTIFY,
+        MessageGroupId=f"{current_app.config['NOTIFY_SERVICE_ID']}#email#normal#scheduled",
+    )
     for email in emails_to_dvla:
         assert str(email.template_id) == current_app.config["LETTERS_VOLUME_EMAIL_TEMPLATE_ID"]
         assert email.to in current_app.config["DVLA_EMAIL_ADDRESSES"]
@@ -461,6 +472,7 @@ def test_sanitise_letter_calls_template_preview_sanitise_task(
             "allow_international_letters": expected_international_letters_allowed,
         },
         queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=None,
     )
 
 
@@ -891,6 +903,7 @@ def test_resanitise_pdf_calls_template_preview_with_letter_details(
             "allow_international_letters": expected_international_letters_allowed,
         },
         queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=None,
     )
 
 
@@ -913,4 +926,5 @@ def test_resanitise_letter_attachment_calls_template_preview_with_attachment_det
             "original_filename": original_filename,
         },
         queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=None,
     )

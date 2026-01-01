@@ -71,7 +71,11 @@ def test_post_letter_notification_returns_201(api_client_request, sample_letter_
     )
     assert not resp_json["scheduled_for"]
     assert not notification.reply_to_text
-    mock.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+    mock.assert_called_once_with(
+        [str(notification.id)],
+        queue=QueueNames.CREATE_LETTERS_PDF,
+        MessageGroupId=f"{notification.service_id}#letter#normal#api",
+    )
 
 
 def test_post_letter_notification_sets_postage(api_client_request, notify_db_session, mocker):
@@ -268,7 +272,9 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
 
     notification = Notification.query.one()
 
-    fake_create_letter_task.assert_called_once_with([str(notification.id)], queue="research-mode-tasks")
+    fake_create_letter_task.assert_called_once_with(
+        [str(notification.id)], queue="research-mode-tasks", MessageGroupId=f"{notification.service_id}#letter#test#api"
+    )
     assert not fake_create_dvla_response_task.called
     assert notification.status == NOTIFICATION_DELIVERED
     assert notification.updated_at is not None
@@ -302,7 +308,9 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
 
     notification = Notification.query.one()
 
-    fake_create_letter_task.assert_called_once_with([str(notification.id)], queue="research-mode-tasks")
+    fake_create_letter_task.assert_called_once_with(
+        [str(notification.id)], queue="research-mode-tasks", MessageGroupId=f"{notification.service_id}#letter#test#api"
+    )
     assert fake_create_dvla_response_task.called
     assert notification.status == NOTIFICATION_SENDING
 
@@ -543,7 +551,9 @@ def test_post_letter_notification_is_delivered_but_still_creates_pdf_if_in_trial
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_DELIVERED
-    fake_create_letter_task.assert_called_once_with([str(notification.id)], queue="research-mode-tasks")
+    fake_create_letter_task.assert_called_once_with(
+        [str(notification.id)], queue="research-mode-tasks", MessageGroupId=f"{notification.service_id}#letter#test#api"
+    )
 
 
 def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_letters_bucket_using_test_key(
