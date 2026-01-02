@@ -70,7 +70,9 @@ def receive_mmg_sms():
     )
 
     service_callback_tasks.send_inbound_sms_to_service.apply_async(
-        [str(inbound.id), str(service.id)], queue=QueueNames.CALLBACKS
+        [str(inbound.id), str(service.id)],
+        queue=QueueNames.CALLBACKS,
+        MessageGroupId="#".join((str(service.id), INBOUND_SMS_TYPE, "normal", "")),
     )
 
     current_app.logger.info(
@@ -116,7 +118,9 @@ def receive_firetext_sms():
     INBOUND_SMS_COUNTER.labels("firetext").inc()
 
     service_callback_tasks.send_inbound_sms_to_service.apply_async(
-        [str(inbound.id), str(service.id)], queue=QueueNames.CALLBACKS
+        [str(inbound.id), str(service.id)],
+        queue=QueueNames.CALLBACKS,
+        MessageGroupId="#".join((str(service.id), INBOUND_SMS_TYPE, "normal", "")),
     )
     current_app.logger.info(
         "%s received inbound SMS with reference %s from Firetext",
