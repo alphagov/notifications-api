@@ -73,6 +73,15 @@ def test_dao_get_template_email_files_by_template_id(sample_template_email_file,
         template_id=sample_email_template.id,
         created_by_id=sample_email_template.created_by_id,
     )
+    # shouldn't be fetched
+    file_three = create_template_email_file(
+        filename="example_two",
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+    )
+    file_three.archived_at = datetime.datetime.now()
+    file_three.archived_by_id = sample_email_template.created_by_id
+
     template_two = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="other_template")
     # shouldn't be fetched
     create_template_email_file(
