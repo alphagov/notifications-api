@@ -200,13 +200,13 @@ def fetch_notification_status_for_service_for_day(bst_day, service_id):
     )
 
 
-def fetch_notification_status_for_service_for_today_and_7_previous_days(
-    service_id, by_template=False, limit_days=7, chunk_timedelta=timedelta(minutes=15)
-):
-    start_date = midnight_n_days_ago(limit_days)
-    now = datetime.utcnow()
-    all_stats = (
-        db.session.query(
+@retryable_query()
+def _fetch_notification_status_for_service_for_today_and_7_previous_days_fact_query(
+    service_id: UUID | str, by_template: bool, limit_days: int, session: Session | scoped_session = db.session
+) -> Sequence[Row]:
+    start_dt = midnight_n_days_ago(limit_days)
+    return (
+        session.query(
             *([FactNotificationStatus.template_id.label("template_id")] if by_template else []),
             FactNotificationStatus.notification_type.label("notification_type"),
             FactNotificationStatus.notification_status.label("status"),
@@ -214,7 +214,7 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(
         )
         .filter(
             FactNotificationStatus.service_id == service_id,
-            FactNotificationStatus.bst_date >= start_date,
+            FactNotificationStatus.bst_date >= start_dt,
             FactNotificationStatus.key_type != KEY_TYPE_TEST,
         )
         .group_by(
@@ -225,6 +225,68 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(
         .all()
     )
 
+
+@retryable_query()
+def _fetch_notification_status_for_service_for_today_and_7_previous_days_notifications_query(
+    service_id: UUID | str,
+    by_template: bool,
+    chunk_start_dt: datetime,
+    chunk_timedelta: timedelta,
+    session: Session | scoped_session = db.session,
+) -> Sequence[Row]:
+    return (
+        session.query(
+            *([Notification.template_id] if by_template else []),
+            Notification.notification_type.cast(db.Text).label("notification_type"),
+            Notification.status,
+            func.count().label("count"),
+        )
+        .filter(
+            Notification.created_at >= chunk_start_dt,
+            # any overshoot will be into the future so doesn't matter
+            Notification.created_at < chunk_start_dt + chunk_timedelta,
+            Notification.service_id == service_id,
+            Notification.key_type != KEY_TYPE_TEST,
+        )
+        .group_by(
+            *([Notification.template_id] if by_template else []),
+            Notification.notification_type,
+            Notification.status,
+        )
+        .all()
+    )
+
+
+@retryable_query()
+def _fetch_notification_status_for_service_for_today_and_7_previous_days_template_query(
+    all_template_ids: set[UUID | str], session: Session | scoped_session = db.session
+) -> Sequence[Row]:
+    return (
+        session.query(
+            Template.name.label("template_name"), Template.is_precompiled_letter, Template.id.label("template_id")
+        )
+        .filter(Template.id.in_(all_template_ids))
+        .all()
+    )
+
+
+def fetch_notification_status_for_service_for_today_and_7_previous_days(
+    service_id,
+    by_template=False,
+    limit_days=7,
+    chunk_timedelta=timedelta(minutes=15),
+    inner_retry_attempts=0,
+    session=db.session,
+):
+    now = datetime.utcnow()
+    all_stats = _fetch_notification_status_for_service_for_today_and_7_previous_days_fact_query(
+        service_id,
+        by_template,
+        limit_days,
+        session=session,
+        retry_attempts=inner_retry_attempts,  # type: ignore
+    )
+
     # sqlalchemy's public api doesn't give us a way of constructing a new instance of a Row type, so
     # to do in-python aggregation, we need our own namedtuple based of the fields of the Rows. but we
     # can't set it up until we have the first Row.
@@ -232,26 +294,13 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(
 
     chunk_start_dt = get_london_midnight_in_utc(now)
     while chunk_start_dt <= now:
-        partial_all_stats = (
-            db.session.query(
-                *([Notification.template_id] if by_template else []),
-                Notification.notification_type.cast(db.Text).label("notification_type"),
-                Notification.status,
-                func.count().label("count"),
-            )
-            .filter(
-                Notification.created_at >= chunk_start_dt,
-                # any overshoot will be into the future so doesn't matter
-                Notification.created_at < chunk_start_dt + chunk_timedelta,
-                Notification.service_id == service_id,
-                Notification.key_type != KEY_TYPE_TEST,
-            )
-            .group_by(
-                *([Notification.template_id] if by_template else []),
-                Notification.notification_type,
-                Notification.status,
-            )
-            .all()
+        partial_all_stats = _fetch_notification_status_for_service_for_today_and_7_previous_days_notifications_query(
+            service_id,
+            by_template,
+            chunk_start_dt,
+            chunk_timedelta,
+            session=session,
+            retry_attempts=inner_retry_attempts,  # type: ignore
         )
         if partial_all_stats:
             if nt_type is None:
@@ -279,11 +328,11 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(
     all_template_ids = {r.template_id for r in all_stats}
     templates = {
         r.template_id: r
-        for r in db.session.query(
-            Template.name.label("template_name"), Template.is_precompiled_letter, Template.id.label("template_id")
+        for r in _fetch_notification_status_for_service_for_today_and_7_previous_days_template_query(
+            all_template_ids,
+            session=session,
+            retry_attempts=inner_retry_attempts,  # type: ignore
         )
-        .filter(Template.id.in_(all_template_ids))
-        .all()
     }
 
     # again, we can't create our own instances of sqlalchemy Row types
