@@ -98,7 +98,7 @@ def test_should_update_scheduled_jobs_and_put_on_queue(mock_celery_task, sample_
 
     updated_job = dao_get_job_by_id(job.id)
     assert updated_job.job_status == "pending"
-    mocked.assert_called_with([str(job.id)], queue="job-tasks")
+    mocked.assert_called_with([str(job.id)], queue="job-tasks", MessageGroupId=f"{job.service_id}#sms#normal#scheduled")
 
 
 def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock_celery_task):
@@ -119,9 +119,9 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock
 
     mocked.assert_has_calls(
         [
-            call([str(job_3.id)], queue="job-tasks"),
-            call([str(job_2.id)], queue="job-tasks"),
-            call([str(job_1.id)], queue="job-tasks"),
+            call([str(job_3.id)], queue="job-tasks", MessageGroupId=f"{job_3.service_id}#sms#normal#scheduled"),
+            call([str(job_2.id)], queue="job-tasks", MessageGroupId=f"{job_2.service_id}#sms#normal#scheduled"),
+            call([str(job_1.id)], queue="job-tasks", MessageGroupId=f"{job_1.service_id}#sms#normal#scheduled"),
         ]
     )
 
@@ -430,8 +430,12 @@ def test_replay_created_notifications(sample_service, mock_celery_task):
     create_notification(template=email_template, created_at=datetime.utcnow(), status="created")
 
     replay_created_notifications()
-    email_delivery_queue.assert_called_once_with([str(old_email.id)], queue="send-email-tasks")
-    sms_delivery_queue.assert_called_once_with([str(old_sms.id)], queue="send-sms-tasks")
+    email_delivery_queue.assert_called_once_with(
+        [str(old_email.id)], queue="send-email-tasks", MessageGroupId=f"{old_email.service_id}#email#normal#"
+    )
+    sms_delivery_queue.assert_called_once_with(
+        [str(old_sms.id)], queue="send-sms-tasks", MessageGroupId=f"{old_sms.service_id}#sms#normal#"
+    )
 
 
 def test_replay_created_notifications_get_pdf_for_templated_letter_tasks_for_letters_not_ready_to_send(
@@ -455,8 +459,16 @@ def test_replay_created_notifications_get_pdf_for_templated_letter_tasks_for_let
     replay_created_notifications()
 
     calls = [
-        call([str(notification_1.id)], queue=QueueNames.CREATE_LETTERS_PDF),
-        call([str(notification_2.id)], queue=QueueNames.CREATE_LETTERS_PDF),
+        call(
+            [str(notification_1.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF,
+            MessageGroupId=f"{notification_1.service_id}#letter#normal#",
+        ),
+        call(
+            [str(notification_2.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF,
+            MessageGroupId=f"{notification_2.service_id}#letter#normal#",
+        ),
     ]
     mock_task.assert_has_calls(calls, any_order=True)
 
@@ -724,7 +736,12 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template,
         )
     ]
     assert mock_save_email.mock_calls == [
-        mock.call((str(job.service_id), "some-uuid", "something_encoded"), {}, queue="database-tasks")
+        mock.call(
+            (str(job.service_id), "some-uuid", "something_encoded"),
+            {},
+            queue="database-tasks",
+            MessageGroupId=f"{job.service_id}#email#normal#",
+        )
     ]
 
 
@@ -765,7 +782,10 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(
     ]
     assert mock_save_email.mock_calls == [
         mock.call(
-            (str(job.service_id), "some-uuid", "something_encoded"), {"sender_id": fake_uuid}, queue="database-tasks"
+            (str(job.service_id), "some-uuid", "something_encoded"),
+            {"sender_id": fake_uuid},
+            queue="database-tasks",
+            MessageGroupId=f"{job.service_id}#email#normal#",
         )
     ]
 

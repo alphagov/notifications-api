@@ -1,6 +1,5 @@
 import datetime
 import uuid
-from collections import namedtuple
 from unittest.mock import call
 
 import pytest
@@ -11,6 +10,8 @@ from notifications_utils.recipient_validation.email_address import (
 )
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
+from app.celery.provider_tasks import deliver_email, deliver_sms
 from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -626,42 +627,43 @@ def test_persist_notification_increments_cache_for_international_sms_if_the_cach
 @pytest.mark.parametrize(
     ("requested_queue, notification_type, key_type, expected_queue, expected_task"),
     [
-        (None, SMS_TYPE, "normal", "send-sms-tasks", "provider_tasks.deliver_sms"),
-        (None, EMAIL_TYPE, "normal", "send-email-tasks", "provider_tasks.deliver_email"),
-        (None, SMS_TYPE, "team", "send-sms-tasks", "provider_tasks.deliver_sms"),
+        (None, SMS_TYPE, "normal", "send-sms-tasks", deliver_sms),
+        (None, EMAIL_TYPE, "normal", "send-email-tasks", deliver_email),
+        (None, SMS_TYPE, "team", "send-sms-tasks", deliver_sms),
         (
             None,
             LETTER_TYPE,
             "normal",
             "create-letters-pdf-tasks",
-            "letters_pdf_tasks.get_pdf_for_templated_letter",
+            get_pdf_for_templated_letter,
         ),
-        (None, SMS_TYPE, "test", "research-mode-tasks", "provider_tasks.deliver_sms"),
+        (None, SMS_TYPE, "test", "research-mode-tasks", deliver_sms),
         (
             "notify-internal-tasks",
             SMS_TYPE,
             "normal",
             "notify-internal-tasks",
-            "provider_tasks.deliver_sms",
+            deliver_sms,
         ),
         (
             "notify-internal-tasks",
             EMAIL_TYPE,
             "normal",
             "notify-internal-tasks",
-            "provider_tasks.deliver_email",
+            deliver_email,
         ),
         (
             "notify-internal-tasks",
             SMS_TYPE,
             "test",
             "research-mode-tasks",
-            "provider_tasks.deliver_sms",
+            deliver_sms,
         ),
     ],
 )
 def test_send_notification_to_queue(
     notify_db_session,
+    mock_celery_task,
     requested_queue,
     notification_type,
     key_type,
@@ -669,28 +671,35 @@ def test_send_notification_to_queue(
     expected_task,
     mocker,
 ):
-    mocked = mocker.patch(f"app.celery.{expected_task}.apply_async")
-    Notification = namedtuple("Notification", ["id", "key_type", "notification_type", "created_at"])
-    notification = Notification(
+    mocked = mock_celery_task(expected_task)
+    notification = mocker.Mock(spec=Notification)
+    notification.configure_mock(
         id=uuid.uuid4(),
         key_type=key_type,
         notification_type=notification_type,
         created_at=datetime.datetime(2016, 11, 11, 16, 8, 18),
+        service_id=uuid.uuid4(),
     )
 
     send_notification_to_queue(notification=notification, queue=requested_queue)
 
-    mocked.assert_called_once_with([str(notification.id)], queue=expected_queue)
-
-
-def test_send_notification_to_queue_throws_exception_deletes_notification(sample_notification, mocker):
-    mocked = mocker.patch(
-        "app.celery.provider_tasks.deliver_sms.apply_async",
-        side_effect=Boto3Error("EXPECTED"),
+    mocked.assert_called_once_with(
+        [str(notification.id)],
+        queue=expected_queue,
+        MessageGroupId=f"{notification.service_id}#{notification_type}#{key_type}#dashboard",
     )
+
+
+def test_send_notification_to_queue_throws_exception_deletes_notification(sample_notification, mock_celery_task):
+    mocked = mock_celery_task(deliver_sms)
+    mocked.side_effect = Boto3Error("EXPECTED")
     with pytest.raises(Boto3Error):
         send_notification_to_queue(sample_notification)
-    mocked.assert_called_once_with([str(sample_notification.id)], queue="send-sms-tasks")
+    mocked.assert_called_once_with(
+        [str(sample_notification.id)],
+        queue="send-sms-tasks",
+        MessageGroupId=f"{sample_notification.service_id}#sms#{sample_notification.key_type}#dashboard",
+    )
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0

@@ -91,7 +91,9 @@ def test_check_and_queue_callback_task(mocker, mock_celery_task, sample_notifica
     assert mock_create_args[1].id == callback_api.id
 
     mock_send.assert_called_once_with(
-        [str(sample_notification.id), mock_create.return_value], queue="service-callbacks"
+        [str(sample_notification.id), mock_create.return_value],
+        queue="service-callbacks",
+        MessageGroupId=f"{sample_notification.service_id}#{sample_notification.notification_type}#{sample_notification.key_type}#",
     )
 
 

@@ -92,7 +92,9 @@ def test_post_sms_notification_uses_inbound_number_as_sender(api_client_request,
     assert resp_json["id"] == str(notification_id)
     assert resp_json["content"]["from_number"] == "1"
     assert notifications[0].reply_to_text == "1"
-    mocked.assert_called_once_with([str(notification_id)], queue="send-sms-tasks")
+    mocked.assert_called_once_with(
+        [str(notification_id)], queue="send-sms-tasks", MessageGroupId=f"{service.id}#sms#normal#api"
+    )
 
 
 def test_post_sms_notification_uses_inbound_number_reply_to_as_sender(api_client_request, notify_db_session, mocker):
@@ -116,7 +118,9 @@ def test_post_sms_notification_uses_inbound_number_reply_to_as_sender(api_client
     assert resp_json["id"] == str(notification_id)
     assert resp_json["content"]["from_number"] == "447123123123"
     assert notifications[0].reply_to_text == "447123123123"
-    mocked.assert_called_once_with([str(notification_id)], queue="send-sms-tasks")
+    mocked.assert_called_once_with(
+        [str(notification_id)], queue="send-sms-tasks", MessageGroupId=f"{service.id}#sms#normal#api"
+    )
 
 
 def test_post_sms_notification_returns_201_with_sms_sender_id(
@@ -143,7 +147,9 @@ def test_post_sms_notification_returns_201_with_sms_sender_id(
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert notifications[0].reply_to_text == sms_sender.sms_sender
-    mocked.assert_called_once_with([resp_json["id"]], queue="send-sms-tasks")
+    mocked.assert_called_once_with(
+        [resp_json["id"]], queue="send-sms-tasks", MessageGroupId=f"{notifications[0].service_id}#sms#normal#api"
+    )
 
 
 def test_post_sms_notification_uses_sms_sender_id_reply_to(
@@ -171,7 +177,9 @@ def test_post_sms_notification_uses_sms_sender_id_reply_to(
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert notifications[0].reply_to_text == "447123123123"
-    mocked.assert_called_once_with([resp_json["id"]], queue="send-sms-tasks")
+    mocked.assert_called_once_with(
+        [resp_json["id"]], queue="send-sms-tasks", MessageGroupId=f"{notifications[0].service_id}#sms#normal#api"
+    )
 
 
 def test_notification_reply_to_text_is_original_value_if_sender_is_changed_after_post_notification(
