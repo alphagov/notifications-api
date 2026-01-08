@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 from freezegun import freeze_time
 
+from app import db
 from app.utils import DATETIME_FORMAT
 from tests.app.db import create_ft_notification_status, create_notification
 
@@ -94,7 +95,9 @@ def test_get_template_statistics_for_service_by_day_goes_to_db(admin_request, mo
         }
     ]
     # dao only called for 2nd, since redis returned values for first call
-    mock_dao.assert_called_once_with(str(sample_template.service_id), limit_days=1, by_template=True)
+    mock_dao.assert_called_once_with(
+        str(sample_template.service_id), limit_days=1, by_template=True, session=db.session_bulk
+    )
 
 
 def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_templates(
