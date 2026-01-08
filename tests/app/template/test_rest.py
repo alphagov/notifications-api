@@ -19,7 +19,7 @@ from app.dao.templates_dao import (
     dao_redact_template,
     dao_update_template,
 )
-from app.models import Template, TemplateHistory
+from app.models import Template, TemplateEmailFile, TemplateHistory
 from tests import create_admin_authorization_header
 from tests.app.db import (
     create_letter_attachment,
@@ -968,6 +968,107 @@ def test_get_template_reply_to(client, sample_service, template_default, service
     assert "service_letter_contact_id" not in json_resp["data"]
     assert json_resp["data"]["reply_to"] == reply_to_id
     assert json_resp["data"]["reply_to_text"] == template_default
+
+
+def test_update_template_content(client, sample_email_template):
+    assert sample_email_template.version == 1
+
+    auth_header = create_admin_authorization_header()
+    data = {
+        "content": "New content",
+    }
+    response = client.post(
+        f"/service/{sample_email_template.service_id}/template/{sample_email_template.id}",
+        data=json.dumps(data),
+        headers=[("Content-Type", "application/json"), auth_header],
+    )
+
+    assert response.status_code == 200, response.get_data(as_text=True)
+
+    template = dao_get_template_by_id(sample_email_template.id)
+    assert template.content == "New content"
+    assert template.version == 2
+    assert TemplateHistory.query.filter_by(id=sample_email_template.id, version=2).one()
+
+
+@freeze_time("2025-12-30 16:06:04.000000")
+def test_update_template_content_and_archive_email_files(
+    client, sample_email_template_with_template_email_files, sample_user
+):
+    template = sample_email_template_with_template_email_files
+    assert template.version == 3
+
+    auth_header = create_admin_authorization_header()
+    data = {
+        "content": "New content",
+        "created_by": str(sample_user.id),
+        "archive_email_file_ids": [str(template.email_files[0].id), str(template.email_files[1].id)],
+    }
+    response = client.post(
+        f"/service/{template.service_id}/template/{template.id}",
+        data=json.dumps(data),
+        headers=[("Content-Type", "application/json"), auth_header],
+    )
+
+    assert response.status_code == 200, response.get_data(as_text=True)
+
+    template = dao_get_template_by_id(template.id)
+    assert template.content == "New content"
+    assert template.version == 4
+    assert TemplateHistory.query.filter_by(id=template.id, version=4).one()
+
+    fetched_template_email_files = TemplateEmailFile.query.filter_by(template_id=template.id).all()
+    assert len(fetched_template_email_files) == 2
+
+    for file in fetched_template_email_files:
+        assert file.archived_at == datetime(2025, 12, 30, 16, 6, 4)
+        assert file.archived_by_id == sample_user.id
+        assert file.version == 2
+        assert file.template_version == 4
+
+
+@freeze_time("2025-12-30 16:06:04.000000")
+def test_update_template_content_and_archive_just_one_of_two_email_files(
+    client, sample_email_template_with_template_email_files, sample_user
+):
+    template = sample_email_template_with_template_email_files
+    assert template.version == 3
+
+    file_to_keep = template.email_files[0]
+    file_to_archive = template.email_files[1]
+
+    auth_header = create_admin_authorization_header()
+    data = {
+        "content": "Just bring the invite ((invitation.pdf))",
+        "created_by": str(sample_user.id),
+        "archive_email_file_ids": [str(file_to_archive.id)],
+    }
+    response = client.post(
+        f"/service/{template.service_id}/template/{template.id}",
+        data=json.dumps(data),
+        headers=[("Content-Type", "application/json"), auth_header],
+    )
+
+    assert response.status_code == 200, response.get_data(as_text=True)
+
+    template = dao_get_template_by_id(template.id)
+    assert template.content == "Just bring the invite ((invitation.pdf))"
+    assert template.version == 4
+    assert TemplateHistory.query.filter_by(id=template.id, version=4).one()
+
+    archived_file = TemplateEmailFile.query.filter_by(id=file_to_archive.id).one()
+
+    assert archived_file.archived_at == datetime(2025, 12, 30, 16, 6, 4)
+    assert archived_file.archived_by_id == sample_user.id
+    assert archived_file.version == 2
+    assert archived_file.template_version == 4
+
+    remaining_file = TemplateEmailFile.query.filter_by(id=file_to_keep.id).one()
+
+    assert remaining_file.archived_at == None  # noqa
+    assert remaining_file.archived_by_id == None  # noqa
+    assert remaining_file.version == 1
+    assert remaining_file.template_version == 2
 
 
 def test_update_template_reply_to(client, sample_letter_template):
