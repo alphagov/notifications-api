@@ -42,15 +42,29 @@ def test_callback_logs_on_api_call_failure(notify_api, rmock, caplog):
     assert "API POST request on http://localhost:6011/notifications/sms/mmg failed with status 500" in caplog.messages
 
 
-@pytest.mark.parametrize("phone_number", ["07700900001", "07700900002", "07700900003", "07700900236"])
-def test_make_firetext_callback(notify_api, rmock, phone_number):
+@pytest.mark.parametrize(
+    "phone_number, number_of_calls, statuses, detailed_status_code",
+    [
+        ("07700900001", 1, ["0"], None),
+        ("07700900002", 1, ["1"], None),
+        ("07700900003", 2, ["2", "1"], "102"),
+        ("07700900236", 1, ["0"], None),
+    ],
+)
+def test_make_firetext_callback(notify_api, rmock, phone_number, number_of_calls, statuses, detailed_status_code):
     endpoint = "http://localhost:6011/notifications/sms/firetext"
     rmock.request("POST", endpoint, json="some data", status_code=200)
     send_sms_response("firetext", "1234", phone_number)
 
     assert rmock.called
+    assert len(rmock.request_history) == number_of_calls
     assert rmock.request_history[0].url == endpoint
     assert f"mobile={phone_number}" in rmock.request_history[0].text
+    for i, status in enumerate(statuses):
+        assert f"status={status}" in rmock.request_history[i].text
+
+    if detailed_status_code:
+        assert f"detailed_status_code={detailed_status_code}" in rmock.request_history[1].text
 
 
 def test_make_ses_callback(notify_api, mock_celery_task):
