@@ -84,7 +84,7 @@ def generate_fact_notification_status_rows(
     process_day: date,
     notification_type: str,
     service_id: UUID | str,
-    chunk_timedelta: timedelta = timedelta(minutes=5),
+    chunk_timedelta: timedelta = timedelta(minutes=15),
     session: Session | scoped_session = db.session,
     inner_retry_attempts: int = 0,
 ) -> Sequence[NamedTuple]:
