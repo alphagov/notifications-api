@@ -793,7 +793,6 @@ def dao_get_notifications_processing_time_stats(
     """
     under_10_secs = Notification.sent_at - Notification.created_at <= timedelta(seconds=10)
     sum_column = functions.coalesce(functions.sum(case((under_10_secs, 1), else_=0)), 0)
-
     return (
         session.query(func.count(Notification.id).label("messages_total"), sum_column.label("messages_within_10_secs"))
         .filter(
