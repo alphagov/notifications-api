@@ -138,7 +138,16 @@ def test_fetch_notification_status_for_service_for_day(notify_db_session):
 
 
 @freeze_time("2018-10-31T18:00:00")
-def test_fetch_notification_status_for_service_for_today_and_7_previous_days(notify_db_session):
+@pytest.mark.parametrize(
+    "sess,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
+def test_fetch_notification_status_for_service_for_today_and_7_previous_days(
+    notify_db_session, sess, expected_bind_key
+):
     service_1 = create_service(service_name="service_1")
     sms_template = create_template(service=service_1, template_type=SMS_TYPE)
     sms_template_2 = create_template(service=service_1, template_type=SMS_TYPE)
@@ -158,10 +167,14 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
     # too early, shouldn't be included
     create_notification(service_1.templates[0], created_at=datetime(2018, 10, 30, 12, 0, 0), status="delivered")
 
-    results = sorted(
-        fetch_notification_status_for_service_for_today_and_7_previous_days(service_1.id),
-        key=lambda x: (x.notification_type, x.status),
-    )
+    service_id = service_1.id
+    with QueryRecorder() as query_recorder:
+        results = sorted(
+            fetch_notification_status_for_service_for_today_and_7_previous_days(service_id=service_id, session=sess),
+            key=lambda x: (x.notification_type, x.status),
+        )
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
 
     assert len(results) == 4
 
