@@ -208,14 +208,14 @@ def test_add_email_file_links_to_personalisation(
             str(sample_service.id),
             "file_from_s3_1",
             confirmation_email="anne@example.com",
-            retention_period=26,
+            retention_period="26 weeks",
             filename="invitation.pdf",
         ),
         call(
             str(sample_service.id),
             "file_from_s3_2",
             confirmation_email="anne@example.com",
-            retention_period=26,
+            retention_period="26 weeks",
             filename="form.pdf",
         ),
     ]
