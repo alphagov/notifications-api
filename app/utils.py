@@ -1,3 +1,4 @@
+import base64
 from collections.abc import Callable, Generator, Iterable
 from contextlib import suppress
 from datetime import date, datetime, timedelta
@@ -277,7 +278,12 @@ def retryable_query[**A, R](
 def try_download_template_email_file_from_s3(service_id, template_email_file_id):
     file_path = f"{service_id}/{template_email_file_id}"
     try:
-        return utils_s3download(bucket_name=current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"], filename=file_path)
+        file = base64.b64encode(
+            utils_s3download(
+                bucket_name=current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"], filename=file_path
+            ).read()
+        ).decode("utf-8")
+        return file
 
     except S3ObjectNotFound as e:
         current_app.logger.warning(
