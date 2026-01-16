@@ -1621,14 +1621,14 @@ def test_send_email_with_template_email_files_from_old_template_version(
             mocker.ANY,
             "file_from_s3_1",
             confirmation_email="anne@example.com",
-            retention_period=26,
+            retention_period="26 weeks",
             filename="invitation.pdf",
         ),
         call(
             mocker.ANY,
             "file_from_s3_2",
             confirmation_email="anne@example.com",
-            retention_period=26,
+            retention_period="26 weeks",
             filename="form.pdf",
         ),
     ]
