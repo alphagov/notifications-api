@@ -1,4 +1,3 @@
-import math
 import uuid
 from datetime import datetime
 
@@ -100,16 +99,15 @@ def check_placeholders(template_object):
 def add_email_file_links_to_personalisation(template, personalisation, recipient):
     for email_file in template.email_file_objects:
         template_email_file_from_s3 = try_download_template_email_file_from_s3(template.service, email_file.id)
-        retention_period_in_weeks_from_days = math.ceil(email_file.retention_period / 7)
         doc_download_link = document_download_client.upload_document(
             template.service,
             template_email_file_from_s3,
             confirmation_email=validate_and_format_email_address(recipient)
             if email_file.validate_users_email
             else None,
-            retention_period=retention_period_in_weeks_from_days + " week"
-            if retention_period_in_weeks_from_days == 1
-            else retention_period_in_weeks_from_days + " weeks",  # temporary fix, retention_period still in days
+            retention_period=str(email_file.retention_period) + " week"
+            if email_file.retention_period == 1
+            else str(email_file.retention_period) + " weeks",
             filename=email_file.filename,
         )
         if email_file.link_text:
