@@ -364,7 +364,9 @@ def save_daily_notification_processing_time(bst_date=None):
 
     start_time = get_london_midnight_in_utc(bst_date)
     end_time = get_london_midnight_in_utc(bst_date + timedelta(days=1))
-    result = dao_get_notifications_processing_time_stats(start_time, end_time)
+    result = dao_get_notifications_processing_time_stats(
+        start_time, end_time, session=db.session_bulk, retry_attempts=2
+    )
     insert_update_processing_time(
         FactProcessingTime(
             bst_date=bst_date,

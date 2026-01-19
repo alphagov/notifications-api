@@ -33,6 +33,7 @@ from app.dao.notifications_dao import (
     dao_get_notification_or_history_by_id,
     dao_get_notification_or_history_by_reference,
     dao_get_notifications_by_recipient_or_reference,
+    dao_get_notifications_processing_time_stats,
     dao_record_letter_despatched_on_by_id,
     dao_timeout_notifications,
     dao_update_notification,
@@ -2039,3 +2040,44 @@ def test_dao_record_letter_despatched_on_by_id(notify_db_session):
     assert letter_despatch.notification_id == notification_id
     assert letter_despatch.despatched_on == date(2024, 3, 8)
     assert letter_despatch.cost_threshold == LetterCostThreshold.unsorted
+
+
+@pytest.mark.parametrize(
+    "notifications_within_ten_seconds, notifications_greater_than_ten_seconds", [(0, 0), (3, 0), (0, 3), (2, 3)]
+)
+def test_dao_get_notifications_processing_time_stats(
+    sample_job,
+    sample_api_key,
+    notifications_within_ten_seconds,
+    notifications_greater_than_ten_seconds,
+):
+    for _ in range(notifications_within_ten_seconds):
+        notification = create_notification(
+            template=sample_job.template,
+            status="created",
+            job=sample_job,
+            created_at=datetime(2000, 1, 2, 12, 0, 0),
+            api_key=sample_api_key,
+        )
+        notification.status = "delivered"
+        notification.sent_at = datetime(2000, 1, 2, 12, 0, 1)
+        dao_update_notification(notification)
+    for _ in range(notifications_greater_than_ten_seconds):
+        notification = create_notification(
+            template=sample_job.template,
+            status="created",
+            job=sample_job,
+            created_at=datetime(2000, 1, 2, 12, 1, 0),
+            api_key=sample_api_key,
+        )
+        notification.status = "delivered"
+        notification.sent_at = datetime(2025, 1, 2, 12, 0, 1)
+        dao_update_notification(notification)
+    processing_time_stats = dao_get_notifications_processing_time_stats(
+        start_dt=datetime(2000, 1, 2), end_dt=datetime(2000, 1, 3)
+    )
+    assert (
+        processing_time_stats.messages_total
+        == notifications_within_ten_seconds + notifications_greater_than_ten_seconds
+    )
+    assert processing_time_stats.messages_within_10_secs == notifications_within_ten_seconds
