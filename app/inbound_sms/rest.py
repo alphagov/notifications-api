@@ -88,7 +88,7 @@ def remove_inbound_sms_for_service(service_id):
         current_app.logger.error(
             "error removing inbound SMS for service %s: %s", service_id, e, extra={"service_id": service_id}
         )
-        return jsonify({"message": str(e)}), 500
+        return jsonify({"message": "Error occured removing inbound SMS"}), 500
 
 
 @inbound_sms.route("/most-recent-usage", methods=["GET"])
