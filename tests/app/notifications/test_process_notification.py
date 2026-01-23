@@ -1,3 +1,4 @@
+import base64
 import datetime
 import uuid
 from collections import namedtuple
@@ -175,6 +176,8 @@ def test_add_email_file_links_to_personalisation(
     mocker,
     sample_service,
     sample_email_template_with_email_file_placeholders,
+    mock_utils_s3_download,
+    mock_document_download_client_upload,
     template_email_files,
     expected_personalisation,
 ):
@@ -189,31 +192,21 @@ def test_add_email_file_links_to_personalisation(
         template_id=sample_email_template_with_email_file_placeholders.id, service_id=sample_service.id
     )
 
-    mocker.patch(
-        "app.utils.utils_s3download",
-        side_effect=["file_from_s3_1", "file_from_s3_2"],
-    )
-
-    mock_upload = mocker.patch(
-        "app.notifications.process_notifications.document_download_client.upload_document",
-        side_effect=["documents.gov.uk/link1", "documents.gov.uk/link2"],
-    )
-
     personalisation = add_email_file_links_to_personalisation(template, {"name": "Anne"}, recipient="anne@example.com")
 
     assert personalisation == expected_personalisation
 
-    assert mock_upload.mock_calls == [
+    assert mock_document_download_client_upload.mock_calls == [
         call(
             str(sample_service.id),
-            "file_from_s3_1",
+            base64.b64encode(b"file_from_s3_1").decode("utf-8"),
             confirmation_email="anne@example.com",
             retention_period="26 weeks",
             filename="invitation.pdf",
         ),
         call(
             str(sample_service.id),
-            "file_from_s3_2",
+            base64.b64encode(b"file_from_s3_2").decode("utf-8"),
             confirmation_email="anne@example.com",
             retention_period="26 weeks",
             filename="form.pdf",
