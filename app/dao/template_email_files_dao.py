@@ -1,10 +1,10 @@
 import datetime
 from collections import defaultdict
-
+from sqlalchemy import Table, delete, func, inspect, select
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.models import Template, TemplateEmailFile, TemplateEmailFileHistory, TemplateHistory
-
+from itertools import chain
 
 @autocommit
 @version_class(
@@ -21,6 +21,10 @@ def dao_create_template_email_file(template_email_file: TemplateEmailFile):
 @autocommit
 def dao_get_template_email_files_by_template_id(template_id, template_version=None):
     if template_version:
+        query = select(TemplateEmailFileHistory).where(TemplateEmailFileHistory.template_id == template_id).order_by(
+            TemplateEmailFileHistory.id).order_by(TemplateEmailFileHistory.version.asc()).distinct(TemplateEmailFileHistory.id)
+        return list(chain.from_iterable(db.session.execute(query).all()))
+
         template_email_files_all_template_versions = TemplateEmailFileHistory.query.filter(
             TemplateEmailFileHistory.template_id == template_id,
             TemplateEmailFileHistory.template_version <= template_version,
