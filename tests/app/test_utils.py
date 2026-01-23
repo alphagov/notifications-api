@@ -99,11 +99,9 @@ def test_url_with_token__create_confirmation_url(hostnames, notify_api):
     assert generated_unsubscribe_link == expected_unsubscribe_link
 
 
-def test_try_download_template_email_file_from_s3(mocker, sample_service, fake_uuid):
-    mock_utils_s3download = mocker.patch("app.utils.utils_s3download")
-
+def test_try_download_template_email_file_from_s3(mocker, sample_service, fake_uuid, mock_utils_s3_download):
     try_download_template_email_file_from_s3(service_id=sample_service.id, template_email_file_id=fake_uuid)
-    mock_utils_s3download.assert_called_once_with(
+    mock_utils_s3_download.assert_called_once_with(
         bucket_name=current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"],
         filename=f"{sample_service.id}/{fake_uuid}",
     )

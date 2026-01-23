@@ -4,6 +4,7 @@ import inspect
 import json
 import textwrap
 import uuid
+from collections import namedtuple
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
@@ -1477,9 +1478,12 @@ def sample_report_request(sample_user, sample_service):
 
 @pytest.fixture(scope="function")
 def mock_utils_s3_download(mocker):
+    EmailFileFromS3 = namedtuple("EmailFileFromS3", ["read"])
+    file_from_s3_1 = EmailFileFromS3(read=lambda: b"file_from_s3_1")
+    file_from_s3_2 = EmailFileFromS3(read=lambda: b"file_from_s3_2")
     return mocker.patch(
         "app.utils.utils_s3download",
-        side_effect=["file_from_s3_1", "file_from_s3_2"],
+        side_effect=[file_from_s3_1, file_from_s3_2],
     )
 
 
