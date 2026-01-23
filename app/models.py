@@ -1294,6 +1294,7 @@ class TemplateEmailFileBase(db.Model):
 
     filename = db.Column(db.Text, nullable=False)
     link_text = db.Column(db.Text, nullable=True)
+    # TODO: add constraint so max is 1.5 year in weeks
     retention_period = db.Column(db.Integer, default=1, nullable=False)
     validate_users_email = db.Column(db.Boolean, default=True, nullable=False)
 
