@@ -1,5 +1,7 @@
 import datetime
-from collections import defaultdict
+from itertools import chain
+
+from sqlalchemy import select
 
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
@@ -21,23 +23,18 @@ def dao_create_template_email_file(template_email_file: TemplateEmailFile):
 @autocommit
 def dao_get_template_email_files_by_template_id(template_id, template_version=None):
     if template_version:
-        template_email_files_all_template_versions = TemplateEmailFileHistory.query.filter(
-            TemplateEmailFileHistory.template_id == template_id,
-            TemplateEmailFileHistory.template_version <= template_version,
+        query = (
+            select(TemplateEmailFileHistory)
+            .where(TemplateEmailFileHistory.template_id == template_id)
+            .where(TemplateEmailFileHistory.template_version <= template_version)
+            # .where(TemplateEmailFileHistory.archived_at.is_(None))
+            .order_by(TemplateEmailFileHistory.id)
+            .order_by(TemplateEmailFileHistory.version.desc())
+            .distinct(TemplateEmailFileHistory.id)
         )
-        email_files_grouped_by_id = defaultdict(list)
-        for file in template_email_files_all_template_versions:
-            email_files_grouped_by_id[file.id].append(file)
-
-        return list(
-            filter(
-                lambda x: not x.archived_at,
-                [
-                    max(email_file_versions, key=lambda x: x.template_version)
-                    for _, email_file_versions in email_files_grouped_by_id.items()
-                ],
-            )
-        )
+        # prune archived after the fact
+        # return db.session.execute(query).all()
+        return list(filter(lambda x: not x.archived_at, list(chain.from_iterable(db.session.execute(query).all()))))
 
     return TemplateEmailFile.query.filter(
         TemplateEmailFile.template_id == template_id,

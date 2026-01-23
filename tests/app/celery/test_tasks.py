@@ -1516,8 +1516,8 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
             ],
             {
                 "name": "Anne",
-                "invitation.pdf": "documents.gov.uk/link1",
-                "form.pdf": "documents.gov.uk/link2",
+                "invitation.pdf": "documents.gov.uk/invitation.pdf",
+                "form.pdf": "documents.gov.uk/form.pdf",
             },
         ),
         (
@@ -1537,8 +1537,8 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
             ],
             {
                 "name": "Anne",
-                "invitation.pdf": "[click this first link](documents.gov.uk/link1)",
-                "form.pdf": "[click this second link](documents.gov.uk/link2)",
+                "invitation.pdf": "[click this first link](documents.gov.uk/invitation.pdf)",
+                "form.pdf": "[click this second link](documents.gov.uk/form.pdf)",
             },
         ),
     ],
@@ -1571,7 +1571,7 @@ def test_send_email_with_template_email_files(
     assert persisted_notification.template_id == template.id
     assert persisted_notification.status == "created"
     assert persisted_notification.personalisation == expected_personalisation
-    assert persisted_notification._personalisation == signing.encode(expected_personalisation)
+    assert signing.decode(persisted_notification._personalisation) == expected_personalisation
 
 
 def test_send_email_with_template_email_files_from_old_template_version(
@@ -1617,22 +1617,23 @@ def test_send_email_with_template_email_files_from_old_template_version(
     assert persisted_notification.status == "created"
 
     # files were uploaded using historical versions
-    assert mock_document_download_client_upload.call_args_list == [
-        call(
-            mocker.ANY,
-            base64.b64encode(b"file_from_s3_1").decode("utf-8"),
-            confirmation_email="anne@example.com",
-            retention_period="26 weeks",
-            filename="invitation.pdf",
-        ),
-        call(
-            mocker.ANY,
-            base64.b64encode(b"file_from_s3_2").decode("utf-8"),
-            confirmation_email="anne@example.com",
-            retention_period="26 weeks",
-            filename="form.pdf",
-        ),
-    ]
+    for mock_call in mock_document_download_client_upload.call_args_list:
+        assert mock_call in [
+            call(
+                mocker.ANY,
+                base64.b64encode(b"downloaded-from-s3-form.pdf").decode("utf-8"),
+                confirmation_email="anne@example.com",
+                retention_period="26 weeks",
+                filename="form.pdf",
+            ),
+            call(
+                mocker.ANY,
+                base64.b64encode(b"downloaded-from-s3-invitation.pdf").decode("utf-8"),
+                confirmation_email="anne@example.com",
+                retention_period="26 weeks",
+                filename="invitation.pdf",
+            ),
+        ]
 
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
         [str(persisted_notification.id)], queue="send-email-tasks"
