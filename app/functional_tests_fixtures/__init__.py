@@ -241,12 +241,14 @@ def _create_db_objects(
         service=service,
         user_id=service_admin_user.id,
         name="Example text message template",
+        alt_names={"Client Functional test sms template"},
         content="Hey ((name)), I’m trying out Notify. Today is ((day of week)) and my favourite colour is ((colour)).",
     )
     api_client_integration_test_letter_template = _create_letter_template(
         service=service,
         user_id=service_admin_user.id,
         name="Untitled",
+        alt_names={"Client functional letter template"},
         subject="Main heading",
         content="Body",
     )
@@ -466,12 +468,18 @@ def _create_service_letter_contact(service_id, contact_block, is_default):
     return add_letter_contact_for_service(service_id, contact_block, is_default)
 
 
-def _create_email_template(service, user_id, name, subject, content):
+def _create_email_template(service, user_id, name, subject, content, alt_names=frozenset()):
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
+    alt_candidates = []
     for template in templates:
         if template.name == name:
             return template
+        elif template.name in alt_names:
+            alt_candidates.append(template)
+
+    if alt_candidates:
+        return alt_candidates[0]
 
     new_template = template_schema.load(
         {
@@ -490,12 +498,18 @@ def _create_email_template(service, user_id, name, subject, content):
     return new_template
 
 
-def _create_sms_template(service, user_id, name, content):
+def _create_sms_template(service, user_id, name, content, alt_names=frozenset()):
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
+    alt_candidates = []
     for template in templates:
         if template.name == name:
             return template
+        elif template.name in alt_names:
+            alt_candidates.append(template)
+
+    if alt_candidates:
+        return alt_candidates[0]
 
     new_template = template_schema.load(
         {
@@ -513,12 +527,18 @@ def _create_sms_template(service, user_id, name, content):
     return new_template
 
 
-def _create_letter_template(service, user_id, name, subject, content, letter_contact_id=None):
+def _create_letter_template(service, user_id, name, subject, content, letter_contact_id=None, alt_names=frozenset()):
     templates = dao_get_all_templates_for_service(service_id=service.id)
 
+    alt_candidates = []
     for template in templates:
         if template.name == name:
             return template
+        elif template.name in alt_names:
+            alt_candidates.append(template)
+
+    if alt_candidates:
+        return alt_candidates[0]
 
     new_template = template_schema.load(
         {
