@@ -94,6 +94,8 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
     assert "FUNCTIONAL_TEST_SMS_TEMPLATE_ID" in variables[0]
     assert "FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID" in variables[0]
     assert "FUNCTIONAL_TEST_LETTER_TEMPLATE_ID" in variables[0]
+    assert "FUNCTIONAL_TEST_SMS_NO_PLACEHOLDER_TEMPLATE_ID" in variables[0]
+    assert "FUNCTIONAL_TEST_EMAIL_NO_PLACEHOLDER_TEMPLATE_ID" in variables[0]
     assert variables[0]["MMG_INBOUND_SMS_USERNAME"] == "test_mmg_username"
     assert variables[0]["MMG_INBOUND_SMS_AUTH"] == "test_mmg_password"
     assert variables[0]["REQUEST_BIN_API_TOKEN"] == "test_request_bin_token"
