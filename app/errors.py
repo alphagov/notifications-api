@@ -12,6 +12,7 @@ from werkzeug.exceptions import HTTPException
 
 from app.authentication.auth import AuthError
 from app.exceptions import ArchiveValidationError
+from app.load_shedding import ServiceUnavailableError
 
 
 class VirusScanError(Exception):
@@ -52,6 +53,14 @@ def register_errors(blueprint: Blueprint):  # noqa: C901
     @blueprint.errorhandler(AuthError)
     def authentication_error(error: AuthError) -> ResponseReturnValue:
         return jsonify(result="error", message=error.message), error.code
+
+    @blueprint.errorhandler(ServiceUnavailableError)
+    def service_unavailable_error(error: ServiceUnavailableError) -> ResponseReturnValue:
+        response = jsonify(error.to_dict_v2())
+        response.status_code = 429
+        response.headers["Retry-After"] = str(error.retry_after)
+        current_app.logger.info(error)
+        return response
 
     @blueprint.errorhandler(ValidationError)
     def marshmallow_validation_error(error: ValidationError) -> ResponseReturnValue:
