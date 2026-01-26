@@ -230,6 +230,20 @@ def _create_db_objects(
         letter_contact_id=letter_contact.id,
     )
 
+    email_no_placeholder_template = _create_email_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Functional Tests - Email Template without placeholders",
+        subject="Functional Tests - No Placeholder Email",
+        content="The quick brown fox jumped over the lazy dog.",
+    )
+    sms_no_placeholder_template = _create_sms_template(
+        service=service,
+        user_id=service_admin_user.id,
+        name="Functional Tests - SMS template without placeholders",
+        content="The quick brown fox jumped over the lazy dog.",
+    )
+
     api_client_integration_test_email_template = _create_email_template(
         service=service,
         user_id=service_admin_user.id,
@@ -324,6 +338,8 @@ def _create_db_objects(
         "FUNCTIONAL_TEST_SMS_TEMPLATE_ID": sms_template.id,
         "FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID": email_template.id,
         "FUNCTIONAL_TEST_LETTER_TEMPLATE_ID": letter_template.id,
+        "FUNCTIONAL_TEST_SMS_NO_PLACEHOLDER_TEMPLATE_ID": sms_no_placeholder_template.id,
+        "FUNCTIONAL_TEST_EMAIL_NO_PLACEHOLDER_TEMPLATE_ID": email_no_placeholder_template.id,
         "MMG_INBOUND_SMS_USERNAME": current_app.config["MMG_INBOUND_SMS_USERNAME"][0],
         "MMG_INBOUND_SMS_AUTH": current_app.config["MMG_INBOUND_SMS_AUTH"][0],
         "REQUEST_BIN_API_TOKEN": request_bin_api_token,
