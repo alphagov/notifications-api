@@ -185,7 +185,7 @@ def is_worker_overloaded() -> bool:
 
     try:
         current_load = concurrent_request_counter.get()
-        high_water_mark = current_app.config.get("HIGH_WATER_MARK", 26)
+        high_water_mark = current_app.config.get("HIGH_WATER_MARK", 6)
 
         is_overloaded = current_load > high_water_mark
 

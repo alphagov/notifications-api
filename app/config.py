@@ -164,8 +164,8 @@ class Config:
 
     # Load Shedding Configuration
     LOAD_SHEDDING_ENABLED = os.getenv("LOAD_SHEDDING_ENABLED", "false").lower() == "true"
-    # High water mark: 80% of capacity (26 out of 32 concurrent requests per worker)
-    HIGH_WATER_MARK = int(os.getenv("HIGH_WATER_MARK", "26"))
+    # High water mark: 75% of capacity (6 out of 8 concurrent requests per worker)
+    HIGH_WATER_MARK = int(os.getenv("HIGH_WATER_MARK", "6"))
     # Throttle services contributing this % or more of total request volume
     THROTTLE_CONTRIBUTION_PCT = int(os.getenv("THROTTLE_CONTRIBUTION_PCT", "20"))
     # Only apply contribution-based throttling when enough services are active

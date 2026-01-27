@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class TestIsWorkerOverloaded:
     def test_returns_false_when_worker_not_overloaded(self, notify_api: "Flask", mocker: MockerFixture) -> None:
         mock_counter = mocker.patch("app.load_shedding.concurrent_request_counter")
-        mock_counter.get.return_value = 10  # Below high water mark
+        mock_counter.get.return_value = 3  # Below high water mark
         mock_gauge = mocker.patch("app.load_shedding.WORKER_LOAD_SHEDDING")
 
         assert is_worker_overloaded() is False
@@ -31,7 +31,7 @@ class TestIsWorkerOverloaded:
 
     def test_returns_false_when_below_high_water_mark(self, notify_api: "Flask", mocker: MockerFixture) -> None:
         mock_counter = mocker.patch("app.load_shedding.concurrent_request_counter")
-        mock_counter.get.return_value = 20  # Below HIGH_WATER_MARK of 26
+        mock_counter.get.return_value = 4  # Below HIGH_WATER_MARK of 6
         mock_gauge = mocker.patch("app.load_shedding.WORKER_LOAD_SHEDDING")
 
         assert is_worker_overloaded() is False
@@ -41,7 +41,7 @@ class TestIsWorkerOverloaded:
 
     def test_returns_true_when_above_high_water_mark(self, notify_api: "Flask", mocker: MockerFixture) -> None:
         mock_counter = mocker.patch("app.load_shedding.concurrent_request_counter")
-        mock_counter.get.return_value = 28  # Above HIGH_WATER_MARK of 26
+        mock_counter.get.return_value = 7  # Above HIGH_WATER_MARK of 6
         mock_gauge = mocker.patch("app.load_shedding.WORKER_LOAD_SHEDDING")
 
         assert is_worker_overloaded() is True
@@ -51,7 +51,7 @@ class TestIsWorkerOverloaded:
 
     def test_returns_false_at_boundary(self, notify_api: "Flask", mocker: MockerFixture) -> None:
         mock_counter = mocker.patch("app.load_shedding.concurrent_request_counter")
-        mock_counter.get.return_value = 26  # At HIGH_WATER_MARK
+        mock_counter.get.return_value = 6  # At HIGH_WATER_MARK
         mock_gauge = mocker.patch("app.load_shedding.WORKER_LOAD_SHEDDING")
 
         # At the threshold should NOT trigger (uses > not >=)
@@ -73,32 +73,32 @@ class TestIsWorkerOverloaded:
 
         ls_module._is_currently_load_shedding = False
 
-        # First call: healthy (10 < 26)
-        mock_counter.get.return_value = 10
+        # First call: healthy (3 < 6)
+        mock_counter.get.return_value = 3
         is_worker_overloaded()
         assert mock_activation_counter.inc.call_count == 0
         assert mock_gauge.set.call_args[0][0] == 0  # Gauge set to 0
 
-        # Second call: enter overload (28 > 26) - should increment
-        mock_counter.get.return_value = 28
+        # Second call: enter overload (7 > 6) - should increment
+        mock_counter.get.return_value = 7
         is_worker_overloaded()
         assert mock_activation_counter.inc.call_count == 1
         assert mock_gauge.set.call_args[0][0] == 1  # Gauge set to 1
 
-        # Third call: stay overloaded (30 > 26) - should NOT increment again
-        mock_counter.get.return_value = 30
+        # Third call: stay overloaded (8 > 6) - should NOT increment again
+        mock_counter.get.return_value = 8
         is_worker_overloaded()
         assert mock_activation_counter.inc.call_count == 1  # Still 1, not 2
         assert mock_gauge.set.call_args[0][0] == 1  # Gauge still 1
 
-        # Fourth call: exit overload (10 < 26) - should NOT increment
-        mock_counter.get.return_value = 10
+        # Fourth call: exit overload (3 < 6) - should NOT increment
+        mock_counter.get.return_value = 3
         is_worker_overloaded()
         assert mock_activation_counter.inc.call_count == 1
         assert mock_gauge.set.call_args[0][0] == 0  # Gauge back to 0
 
-        # Fifth call: re-enter overload (28 > 26) - should increment again
-        mock_counter.get.return_value = 28
+        # Fifth call: re-enter overload (7 > 6) - should increment again
+        mock_counter.get.return_value = 7
         is_worker_overloaded()
         assert mock_activation_counter.inc.call_count == 2
         assert mock_gauge.set.call_args[0][0] == 1  # Gauge set to 1 again
@@ -115,7 +115,7 @@ class TestIsWorkerOverloaded:
         ls_module._is_currently_load_shedding = False
 
         # Enter load shedding - should log warning
-        mock_counter.get.return_value = 28
+        mock_counter.get.return_value = 7
         with notify_api.app_context():
             mock_logger = mocker.patch("app.load_shedding.current_app.logger")
             is_worker_overloaded()
@@ -125,7 +125,7 @@ class TestIsWorkerOverloaded:
             assert "ACTIVATED" in mock_logger.warning.call_args[0][0]
 
         # Exit load shedding - should log info
-        mock_counter.get.return_value = 10
+        mock_counter.get.return_value = 3
         with notify_api.app_context():
             mock_logger = mocker.patch("app.load_shedding.current_app.logger")
             is_worker_overloaded()
