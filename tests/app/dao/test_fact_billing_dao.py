@@ -815,12 +815,27 @@ def test_fetch_usage_for_service_by_month_populates_ft_billing_for_today(notify_
     assert len(results) == 2
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_service_annual(
     sample_service,
     sample_service_billing_fy_2016,
     notify_db_session,
+    session,
+    expected_bind_key,
 ):
-    results = fetch_usage_for_service_annual(service_id=sample_service.id, year=2016)
+    service_id = sample_service.id
+
+    with QueryRecorder() as query_recorder:
+        results = fetch_usage_for_service_annual(service_id=service_id, year=2016, session=session)
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 3
 
     assert results[0].notification_type == "email"
@@ -848,12 +863,27 @@ def test_fetch_usage_for_service_annual(
     assert results[2].charged_units == 3
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_service_annual_variable_rates(
     sample_service,
     sample_service_billing_fy_2018_variable_rates,
     notify_db_session,
+    session,
+    expected_bind_key,
 ):
-    results = fetch_usage_for_service_annual(service_id=sample_service.id, year=2018)
+    service_id = sample_service.id
+
+    with QueryRecorder() as query_recorder:
+        results = fetch_usage_for_service_annual(service_id=service_id, year=2018, session=session)
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 4
 
     assert results[0].notification_type == "letter"
