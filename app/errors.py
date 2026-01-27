@@ -56,7 +56,7 @@ def register_errors(blueprint: Blueprint):  # noqa: C901
 
     @blueprint.errorhandler(ServiceUnavailableError)
     def service_unavailable_error(error: ServiceUnavailableError) -> ResponseReturnValue:
-        response = jsonify(error.to_dict_v2())
+        response = jsonify(result="error", message=error.message)
         response.status_code = 429
         response.headers["Retry-After"] = str(error.retry_after)
         current_app.logger.info(error)

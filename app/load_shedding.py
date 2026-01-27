@@ -52,6 +52,8 @@ class ServiceVolumeTracker:
         """
         self._requests: dict[str, deque[float]] = {}
         self._window = window_seconds
+        self._last_cleanup = 0.0
+        self._cleanup_interval = window_seconds
 
     def track_request(self, service_id: str) -> None:
         """Record a request from this service.
@@ -68,6 +70,11 @@ class ServiceVolumeTracker:
         # Lazy cleanup of old entries to keep memory bounded
         self._cleanup_old_entries(service_id, now)
 
+        # Periodic cleanup across all services to avoid unbounded growth
+        if now - self._last_cleanup >= self._cleanup_interval:
+            self._cleanup_all(now)
+            self._last_cleanup = now
+
     def _cleanup_old_entries(self, service_id: str, now: float) -> None:
         """Remove entries older than the window.
 
@@ -83,6 +90,22 @@ class ServiceVolumeTracker:
         # Clean up empty deques to free memory
         if not queue:
             del self._requests[service_id]
+
+    def _cleanup_all(self, now: float) -> None:
+        """Remove expired entries for all services.
+
+        Args:
+            now: Current timestamp
+        """
+        cutoff = now - self._window
+
+        for service_id in list(self._requests.keys()):
+            queue = self._requests[service_id]
+            while queue and queue[0] < cutoff:
+                queue.popleft()
+
+            if not queue:
+                del self._requests[service_id]
 
     def get_volumes(self) -> dict[str, int]:
         """Get current volumes for all services that have recent requests.
