@@ -18,7 +18,7 @@ class AwsSesStubClient(EmailClient):
     This class is not thread-safe.
     """
 
-    name = "ses"
+    name = "ses-stub"
 
     def __init__(self, region, statsd_client, stub_url):
         super().__init__()

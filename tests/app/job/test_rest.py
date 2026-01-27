@@ -167,6 +167,62 @@ def test_create_unscheduled_job(client, sample_template, mocker, mock_celery_tas
     assert resp_json["data"]["notification_count"] == 1
 
 
+def test_create_job_rejects_provider_when_option_disabled(client, sample_template, mocker, mock_celery_task, fake_uuid):
+    mock_celery_task(process_job)
+    mocker.patch(
+        "app.job.rest.get_job_metadata_from_s3",
+        return_value={
+            "template_id": str(sample_template.id),
+            "original_file_name": "thisisatest.csv",
+            "notification_count": "1",
+            "valid": "True",
+            "provider": "mmg",
+        },
+    )
+    data = {
+        "id": fake_uuid,
+        "created_by": str(sample_template.created_by.id),
+    }
+    path = f"/service/{sample_template.service.id}/job"
+    auth_header = create_admin_authorization_header()
+    headers = [("Content-Type", "application/json"), auth_header]
+
+    response = client.post(path, data=json.dumps(data), headers=headers)
+    assert response.status_code == 400
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json["message"] == "Provider option is not enabled"
+
+
+def test_create_job_persists_provider_requested(
+    client, sample_template, mocker, mock_celery_task, fake_uuid, notify_api
+):
+    mock_celery_task(process_job)
+    mocker.patch(
+        "app.job.rest.get_job_metadata_from_s3",
+        return_value={
+            "template_id": str(sample_template.id),
+            "original_file_name": "thisisatest.csv",
+            "notification_count": "1",
+            "valid": "True",
+            "provider": "mmg",
+        },
+    )
+    data = {
+        "id": fake_uuid,
+        "created_by": str(sample_template.created_by.id),
+    }
+    path = f"/service/{sample_template.service.id}/job"
+    auth_header = create_admin_authorization_header()
+    headers = [("Content-Type", "application/json"), auth_header]
+
+    with set_config(notify_api, "PROVIDER_OPTION_ENABLED", True):
+        response = client.post(path, data=json.dumps(data), headers=headers)
+
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json["data"]["provider"] == "mmg"
+
+
 def test_create_unscheduled_job_with_sender_id_in_metadata(
     client, sample_template, mocker, mock_celery_task, fake_uuid
 ):
@@ -734,6 +790,7 @@ def test_get_jobs(admin_request, sample_template, mocker):
         "template_version": 1,
         "updated_at": None,
         "contact_list_id": None,
+        "provider": None,
     }
     assert len(mock_redis_get.mock_calls) == 5
 

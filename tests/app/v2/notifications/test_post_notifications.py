@@ -29,6 +29,7 @@ from tests.app.db import (
     create_service_with_inbound_number,
     create_template,
 )
+from tests.conftest import set_config
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -69,6 +70,94 @@ def test_post_sms_notification_returns_201(api_client_request, sample_template_w
     )
     assert not resp_json["scheduled_for"]
     assert mocked.called
+
+
+def test_post_sms_notification_rejects_provider_when_option_disabled(
+    api_client_request, sample_template_with_placeholders
+):
+    data = {
+        "phone_number": "+447700900855",
+        "template_id": str(sample_template_with_placeholders.id),
+        "personalisation": {" Name": "Jo"},
+        "provider": "mmg",
+    }
+
+    resp_json = api_client_request.post(
+        sample_template_with_placeholders.service_id,
+        "v2_notifications.post_notification",
+        notification_type="sms",
+        _data=data,
+        _expected_status=400,
+    )
+
+    assert resp_json["errors"][0]["message"] == "Provider option is not enabled"
+
+
+def test_post_sms_notification_persists_provider_requested(
+    api_client_request, sample_template_with_placeholders, mocker, notify_api
+):
+    mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
+    data = {
+        "phone_number": "+447700900855",
+        "template_id": str(sample_template_with_placeholders.id),
+        "personalisation": {" Name": "Jo"},
+        "provider": "mmg",
+    }
+
+    with set_config(notify_api, "PROVIDER_OPTION_ENABLED", True):
+        api_client_request.post(
+            sample_template_with_placeholders.service_id,
+            "v2_notifications.post_notification",
+            notification_type="sms",
+            _data=data,
+        )
+
+    notification = Notification.query.one()
+    assert notification.provider_requested == "mmg"
+
+
+def test_post_email_notification_persists_provider_requested(
+    api_client_request, sample_email_template, mocker, notify_api
+):
+    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    data = {
+        "email_address": "test@example.gov.uk",
+        "template_id": str(sample_email_template.id),
+        "provider": "ses",
+    }
+
+    with set_config(notify_api, "PROVIDER_OPTION_ENABLED", True):
+        api_client_request.post(
+            sample_email_template.service_id,
+            "v2_notifications.post_notification",
+            notification_type="email",
+            _data=data,
+        )
+
+    notification = Notification.query.one()
+    assert notification.provider_requested == "ses"
+
+
+def test_post_sms_notification_rejects_invalid_provider_when_enabled(
+    api_client_request, sample_template_with_placeholders, notify_api
+):
+    data = {
+        "phone_number": "+447700900855",
+        "template_id": str(sample_template_with_placeholders.id),
+        "personalisation": {" Name": "Jo"},
+        "provider": "not-a-provider",
+    }
+
+    with set_config(notify_api, "PROVIDER_OPTION_ENABLED", True):
+        resp_json = api_client_request.post(
+            sample_template_with_placeholders.service_id,
+            "v2_notifications.post_notification",
+            notification_type="sms",
+            _data=data,
+            _expected_status=400,
+        )
+
+    assert resp_json["errors"][0]["message"] == "Provider 'not-a-provider' is not valid for sms notifications"
 
 
 def test_post_sms_notification_uses_inbound_number_as_sender(api_client_request, notify_db_session, mocker):
