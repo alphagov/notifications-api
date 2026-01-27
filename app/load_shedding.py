@@ -254,15 +254,19 @@ def should_throttle_service(service_id: str) -> bool:
 
         # Check if contributing a significant % of load
         throttle_contribution_pct = current_app.config.get("THROTTLE_CONTRIBUTION_PCT", 20)
-        if contribution_pct >= throttle_contribution_pct:
-            current_app.logger.info(
-                "Service %s contributing %.1f%% of load (%s/%s requests)",
-                service_id,
-                contribution_pct,
-                current_volume,
-                total_volume,
-            )
-            return True
+        min_services = current_app.config.get("THROTTLE_CONTRIBUTION_MIN_SERVICES", 5)
+        min_total_volume = current_app.config.get("THROTTLE_CONTRIBUTION_MIN_VOLUME", 50)
+
+        if len(service_volumes) >= min_services and total_volume >= min_total_volume:
+            if contribution_pct >= throttle_contribution_pct:
+                current_app.logger.info(
+                    "Service %s contributing %.1f%% of load (%s/%s requests)",
+                    service_id,
+                    contribution_pct,
+                    current_volume,
+                    total_volume,
+                )
+                return True
 
         # Check if volume is significantly above median (outlier detection)
         volumes = sorted(service_volumes.values())

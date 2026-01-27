@@ -168,6 +168,10 @@ class Config:
     HIGH_WATER_MARK = int(os.getenv("HIGH_WATER_MARK", "26"))
     # Throttle services contributing this % or more of total request volume
     THROTTLE_CONTRIBUTION_PCT = int(os.getenv("THROTTLE_CONTRIBUTION_PCT", "20"))
+    # Only apply contribution-based throttling when enough services are active
+    THROTTLE_CONTRIBUTION_MIN_SERVICES = int(os.getenv("THROTTLE_CONTRIBUTION_MIN_SERVICES", "5"))
+    # Only apply contribution-based throttling when total volume is above this threshold
+    THROTTLE_CONTRIBUTION_MIN_VOLUME = int(os.getenv("THROTTLE_CONTRIBUTION_MIN_VOLUME", "50"))
     # Throttle services with volume this many times above median
     THROTTLE_VOLUME_MEDIAN_MULTIPLE = int(os.getenv("THROTTLE_VOLUME_MEDIAN_MULTIPLE", "10"))
 

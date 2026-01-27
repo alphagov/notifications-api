@@ -204,6 +204,8 @@ class TestShouldThrottleService:
 
     def test_single_service_contributing_100_pct(self, notify_api: "Flask", mocker: MockerFixture) -> None:
         mocker.patch("app.load_shedding.is_worker_overloaded", return_value=True)
+        notify_api.config["THROTTLE_CONTRIBUTION_MIN_SERVICES"] = 1
+        notify_api.config["THROTTLE_CONTRIBUTION_MIN_VOLUME"] = 1
 
         # Test with single service (contributes 100% of load)
         # Should be throttled by contribution % (100% > 20% threshold)
@@ -215,6 +217,38 @@ class TestShouldThrottleService:
 
         # Single service contributing 100% should be throttled (exceeds 20% threshold)
         assert should_throttle_service("single") is True
+
+    def test_does_not_throttle_by_contribution_with_few_services(
+        self, notify_api: "Flask", mocker: MockerFixture
+    ) -> None:
+        mocker.patch("app.load_shedding.is_worker_overloaded", return_value=True)
+        notify_api.config["THROTTLE_CONTRIBUTION_MIN_SERVICES"] = 5
+        notify_api.config["THROTTLE_CONTRIBUTION_MIN_VOLUME"] = 50
+
+        # Only 2 services, high contribution but below min service count
+        service_volumes = {"big": 9, "small": 1}
+
+        mock_tracker = mocker.patch("app.load_shedding._volume_tracker")
+        mock_tracker.get_volumes.return_value = service_volumes
+
+        # Should not throttle by contribution; median multiple also not met
+        assert should_throttle_service("big") is False
+
+    def test_does_not_throttle_by_contribution_with_low_total_volume(
+        self, notify_api: "Flask", mocker: MockerFixture
+    ) -> None:
+        mocker.patch("app.load_shedding.is_worker_overloaded", return_value=True)
+        notify_api.config["THROTTLE_CONTRIBUTION_MIN_SERVICES"] = 3
+        notify_api.config["THROTTLE_CONTRIBUTION_MIN_VOLUME"] = 50
+
+        # 3 services but total volume below min threshold
+        service_volumes = {"big": 8, "mid": 1, "small": 1}
+
+        mock_tracker = mocker.patch("app.load_shedding._volume_tracker")
+        mock_tracker.get_volumes.return_value = service_volumes
+
+        # Should not throttle by contribution; median multiple also not met
+        assert should_throttle_service("big") is False
 
     def test_returns_false_on_error(self, notify_api: "Flask", mocker: MockerFixture) -> None:
         mocker.patch("app.load_shedding.is_worker_overloaded", return_value=True)
