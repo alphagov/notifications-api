@@ -7,6 +7,7 @@ from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import Date, Integer, and_, desc, func, not_, select, union
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session, scoped_session
 from sqlalchemy.sql.expression import case, literal, tuple_
 
 from app import db
@@ -251,7 +252,11 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     return db.session.execute(query.statement)
 
 
-def fetch_usage_for_service_annual(service_id, year):
+def fetch_usage_for_service_annual(
+    service_id,
+    year,
+    session: Session | scoped_session = db.session,
+):
     """
     Returns a row for each distinct rate and notification_type from ft_billing
     over the specified financial year e.g.
@@ -269,10 +274,10 @@ def fetch_usage_for_service_annual(service_id, year):
     pick from here before the big union.
     """
     return (
-        db.session.query(
+        session.query(
             union(
                 *[
-                    db.session.query(
+                    session.query(
                         query.c.notification_type.label("notification_type"),
                         query.c.rate.label("rate"),
                         func.sum(query.c.notifications_sent).label("notifications_sent"),
@@ -282,17 +287,14 @@ def fetch_usage_for_service_annual(service_id, year):
                         func.sum(query.c.charged_units).label("charged_units"),
                     ).group_by(query.c.rate, query.c.notification_type)
                     for query in [
-                        _fetch_usage_for_service_sms(service_id, year).subquery(),
-                        _fetch_usage_for_service_email(service_id, year).subquery(),
-                        _fetch_usage_for_service_letter(service_id, year).subquery(),
+                        _fetch_usage_for_service_sms(service_id, year, session=session).subquery(),
+                        _fetch_usage_for_service_email(service_id, year, session=session).subquery(),
+                        _fetch_usage_for_service_letter(service_id, year, session=session).subquery(),
                     ]
                 ]
             ).subquery()
         )
-        .order_by(
-            "notification_type",
-            "rate",
-        )
+        .order_by("notification_type", "rate")
         .all()
     )
 
@@ -362,10 +364,9 @@ def fetch_usage_for_service_by_month(service_id, year):
     )
 
 
-def _fetch_usage_for_service_email(service_id, year):
+def _fetch_usage_for_service_email(service_id, year, session=db.session):
     year_start, year_end = get_financial_year_dates(year)
-
-    return db.session.query(
+    return session.query(
         FactBilling.bst_date,
         FactBilling.postage,  # should always be "none"
         FactBilling.notifications_sent,
@@ -383,10 +384,9 @@ def _fetch_usage_for_service_email(service_id, year):
     )
 
 
-def _fetch_usage_for_service_letter(service_id, year):
+def _fetch_usage_for_service_letter(service_id, year, session=db.session):
     year_start, year_end = get_financial_year_dates(year)
-
-    return db.session.query(
+    return session.query(
         FactBilling.bst_date,
         FactBilling.postage,
         FactBilling.notifications_sent,
@@ -407,7 +407,7 @@ def _fetch_usage_for_service_letter(service_id, year):
     )
 
 
-def _fetch_usage_for_service_sms(service_id, year):
+def _fetch_usage_for_service_sms(service_id, year, session=db.session):
     """
     Returns rows from the ft_billing table with some calculated values like cost,
     incorporating the SMS free allowance e.g.
@@ -469,7 +469,7 @@ def _fetch_usage_for_service_sms(service_id, year):
     free_allowance_used = func.least(remaining_free_allowance_before_this_row, this_rows_chargeable_units)
 
     return (
-        db.session.query(
+        session.query(
             FactBilling.bst_date,
             FactBilling.postage,  # should always be "none"
             FactBilling.notifications_sent,
