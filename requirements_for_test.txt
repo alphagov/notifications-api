@@ -151,6 +151,7 @@ greenlet==3.2.2
     # via
     #   -r requirements.txt
     #   eventlet
+    #   sqlalchemy
 gunicorn==23.0.0
     # via
     #   -r requirements.txt
@@ -267,7 +268,7 @@ pyjwt==2.10.1
     #   notifications-python-client
 pyorc==0.10.0
     # via -r requirements.txt
-pypdf==3.17.0
+pypdf==6.6.0
     # via
     #   -r requirements.txt
     #   notifications-utils
