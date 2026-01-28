@@ -14,7 +14,7 @@ from notifications_utils.international_billing_rates import (
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import String, and_, asc, column, desc, func, not_, or_, select, text, union_all, values
+from sqlalchemy import Row, String, and_, asc, column, desc, func, not_, or_, select, text, union_all, values
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, defer, joinedload, scoped_session, undefer
 from sqlalchemy.orm.exc import NoResultFound
@@ -783,32 +783,21 @@ def dao_get_notification_or_history_by_reference(reference):
         return NotificationHistory.query.filter(NotificationHistory.reference == reference).one()
 
 
-def dao_get_notifications_processing_time_stats(start_date, end_date):
+@retryable_query()
+def dao_get_notifications_processing_time_stats(
+    start_dt: datetime, end_dt: datetime, session: Session | scoped_session = db.session
+) -> Row:
     """
     For a given time range, returns the number of notifications sent and the number of
     those notifications that we processed within 10 seconds
-
-    SELECT
-    count(notifications),
-    coalesce(sum(CASE WHEN sent_at - created_at <= interval '10 seconds' THEN 1 ELSE 0 END), 0)
-    FROM notifications
-    WHERE
-    created_at > 'START DATE' AND
-    created_at < 'END DATE' AND
-    api_key_id IS NOT NULL AND
-    key_type != 'test' AND
-    notification_type != 'letter';
     """
     under_10_secs = Notification.sent_at - Notification.created_at <= timedelta(seconds=10)
     sum_column = functions.coalesce(functions.sum(case((under_10_secs, 1), else_=0)), 0)
-
     return (
-        db.session.query(
-            func.count(Notification.id).label("messages_total"), sum_column.label("messages_within_10_secs")
-        )
+        session.query(func.count(Notification.id).label("messages_total"), sum_column.label("messages_within_10_secs"))
         .filter(
-            Notification.created_at >= start_date,
-            Notification.created_at < end_date,
+            Notification.created_at >= start_dt,
+            Notification.created_at < end_dt,
             Notification.api_key_id.isnot(None),
             Notification.key_type != KEY_TYPE_TEST,
             Notification.notification_type != LETTER_TYPE,
