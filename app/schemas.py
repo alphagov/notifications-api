@@ -505,6 +505,7 @@ class JobSchema(BaseSchema):
     template_name = fields.Method("get_template_name", dump_only=True)
     template_type = fields.Method("get_template_type", dump_only=True)
     contact_list_id = field_for(models.Job, "contact_list_id")
+    provider_requested = field_for(models.Job, "provider_requested", data_key="provider")
 
     def get_template_name(self, job):
         return job.template.name

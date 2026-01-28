@@ -225,6 +225,7 @@ def get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=N
             "personalisation": dict(row.personalisation),
             # row.recipient_and_personalisation gets all columns for the row, even those not in template placeholders
             "client_reference": dict(row.recipient_and_personalisation).get("reference", None),
+            "provider_requested": job.provider_requested,
         }
     )
 
@@ -346,6 +347,7 @@ def save_sms(
             notification_id=notification_id,
             reply_to_text=reply_to_text,
             client_reference=notification.get("client_reference", None),
+            provider_requested=notification.get("provider_requested"),
             **extra_args,
         )
 
@@ -432,6 +434,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             notification_id=notification_id,
             reply_to_text=reply_to_text,
             client_reference=notification.get("client_reference", None),
+            provider_requested=notification.get("provider_requested"),
         )
 
         provider_tasks.deliver_email.apply_async(
@@ -491,6 +494,7 @@ def save_letter(
             client_reference=notification.get("client_reference", None),
             reply_to_text=template.reply_to_text,
             status=NOTIFICATION_CREATED,
+            provider_requested=notification.get("provider_requested"),
         )
 
         letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(

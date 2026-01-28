@@ -32,6 +32,8 @@ from app.dao.provider_details_dao import (
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
+from app.models import Notification
+from app.provider_selection import get_allowed_providers
 
 
 @notify_celery.task(
@@ -142,6 +144,9 @@ def deliver_letter(self, notification_id):
         )
         return
 
+    if _handle_requested_letter_provider(notification):
+        return
+
     try:
         file_bytes = find_letter_pdf_in_s3(notification).get()["Body"].read()
     except (BotoClientError, LetterPDFNotFound) as e:
@@ -194,14 +199,46 @@ def deliver_letter(self, notification_id):
         raise NotificationTechnicalFailureException(f"Error when sending letter notification {notification_id}") from e
 
 
-def update_letter_to_sending(notification):
-    provider = get_provider_details_by_notification_type(LETTER_TYPE)[0]
+def update_letter_to_sending(notification, provider_identifier=None):
+    if provider_identifier is None:
+        provider = get_provider_details_by_notification_type(LETTER_TYPE)[0]
+        provider_identifier = provider.identifier
 
     notification.status = NOTIFICATION_SENDING
     notification.sent_at = datetime.utcnow()
-    notification.sent_by = provider.identifier
+    notification.sent_by = provider_identifier
 
     notifications_dao.dao_update_notification(notification)
+
+
+def _handle_requested_letter_provider(notification: Notification) -> bool:
+    """Handle explicit provider routing for letters.
+
+    Returns True if the notification was handled (e.g., dvla-stub), False otherwise.
+    """
+    if not notification.provider_requested:
+        return False
+
+    allowed = get_allowed_providers(LETTER_TYPE)
+    if notification.provider_requested not in allowed:
+        current_app.logger.error(
+            "Requested provider %s is not available for letter notifications",
+            notification.provider_requested,
+            extra={
+                "notification_id": notification.id,
+                "provider_requested": notification.provider_requested,
+            },
+        )
+        update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
+        raise NotificationTechnicalFailureException(
+            f"Requested provider {notification.provider_requested} is not available for letter notifications"
+        )
+
+    if notification.provider_requested == "dvla-stub":
+        update_letter_to_sending(notification, provider_identifier="dvla-stub")
+        return True
+
+    return False
 
 
 def _get_callback_url(notification_id: UUID) -> str:

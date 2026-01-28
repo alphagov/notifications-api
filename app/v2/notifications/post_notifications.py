@@ -52,6 +52,7 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
+from app.provider_selection import validate_provider_requested
 from app.schema_validation import validate
 from app.utils import try_parse_and_format_phone_number
 from app.v2.errors import BadRequestError
@@ -171,12 +172,21 @@ def process_sms_or_email_notification(
 ):
     notification_id = uuid.uuid4()
     form_send_to = form["email_address"] if notification_type == EMAIL_TYPE else form["phone_number"]
+    provider_requested = form.get("provider")
 
     recipient_data = validate_and_format_recipient(
         send_to=form_send_to, key_type=api_user.key_type, service=service, notification_type=notification_type
     )
 
     send_to = recipient_data["normalised_to"] if type(recipient_data) is dict else recipient_data
+
+    provider_error = validate_provider_requested(
+        provider_requested,
+        notification_type,
+        international=recipient_data.get("international") if isinstance(recipient_data, dict) else False,
+    )
+    if provider_error:
+        raise BadRequestError(message=provider_error, status_code=400)
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
@@ -221,6 +231,7 @@ def process_sms_or_email_notification(
         reply_to_text=reply_to_text,
         unsubscribe_link=unsubscribe_link,
         document_download_count=document_download_count,
+        provider_requested=provider_requested,
     )
 
     if not simulated:
@@ -297,6 +308,10 @@ def process_letter_notification(
     if service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message="Cannot send letters when service is in trial mode", status_code=403)
 
+    provider_error = validate_provider_requested(letter_data.get("provider"), LETTER_TYPE)
+    if provider_error:
+        raise BadRequestError(message=provider_error, status_code=400)
+
     if precompiled:
         return process_precompiled_letter_notifications(
             letter_data=letter_data, api_key=api_key, service=service, template=template, reply_to_text=reply_to_text
@@ -328,6 +343,7 @@ def process_letter_notification(
         reply_to_text=reply_to_text,
         updated_at=updated_at,
         postage=postage,
+        provider_requested=letter_data.get("provider"),
     )
 
     get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue)
@@ -366,6 +382,7 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
             api_key=api_key,
             status=status,
             reply_to_text=reply_to_text,
+            provider_requested=letter_data.get("provider"),
             _autocommit=False,
         )
         filename = upload_letter_pdf(notification, letter_content, precompiled=True)
