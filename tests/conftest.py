@@ -1,7 +1,9 @@
 import os
+import re
 import subprocess
 from collections import namedtuple
 from contextlib import contextmanager
+from pathlib import Path
 from urllib.parse import urlparse
 
 import freezegun
@@ -179,6 +181,11 @@ def _clean_database(_db):
             stmt = delete(tbl)
             _db.session.execute(stmt)
     _db.session.commit()
+    # restore static objects if missing
+    exists = _db.session.execute(text("SELECT to_regclass('notifications_all_time_view')")).scalar()
+    if exists is None:
+        ensure_notifications_all_time_view(_db.session)
+        _db.session.commit()
 
 
 # based on https://github.com/sqlalchemy/sqlalchemy/issues/5709#issuecomment-729689097
@@ -284,3 +291,26 @@ class Matcher:
 
     def __repr__(self):
         return f"<Matcher: {self.description}>"
+
+
+def ensure_notifications_all_time_view(session):
+    # locate migrations directory and recreate the latest "notifications_all_time_view" changes
+    versions_dir = Path(__file__).resolve().parents[1] / "migrations" / "versions"
+    for path in sorted(versions_dir.glob("*.py"), reverse=True):
+        content = path.read_text()
+        if "notifications_all_time_view" not in content:
+            continue
+        # look for a CREATE (or CREATE OR REPLACE) VIEW statement in the found migration file.
+        # extract the raw SQL so we can re-run it in the test database.
+        match = re.search(
+            r'op\.execute\(\s*"""\s*(CREATE(?: OR REPLACE)? VIEW .*?)\s*"""\s*\)',
+            content,
+            re.S,
+        )
+
+        if match:
+            # here we execute the query if a match is found
+            session.execute(text(match.group(1)))
+            return
+    # raise error if a mismatch between test setup expectations and migrations.
+    raise RuntimeError("Could not find notifications_all_time_view SQL in migrations.")

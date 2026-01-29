@@ -815,12 +815,27 @@ def test_fetch_usage_for_service_by_month_populates_ft_billing_for_today(notify_
     assert len(results) == 2
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_service_annual(
     sample_service,
     sample_service_billing_fy_2016,
     notify_db_session,
+    session,
+    expected_bind_key,
 ):
-    results = fetch_usage_for_service_annual(service_id=sample_service.id, year=2016)
+    service_id = sample_service.id
+
+    with QueryRecorder() as query_recorder:
+        results = fetch_usage_for_service_annual(service_id=service_id, year=2016, session=session)
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 3
 
     assert results[0].notification_type == "email"
@@ -848,12 +863,27 @@ def test_fetch_usage_for_service_annual(
     assert results[2].charged_units == 3
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_service_annual_variable_rates(
     sample_service,
     sample_service_billing_fy_2018_variable_rates,
     notify_db_session,
+    session,
+    expected_bind_key,
 ):
-    results = fetch_usage_for_service_annual(service_id=sample_service.id, year=2018)
+    service_id = sample_service.id
+
+    with QueryRecorder() as query_recorder:
+        results = fetch_usage_for_service_annual(service_id=service_id, year=2018, session=session)
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 4
 
     assert results[0].notification_type == "letter"
@@ -1238,11 +1268,22 @@ def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session):
     )
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation(
-    sample_service, sample_organisation, sample_service_billing_fy_2016, notify_db_session
+    sample_service, sample_organisation, sample_service_billing_fy_2016, notify_db_session, session, expected_bind_key
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
-    results, updated_at = fetch_usage_for_organisation(sample_organisation.id, 2016)
+
+    organisation_id = sample_organisation.id
+
+    with QueryRecorder() as query_recorder:
+        results, updated_at = fetch_usage_for_organisation(organisation_id, 2016, session=session)
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 1
     assert updated_at is None
 
@@ -1257,16 +1298,32 @@ def test_fetch_usage_for_organisation(
     assert first_row["emails_sent"] == 4
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation_includes_updated_at_from_cache_for_current_year(
-    sample_service, sample_organisation, sample_service_billing_fy_2016, notify_db_session, mocker
+    sample_service,
+    sample_organisation,
+    sample_service_billing_fy_2016,
+    notify_db_session,
+    mocker,
+    session,
+    expected_bind_key,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
     mocker.patch(
         "app.dao.fact_billing_dao.get_ft_billing_data_for_today_updated_at", return_value="2016-06-01T12:00:00+00:00"
     )
 
+    organisation_id = sample_organisation.id
+
     with freeze_time("2016-06-01"):
-        results, updated_at = fetch_usage_for_organisation(sample_organisation.id, 2016)
+        with QueryRecorder() as query_recorder:
+            results, updated_at = fetch_usage_for_organisation(organisation_id, 2016, session=session)
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 1
     assert updated_at == "2016-06-01T12:00:00+00:00"
 
@@ -1281,14 +1338,26 @@ def test_fetch_usage_for_organisation_includes_updated_at_from_cache_for_current
     assert first_row["emails_sent"] == 4
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation_variable_rates(
     sample_service,
     sample_organisation,
     sample_service_billing_fy_2018_variable_rates,
     notify_db_session,
+    session,
+    expected_bind_key,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
-    results, _ = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2018)
+    organisation_id = sample_organisation.id
+
+    with QueryRecorder() as query_recorder:
+        results, _ = fetch_usage_for_organisation(organisation_id=organisation_id, year=2018, session=session)
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
 
     assert len(results) == 1
     row = results[str(sample_service.id)]
@@ -1300,11 +1369,23 @@ def test_fetch_usage_for_organisation_variable_rates(
     assert row["sms_cost"] == 0.045
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation_sms_remainder(
-    sample_service, sample_restricted_service, sample_organisation, sample_sms_template, notify_db_session
+    sample_service,
+    sample_restricted_service,
+    sample_organisation,
+    sample_sms_template,
+    notify_db_session,
+    session,
+    expected_bind_key,
 ):
+    organisation_id = sample_organisation.id
     # Restricted (trial) service
-    dao_add_service_to_organisation(service=sample_restricted_service, organisation_id=sample_organisation.id)
+    dao_add_service_to_organisation(service=sample_restricted_service, organisation_id=organisation_id)
     restricted_service_sms_template = create_template(service=sample_restricted_service, template_type="sms")
     create_annual_billing(service_id=sample_restricted_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
     create_ft_billing(
@@ -1312,26 +1393,45 @@ def test_fetch_usage_for_organisation_sms_remainder(
     )
 
     # Live service
-    dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
+    dao_add_service_to_organisation(service=sample_service, organisation_id=organisation_id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=1)
 
-    results, _ = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
+    with QueryRecorder() as query_recorder:
+        results, _ = fetch_usage_for_organisation(
+            organisation_id=organisation_id,
+            year=2016,
+            session=session,
+        )
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 1  # show organisation usage for only live services
 
     row = results[str(sample_service.id)]
     assert row["sms_remainder"] == 2
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation_no_usage(
-    sample_service,
-    sample_organisation,
-    notify_db_session,
+    sample_service, sample_organisation, notify_db_session, session, expected_bind_key
 ):
-    dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
+    organisation_id = sample_organisation.id
+
+    dao_add_service_to_organisation(service=sample_service, organisation_id=organisation_id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
 
-    results, _ = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
+    with QueryRecorder() as query_recorder:
+        results, _ = fetch_usage_for_organisation(
+            organisation_id=organisation_id,
+            year=2016,
+            session=session,
+        )
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 1
 
     row = results[str(sample_service.id)]
@@ -1342,34 +1442,76 @@ def test_fetch_usage_for_organisation_no_usage(
     assert row["sms_cost"] == 0.0
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation_excludes_trial_services(
     sample_service,
     sample_organisation,
     sample_sms_template,
     notify_db_session,
+    session,
+    expected_bind_key,
 ):
-    dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
+    organisation_id = sample_organisation.id
+
+    dao_add_service_to_organisation(service=sample_service, organisation_id=organisation_id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
 
-    results, _ = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
+    with QueryRecorder() as query_recorder:
+        results, _ = fetch_usage_for_organisation(
+            organisation_id=organisation_id,
+            year=2016,
+            session=session,
+        )
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 1
 
+    # Persist the "restricted" change so the bulk session can see it
     sample_service.restricted = True
-    results, _ = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
+    db.session.commit()
+
+    with QueryRecorder() as query_recorder:
+        results, _ = fetch_usage_for_organisation(
+            organisation_id=organisation_id,
+            year=2016,
+            session=session,
+        )
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 0
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation_partially_billable(
     sample_service,
     sample_organisation,
     sample_sms_template,
     notify_db_session,
+    session,
+    expected_bind_key,
 ):
-    dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
+    organisation_id = sample_organisation.id
+
+    dao_add_service_to_organisation(service=sample_service, organisation_id=organisation_id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2019)
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
 
-    results, _ = fetch_usage_for_organisation(sample_organisation.id, 2019)
+    with QueryRecorder() as query_recorder:
+        results, _ = fetch_usage_for_organisation(
+            organisation_id=organisation_id,
+            year=2019,
+            session=session,
+        )
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 1
 
     row = results[str(sample_service.id)]
@@ -1379,23 +1521,39 @@ def test_fetch_usage_for_organisation_partially_billable(
     assert row["sms_cost"] == 0.22
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation_multiple_services(
     sample_organisation,
     notify_db_session,
+    session,
+    expected_bind_key,
 ):
+    organisation_id = sample_organisation.id
     service_1 = create_service(service_name="Service 1")
-    dao_add_service_to_organisation(service=service_1, organisation_id=sample_organisation.id)
+    dao_add_service_to_organisation(service=service_1, organisation_id=organisation_id)
     service_1_template = create_template(service=service_1, template_type="sms")
     create_ft_billing(template=service_1_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162)
     create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=2016)
 
     service_2 = create_service(service_name="Service 2")
-    dao_add_service_to_organisation(service=service_2, organisation_id=sample_organisation.id)
+    dao_add_service_to_organisation(service=service_2, organisation_id=organisation_id)
     service_2_template = create_template(service=service_2, template_type="sms")
     create_ft_billing(template=service_2_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162)
     create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=6, financial_year_start=2016)
 
-    results, _ = fetch_usage_for_organisation(sample_organisation.id, 2016)
+    with QueryRecorder() as query_recorder:
+        results, _ = fetch_usage_for_organisation(
+            organisation_id=organisation_id,
+            year=2016,
+            session=session,
+        )
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
+
     assert len(results) == 2
 
     service_1_row = results[str(service_1.id)]
@@ -1409,14 +1567,32 @@ def test_fetch_usage_for_organisation_multiple_services(
     assert service_2_row["sms_cost"] == 0
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_usage_for_organisation_without_annual_billing(
-    sample_service, sample_organisation, sample_sms_template, notify_db_session
+    sample_service,
+    sample_organisation,
+    sample_sms_template,
+    notify_db_session,
+    session,
+    expected_bind_key,
 ):
+    organisation_id = sample_organisation.id
     # Example: we don't continue populating annual_billing for inactive services
     sample_service.active = False
-    dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
+    dao_add_service_to_organisation(service=sample_service, organisation_id=organisation_id)
 
-    results, _ = fetch_usage_for_organisation(sample_organisation.id, 2016)
+    with QueryRecorder() as query_recorder:
+        results, _ = fetch_usage_for_organisation(
+            organisation_id=organisation_id,
+            year=2016,
+            session=session,
+        )
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
     assert len(results) == 1
 
     row = results[str(sample_service.id)]
