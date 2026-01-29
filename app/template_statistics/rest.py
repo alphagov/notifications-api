@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 
+from app import db
 from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_for_today_and_7_previous_days,
 )
@@ -26,7 +27,7 @@ def get_template_statistics_for_service_by_day(service_id):
     if whole_days < 0 or whole_days > 7:
         raise InvalidRequest({"whole_days": ["whole_days must be between 0 and 7"]}, status_code=400)
     data = fetch_notification_status_for_service_for_today_and_7_previous_days(
-        service_id, by_template=True, limit_days=whole_days
+        service_id, by_template=True, limit_days=whole_days, session=db.session_bulk
     )
 
     return jsonify(
