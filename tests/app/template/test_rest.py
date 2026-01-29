@@ -13,6 +13,7 @@ from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from pypdf.errors import PdfReadError
 
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
+from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id
 from app.dao.templates_dao import (
     dao_get_template_by_id,
     dao_get_template_versions,
@@ -1890,3 +1891,27 @@ def test_get_email_template_with_file_returns_files(client, admin_request, sampl
         "template.get_template_by_id_and_service_id", service_id=sample_service.id, template_id=template.id
     )
     assert {file.get("filename") for file in json_resp["data"]["email_files"]} == set(files_to_create)
+
+
+@pytest.mark.parametrize("files_to_create", [["file_one.pdf"], ["file_one.pdf, file_two.pdf"], []])
+@freeze_time("2025-12-30 16:06:04.000000")
+def test_archive_template_with_email_files_archives_files(client, admin_request, sample_service, files_to_create):
+    template = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="sample_template")
+    for filename in files_to_create:
+        create_template_email_file(template.id, created_by_id=sample_service.users[0].id, filename=filename)
+    data = {
+        "archived": True,
+    }
+
+    client.post(
+        f"/service/{sample_service.id}/template/{template.id}",
+        headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
+        data=json.dumps(data),
+    )
+    archived_template = dao_get_template_by_id(template_id=template.id)
+    assert archived_template.archived
+    assert len(archived_template.email_files) == len(files_to_create)
+    for file in dao_get_template_email_files_by_template_id(template.id):
+        assert file.archived_at == "2025-12-30 16:06:04.000000"
+        assert file.template_version == archived_template.version
+        assert file.version == 1

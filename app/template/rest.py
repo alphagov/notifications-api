@@ -115,7 +115,7 @@ def create_template(service_id):
 
 
 @template_blueprint.route("/<uuid:template_id>", methods=["POST"])
-def update_template(service_id, template_id):
+def update_template(service_id, template_id):  # noqa: C901
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
     if not fetched_template.service.has_permission(fetched_template.template_type):
@@ -160,12 +160,17 @@ def update_template(service_id, template_id):
         update_dict.folder = None
 
     dao_update_template(update_dict)
-
-    if file_ids_to_archive := data.get("archive_email_file_ids"):
+    if update_dict.archived:
+        file_ids_to_archive = [file.id for file in update_dict.email_files]
+    else:
+        file_ids_to_archive = data.get("archive_email_file_ids")
+    if file_ids_to_archive:
         for file_id in file_ids_to_archive:
             file_to_archive = dao_get_template_email_file_by_id(file_id)
             dao_archive_template_email_file(
-                file_to_archive=file_to_archive, archived_by_id=data["created_by"], template_version=update_dict.version
+                file_to_archive=file_to_archive,
+                archived_by_id=data.get("created_by"),
+                template_version=update_dict.version,
             )
 
     return jsonify(data=template_schema.dump(update_dict)), 200
