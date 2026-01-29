@@ -422,6 +422,11 @@ def init_app(app):
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
+        response.headers.add("X-Frame-Options", "SAMEORIGIN")
+        response.headers.add("X-Permitted-Cross-Domain-Policies", "none")
+        response.headers.add("Pragma", "no-cache")
+        response.headers.add("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+        response.headers.add("Cache-Control", "no-store, no-cache, private, must-revalidate")
         return response
 
     @app.teardown_appcontext
