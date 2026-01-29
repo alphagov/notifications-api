@@ -265,15 +265,6 @@ def set_config_values(app, dict):
             app.config[key] = old_values[key]
 
 
-def pytest_collection_modifyitems(session, config, items):
-    # This change forces the test_notification_dao_delete_notifications.py file to run at the very end of all the tests.
-    # The tests in this file delete data, which was causing other tests to fail.
-    # Running them last, preventing it from impacting other tests.
-    last_items = [item for item in items if "test_notification_dao_delete_notifications.py" in item.nodeid]
-    other_items = [item for item in items if "test_notification_dao_delete_notifications.py" not in item.nodeid]
-    items[:] = other_items + last_items
-
-
 class Matcher:
     def __init__(self, description, key):
         self.description = description

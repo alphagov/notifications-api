@@ -613,7 +613,9 @@ def test_insert_notification_history_delete_notifications_can_handle_different_c
         key_type="team",
     )
 
-    with notify_db_session.begin_nested():
+    nested = notify_db_session.begin_nested()
+    # context manager not quite appropriate for cases where we always want to roll back
+    try:
         notify_db_session.execute(text("drop view notifications_all_time_view"))
         notify_db_session.execute(text("alter table notification_history drop column client_reference"))
         notify_db_session.execute(text("alter table notification_history add column client_reference varchar"))
@@ -622,9 +624,11 @@ def test_insert_notification_history_delete_notifications_can_handle_different_c
             notification_type=sample_template.template_type,
             service_id=sample_template.service_id,
             timestamp_to_delete_backwards_from=datetime.utcnow(),
+            # must not let @autocommit act here
+            _autocommit=False,
         )
-
-        assert del_count == 2
-
+    finally:
         # Restore the view and undo column changes.
-        notify_db_session.rollback()
+        nested.rollback()
+
+    assert del_count == 2
