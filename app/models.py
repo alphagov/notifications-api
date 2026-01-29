@@ -1166,11 +1166,11 @@ class TemplateBase(db.Model):
             return None
 
     @hybrid_property
-    def is_precompiled_letter(self):
+    def is_precompiled_letter(self) -> bool:
         return self.hidden and self.name == PRECOMPILED_TEMPLATE_NAME and self.template_type == LETTER_TYPE
 
-    @is_precompiled_letter.setter
-    def is_precompiled_letter(self, value):
+    @is_precompiled_letter.inplace.setter
+    def _is_precompiled_letter_setter(self, value: bool) -> None:
         pass
 
     def _as_utils_template(self):
