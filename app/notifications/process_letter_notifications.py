@@ -15,6 +15,7 @@ def create_letter_notification(
     billable_units=None,
     updated_at=None,
     postage=None,
+    provider_requested=None,
     _autocommit=True,
 ):
     notification = persist_notification(
@@ -37,6 +38,7 @@ def create_letter_notification(
         # letter_data.get('postage') is only set for precompiled letters (if international it is set after sanitise)
         # letters from a template will pass in 'europe' or 'rest-of-world' if None then use postage from template
         postage=postage or letter_data.get("postage") or template.postage,
+        provider_requested=provider_requested,
         updated_at=updated_at,
         _autocommit=_autocommit,
     )

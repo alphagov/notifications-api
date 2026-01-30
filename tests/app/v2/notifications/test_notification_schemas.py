@@ -120,6 +120,15 @@ def test_post_sms_schema_is_valid(input):
     assert validate(input, post_sms_request_schema) == input
 
 
+def test_post_sms_schema_allows_provider():
+    data = {
+        "phone_number": "07515111111",
+        "template_id": str(uuid.uuid4()),
+        "provider": "mmg",
+    }
+    assert validate(data, post_sms_request_schema) == data
+
+
 def test_post_sms_schema_is_valid_for_landline_if_service_can_send_to_landlines():
     sms_data = {"phone_number": "0117 496 0860", "template_id": str(uuid.uuid4())}
     assert validate(sms_data, post_sms_request_schema) == sms_data
@@ -220,6 +229,15 @@ valid_post_email_json_with_optionals = {
     "reference": "reference from caller",
     "personalisation": {"key": "value"},
 }
+
+
+def test_post_email_schema_allows_provider():
+    data = {
+        "email_address": "test@example.gov.uk",
+        "template_id": str(uuid.uuid4()),
+        "provider": "ses",
+    }
+    assert validate(data, post_email_request_schema) == data
 
 
 @pytest.mark.parametrize("input", [valid_post_email_json, valid_post_email_json_with_optionals])

@@ -41,7 +41,9 @@ from app.clients.email.aws_ses import AwsSesClient
 from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.letter.dvla import DVLAClient
 from app.clients.sms.firetext import FiretextClient
+from app.clients.sms.firetext_stub import FiretextStubClient
 from app.clients.sms.mmg import MMGClient
+from app.clients.sms.mmg_stub import MMGStubClient
 from app.session import BindForcingSession
 
 Base = declarative_base()
@@ -90,6 +92,32 @@ get_mmg_client: LazyLocalGetter[MMGClient] = LazyLocalGetter(
 memo_resetters.append(lambda: get_mmg_client.clear())
 mmg_client = LocalProxy(get_mmg_client)
 
+_firetext_stub_client_context_var: ContextVar[FiretextStubClient] = ContextVar("firetext_stub_client")
+get_firetext_stub_client: LazyLocalGetter[FiretextStubClient] = LazyLocalGetter(
+    _firetext_stub_client_context_var,
+    lambda: FiretextStubClient(
+        current_app,
+        statsd_client=statsd_client,
+        stub_url=current_app.config["FIRETEXT_STUB_URL"],
+    ),
+    expected_type=FiretextStubClient,
+)
+memo_resetters.append(lambda: get_firetext_stub_client.clear())
+firetext_stub_client = LocalProxy(get_firetext_stub_client)
+
+_mmg_stub_client_context_var: ContextVar[MMGStubClient] = ContextVar("mmg_stub_client")
+get_mmg_stub_client: LazyLocalGetter[MMGStubClient] = LazyLocalGetter(
+    _mmg_stub_client_context_var,
+    lambda: MMGStubClient(
+        current_app,
+        statsd_client=statsd_client,
+        stub_url=current_app.config["MMG_STUB_URL"],
+    ),
+    expected_type=MMGStubClient,
+)
+memo_resetters.append(lambda: get_mmg_stub_client.clear())
+mmg_stub_client = LocalProxy(get_mmg_stub_client)
+
 _aws_ses_client_context_var: ContextVar[AwsSesClient] = ContextVar("aws_ses_client")
 get_aws_ses_client: LazyLocalGetter[AwsSesClient] = LazyLocalGetter(
     _aws_ses_client_context_var,
@@ -119,18 +147,19 @@ get_notification_provider_clients: LazyLocalGetter[NotificationProviderClients] 
     _notification_provider_clients_context_var,
     lambda: NotificationProviderClients(
         sms_clients={
-            getter.expected_type.name: LocalProxy(getter)
-            for getter in (
-                get_firetext_client,
-                get_mmg_client,
-            )
-        },
+            "firetext": LocalProxy(get_firetext_client),
+            "mmg": LocalProxy(get_mmg_client),
+        }
+        | (
+            {"firetext-stub": LocalProxy(get_firetext_stub_client)}
+            if current_app.config.get("FIRETEXT_STUB_URL")
+            else {}
+        )
+        | ({"mmg-stub": LocalProxy(get_mmg_stub_client)} if current_app.config.get("MMG_STUB_URL") else {}),
         email_clients={
-            getter.expected_type.name: LocalProxy(getter)
-            # If a stub url is provided for SES, then use the stub client rather
-            # than the real SES boto client
-            for getter in ((get_aws_ses_stub_client,) if current_app.config["SES_STUB_URL"] else (get_aws_ses_client,))
-        },
+            "ses": LocalProxy(get_aws_ses_client),
+        }
+        | ({"ses-stub": LocalProxy(get_aws_ses_stub_client)} if current_app.config.get("SES_STUB_URL") else {}),
     ),
 )
 memo_resetters.append(lambda: get_notification_provider_clients.clear())

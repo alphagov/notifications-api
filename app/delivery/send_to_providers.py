@@ -34,6 +34,7 @@ from app.dao.provider_details_dao import (
 )
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import Notification
+from app.provider_selection import get_allowed_providers
 from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
 
 
@@ -45,7 +46,9 @@ def send_sms_to_provider(notification: Notification) -> None:
         return
 
     if notification.status == "created":
-        provider = provider_to_use(SMS_TYPE, notification.international)
+        provider = provider_to_use(
+            SMS_TYPE, notification.international, provider_requested=notification.provider_requested
+        )
 
         template_model = SerialisedTemplate.from_id_service_id_and_version(
             template_id=notification.template_id, service_id=service.id, version=notification.template_version
@@ -136,7 +139,7 @@ def send_email_to_provider(notification):
         technical_failure(notification=notification)
         return
     if notification.status == "created":
-        provider = provider_to_use(EMAIL_TYPE)
+        provider = provider_to_use(EMAIL_TYPE, provider_requested=notification.provider_requested)
 
         template = SerialisedTemplate.from_id_service_id_and_version(
             template_id=notification.template_id, service_id=service.id, version=notification.template_version
@@ -197,7 +200,31 @@ def update_notification_to_sending(notification, provider):
     dao_update_notification(notification)
 
 
-def provider_to_use(notification_type, international=False):
+def provider_to_use(notification_type, international=False, provider_requested=None):
+    # If a provider was explicitly requested, enforce availability and configuration.
+    if provider_requested:
+        allowed = get_allowed_providers(notification_type, international=international)
+        if provider_requested not in allowed:
+            current_app.logger.error(
+                "Requested provider %s is not available for %s notifications",
+                provider_requested,
+                notification_type,
+                extra={"notification_type": notification_type, "provider_requested": provider_requested},
+            )
+            raise Exception(f"Requested provider {provider_requested} is not available for {notification_type}")
+
+        provider = notification_provider_clients.get_client_by_name_and_type(provider_requested, notification_type)
+        if not provider:
+            current_app.logger.error(
+                "Requested provider %s is not configured for %s notifications",
+                provider_requested,
+                notification_type,
+                extra={"notification_type": notification_type, "provider_requested": provider_requested},
+            )
+            raise Exception(f"Requested provider {provider_requested} is not configured for {notification_type}")
+
+        return provider
+
     active_providers = [
         p for p in SerialisedProviders.from_notification_type(notification_type, international) if p.active
     ]
