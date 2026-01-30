@@ -218,7 +218,7 @@ def increment_daily_limit_cache(service_id, notification_type):
         redis_store.incr(cache_key)
 
 
-def send_notification_to_queue_detached(key_type, notification_type, notification_id, queue=None):
+def send_notification_to_queue_detached(key_type, notification_type, notification_id, message_group_id, queue=None):
     if key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
 
@@ -236,14 +236,20 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
         deliver_task = get_pdf_for_templated_letter
 
     try:
-        deliver_task.apply_async([str(notification_id)], queue=queue)
+        deliver_task.apply_async([str(notification_id)], queue=queue, MessageGroupId=message_group_id)
     except Exception:
         dao_delete_notifications_by_id(notification_id)
         raise
 
 
-def send_notification_to_queue(notification, queue=None):
-    send_notification_to_queue_detached(notification.key_type, notification.notification_type, notification.id, queue)
+def send_notification_to_queue(notification, queue=None, origin="dashboard"):
+    send_notification_to_queue_detached(
+        notification.key_type,
+        notification.notification_type,
+        notification.id,
+        "#".join((str(notification.service_id), notification.notification_type, notification.key_type, origin)),
+        queue,
+    )
 
 
 def simulated_recipient(to_address, notification_type):

@@ -92,7 +92,10 @@ def get_pdf_for_templated_letter(self, notification_id):
         encoded_data = signing.encode(letter_data)
 
         notify_celery.send_task(
-            name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(encoded_data,), queue=QueueNames.SANITISE_LETTERS
+            name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER,
+            args=(encoded_data,),
+            queue=QueueNames.SANITISE_LETTERS,
+            MessageGroupId=getattr(self, "message_group_id", None),
         )
     except Exception as e:
         try:
@@ -245,7 +248,7 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
             reply_to_text=reply_to,
         )
 
-        send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
+        send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY, origin="scheduled")
 
 
 def send_dvla_letters_via_api(print_run_deadline_local, batch_size=100):
@@ -294,6 +297,7 @@ def sanitise_letter(self, filename):
                 "allow_international_letters": notification.service.has_permission(INTERNATIONAL_LETTERS),
             },
             queue=QueueNames.SANITISE_LETTERS,
+            MessageGroupId=getattr(self, "message_group_id", None),
         )
     except Exception:
         try:
@@ -541,8 +545,8 @@ def replay_letters_in_error(filename=None):
                 sanitise_letter.apply_async([filename], queue=QueueNames.LETTERS)
 
 
-@notify_celery.task(name="resanitise-pdf")
-def resanitise_pdf(notification_id):
+@notify_celery.task(name="resanitise-pdf", bind=True)
+def resanitise_pdf(self, notification_id):
     """
     `notification_id` is the notification id for a PDF letter which was either uploaded or sent using the API.
 
@@ -570,11 +574,12 @@ def resanitise_pdf(notification_id):
             "allow_international_letters": notification.service.has_permission(INTERNATIONAL_LETTERS),
         },
         queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=getattr(self, "message_group_id", None),
     )
 
 
-@notify_celery.task(name="resanitise-letter-attachment")
-def resanitise_letter_attachment(service_id, attachment_id, original_filename):
+@notify_celery.task(name="resanitise-letter-attachment", bind=True)
+def resanitise_letter_attachment(self, service_id, attachment_id, original_filename):
     """
     `service_id` is the service id for a PDF letter attachment/template.
     `attachment_id` is the attachment id for a PDF letter attachment which was uploaded for a template.
@@ -593,4 +598,5 @@ def resanitise_letter_attachment(service_id, attachment_id, original_filename):
             "original_filename": original_filename,
         },
         queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=getattr(self, "message_group_id", None),
     )

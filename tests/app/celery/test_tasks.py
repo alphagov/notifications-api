@@ -155,6 +155,7 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_task):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         )
     ]
     assert job.job_status == "finished"
@@ -201,6 +202,7 @@ def test_should_process_sms_job_with_sender_id(sample_job, mocker, mock_celery_t
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         )
     ]
     assert job.job_status == "finished"
@@ -299,6 +301,7 @@ def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_d
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         call(
             (
@@ -310,6 +313,7 @@ def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_d
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         call(
             (
@@ -321,6 +325,7 @@ def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_d
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         call(
             (
@@ -330,6 +335,7 @@ def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_d
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
     ]
     assert mock_check_message_limit.mock_calls == [
@@ -405,6 +411,7 @@ def test_should_process_email_job(email_job_with_placeholders, mocker, mock_cele
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         )
     ]
 
@@ -461,6 +468,7 @@ def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mo
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         )
     ]
 
@@ -521,6 +529,7 @@ def test_should_process_letter_job(sample_letter_job, mocker, mock_celery_task):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         )
     ]
 
@@ -607,6 +616,7 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         call(
             (
@@ -620,6 +630,7 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
     ]
 
@@ -710,6 +721,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # fails - splits & retries first half
         call(
@@ -721,6 +733,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # succeeds - retries second half
         call(
@@ -733,6 +746,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # fails - splits & retries first half
         call(
@@ -743,6 +757,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # succeeds - retries second half
         call(
@@ -754,6 +769,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # fails - splits & retries first half
         call(
@@ -764,6 +780,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # fails & gives up because we can't split any further.
         # doesn't proceed to second top-level batch.
@@ -866,6 +883,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # fails - splits & retries first half
         call(
@@ -877,6 +895,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # fails - splits & retries first half
         call(
@@ -887,6 +906,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # succeeds - retries second half
         call(
@@ -897,6 +917,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # succeeds - unwinds and retries second half
         call(
@@ -909,6 +930,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # succeeds, proceeds to second top-level batch
         call(
@@ -923,6 +945,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=None,
         ),
         # succeeds
     ]
@@ -1098,16 +1121,19 @@ def test_shatter_job_rows(template_type, send_fn, mock_celery_task, mocker):
             ("service-id-0", "notification-id-0", "encoded-0"),
             {} if template_type == LETTER_TYPE else {"sender_id": "0"},
             queue="database-tasks",
+            MessageGroupId=None,
         ),
         call(
             ("service-id-1", "notification-id-1", "encoded-1"),
             {} if template_type == LETTER_TYPE else {"sender_id": "1"},
             queue="database-tasks",
+            MessageGroupId=None,
         ),
         call(
             ("service-id-2", "notification-id-2", "encoded-2"),
             {} if template_type == LETTER_TYPE else {"sender_id": "2"},
             queue="database-tasks",
+            MessageGroupId=None,
         ),
     ]
 
@@ -1147,7 +1173,11 @@ def test_should_send_template_to_correct_sms_task_and_persist(
     assert persisted_notification._personalisation == signing.encode({"name": "Jo"})
     assert persisted_notification.notification_type == "sms"
     assert persisted_notification.client_reference == client_reference
-    mocked_task.assert_called_once_with([str(persisted_notification.id)], queue="send-sms-tasks")
+    mocked_task.assert_called_once_with(
+        [str(persisted_notification.id)],
+        queue="send-sms-tasks",
+        MessageGroupId=None,
+    )
 
 
 @pytest.mark.parametrize("client_reference", [None, "ab1234"])
@@ -1203,7 +1233,9 @@ def test_should_save_sms_if_restricted_service_and_valid_number(notify_db_sessio
     assert not persisted_notification.personalisation
     assert persisted_notification.notification_type == "sms"
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="send-sms-tasks"
+        [str(persisted_notification.id)],
+        queue="send-sms-tasks",
+        MessageGroupId=None,
     )
 
 
@@ -1303,7 +1335,9 @@ def test_should_save_sms_template_to_and_persist_with_job_id(sample_job, mock_ce
     assert persisted_notification.notification_type == "sms"
 
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="send-sms-tasks"
+        [str(persisted_notification.id)],
+        queue="send-sms-tasks",
+        MessageGroupId=None,
     )
 
 
@@ -1374,7 +1408,9 @@ def test_should_use_email_template_and_persist(
     assert persisted_notification.client_reference == client_reference
 
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="send-email-tasks"
+        [str(persisted_notification.id)],
+        queue="send-email-tasks",
+        MessageGroupId=None,
     )
 
 
@@ -1409,7 +1445,9 @@ def test_save_email_should_use_template_version_from_job_not_latest(sample_email
     assert not persisted_notification.sent_by
     assert persisted_notification.notification_type == "email"
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="send-email-tasks"
+        [str(persisted_notification.id)],
+        queue="send-email-tasks",
+        MessageGroupId=None,
     )
 
 
@@ -1434,7 +1472,9 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     assert not persisted_notification.reference
     assert persisted_notification.notification_type == "email"
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="send-email-tasks"
+        [str(persisted_notification.id)],
+        queue="send-email-tasks",
+        MessageGroupId=None,
     )
 
 
@@ -1502,7 +1542,9 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     assert not persisted_notification.reference
     assert persisted_notification.notification_type == "email"
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="send-email-tasks"
+        [str(persisted_notification.id)],
+        queue="send-email-tasks",
+        MessageGroupId=None,
     )
 
 
@@ -1635,7 +1677,9 @@ def test_send_email_with_template_email_files_from_old_template_version(
     ]
 
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="send-email-tasks"
+        [str(persisted_notification.id)],
+        queue="send-email-tasks",
+        MessageGroupId=None,
     )
 
 
@@ -2086,7 +2130,11 @@ def test_save_letter_calls_get_pdf_for_templated_letter_task(
     )
 
     assert mock_create_letters_pdf.called
-    mock_create_letters_pdf.assert_called_once_with([str(notification_id)], queue=QueueNames.CREATE_LETTERS_PDF)
+    mock_create_letters_pdf.assert_called_once_with(
+        [str(notification_id)],
+        queue=QueueNames.CREATE_LETTERS_PDF,
+        MessageGroupId=None,
+    )
 
 
 def test_should_cancel_job_if_service_is_inactive(sample_service, sample_job, mocker, mock_celery_task):
@@ -2248,6 +2296,7 @@ def test_process_incomplete_job_sms(mocker, mock_celery_task, sample_template):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         call(
             (
@@ -2259,6 +2308,7 @@ def test_process_incomplete_job_sms(mocker, mock_celery_task, sample_template):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         call(
             (
@@ -2269,6 +2319,7 @@ def test_process_incomplete_job_sms(mocker, mock_celery_task, sample_template):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
     ]
 
@@ -2402,6 +2453,7 @@ def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         call(
             (
@@ -2434,6 +2486,7 @@ def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         call(
             (
@@ -2474,6 +2527,7 @@ def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         call(
             (
@@ -2490,6 +2544,7 @@ def test_process_incomplete_jobs_sms(mocker, mock_celery_task, sample_template):
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
     ]
 
@@ -2587,6 +2642,7 @@ def test_process_incomplete_jobs_raises_exception_if_row_too_big(mocker, mock_ce
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         # fails - splits & retries first half
         call(
@@ -2604,6 +2660,7 @@ def test_process_incomplete_jobs_raises_exception_if_row_too_big(mocker, mock_ce
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         # succeeds - retries second half
         call(
@@ -2629,6 +2686,7 @@ def test_process_incomplete_jobs_raises_exception_if_row_too_big(mocker, mock_ce
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         # fails - splits & retries first half
         call(
@@ -2646,6 +2704,7 @@ def test_process_incomplete_jobs_raises_exception_if_row_too_big(mocker, mock_ce
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job.service_id}#sms#normal#",
         ),
         # fails - gives up on this job & proceeds to next
         call(
@@ -2679,6 +2738,7 @@ def test_process_incomplete_jobs_raises_exception_if_row_too_big(mocker, mock_ce
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job2.service_id}#sms#normal#",
         ),
         call(
             (
@@ -2703,6 +2763,7 @@ def test_process_incomplete_jobs_raises_exception_if_row_too_big(mocker, mock_ce
                 ],
             ),
             queue="job-tasks",
+            MessageGroupId=f"{job2.service_id}#sms#normal#",
         ),
     ]
 

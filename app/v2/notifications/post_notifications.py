@@ -228,6 +228,7 @@ def process_sms_or_email_notification(
             key_type=api_user.key_type,
             notification_type=notification_type,
             notification_id=notification_id,
+            message_group_id="#".join((str(service.id), notification_type, api_user.key_type, "api")),
         )
     else:
         current_app.logger.info(
@@ -297,9 +298,16 @@ def process_letter_notification(
     if service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message="Cannot send letters when service is in trial mode", status_code=403)
 
+    message_group_id = "#".join((str(service.id), LETTER_TYPE, api_key.key_type, "api"))
+
     if precompiled:
         return process_precompiled_letter_notifications(
-            letter_data=letter_data, api_key=api_key, service=service, template=template, reply_to_text=reply_to_text
+            letter_data=letter_data,
+            api_key=api_key,
+            service=service,
+            template=template,
+            reply_to_text=reply_to_text,
+            message_group_id=message_group_id,
         )
 
     postage = validate_address(service, letter_data["personalisation"])
@@ -330,12 +338,13 @@ def process_letter_notification(
         postage=postage,
     )
 
-    get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue)
+    get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue, MessageGroupId=message_group_id)
 
     if test_key and current_app.config["TEST_LETTERS_FAKE_DELIVERY"]:
         create_fake_letter_callback.apply_async(
             [notification.id, notification.billable_units, notification.postage],
             queue=queue,
+            MessageGroupId=message_group_id,
         )
 
     resp = create_response_for_post_notification(
@@ -351,7 +360,9 @@ def process_letter_notification(
     return resp
 
 
-def process_precompiled_letter_notifications(*, letter_data, api_key, service, template, reply_to_text):
+def process_precompiled_letter_notifications(
+    *, letter_data, api_key, service, template, reply_to_text, message_group_id
+):
     try:
         status = NOTIFICATION_PENDING_VIRUS_CHECK
         letter_content = base64.b64decode(letter_data["content"])
@@ -385,10 +396,11 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
             name=TaskNames.SCAN_FILE,
             kwargs={"filename": filename},
             queue=QueueNames.ANTIVIRUS,
+            MessageGroupId=message_group_id,
         )
     else:
         # stub out antivirus in dev
-        sanitise_letter.apply_async([filename], queue=QueueNames.LETTERS)
+        sanitise_letter.apply_async([filename], queue=QueueNames.LETTERS, MessageGroupId=message_group_id)
 
     return resp
 
