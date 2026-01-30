@@ -291,7 +291,7 @@ def test_remove_inbound_sms_for_service_dao_error(admin_request, sample_service_
         mock_remove_inbound.assert_called_with(service.id, True)
 
         assert f"error removing inbound SMS for service {service.id}: some error" in caplog.messages
-        assert response["message"] == "some error"
+        assert response["message"] == "Error occured removing inbound SMS"
 
 
 def test_remove_inbound_sms_for_service_success_without_sms_type_permission(admin_request, sample_service):

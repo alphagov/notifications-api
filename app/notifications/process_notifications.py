@@ -105,7 +105,7 @@ def add_email_file_links_to_personalisation(template, personalisation, recipient
             confirmation_email=validate_and_format_email_address(recipient)
             if email_file.validate_users_email
             else None,
-            retention_period=email_file.retention_period,
+            retention_period=f"{email_file.retention_period} weeks",
             filename=email_file.filename,
         )
         if email_file.link_text:

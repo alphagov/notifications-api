@@ -14,7 +14,7 @@ from notifications_utils.international_billing_rates import (
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import String, and_, asc, column, desc, func, not_, or_, select, text, union, values
+from sqlalchemy import Row, String, and_, asc, column, desc, func, not_, or_, select, text, union_all, values
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, defer, joinedload, scoped_session, undefer
 from sqlalchemy.orm.exc import NoResultFound
@@ -710,15 +710,17 @@ def dao_get_unknown_references(references):
     )
 
 
+@retryable_query()
 def dao_get_notifications_by_recipient_or_reference(
-    service_id,
-    search_term,
-    notification_type=None,
-    statuses=None,
-    page=1,
-    page_size=None,
-    error_out=True,
-):
+    service_id: uuid.UUID | str,
+    search_term: str,
+    notification_type: str | None = None,
+    statuses: Sequence[str] | None = None,
+    page: int = 1,
+    page_size: int | None = None,
+    error_out: bool = True,
+    session: Session | scoped_session = db.session,
+) -> Sequence[Notification]:
     if notification_type == SMS_TYPE:
         normalised = try_parse_and_format_phone_number(search_term, with_country_code=False)
         for character in {"(", ")", " ", "-"}:
@@ -760,10 +762,10 @@ def dao_get_notifications_by_recipient_or_reference(
     if notification_type:
         filters.append(Notification.notification_type == notification_type)
     results = (
-        db.session.query(Notification)
+        session.query(Notification)
         .filter(*filters)
         .order_by(desc(Notification.created_at))
-        .paginate(page=page, per_page=page_size, count=False, error_out=error_out)
+        .paginate(page=page, per_page=page_size, count=False, error_out=error_out)  # type: ignore
     )
     return results
 
@@ -781,32 +783,21 @@ def dao_get_notification_or_history_by_reference(reference):
         return NotificationHistory.query.filter(NotificationHistory.reference == reference).one()
 
 
-def dao_get_notifications_processing_time_stats(start_date, end_date):
+@retryable_query()
+def dao_get_notifications_processing_time_stats(
+    start_dt: datetime, end_dt: datetime, session: Session | scoped_session = db.session
+) -> Row:
     """
     For a given time range, returns the number of notifications sent and the number of
     those notifications that we processed within 10 seconds
-
-    SELECT
-    count(notifications),
-    coalesce(sum(CASE WHEN sent_at - created_at <= interval '10 seconds' THEN 1 ELSE 0 END), 0)
-    FROM notifications
-    WHERE
-    created_at > 'START DATE' AND
-    created_at < 'END DATE' AND
-    api_key_id IS NOT NULL AND
-    key_type != 'test' AND
-    notification_type != 'letter';
     """
     under_10_secs = Notification.sent_at - Notification.created_at <= timedelta(seconds=10)
     sum_column = functions.coalesce(functions.sum(case((under_10_secs, 1), else_=0)), 0)
-
     return (
-        db.session.query(
-            func.count(Notification.id).label("messages_total"), sum_column.label("messages_within_10_secs")
-        )
+        session.query(func.count(Notification.id).label("messages_total"), sum_column.label("messages_within_10_secs"))
         .filter(
-            Notification.created_at >= start_date,
-            Notification.created_at < end_date,
+            Notification.created_at >= start_dt,
+            Notification.created_at < end_dt,
             Notification.api_key_id.isnot(None),
             Notification.key_type != KEY_TYPE_TEST,
             Notification.notification_type != LETTER_TYPE,
@@ -1033,28 +1024,36 @@ def get_service_ids_with_notifications_before(notification_type, timestamp):
     }
 
 
-def get_service_ids_with_notifications_on_date(notification_type, date):
-    start_date = get_london_midnight_in_utc(date)
-    end_date = get_london_midnight_in_utc(date + timedelta(days=1))
+@retryable_query()
+def get_service_ids_with_notifications_on_date(
+    notification_type: str, process_day: date, session: Session | scoped_session = db.session
+) -> set[uuid.UUID]:
+    start_datetime = get_london_midnight_in_utc(process_day)
+    end_datetime = get_london_midnight_in_utc(process_day + timedelta(days=1))
 
-    notification_table_query = db.session.query(Notification.service_id.label("service_id")).filter(
-        Notification.notification_type == notification_type,
-        # using >= + < is much more efficient than date(created_at)
-        Notification.created_at >= start_date,
-        Notification.created_at < end_date,
+    notification_table_query = (
+        session.query(Notification.service_id.label("service_id"))
+        .filter(
+            Notification.notification_type == notification_type,
+            # using >= + < is much more efficient than date(created_at)
+            Notification.created_at >= start_datetime,
+            Notification.created_at < end_datetime,
+        )
+        .group_by(Notification.service_id)
     )
 
     # Looking at this table is more efficient for historical notifications,
     # provided the task to populate it has run before they were archived.
-    ft_status_table_query = db.session.query(FactNotificationStatus.service_id.label("service_id")).filter(
-        FactNotificationStatus.notification_type == notification_type,
-        FactNotificationStatus.bst_date == date,
+    ft_status_table_query = (
+        session.query(FactNotificationStatus.service_id.label("service_id"))
+        .filter(
+            FactNotificationStatus.notification_type == notification_type,
+            FactNotificationStatus.bst_date == process_day,
+        )
+        .group_by(FactNotificationStatus.service_id)
     )
 
-    return {
-        row.service_id
-        for row in db.session.query(union(notification_table_query, ft_status_table_query).subquery()).distinct()
-    }
+    return set(session.execute(union_all(notification_table_query, ft_status_table_query)).scalars().all())
 
 
 @autocommit

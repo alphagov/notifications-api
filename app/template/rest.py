@@ -17,6 +17,10 @@ from sqlalchemy.orm.exc import NoResultFound
 from app.constants import LETTER_TYPE, QR_CODE_TOO_LONG, SECOND_CLASS, SMS_TYPE
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.dao.template_email_files_dao import (
+    dao_archive_template_email_file,
+    dao_get_template_email_file_by_id,
+)
 from app.dao.template_folder_dao import (
     dao_get_template_folder_by_id_and_service_id,
 )
@@ -154,7 +158,16 @@ def update_template(service_id, template_id):
     update_dict = template_schema.load(updated_template)
     if update_dict.archived:
         update_dict.folder = None
+
     dao_update_template(update_dict)
+
+    if file_ids_to_archive := data.get("archive_email_file_ids"):
+        for file_id in file_ids_to_archive:
+            file_to_archive = dao_get_template_email_file_by_id(file_id)
+            dao_archive_template_email_file(
+                file_to_archive=file_to_archive, archived_by_id=data["created_by"], template_version=update_dict.version
+            )
+
     return jsonify(data=template_schema.dump(update_dict)), 200
 
 

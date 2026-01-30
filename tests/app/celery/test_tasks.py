@@ -1,3 +1,4 @@
+import base64
 import logging
 import uuid
 from datetime import datetime, timedelta
@@ -1661,16 +1662,16 @@ def test_send_email_with_template_email_files_from_old_template_version(
     assert mock_document_download_client_upload.call_args_list == [
         call(
             mocker.ANY,
-            "file_from_s3_1",
+            base64.b64encode(b"file_from_s3_1").decode("utf-8"),
             confirmation_email="anne@example.com",
-            retention_period=26,
+            retention_period="26 weeks",
             filename="invitation.pdf",
         ),
         call(
             mocker.ANY,
-            "file_from_s3_2",
+            base64.b64encode(b"file_from_s3_2").decode("utf-8"),
             confirmation_email="anne@example.com",
-            retention_period=26,
+            retention_period="26 weeks",
             filename="form.pdf",
         ),
     ]

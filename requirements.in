@@ -1,7 +1,7 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements.in
 
-celery[sqs]==5.4.0
+celery[sqs]==5.6.0
 Flask-Bcrypt==1.0.1
 flask-marshmallow==1.3.0
 Flask-Migrate==3.1.0
@@ -24,7 +24,7 @@ psutil>=6.0.0,<7.0.0
 notifications-python-client==10.0.1
 
 # Run `make bump-utils` to update to the latest version
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@e5c5f3ecd4e6d7753eea03ff824d195a34992ee2
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@db634aa8f50c1277dc00f26aba2ddb8b062c6e56
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
 prometheus-client==0.14.1
