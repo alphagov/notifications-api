@@ -432,11 +432,11 @@ class Config:
             # We schedule it for 16:50 and 17:50 UTC. This task is then responsible for determining if the local time
             # is 17:50, and if so, actually kicking off letter collation.
             # If updating the cron schedule, you should update the task as well.
-            "check-time-to-collate-letters": {
-                "task": "check-time-to-collate-letters",
-                "schedule": crontab(hour="16,17", minute=50),
-                "options": {"queue": QueueNames.PERIODIC},
-            },
+            # "check-time-to-collate-letters": {
+            #     "task": "check-time-to-collate-letters",
+            #     "schedule": crontab(hour="16,17", minute=50),
+            #     "options": {"queue": QueueNames.PERIODIC},
+            # },
             "delete-old-records-from-events-table": {
                 "task": "delete-old-records-from-events-table",
                 "schedule": crontab(hour=3, minute=4),
