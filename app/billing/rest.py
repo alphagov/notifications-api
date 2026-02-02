@@ -46,7 +46,7 @@ def get_yearly_billing_usage_summary_from_ft_billing(service_id):
     except TypeError:
         return jsonify(result="error", message="No valid year provided"), 400
 
-    billing_data = fetch_usage_for_service_annual(service_id, year, session=db.session_bulk)
+    billing_data = fetch_usage_for_service_annual(service_id, year, session=db.session_bulk, retry_attempts=2)
     data = serialize_ft_billing_yearly_totals(billing_data)
     return jsonify(data)
 

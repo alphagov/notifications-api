@@ -265,6 +265,7 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     return db.session.execute(query.statement)
 
 
+@retryable_query()
 def fetch_usage_for_service_annual(
     service_id,
     year,
