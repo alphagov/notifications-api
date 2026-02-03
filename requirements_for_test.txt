@@ -190,7 +190,7 @@ jsonschema-specifications==2024.10.1
     # via
     #   -r requirements.txt
     #   jsonschema
-kombu==5.6.1
+kombu @ git+https://github.com/MartinSiby/kombu.git@f57e23cbb25a182ca6690ddc99961496aeb712aa
     # via
     #   -r requirements.txt
     #   celery
@@ -224,7 +224,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0bacb399a590cce77819aa9ba9f126640c684a7c
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@8b88a0fe609cdb7af1e1740394f653bc52532ef4
     # via -r requirements.txt
 ordered-set==4.1.0
     # via

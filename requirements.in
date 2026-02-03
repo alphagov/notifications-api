@@ -24,10 +24,12 @@ psutil>=6.0.0,<7.0.0
 notifications-python-client==10.0.1
 
 # Run `make bump-utils` to update to the latest version
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0bacb399a590cce77819aa9ba9f126640c684a7c
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@8b88a0fe609cdb7af1e1740394f653bc52532ef4
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
 prometheus-client==0.14.1
 git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
 
 sentry-sdk[flask,celery,sqlalchemy]==1.45.1
+
+kombu @ git+https://github.com/MartinSiby/kombu.git@f57e23cbb25a182ca6690ddc99961496aeb712aa
