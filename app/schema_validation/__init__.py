@@ -9,6 +9,11 @@ from notifications_utils.recipient_validation.email_address import validate_emai
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
 
+from app.constants import (
+    DOCUMENT_DOWNLOAD_RETENTION_LOWER_LIMIT_IN_WEEKS,
+    DOCUMENT_DOWNLOAD_RETENTION_UPPER_LIMIT_IN_WEEKS,
+)
+
 format_checker = FormatChecker()
 
 
@@ -88,7 +93,12 @@ def validate_schema_retention_period(instance):
     if isinstance(instance, str):
         period = instance.strip().lower()
         match = re.match(r"^(\d+) weeks?$", period)
-        if match and 1 <= int(match.group(1)) <= 78:
+        if (
+            match
+            and DOCUMENT_DOWNLOAD_RETENTION_LOWER_LIMIT_IN_WEEKS
+            <= int(match.group(1))
+            <= DOCUMENT_DOWNLOAD_RETENTION_UPPER_LIMIT_IN_WEEKS
+        ):
             return True
 
     raise ValidationError(
@@ -124,6 +134,17 @@ def send_a_file_confirm_email_before_download(instance):
     raise ValidationError(
         f"Unsupported value for confirm_email_before_download: {instance}. Use a boolean true or false value."
     )
+
+
+@format_checker.checks("send_file_via_ui_retention_period", raises=ValidationError)
+def validate_send_file_via_ui_retention_period(instance):
+    if isinstance(instance, int):
+        return (
+            DOCUMENT_DOWNLOAD_RETENTION_LOWER_LIMIT_IN_WEEKS
+            <= instance
+            <= DOCUMENT_DOWNLOAD_RETENTION_UPPER_LIMIT_IN_WEEKS
+        )
+    raise ValidationError(f"Unsuported value for for retention period: {instance}. Supported values are 1 to 78")
 
 
 def validate(json_to_validate, schema):
