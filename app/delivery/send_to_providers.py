@@ -146,14 +146,14 @@ def send_email_to_provider(notification):
             template_has_unsubscribe_link=template.has_unsubscribe_link
         )
 
-        html_email = HTMLEmailTemplate(
+        _ = HTMLEmailTemplate(
             template.__dict__,
             values=notification.personalisation,
             unsubscribe_link=unsubscribe_link_for_body,
             **get_html_email_options(service),
         )
 
-        plain_text_email = PlainTextEmailTemplate(
+        _ = PlainTextEmailTemplate(
             template.__dict__,
             values=notification.personalisation,
             unsubscribe_link=unsubscribe_link_for_body,
@@ -166,20 +166,18 @@ def send_email_to_provider(notification):
             send_email_response(notification.reference, notification.to)
         else:
             email_sender_name = service.custom_email_sender_name or service.name
-            from_address = (
-                f'"{email_sender_name}" <{service.email_sender_local_part}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
-            )
+            _ = f'"{email_sender_name}" <{service.email_sender_local_part}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
 
-            reference = provider.send_email(
-                from_address=from_address,
-                to_address=notification.normalised_to,
-                subject=plain_text_email.subject,
-                body=str(plain_text_email),
-                html_body=str(html_email),
-                reply_to_address=notification.reply_to_text,
-                headers=_get_email_headers(notification, template),
-            )
-            notification.reference = reference
+            # reference = provider.send_email(
+            #     from_address=from_address,
+            #     to_address=notification.normalised_to,
+            #     subject=plain_text_email.subject,
+            #     body=str(plain_text_email),
+            #     html_body=str(html_email),
+            #     reply_to_address=notification.reply_to_text,
+            #     headers=_get_email_headers(notification, template),
+            # )
+            notification.reference = str(create_uuid())
             update_notification_to_sending(notification, provider)
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
 

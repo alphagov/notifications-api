@@ -96,7 +96,11 @@ from app.utils import get_london_midnight_in_utc
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
-            process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
+            process_job.apply_async(
+                [str(job.id)],
+                queue=QueueNames.JOBS,
+                MessageGroupId="#".join((str(job.service_id), job.template.template_type, "normal", "scheduled")),
+            )
             current_app.logger.info("Job ID %s added to process job queue", job.id, extra={"job_id": job.id})
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
@@ -323,7 +327,7 @@ def replay_created_notifications() -> None:
                 extra,
                 extra=extra,
             )
-            send_notification_to_queue(notification=n)
+            send_notification_to_queue(notification=n, origin="")
 
     # if the letter has not be sent after an hour, then create a zendesk ticket
     letters = letters_missing_from_sending_bucket(grace_period, session=db.session_bulk, inner_retry_attempts=2)
@@ -335,7 +339,11 @@ def replay_created_notifications() -> None:
             letter.id,
             extra={"notification_id": letter.id},
         )
-        get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+        get_pdf_for_templated_letter.apply_async(
+            [str(letter.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF,
+            MessageGroupId="#".join((str(letter.service_id), letter.notification_type, letter.key_type, "")),
+        )
 
 
 @notify_celery.task(name="check-if-letters-still-pending-virus-check")
@@ -438,7 +446,11 @@ def check_for_missing_rows_in_completed_jobs():
 
             extra = {"job_row_number": row_to_process.missing_row, "job_id": job.id}
             current_app.logger.info("Processing missing row %(job_row_number)s for job %(job_id)s", extra, extra=extra)
-            process_job_row(template.template_type, task_args_kwargs)
+            process_job_row(
+                template.template_type,
+                task_args_kwargs,
+                "#".join((str(job.service_id), template.template_type, "normal", "")),
+            )
 
 
 @notify_celery.task(name="update-status-of-fully-processed-jobs")

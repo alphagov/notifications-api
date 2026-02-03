@@ -68,8 +68,8 @@ class ProcessReportRequestException(Exception):
     pass
 
 
-@notify_celery.task(name="process-job")
-def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
+@notify_celery.task(name="process-job", bind=True)
+def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_BATCH_SIZE):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
     current_app.logger.info(
@@ -116,12 +116,14 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
             get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=sender_id)[1]
             for row in shatter_batch
         ]
-        _shatter_job_rows_with_subdivision(template.template_type, batch_args_kwargs)
+        _shatter_job_rows_with_subdivision(
+            template.template_type, batch_args_kwargs, getattr(self, "message_group_id", None)
+        )
 
     job_complete(job, start=start)
 
 
-def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level=True):
+def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, message_group_id, top_level=True):
     try:
         shatter_job_rows.apply_async(
             (
@@ -129,6 +131,7 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level
                 args_kwargs_seq,
             ),
             queue=QueueNames.JOBS,
+            MessageGroupId=message_group_id,
         )
     except BotoClientError as e:
         # this information is helpfully not preserved outside the message string of the exception, so
@@ -146,7 +149,7 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level
             raise UnprocessableJobRow from e
 
         for sub_batch in (args_kwargs_seq[:split_batch_size], args_kwargs_seq[split_batch_size:]):
-            _shatter_job_rows_with_subdivision(template_type, sub_batch, top_level=False)
+            _shatter_job_rows_with_subdivision(template_type, sub_batch, message_group_id, top_level=False)
 
     else:
         if not top_level:
@@ -156,16 +159,17 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level
             )
 
 
-@notify_celery.task(name="shatter-job-rows")
+@notify_celery.task(name="shatter-job-rows", bind=True)
 def shatter_job_rows(
+    self,
     template_type: str,
     args_kwargs_seq: Sequence,
 ):
     for task_args_kwargs in args_kwargs_seq:
-        process_job_row(template_type, task_args_kwargs)
+        process_job_row(template_type, task_args_kwargs, getattr(self, "message_group_id", None))
 
 
-def process_job_row(template_type, task_args_kwargs):
+def process_job_row(template_type, task_args_kwargs, message_group_id):
     send_fn = {
         SMS_TYPE: save_sms,
         EMAIL_TYPE: save_email,
@@ -175,6 +179,7 @@ def process_job_row(template_type, task_args_kwargs):
     send_fn.apply_async(
         *task_args_kwargs,
         queue=QueueNames.DATABASE,
+        MessageGroupId=message_group_id,
     )
 
 
@@ -353,6 +358,7 @@ def save_sms(
             provider_tasks.deliver_sms.apply_async(
                 [str(saved_notification.id)],
                 queue=QueueNames.SEND_SMS,
+                MessageGroupId=getattr(self, "message_group_id", None),
             )
         else:
             extra = {
@@ -437,6 +443,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
             queue=QueueNames.SEND_EMAIL,
+            MessageGroupId=getattr(self, "message_group_id", service_id),
         )
 
         extra = {
@@ -494,7 +501,9 @@ def save_letter(
         )
 
         letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
-            [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
+            [str(saved_notification.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF,
+            MessageGroupId=getattr(self, "message_group_id", None),
         )
 
         extra = {
@@ -580,7 +589,11 @@ def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_B
             get_id_task_args_kwargs_for_job_row(row, template, job, job.service, sender_id=sender_id)[1]
             for row in shatter_batch
         ]
-        _shatter_job_rows_with_subdivision(template.template_type, batch_args_kwargs)
+        _shatter_job_rows_with_subdivision(
+            template.template_type,
+            batch_args_kwargs,
+            "#".join((str(job.service_id), job.template.template_type, "normal", "")),
+        )
 
     job_complete(job, resumed=True)
 
@@ -625,7 +638,11 @@ def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
     # queue callback task only if the service_callback_api exists
     if service_callback_api := get_returned_letter_callback_api_for_service(service_id=service_id):
         returned_letter_data = create_returned_letter_callback_data(notification_id, service_id, service_callback_api)
-        send_returned_letter_to_service.apply_async([returned_letter_data], queue=QueueNames.CALLBACKS)
+        send_returned_letter_to_service.apply_async(
+            [returned_letter_data],
+            queue=QueueNames.CALLBACKS,
+            MessageGroupId="#".join((str(service_id), LETTER_TYPE, "normal", "")),
+        )
 
 
 @notify_celery.task(bind=True, name="process-report-request")

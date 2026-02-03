@@ -128,8 +128,10 @@ jsonschema==4.23.0
     # via -r requirements.in
 jsonschema-specifications==2024.10.1
     # via jsonschema
-kombu==5.6.1
-    # via celery
+kombu @ git+https://github.com/MartinSiby/kombu.git@f57e23cbb25a182ca6690ddc99961496aeb712aa
+    # via
+    #   -r requirements.in
+    #   celery
 mako==1.2.3
     # via alembic
 markupsafe==2.1.1
@@ -150,7 +152,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@4a82bce7bac7678219b2406d888461f98cb19116
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0dc01d1789535b0896e26d810e164603c96e2fab
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -235,7 +237,9 @@ sqlalchemy==2.0.41
 statsd==4.0.1
     # via notifications-utils
 typing-extensions==4.14.1
-    # via sqlalchemy
+    # via
+    #   exceptiongroup
+    #   sqlalchemy
 tzdata==2025.3
     # via kombu
 tzlocal==5.3.1

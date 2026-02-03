@@ -72,7 +72,9 @@ def test_receive_notification_returns_received_to_mmg(client, mocker, sample_ser
 
     inbound_sms_id = InboundSms.query.all()[0].id
     mocked.assert_called_once_with(
-        [str(inbound_sms_id), str(sample_service_full_permissions.id)], queue="service-callbacks"
+        [str(inbound_sms_id), str(sample_service_full_permissions.id)],
+        queue="service-callbacks",
+        MessageGroupId=f"{sample_service_full_permissions.id}#inbound_sms#normal#",
     )
 
 
@@ -340,7 +342,11 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
 
     assert result["status"] == "ok"
     inbound_sms_id = InboundSms.query.all()[0].id
-    mocked.assert_called_once_with([str(inbound_sms_id), str(service.id)], queue="service-callbacks")
+    mocked.assert_called_once_with(
+        [str(inbound_sms_id), str(service.id)],
+        queue="service-callbacks",
+        MessageGroupId=f"{service.id}#inbound_sms#normal#",
+    )
 
 
 def test_receive_notification_from_firetext_persists_message(notify_db_session, client, mocker):
@@ -368,7 +374,11 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
     assert persisted.content == "this is a message"
     assert persisted.provider == "firetext"
     assert persisted.provider_date == datetime(2017, 1, 1, 12, 0, 0, 0)
-    mocked.assert_called_once_with([str(persisted.id), str(service.id)], queue="service-callbacks")
+    mocked.assert_called_once_with(
+        [str(persisted.id), str(service.id)],
+        queue="service-callbacks",
+        MessageGroupId=f"{service.id}#inbound_sms#normal#",
+    )
 
 
 def test_receive_notification_from_firetext_persists_message_with_normalized_phone(notify_db_session, client, mocker):

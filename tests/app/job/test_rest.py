@@ -152,7 +152,10 @@ def test_create_unscheduled_job(client, sample_template, mocker, mock_celery_tas
     assert response.status_code == 201
 
     app.celery.tasks.process_job.apply_async.assert_called_once_with(
-        ([str(fake_uuid)]), {"sender_id": None}, queue="job-tasks"
+        ([str(fake_uuid)]),
+        {"sender_id": None},
+        queue="job-tasks",
+        MessageGroupId=f"{sample_template.service_id}#{sample_template.template_type}#normal#dashboard",
     )
 
     resp_json = json.loads(response.get_data(as_text=True))
@@ -193,7 +196,10 @@ def test_create_unscheduled_job_with_sender_id_in_metadata(
     assert response.status_code == 201
 
     app.celery.tasks.process_job.apply_async.assert_called_once_with(
-        ([str(fake_uuid)]), {"sender_id": fake_uuid}, queue="job-tasks"
+        ([str(fake_uuid)]),
+        {"sender_id": fake_uuid},
+        queue="job-tasks",
+        MessageGroupId=f"{sample_template.service_id}#{sample_template.template_type}#normal#dashboard",
     )
 
 
