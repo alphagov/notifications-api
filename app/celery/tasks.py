@@ -443,7 +443,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
             queue=QueueNames.SEND_EMAIL,
-            MessageGroupId=getattr(self, "message_group_id", None),
+            MessageGroupId=getattr(self, "message_group_id", service_id),
         )
 
         extra = {
