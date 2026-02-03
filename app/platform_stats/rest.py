@@ -2,6 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from app import db
 from app.constants import UK_POSTAGE_TYPES
 from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
@@ -74,7 +75,7 @@ def get_data_for_billing_report():
 
     start_date, end_date = validate_date_range_is_within_a_financial_year(start_date, end_date)
 
-    sms_costs = fetch_usage_for_all_services_sms(start_date, end_date)
+    sms_costs = fetch_usage_for_all_services_sms(start_date, end_date, session=db.session_bulk)
     letter_overview = fetch_usage_for_all_services_letter(start_date, end_date)
     letter_breakdown = fetch_usage_for_all_services_letter_breakdown(start_date, end_date)
 

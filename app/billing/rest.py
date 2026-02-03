@@ -1,5 +1,6 @@
 from flask import Blueprint, abort, jsonify, request
 
+from app import db
 from app.billing.billing_schemas import (
     create_or_update_free_sms_fragment_limit_schema,
     serialize_ft_billing_remove_emails,
@@ -45,7 +46,7 @@ def get_yearly_billing_usage_summary_from_ft_billing(service_id):
     except TypeError:
         return jsonify(result="error", message="No valid year provided"), 400
 
-    billing_data = fetch_usage_for_service_annual(service_id, year)
+    billing_data = fetch_usage_for_service_annual(service_id, year, session=db.session_bulk)
     data = serialize_ft_billing_yearly_totals(billing_data)
     return jsonify(data)
 
