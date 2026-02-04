@@ -49,6 +49,7 @@ from app.utils import (
 )
 
 
+@retryable_query()
 def fetch_usage_for_all_services_sms(
     start_date,
     end_date,
@@ -264,6 +265,7 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     return db.session.execute(query.statement)
 
 
+@retryable_query()
 def fetch_usage_for_service_annual(
     service_id,
     year,
@@ -909,6 +911,7 @@ def create_billing_record(data, rate, process_day):
     return billing_record
 
 
+@retryable_query()
 def _fetch_usage_for_organisation_letter(organisation_id, start_date, end_date, session=db.session):
     query = (
         session.query(
@@ -938,6 +941,7 @@ def _fetch_usage_for_organisation_letter(organisation_id, start_date, end_date, 
     return query.all()
 
 
+@retryable_query()
 def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date, session=db.session):
     query = (
         session.query(
@@ -966,7 +970,9 @@ def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date, s
     return query.all()
 
 
-def _fetch_usage_for_organisation_sms(organisation_id, financial_year, session=db.session):
+def _fetch_usage_for_organisation_sms(
+    organisation_id, financial_year, session=db.session, inner_retry_attempts: int = 0
+):
     year_start, year_end = get_financial_year_dates(financial_year)
     return fetch_usage_for_all_services_sms(
         year_start,
@@ -974,6 +980,7 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year, session=d
         organisation_id=organisation_id,
         exclude_restricted=True,
         session=session,
+        retry_attempts=inner_retry_attempts,  # type: ignore[call-arg]
     )
 
 
@@ -981,6 +988,7 @@ def fetch_usage_for_organisation(
     organisation_id,
     year,
     session: Session | scoped_session = db.session,
+    inner_retry_attempts: int = 0,
 ) -> tuple[Any, str | None]:
     """Calculate an organisation's usage of Notify (ie the usage of all services in that org)
 
@@ -1007,9 +1015,23 @@ def fetch_usage_for_organisation(
             "emails_sent": 0,
             "active": service.active,
         }
-    sms_usages = _fetch_usage_for_organisation_sms(organisation_id, year, session=session)
-    letter_usages = _fetch_usage_for_organisation_letter(organisation_id, year_start, year_end, session=session)
-    email_usages = _fetch_usage_for_organisation_email(organisation_id, year_start, year_end, session=session)
+    sms_usages = _fetch_usage_for_organisation_sms(
+        organisation_id, year, session=session, inner_retry_attempts=inner_retry_attempts
+    )
+    letter_usages = _fetch_usage_for_organisation_letter(
+        organisation_id,
+        year_start,
+        year_end,
+        session=session,
+        retry_attempts=inner_retry_attempts,  # type: ignore[call-arg]
+    )
+    email_usages = _fetch_usage_for_organisation_email(
+        organisation_id,
+        year_start,
+        year_end,
+        session=session,
+        retry_attempts=inner_retry_attempts,  # type: ignore[call-arg]
+    )
     for usage in sms_usages:
         # update sms fields
         service_with_usage[str(usage.service_id)] |= {

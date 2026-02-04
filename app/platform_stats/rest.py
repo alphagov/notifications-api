@@ -75,7 +75,12 @@ def get_data_for_billing_report():
 
     start_date, end_date = validate_date_range_is_within_a_financial_year(start_date, end_date)
 
-    sms_costs = fetch_usage_for_all_services_sms(start_date, end_date, session=db.session_bulk)
+    sms_costs = fetch_usage_for_all_services_sms(
+        start_date,
+        end_date,
+        session=db.session_bulk,
+        retry_attempts=2,  # type: ignore[call-arg]
+    )
     letter_overview = fetch_usage_for_all_services_letter(start_date, end_date)
     letter_breakdown = fetch_usage_for_all_services_letter_breakdown(start_date, end_date)
 
