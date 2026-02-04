@@ -23,6 +23,7 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
     govuk_service_id = str(notify_service.id)
 
     # repeat twice to test idempotence
+    variables = []
 
     for _ in range(2):
         with set_config_values(
@@ -35,64 +36,71 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
                 "API_HOST_NAME": "http://localhost:6011",
             },
         ):
-            variables = _create_db_objects(
-                functional_test_password,
-                request_bin_api_token,
-                environment,
-                test_email_username,
-                email_domain,
-                function_tests_govuk_key_name,
-                function_tests_live_key_name,
-                function_tests_test_key_name,
-                govuk_service_id,
-                "Functional Tests Org",
-                "07700900500",
+            variables.append(
+                _create_db_objects(
+                    functional_test_password,
+                    request_bin_api_token,
+                    environment,
+                    test_email_username,
+                    email_domain,
+                    function_tests_govuk_key_name,
+                    function_tests_live_key_name,
+                    function_tests_test_key_name,
+                    govuk_service_id,
+                    "Functional Tests Org",
+                    "07700900500",
+                )
             )
+            db.session.commit()
 
-    assert variables["FUNCTIONAL_TESTS_API_HOST"] == "http://localhost:6011"
-    assert variables["FUNCTIONAL_TESTS_ADMIN_HOST"] == "http://localhost:6012"
-    assert variables["ENVIRONMENT"] == "dev-env"
-    assert variables["FUNCTIONAL_TEST_EMAIL"] == "notify-tests-preview+dev-env@digital.cabinet-office.gov.uk"
-    assert "FUNCTIONAL_TEST_PASSWORD" in variables
-    assert variables["TEST_NUMBER"] == "07700900001"
-    assert variables["NOTIFY_SERVICE_API_KEY"].startswith("govuk_notify-")
+    assert variables[0] == variables[1], "results are not idempotent"
+
+    assert variables[0]["FUNCTIONAL_TESTS_API_HOST"] == "http://localhost:6011"
+    assert variables[0]["FUNCTIONAL_TESTS_ADMIN_HOST"] == "http://localhost:6012"
+    assert variables[0]["ENVIRONMENT"] == "dev-env"
+    assert variables[0]["FUNCTIONAL_TEST_EMAIL"] == "notify-tests-preview+dev-env@digital.cabinet-office.gov.uk"
+    assert "FUNCTIONAL_TEST_PASSWORD" in variables[0]
+    assert variables[0]["TEST_NUMBER"] == "07700900001"
+    assert variables[0]["NOTIFY_SERVICE_API_KEY"].startswith("govuk_notify-")
     assert (
-        variables["FUNCTIONAL_TESTS_SERVICE_EMAIL"]
+        variables[0]["FUNCTIONAL_TESTS_SERVICE_EMAIL"]
         == "notify-tests-preview+dev-env-admin-tests@digital.cabinet-office.gov.uk"
     )
     assert (
-        variables["FUNCTIONAL_TESTS_SERVICE_EMAIL_AUTH_ACCOUNT"]
+        variables[0]["FUNCTIONAL_TESTS_SERVICE_EMAIL_AUTH_ACCOUNT"]
         == "notify-tests-preview+dev-env-email-auth@digital.cabinet-office.gov.uk"
     )
-    assert "FUNCTIONAL_TESTS_SERVICE_EMAIL_PASSWORD" in variables
-    assert variables["FUNCTIONAL_TESTS_SERVICE_NUMBER"] == "07700900501"
-    assert "FUNCTIONAL_TESTS_SERVICE_ID" in variables
-    assert variables["FUNCTIONAL_TESTS_SERVICE_NAME"] == "Functional Tests"
-    assert "FUNCTIONAL_TESTS_ORGANISATION_ID" in variables
-    assert variables["FUNCTIONAL_TESTS_SERVICE_API_KEY"].startswith("functional_tests_service_live_key-")
-    assert variables["FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY"].startswith("functional_tests_service_test_key-")
-    assert variables["FUNCTIONAL_TESTS_API_AUTH_SECRET"] == "functional-tests-secret-key"
+    assert "FUNCTIONAL_TESTS_SERVICE_EMAIL_PASSWORD" in variables[0]
+    assert variables[0]["FUNCTIONAL_TESTS_SERVICE_NUMBER"] == "07700900501"
+    assert "FUNCTIONAL_TESTS_SERVICE_ID" in variables[0]
+    assert variables[0]["FUNCTIONAL_TESTS_SERVICE_NAME"] == "Functional Tests"
+    assert "FUNCTIONAL_TESTS_ORGANISATION_ID" in variables[0]
+    assert variables[0]["FUNCTIONAL_TESTS_SERVICE_API_KEY"].startswith("functional_tests_service_live_key-")
+    assert variables[0]["FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY"].startswith("functional_tests_service_test_key-")
+    assert variables[0]["FUNCTIONAL_TESTS_API_AUTH_SECRET"] == "functional-tests-secret-key"
     assert (
-        variables["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO"]
+        variables[0]["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO"]
         == "notify-tests-preview+dev-env-reply-to@digital.cabinet-office.gov.uk"
     )
     assert (
-        variables["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_2"]
+        variables[0]["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_2"]
         == "notify-tests-preview+dev-env-reply-to+2@digital.cabinet-office.gov.uk"
     )
     assert (
-        variables["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_3"]
+        variables[0]["FUNCTIONAL_TESTS_SERVICE_EMAIL_REPLY_TO_3"]
         == "notify-tests-preview+dev-env-reply-to+3@digital.cabinet-office.gov.uk"
     )
-    assert variables["FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER"] == "07700900500"
-    assert "FUNCTIONAL_TEST_SMS_TEMPLATE_ID" in variables
-    assert "FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID" in variables
-    assert "FUNCTIONAL_TEST_LETTER_TEMPLATE_ID" in variables
-    assert variables["MMG_INBOUND_SMS_USERNAME"] == "test_mmg_username"
-    assert variables["MMG_INBOUND_SMS_AUTH"] == "test_mmg_password"
-    assert variables["REQUEST_BIN_API_TOKEN"] == "test_request_bin_token"
+    assert variables[0]["FUNCTIONAL_TESTS_SERVICE_INBOUND_NUMBER"] == "07700900500"
+    assert "FUNCTIONAL_TEST_SMS_TEMPLATE_ID" in variables[0]
+    assert "FUNCTIONAL_TEST_EMAIL_TEMPLATE_ID" in variables[0]
+    assert "FUNCTIONAL_TEST_LETTER_TEMPLATE_ID" in variables[0]
+    assert "FUNCTIONAL_TEST_SMS_NO_PLACEHOLDER_TEMPLATE_ID" in variables[0]
+    assert "FUNCTIONAL_TEST_EMAIL_NO_PLACEHOLDER_TEMPLATE_ID" in variables[0]
+    assert variables[0]["MMG_INBOUND_SMS_USERNAME"] == "test_mmg_username"
+    assert variables[0]["MMG_INBOUND_SMS_AUTH"] == "test_mmg_password"
+    assert variables[0]["REQUEST_BIN_API_TOKEN"] == "test_request_bin_token"
 
-    for value in variables:
+    for value in variables[0]:
         assert "'" not in value, "value cannot contain single quote"
 
 
