@@ -137,8 +137,17 @@ def test_fetch_notification_status_for_service_for_day(notify_db_session):
     assert results[1].count == 1
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
 @freeze_time("2018-10-31T18:00:00")
-def test_fetch_notification_status_for_service_for_today_and_7_previous_days(notify_db_session):
+def test_fetch_notification_status_for_service_for_today_and_7_previous_days(
+    notify_db_session, session, expected_bind_key
+):
     service_1 = create_service(service_name="service_1")
     sms_template = create_template(service=service_1, template_type=SMS_TYPE)
     sms_template_2 = create_template(service=service_1, template_type=SMS_TYPE)
@@ -158,10 +167,14 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
     # too early, shouldn't be included
     create_notification(service_1.templates[0], created_at=datetime(2018, 10, 30, 12, 0, 0), status="delivered")
 
-    results = sorted(
-        fetch_notification_status_for_service_for_today_and_7_previous_days(service_1.id),
-        key=lambda x: (x.notification_type, x.status),
-    )
+    service_1_id = service_1.id
+    with QueryRecorder() as query_recorder:
+        results = sorted(
+            fetch_notification_status_for_service_for_today_and_7_previous_days(service_1_id, session=session),
+            key=lambda x: (x.notification_type, x.status),
+        )
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
 
     assert len(results) == 4
 
@@ -182,8 +195,17 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
     assert results[3].count == 19
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
 @freeze_time("2018-10-31T18:00:00")
-def test_fetch_notification_status_by_template_for_service_for_today_and_7_previous_days(notify_db_session):
+def test_fetch_notification_status_by_template_for_service_for_today_and_7_previous_days(
+    notify_db_session, session, expected_bind_key
+):
     service_1 = create_service(service_name="service_1")
     sms_template = create_template(template_name="sms Template 1", service=service_1, template_type=SMS_TYPE)
     sms_template_2 = create_template(template_name="sms Template 2", service=service_1, template_type=SMS_TYPE)
@@ -207,7 +229,13 @@ def test_fetch_notification_status_by_template_for_service_for_today_and_7_previ
     # too early, shouldn't be included
     create_notification(service_1.templates[0], created_at=datetime(2018, 10, 30, 12, 0, 0), status="delivered")
 
-    results = fetch_notification_status_for_service_for_today_and_7_previous_days(service_1.id, by_template=True)
+    service_1_id = service_1.id
+    with QueryRecorder() as query_recorder:
+        results = fetch_notification_status_for_service_for_today_and_7_previous_days(
+            service_1_id, by_template=True, session=session
+        )
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
 
     assert [
         ("email Template Name", False, mock.ANY, "email", "delivered", 1),
