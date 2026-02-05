@@ -21,6 +21,7 @@ from app.v2.notifications.notification_schemas import (
     post_email_response,
     post_sms_response,
 )
+from app.v2.notifications.post_notifications import sanitise_personalisation_item
 from tests import create_service_authorization_header
 from tests.app.db import (
     create_reply_to_email,
@@ -703,6 +704,59 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
         if expect_upload
         else []
     )
+
+
+def test_post_email_notification_sanitise_content_for_selected_personalisation(
+    api_client_request, sample_email_template_with_distinct_placeholders, mocker
+):
+    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    data = {
+        "email_address": "amala@example.com",
+        "template_id": sample_email_template_with_distinct_placeholders.id,
+        "personalisation": {
+            "name": "Amala, please [click this evil link](https://evil.link)",
+            "link": "https://pab.gov.uk/123",
+        },
+        "sanitise_content_for": ["name"],
+    }
+
+    resp_json = api_client_request.post(
+        sample_email_template_with_distinct_placeholders.service_id,
+        "v2_notifications.post_notification",
+        notification_type="email",
+        _data=data,
+    )
+
+    assert validate(resp_json, post_email_response) == resp_json
+    notification = Notification.query.one()
+
+    assert notification.content == (
+        "Hello Amala, please \\[click this evil link\\]\\(\\)\n"
+        "Please confirm your registration on [Pigeons' Affair Bureau website](https://pab.gov.uk/123)"
+    )
+
+
+@pytest.mark.parametrize(
+    "value, expected_value",
+    (
+        # sanitise link with link text by removing the link and escaping markdonw characters:
+        (
+            "Amala, please [click this (evil link](https://evil.link)",
+            "Amala, please \\[click this \\(evil link\\]\\(\\)",
+        ),
+        # avoid double sanitisation:
+        ("\\# Rogue Header", "\\# Rogue Header"),
+        # escape two Markdown characters in a row
+        ("## Rogue Header", "\\#\\# Rogue Header"),
+        # don't check previous character for the first character:
+        ("# Rogue Header\\", "\\# Rogue Header\\"),
+        ("# Rogue Header\\\n# Rogue Header", "\\# Rogue Header\\\n\\# Rogue Header"),
+    ),
+)
+def test_sanitise_personalisation_item(value, expected_value):
+    sanitised_value = sanitise_personalisation_item(value)
+
+    assert sanitised_value == expected_value
 
 
 @pytest.mark.parametrize(
