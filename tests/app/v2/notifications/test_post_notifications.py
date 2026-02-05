@@ -705,6 +705,36 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
     )
 
 
+def test_post_email_notification_sanitise_content_for_selected_personalisation(
+    api_client_request, sample_email_template_with_distinct_placeholders, mocker
+):
+    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    data = {
+        "email_address": "amala@example.com",
+        "template_id": sample_email_template_with_distinct_placeholders.id,
+        "personalisation": {
+            "name": "Amala, please [click this evil link](https://evil.link)",
+            "link": "https://pab.gov.uk/123",
+        },
+        "sanitise_content_for": ["name"],
+    }
+
+    resp_json = api_client_request.post(
+        sample_email_template_with_distinct_placeholders.service_id,
+        "v2_notifications.post_notification",
+        notification_type="email",
+        _data=data,
+    )
+
+    assert validate(resp_json, post_email_response) == resp_json
+    notification = Notification.query.one()
+
+    assert notification.content == (
+        "Hello Amala, please \\[click this evil link\\]\\(\\)\n"
+        "Please confirm your registration on [Pigeons' Affair Bureau website](https://pab.gov.uk/123)"
+    )
+
+
 @pytest.mark.parametrize(
     "recipient, notification_type",
     [
