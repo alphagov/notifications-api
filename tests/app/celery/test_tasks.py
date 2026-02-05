@@ -138,6 +138,7 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_task):
                 "row_number": 0,
                 "personalisation": {"phonenumber": "+441234123123"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         )
     ]
@@ -184,6 +185,7 @@ def test_should_process_sms_job_with_sender_id(sample_job, mocker, mock_celery_t
                 "row_number": 0,
                 "personalisation": {"phonenumber": "+441234123123"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         )
     ]
@@ -385,6 +387,7 @@ def test_should_process_email_job(email_job_with_placeholders, mocker, mock_cele
                 "row_number": 0,
                 "personalisation": {"emailaddress": "test@test.com", "name": "foo"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         )
     ]
@@ -441,6 +444,7 @@ def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mo
                 "row_number": 0,
                 "personalisation": {"emailaddress": "test@test.com", "name": "foo"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         )
     ]
@@ -501,6 +505,7 @@ def test_should_process_letter_job(sample_letter_job, mocker, mock_celery_task):
                     "postcode": "A_POST",
                 },
                 "client_reference": None,
+                "provider_requested": None,
             }
         )
     ]
@@ -558,6 +563,7 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
                 "row_number": 0,
                 "personalisation": {"phonenumber": "+441234123121", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
         call(
@@ -569,6 +575,7 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
                 "row_number": 1,
                 "personalisation": {"phonenumber": "+441234123122", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
         ANY,
@@ -587,6 +594,7 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
                 "row_number": 9,
                 "personalisation": {"phonenumber": "+441234123120", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
     ]
@@ -666,6 +674,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 "row_number": 0,
                 "personalisation": {"phonenumber": "+441234123121", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
         call(
@@ -677,6 +686,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 "row_number": 1,
                 "personalisation": {"phonenumber": "+441234123122", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
         ANY,
@@ -690,6 +700,7 @@ def test_should_raise_exception_if_job_row_too_big(sample_job_with_placeholdered
                 "row_number": 4,
                 "personalisation": {"phonenumber": "+441234123125", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
     ]
@@ -817,6 +828,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 "row_number": 0,
                 "personalisation": {"phonenumber": "+441234123121", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
         call(
@@ -828,6 +840,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 "row_number": 1,
                 "personalisation": {"phonenumber": "+441234123122", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
         ANY,
@@ -846,6 +859,7 @@ def test_should_split_shatter_tasks_if_too_big_together(
                 "row_number": 9,
                 "personalisation": {"phonenumber": "+441234123120", "name": "chris"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
     ]
@@ -946,7 +960,7 @@ def test_get_id_task_args_kwargs_for_job_row_handles_letter_args(template_type, 
     mocker.patch("app.celery.tasks.create_uuid", return_value="noti_uuid")
     signing_mock = mocker.patch("app.celery.tasks.signing.encode", return_value="foo")
     template = Mock(id="template_id", template_type=template_type)
-    job = Mock(id="job_id", template_version="temp_vers")
+    job = Mock(id="job_id", template_version="temp_vers", provider_requested=None)
     service = Mock(id="service_id")
 
     ret = get_id_task_args_kwargs_for_job_row(
@@ -973,6 +987,7 @@ def test_get_id_task_args_kwargs_for_job_row_handles_letter_args(template_type, 
             "row_number": "row_num",
             "personalisation": {"foo": "bar"},
             "client_reference": None,
+            "provider_requested": None,
         }
     )
     assert ret == (
@@ -1030,7 +1045,7 @@ def test_get_id_task_args_kwargs_for_job_row_when_reference_is_provided(mocker, 
     mocker.patch("app.celery.tasks.create_uuid", return_value="noti_uuid")
     signing_mock = mocker.patch("app.celery.tasks.signing.encode", return_value="foo")
     template = Mock(id="template_id", template_type=SMS_TYPE)
-    job = Mock(id="job_id", template_version="temp_vers")
+    job = Mock(id="job_id", template_version="temp_vers", provider_requested=None)
     service = Mock(id="service_id")
 
     get_id_task_args_kwargs_for_job_row(
@@ -1058,6 +1073,7 @@ def test_get_id_task_args_kwargs_for_job_row_when_reference_is_provided(mocker, 
             "row_number": 0,
             "personalisation": {"name": "foo"},
             "client_reference": "ab1234",
+            "provider_requested": None,
         }
     )
 
@@ -2206,6 +2222,7 @@ def test_process_incomplete_job_sms(mocker, mock_celery_task, sample_template):
                 "row_number": 2,
                 "personalisation": {"phonenumber": "+441234123123"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
         call(
@@ -2217,6 +2234,7 @@ def test_process_incomplete_job_sms(mocker, mock_celery_task, sample_template):
                 "row_number": 3,
                 "personalisation": {"phonenumber": "+441234123124"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
         ANY,
@@ -2233,6 +2251,7 @@ def test_process_incomplete_job_sms(mocker, mock_celery_task, sample_template):
                 "row_number": 9,
                 "personalisation": {"phonenumber": "+441234123120"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         ),
     ]

@@ -11,6 +11,7 @@ from app.constants import (
     JOB_STATUS_PENDING,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
+    SMS_TYPE,
 )
 from app.dao.jobs_dao import (
     can_letter_job_be_cancelled,
@@ -32,6 +33,7 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters
+from app.provider_selection import validate_provider_requested
 from app.schemas import (
     job_schema,
     notification_with_template_schema,
@@ -152,6 +154,14 @@ def create_job(service_id):
 
     data["template"] = data.pop("template_id")
     template = dao_get_template_by_id(data["template"])
+
+    provider_error = validate_provider_requested(
+        data.get("provider"),
+        template.template_type,
+        international=None if template.template_type == SMS_TYPE else False,
+    )
+    if provider_error:
+        raise InvalidRequest(provider_error, status_code=400)
 
     if template.template_type == LETTER_TYPE and service.restricted:
         raise InvalidRequest("Create letter job is not allowed for service in trial mode ", 403)

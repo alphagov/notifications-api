@@ -720,6 +720,7 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template,
                 "row_number": 4,
                 "personalisation": {"emailaddress": "test5@test.com"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         )
     ]
@@ -760,6 +761,7 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(
                 "row_number": 4,
                 "personalisation": {"emailaddress": "test5@test.com"},
                 "client_reference": None,
+                "provider_requested": None,
             }
         )
     ]

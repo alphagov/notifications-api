@@ -1442,6 +1442,7 @@ class Job(db.Model):
     )
     archived = db.Column(db.Boolean, nullable=False, default=False)
     contact_list_id = db.Column(UUID(as_uuid=True), db.ForeignKey("service_contact_list.id"), nullable=True, index=True)
+    provider_requested = db.Column(db.String, nullable=True)
 
     __extended_statistics__ = (
         # dependencies
@@ -1519,6 +1520,7 @@ class NotificationAllTimeView(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True))
     postage = db.Column(db.String)
     document_download_count = db.Column(db.Integer)
+    provider_requested = db.Column(db.String)
 
 
 class Notification(db.Model):
@@ -1566,6 +1568,8 @@ class Notification(db.Model):
     reply_to_text = db.Column(db.String, nullable=True)
 
     document_download_count = db.Column(db.Integer, nullable=True)
+
+    provider_requested = db.Column(db.String, nullable=True)
 
     postage = db.Column(db.String, nullable=True)
 
@@ -1992,6 +1996,8 @@ class NotificationHistory(db.Model):
     postage = db.Column(db.String, nullable=True)
 
     document_download_count = db.Column(db.Integer, nullable=True)
+
+    provider_requested = db.Column(db.String, nullable=True)
 
     __table_args__ = (
         db.ForeignKeyConstraint(
