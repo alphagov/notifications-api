@@ -1,10 +1,12 @@
 import base64
 import functools
+import re
 import uuid
 from datetime import datetime
 
 from flask import abort, current_app, jsonify, request
 from gds_metrics import Histogram
+from notifications_utils.formatters import url
 
 from app import (
     api_user,
@@ -125,9 +127,13 @@ def post_notification(notification_type):
 
     check_service_has_permission(authenticated_service, notification_type)
 
+    personalisation = _prepare_personalisation_for_post_notification(
+        personalisation=form.get("personalisation", {}), sanitise_content_for=form.get("sanitise_content_for", [])
+    )
+
     template, template_with_content = validate_template(
         form["template_id"],
-        form.get("personalisation", {}),
+        personalisation,
         authenticated_service,
         notification_type,
         check_char_count=False,
@@ -152,11 +158,46 @@ def post_notification(notification_type):
             template=template,
             template_with_content=template_with_content,
             service=authenticated_service,
+            personalisation=personalisation,
             reply_to_text=reply_to,
             unsubscribe_link=form.get("one_click_unsubscribe_url", None),
         )
 
     return jsonify(notification), 201
+
+
+def _prepare_personalisation_for_post_notification(personalisation, sanitise_content_for):
+    if not (personalisation and sanitise_content_for):
+        return personalisation
+
+    processed_personalisation = {}
+
+    for key, value in personalisation.items():
+        if key in sanitise_content_for:
+            processed_value = sanitise_personalisation_item(value)
+            processed_personalisation[key] = processed_value
+        else:
+            processed_personalisation[key] = value
+
+    return processed_personalisation
+
+
+def sanitise_personalisation_item(value):
+    # cut out URLs
+    if url_in_value := re.search(url, value):
+        value = value.replace(url_in_value.group(), "")
+    # escape markdown-specific characters
+    markdown_characters = r"`*_(){}[]<>#+-.!|"
+    sanitised_value = ""
+    for i, character in enumerate(value):
+        if i == 0:
+            sanitised_value += f"\\{character}" if character in markdown_characters else character
+        else:
+            sanitised_value += (
+                f"\\{character}" if character in markdown_characters and value[i - 1] != "\\" else character
+            )
+
+    return sanitised_value
 
 
 def process_sms_or_email_notification(
@@ -166,6 +207,7 @@ def process_sms_or_email_notification(
     template,
     template_with_content,
     service,
+    personalisation,
     reply_to_text=None,
     unsubscribe_link=None,
 ):
@@ -182,7 +224,7 @@ def process_sms_or_email_notification(
     simulated = simulated_recipient(send_to, notification_type)
 
     personalisation, document_download_count = process_document_uploads(
-        form.get("personalisation"),
+        personalisation,
         service,
         send_to=send_to,
         simulated=simulated,
