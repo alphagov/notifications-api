@@ -112,9 +112,9 @@ def test_dao_get_template_email_files_by_template_id_does_not_return_archived_fi
 def test_dao_get_template_email_files_by_template_id_and_version_does_not_return_archived_file(
     sample_template_email_file,
 ):
-    sample_template_email_file.archived_at = datetime.datetime.now()
-    sample_template_email_file.archived_by_id = sample_template_email_file.created_by_id
-    dao_update_template_email_file(sample_template_email_file)
+    dao_archive_template_email_file(
+        sample_template_email_file, sample_template_email_file.created_by_id, template_version=3
+    )
     fetched_file_latest = dao_get_template_email_files_by_template_id(
         str(sample_template_email_file.template_id), template_version=3
     )
