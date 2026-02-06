@@ -188,10 +188,16 @@ def sanitise_personalisation_item(value):
         value = value.replace(url_in_value.group(), "")
     # escape markdown-specific characters
     markdown_characters = r"`*_(){}[]<>#+-.!|"
-    for character in markdown_characters:
-        value = value.replace(character, f"\\{character}")
+    sanitised_value = ""
+    for i, character in enumerate(value):
+        if i == 0:
+            sanitised_value += f"\\{character}" if character in markdown_characters else character
+        else:
+            sanitised_value += (
+                f"\\{character}" if character in markdown_characters and value[i - 1] != "\\" else character
+            )
 
-    return value
+    return sanitised_value
 
 
 def process_sms_or_email_notification(

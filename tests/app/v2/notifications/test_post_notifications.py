@@ -21,6 +21,7 @@ from app.v2.notifications.notification_schemas import (
     post_email_response,
     post_sms_response,
 )
+from app.v2.notifications.post_notifications import sanitise_personalisation_item
 from tests import create_service_authorization_header
 from tests.app.db import (
     create_reply_to_email,
@@ -733,6 +734,23 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         "Hello Amala, please \\[click this evil link\\]\\(\\)\n"
         "Please confirm your registration on [Pigeons' Affair Bureau website](https://pab.gov.uk/123)"
     )
+
+
+@pytest.mark.parametrize(
+    "value, expected_value",
+    (
+        # sanitise link with link text by removing the link and escaping markdonw characters:
+        ("Amala, please [click this evil link](https://evil.link)", "Amala, please \\[click this evil link\\]\\(\\)"),
+        # avoid double sanitisation:
+        ("\\# Rogue Header", "\\# Rogue Header"),
+        # don't check previous character for the first character:
+        ("# Rogue Header\\", "\\# Rogue Header\\"),
+    ),
+)
+def test_sanitise_personalisation_item(value, expected_value):
+    sanitised_value = sanitise_personalisation_item(value)
+
+    assert sanitised_value == expected_value
 
 
 @pytest.mark.parametrize(
