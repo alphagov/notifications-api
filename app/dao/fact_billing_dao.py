@@ -1058,11 +1058,12 @@ def fetch_usage_for_organisation(
     return service_with_usage, updated_at
 
 
-def fetch_daily_volumes_for_platform(start_date, end_date):
+@retryable_query()
+def fetch_daily_volumes_for_platform(start_date, end_date, session: Session | scoped_session = db.session):
     # query to return the total notifications sent per day for each channel. NB start and end dates are inclusive
 
     daily_volume_stats = (
-        db.session.query(
+        session.query(
             FactBilling.bst_date,
             func.sum(case((FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent), else_=0)).label(
                 "sms_totals"
@@ -1095,7 +1096,7 @@ def fetch_daily_volumes_for_platform(start_date, end_date):
     )
 
     aggregated_totals = (
-        db.session.query(
+        session.query(
             daily_volume_stats.c.bst_date.cast(db.Text).label("bst_date"),
             func.sum(daily_volume_stats.c.sms_totals).label("sms_totals"),
             func.sum(daily_volume_stats.c.sms_fragment_totals).label("sms_fragment_totals"),

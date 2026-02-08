@@ -183,7 +183,7 @@ def daily_volumes_report():
     start_date = validate_date_format(request.args.get("start_date"))
     end_date = validate_date_format(request.args.get("end_date"))
 
-    daily_volumes = fetch_daily_volumes_for_platform(start_date, end_date)
+    daily_volumes = fetch_daily_volumes_for_platform(start_date, end_date, session=db.session_bulk, retry_attempts=2)
     report = []
 
     for row in daily_volumes:

@@ -1623,8 +1623,13 @@ def test_fetch_usage_for_organisation_without_annual_billing(
     assert row["sms_cost"] == 0
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_daily_volumes_for_platform(
-    notify_db_session, sample_template, sample_email_template, sample_letter_template
+    notify_db_session, sample_template, sample_email_template, sample_letter_template, session, expected_bind_key
 ):
     create_ft_billing(bst_date="2022-02-03", template=sample_template, notifications_sent=10, billable_unit=10)
     create_ft_billing(
@@ -1645,7 +1650,10 @@ def test_fetch_daily_volumes_for_platform(
     create_ft_billing(bst_date="2022-02-04", template=sample_email_template, notifications_sent=50)
     create_ft_billing(bst_date="2022-02-04", template=sample_letter_template, notifications_sent=20, billable_unit=40)
 
-    results = fetch_daily_volumes_for_platform(start_date="2022-02-03", end_date="2022-02-04")
+    with QueryRecorder() as qr:
+        results = fetch_daily_volumes_for_platform(start_date="2022-02-03", end_date="2022-02-04", session=session)
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
 
     assert len(results) == 2
     assert results[0].bst_date == "2022-02-03"
