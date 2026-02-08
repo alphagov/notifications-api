@@ -488,7 +488,12 @@ def test_fetch_monthly_template_usage_for_service_does_not_include_test_notifica
 
 
 @freeze_time("2019-05-10 14:00")
-def test_fetch_monthly_notification_statuses_per_service(notify_db_session):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_fetch_monthly_notification_statuses_per_service(notify_db_session, session, expected_bind_key):
     service_one = create_service(service_name="service one", service_id=UUID("e4e34c4e-73c1-4802-811c-3dd273f21da4"))
     service_two = create_service(service_name="service two", service_id=UUID("b19d7aad-6f09-4198-8b62-f6cf126b87e5"))
 
@@ -551,7 +556,10 @@ def test_fetch_monthly_notification_statuses_per_service(notify_db_session):
         date(2019, 3, 31), notification_type="letter", service=service_one, notification_status=NOTIFICATION_DELIVERED
     )
 
-    results = fetch_monthly_notification_statuses_per_service(date(2019, 3, 1), date(2019, 4, 30))
+    with QueryRecorder() as qr:
+        results = fetch_monthly_notification_statuses_per_service(date(2019, 3, 1), date(2019, 4, 30), session=session)
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
 
     assert len(results) == 6
     # column order: date, service_id, service_name, notifaction_type, count_sending, count_delivered,
@@ -565,7 +573,15 @@ def test_fetch_monthly_notification_statuses_per_service(notify_db_session):
 
 
 @freeze_time("2019-04-10 14:00")
-def test_fetch_monthly_notification_statuses_per_service_for_rows_that_should_be_excluded(notify_db_session):
+@freeze_time("2019-05-10 14:00")
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_fetch_monthly_notification_statuses_per_service_for_rows_that_should_be_excluded(
+    notify_db_session, session, expected_bind_key
+):
     valid_service = create_service(service_name="valid service")
     inactive_service = create_service(service_name="inactive", active=False)
     restricted_service = create_service(service_name="restricted", restricted=True)
@@ -582,7 +598,10 @@ def test_fetch_monthly_notification_statuses_per_service_for_rows_that_should_be
     create_ft_notification_status(date(2019, 2, 28), service=valid_service)
     create_ft_notification_status(date(2019, 4, 1), service=valid_service)
 
-    results = fetch_monthly_notification_statuses_per_service(date(2019, 3, 1), date(2019, 3, 31))
+    with QueryRecorder() as qr:
+        results = fetch_monthly_notification_statuses_per_service(date(2019, 3, 1), date(2019, 3, 31), session=session)
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
     assert len(results) == 0
 
 
