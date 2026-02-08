@@ -1777,10 +1777,20 @@ def test_fetch_daily_sms_provider_volumes_for_platform_for_platform_only_returns
     assert results[0].sms_totals == 1
 
 
-def test_fetch_volumes_by_service(notify_db_session):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_fetch_volumes_by_service(notify_db_session, session, expected_bind_key):
     set_up_usage_data(datetime(2022, 2, 1))
 
-    results = fetch_volumes_by_service(start_date=datetime(2022, 2, 1), end_date=datetime(2022, 2, 28))
+    with QueryRecorder() as qr:
+        results = fetch_volumes_by_service(
+            start_date=datetime(2022, 2, 1), end_date=datetime(2022, 2, 28), session=session
+        )
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
 
     # since we are using a pre-set up fixture, we only care about some of the results
     assert len(results) == 7
@@ -1825,12 +1835,22 @@ def test_fetch_volumes_by_service(notify_db_session):
     assert float(results[6].letter_cost) == 0
 
 
-def test_fetch_volumes_by_service_returns_free_allowance_for_end_date(sample_service):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_fetch_volumes_by_service_returns_free_allowance_for_end_date(sample_service, session, expected_bind_key):
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=1000, financial_year_start=2023)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=50, financial_year_start=2022)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=7, financial_year_start=2021)
 
-    results = fetch_volumes_by_service(start_date=datetime(2021, 4, 1), end_date=datetime(2022, 2, 28))
+    with QueryRecorder() as qr:
+        results = fetch_volumes_by_service(
+            start_date=datetime(2021, 4, 1), end_date=datetime(2022, 2, 28), session=session
+        )
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
 
     assert len(results) == 1
     assert results[0].free_allowance == 50

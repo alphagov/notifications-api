@@ -1144,13 +1144,18 @@ def fetch_daily_sms_provider_volumes_for_platform(start_date, end_date, session:
     return daily_volume_stats
 
 
-def fetch_volumes_by_service(start_date, end_date):
+@retryable_query()
+def fetch_volumes_by_service(
+    start_date,
+    end_date,
+    session: Session | scoped_session = db.session,
+):
     # query to return the volume totals by service aggregated for the date range given
     # start and end dates are inclusive.
     year_end_date = int(end_date.strftime("%Y"))
 
     volume_stats = (
-        db.session.query(
+        session.query(
             FactBilling.bst_date,
             FactBilling.service_id,
             func.sum(case((FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent), else_=0)).label(
@@ -1187,7 +1192,7 @@ def fetch_volumes_by_service(start_date, end_date):
     )
 
     annual_billing = (
-        db.session.query(
+        session.query(
             func.max(AnnualBilling.financial_year_start)
             .over(partition_by=AnnualBilling.service_id)
             .label("latest_billing_year_for_service"),
@@ -1200,8 +1205,8 @@ def fetch_volumes_by_service(start_date, end_date):
     )
 
     results = (
-        db.session.query(
-            Service.name.label("service_name"),
+        session.query(
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             Service.id.label("service_id"),
             Service.organisation_id.label("organisation_id"),
             Organisation.name.label("organisation_name"),

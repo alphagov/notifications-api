@@ -231,7 +231,7 @@ def volumes_by_service_report():
     start_date = validate_date_format(request.args.get("start_date"))
     end_date = validate_date_format(request.args.get("end_date"))
 
-    volumes_by_service = fetch_volumes_by_service(start_date, end_date)
+    volumes_by_service = fetch_volumes_by_service(start_date, end_date, session=db.session_bulk, retry_attempts=2)
     report = []
 
     for row in volumes_by_service:
