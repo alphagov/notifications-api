@@ -1156,10 +1156,20 @@ def test_fetch_usage_for_all_services_without_annual_billing(
     assert len(results) == 0
 
 
-def test_fetch_usage_for_all_services_letter(notify_db_session):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_fetch_usage_for_all_services_letter(notify_db_session, session, expected_bind_key):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
-    results = fetch_usage_for_all_services_letter(datetime(2019, 6, 1), datetime(2019, 9, 30)).all()
+    with QueryRecorder() as query_recorder:
+        results = fetch_usage_for_all_services_letter(
+            datetime(2019, 6, 1), datetime(2019, 9, 30), session=session
+        ).all()
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
 
     assert len(results) == 3
     assert results[0] == (
@@ -1188,10 +1198,20 @@ def test_fetch_usage_for_all_services_letter(notify_db_session):
     )
 
 
-def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session, session, expected_bind_key):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
-    results = fetch_usage_for_all_services_letter_breakdown(datetime(2019, 6, 1), datetime(2019, 9, 30)).all()
+    with QueryRecorder() as query_recorder:
+        results = fetch_usage_for_all_services_letter_breakdown(
+            datetime(2019, 6, 1), datetime(2019, 9, 30), session=session
+        ).all()
+
+    assert {q.bind_key for q in query_recorder.queries} == {expected_bind_key}
 
     assert len(results) == 8
     assert results[0] == (

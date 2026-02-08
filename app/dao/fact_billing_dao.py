@@ -187,12 +187,13 @@ def _fetch_usage_for_all_services_sms_query(
     ).filter(*([Service.organisation_id == organisation_id] if organisation_id else []))
 
 
-def fetch_usage_for_all_services_letter(start_date, end_date):
-    return (
-        db.session.query(
+@retryable_query()
+def fetch_usage_for_all_services_letter(start_date, end_date, session: Session | scoped_session = db.session):
+    query = (
+        session.query(
             Organisation.name.label("organisation_name"),
             Organisation.id.label("organisation_id"),
-            Service.name.label("service_name"),
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             Service.id.label("service_id"),
             func.sum(FactBilling.notifications_sent).label("total_letters"),
             func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost"),
@@ -218,8 +219,11 @@ def fetch_usage_for_all_services_letter(start_date, end_date):
         .order_by(Organisation.name, Service.name)
     )
 
+    return session.execute(query.statement)
 
-def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
+
+@retryable_query()
+def fetch_usage_for_all_services_letter_breakdown(start_date, end_date, session: Session | scoped_session = db.session):
     formatted_postage = case(
         (FactBilling.postage.in_(INTERNATIONAL_POSTAGE_TYPES), "international"), else_=FactBilling.postage
     ).label("postage")
@@ -233,10 +237,10 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     )
 
     query = (
-        db.session.query(
+        session.query(
             Organisation.name.label("organisation_name"),
             Organisation.id.label("organisation_id"),
-            Service.name.label("service_name"),
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             Service.id.label("service_id"),
             FactBilling.rate.label("letter_rate"),
             formatted_postage,
@@ -262,7 +266,7 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
         )
     )
 
-    return db.session.execute(query.statement)
+    return session.execute(query.statement)
 
 
 @retryable_query()

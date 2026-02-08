@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from flask import current_app
 from sqlalchemy import Float, cast
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload, scoped_session
 from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
@@ -63,6 +63,7 @@ from app.utils import (
     escape_special_characters,
     get_archived_db_column_value,
     get_london_midnight_in_utc,
+    retryable_query,
 )
 
 DEFAULT_SERVICE_PERMISSIONS = [
@@ -578,9 +579,10 @@ def get_live_services_with_organisation():
     return query.all()
 
 
-def fetch_billing_details_for_all_services():
+@retryable_query()
+def fetch_billing_details_for_all_services(session: Session | scoped_session = db.session):
     return (
-        db.session.query(
+        session.query(
             Service.id.label("service_id"),
             func.coalesce(Service.purchase_order_number, Organisation.purchase_order_number).label(
                 "purchase_order_number"

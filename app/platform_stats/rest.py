@@ -81,8 +81,12 @@ def get_data_for_billing_report():
         session=db.session_bulk,
         retry_attempts=2,  # type: ignore[call-arg]
     )
-    letter_overview = fetch_usage_for_all_services_letter(start_date, end_date)
-    letter_breakdown = fetch_usage_for_all_services_letter_breakdown(start_date, end_date)
+    letter_overview = fetch_usage_for_all_services_letter(
+        start_date, end_date, session=db.session_bulk, retry_attempts=2
+    )
+    letter_breakdown = fetch_usage_for_all_services_letter_breakdown(
+        start_date, end_date, session=db.session_bulk, retry_attempts=2
+    )
 
     lb_by_service = [
         (
@@ -129,7 +133,7 @@ def get_data_for_billing_report():
     for service_id, breakdown in lb_by_service:
         combined[service_id]["letter_breakdown"] += breakdown + "\n"
 
-    billing_details = fetch_billing_details_for_all_services()
+    billing_details = fetch_billing_details_for_all_services(session=db.session_bulk, retry_attempts=2)
     for service in billing_details:
         if service.service_id in combined:
             combined[service.service_id].update(
