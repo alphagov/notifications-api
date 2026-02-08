@@ -97,11 +97,12 @@ def dao_count_live_services():
     ).count()
 
 
-def dao_fetch_live_services_data():
+@retryable_query()
+def dao_fetch_live_services_data(session: Session | scoped_session = db.session):
     year_start_date, year_end_date = get_current_financial_year()
 
     most_recent_annual_billing = (
-        db.session.query(
+        session.query(
             AnnualBilling.service_id.label("service_id"),
             AnnualBilling.free_sms_fragment_limit.label("free_sms_fragment_limit"),
             AnnualBilling.financial_year_start.label("financial_year_start"),
@@ -112,9 +113,9 @@ def dao_fetch_live_services_data():
     )
 
     data = (
-        db.session.query(
+        session.query(
             Service.id.label("service_id"),
-            Service.name.label("service_name"),
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             Organisation.name.label("organisation_name"),
             Organisation.organisation_type.label("organisation_type"),
             Service.consent_to_research.label("consent_to_research"),

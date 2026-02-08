@@ -256,7 +256,7 @@ def find_services_by_name():
 
 @service_blueprint.route("/live-services-data", methods=["GET"])
 def get_live_services_data():
-    data = dao_fetch_live_services_data()
+    data = dao_fetch_live_services_data(session=db.session_bulk, retry_attempts=2)
     return jsonify(data=data)
 
 
