@@ -1294,3 +1294,26 @@ def get_organisation_live_services_and_their_free_allowance(
             Service.restricted.is_(False),
         )
     )
+
+
+@retryable_query()
+def fetch_dvla_billing_facts(
+    start_date,
+    end_date,
+    session: Session | scoped_session = db.session,
+):
+    return (
+        session.query(FactBillingLetterDespatch)
+        .filter(FactBillingLetterDespatch.bst_date >= start_date, FactBillingLetterDespatch.bst_date <= end_date)
+        .with_entities(
+            FactBillingLetterDespatch.bst_date.label("date"),
+            FactBillingLetterDespatch.postage.label("postage"),
+            FactBillingLetterDespatch.cost_threshold.label("cost_threshold"),
+            FactBillingLetterDespatch.rate.label("rate"),
+            FactBillingLetterDespatch.billable_units.label("sheets"),
+            FactBillingLetterDespatch.notifications_sent.label("letters"),
+            (FactBillingLetterDespatch.rate * FactBillingLetterDespatch.notifications_sent).label("cost"),
+        )
+        .order_by("date", "postage", "cost_threshold", "rate", "sheets")
+        .all()
+    )

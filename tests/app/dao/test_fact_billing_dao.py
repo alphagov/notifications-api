@@ -13,6 +13,7 @@ from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
     fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
+    fetch_dvla_billing_facts,
     fetch_usage_for_all_services_letter,
     fetch_usage_for_all_services_letter_breakdown,
     fetch_usage_for_all_services_sms,
@@ -2024,3 +2025,79 @@ def test_get_organisation_live_services_with_free_allowance(sample_service, samp
 
     assert org_services[1].id == service_with_no_free_allowance.id
     assert org_services[1].free_sms_fragment_limit == 0
+
+
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_fetch_dvla_billing_facts_happy_path_uses_expected_bind(notify_db_session, session, expected_bind_key):
+    facts = [
+        FactBillingLetterDespatch(
+            bst_date="2020-04-01",
+            postage="first",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=1,
+            billable_units=1,
+            notifications_sent=5,
+        ),
+        FactBillingLetterDespatch(
+            bst_date="2020-04-01",
+            postage="second",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=0.5,
+            billable_units=1,
+            notifications_sent=100,
+        ),
+        FactBillingLetterDespatch(
+            bst_date="2020-05-01",
+            postage="second",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=0.75,
+            billable_units=2,
+            notifications_sent=25,
+        ),
+        FactBillingLetterDespatch(
+            bst_date="2020-05-01",
+            postage="europe",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=1.5,
+            billable_units=1,
+            notifications_sent=10,
+        ),
+        FactBillingLetterDespatch(
+            bst_date="2021-03-31",
+            postage="rest-of-world",
+            cost_threshold=LetterCostThreshold.sorted,
+            rate=1.5,
+            billable_units=1,
+            notifications_sent=5,
+        ),
+    ]
+    notify_db_session.add_all(facts)
+    notify_db_session.commit()
+
+    with QueryRecorder() as qr:
+        results = fetch_dvla_billing_facts("2020-04-01", "2021-03-31", session=session)
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
+
+    assert [
+        (
+            r.date.isoformat(),
+            r.postage,
+            r.cost_threshold.value,
+            float(r.rate),
+            r.sheets,
+            r.letters,
+            float(r.cost),
+        )
+        for r in results
+    ] == [
+        ("2020-04-01", "first", "sorted", 1.0, 1, 5, 5.0),
+        ("2020-04-01", "second", "sorted", 0.5, 1, 100, 50.0),
+        ("2020-05-01", "europe", "sorted", 1.5, 1, 10, 15.0),
+        ("2020-05-01", "second", "sorted", 0.75, 2, 25, 18.75),
+        ("2021-03-31", "rest-of-world", "sorted", 1.5, 1, 5, 7.5),
+    ]
