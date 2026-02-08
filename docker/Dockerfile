@@ -29,14 +29,19 @@ RUN echo "Install OS dependencies for python app requirements" &&  \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/* /tmp/*
 
-COPY requirements.txt .
+# build context is `..`, so requirements lives under notifications-api/
+COPY notifications-api/requirements.txt .
+
+# local kombu must exist during build for file:///home/vcap/kombu
+COPY kombu/ /home/vcap/kombu/
 
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN echo "Installing python requirements" && \
     python3 -m venv /opt/venv && \
     uv pip sync --python /opt/venv/bin/python requirements.txt
 
-COPY . .
+# copy the notifications-api repo contents into the image
+COPY notifications-api/ .
 RUN make generate-version-file  # This file gets copied across
 
 ##### Production Image #######################################################
@@ -50,10 +55,17 @@ RUN mkdir /home/vcap/logs
 COPY --from=python_build --chown=root:root /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 
-COPY --chown=notify:notify app app
-COPY --chown=notify:notify migrations migrations
-COPY --chown=notify:notify templates templates
-COPY --chown=notify:notify run_celery.py gunicorn_config.py application.py entrypoint.sh ./
+# build context is `..`, so these live under notifications-api/
+COPY --chown=notify:notify notifications-api/app app
+COPY --chown=notify:notify notifications-api/migrations migrations
+COPY --chown=notify:notify notifications-api/templates templates
+COPY --chown=notify:notify \
+  notifications-api/run_celery.py \
+  notifications-api/gunicorn_config.py \
+  notifications-api/application.py \
+  notifications-api/entrypoint.sh \
+  ./
+
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
 
 RUN python -m compileall . && \
@@ -85,12 +97,17 @@ RUN mkdir -p app
 # Copying to overwrite is faster than RUN chown notify:notify ...
 COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
-# Install dev/test requirements
-COPY --chown=notify:notify Makefile requirements_for_test.txt ./
+# Install dev/test requirements (these files live under notifications-api/)
+COPY --chown=notify:notify notifications-api/Makefile notifications-api/requirements_for_test.txt ./
+
+# ✅ Ensure file:///home/vcap/kombu exists when bootstrap installs requirements_for_test.txt
+COPY --from=python_build --chown=notify:notify /home/vcap/kombu /home/vcap/kombu
+
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN make bootstrap
 
-COPY --chown=notify:notify . .
+# Copy the full notifications-api repo contents into test image
+COPY --chown=notify:notify notifications-api/ .
 
 ##### Concourse Test Image ##############################################################
 FROM production AS concourse_tests
@@ -120,12 +137,17 @@ COPY --from=python_build --chown=notify:notify /opt/venv /opt/venv
 
 # Install dev/test requirements
 COPY --from=python_build --chown=notify:notify /home/vcap/app/app/version.py app/version.py
-COPY --chown=notify:notify . .
+
+# ✅ Ensure file:///home/vcap/kombu exists for requirements_for_test.txt installs
+COPY --from=python_build --chown=notify:notify /home/vcap/kombu /home/vcap/kombu
+
+# Copy the notifications-api repo contents
+COPY --chown=notify:notify notifications-api/ .
 
 ENV SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://postgres:postgres@localhost:5432/
-
 ENV UV_CACHE_DIR='/tmp/uv-cache/'
 RUN uv pip sync requirements_for_test.txt
+
 
 USER root
 
@@ -134,29 +156,4 @@ ENV POSTGRES_VERSION=15 \
 
 RUN \
     apt-get update \
-    && apt-get install -y --no-install-recommends \
-        gnupg \
-        lsb-release
-
-# Installation of postgres is based on https://github.com/docker-library/postgres/blob/0d0485cb02e526f5a240b7740b46c35404aaf13f/9.6/Dockerfile
-
-# Add the gpg key for postgresql package repository
-RUN set -x \
-    && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$POSTGRES_REPO_KEY" \
-    && gpg --batch --export "$POSTGRES_REPO_KEY" > /etc/apt/trusted.gpg.d/postgres.gpg \
-    && command -v gpgconf > /dev/null && gpgconf --kill all \
-    &&rm -rf "$GNUPGHOME" \
-    && apt-key list
-
-# Install postgres
-RUN \
-    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main $POSTGRES_VERSION" > /etc/apt/sources.list.d/pgdg.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        postgresql-$POSTGRES_VERSION \
-    && rm -rf /var/lib/apt/lists/* /tmp/*
-
-RUN \
-    service postgresql start \
-    && su - postgres -c "psql -c \"alter user postgres with password 'postgres';\""
+    && ap
