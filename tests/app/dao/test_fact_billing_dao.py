@@ -1665,8 +1665,13 @@ def test_fetch_daily_volumes_for_platform(
     assert results[1].letter_sheet_totals == 40
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_daily_sms_provider_volumes_for_platform_groups_values_by_provider(
-    notify_db_session,
+    notify_db_session, session, expected_bind_key
 ):
     services = [create_service(service_name="a"), create_service(service_name="b")]
     templates = [create_template(services[0]), create_template(services[1])]
@@ -1677,7 +1682,12 @@ def test_fetch_daily_sms_provider_volumes_for_platform_groups_values_by_provider
     create_ft_billing("2022-02-01", templates[0], provider="bar", notifications_sent=16, billable_unit=32)
     create_ft_billing("2022-02-01", templates[1], provider="bar", notifications_sent=64, billable_unit=128)
 
-    results = fetch_daily_sms_provider_volumes_for_platform(start_date="2022-02-01", end_date="2022-02-01")
+    with QueryRecorder() as qr:
+        results = fetch_daily_sms_provider_volumes_for_platform(
+            start_date="2022-02-01", end_date="2022-02-01", session=session
+        )
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
 
     assert len(results) == 2
     assert results[0].provider == "bar"
@@ -1689,12 +1699,22 @@ def test_fetch_daily_sms_provider_volumes_for_platform_groups_values_by_provider
     assert results[1].sms_fragment_totals == 10
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_daily_sms_provider_volumes_for_platform_for_platform_calculates_chargeable_units_and_costs(
-    sample_template,
+    sample_template, session, expected_bind_key
 ):
     create_ft_billing("2022-02-01", sample_template, rate_multiplier=3, rate=1.5, notifications_sent=1, billable_unit=2)
 
-    results = fetch_daily_sms_provider_volumes_for_platform(start_date="2022-02-01", end_date="2022-02-01")
+    with QueryRecorder() as qr:
+        results = fetch_daily_sms_provider_volumes_for_platform(
+            start_date="2022-02-01", end_date="2022-02-01", session=session
+        )
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
 
     assert len(results) == 1
     assert results[0].sms_totals == 1
@@ -1703,7 +1723,14 @@ def test_fetch_daily_sms_provider_volumes_for_platform_for_platform_calculates_c
     assert results[0].sms_cost == 9
 
 
-def test_fetch_daily_sms_provider_volumes_for_platform_for_platform_searches_dates_inclusively(sample_template):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_fetch_daily_sms_provider_volumes_for_platform_for_platform_searches_dates_inclusively(
+    sample_template, session, expected_bind_key
+):
     # too early
     create_ft_billing("2022-02-02", sample_template)
 
@@ -1715,21 +1742,36 @@ def test_fetch_daily_sms_provider_volumes_for_platform_for_platform_searches_dat
     # too late
     create_ft_billing("2022-02-06", sample_template)
 
-    results = fetch_daily_sms_provider_volumes_for_platform(start_date="2022-02-03", end_date="2022-02-05")
+    with QueryRecorder() as qr:
+        results = fetch_daily_sms_provider_volumes_for_platform(
+            start_date="2022-02-03", end_date="2022-02-05", session=session
+        )
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
 
     assert len(results) == 3
     assert results[0].bst_date == date(2022, 2, 3)
     assert results[-1].bst_date == date(2022, 2, 5)
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
 def test_fetch_daily_sms_provider_volumes_for_platform_for_platform_only_returns_sms(
-    sample_template, sample_email_template, sample_letter_template
+    sample_template, sample_email_template, sample_letter_template, session, expected_bind_key
 ):
     create_ft_billing("2022-02-01", sample_template, notifications_sent=1)
     create_ft_billing("2022-02-01", sample_email_template, notifications_sent=2)
     create_ft_billing("2022-02-01", sample_letter_template, notifications_sent=4)
 
-    results = fetch_daily_sms_provider_volumes_for_platform(start_date="2022-02-01", end_date="2022-02-01")
+    with QueryRecorder() as qr:
+        results = fetch_daily_sms_provider_volumes_for_platform(
+            start_date="2022-02-01", end_date="2022-02-01", session=session
+        )
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
 
     assert len(results) == 1
     assert results[0].sms_totals == 1
