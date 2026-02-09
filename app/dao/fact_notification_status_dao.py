@@ -274,7 +274,7 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(
     service_id,
     by_template=False,
     limit_days=7,
-    chunk_timedelta=timedelta(minutes=15),
+    chunk_timedelta=timedelta(minutes=30),
     inner_retry_attempts=0,
     session=db.session,
 ):
