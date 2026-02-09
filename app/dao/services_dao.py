@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from flask import current_app
 from sqlalchemy import Float, cast
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload, scoped_session
 from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
@@ -63,6 +63,7 @@ from app.utils import (
     escape_special_characters,
     get_archived_db_column_value,
     get_london_midnight_in_utc,
+    retryable_query,
 )
 
 DEFAULT_SERVICE_PERMISSIONS = [
@@ -515,9 +516,12 @@ def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=500)
     )
 
 
-def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=10000):
+@retryable_query()
+def dao_find_services_with_high_failure_rates(
+    start_date: datetime, end_date: datetime, threshold: int = 10000, session: Session | scoped_session = db.session
+):
     subquery = (
-        db.session.query(func.count(Notification.id).label("total_count"), Notification.service_id.label("service_id"))
+        session.query(func.count(Notification.id).label("total_count"), Notification.service_id.label("service_id"))
         .filter(
             Notification.service_id == Service.id,
             Notification.created_at >= start_date,
@@ -536,7 +540,7 @@ def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=10
     subquery = subquery.subquery()
 
     query = (
-        db.session.query(
+        session.query(
             Notification.service_id.label("service_id"),
             func.count(Notification.id).label("permanent_failure_count"),
             subquery.c.total_count.label("total_count"),
