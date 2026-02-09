@@ -170,7 +170,7 @@ def test_dao_update_template_email_file(sample_email_template, sample_template_e
     assert fetched_template.version == 3
 
 
-@freeze_time("2025-12-30 16:06:04.000000")
+@freeze_time("2025-07-30 16:06:04.000000")
 def test_dao_archive_template_email_file(sample_email_template, sample_template_email_file_not_pending):
     dao_archive_template_email_file(
         sample_template_email_file_not_pending,
@@ -180,7 +180,7 @@ def test_dao_archive_template_email_file(sample_email_template, sample_template_
 
     fetched_email_file = TemplateEmailFile.query.get(sample_template_email_file_not_pending.id)
     assert fetched_email_file.version == 2
-    assert fetched_email_file.archived_at == datetime.datetime(2025, 12, 30, 16, 6, 4)
+    assert fetched_email_file.archived_at == datetime.datetime(2025, 7, 30, 16, 6, 4)
     assert fetched_email_file.archived_by_id == sample_template_email_file_not_pending.created_by_id
     assert fetched_email_file.template_version == sample_email_template.version + 1
 
@@ -188,6 +188,6 @@ def test_dao_archive_template_email_file(sample_email_template, sample_template_
         id=sample_template_email_file_not_pending.id, version=2
     ).one()
     assert fetched_latest_history.version == 2
-    assert fetched_latest_history.archived_at == datetime.datetime(2025, 12, 30, 16, 6, 4)
+    assert fetched_latest_history.archived_at == datetime.datetime(2025, 7, 30, 16, 6, 4)
     assert fetched_latest_history.archived_by_id == sample_template_email_file_not_pending.created_by_id
     assert fetched_latest_history.template_version == sample_email_template.version + 1

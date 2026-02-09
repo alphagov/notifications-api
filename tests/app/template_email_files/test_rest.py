@@ -8,7 +8,7 @@ from app.models import TemplateEmailFile, TemplateEmailFileHistory
 from tests.app.db import create_template_email_file
 
 
-@freezegun.freeze_time("2025-01-01 11:09:00.000000")
+@freezegun.freeze_time("2025-07-01 11:09:00.000000")
 def test_create_template_email_file_happy_path(sample_service, sample_email_template, admin_request):
     data = {
         "filename": "example.pdf",
@@ -45,7 +45,7 @@ def test_create_template_email_file_happy_path(sample_service, sample_email_temp
     assert template_email_file.template_version == int(sample_email_template.version)
     assert template_email_file.created_by_id == sample_service.users[0].id
     assert template_email_file.version == 1
-    assert str(template_email_file.created_at) == "2025-01-01 11:09:00"
+    assert str(template_email_file.created_at) == "2025-07-01 11:09:00"
 
 
 def test_create_template_email_file_fails_if_template_not_email_type(
