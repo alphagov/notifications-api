@@ -446,7 +446,7 @@ def test_check_notification_content_is_not_empty_fails(
 
 def test_validate_template(sample_service):
     template = create_template(sample_service, template_type="email")
-    validate_template(template.id, {}, sample_service, "email")
+    validate_template(template_id=template.id, personalisation={}, service=sample_service, notification_type="email")
 
 
 @pytest.mark.parametrize("check_char_count", [True, False])
@@ -460,7 +460,11 @@ def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_servic
     mock_check_not_empty = mocker.patch("app.notifications.validators.check_notification_content_is_not_empty")
     mock_check_message_is_too_long = mocker.patch("app.notifications.validators.check_is_message_too_long")
     template, template_with_content = validate_template(
-        template.id, {}, sample_service, "email", check_char_count=check_char_count
+        template_id=template.id,
+        personalisation={},
+        service=sample_service,
+        notification_type="email",
+        check_char_count=check_char_count,
     )
 
     mock_check_type.assert_called_once_with("email", "email")
@@ -483,7 +487,11 @@ def test_validate_template_calls_all_validators_exception_message_too_long(mocke
     mock_check_not_empty = mocker.patch("app.notifications.validators.check_notification_content_is_not_empty")
     mock_check_message_is_too_long = mocker.patch("app.notifications.validators.check_is_message_too_long")
     template, template_with_content = validate_template(
-        template.id, {}, sample_service, "email", check_char_count=False
+        template_id=template.id,
+        personalisation={},
+        service=sample_service,
+        notification_type="email",
+        check_char_count=False,
     )
 
     mock_check_type.assert_called_once_with("email", "email")
