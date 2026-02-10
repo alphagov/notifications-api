@@ -3,7 +3,7 @@ import datetime
 import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import NoResultFound
-
+import uuid
 from app.constants import EMAIL_TYPE
 from app.dao.template_email_files_dao import (
     dao_archive_template_email_file,
@@ -13,7 +13,7 @@ from app.dao.template_email_files_dao import (
     dao_update_template_email_file,
 )
 from app.dao.templates_dao import dao_update_template
-from app.models import Template, TemplateEmailFile
+from app.models import Template, TemplateEmailFile, TemplateHistory
 from tests.app.db import create_template, create_template_email_file
 
 
@@ -155,6 +155,22 @@ def test_dao_update_template_email_file(sample_email_template, sample_template_e
     assert fetched_template_email_file.link_text == "click this new link"
     assert fetched_template_email_file.retention_period == 30
     assert fetched_template.version == 3
+
+
+def test_dao_get_template_email_files_by_template_id_returns_no_files_when_archived(
+    sample_email_template, sample_template_email_file
+):
+    dao_archive_template_email_file(
+        sample_template_email_file,
+        sample_template_email_file.created_by_id,
+        template_version=sample_email_template.version + 1,
+    )
+    file_latest_no_version = dao_get_template_email_files_by_template_id(sample_template_email_file.template_id)
+    latest_template = Template.query.get(sample_email_template.id)
+    assert latest_template.version == 2
+    latest_template_email_file_by_version = dao_get_template_email_files_by_template_id(sample_template_email_file.template_id, latest_template.version)
+    assert file_latest_no_version == []
+    assert latest_template_email_file_by_version == []
 
 
 @freeze_time("2025-12-30 16:06:04.000000")
