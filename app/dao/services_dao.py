@@ -493,9 +493,12 @@ def dao_fetch_active_users_for_service(service_id):
     return query.all()
 
 
-def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=500):
+@retryable_query()
+def dao_find_services_sending_to_tv_numbers(
+    start_date: datetime, end_date: datetime, threshold: int = 500, session: Session | scoped_session = db.session
+):
     return (
-        db.session.query(
+        session.query(
             Notification.service_id.label("service_id"), func.count(Notification.id).label("notification_count")
         )
         .filter(

@@ -461,7 +461,11 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         end_date=end_date,
         retry_attempts=2,
     )
-    services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(start_date=start_date, end_date=end_date)
+    services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(
+        start_date=start_date,
+        end_date=end_date,
+        retry_attempts=2,
+    )
 
     if services_with_failures:
         message += (
