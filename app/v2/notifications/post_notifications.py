@@ -126,10 +126,10 @@ def post_notification(notification_type):
     check_service_has_permission(authenticated_service, notification_type)
 
     template, template_with_content = validate_template(
-        form["template_id"],
-        form.get("personalisation", {}),
-        authenticated_service,
-        notification_type,
+        template_id=form["template_id"],
+        personalisation=form.get("personalisation", {}),
+        service=authenticated_service,
+        notification_type=notification_type,
         check_char_count=False,
         recipient=form.get("email_address"),
     )
