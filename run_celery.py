@@ -28,4 +28,3 @@ from app.notify_api_flask_app import NotifyApiFlaskApp  # noqa
 application = NotifyApiFlaskApp("delivery")
 create_app(application)
 celery_logging.set_up_logging(application.config)
-application.app_context().push()
