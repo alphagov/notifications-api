@@ -168,7 +168,9 @@ def test_dao_get_template_email_files_by_template_id_returns_no_files_when_archi
     file_latest_no_version = dao_get_template_email_files_by_template_id(sample_template_email_file.template_id)
     latest_template = Template.query.get(sample_email_template.id)
     assert latest_template.version == 2
-    latest_template_email_file_by_version = dao_get_template_email_files_by_template_id(sample_template_email_file.template_id, latest_template.version)
+    latest_template_email_file_by_version = dao_get_template_email_files_by_template_id(
+        sample_template_email_file.template_id, latest_template.version
+    )
     assert file_latest_no_version == []
     assert latest_template_email_file_by_version == []
 

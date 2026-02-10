@@ -20,7 +20,19 @@ def dao_create_template_email_file(template_email_file: TemplateEmailFile):
 
 @autocommit
 def dao_get_template_email_files_by_template_id(template_id, template_version=None):
+    template_head = Template.query.get(template_id)
+    # this is a sticking plaster, it does not address the fact that the template_version branch doesn't work properly
+    if not template_version or template_head.version == template_version:
+        return TemplateEmailFile.query.filter(
+            TemplateEmailFile.template_id == template_id,
+            TemplateEmailFile.archived_at.is_(None),
+        ).all()
+
     if template_version:
+        # why this is broken: IF the latest file for a given id in TemplateEmailFileHistory is archived
+        # we skip to the latest file that is NOT archived. We shouldn't do this. If the record that corresponds to a
+        # specific template_version is archived we should not return that file at all (we should return all other files
+        # if they are not archived)
         template_email_files_all_template_versions = TemplateEmailFileHistory.query.filter(
             TemplateEmailFileHistory.template_id == template_id,
             TemplateEmailFileHistory.template_version <= template_version,
@@ -38,11 +50,6 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
                 ],
             )
         )
-
-    return TemplateEmailFile.query.filter(
-        TemplateEmailFile.template_id == template_id,
-        TemplateEmailFile.archived_at.is_(None),
-    ).all()
 
 
 @autocommit
