@@ -1,5 +1,6 @@
 import base64
 import functools
+import time
 import uuid
 from datetime import datetime
 
@@ -52,6 +53,7 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
+from app.request_timings import add_context, get_timings, init_request_timings, record_timing
 from app.schema_validation import validate
 from app.utils import try_parse_and_format_phone_number
 from app.v2.errors import BadRequestError
@@ -76,8 +78,37 @@ POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
 )
 
 
+def _log_slow_request(request_start: float, notification_type: str, notification_id: str | None = None) -> None:
+    request_time = time.perf_counter() - request_start
+    if request_time <= 1.0:
+        return
+
+    timings, context = get_timings()
+    service_id = getattr(authenticated_service, "id", None)
+    api_key_type = getattr(api_user, "key_type", None)
+    add_context(
+        notification_type=notification_type,
+        service_id=str(service_id) if service_id is not None else None,
+        api_key_type=api_key_type,
+        endpoint=request.endpoint,
+        path=request.path,
+        notification_id=notification_id,
+        request_time_seconds=round(request_time, 3),
+    )
+    _, context = get_timings()
+    current_app.logger.info(
+        "slow request breakdown",
+        extra={
+            "timings_ms": timings,
+            **context,
+        },
+    )
+
+
 @v2_notification_blueprint.route(f"/{LETTER_TYPE}", methods=["POST"])
 def post_precompiled_letter_notification():
+    init_request_timings()
+    request_start = time.perf_counter()
     check_rate_limiting(authenticated_service, api_user, notification_type=LETTER_TYPE)
 
     request_json = get_valid_json()
@@ -104,13 +135,21 @@ def post_precompiled_letter_notification():
         precompiled=True,
     )
 
+    notification_id = None
+    if isinstance(notification, dict):
+        notification_id = str(notification.get("id"))
+    _log_slow_request(request_start, LETTER_TYPE, notification_id=notification_id)
+
     return jsonify(notification), 201
 
 
 @v2_notification_blueprint.route("/<notification_type>", methods=["POST"])
 def post_notification(notification_type):
+    init_request_timings()
+    request_start = time.perf_counter()
     check_rate_limiting(authenticated_service, api_user, notification_type=notification_type)
 
+    json_parse_start = time.perf_counter()
     with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
         request_json = get_valid_json()
 
@@ -122,9 +161,11 @@ def post_notification(notification_type):
             form = validate(request_json, post_letter_request)
         else:
             abort(404)
+    record_timing("json_parse_validate_ms", time.perf_counter() - json_parse_start)
 
     check_service_has_permission(authenticated_service, notification_type)
 
+    validate_template_start = time.perf_counter()
     template, template_with_content = validate_template(
         template_id=form["template_id"],
         personalisation=form.get("personalisation", {}),
@@ -133,6 +174,7 @@ def post_notification(notification_type):
         check_char_count=False,
         recipient=form.get("email_address"),
     )
+    record_timing("validate_template_ms", time.perf_counter() - validate_template_start)
 
     reply_to = get_reply_to_text(notification_type, form, template)
 
@@ -156,6 +198,11 @@ def post_notification(notification_type):
             unsubscribe_link=form.get("one_click_unsubscribe_url", None),
         )
 
+    notification_id = None
+    if isinstance(notification, dict):
+        notification_id = str(notification.get("id"))
+    _log_slow_request(request_start, notification_type, notification_id=notification_id)
+
     return jsonify(notification), 201
 
 
@@ -172,27 +219,34 @@ def process_sms_or_email_notification(
     notification_id = uuid.uuid4()
     form_send_to = form["email_address"] if notification_type == EMAIL_TYPE else form["phone_number"]
 
+    recipient_validate_start = time.perf_counter()
     recipient_data = validate_and_format_recipient(
         send_to=form_send_to, key_type=api_user.key_type, service=service, notification_type=notification_type
     )
+    record_timing("recipient_validate_ms", time.perf_counter() - recipient_validate_start)
 
     send_to = recipient_data["normalised_to"] if type(recipient_data) is dict else recipient_data
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
 
+    document_upload_start = time.perf_counter()
     personalisation, document_download_count = process_document_uploads(
         form.get("personalisation"),
         service,
         send_to=send_to,
         simulated=simulated,
     )
+    record_timing("document_upload_ms", time.perf_counter() - document_upload_start)
+    add_context(document_download_count=document_download_count)
     if document_download_count:
         # We changed personalisation which means we need to update the content
         template_with_content.values = personalisation
 
     # validate content length after url is replaced in personalisation.
+    content_validation_start = time.perf_counter()
     check_is_message_too_long(template_with_content)
+    record_timing("content_validation_ms", time.perf_counter() - content_validation_start)
 
     response = create_response_for_post_notification(
         notification_id=notification_id,
@@ -206,6 +260,7 @@ def process_sms_or_email_notification(
         template_with_content=template_with_content,
     )
 
+    persist_start = time.perf_counter()
     persist_notification(
         notification_id=notification_id,
         template_id=template.id,
@@ -222,6 +277,7 @@ def process_sms_or_email_notification(
         unsubscribe_link=unsubscribe_link,
         document_download_count=document_download_count,
     )
+    record_timing("persist_notification_ms", time.perf_counter() - persist_start)
 
     if not simulated:
         send_notification_to_queue_detached(

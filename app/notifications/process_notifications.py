@@ -1,3 +1,4 @@
+import time
 import uuid
 from datetime import datetime
 
@@ -34,6 +35,7 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_by_id,
 )
 from app.models import Notification
+from app.request_timings import add_context, record_timing
 from app.utils import (
     parse_and_format_phone_number,
     try_download_template_email_file_from_s3,
@@ -189,9 +191,13 @@ def persist_notification(
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
+        db_insert_start = time.perf_counter()
         dao_create_notification(notification=notification, _autocommit=_autocommit)
+        record_timing("db_insert_ms", time.perf_counter() - db_insert_start)
         # Not sure how we can rollback
+        redis_limits_start = time.perf_counter()
         increment_daily_limit_caches(service, notification, key_type)
+        record_timing("redis_daily_limit_ms", time.perf_counter() - redis_limits_start)
 
     return notification
 
@@ -236,7 +242,10 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
         deliver_task = get_pdf_for_templated_letter
 
     try:
+        add_context(queue=queue, celery_task_name=getattr(deliver_task, "name", deliver_task.__name__))
+        queue_publish_start = time.perf_counter()
         deliver_task.apply_async([str(notification_id)], queue=queue)
+        record_timing("queue_publish_ms", time.perf_counter() - queue_publish_start)
     except Exception:
         dao_delete_notifications_by_id(notification_id)
         raise
