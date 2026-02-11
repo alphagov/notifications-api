@@ -3,6 +3,7 @@ from unittest.mock import call
 
 import pytest
 from flask import current_app, json
+from notifications_utils.markdown import notify_plain_text_email_markdown
 
 from app.constants import (
     EMAIL_TYPE,
@@ -737,26 +738,59 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
 
 
 @pytest.mark.parametrize(
-    "value, expected_value",
+    "value, expected_sanitised, expected_formatted_sanitised",
     (
         # sanitise link with link text by removing the link and escaping markdonw characters:
         (
-            "Amala, please [click this (evil link](https://evil.link)",
-            "Amala, please \\[click this \\(evil link\\]\\(\\)",
+            r"Amala, please [click this (evil link](https://evil.link)",
+            r"Amala, please \[click this \(evil link\]\(\)",
+            r"Amala, please [click this (evil link]()",
         ),
+        # cut out a link without https:
+        (
+            r"evil.link",
+            r"",
+            r"",
+        ),  # TODO: do we want this to happen?
         # avoid double sanitisation:
-        ("\\# Rogue Header", "\\# Rogue Header"),
-        # escape two Markdown characters in a row
-        ("## Rogue Header", "\\#\\# Rogue Header"),
-        # don't check previous character for the first character:
-        ("# Rogue Header\\", "\\# Rogue Header\\"),
-        ("# Rogue Header\\\n# Rogue Header", "\\# Rogue Header\\\n\\# Rogue Header"),
+        (
+            r"\# Rogue Header",
+            r"\# Rogue Header",
+            r"# Rogue Header",
+        ),
+        # escape two Markdown characters in a row:
+        (
+            r"## Rogue Header",
+            r"\#\# Rogue Header",
+            r"## Rogue Header",
+        ),
+        # similar, but for a multi-line string:
+        (
+            "# Rogue Header\\\n# Rogue Header",
+            "\\# Rogue Header\\\n\\# Rogue Header",
+            "# Rogue Header\\\n# Rogue Header",
+        ),
+        # user accidentally puts backslash instead of forward slash:
+        (
+            r"Ulica Ceynowy 5\44",
+            r"Ulica Ceynowy 5\44",
+            r"Ulica Ceynowy 5\44",
+        ),
+        # test all Markdown characters get escaped:
+        (
+            r"`*_(){}[]<>#+-.!|",
+            r"\`\*\_\(\)\{\}\[\]\<\>\#\+\-\.\!\|",
+            r"`*_(){}[]\&lt;&gt;#+-.!|",
+        ),
     ),
 )
-def test_sanitise_personalisation_item(value, expected_value):
+def test_sanitise_personalisation_item(value, expected_sanitised, expected_formatted_sanitised):
     sanitised_value = sanitise_personalisation_item(value)
 
-    assert sanitised_value == expected_value
+    assert sanitised_value == expected_sanitised
+
+    # this is what end user will see
+    assert expected_formatted_sanitised == notify_plain_text_email_markdown(sanitised_value).strip()
 
 
 @pytest.mark.parametrize(
