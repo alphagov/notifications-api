@@ -86,6 +86,7 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
     "created_by_id",
     "postage",
     "document_download_count",
+    "provider_requested",
 ]
 
 

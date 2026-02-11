@@ -513,6 +513,10 @@ class Config:
     MMG_URL = os.environ.get("MMG_URL", "https://api.mmg.co.uk/jsonv2a/api.php")
     FIRETEXT_URL = os.environ.get("FIRETEXT_URL", "https://www.firetext.co.uk/api/sendsms/json")
     SES_STUB_URL = os.environ.get("SES_STUB_URL")
+    FIRETEXT_STUB_URL = os.environ.get("FIRETEXT_STUB_URL")
+    MMG_STUB_URL = os.environ.get("MMG_STUB_URL")
+    LETTER_STUB_ENABLED = os.environ.get("LETTER_STUB_ENABLED", "0") == "1"
+    PROVIDER_OPTION_ENABLED = os.environ.get("PROVIDER_OPTION_ENABLED", "0") == "1"
 
     DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://uat.driver-vehicle-licensing.api.gov.uk")
     DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS")

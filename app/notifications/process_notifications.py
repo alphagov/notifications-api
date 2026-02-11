@@ -141,6 +141,7 @@ def persist_notification(
     billable_units=None,
     postage=None,
     document_download_count=None,
+    provider_requested=None,
     updated_at=None,
     _autocommit=True,
 ):
@@ -169,6 +170,7 @@ def persist_notification(
         unsubscribe_link=unsubscribe_link,
         billable_units=billable_units,
         document_download_count=document_download_count,
+        provider_requested=provider_requested,
         updated_at=updated_at,
     )
     if notification_type == SMS_TYPE:

@@ -28,7 +28,7 @@ from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_letter_response
 from tests import create_service_authorization_header
 from tests.app.db import create_letter_contact, create_service, create_template
-from tests.conftest import set_config_values
+from tests.conftest import set_config, set_config_values
 
 test_address = {"address_line_1": "test 1", "address_line_2": "test 2", "postcode": "SW1 1AA"}
 
@@ -72,6 +72,58 @@ def test_post_letter_notification_returns_201(api_client_request, sample_letter_
     assert not resp_json["scheduled_for"]
     assert not notification.reply_to_text
     mock.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+
+
+def test_post_letter_notification_rejects_provider_when_option_disabled(api_client_request, sample_letter_template):
+    data = {
+        "template_id": str(sample_letter_template.id),
+        "personalisation": {
+            "address_line_1": "Her Royal Highness Queen Elizabeth II",
+            "address_line_2": "Buckingham Palace",
+            "address_line_3": "London",
+            "postcode": "SW1 1AA",
+            "name": "Lizzie",
+        },
+        "provider": "dvla",
+    }
+
+    resp_json = api_client_request.post(
+        sample_letter_template.service_id,
+        "v2_notifications.post_notification",
+        notification_type="letter",
+        _data=data,
+        _expected_status=400,
+    )
+
+    assert resp_json["errors"][0]["message"] == "Provider option is not enabled"
+
+
+def test_post_letter_notification_persists_provider_requested(
+    api_client_request, sample_letter_template, mocker, notify_api
+):
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    data = {
+        "template_id": str(sample_letter_template.id),
+        "personalisation": {
+            "address_line_1": "Her Royal Highness Queen Elizabeth II",
+            "address_line_2": "Buckingham Palace",
+            "address_line_3": "London",
+            "postcode": "SW1 1AA",
+            "name": "Lizzie",
+        },
+        "provider": "dvla",
+    }
+
+    with set_config(notify_api, "PROVIDER_OPTION_ENABLED", True):
+        api_client_request.post(
+            sample_letter_template.service_id,
+            "v2_notifications.post_notification",
+            notification_type="letter",
+            _data=data,
+        )
+
+    notification = Notification.query.one()
+    assert notification.provider_requested == "dvla"
 
 
 def test_post_letter_notification_sets_postage(api_client_request, notify_db_session, mocker):
