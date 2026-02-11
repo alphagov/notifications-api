@@ -626,12 +626,15 @@ def get_total_notifications_for_date_range(start_date, end_date):
     return query.all()
 
 
-def fetch_monthly_notification_statuses_per_service(start_date, end_date):
+@retryable_query()
+def fetch_monthly_notification_statuses_per_service(
+    start_date, end_date, session: Session | scoped_session = db.session
+):
     return (
-        db.session.query(
+        session.query(
             func.date_trunc("month", FactNotificationStatus.bst_date).cast(Date).label("date_created"),
             Service.id.label("service_id"),
-            Service.name.label("service_name"),
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             FactNotificationStatus.notification_type,
             func.sum(
                 case(

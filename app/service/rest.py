@@ -256,7 +256,7 @@ def find_services_by_name():
 
 @service_blueprint.route("/live-services-data", methods=["GET"])
 def get_live_services_data():
-    data = dao_fetch_live_services_data()
+    data = dao_fetch_live_services_data(session=db.session_bulk, retry_attempts=2)
     return jsonify(data=data)
 
 
@@ -1062,7 +1062,9 @@ def get_monthly_notification_data_by_service():
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
 
-    rows = fact_notification_status_dao.fetch_monthly_notification_statuses_per_service(start_date, end_date)
+    rows = fact_notification_status_dao.fetch_monthly_notification_statuses_per_service(
+        start_date, end_date, session=db.session_bulk, retry_attempts=2
+    )
 
     serialized_results = [
         [

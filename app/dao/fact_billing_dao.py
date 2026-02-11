@@ -187,12 +187,13 @@ def _fetch_usage_for_all_services_sms_query(
     ).filter(*([Service.organisation_id == organisation_id] if organisation_id else []))
 
 
-def fetch_usage_for_all_services_letter(start_date, end_date):
-    return (
-        db.session.query(
+@retryable_query()
+def fetch_usage_for_all_services_letter(start_date, end_date, session: Session | scoped_session = db.session):
+    query = (
+        session.query(
             Organisation.name.label("organisation_name"),
             Organisation.id.label("organisation_id"),
-            Service.name.label("service_name"),
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             Service.id.label("service_id"),
             func.sum(FactBilling.notifications_sent).label("total_letters"),
             func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost"),
@@ -218,8 +219,11 @@ def fetch_usage_for_all_services_letter(start_date, end_date):
         .order_by(Organisation.name, Service.name)
     )
 
+    return session.execute(query.statement)
 
-def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
+
+@retryable_query()
+def fetch_usage_for_all_services_letter_breakdown(start_date, end_date, session: Session | scoped_session = db.session):
     formatted_postage = case(
         (FactBilling.postage.in_(INTERNATIONAL_POSTAGE_TYPES), "international"), else_=FactBilling.postage
     ).label("postage")
@@ -233,10 +237,10 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     )
 
     query = (
-        db.session.query(
+        session.query(
             Organisation.name.label("organisation_name"),
             Organisation.id.label("organisation_id"),
-            Service.name.label("service_name"),
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             Service.id.label("service_id"),
             FactBilling.rate.label("letter_rate"),
             formatted_postage,
@@ -262,7 +266,7 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
         )
     )
 
-    return db.session.execute(query.statement)
+    return session.execute(query.statement)
 
 
 @retryable_query()
@@ -1054,11 +1058,12 @@ def fetch_usage_for_organisation(
     return service_with_usage, updated_at
 
 
-def fetch_daily_volumes_for_platform(start_date, end_date):
+@retryable_query()
+def fetch_daily_volumes_for_platform(start_date, end_date, session: Session | scoped_session = db.session):
     # query to return the total notifications sent per day for each channel. NB start and end dates are inclusive
 
     daily_volume_stats = (
-        db.session.query(
+        session.query(
             FactBilling.bst_date,
             func.sum(case((FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent), else_=0)).label(
                 "sms_totals"
@@ -1091,7 +1096,7 @@ def fetch_daily_volumes_for_platform(start_date, end_date):
     )
 
     aggregated_totals = (
-        db.session.query(
+        session.query(
             daily_volume_stats.c.bst_date.cast(db.Text).label("bst_date"),
             func.sum(daily_volume_stats.c.sms_totals).label("sms_totals"),
             func.sum(daily_volume_stats.c.sms_fragment_totals).label("sms_fragment_totals"),
@@ -1108,11 +1113,12 @@ def fetch_daily_volumes_for_platform(start_date, end_date):
     return aggregated_totals
 
 
-def fetch_daily_sms_provider_volumes_for_platform(start_date, end_date):
+@retryable_query()
+def fetch_daily_sms_provider_volumes_for_platform(start_date, end_date, session: Session | scoped_session = db.session):
     # query to return the total notifications sent per day for each channel. NB start and end dates are inclusive
 
     daily_volume_stats = (
-        db.session.query(
+        session.query(
             FactBilling.bst_date,
             FactBilling.provider,
             func.sum(FactBilling.notifications_sent).label("sms_totals"),
@@ -1139,13 +1145,18 @@ def fetch_daily_sms_provider_volumes_for_platform(start_date, end_date):
     return daily_volume_stats
 
 
-def fetch_volumes_by_service(start_date, end_date):
+@retryable_query()
+def fetch_volumes_by_service(
+    start_date,
+    end_date,
+    session: Session | scoped_session = db.session,
+):
     # query to return the volume totals by service aggregated for the date range given
     # start and end dates are inclusive.
     year_end_date = int(end_date.strftime("%Y"))
 
     volume_stats = (
-        db.session.query(
+        session.query(
             FactBilling.bst_date,
             FactBilling.service_id,
             func.sum(case((FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent), else_=0)).label(
@@ -1182,7 +1193,7 @@ def fetch_volumes_by_service(start_date, end_date):
     )
 
     annual_billing = (
-        db.session.query(
+        session.query(
             func.max(AnnualBilling.financial_year_start)
             .over(partition_by=AnnualBilling.service_id)
             .label("latest_billing_year_for_service"),
@@ -1195,8 +1206,8 @@ def fetch_volumes_by_service(start_date, end_date):
     )
 
     results = (
-        db.session.query(
-            Service.name.label("service_name"),
+        session.query(
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             Service.id.label("service_id"),
             Service.organisation_id.label("organisation_id"),
             Organisation.name.label("organisation_name"),
@@ -1289,4 +1300,27 @@ def get_organisation_live_services_and_their_free_allowance(
             Service.organisation_id == organisation_id,
             Service.restricted.is_(False),
         )
+    )
+
+
+@retryable_query()
+def fetch_dvla_billing_facts(
+    start_date,
+    end_date,
+    session: Session | scoped_session = db.session,
+):
+    return (
+        session.query(FactBillingLetterDespatch)
+        .filter(FactBillingLetterDespatch.bst_date >= start_date, FactBillingLetterDespatch.bst_date <= end_date)
+        .with_entities(
+            FactBillingLetterDespatch.bst_date.label("date"),
+            FactBillingLetterDespatch.postage.label("postage"),
+            FactBillingLetterDespatch.cost_threshold.label("cost_threshold"),
+            FactBillingLetterDespatch.rate.label("rate"),
+            FactBillingLetterDespatch.billable_units.label("sheets"),
+            FactBillingLetterDespatch.notifications_sent.label("letters"),
+            (FactBillingLetterDespatch.rate * FactBillingLetterDespatch.notifications_sent).label("cost"),
+        )
+        .order_by("date", "postage", "cost_threshold", "rate", "sheets")
+        .all()
     )

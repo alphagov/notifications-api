@@ -87,6 +87,7 @@ from tests.app.db import (
     create_template_folder,
     create_user,
 )
+from tests.utils import QueryRecorder
 
 
 def test_create_service(notify_db_session):
@@ -424,7 +425,12 @@ def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(
 
 
 @freeze_time("2019-04-23T10:00:00")
-def test_dao_fetch_live_services_data(sample_user, nhs_email_branding, nhs_letter_branding):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_dao_fetch_live_services_data(sample_user, nhs_email_branding, nhs_letter_branding, session, expected_bind_key):
     org = create_organisation(organisation_type="nhs_central")
     service = create_service(go_live_user=sample_user, go_live_at="2014-04-20T10:00:00")
     sms_template = create_template(service=service)
@@ -458,7 +464,11 @@ def test_dao_fetch_live_services_data(sample_user, nhs_email_branding, nhs_lette
     # 3rd service: billing from 2019
     create_annual_billing(service_3.id, 200, 2019)
 
-    results = dao_fetch_live_services_data()
+    with QueryRecorder() as qr:
+        results = dao_fetch_live_services_data(session=session)
+
+    assert {q.bind_key for q in qr.queries} == {expected_bind_key}
+
     assert len(results) == 3
     # checks the results and that they are ordered by date:
     assert results == [

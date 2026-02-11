@@ -8,6 +8,7 @@ from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
     fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
+    fetch_dvla_billing_facts,
     fetch_usage_for_all_services_letter,
     fetch_usage_for_all_services_letter_breakdown,
     fetch_usage_for_all_services_sms,
@@ -18,7 +19,6 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.dao.services_dao import fetch_billing_details_for_all_services
 from app.errors import InvalidRequest, register_errors
-from app.models import FactBillingLetterDespatch
 from app.platform_stats.platform_stats_schema import platform_stats_request
 from app.schema_validation import validate
 from app.service.statistics import format_admin_stats
@@ -81,8 +81,12 @@ def get_data_for_billing_report():
         session=db.session_bulk,
         retry_attempts=2,  # type: ignore[call-arg]
     )
-    letter_overview = fetch_usage_for_all_services_letter(start_date, end_date)
-    letter_breakdown = fetch_usage_for_all_services_letter_breakdown(start_date, end_date)
+    letter_overview = fetch_usage_for_all_services_letter(
+        start_date, end_date, session=db.session_bulk, retry_attempts=2
+    )
+    letter_breakdown = fetch_usage_for_all_services_letter_breakdown(
+        start_date, end_date, session=db.session_bulk, retry_attempts=2
+    )
 
     lb_by_service = [
         (
@@ -129,7 +133,7 @@ def get_data_for_billing_report():
     for service_id, breakdown in lb_by_service:
         combined[service_id]["letter_breakdown"] += breakdown + "\n"
 
-    billing_details = fetch_billing_details_for_all_services()
+    billing_details = fetch_billing_details_for_all_services(session=db.session_bulk, retry_attempts=2)
     for service in billing_details:
         if service.service_id in combined:
             combined[service.service_id].update(
@@ -156,22 +160,7 @@ def get_data_for_dvla_billing_report():
 
     start_date, end_date = validate_date_range_is_within_a_financial_year(start_date, end_date)
 
-    billing_facts = (
-        FactBillingLetterDespatch.query.filter(
-            FactBillingLetterDespatch.bst_date >= start_date, FactBillingLetterDespatch.bst_date <= end_date
-        )
-        .with_entities(
-            FactBillingLetterDespatch.bst_date.label("date"),
-            FactBillingLetterDespatch.postage.label("postage"),
-            FactBillingLetterDespatch.cost_threshold.label("cost_threshold"),
-            FactBillingLetterDespatch.rate.label("rate"),
-            FactBillingLetterDespatch.billable_units.label("sheets"),
-            FactBillingLetterDespatch.notifications_sent.label("letters"),
-            (FactBillingLetterDespatch.rate * FactBillingLetterDespatch.notifications_sent).label("cost"),
-        )
-        .order_by("date", "postage", "cost_threshold", "rate", "sheets")
-        .all()
-    )
+    billing_facts = fetch_dvla_billing_facts(start_date, end_date, session=db.session_bulk, retry_attempts=2)
 
     return jsonify(
         [
@@ -194,7 +183,7 @@ def daily_volumes_report():
     start_date = validate_date_format(request.args.get("start_date"))
     end_date = validate_date_format(request.args.get("end_date"))
 
-    daily_volumes = fetch_daily_volumes_for_platform(start_date, end_date)
+    daily_volumes = fetch_daily_volumes_for_platform(start_date, end_date, session=db.session_bulk, retry_attempts=2)
     report = []
 
     for row in daily_volumes:
@@ -217,7 +206,9 @@ def daily_sms_provider_volumes_report():
     start_date = validate_date_format(request.args.get("start_date"))
     end_date = validate_date_format(request.args.get("end_date"))
 
-    daily_volumes = fetch_daily_sms_provider_volumes_for_platform(start_date, end_date)
+    daily_volumes = fetch_daily_sms_provider_volumes_for_platform(
+        start_date, end_date, session=db.session_bulk, retry_attempts=2
+    )
     report = []
 
     for row in daily_volumes:
@@ -240,7 +231,7 @@ def volumes_by_service_report():
     start_date = validate_date_format(request.args.get("start_date"))
     end_date = validate_date_format(request.args.get("end_date"))
 
-    volumes_by_service = fetch_volumes_by_service(start_date, end_date)
+    volumes_by_service = fetch_volumes_by_service(start_date, end_date, session=db.session_bulk, retry_attempts=2)
     report = []
 
     for row in volumes_by_service:

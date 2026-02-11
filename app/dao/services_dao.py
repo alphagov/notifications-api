@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from flask import current_app
 from sqlalchemy import Float, cast
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload, scoped_session
 from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
@@ -63,6 +63,7 @@ from app.utils import (
     escape_special_characters,
     get_archived_db_column_value,
     get_london_midnight_in_utc,
+    retryable_query,
 )
 
 DEFAULT_SERVICE_PERMISSIONS = [
@@ -96,11 +97,12 @@ def dao_count_live_services():
     ).count()
 
 
-def dao_fetch_live_services_data():
+@retryable_query()
+def dao_fetch_live_services_data(session: Session | scoped_session = db.session):
     year_start_date, year_end_date = get_current_financial_year()
 
     most_recent_annual_billing = (
-        db.session.query(
+        session.query(
             AnnualBilling.service_id.label("service_id"),
             AnnualBilling.free_sms_fragment_limit.label("free_sms_fragment_limit"),
             AnnualBilling.financial_year_start.label("financial_year_start"),
@@ -111,9 +113,9 @@ def dao_fetch_live_services_data():
     )
 
     data = (
-        db.session.query(
+        session.query(
             Service.id.label("service_id"),
-            Service.name.label("service_name"),
+            Service.name.label("service_name"),  # type: ignore[attr-defined]
             Organisation.name.label("organisation_name"),
             Organisation.organisation_type.label("organisation_type"),
             Service.consent_to_research.label("consent_to_research"),
@@ -578,9 +580,10 @@ def get_live_services_with_organisation():
     return query.all()
 
 
-def fetch_billing_details_for_all_services():
+@retryable_query()
+def fetch_billing_details_for_all_services(session: Session | scoped_session = db.session):
     return (
-        db.session.query(
+        session.query(
             Service.id.label("service_id"),
             func.coalesce(Service.purchase_order_number, Organisation.purchase_order_number).label(
                 "purchase_order_number"
