@@ -473,10 +473,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
             f"for sms messages in last 24 hours:\n"
         )
         for service in services_with_failures:
-            service_dashboard = "{}/services/{}".format(
-                current_app.config["ADMIN_BASE_URL"],
-                str(service.service_id),
-            )
+            service_dashboard = f"{current_app.config['ADMIN_BASE_URL']}/services/{service.service_id}"
             message += f"service: {service_dashboard} failure rate: {service.permanent_failure_rate},\n"
 
             current_app.logger.warning(
@@ -486,16 +483,13 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 extra={"service_id": service.service_id, "permanent_failure_rate": service.permanent_failure_rate},
             )
 
-    elif services_sending_to_tv_numbers:
+    if services_sending_to_tv_numbers:
         message += (
             f"{len(services_sending_to_tv_numbers)} service(s) have sent over 500 sms messages to "
             f"tv numbers in last 24 hours:\n"
         )
         for service in services_sending_to_tv_numbers:
-            service_dashboard = "{}/services/{}".format(
-                current_app.config["ADMIN_BASE_URL"],
-                str(service.service_id),
-            )
+            service_dashboard = f"{current_app.config['ADMIN_BASE_URL']}/services/{service.service_id}"
             message += f"service: {service_dashboard} count of sms to tv numbers: {service.notification_count},\n"
 
             current_app.logger.warning(
