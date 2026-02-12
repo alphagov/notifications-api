@@ -13,7 +13,7 @@ def test_create_template_email_file_happy_path(sample_service, sample_email_temp
     data = {
         "filename": "example.pdf",
         "link_text": "click this link!",
-        "retention_period": 90,
+        "retention_period": 45,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
     }
@@ -27,7 +27,7 @@ def test_create_template_email_file_happy_path(sample_service, sample_email_temp
 
     # test response contains created email file data
     assert response["data"]["filename"] == "example.pdf"
-    assert response["data"]["retention_period"] == 90
+    assert response["data"]["retention_period"] == 45
     assert response["data"]["link_text"] == "click this link!"
     assert response["data"]["validate_users_email"]
     assert response["data"]["template_id"] == str(sample_email_template.id)
@@ -37,7 +37,7 @@ def test_create_template_email_file_happy_path(sample_service, sample_email_temp
     # test that email file gets persisted into the database
     template_email_file = TemplateEmailFile.query.get(str(response["data"]["id"]))
     assert template_email_file.filename == "example.pdf"
-    assert template_email_file.retention_period == 90
+    assert template_email_file.retention_period == 45
     assert template_email_file.link_text == "click this link!"
     assert template_email_file.validate_users_email
     assert template_email_file.template_id == sample_email_template.id
@@ -53,7 +53,7 @@ def test_create_template_email_file_fails_if_template_not_email_type(
     data = {
         "filename": "example.pdf",
         "link_text": "click this link!",
-        "retention_period": 90,
+        "retention_period": 45,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
     }
@@ -73,7 +73,7 @@ def test_create_template_email_file_fails_if_template_does_not_exist(sample_serv
     data = {
         "filename": "example.pdf",
         "link_text": "click this link!",
-        "retention_period": 90,
+        "retention_period": 45,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
     }
@@ -95,7 +95,7 @@ def test_create_template_email_file_fails_if_template_already_has_file_with_same
     data = {
         "filename": filename,
         "link_text": "click this link!",
-        "retention_period": 90,
+        "retention_period": 45,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
     }
@@ -154,14 +154,20 @@ def test_create_template_email_file_creates_file_with_latest_template_version(
                 "retention_period": "not an integer",
                 "validate_users_email": True,
             },
-            [{"error": "ValidationError", "message": "retention_period not an integer is not of type integer"}],
+            [
+                {"error": "ValidationError", "message": "retention_period not an integer is not of type integer"},
+                {
+                    "error": "ValidationError",
+                    "message": "retention_period Unsuported value for for retention period: not an integer. Supported values are 1 to 78",  # noqa: E501
+                },
+            ],
         ),
         (
             {
                 "id": "d963f496-b075-4e13-90ae-1f009feddbc6",
                 "filename": "example.pdf",
                 "link_text": "click this link!",
-                "retention_period": 90,
+                "retention_period": 45,
                 "validate_users_email": "this is a string",
             },
             [{"error": "ValidationError", "message": "validate_users_email this is a string is not of type boolean"}],
@@ -195,7 +201,7 @@ def test_create_template_email_file_raises_exception_for_invalid_data(
             {
                 "filename": "example.pdf",
                 "link_text": "example.pdf",
-                "retention_period": 90,
+                "retention_period": 45,
                 "validate_users_email": True,
             },
         ),
@@ -203,7 +209,7 @@ def test_create_template_email_file_raises_exception_for_invalid_data(
             {
                 "filename": "example.pdf",
                 "link_text": "example.pdf",
-                "retention_period": 90,
+                "retention_period": 45,
                 "validate_users_email": True,
             },
             {
@@ -309,7 +315,7 @@ def test_update_template_email_file(
         {"id": str(sample_template_email_file.id), "version": 1}
     )
     assert template_email_file_history_version_one.link_text == "follow this link"
-    assert template_email_file_history_version_one.retention_period == 90
+    assert template_email_file_history_version_one.retention_period == 45
     assert template_email_file_history_version_one.validate_users_email is True
     assert template_email_file_history_version_one.template_version == 2
     assert template_email_file_history_version_one.version == 1
@@ -358,7 +364,7 @@ def test_archive_template_email_file(client, sample_service, sample_email_templa
     data = {
         "filename": "example.pdf",
         "link_text": "click this link!",
-        "retention_period": 90,
+        "retention_period": 45,
         "validate_users_email": True,
         "template_id": str(sample_email_template.id),
         "created_by_id": str(sample_service.users[0].id),

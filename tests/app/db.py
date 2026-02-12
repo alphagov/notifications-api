@@ -197,7 +197,7 @@ def create_template_email_file(
     created_by_id,
     filename="example.pdf",
     link_text="follow this link",
-    retention_period=90,
+    retention_period=45,
     validate_users_email=True,
 ):
     data = {
