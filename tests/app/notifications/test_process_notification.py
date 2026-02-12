@@ -71,8 +71,8 @@ def test_create_content_for_notification_with_email_file_placeholder_passes(
     assert content.content == template.content
     assert "Bobby" in str(content)
     # assert secure links to files made it to notification content:
-    assert "documents.gov.uk/link1" in str(content)
-    assert "documents.gov.uk/link2" in str(content)
+    assert "documents.gov.uk/invitation.pdf" in str(content)
+    assert "documents.gov.uk/form.pdf" in str(content)
 
 
 def test_create_content_for_notification_fails_with_missing_personalisation(
@@ -144,8 +144,8 @@ def test_create_content_for_notification_should_raise_if_email_files_not_found(
             ],
             {
                 "name": "Anne",
-                "invitation.pdf": "documents.gov.uk/link1",
-                "form.pdf": "documents.gov.uk/link2",
+                "invitation.pdf": "documents.gov.uk/invitation.pdf",
+                "form.pdf": "documents.gov.uk/form.pdf",
             },
         ),
         (
@@ -165,8 +165,8 @@ def test_create_content_for_notification_should_raise_if_email_files_not_found(
             ],
             {
                 "name": "Anne",
-                "invitation.pdf": "[click this first link](documents.gov.uk/link1)",
-                "form.pdf": "[click this second link](documents.gov.uk/link2)",
+                "invitation.pdf": "[click this first link](documents.gov.uk/invitation.pdf)",
+                "form.pdf": "[click this second link](documents.gov.uk/form.pdf)",
             },
         ),
     ],
@@ -195,23 +195,27 @@ def test_add_email_file_links_to_personalisation(
     personalisation = add_email_file_links_to_personalisation(template, {"name": "Anne"}, recipient="anne@example.com")
 
     assert personalisation == expected_personalisation
-
-    assert mock_document_download_client_upload.mock_calls == [
+    assert len(mock_document_download_client_upload.mock_calls) == 2
+    assert (
         call(
             str(sample_service.id),
-            base64.b64encode(b"file_from_s3_1").decode("utf-8"),
-            confirmation_email="anne@example.com",
-            retention_period="26 weeks",
-            filename="invitation.pdf",
-        ),
-        call(
-            str(sample_service.id),
-            base64.b64encode(b"file_from_s3_2").decode("utf-8"),
+            base64.b64encode(b"downloaded-from-s3-form.pdf").decode("utf-8"),
             confirmation_email="anne@example.com",
             retention_period="26 weeks",
             filename="form.pdf",
-        ),
-    ]
+        )
+        in mock_document_download_client_upload.mock_calls
+    )
+    assert (
+        call(
+            str(sample_service.id),
+            base64.b64encode(b"downloaded-from-s3-invitation.pdf").decode("utf-8"),
+            confirmation_email="anne@example.com",
+            retention_period="26 weeks",
+            filename="invitation.pdf",
+        )
+        in mock_document_download_client_upload.mock_calls
+    )
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

@@ -1479,17 +1479,27 @@ def sample_report_request(sample_user, sample_service):
 @pytest.fixture(scope="function")
 def mock_utils_s3_download(mocker):
     EmailFileFromS3 = namedtuple("EmailFileFromS3", ["read"])
-    file_from_s3_1 = EmailFileFromS3(read=lambda: b"file_from_s3_1")
-    file_from_s3_2 = EmailFileFromS3(read=lambda: b"file_from_s3_2")
+
+    def utils_s3download(bucket_name, filename):
+        from app.models import TemplateEmailFile
+
+        if template_email_file := TemplateEmailFile.query.get(str(filename.split("/")[1])):
+            return EmailFileFromS3(read=lambda: bytes(f"downloaded-from-s3-{template_email_file.filename}", "utf-8"))
+        return EmailFileFromS3(read=lambda: bytes("sample_s3_file", "utf-8"))
+
     return mocker.patch(
         "app.utils.utils_s3download",
-        side_effect=[file_from_s3_1, file_from_s3_2],
+        side_effect=utils_s3download,
     )
 
 
 @pytest.fixture(scope="function")
 def mock_document_download_client_upload(mocker):
+    def mock_link(*args, **kwargs):
+        filename = kwargs["filename"]
+        return f"documents.gov.uk/{filename}"
+
     return mocker.patch(
         "app.document_download_client.upload_document",
-        side_effect=["documents.gov.uk/link1", "documents.gov.uk/link2"],
+        side_effect=mock_link,
     )

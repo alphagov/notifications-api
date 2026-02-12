@@ -185,8 +185,8 @@ def test_send_one_off_notification_calls_persist_correctly_for_email_with_email_
         service=template.service,
         personalisation={
             "name": "foo",
-            "invitation.pdf": "[follow this link](documents.gov.uk/link1)",
-            "form.pdf": "[follow this link](documents.gov.uk/link2)",
+            "invitation.pdf": "[follow this link](documents.gov.uk/invitation.pdf)",
+            "form.pdf": "[follow this link](documents.gov.uk/form.pdf)",
         },
         notification_type=EMAIL_TYPE,
         api_key_id=None,
