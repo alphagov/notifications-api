@@ -862,6 +862,8 @@ def functional_test_fixtures():
 
         SSM_UPLOAD_PATH - (optional) path to upload the environment variables to AWS SSM
 
+        PERFORMANCE_SSM_UPLOAD_PATH - (optional) path to upload performance-only environment variables to AWS SSM
+
     """
     if current_app.config["REGISTER_FUNCTIONAL_TESTING_BLUEPRINT"]:
         apply_fixtures()
