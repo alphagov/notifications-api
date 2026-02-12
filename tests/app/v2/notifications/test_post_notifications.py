@@ -3,7 +3,7 @@ from unittest.mock import call
 
 import pytest
 from flask import current_app, json
-from notifications_utils.markdown import notify_plain_text_email_markdown
+from notifications_utils.markdown import notify_email_markdown, notify_plain_text_email_markdown
 
 from app.constants import (
     EMAIL_TYPE,
@@ -736,14 +736,28 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         "Please confirm your registration on [Pigeons' Affair Bureau website](https://pab.gov.uk/123)"
     )
 
+    # this is what end user will see:
+    # as plain email:
+    assert notify_plain_text_email_markdown(notification.content).strip() == (
+        "Hello Amala, please [click this evil link]()\n"
+        "Please confirm your registration on Pigeons' Affair Bureau website: https://pab.gov.uk/123"
+    )
+    # as html email
+    assert notify_email_markdown(notification.content).strip() == (
+        '<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">Hello Amala, please '
+        '[click this evil link]()<br>Please confirm your registration on <a style="word-wrap: break-word; '
+        'color: #1D70B8;" href="https://pab.gov.uk/123">Pigeons\' Affair Bureau website</a></p>'
+    )
+
 
 @pytest.mark.parametrize(
-    "value, expected_sanitised, expected_formatted_sanitised",
+    "value, expected_sanitised, expected_sanitised_plain_text, expected_sanitised_html",
     (
         # sanitise link with link text by removing the link and escaping markdonw characters:
         (
             r"Amala, please [click this (evil link](https://evil.link)",
             r"Amala, please \[click this \(evil link\]\(\)",
+            r"Amala, please [click this (evil link]()",
             r"Amala, please [click this (evil link]()",
         ),
         # cut out a link without https:
@@ -751,11 +765,13 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             r"evil.link",
             r"",
             r"",
+            "",
         ),  # TODO: do we want this to happen?
         # avoid double sanitisation:
         (
             r"\# Rogue Header",
             r"\# Rogue Header",
+            r"# Rogue Header",
             r"# Rogue Header",
         ),
         # escape two Markdown characters in a row:
@@ -763,15 +779,18 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             r"## Rogue Header",
             r"\#\# Rogue Header",
             r"## Rogue Header",
+            r"## Rogue Header",
         ),
         # similar, but for a multi-line string:
         (
             "# Rogue Header\\\n# Rogue Header",
             "\\# Rogue Header\\\n\\# Rogue Header",
             "# Rogue Header\\\n# Rogue Header",
+            "# Rogue Header\\<br># Rogue Header",
         ),
         # user accidentally puts backslash instead of forward slash:
         (
+            r"Ulica Ceynowy 5\44",
             r"Ulica Ceynowy 5\44",
             r"Ulica Ceynowy 5\44",
             r"Ulica Ceynowy 5\44",
@@ -781,16 +800,30 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             r"`*_(){}[]<>#+-.!|",
             r"\`\*\_\(\)\{\}\[\]\<\>\#\+\-\.\!\|",
             r"`*_(){}[]\&lt;&gt;#+-.!|",
+            r"`*_(){}[]\&lt;&gt;#+-.!|",
         ),
     ),
 )
-def test_sanitise_personalisation_item(value, expected_sanitised, expected_formatted_sanitised):
+def test_sanitise_personalisation_item(
+    value, expected_sanitised, expected_sanitised_plain_text, expected_sanitised_html
+):
     sanitised_value = sanitise_personalisation_item(value)
 
     assert sanitised_value == expected_sanitised
 
     # this is what end user will see
-    assert expected_formatted_sanitised == notify_plain_text_email_markdown(sanitised_value).strip()
+    # as plain email
+    assert expected_sanitised_plain_text == notify_plain_text_email_markdown(sanitised_value).strip()
+
+    # as html email
+    assert notify_email_markdown(sanitised_value).strip() == (
+        (
+            f'<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">'
+            f"{expected_sanitised_html}</p>"
+        )
+        if expected_sanitised_html
+        else ""
+    )
 
 
 @pytest.mark.parametrize(
