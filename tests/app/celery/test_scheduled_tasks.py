@@ -802,26 +802,42 @@ MockServicesWithHighFailureRate = namedtuple(
 
 
 @pytest.mark.parametrize(
-    "failure_rates, sms_to_tv_numbers, expected_log, expected_message",
+    "failure_rates, sms_to_tv_numbers, expected_logs, expected_message",
     [
         [
-            [MockServicesWithHighFailureRate("123", 0.3)],
+            [MockServicesWithHighFailureRate("123", 0.3), MockServicesWithHighFailureRate("456", 0.7)],
             [],
-            "Service 123 has had a high permanent-failure rate (0.3) for text messages in the last 24 hours",
-            "1 service(s) have had high permanent-failure rates for sms messages in last "
-            "24 hours:\nservice: {}/services/{} failure rate: 0.3,\n".format(Config.ADMIN_BASE_URL, "123"),
+            [
+                "Service 123 has had a high permanent-failure rate (0.3) for text messages in the last 24 hours",
+                "Service 456 has had a high permanent-failure rate (0.7) for text messages in the last 24 hours",
+            ],
+            "2 service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n"
+            f"service: {Config.ADMIN_BASE_URL}/services/123 failure rate: 0.3,\n"
+            f"service: {Config.ADMIN_BASE_URL}/services/456 failure rate: 0.7,\n",
         ],
         [
             [],
             [MockServicesSendingToTVNumbers("123", 567)],
-            "Service 123 has sent 567 text messages to tv numbers in the last 24 hours",
+            ["Service 123 has sent 567 text messages to tv numbers in the last 24 hours"],
             "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
-            "service: {}/services/{} count of sms to tv numbers: 567,\n".format(Config.ADMIN_BASE_URL, "123"),
+            f"service: {Config.ADMIN_BASE_URL}/services/123 count of sms to tv numbers: 567,\n",
+        ],
+        [
+            [MockServicesWithHighFailureRate("123", 0.3)],
+            [MockServicesSendingToTVNumbers("456", 567)],
+            [
+                "Service 123 has had a high permanent-failure rate (0.3) for text messages in the last 24 hours",
+                "Service 456 has sent 567 text messages to tv numbers in the last 24 hours",
+            ],
+            "1 service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n"
+            f"service: {Config.ADMIN_BASE_URL}/services/123 failure rate: 0.3,\n"
+            "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
+            f"service: {Config.ADMIN_BASE_URL}/services/456 count of sms to tv numbers: 567,\n",
         ],
     ],
 )
 def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
-    notify_db_session, failure_rates, sms_to_tv_numbers, expected_log, expected_message, caplog, mocker
+    notify_db_session, failure_rates, sms_to_tv_numbers, expected_logs, expected_message, caplog, mocker
 ):
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
     mock_send_ticket_to_zendesk = mocker.patch(
@@ -842,7 +858,7 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
 
     assert mock_failure_rates.called
     assert mock_sms_to_tv_numbers.called
-    assert expected_log in caplog.messages
+    assert set(expected_logs) == set(caplog.messages)
     mock_create_ticket.assert_called_with(
         ANY,
         message=expected_message + zendesk_actions,
