@@ -20,6 +20,7 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_email_files_dao import (
     dao_archive_template_email_file,
     dao_get_template_email_file_by_id,
+    dao_get_template_email_files_by_template_id,
 )
 from app.dao.template_folder_dao import (
     dao_get_template_folder_by_id_and_service_id,
@@ -161,7 +162,7 @@ def update_template(service_id, template_id):  # noqa: C901
 
     dao_update_template(update_dict)
     if update_dict.archived:
-        file_ids_to_archive = [file.id for file in update_dict.email_files]
+        file_ids_to_archive = [file.id for file in dao_get_template_email_files_by_template_id(template_id)]
     else:
         file_ids_to_archive = data.get("archive_email_file_ids")
     if file_ids_to_archive:
