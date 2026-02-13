@@ -16,6 +16,7 @@ def test_create_template_email_file_happy_path(sample_service, sample_email_temp
         "retention_period": 90,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
+        "pending": False,
     }
     response = admin_request.post(
         "template_email_files.create_template_email_file",
@@ -128,6 +129,7 @@ def test_create_template_email_file_creates_file_with_latest_template_version(
         "retention_period": 30,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
+        "pending": False,
     }
     response = admin_request.post(
         "template_email_files.create_template_email_file",
@@ -197,6 +199,7 @@ def test_create_template_email_file_raises_exception_for_invalid_data(
                 "link_text": "example.pdf",
                 "retention_period": 90,
                 "validate_users_email": True,
+                "pending": False,
             },
         ),
         (
@@ -205,12 +208,14 @@ def test_create_template_email_file_raises_exception_for_invalid_data(
                 "link_text": "example.pdf",
                 "retention_period": 90,
                 "validate_users_email": True,
+                "pending": False,
             },
             {
                 "filename": "another example.pdf",
                 "link_text": "click for an exciting pdf!",
                 "retention_period": 30,
                 "validate_users_email": False,
+                "pending": False,
             },
         ),
     ],
@@ -362,10 +367,11 @@ def test_archive_template_email_file(client, sample_service, sample_email_templa
         "validate_users_email": True,
         "template_id": str(sample_email_template.id),
         "created_by_id": str(sample_service.users[0].id),
+        "pending": False,
     }
     with freezegun.freeze_time("2025-01-01 11:09:00.000000"):
         template_email_file = create_template_email_file(**data)
-    assert template_email_file.version == 1
+    assert template_email_file.version == 1  # should be version 1 if not pending
     data = {"archived_by_id": str(sample_service.users[0].id)}
     with freezegun.freeze_time("2025-10-10 22:13:00.000000"):
         response = admin_request.post(
