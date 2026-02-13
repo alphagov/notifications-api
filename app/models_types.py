@@ -359,3 +359,4 @@ class SerializedTemplateEmailFile(TypedDict):
     link_text: str
     retention_period: int
     validate_users_email: bool
+    pending: bool
