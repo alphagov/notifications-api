@@ -7,6 +7,7 @@ from datetime import datetime
 from flask import abort, current_app, jsonify, request
 from gds_metrics import Histogram
 from notifications_utils.formatters import url
+from notifications_utils.insensitive_dict import InsensitiveSet
 
 from app import (
     api_user,
@@ -168,7 +169,7 @@ def post_notification(notification_type):
 
 def _prepare_personalisation_for_post_notification(personalisation, sanitise_content_for):
     return {
-        key: sanitise_personalisation_item(value) if key in sanitise_content_for else value
+        key: sanitise_personalisation_item(value) if key in InsensitiveSet(sanitise_content_for) else value
         for key, value in personalisation.items()
     }
 

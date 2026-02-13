@@ -295,7 +295,7 @@ def sample_email_template_with_distinct_placeholders(sample_service):
         sample_service,
         template_type=EMAIL_TYPE,
         subject="Please confirm your registration",
-        content="Hello ((name))\nPlease confirm your registration on [Pigeons' Affair Bureau website](((link)))",
+        content="Hello ((First_Name))\nPlease confirm your registration on [Pigeons' Affair Bureau website](((link)))",
     )
 
 
