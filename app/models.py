@@ -1301,6 +1301,7 @@ class TemplateEmailFileBase(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     archived_at = db.Column(db.DateTime, nullable=True)
+    pending = db.Column(db.Boolean, default=False, nullable=True)
 
     def serialize(self) -> SerializedTemplateEmailFile:
         return SerializedTemplateEmailFile(
@@ -1309,6 +1310,7 @@ class TemplateEmailFileBase(db.Model):
             link_text=self.link_text,
             retention_period=self.retention_period,
             validate_users_email=self.validate_users_email,
+            pending=self.pending,
         )
 
     @declared_attr
