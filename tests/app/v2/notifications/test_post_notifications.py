@@ -707,18 +707,19 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
     )
 
 
+@pytest.mark.parametrize("placeholder_name", ("first name", "first_name", "First_Name", "FIRST NAME"))
 def test_post_email_notification_sanitise_content_for_selected_personalisation(
-    api_client_request, sample_email_template_with_distinct_placeholders, mocker
+    api_client_request, sample_email_template_with_distinct_placeholders, mocker, placeholder_name
 ):
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     data = {
         "email_address": "amala@example.com",
         "template_id": sample_email_template_with_distinct_placeholders.id,
         "personalisation": {
-            "name": "Amala, please [click this evil link](https://evil.link)",
+            "First_Name": "Amala, please [click this evil link](https://evil.link)",
             "link": "https://pab.gov.uk/123",
         },
-        "sanitise_content_for": ["name"],
+        "sanitise_content_for": [placeholder_name],
     }
 
     resp_json = api_client_request.post(
