@@ -76,11 +76,6 @@ def dao_update_template_email_file(template_email_file: TemplateEmailFile):
 
 
 @autocommit
-def dao_update_pending_template_email_file(template_email_file: TemplateEmailFile):
-    db.session.add(template_email_file)
-
-
-@autocommit
 @version_class(
     VersionOptions(TemplateEmailFile, history_class=TemplateEmailFileHistory),
 )
