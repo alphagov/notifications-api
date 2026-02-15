@@ -37,7 +37,7 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
                 select(TemplateEmailFileHistory)
                 .where(TemplateEmailFileHistory.template_id == template_id)
                 .where(TemplateEmailFileHistory.template_version <= template_version)
-                .where(not TemplateEmailFileHistory.pending)
+                .where(TemplateEmailFileHistory.pending.is_(False))
                 .order_by(TemplateEmailFileHistory.id)
                 .order_by(TemplateEmailFileHistory.version.desc())
                 .distinct(TemplateEmailFileHistory.id)
