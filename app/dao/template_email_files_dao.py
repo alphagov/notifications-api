@@ -21,24 +21,39 @@ def dao_create_template_email_file(template_email_file: TemplateEmailFile):
 
 
 @autocommit
-def dao_get_template_email_files_by_template_id(template_id, template_version=None):
+def dao_get_template_email_files_by_template_id(template_id, template_version=None, get_pending=False):
     if template_version:
-        query = (
-            select(TemplateEmailFileHistory)
-            .where(TemplateEmailFileHistory.template_id == template_id)
-            .where(TemplateEmailFileHistory.template_version <= template_version)
-            # .where(TemplateEmailFileHistory.archived_at.is_(None))
-            .order_by(TemplateEmailFileHistory.id)
-            .order_by(TemplateEmailFileHistory.version.desc())
-            .distinct(TemplateEmailFileHistory.id)
-        )
+        if get_pending:
+            query = (
+                select(TemplateEmailFileHistory)
+                .where(TemplateEmailFileHistory.template_id == template_id)
+                .where(TemplateEmailFileHistory.template_version <= template_version)
+                .order_by(TemplateEmailFileHistory.id)
+                .order_by(TemplateEmailFileHistory.version.desc())
+                .distinct(TemplateEmailFileHistory.id)
+            )
+        else:
+            query = (
+                select(TemplateEmailFileHistory)
+                .where(TemplateEmailFileHistory.template_id == template_id)
+                .where(TemplateEmailFileHistory.template_version <= template_version)
+                .where(not TemplateEmailFileHistory.pending)
+                .order_by(TemplateEmailFileHistory.id)
+                .order_by(TemplateEmailFileHistory.version.desc())
+                .distinct(TemplateEmailFileHistory.id)
+            )
         # prune archived after the fact
         # return db.session.execute(query).all()
         return list(filter(lambda x: not x.archived_at, list(chain.from_iterable(db.session.execute(query).all()))))
+    if get_pending:
+        return TemplateEmailFile.query.filter(
+            TemplateEmailFile.template_id == template_id, TemplateEmailFile.archived_at.is_(None)
+        ).all()
 
     return TemplateEmailFile.query.filter(
         TemplateEmailFile.template_id == template_id,
         TemplateEmailFile.archived_at.is_(None),
+        TemplateEmailFile.pending == False,
     ).all()
 
 
