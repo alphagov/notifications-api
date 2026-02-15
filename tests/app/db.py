@@ -199,6 +199,7 @@ def create_template_email_file(
     link_text="follow this link",
     retention_period=90,
     validate_users_email=True,
+    pending=False,
 ):
     data = {
         "filename": filename,
@@ -207,6 +208,7 @@ def create_template_email_file(
         "validate_users_email": validate_users_email,
         "template_id": template_id,
         "created_by_id": created_by_id,
+        "pending": pending,
     }
     template_email_file = TemplateEmailFile(**data)
     dao_create_template_email_file(template_email_file)
