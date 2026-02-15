@@ -9,7 +9,6 @@ from app.dao.template_email_files_dao import (
     dao_create_template_email_file,
     dao_get_template_email_file_by_id,
     dao_get_template_email_files_by_template_id,
-    dao_update_pending_template_email_file,
     dao_update_template_email_file,
 )
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
@@ -74,22 +73,13 @@ def update_template_email_file(template_email_file_id, service_id, template_id):
     current_data = TemplateEmailFile.query.filter(TemplateEmailFile.id == template_email_file_id).one()
     current_data_json = template_email_files_schema.dump(current_data)
     updated_data_json = validate(request.get_json(), post_create_template_email_files_schema)
-    # make_live = updated_data_json.pop("make_live")
     updated_data_json = current_data_json | updated_data_json
-    # if updated_data_json == current_data_json and not make_live:
     if updated_data_json == current_data_json:
         return jsonify(data=updated_data_json), 200
     updated_email_file = template_email_files_schema.load(updated_data_json)
     _check_if_filename_unique_for_email_files_within_one_template(
         updated_email_file.filename, template_id, template_email_file_id
     )
-    # if make_live:
-    #     updated_email_file.pending = False
-    #     dao_update_pending_template_email_file(updated_email_file)
-    # if updated_email_file.pending:
-    #     dao_update_pending_template_email_file(updated_email_file)
-    # else:
-    #     dao_update_template_email_file(updated_email_file)
     dao_update_template_email_file(updated_email_file)
     return jsonify(data=template_email_files_schema.dump(updated_email_file)), 200
 
