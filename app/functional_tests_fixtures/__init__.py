@@ -152,11 +152,6 @@ def apply_fixtures():
     functional_test_config = "\n".join(f"export {k}='{v}'" for k, v in functional_env_var_dict.items())
     performance_test_config = "\n".join(f"export {k}='{v}'" for k, v in performance_env_var_dict.items())
 
-    functional_test_env_file = os.getenv("FUNCTIONAL_TEST_ENV_FILE", "/tmp/functional_test_env.sh")
-    if functional_test_env_file != "":
-        with open(functional_test_env_file, "w") as f:
-            f.write(functional_test_config)
-
     ssm_upload_path = os.getenv("SSM_UPLOAD_PATH")
     if ssm_upload_path:
         _upload_env_to_ssm(ssm_upload_path, functional_test_config, "functional test environment")

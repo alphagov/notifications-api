@@ -1,7 +1,5 @@
 import os
-import re
 from datetime import datetime, timedelta
-from tempfile import NamedTemporaryFile
 
 import boto3
 import pytest
@@ -179,36 +177,25 @@ def test_create_db_objects_creates_dedicated_performance_service_with_limits_and
 
 
 @mock_aws
-def test_function_test_fixtures_saves_to_disk_and_ssm(notify_api, os_environ, mocker):
+def test_function_test_fixtures_uploads_to_ssm(notify_api, os_environ, mocker):
     mocker.patch(
         "app.functional_tests_fixtures._create_db_objects",
-        return_value=({"FOO": "BAR", "BAZ": "WAZ"}, {}),
+        return_value=({"FOO": "BAR", "PASSWORD": "super-secret", "TOKEN": "abc123"}, {}),
     )
 
-    with NamedTemporaryFile() as temp_file:
-        temp_file_name = temp_file.name
+    os.environ["SSM_UPLOAD_PATH"] = "/test/ssm/environment"
+    # AWS are changing from AWS_DEFAULT_REGION to AWS_REGION for v2 clients. Set both for now.
+    os.environ["AWS_REGION"] = "eu-west-1"
+    os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
 
-        os.environ["FUNCTIONAL_TEST_ENV_FILE"] = temp_file_name
-        os.environ["SSM_UPLOAD_PATH"] = "/test/ssm/environment"
-        # AWS are changing from AWS_DEFAULT_REGION to AWS_REGION for v2 clients. Set both for now.
-        os.environ["AWS_REGION"] = "eu-west-1"
-        os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
+    apply_fixtures()
 
-        apply_fixtures()
-
-        variables = {}
-        full_file = ""
-        with open(temp_file_name) as f:
-            full_file = f.read()
-            for line in full_file.splitlines():
-                match = re.match(r"export (?P<key>[A-Z0-9_]+)='(?P<value>[^']+)'", line)
-                variables[match["key"]] = match["value"]
-        assert variables == {"FOO": "BAR", "BAZ": "WAZ"}
-
-        # test that the SSM parameter was created and contains the same as the file
-        ssm = boto3.client("ssm")
-        response = ssm.get_parameter(Name="/test/ssm/environment", WithDecryption=True)
-        assert response["Parameter"]["Value"] == full_file
+    # test that the SSM parameter was created and contains full content
+    ssm = boto3.client("ssm")
+    response = ssm.get_parameter(Name="/test/ssm/environment", WithDecryption=True)
+    assert "export FOO='BAR'" in response["Parameter"]["Value"]
+    assert "export PASSWORD='super-secret'" in response["Parameter"]["Value"]
+    assert "export TOKEN='abc123'" in response["Parameter"]["Value"]
 
 
 def test_function_test_fixtures_raises_clear_error_when_ssm_upload_fails(notify_api, os_environ, mocker):
@@ -219,7 +206,6 @@ def test_function_test_fixtures_raises_clear_error_when_ssm_upload_fails(notify_
     ssm_client.put_parameter.side_effect = Exception("Parameter value too large")
     mocker.patch("app.functional_tests_fixtures.boto3.client", return_value=ssm_client)
 
-    os.environ["FUNCTIONAL_TEST_ENV_FILE"] = ""
     os.environ["SSM_UPLOAD_PATH"] = "/test/ssm/environment"
 
     with pytest.raises(Exception) as exc:
@@ -246,7 +232,6 @@ def test_function_test_fixtures_uploads_performance_env_to_separate_ssm_path(not
     ssm_client.put_parameter.return_value = {"ResponseMetadata": {"HTTPStatusCode": 200}}
     mocker.patch("app.functional_tests_fixtures.boto3.client", return_value=ssm_client)
 
-    os.environ["FUNCTIONAL_TEST_ENV_FILE"] = ""
     os.environ["SSM_UPLOAD_PATH"] = "/test/ssm/functional-environment"
     os.environ["PERFORMANCE_SSM_UPLOAD_PATH"] = "/test/ssm/performance-environment"
 
