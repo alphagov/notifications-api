@@ -858,8 +858,6 @@ def functional_test_fixtures():
 
         REQUEST_BIN_API_TOKEN - request bin token to be used by functional tests
 
-        FUNCTIONAL_TEST_ENV_FILE - (optional) output file for the environment variables
-
         SSM_UPLOAD_PATH - (optional) path to upload the environment variables to AWS SSM
 
         PERFORMANCE_SSM_UPLOAD_PATH - (optional) path to upload performance-only environment variables to AWS SSM
