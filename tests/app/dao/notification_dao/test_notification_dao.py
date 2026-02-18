@@ -829,6 +829,26 @@ def test_get_notifications_by_status(sample_job):
     )
 
 
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_get_notifications_for_service_uses_session(sample_template, session, expected_bind_key):
+    create_notification(sample_template)
+    create_notification(sample_template)
+
+    service_id = sample_template.service_id  # deliberately outside QueryRecorder
+    with QueryRecorder() as query_recorder:
+        results = get_notifications_for_service(service_id, session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+    assert len(results.items) == 2
+
+
 @pytest.mark.parametrize("with_personalisation", (False, True))
 @pytest.mark.parametrize("with_template", (False, True))
 def test_get_notifications_for_service_optional_loading(

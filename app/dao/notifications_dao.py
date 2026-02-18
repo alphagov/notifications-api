@@ -279,6 +279,7 @@ def dao_get_notification_or_history_by_id(notification_id):
         return NotificationHistory.query.get(notification_id)
 
 
+@retryable_query()
 def get_notifications_for_service(  # noqa: C901
     service_id,
     filter_dict=None,
@@ -295,6 +296,7 @@ def get_notifications_for_service(  # noqa: C901
     client_reference=None,
     include_one_off=True,
     error_out=True,
+    session: Session | scoped_session = db.session
 ):
     if page_size is None:
         page_size = current_app.config["PAGE_SIZE"]
@@ -308,7 +310,7 @@ def get_notifications_for_service(  # noqa: C901
         # fetching this separately and including in query as literal makes it visible to
         # the planner
         older_than_created_at = (
-            db.session.query(Notification.created_at)
+            session.query(Notification.created_at)
             .filter(Notification.id == older_than, Notification.service_id == service_id)
             .scalar()
         )
@@ -332,7 +334,7 @@ def get_notifications_for_service(  # noqa: C901
     if client_reference is not None:
         filters.append(Notification.client_reference == client_reference)
 
-    query = Notification.query.filter(*filters)
+    query = session.query(Notification).filter(*filters)
     query = _filter_query(query, filter_dict)
 
     if with_template:
