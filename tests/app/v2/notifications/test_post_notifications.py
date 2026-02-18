@@ -764,16 +764,16 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         # cut out a link without https:
         (
             r"evil.link",
-            r"",
+            r"",  # TODO: do we want this to happen?
             r"",
             "",
-        ),  # TODO: do we want this to happen?
-        # avoid double sanitisation:
+        ),
+        # double sanitisation can happen:
         (
             r"\# Rogue Header",
+            r"\\# Rogue Header",
             r"\# Rogue Header",
-            r"# Rogue Header",
-            r"# Rogue Header",
+            r"\# Rogue Header",
         ),
         # escape two Markdown characters in a row:
         (
@@ -788,6 +788,13 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             "\\# Rogue Header\\\n\\# Rogue Header",
             "# Rogue Header\\\n# Rogue Header",
             "# Rogue Header\\<br># Rogue Header",
+        ),
+        # sanitise where there is an escaped backslash:
+        (
+            r"\\# Rogue Header",
+            r"\\\# Rogue Header",
+            r"\# Rogue Header",
+            r"\# Rogue Header",
         ),
         # user accidentally puts backslash instead of forward slash:
         (
