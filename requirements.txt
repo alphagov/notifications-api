@@ -152,7 +152,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@043dcf4df0ebd183dc26b99d82362dab5d3ce47c
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0fc47126305fa1930b427b21d413b363cb3b702b
     # via -r requirements.in
 ordered-set==4.1.0
     # via notifications-utils
@@ -238,8 +238,6 @@ statsd==4.0.1
 typing-extensions==4.15.0
     # via
     #   alembic
-    #   exceptiongroup
-    #   referencing
     #   sqlalchemy
 tzdata==2025.3
     # via
