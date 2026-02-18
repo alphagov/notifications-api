@@ -296,7 +296,7 @@ def get_notifications_for_service(  # noqa: C901
     client_reference=None,
     include_one_off=True,
     error_out=True,
-    session: Session | scoped_session = db.session
+    session: Session | scoped_session = db.session,
 ):
     if page_size is None:
         page_size = current_app.config["PAGE_SIZE"]
@@ -338,11 +338,11 @@ def get_notifications_for_service(  # noqa: C901
     query = _filter_query(query, filter_dict)
 
     if with_template:
-        query = query.options(joinedload(Notification.template))
+        query = query.options(joinedload(Notification.template))  # type: ignore[arg-type]
 
     query = query.options((undefer if with_personalisation else defer)(Notification._personalisation))
 
-    query = query.options(joinedload(Notification.api_key))
+    query = query.options(joinedload(Notification.api_key))  # type: ignore[arg-type]
 
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
