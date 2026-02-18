@@ -796,6 +796,13 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             r"Ulica Ceynowy 5\44",
             r"Ulica Ceynowy 5\44",
         ),
+        # user accidentally puts three backslashes instead of forward slash:
+        (
+            r"Ulica Ceynowy 5\\\44",
+            r"Ulica Ceynowy 5\\\44",
+            r"Ulica Ceynowy 5\\44",
+            r"Ulica Ceynowy 5\\44",
+        ),
         # test all Markdown characters get escaped:
         (
             r"`*_(){}[]<>#+-.!|",
