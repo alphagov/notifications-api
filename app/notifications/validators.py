@@ -118,6 +118,11 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
 
 
 def check_rate_limiting(service, api_key, notification_type):
+    # Load shedding check - protect low-volume services during worker overload
+    from app.load_shedding import check_load_shedding
+
+    check_load_shedding(service)
+
     check_service_over_api_rate_limit(service, api_key.key_type)
     check_service_over_daily_message_limit(service, api_key.key_type, notification_type=notification_type)
 

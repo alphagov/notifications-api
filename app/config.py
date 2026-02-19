@@ -162,6 +162,19 @@ class Config:
 
     NOTIFY_EVENTLET_STATS = os.getenv("NOTIFY_EVENTLET_STATS", "0") == "1"
 
+    # Load Shedding Configuration
+    LOAD_SHEDDING_ENABLED = os.getenv("LOAD_SHEDDING_ENABLED", "false").lower() == "true"
+    # High water mark: 75% of capacity (6 out of 8 concurrent requests per worker)
+    HIGH_WATER_MARK = int(os.getenv("HIGH_WATER_MARK", "6"))
+    # Throttle services contributing this % or more of total request volume
+    THROTTLE_CONTRIBUTION_PCT = int(os.getenv("THROTTLE_CONTRIBUTION_PCT", "20"))
+    # Only apply contribution-based throttling when enough services are active
+    THROTTLE_CONTRIBUTION_MIN_SERVICES = int(os.getenv("THROTTLE_CONTRIBUTION_MIN_SERVICES", "5"))
+    # Only apply contribution-based throttling when total volume is above this threshold
+    THROTTLE_CONTRIBUTION_MIN_VOLUME = int(os.getenv("THROTTLE_CONTRIBUTION_MIN_VOLUME", "50"))
+    # Throttle services with volume this many times above median
+    THROTTLE_VOLUME_MEDIAN_MULTIPLE = int(os.getenv("THROTTLE_VOLUME_MEDIAN_MULTIPLE", "10"))
+
     ###########################
     # Default config values ###
     ###########################

@@ -66,6 +66,34 @@ CONCURRENT_REQUESTS = Gauge(
     "How many concurrent requests are currently being served",
 )
 
+
+class ConcurrentRequestCounter:
+    """Counter for tracking concurrent requests in Eventlet worker.
+
+    Separate from metrics gauge to keep observability concerns separate from
+    application logic (load shedding).
+
+    Note: No lock needed - Eventlet uses cooperative concurrency (green threads)
+    which only yields at I/O boundaries, and simple integer operations are atomic
+    in this model. Additionally, CPython's GIL provides safety for integer
+    increment/decrement even in OS thread scenarios.
+    """
+
+    def __init__(self):
+        self._count = 0
+
+    def increment(self):
+        self._count += 1
+
+    def decrement(self):
+        self._count = max(0, self._count - 1)
+
+    def get(self):
+        return self._count
+
+
+concurrent_request_counter = ConcurrentRequestCounter()
+
 memo_resetters: list[Callable] = []
 
 #
@@ -410,6 +438,7 @@ def register_v2_blueprints(application):
 def init_app(app):
     @app.before_request
     def record_request_details():
+        concurrent_request_counter.increment()
         CONCURRENT_REQUESTS.inc()
 
         g.start = monotonic()
@@ -417,6 +446,7 @@ def init_app(app):
 
     @app.after_request
     def after_request(response):
+        concurrent_request_counter.decrement()
         CONCURRENT_REQUESTS.dec()
 
         response.headers.add("Access-Control-Allow-Origin", "*")
