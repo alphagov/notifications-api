@@ -16,10 +16,10 @@ def child_exit(server, worker):
 
 
 workers = os.getenv("GUNICORN_WORKERS", 4)
-worker_class = "eventlet"
+worker_class = os.getenv("GUNICORN_WORKER_CLASS", "eventlet")
 worker_connections = os.getenv("GUNICORN_WORKER_CONNECTIONS", 256)
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
-keepalive = 90
+keepalive = os.getenv("GUNICORN_KEEPALIVE", 90)
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
