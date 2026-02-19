@@ -15,12 +15,29 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
-workers = os.getenv("GUNICORN_WORKERS", 4)
+workers = int(os.getenv("GUNICORN_WORKERS", "4"))
 worker_class = os.getenv("GUNICORN_WORKER_CLASS", "eventlet")
-worker_connections = os.getenv("GUNICORN_WORKER_CONNECTIONS", 256)
+
+# For async workers (eventlet/gevent) this controls concurrent clients per worker.
+# For sync/gthread this setting is ignored.
+worker_connections = int(os.getenv("GUNICORN_WORKER_CONNECTIONS", "256"))
+
+# Used by gthread worker_class (ignored by eventlet/gevent).
+threads = int(os.getenv("GUNICORN_THREADS", "4"))
+
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
-keepalive = os.getenv("GUNICORN_KEEPALIVE", 90)
-timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
+keepalive = int(os.getenv("GUNICORN_KEEPALIVE", "90"))
+
+# If using eventlet, this has little effect for long-held requests.
+timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", "30"))
+
+# When shutting down/restarting, wait this long for workers to finish requests.
+graceful_timeout = int(os.getenv("GUNICORN_GRACEFUL_TIMEOUT", "30"))
+
+# Optional worker recycling to reduce impact of slow leaks/fragmentation.
+# Gunicorn uses 0 to disable.
+max_requests = int(os.getenv("GUNICORN_MAX_REQUESTS", "0"))
+max_requests_jitter = int(os.getenv("GUNICORN_MAX_REQUESTS_JITTER", "0"))
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
 if debug_post_threshold:
