@@ -2,6 +2,8 @@
 # with package version changes made in requirements.in
 
 celery[sqs]==5.6.0
+# Pin kombu to merge of PR #2342 (SQS fair queue / MessageGroupId support) until kombu 5.7 is released
+kombu @ git+https://github.com/celery/kombu.git@860e40a6c904c4d8551577d9f4e8c00f03b6e06c
 Flask-Bcrypt==1.0.1
 flask-marshmallow==1.3.0
 Flask-Migrate==3.1.0
