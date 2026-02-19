@@ -74,6 +74,32 @@ from app.models import (
 )
 from app.schemas import api_key_schema, template_schema
 
+
+def _upload_env_to_ssm(ssm_upload_path, env_config, description):
+    ssm = boto3.client("ssm")
+    payload_size = len(env_config)
+    current_app.logger.info(
+        "--> Uploading %s to SSM (path=%s, size=%s bytes)",
+        description,
+        ssm_upload_path,
+        payload_size,
+    )
+    try:
+        response = ssm.put_parameter(
+            Name=ssm_upload_path,
+            Value=env_config,
+            Type="SecureString",
+            Overwrite=True,
+        )
+
+        if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
+            raise Exception("Failed to upload to SSM")
+    except Exception as exc:
+        raise Exception(
+            f"Failed to upload {description} to SSM path {ssm_upload_path} (payload size={payload_size} bytes): {exc}"
+        ) from exc
+
+
 """
 This function creates a set of database fixtures that functional tests use to run against.
 
@@ -96,12 +122,14 @@ def apply_fixtures():
     function_tests_govuk_key_name = "govuk_notify"
     function_tests_live_key_name = "functional_tests_service_live_key"
     function_tests_test_key_name = "functional_tests_service_test_key"
+    performance_tests_live_key_name = "performance_tests_service_live_key"
+    performance_tests_test_key_name = "performance_tests_service_test_key"
     govuk_service_id = current_app.config["NOTIFY_SERVICE_ID"]
 
     org_name = os.getenv("FUNCTIONAL_TEST_ORGANISATION_NAME", "Functional Tests Org")
     incoming_number = os.getenv("FUNCTIONAL_TEST_INBOUND_NUMBER", "07700900500")
 
-    env_var_dict = _create_db_objects(
+    functional_env_var_dict, performance_env_var_dict = _create_db_objects(
         functional_test_password,
         request_bin_api_token,
         environment,
@@ -113,27 +141,24 @@ def apply_fixtures():
         govuk_service_id,
         org_name,
         incoming_number,
+        performance_tests_live_key_name,
+        performance_tests_test_key_name,
+        performance_test_rate_limit=12000000,
+        performance_test_sms_limit=5000000000,
+        performance_test_email_limit=5000000000,
+        performance_test_letter_limit=5000000000,
     )
 
-    functional_test_config = "\n".join(f"export {k}='{v}'" for k, v in env_var_dict.items())
-
-    functional_test_env_file = os.getenv("FUNCTIONAL_TEST_ENV_FILE", "/tmp/functional_test_env.sh")
-    if functional_test_env_file != "":
-        with open(functional_test_env_file, "w") as f:
-            f.write(functional_test_config)
+    functional_test_config = "\n".join(f"export {k}='{v}'" for k, v in functional_env_var_dict.items())
+    performance_test_config = "\n".join(f"export {k}='{v}'" for k, v in performance_env_var_dict.items())
 
     ssm_upload_path = os.getenv("SSM_UPLOAD_PATH")
     if ssm_upload_path:
-        ssm = boto3.client("ssm")
-        response = ssm.put_parameter(
-            Name=ssm_upload_path,
-            Value=functional_test_config,
-            Type="SecureString",
-            Overwrite=True,
-        )
+        _upload_env_to_ssm(ssm_upload_path, functional_test_config, "functional test environment")
 
-        if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
-            raise Exception("Failed to upload to SSM")
+    performance_ssm_upload_path = os.getenv("PERFORMANCE_SSM_UPLOAD_PATH")
+    if performance_ssm_upload_path:
+        _upload_env_to_ssm(performance_ssm_upload_path, performance_test_config, "performance test environment")
 
     current_app.logger.info("--> Functional test fixtures completed successfully")
 
@@ -150,7 +175,13 @@ def _create_db_objects(
     govuk_service_id,
     org_name,
     incoming_number,
-) -> dict[str, str]:
+    performance_tests_live_key_name="performance_tests_service_live_key",
+    performance_tests_test_key_name="performance_tests_service_test_key",
+    performance_test_rate_limit=12000000,
+    performance_test_sms_limit=5000000000,
+    performance_test_email_limit=5000000000,
+    performance_test_letter_limit=5000000000,
+) -> tuple[dict[str, str], dict[str, str]]:
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
     current_app.logger.info("--> Ensure organisation exists")
@@ -179,10 +210,21 @@ def _create_db_objects(
 
     current_app.logger.info("--> Ensure service exists")
     service = _create_service(org.id, service_admin_user)
+    performance_service = _create_service(
+        org.id,
+        service_admin_user,
+        service_name="Performance Tests",
+        rate_limit=performance_test_rate_limit,
+        sms_message_limit=performance_test_sms_limit,
+        letter_message_limit=performance_test_letter_limit,
+        email_message_limit=performance_test_email_limit,
+    )
 
     current_app.logger.info("--> Ensure users are added to service")
     dao_add_user_to_service(service, service_admin_user)
     dao_add_user_to_service(service, email_auth_user)
+    dao_add_user_to_service(performance_service, service_admin_user)
+    dao_add_user_to_service(performance_service, email_auth_user)
 
     _grant_permissions(service, email_auth_user)
 
@@ -190,6 +232,18 @@ def _create_db_objects(
     api_key_notify = _create_api_key(function_tests_govuk_key_name, govuk_service_id, service_admin_user.id, "normal")
     api_key_live_key = _create_api_key(function_tests_live_key_name, service.id, service_admin_user.id, "normal")
     api_key_test_key = _create_api_key(function_tests_test_key_name, service.id, service_admin_user.id, "test")
+    performance_api_key_live_key = _create_api_key(
+        performance_tests_live_key_name,
+        performance_service.id,
+        service_admin_user.id,
+        "normal",
+    )
+    _create_api_key(
+        performance_tests_test_key_name,
+        performance_service.id,
+        service_admin_user.id,
+        "test",
+    )
 
     current_app.logger.info("--> Ensure inbound number exists")
     inbound_number_id = _create_inbound_numbers(service.id, service_admin_user.id, incoming_number)
@@ -197,6 +251,18 @@ def _create_db_objects(
     current_app.logger.info("--> Ensure service letter contact exists")
     letter_contact = _create_service_letter_contact(
         service.id,
+        (
+            "Government Digital Service\n"
+            "The White Chapel Building\n"
+            "10 Whitechapel High Street\n"
+            "London\n"
+            "E1 8QS\n"
+            "United Kingdom"
+        ),
+        True,
+    )
+    performance_letter_contact = _create_service_letter_contact(
+        performance_service.id,
         (
             "Government Digital Service\n"
             "The White Chapel Building\n"
@@ -242,6 +308,35 @@ def _create_db_objects(
         user_id=service_admin_user.id,
         name="Functional Tests - SMS template without placeholders",
         content="The quick brown fox jumped over the lazy dog.",
+    )
+
+    performance_email_template = _create_email_template(
+        service=performance_service,
+        user_id=service_admin_user.id,
+        name="Performance Tests - Email Template",
+        subject="Performance Tests - Email",
+        content="Performance test email for ((name)).",
+    )
+    performance_email_with_file_template = _create_email_template(
+        service=performance_service,
+        user_id=service_admin_user.id,
+        name="Performance Tests - Email With File Template",
+        subject="Performance Tests - Email With File",
+        content="Performance test file for ((name)): ((link_to_file))",
+    )
+    performance_sms_template = _create_sms_template(
+        service=performance_service,
+        user_id=service_admin_user.id,
+        name="Performance Tests - SMS Template",
+        content="Performance test sms for ((name)).",
+    )
+    performance_letter_template = _create_letter_template(
+        service=performance_service,
+        user_id=service_admin_user.id,
+        name="Performance Tests - Letter Template",
+        subject="Performance Tests - Letter",
+        content="Performance test letter for ((name)).",
+        letter_contact_id=performance_letter_contact.id,
     )
 
     api_client_integration_test_email_template = _create_email_template(
@@ -298,10 +393,12 @@ def _create_db_objects(
 
     current_app.logger.info("--> Ensure service permissions exists")
     _create_service_permissions(service.id)
+    _create_service_permissions(performance_service.id)
 
     current_app.logger.info("--> Ensure service sms senders exists")
     _create_service_sms_senders(service.id, incoming_number, True, inbound_number_id)
     sms_sender = _create_service_sms_senders(service.id, "func tests", False, None)
+    _create_service_sms_senders(performance_service.id, incoming_number, True, None)
 
     current_app.logger.info("--> Ensure service inbound api exists")
     _create_service_inbound_api(service.id, service_admin_user.id)
@@ -309,7 +406,7 @@ def _create_db_objects(
     current_app.logger.info("--> Ensure dummy inbound SMS objects exist")
     _create_inbound_sms(service, 3)
 
-    return {
+    functional_env_var_dict = {
         "FUNCTIONAL_TESTS_API_HOST": current_app.config["API_HOST_NAME"],
         "FUNCTIONAL_TESTS_ADMIN_HOST": current_app.config["ADMIN_BASE_URL"],
         "ENVIRONMENT": environment,
@@ -357,6 +454,17 @@ def _create_db_objects(
         "INBOUND_SMS_QUERY_KEY": f"{function_tests_test_key_name}-{service.id}-{api_key_test_key.secret}",
     }
 
+    performance_env_var_dict = {
+        "PERFORMANCE_TESTS_API_HOST": current_app.config["API_HOST_NAME"],
+        "PERFORMANCE_TESTS_SERVICE_API_KEY": f"{performance_tests_live_key_name}-{performance_service.id}-{performance_api_key_live_key.secret}",  # noqa: E501
+        "PERFORMANCE_TEST_SMS_TEMPLATE_ID": performance_sms_template.id,
+        "PERFORMANCE_TEST_EMAIL_TEMPLATE_ID": performance_email_template.id,
+        "PERFORMANCE_TEST_EMAIL_WITH_FILE_TEMPLATE_ID": performance_email_with_file_template.id,
+        "PERFORMANCE_TEST_LETTER_TEMPLATE_ID": performance_letter_template.id,
+    }
+
+    return functional_env_var_dict, performance_env_var_dict
+
 
 def _create_user(name, email_address, password, auth_type="sms_auth", organisations=None, mobile_number=None):
     if organisations is None:
@@ -400,7 +508,15 @@ def _create_organiation(email_domain, org_name):
     return org
 
 
-def _create_service(org_id, user, service_name="Functional Tests"):
+def _create_service(
+    org_id,
+    user,
+    service_name="Functional Tests",
+    rate_limit=3000,
+    sms_message_limit=1000,
+    letter_message_limit=1000,
+    email_message_limit=1000,
+):
     services = get_services_by_partial_name(service_name)
 
     service = None
@@ -416,13 +532,20 @@ def _create_service(org_id, user, service_name="Functional Tests"):
                 "organisation_id": org_id,
                 "organisation_type": "central",
                 "created_by": user.id,
-                "sms_message_limit": 1000,
-                "letter_message_limit": 1000,
-                "email_message_limit": 1000,
+                "rate_limit": rate_limit,
+                "sms_message_limit": sms_message_limit,
+                "letter_message_limit": letter_message_limit,
+                "email_message_limit": email_message_limit,
                 "contact_link": current_app.config["ADMIN_BASE_URL"],
             }
         )
         dao_create_service(service, user)
+
+    service.rate_limit = rate_limit
+    service.sms_message_limit = sms_message_limit
+    service.letter_message_limit = letter_message_limit
+    service.email_message_limit = email_message_limit
+    service.contact_link = current_app.config["ADMIN_BASE_URL"]
 
     set_default_free_allowance_for_service(service=service, year_start=None)
 
