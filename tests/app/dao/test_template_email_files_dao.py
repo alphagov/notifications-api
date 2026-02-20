@@ -22,7 +22,7 @@ def test_create_template_email_files_dao(sample_email_template, sample_service):
         "id": "d963f496-b075-4e13-90ae-1f009feddbc6",
         "filename": "example.pdf",
         "link_text": "click this link!",
-        "retention_period": 90,
+        "retention_period": 45,
         "validate_users_email": True,
         "template_id": str(sample_email_template.id),
         "template_version": int(sample_email_template.version),
@@ -36,7 +36,7 @@ def test_create_template_email_files_dao(sample_email_template, sample_service):
     assert str(template_email_file.id) == "d963f496-b075-4e13-90ae-1f009feddbc6"
     assert template_email_file.filename == "example.pdf"
     assert template_email_file.link_text == "click this link!"
-    assert template_email_file.retention_period == 90
+    assert template_email_file.retention_period == 45
     assert template_email_file.validate_users_email
     assert template_email_file.version == 1
     assert template_email_file.created_by_id == sample_service.users[0].id
@@ -138,7 +138,7 @@ def test_dao_get_template_email_files_by_template_id_historical(sample_email_tem
     assert template_email_file_fetched.id == sample_template_email_file.id
     assert template_email_file_fetched.filename == sample_template_email_file.filename
     assert template_email_file_fetched.link_text == sample_template_email_file.link_text
-    assert template_email_file_fetched.retention_period == 90  # we want the initial retention period for historical
+    assert template_email_file_fetched.retention_period == 45  # we want the initial retention period for historical
     assert template_email_file_fetched.validate_users_email == sample_template_email_file.validate_users_email
     assert template_email_file_fetched.template_version == template_version_to_get
     assert template_email_file_fetched.created_by_id == sample_template_email_file.created_by_id
