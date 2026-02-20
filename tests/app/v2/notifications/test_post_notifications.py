@@ -761,12 +761,35 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             r"Amala, please [click this (evil link]()",
             r"Amala, please [click this (evil link]()",
         ),
-        # cut out a link without https:
+        # treat content that looks like a link but could be an honest mistake more leniently
+        # by only adding the allegedly missing space after the dot
+        # (someone not putting a space after an initial etc.)
         (
-            r"evil.link",
-            r"",  # TODO: do we want this to happen?
-            r"",
-            "",
+            "Marie.Curie-Sklodowska is rad",
+            "Marie\\. Curie\\-Sklodowska is rad",
+            "Marie. Curie-Sklodowska is rad",
+            "Marie. Curie-Sklodowska is rad",
+        ),
+        # two full links:
+        (
+            "https://evil.link and www.evil.link?arg=nam",
+            " and ",
+            "and",
+            " and ",
+        ),
+        # two links with just dots:
+        (
+            "evil. link and other-evil. lnk",
+            "evil\\. link and other\\-evil\\. lnk",
+            "evil. link and other-evil. lnk",
+            "evil. link and other-evil. lnk",
+        ),
+        # mixed link types:
+        (
+            "https://evil.link and www.evil.link",
+            "and www\\. evil\\. link",
+            "and www. evil. link",
+            "and www. evil. link",
         ),
         # double sanitisation can happen:
         (
