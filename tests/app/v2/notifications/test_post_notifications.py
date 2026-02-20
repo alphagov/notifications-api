@@ -3,6 +3,7 @@ from unittest.mock import call
 
 import pytest
 from flask import current_app, json
+from notifications_utils.markdown import notify_email_markdown, notify_plain_text_email_markdown
 
 from app.constants import (
     EMAIL_TYPE,
@@ -21,6 +22,7 @@ from app.v2.notifications.notification_schemas import (
     post_email_response,
     post_sms_response,
 )
+from app.v2.notifications.post_notifications import sanitise_personalisation_item
 from tests import create_service_authorization_header
 from tests.app.db import (
     create_reply_to_email,
@@ -702,6 +704,163 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
         ]
         if expect_upload
         else []
+    )
+
+
+@pytest.mark.parametrize("placeholder_name", ("first name", "first_name", "First_Name", "FIRST NAME"))
+def test_post_email_notification_sanitise_content_for_selected_personalisation(
+    api_client_request, sample_email_template_with_distinct_placeholders, mocker, placeholder_name
+):
+    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+    data = {
+        "email_address": "amala@example.com",
+        "template_id": sample_email_template_with_distinct_placeholders.id,
+        "personalisation": {
+            "First_Name": "Amala, please [click this evil link](https://evil.link)",
+            "link": "https://pab.gov.uk/123",
+        },
+        "sanitise_content_for": [placeholder_name],
+    }
+
+    resp_json = api_client_request.post(
+        sample_email_template_with_distinct_placeholders.service_id,
+        "v2_notifications.post_notification",
+        notification_type="email",
+        _data=data,
+    )
+
+    assert validate(resp_json, post_email_response) == resp_json
+    notification = Notification.query.one()
+
+    assert notification.content == (
+        "Hello Amala, please \\[click this evil link\\]\\(\\)\n"
+        "Please confirm your registration on [Pigeons' Affair Bureau website](https://pab.gov.uk/123)"
+    )
+
+    # this is what end user will see:
+    # as plain email:
+    assert notify_plain_text_email_markdown(notification.content).strip() == (
+        "Hello Amala, please [click this evil link]()\n"
+        "Please confirm your registration on Pigeons' Affair Bureau website: https://pab.gov.uk/123"
+    )
+    # as html email
+    assert notify_email_markdown(notification.content).strip() == (
+        '<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">Hello Amala, please '
+        '[click this evil link]()<br>Please confirm your registration on <a style="word-wrap: break-word; '
+        'color: #1D70B8;" href="https://pab.gov.uk/123">Pigeons\' Affair Bureau website</a></p>'
+    )
+
+
+@pytest.mark.parametrize(
+    "value, expected_sanitised, expected_sanitised_plain_text, expected_sanitised_html",
+    (
+        # sanitise link with link text by removing the link and escaping markdonw characters:
+        (
+            r"Amala, please [click this (evil link](https://evil.link)",
+            r"Amala, please \[click this \(evil link\]\(\)",
+            r"Amala, please [click this (evil link]()",
+            r"Amala, please [click this (evil link]()",
+        ),
+        # treat content that looks like a link but could be an honest mistake more leniently
+        # by only adding the allegedly missing space after the dot
+        # (someone not putting a space after an initial etc.)
+        (
+            "Marie.Curie-Sklodowska is rad",
+            "Marie\\. Curie\\-Sklodowska is rad",
+            "Marie. Curie-Sklodowska is rad",
+            "Marie. Curie-Sklodowska is rad",
+        ),
+        # two full links:
+        (
+            "https://evil.link and www.evil.link?arg=nam",
+            " and ",
+            "and",
+            " and ",
+        ),
+        # two links with just dots:
+        (
+            "evil. link and other-evil. lnk",
+            "evil\\. link and other\\-evil\\. lnk",
+            "evil. link and other-evil. lnk",
+            "evil. link and other-evil. lnk",
+        ),
+        # mixed link types:
+        (
+            "https://evil.link and www.evil.link",
+            "and www\\. evil\\. link",
+            "and www. evil. link",
+            "and www. evil. link",
+        ),
+        # double sanitisation can happen:
+        (
+            r"\# Rogue Header",
+            r"\\# Rogue Header",
+            r"\# Rogue Header",
+            r"\# Rogue Header",
+        ),
+        # escape two Markdown characters in a row:
+        (
+            r"## Rogue Header",
+            r"\#\# Rogue Header",
+            r"## Rogue Header",
+            r"## Rogue Header",
+        ),
+        # similar, but for a multi-line string:
+        (
+            "# Rogue Header\\\n# Rogue Header",
+            "\\# Rogue Header\\\n\\# Rogue Header",
+            "# Rogue Header\\\n# Rogue Header",
+            "# Rogue Header\\<br># Rogue Header",
+        ),
+        # sanitise where there is an escaped backslash:
+        (
+            r"\\# Rogue Header",
+            r"\\\# Rogue Header",
+            r"\# Rogue Header",
+            r"\# Rogue Header",
+        ),
+        # user accidentally puts backslash instead of forward slash:
+        (
+            r"Ulica Ceynowy 5\44",
+            r"Ulica Ceynowy 5\44",
+            r"Ulica Ceynowy 5\44",
+            r"Ulica Ceynowy 5\44",
+        ),
+        # user accidentally puts three backslashes instead of forward slash:
+        (
+            r"Ulica Ceynowy 5\\\44",
+            r"Ulica Ceynowy 5\\\44",
+            r"Ulica Ceynowy 5\\44",
+            r"Ulica Ceynowy 5\\44",
+        ),
+        # test all Markdown characters get escaped:
+        (
+            r"`*_(){}[]<>#+-.!|",
+            r"\`\*\_\(\)\{\}\[\]\<\>\#\+\-\.\!\|",
+            r"`*_(){}[]\&lt;&gt;#+-.!|",
+            r"`*_(){}[]\&lt;&gt;#+-.!|",
+        ),
+    ),
+)
+def test_sanitise_personalisation_item(
+    value, expected_sanitised, expected_sanitised_plain_text, expected_sanitised_html
+):
+    sanitised_value = sanitise_personalisation_item(value)
+
+    assert sanitised_value == expected_sanitised
+
+    # this is what end user will see
+    # as plain email
+    assert expected_sanitised_plain_text == notify_plain_text_email_markdown(sanitised_value).strip()
+
+    # as html email
+    assert notify_email_markdown(sanitised_value).strip() == (
+        (
+            f'<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">'
+            f"{expected_sanitised_html}</p>"
+        )
+        if expected_sanitised_html
+        else ""
     )
 
 

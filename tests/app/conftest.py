@@ -290,6 +290,16 @@ def sample_email_template_with_placeholders(sample_service):
 
 
 @pytest.fixture(scope="function")
+def sample_email_template_with_distinct_placeholders(sample_service):
+    return create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+        subject="Please confirm your registration",
+        content="Hello ((First_Name))\nPlease confirm your registration on [Pigeons' Affair Bureau website](((link)))",
+    )
+
+
+@pytest.fixture(scope="function")
 def sample_email_template_with_email_file_placeholders(sample_service):
     content = """
     Dear ((name)),

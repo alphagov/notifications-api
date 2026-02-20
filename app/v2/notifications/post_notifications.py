@@ -1,10 +1,13 @@
 import base64
 import functools
+import re
 import uuid
 from datetime import datetime
 
 from flask import abort, current_app, jsonify, request
 from gds_metrics import Histogram
+from notifications_utils.formatters import url
+from notifications_utils.insensitive_dict import InsensitiveSet
 
 from app import (
     api_user,
@@ -125,9 +128,13 @@ def post_notification(notification_type):
 
     check_service_has_permission(authenticated_service, notification_type)
 
+    personalisation = _prepare_personalisation_for_post_notification(
+        personalisation=form.get("personalisation", {}), sanitise_content_for=form.get("sanitise_content_for", [])
+    )
+
     template, template_with_content = validate_template(
         template_id=form["template_id"],
-        personalisation=form.get("personalisation", {}),
+        personalisation=personalisation,
         service=authenticated_service,
         notification_type=notification_type,
         check_char_count=False,
@@ -152,11 +159,40 @@ def post_notification(notification_type):
             template=template,
             template_with_content=template_with_content,
             service=authenticated_service,
+            personalisation=personalisation,
             reply_to_text=reply_to,
             unsubscribe_link=form.get("one_click_unsubscribe_url", None),
         )
 
     return jsonify(notification), 201
+
+
+def _prepare_personalisation_for_post_notification(personalisation, sanitise_content_for):
+    return {
+        key: sanitise_personalisation_item(value) if key in InsensitiveSet(sanitise_content_for) else value
+        for key, value in personalisation.items()
+    }
+
+
+def sanitise_personalisation_item(value):
+    # cut out URL
+    value = _sanitise_urls(value)
+    # escape markdown-specific characters
+    sanitised_value = re.sub(r"([`*_(){}\[\]<>#+\-.!|])", r"\\\1", value, flags=re.M)
+
+    return sanitised_value
+
+
+def _sanitise_urls(value):
+    if rogue_links := url.findall(value):
+        for link in rogue_links:
+            rogue_link = "".join(link)
+            if re.fullmatch(r"[a-zA-Z0-9\.\-]+", rogue_link):
+                neutralised_rogue_link = re.sub(r"\.", ". ", rogue_link)
+                value = re.sub(rogue_link, neutralised_rogue_link, value)
+            else:
+                value = re.sub(rogue_link, "", value)
+    return value
 
 
 def process_sms_or_email_notification(
@@ -166,6 +202,7 @@ def process_sms_or_email_notification(
     template,
     template_with_content,
     service,
+    personalisation,
     reply_to_text=None,
     unsubscribe_link=None,
 ):
@@ -182,7 +219,7 @@ def process_sms_or_email_notification(
     simulated = simulated_recipient(send_to, notification_type)
 
     personalisation, document_download_count = process_document_uploads(
-        form.get("personalisation"),
+        personalisation,
         service,
         send_to=send_to,
         simulated=simulated,
