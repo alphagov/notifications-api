@@ -334,6 +334,7 @@ def sample_email_template_with_template_email_files(sample_email_template_with_e
         filename="invitation.pdf",
         validate_users_email=True,
         retention_period=26,
+        pending=False,
     )
 
     create_template_email_file(
@@ -342,6 +343,7 @@ def sample_email_template_with_template_email_files(sample_email_template_with_e
         filename="form.pdf",
         validate_users_email=True,
         retention_period=26,
+        pending=False,
     )
 
     return template

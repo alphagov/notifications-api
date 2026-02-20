@@ -1,5 +1,15 @@
 from app.schema_validation.definitions import uuid
 
+get_template_email_files_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST create new email linked file",
+    "type": "object",
+    "title": "payload for POST payload for POST /service/<uuid:service_id>/template/<uuid:template_id>/template_email_files/",  # noqa: E501
+    "properties": {
+        "get_pending": {"type": "boolean"},
+    },
+}
+
 post_create_template_email_files_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST create new email linked file",

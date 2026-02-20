@@ -27,6 +27,7 @@ def test_create_template_email_files_dao(sample_email_template, sample_service):
         "template_id": str(sample_email_template.id),
         "template_version": int(sample_email_template.version),
         "created_by_id": str(sample_service.users[0].id),
+        "pending": False,
     }
     template_email_file = TemplateEmailFile(**data)
     dao_create_template_email_file(template_email_file)
@@ -40,6 +41,7 @@ def test_create_template_email_files_dao(sample_email_template, sample_service):
     assert template_email_file.validate_users_email
     assert template_email_file.version == 1
     assert template_email_file.created_by_id == sample_service.users[0].id
+    assert not template_email_file.pending
 
 
 def test_dao_get_template_email_file_by_id(sample_template_email_file, sample_service):
@@ -59,6 +61,7 @@ def test_dao_get_template_email_file_by_id(sample_template_email_file, sample_se
     assert template_email_file_fetched.validate_users_email == sample_template_email_file.validate_users_email
     assert template_email_file_fetched.template_version == sample_template_email_file.template_version
     assert template_email_file_fetched.created_by_id == sample_template_email_file.created_by_id
+    assert not template_email_file_fetched.pending
 
 
 def test_dao_get_template_email_file_by_id_returns_none_when_not_found():
@@ -100,6 +103,34 @@ def test_dao_get_template_email_files_by_template_id(sample_template_email_file,
     assert fetched_file_list[0].validate_users_email == sample_template_email_file.validate_users_email
     assert fetched_file_list[0].template_version == sample_template_email_file.template_version
     assert fetched_file_list[0].created_by_id == sample_template_email_file.created_by_id
+
+
+def test_dao_get_template_email_files_only_gets_pending_files_with_flag_set(sample_email_template):
+    create_template_email_file(
+        template_id=sample_email_template.id, created_by_id=sample_email_template.created_by_id, pending=True
+    )
+    assert not dao_get_template_email_files_by_template_id(sample_email_template.id)
+    assert len(dao_get_template_email_files_by_template_id(sample_email_template.id, get_pending=True)) == 1
+    # bump the template version
+    sample_email_template.content = "here is some new content"
+    dao_update_template(sample_email_template)
+    assert not dao_get_template_email_files_by_template_id(sample_email_template.id)
+    assert not dao_get_template_email_files_by_template_id(sample_email_template.id, template_version=1)
+    assert not dao_get_template_email_files_by_template_id(sample_email_template.id, template_version=2)
+    assert not dao_get_template_email_files_by_template_id(sample_email_template.id, template_version=3)
+    assert len(dao_get_template_email_files_by_template_id(sample_email_template.id, get_pending=True)) == 1
+    assert (
+        len(dao_get_template_email_files_by_template_id(sample_email_template.id, template_version=1, get_pending=True))
+        == 0
+    )
+    assert (
+        len(dao_get_template_email_files_by_template_id(sample_email_template.id, template_version=2, get_pending=True))
+        == 0
+    )
+    assert (
+        len(dao_get_template_email_files_by_template_id(sample_email_template.id, template_version=3, get_pending=True))
+        == 0  # we don't record the history, so none of these should pass
+    )
 
 
 def test_dao_get_template_email_files_by_template_id_does_not_return_archived_file(sample_template_email_file):
