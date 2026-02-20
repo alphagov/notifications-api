@@ -221,6 +221,26 @@ def test_post_letter_notification_international_sets_rest_of_world(api_client_re
             },
             "Must be a real address",
         ),
+        (
+            [LETTER_TYPE],
+            {
+                "address_line_1": "--",
+                "address_line_2": "Buckingham Palace",
+                "postcode": "SW1A 1AA",
+                "name": "Unknown",
+            },
+            "The first 2 lines of the address must include at least one alphanumeric character",
+        ),
+        (
+            [LETTER_TYPE],
+            {
+                "address_line_1": "Mr Recipient",
+                "address_line_2": "..",
+                "postcode": "SW1A 1AA",
+                "name": "Unknown",
+            },
+            "The first 2 lines of the address must include at least one alphanumeric character",
+        ),
     ),
 )
 def test_post_letter_notification_throws_error_for_bad_address(

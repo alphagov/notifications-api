@@ -305,6 +305,10 @@ def validate_address(service, letter_data):
         raise ValidationError(message=f"Address must be at least {PostalAddress.MIN_LINES} lines")
     if address.has_too_many_lines:
         raise ValidationError(message=f"Address must be no more than {PostalAddress.MAX_LINES} lines")
+    if not address.has_alphanumeric_character_in_address_lines_1_and_2:
+        raise ValidationError(
+            message="The first 2 lines of the address must include at least one alphanumeric character"
+        )
     if address.has_invalid_country_for_bfpo_address:
         raise ValidationError(message="The last line of a BFPO address must not be a country.")
     if not address.has_valid_last_line:
