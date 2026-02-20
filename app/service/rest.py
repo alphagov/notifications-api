@@ -468,6 +468,8 @@ def get_all_notifications_for_service_for_csv(service_id):
         include_jobs=True,
         include_from_test_key=False,
         include_one_off=True,
+        session=db.session_bulk,
+        retry_attempts=2,
     )
 
     kwargs = request.args.to_dict()

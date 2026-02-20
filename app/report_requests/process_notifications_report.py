@@ -12,6 +12,7 @@ from notifications_utils.s3 import (
     s3_multipart_upload_part,
 )
 
+from app import db
 from app.constants import NOTIFICATION_REPORT_REQUEST_MAPPING
 from app.dao.notifications_dao import get_notifications_for_service
 from app.dao.report_requests_dao import dao_get_report_request_by_id
@@ -85,7 +86,7 @@ class ReportRequestProcessor:
     def _fetch_serialized_notifications(self, limit_days: int, older_than: str | None) -> list[dict[str, Any]]:
         statuses = NOTIFICATION_REPORT_REQUEST_MAPPING[self.notification_status]
 
-        notifications = get_notifications_for_service(
+        notifications = get_notifications_for_service(  # type: ignore[call-arg]
             service_id=self.service_id,
             filter_dict={
                 "template_type": self.notification_type,
@@ -100,6 +101,8 @@ class ReportRequestProcessor:
             error_out=False,
             include_one_off=True,
             older_than=older_than,
+            session=db.session_bulk,
+            retry_attempts=2,
         )
 
         serialized_notifications = [notification.serialize_for_csv() for notification in notifications]
