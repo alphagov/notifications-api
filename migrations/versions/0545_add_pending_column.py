@@ -40,5 +40,5 @@ def upgrade():
 
 def downgrade():
     conn = op.get_bind()
-    conn.execute("ALTER TABLE template_email_files DROP COLUMN pending")
-    conn.execute("ALTER TABLE template_email_files_history DROP COLUMN pending")
+    conn.execute(text("ALTER TABLE template_email_files DROP COLUMN pending"))
+    conn.execute(text("ALTER TABLE template_email_files_history DROP COLUMN pending"))
