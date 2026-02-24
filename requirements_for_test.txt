@@ -190,7 +190,7 @@ jsonschema-specifications==2025.9.1
     # via
     #   -r requirements.txt
     #   jsonschema
-kombu==5.6.2
+kombu @ git+https://github.com/celery/kombu.git@860e40a6c904c4d8551577d9f4e8c00f03b6e06c
     # via
     #   -r requirements.txt
     #   celery
@@ -386,7 +386,9 @@ typing-extensions==4.15.0
     # via
     #   -r requirements.txt
     #   alembic
+    #   exceptiongroup
     #   mypy
+    #   referencing
     #   sqlalchemy
 tzdata==2025.3
     # via
