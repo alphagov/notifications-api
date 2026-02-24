@@ -238,8 +238,6 @@ statsd==4.0.1
 typing-extensions==4.15.0
     # via
     #   alembic
-    #   exceptiongroup
-    #   referencing
     #   sqlalchemy
 tzdata==2025.3
     # via
