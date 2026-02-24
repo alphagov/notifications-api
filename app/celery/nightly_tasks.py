@@ -146,7 +146,9 @@ def _delete_notifications_older_than_retention_by_type(
     notification_type,
     stagger_total_period=timedelta(minutes=5),
 ):
-    flexible_data_retention = fetch_service_data_retention_for_all_services_by_notification_type(notification_type)
+    flexible_data_retention = fetch_service_data_retention_for_all_services_by_notification_type(
+        notification_type, db.session_bulk
+    )
 
     for i, f in enumerate(flexible_data_retention):
         day_to_delete_backwards_from = get_london_midnight_in_utc(

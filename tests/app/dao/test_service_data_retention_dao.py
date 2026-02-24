@@ -4,15 +4,18 @@ from datetime import datetime
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from app import db
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
     fetch_service_data_retention_by_notification_type,
+    fetch_service_data_retention_for_all_services_by_notification_type,
     insert_service_data_retention,
     update_service_data_retention,
 )
 from app.models import ServiceDataRetention
 from tests.app.db import create_service, create_service_data_retention
+from tests.utils import QueryRecorder
 
 
 def test_fetch_service_data_retention(sample_service):
@@ -129,3 +132,21 @@ def test_fetch_service_data_retention_by_notification_type(sample_service, notif
 
 def test_fetch_service_data_retention_by_notification_type_returns_none_when_no_rows(sample_service):
     assert not fetch_service_data_retention_by_notification_type(sample_service.id, "email")
+
+
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_fetch_service_data_retention_by_for_all_services_by_notification_type_uses_session(
+    sample_service, session, expected_bind_key
+):
+    insert_service_data_retention(service_id=sample_service.id, notification_type="email", days_of_retention=3)
+    with QueryRecorder() as query_recorder:
+        fetch_service_data_retention_for_all_services_by_notification_type("email", session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
