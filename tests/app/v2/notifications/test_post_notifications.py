@@ -826,6 +826,13 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             r"Ulica Ceynowy 5\44",
             r"Ulica Ceynowy 5\44",
         ),
+        # unicode-heavy text
+        (
+            r"[żądło rządzi tą pszczołą](to-jest-atak.com)",
+            r"\[żądło rządzi tą pszczołą\]\(to\-jest\-atak\. com\)",
+            r"[żądło rządzi tą pszczołą](to-jest-atak. com)",
+            r"[żądło rządzi tą pszczołą](to-jest-atak. com)",
+        ),
         # user accidentally puts three backslashes instead of forward slash:
         (
             r"Ulica Ceynowy 5\\\44",
