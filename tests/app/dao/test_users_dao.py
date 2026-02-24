@@ -54,7 +54,7 @@ from tests.app.db import (
     "password",
     (
         "password",
-        "10b(utf-8)" * 10,
+        "10b ❤️" * 10,  # Heart emoji is 6 bytes when UTF-8 encoded
     ),
 )
 def test_create_user(notify_db_session, phone_number, password):
