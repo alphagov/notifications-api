@@ -226,7 +226,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@c3b3711d9b63cf131151087be7726f7b9b1b0e55
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@8170df183d4e0ad17b492ad8ed905bcc5c6c5b2f
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
@@ -388,7 +388,9 @@ typing-extensions==4.15.0
     # via
     #   -r requirements.txt
     #   alembic
+    #   exceptiongroup
     #   mypy
+    #   referencing
     #   sqlalchemy
 tzdata==2025.3
     # via
