@@ -17,7 +17,7 @@ attrs==25.4.0
     #   -r requirements.txt
     #   jsonschema
     #   referencing
-awscrt==0.20.9
+awscrt==0.31.2
     # via
     #   -r requirements.txt
     #   botocore
@@ -36,31 +36,31 @@ blinker==1.9.0
     #   -r requirements.txt
     #   flask
     #   gds-metrics
-boto3==1.34.100
+boto3==1.42.56
     # via
     #   -r requirements.txt
     #   moto
     #   notifications-utils
-botocore==1.34.100
+botocore==1.42.56
     # via
     #   -r requirements.txt
     #   boto3
     #   moto
     #   s3transfer
-cachetools==5.5.0
+cachetools==7.0.1
     # via
     #   -r requirements.txt
     #   notifications-utils
 celery==5.6.0
     # via -r requirements.txt
-certifi==2026.1.4
+certifi==2026.2.25
     # via
     #   -r requirements.txt
     #   requests
     #   sentry-sdk
 cffi==2.0.0
     # via cryptography
-charset-normalizer==2.1.1
+charset-normalizer==3.4.4
     # via
     #   -r requirements.txt
     #   requests
@@ -113,7 +113,7 @@ execnet==2.1.2
     # via pytest-xdist
 flaky==3.8.1
     # via -r requirements_for_test.in
-flask==3.1.2
+flask==3.1.3
     # via
     #   -r requirements.txt
     #   flask-bcrypt
@@ -147,7 +147,7 @@ govuk-bank-holidays==0.18
     # via
     #   -r requirements.txt
     #   notifications-utils
-greenlet==3.3.1
+greenlet==3.3.2
     # via
     #   -r requirements.txt
     #   eventlet
@@ -200,7 +200,7 @@ mako==1.3.10
     # via
     #   -r requirements.txt
     #   alembic
-markupsafe==2.1.1
+markupsafe==3.0.3
     # via
     #   -r requirements.txt
     #   flask
@@ -241,7 +241,7 @@ packaging==26.0
     #   pytest
 pathspec==1.0.4
     # via mypy
-phonenumbers==9.0.23
+phonenumbers==9.0.24
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -269,7 +269,7 @@ pyjwt==2.10.1
     #   notifications-python-client
 pyorc==0.10.0
     # via -r requirements.txt
-pypdf==6.6.0
+pypdf==6.7.3
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -299,7 +299,7 @@ python-dateutil==2.9.0.post0
     #   freezegun
     #   moto
     #   notifications-utils
-python-json-logger==3.3.0
+python-json-logger==4.0.0
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -308,7 +308,7 @@ pyyaml==6.0.3
     #   -r requirements.txt
     #   notifications-utils
     #   responses
-redis==4.5.4
+redis==7.2.0
     # via
     #   -r requirements.txt
     #   flask-redis
@@ -341,7 +341,7 @@ rpds-py==0.30.0
     #   referencing
 ruff==0.11.4
     # via -r requirements_for_test_common.in
-s3transfer==0.10.1
+s3transfer==0.16.0
     # via
     #   -r requirements.txt
     #   boto3
@@ -421,7 +421,7 @@ wcwidth==0.6.0
     #   prompt-toolkit
 webcolors==25.10.0
     # via -r requirements.txt
-werkzeug==3.1.5
+werkzeug==3.1.6
     # via
     #   -r requirements.txt
     #   flask
