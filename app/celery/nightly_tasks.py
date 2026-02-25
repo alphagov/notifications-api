@@ -147,7 +147,7 @@ def _delete_notifications_older_than_retention_by_type(
     stagger_total_period=timedelta(minutes=5),
 ):
     flexible_data_retention = fetch_service_data_retention_for_all_services_by_notification_type(
-        notification_type, db.session_bulk
+        notification_type, db.session_bulk, retry_attempts=2
     )
 
     for i, f in enumerate(flexible_data_retention):
