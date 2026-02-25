@@ -660,19 +660,25 @@ def test_post_precompiled_letter_notification_returns_201(
 def test_post_precompiled_letter_notification_if_s3_upload_fails_notification_is_not_persisted(
     api_client_request, mocker
 ):
+    class UploadLetterException(Exception):
+        pass
+
     sample_service = create_service(service_permissions=["letter"])
     persist_letter_mock = mocker.patch(
         "app.v2.notifications.post_notifications.create_letter_notification", side_effect=create_letter_notification
     )
-    s3mock = mocker.patch("app.v2.notifications.post_notifications.upload_letter_pdf", side_effect=Exception())
+    s3mock = mocker.patch(
+        "app.v2.notifications.post_notifications.upload_letter_pdf",
+        side_effect=UploadLetterException,
+    )
     mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
     data = {"reference": "letter-reference", "content": "bGV0dGVyLWNvbnRlbnQ="}
 
-    with pytest.raises(expected_exception=Exception):
+    with pytest.raises(expected_exception=UploadLetterException):
         api_client_request.post(sample_service.id, "v2_notifications.post_precompiled_letter_notification", _data=data)
 
-    assert s3mock.called
-    assert persist_letter_mock.called
+    assert s3mock.called is True
+    assert persist_letter_mock.called is True
     assert Notification.query.count() == 0
 
 

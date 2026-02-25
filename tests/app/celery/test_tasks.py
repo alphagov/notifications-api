@@ -15,7 +15,7 @@ from notifications_utils.template import (
     PlainTextEmailTemplate,
     SMSMessageTemplate,
 )
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import NoResultFound, SQLAlchemyError
 
 from app import signing
 from app.celery import provider_tasks, tasks
@@ -2766,7 +2766,7 @@ def test_process_incomplete_job_no_job_in_database(mocker, mock_celery_task, fak
     )
     mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
 
-    with pytest.raises(expected_exception=Exception):
+    with pytest.raises(expected_exception=NoResultFound):
         process_incomplete_job(fake_uuid)
 
     assert mock_shatter_job_rows.call_count == 0  # There is no job in the db it will not have been called
