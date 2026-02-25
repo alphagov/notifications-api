@@ -288,6 +288,13 @@ def save_sms(
     encoded_notification,
     sender_id=None,
 ):
+    message_group_id_from_request = getattr(self, "message_group_id", None)
+    current_app.logger.info(
+        "save_sms MessageGroupId from request: %s, service_id: %s",
+        message_group_id_from_request,
+        service_id,
+        extra={"message_group_id": message_group_id_from_request, "service_id": str(service_id)},
+    )
     notification = signing.decode(encoded_notification)
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_service_id_and_version(
@@ -389,6 +396,10 @@ def save_sms(
 
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
+
+    handle_exception(
+        self, notification, notification_id, Exception("Local debug: trigger handle_exception"), force_retry=True
+    )
 
 
 @notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
@@ -524,8 +535,8 @@ def save_letter(
         handle_exception(self, notification, notification_id, e)
 
 
-def handle_exception(task, notification, notification_id, exc):
-    if not get_notification_by_id(notification_id):
+def handle_exception(task, notification, notification_id, exc, force_retry=False):
+    if force_retry or not get_notification_by_id(notification_id):
         extra = {
             "notification_id": notification_id,
             "celery_task": task.name,
@@ -540,6 +551,15 @@ def handle_exception(task, notification, notification_id, exc):
         # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
         # send to the retry queue.
         current_app.logger.exception("Retry: " + base_msg, extra, extra=extra)  # noqa
+
+        current_app.logger.info(
+            "⚠️ handle_exception retry MessageGroupId: %s ⚠️",
+            getattr(task, "message_group_id", None),
+            extra={
+                "message_group_id": getattr(task, "message_group_id", None),
+                "notification_id": str(notification_id),
+            },
+        )
         try:
             retry_kwargs = {
                 "queue": QueueNames.RETRY,
