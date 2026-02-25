@@ -50,11 +50,18 @@ from tests.app.db import (
         "+1-800-555-5555",
     ],
 )
-def test_create_user(notify_db_session, phone_number):
+@pytest.mark.parametrize(
+    "password",
+    (
+        "password",
+        "10b ❤️" * 10,  # Heart emoji is 6 bytes when UTF-8 encoded
+    ),
+)
+def test_create_user(notify_db_session, phone_number, password):
     email = "notify@digital.cabinet-office.gov.uk"
     data = {"name": "Test User", "email_address": email, "password": "password", "mobile_number": phone_number}
     user = User(**data)
-    save_model_user(user, password="password", validated_email_access=True)
+    save_model_user(user, password=password, validated_email_access=True)
     assert User.query.count() == 1
     user_query = User.query.first()
     assert user_query.email_address == email
@@ -62,6 +69,7 @@ def test_create_user(notify_db_session, phone_number):
     assert user_query.mobile_number == phone_number
     assert user_query.email_access_validated_at == datetime.utcnow()
     assert not user_query.platform_admin
+    assert user_query.check_password(password) is True
 
 
 def test_get_user(notify_db_session):

@@ -21,7 +21,7 @@ awscrt==0.20.9
     # via
     #   -r requirements.txt
     #   botocore
-bcrypt==4.0.0
+bcrypt==5.0.0
     # via
     #   -r requirements.txt
     #   flask-bcrypt
@@ -386,9 +386,7 @@ typing-extensions==4.15.0
     # via
     #   -r requirements.txt
     #   alembic
-    #   exceptiongroup
     #   mypy
-    #   referencing
     #   sqlalchemy
 tzdata==2025.3
     # via

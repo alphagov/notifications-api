@@ -12,7 +12,7 @@ attrs==25.4.0
     #   referencing
 awscrt==0.20.9
     # via botocore
-bcrypt==4.0.0
+bcrypt==5.0.0
     # via flask-bcrypt
 billiard==4.2.4
     # via celery
@@ -238,8 +238,6 @@ statsd==4.0.1
 typing-extensions==4.15.0
     # via
     #   alembic
-    #   exceptiongroup
-    #   referencing
     #   sqlalchemy
 tzdata==2025.3
     # via
