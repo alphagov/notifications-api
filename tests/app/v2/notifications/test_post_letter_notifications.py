@@ -677,8 +677,8 @@ def test_post_precompiled_letter_notification_if_s3_upload_fails_notification_is
     with pytest.raises(expected_exception=UploadLetterException):
         api_client_request.post(sample_service.id, "v2_notifications.post_precompiled_letter_notification", _data=data)
 
-    assert s3mock.called
-    assert persist_letter_mock.called
+    assert s3mock.called is True
+    assert persist_letter_mock.called is True
     assert Notification.query.count() == 0
 
 
