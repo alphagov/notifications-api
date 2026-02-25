@@ -178,7 +178,7 @@ def sanitise_personalisation_item(value):
     # cut out URL
     value = _sanitise_urls(value)
     # escape markdown-specific characters
-    sanitised_value = re.sub(r"([`*_(){}\[\]<>#+\-.!|])", r"\\\1", value, flags=re.M)
+    sanitised_value = re.sub(r"([`*_()\\{}\[\]<>#+\-.!|])", r"\\\1", value, flags=re.M)
 
     return sanitised_value
 

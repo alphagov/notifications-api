@@ -794,7 +794,7 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         # double sanitisation can happen:
         (
             r"\# Rogue Header",
-            r"\\# Rogue Header",
+            r"\\\# Rogue Header",
             r"\# Rogue Header",
             r"\# Rogue Header",
         ),
@@ -808,21 +808,21 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         # similar, but for a multi-line string:
         (
             "# Rogue Header\\\n# Rogue Header",
-            "\\# Rogue Header\\\n\\# Rogue Header",
+            "\\# Rogue Header\\\\\n\\# Rogue Header",
             "# Rogue Header\\\n# Rogue Header",
             "# Rogue Header\\<br># Rogue Header",
         ),
         # sanitise where there is an escaped backslash:
         (
             r"\\# Rogue Header",
-            r"\\\# Rogue Header",
-            r"\# Rogue Header",
-            r"\# Rogue Header",
+            r"\\\\\# Rogue Header",
+            r"\\# Rogue Header",
+            r"\\# Rogue Header",
         ),
         # user accidentally puts backslash instead of forward slash:
         (
             r"Ulica Ceynowy 5\44",
-            r"Ulica Ceynowy 5\44",
+            r"Ulica Ceynowy 5\\44",
             r"Ulica Ceynowy 5\44",
             r"Ulica Ceynowy 5\44",
         ),
@@ -836,9 +836,9 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         # user accidentally puts three backslashes instead of forward slash:
         (
             r"Ulica Ceynowy 5\\\44",
+            r"Ulica Ceynowy 5\\\\\\44",
             r"Ulica Ceynowy 5\\\44",
-            r"Ulica Ceynowy 5\\44",
-            r"Ulica Ceynowy 5\\44",
+            r"Ulica Ceynowy 5\\\44",
         ),
         # test all Markdown characters get escaped:
         (
