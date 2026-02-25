@@ -175,22 +175,35 @@ def _prepare_personalisation_for_post_notification(personalisation, sanitise_con
 
 
 def sanitise_personalisation_item(value):
-    # cut out URL
     value = _sanitise_urls(value)
-    # escape markdown-specific characters
-    sanitised_value = re.sub(r"([`*_()\\{}\[\]<>#+\-.!|])", r"\\\1", value, flags=re.M)
+    sanitised_value = _escape_markdown_characters(value)
 
     return sanitised_value
 
 
+def _escape_markdown_characters(value):
+    return re.sub(r"([`*_()\\{}\[\]<>#+\-.!|])", r"\\\1", value, flags=re.M)
+
+
 def _sanitise_urls(value):
-    for link in [m.group(0) for m in re.finditer(url, value)]:
-        if re.fullmatch(r"[a-zA-Z0-9\.\-]+", link):
-            neutralised_link = re.sub(r"\.", ". ", link)
-            value = value.replace(link, neutralised_link)
+    for link in _find_links_in_content(value):
+        if _could_be_accidental_link(link):
+            value = value.replace(link, _break_up_link(link))
         else:
             value = value.replace(link, "")
     return value
+
+
+def _find_links_in_content(value):
+    return [m.group(0) for m in re.finditer(url, value)]
+
+
+def _could_be_accidental_link(link):
+    return re.fullmatch(r"[a-zA-Z0-9\.\-]+", link)
+
+
+def _break_up_link(link):
+    return re.sub(r"\.", ". ", link)
 
 
 def process_sms_or_email_notification(
