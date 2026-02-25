@@ -122,6 +122,8 @@ def process_job(job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER_JOB_R
 
 
 def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level=True):
+    service_id = str(_service_id_from_job_row_args_kwargs(args_kwargs_seq[0])) if args_kwargs_seq else None
+
     try:
         shatter_job_rows.apply_async(
             (
@@ -129,6 +131,7 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, top_level
                 args_kwargs_seq,
             ),
             queue=QueueNames.JOBS,
+            MessageGroupId=service_id,
         )
     except BotoClientError as e:
         # this information is helpfully not preserved outside the message string of the exception, so
@@ -172,10 +175,9 @@ def process_job_row(template_type, task_args_kwargs):
         LETTER_TYPE: save_letter,
     }[template_type]
 
-    send_fn.apply_async(
-        *task_args_kwargs,
-        queue=QueueNames.DATABASE,
-    )
+    service_id = _service_id_from_job_row_args_kwargs(task_args_kwargs)
+    apply_kwargs = {"queue": QueueNames.DATABASE, "MessageGroupId": str(service_id) if service_id else None}
+    send_fn.apply_async(*task_args_kwargs, **apply_kwargs)
 
 
 def job_complete(job, resumed=False, start=None):
@@ -240,6 +242,12 @@ def get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=N
         task_kwargs["sender_id"] = sender_id
 
     return notification_id, (task_args, task_kwargs)
+
+
+def _service_id_from_job_row_args_kwargs(task_args_kwargs):
+    """Extract service_id from (task_args, task_kwargs) produced by get_id_task_args_kwargs_for_job_row."""
+    task_args, _ = task_args_kwargs
+    return task_args[0]
 
 
 def __sending_limits_for_job_exceeded(service, job, job_id):
@@ -353,6 +361,7 @@ def save_sms(
             provider_tasks.deliver_sms.apply_async(
                 [str(saved_notification.id)],
                 queue=QueueNames.SEND_SMS,
+                MessageGroupId=str(service.id),
             )
         else:
             extra = {
@@ -437,6 +446,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
             queue=QueueNames.SEND_EMAIL,
+            MessageGroupId=str(service.id),
         )
 
         extra = {
@@ -494,7 +504,9 @@ def save_letter(
         )
 
         letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
-            [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
+            [str(saved_notification.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF,
+            MessageGroupId=str(service.id),
         )
 
         extra = {
@@ -529,7 +541,12 @@ def handle_exception(task, notification, notification_id, exc):
         # send to the retry queue.
         current_app.logger.exception("Retry: " + base_msg, extra, extra=extra)  # noqa
         try:
-            task.retry(queue=QueueNames.RETRY, exc=exc)
+            retry_kwargs = {
+                "queue": QueueNames.RETRY,
+                "exc": exc,
+                "MessageGroupId": getattr(task, "message_group_id", None),
+            }
+            task.retry(**retry_kwargs)
         except task.MaxRetriesExceededError:
             current_app.logger.error("Max retry failed: " + base_msg, extra, extra=extra)  # noqa
 
@@ -625,7 +642,11 @@ def _check_and_queue_returned_letter_callback_task(notification_id, service_id):
     # queue callback task only if the service_callback_api exists
     if service_callback_api := get_returned_letter_callback_api_for_service(service_id=service_id):
         returned_letter_data = create_returned_letter_callback_data(notification_id, service_id, service_callback_api)
-        send_returned_letter_to_service.apply_async([returned_letter_data], queue=QueueNames.CALLBACKS)
+        send_returned_letter_to_service.apply_async(
+            [returned_letter_data],
+            queue=QueueNames.CALLBACKS,
+            MessageGroupId=str(service_id),
+        )
 
 
 @notify_celery.task(bind=True, name="process-report-request")
