@@ -153,11 +153,10 @@ def _create_db_objects(
 ) -> dict[str, str]:
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
-    org_name_with_environment = f"{org_name} ({environment})"
     service_name_with_environment = f"Functional Tests ({environment})"
 
     current_app.logger.info("--> Ensure organisation exists")
-    org = _create_organiation(email_domain, org_name_with_environment)
+    org = _create_organiation(email_domain, org_name)
 
     current_app.logger.info("--> Ensure users exists")
     func_test_user = _create_user(
@@ -395,10 +394,21 @@ def _create_organiation(email_domain, org_name):
 
     if org is None:
         org = Organisation(name=org_name, active=True, crown=False, organisation_type="central")
-
         dao_create_organisation(org)
 
-    dao_update_organisation(org.id, domains=[email_domain], can_approve_own_go_live_requests=True)
+    dao_update_organisation(
+        org.id,
+        name=org_name,
+        active=True,
+        crown=False,
+        organisation_type="central",
+        notes=None,
+        request_to_go_live_notes=None,
+        agreement_signed_on_behalf_of_name=None,
+        agreement_signed_on_behalf_of_email_address=None,
+        domains=[email_domain],
+        can_approve_own_go_live_requests=True,
+    )
 
     return org
 
