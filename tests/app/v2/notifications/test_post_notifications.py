@@ -791,6 +791,13 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             "and www. evil. link",
             " and www. evil. link",
         ),
+        # mixed link types changed order:
+        (
+            "www.evil.link and https://evil.link",
+            "www\\. evil\\. link and ",
+            "www. evil. link and",
+            "www. evil. link and ",
+        ),
         # double sanitisation can happen:
         (
             r"\# Rogue Header",
