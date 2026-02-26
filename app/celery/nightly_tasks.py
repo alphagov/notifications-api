@@ -171,7 +171,7 @@ def _delete_notifications_older_than_retention_by_type(
     # get a list of all service ids that we'll need to delete for. Typically that might only be 5% of services.
     # This query takes a couple of mins to run.
     service_ids_that_have_sent_notifications_recently = get_service_ids_with_notifications_before(
-        notification_type, seven_days_ago
+        notification_type, seven_days_ago, db.session_bulk, retry_attempts=2
     )
 
     service_ids_to_purge = service_ids_that_have_sent_notifications_recently - service_ids_with_data_retention
