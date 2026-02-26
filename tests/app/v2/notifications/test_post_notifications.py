@@ -798,6 +798,20 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
             "www. evil. link and",
             "www. evil. link and ",
         ),
+        # earlier url is a substring of a later url:
+        (
+            "foo.bar/baz and https://evil.link/foo.bar/bazpwnme",
+            " and ",
+            "and",
+            " and ",
+        ),
+        # earlier url is a substring of a later (undotted) url:
+        (
+            "foo.bar/baz and https://localhost/foo.bar/bazsomething/weird",
+            " and https://localhost/",
+            "and https://localhost/",
+            ' and <a style="word-wrap: break-word; color: #1D70B8;" href="https://localhost/">https://localhost/</a>',
+        ),
         # double sanitisation can happen:
         (
             r"\# Rogue Header",

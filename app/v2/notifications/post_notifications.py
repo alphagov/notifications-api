@@ -186,16 +186,22 @@ def _escape_markdown_characters(value):
 
 
 def _sanitise_urls(value):
-    for link in _find_links_in_content(value):
-        if _could_be_accidental_link(link):
-            value = value.replace(link, _break_up_link(link))
-        else:
-            value = value.replace(link, "")
-    return value
+    processed_parts = []
+    unprocessed = value
+    while (match := re.search(url, unprocessed)) is not None:
+        # any non-url text before the match
+        processed_parts.append(unprocessed[: match.start(0)])
 
+        # the match, processed in one way or another
+        processed_parts.append(_break_up_link(match.group(0)) if _could_be_accidental_link(match.group(0)) else "")
 
-def _find_links_in_content(value):
-    return [m.group(0) for m in re.finditer(url, value)]
+        # advance unprocessed
+        unprocessed = unprocessed[match.end(0) :]
+
+    # any remaining unprocessed after no more urls can be found
+    processed_parts.append(unprocessed)
+
+    return "".join(processed_parts)
 
 
 def _could_be_accidental_link(link):
