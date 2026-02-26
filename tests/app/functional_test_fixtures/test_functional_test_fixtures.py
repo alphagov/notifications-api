@@ -73,7 +73,7 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
     assert "FUNCTIONAL_TESTS_SERVICE_EMAIL_PASSWORD" in variables[0]
     assert variables[0]["FUNCTIONAL_TESTS_SERVICE_NUMBER"] == "07700900501"
     assert "FUNCTIONAL_TESTS_SERVICE_ID" in variables[0]
-    assert variables[0]["FUNCTIONAL_TESTS_SERVICE_NAME"] == "Functional Tests"
+    assert variables[0]["FUNCTIONAL_TESTS_SERVICE_NAME"] == "Functional Tests (dev-env)"
     assert "FUNCTIONAL_TESTS_ORGANISATION_ID" in variables[0]
     assert variables[0]["FUNCTIONAL_TESTS_SERVICE_API_KEY"].startswith("functional_tests_service_live_key-")
     assert variables[0]["FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY"].startswith("functional_tests_service_test_key-")

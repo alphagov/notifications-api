@@ -153,8 +153,11 @@ def _create_db_objects(
 ) -> dict[str, str]:
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
+    org_name_with_environment = f"{org_name} ({environment})"
+    service_name_with_environment = f"Functional Tests ({environment})"
+
     current_app.logger.info("--> Ensure organisation exists")
-    org = _create_organiation(email_domain, org_name)
+    org = _create_organiation(email_domain, org_name_with_environment)
 
     current_app.logger.info("--> Ensure users exists")
     func_test_user = _create_user(
@@ -178,7 +181,7 @@ def _create_db_objects(
     )
 
     current_app.logger.info("--> Ensure service exists")
-    service = _create_service(org.id, service_admin_user)
+    service = _create_service(org.id, service_admin_user, service_name_with_environment)
 
     current_app.logger.info("--> Ensure users are added to service")
     dao_add_user_to_service(service, service_admin_user)
