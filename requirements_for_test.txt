@@ -226,7 +226,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0fc47126305fa1930b427b21d413b363cb3b702b
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@e4fd0f03f2475329250dac85d1fb778a4fc053b4
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
@@ -339,7 +339,7 @@ rpds-py==0.30.0
     #   -r requirements.txt
     #   jsonschema
     #   referencing
-ruff==0.11.4
+ruff==0.15.2
     # via -r requirements_for_test_common.in
 s3transfer==0.16.0
     # via
