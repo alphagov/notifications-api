@@ -7,8 +7,10 @@ import boto3
 from moto import mock_aws
 
 from app import db
-from app.functional_tests_fixtures import _create_db_objects, _create_user, apply_fixtures
+from app.functional_tests_fixtures import _create_db_objects, _create_service_sms_senders, _create_user, apply_fixtures
+from app.models import InboundNumber
 from tests.conftest import set_config_values
+from tests.app.db import create_inbound_number, create_service, create_service_sms_sender
 
 
 def test_create_db_objects_sets_db_up(notify_api, notify_service):
@@ -110,6 +112,59 @@ def test_create_user_revalidates_email():
     db.session.commit()
     test_user = _create_user("test_user", "test@example.com", "passw@rd", auth_type="email_auth")
     assert (datetime.utcnow() - test_user.email_access_validated_at).total_seconds() < 60
+
+
+def test_create_db_objects_reassigns_existing_inbound_number_from_another_service(notify_api, notify_service):
+    existing_service = create_service(service_name="Existing inbound owner")
+    existing_inbound = create_inbound_number(number="07700900500", service_id=existing_service.id)
+
+    with set_config_values(
+        notify_api,
+        {
+            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
+            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
+            "ADMIN_BASE_URL": "http://localhost:6012",
+            "API_HOST_NAME": "http://localhost:6011",
+        },
+    ):
+        variables = _create_db_objects(
+            "fake password",
+            "test_request_bin_token",
+            "dev-env",
+            "notify-tests-preview",
+            "digital.cabinet-office.gov.uk",
+            "govuk_notify",
+            "functional_tests_service_live_key",
+            "functional_tests_service_test_key",
+            str(notify_service.id),
+            "Functional Tests Org",
+            "07700900500",
+        )
+
+    reassigned_inbound = InboundNumber.query.filter_by(number="07700900500").one()
+
+    assert str(reassigned_inbound.id) == str(existing_inbound.id)
+    assert str(reassigned_inbound.service_id) == str(variables["FUNCTIONAL_TESTS_SERVICE_ID"])
+
+
+def test_create_service_sms_senders_reuses_existing_sender_with_same_inbound_number_id(notify_service):
+    inbound = create_inbound_number(number="07700900888", service_id=notify_service.id)
+    existing_sender = create_service_sms_sender(
+        service=notify_service,
+        sms_sender="existing",
+        is_default=True,
+        inbound_number_id=inbound.id,
+    )
+
+    sender = _create_service_sms_senders(
+        notify_service.id,
+        "07700900888",
+        True,
+        inbound.id,
+    )
+
+    assert sender.id == existing_sender.id
 
 
 @mock_aws

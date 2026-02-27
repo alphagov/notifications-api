@@ -6,6 +6,7 @@ import boto3
 from flask import current_app
 from sqlalchemy.exc import NoResultFound
 
+from app import db
 from app.constants import (
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
@@ -472,7 +473,37 @@ def _create_api_key(name, service_id, user_id, key_type="normal"):
 def _create_inbound_numbers(service_id, user_id, number="07700900500", provider="mmg"):
     inbound_number = dao_get_inbound_number_for_service(service_id=service_id)
 
+    if inbound_number is not None and inbound_number.number == number:
+        return inbound_number.id
+
+    inbound_number_by_number = InboundNumber.query.filter_by(number=number).one_or_none()
+    if inbound_number_by_number is not None:
+        if inbound_number is not None and inbound_number.id != inbound_number_by_number.id:
+            inbound_number.service_id = None
+            db.session.add(inbound_number)
+
+        previous_service_id = inbound_number_by_number.service_id
+        inbound_number_by_number.service_id = service_id
+        inbound_number_by_number.active = True
+        db.session.add(inbound_number_by_number)
+        db.session.commit()
+
+        if previous_service_id and previous_service_id != service_id:
+            current_app.logger.info(
+                "Reassigned inbound number %s from service %s to fixture service %s",
+                number,
+                previous_service_id,
+                service_id,
+            )
+
+        return inbound_number_by_number.id
+
     if inbound_number is not None:
+        inbound_number.number = number
+        inbound_number.provider = provider
+        inbound_number.active = True
+        db.session.add(inbound_number)
+        db.session.commit()
         return inbound_number.id
 
     inbound_number = InboundNumber()
@@ -641,6 +672,8 @@ def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_numb
 
     for service_sms_sender in service_sms_senders:
         if service_sms_sender.sms_sender == sms_sender:
+            return service_sms_sender
+        if inbound_number_id and service_sms_sender.inbound_number_id == inbound_number_id:
             return service_sms_sender
 
     return dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id)
