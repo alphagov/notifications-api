@@ -7,9 +7,21 @@ import boto3
 from moto import mock_aws
 
 from app import db
-from app.functional_tests_fixtures import _create_db_objects, _create_service_sms_senders, _create_user, apply_fixtures
-from app.models import InboundNumber
-from tests.app.db import create_inbound_number, create_service, create_service_sms_sender
+from app.functional_tests_fixtures import (
+    _create_api_key,
+    _create_db_objects,
+    _create_service_sms_senders,
+    _create_user,
+    apply_fixtures,
+)
+from app.models import ApiKey, Domain, InboundNumber, Organisation
+from tests.app.db import (
+    create_api_key,
+    create_inbound_number,
+    create_organisation,
+    create_service,
+    create_service_sms_sender,
+)
 from tests.conftest import set_config_values
 
 
@@ -77,6 +89,8 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
     assert "FUNCTIONAL_TESTS_SERVICE_ID" in variables[0]
     assert variables[0]["FUNCTIONAL_TESTS_SERVICE_NAME"] == "Functional Tests (dev-env)"
     assert "FUNCTIONAL_TESTS_ORGANISATION_ID" in variables[0]
+    fixture_org = Organisation.query.get(variables[0]["FUNCTIONAL_TESTS_ORGANISATION_ID"])
+    assert fixture_org.name == "Functional Tests Org (dev-env)"
     assert variables[0]["FUNCTIONAL_TESTS_SERVICE_API_KEY"].startswith("functional_tests_service_live_key-")
     assert variables[0]["FUNCTIONAL_TESTS_SERVICE_API_TEST_KEY"].startswith("functional_tests_service_test_key-")
     assert variables[0]["FUNCTIONAL_TESTS_API_AUTH_SECRET"] == "functional-tests-secret-key"
@@ -148,6 +162,41 @@ def test_create_db_objects_reassigns_existing_inbound_number_from_another_servic
     assert str(reassigned_inbound.service_id) == str(variables["FUNCTIONAL_TESTS_SERVICE_ID"])
 
 
+def test_create_db_objects_reassigns_domain_to_environment_org(notify_api, notify_service):
+    previous_owner = create_organisation(name="Shared Org", domains=["digital.cabinet-office.gov.uk"])
+
+    with set_config_values(
+        notify_api,
+        {
+            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
+            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
+            "ADMIN_BASE_URL": "http://localhost:6012",
+            "API_HOST_NAME": "http://localhost:6011",
+        },
+    ):
+        variables = _create_db_objects(
+            "fake password",
+            "test_request_bin_token",
+            "dev-env",
+            "notify-tests-preview",
+            "digital.cabinet-office.gov.uk",
+            "govuk_notify",
+            "functional_tests_service_live_key",
+            "functional_tests_service_test_key",
+            str(notify_service.id),
+            "Functional Tests Org",
+            "07700900500",
+        )
+
+    fixture_org = Organisation.query.get(variables["FUNCTIONAL_TESTS_ORGANISATION_ID"])
+    domain = Domain.query.filter_by(domain="digital.cabinet-office.gov.uk").one()
+
+    assert fixture_org.name == "Functional Tests Org (dev-env)"
+    assert str(domain.organisation_id) == str(fixture_org.id)
+    assert str(domain.organisation_id) != str(previous_owner.id)
+
+
 def test_create_service_sms_senders_reuses_existing_sender_with_same_inbound_number_id(notify_service):
     inbound = create_inbound_number(number="07700900888", service_id=notify_service.id)
     existing_sender = create_service_sms_sender(
@@ -187,6 +236,26 @@ def test_create_service_sms_senders_reclaims_existing_sender_from_another_servic
     assert sender.id == existing_sender.id
     assert sender.service_id == notify_service.id
     assert sender.sms_sender == "07700900999"
+
+
+def test_create_api_key_recreates_when_existing_key_secret_is_invalid(notify_service, sample_user):
+    broken_key = create_api_key(notify_service, key_name="functional_tests_service_live_key")
+    broken_key._secret = "broken-signature-value"
+    db.session.add(broken_key)
+    db.session.commit()
+
+    recreated_key = _create_api_key(
+        "functional_tests_service_live_key",
+        notify_service.id,
+        sample_user.id,
+        "normal",
+    )
+
+    refreshed_broken_key = ApiKey.query.get(broken_key.id)
+    assert refreshed_broken_key.expiry_date is not None
+    assert recreated_key.id != broken_key.id
+    assert recreated_key.expiry_date is None
+    assert recreated_key.secret is not None
 
 
 @mock_aws
