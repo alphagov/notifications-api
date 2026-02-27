@@ -163,10 +163,8 @@ packaging==26.0
     #   marshmallow
 phonenumbers==9.0.24
     # via notifications-utils
-prometheus-client==0.14.1
-    # via
-    #   -r requirements.in
-    #   gds-metrics
+prometheus-client==0.24.1
+    # via gds-metrics
 prompt-toolkit==3.0.52
     # via click-repl
 psutil==6.1.1
