@@ -9,8 +9,8 @@ from moto import mock_aws
 from app import db
 from app.functional_tests_fixtures import _create_db_objects, _create_service_sms_senders, _create_user, apply_fixtures
 from app.models import InboundNumber
-from tests.conftest import set_config_values
 from tests.app.db import create_inbound_number, create_service, create_service_sms_sender
+from tests.conftest import set_config_values
 
 
 def test_create_db_objects_sets_db_up(notify_api, notify_service):
@@ -165,6 +165,28 @@ def test_create_service_sms_senders_reuses_existing_sender_with_same_inbound_num
     )
 
     assert sender.id == existing_sender.id
+
+
+def test_create_service_sms_senders_reclaims_existing_sender_from_another_service(notify_service):
+    other_service = create_service(service_name="other sender owner")
+    inbound = create_inbound_number(number="07700900999", service_id=notify_service.id)
+    existing_sender = create_service_sms_sender(
+        service=other_service,
+        sms_sender="old",
+        is_default=True,
+        inbound_number_id=inbound.id,
+    )
+
+    sender = _create_service_sms_senders(
+        notify_service.id,
+        "07700900999",
+        True,
+        inbound.id,
+    )
+
+    assert sender.id == existing_sender.id
+    assert sender.service_id == notify_service.id
+    assert sender.sms_sender == "07700900999"
 
 
 @mock_aws

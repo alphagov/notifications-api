@@ -71,6 +71,7 @@ from app.models import (
     Service,
     ServiceCallbackApi,
     ServiceEmailReplyTo,
+    ServiceSmsSender,
     User,
 )
 from app.schemas import api_key_schema, template_schema
@@ -675,6 +676,33 @@ def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_numb
             return service_sms_sender
         if inbound_number_id and service_sms_sender.inbound_number_id == inbound_number_id:
             return service_sms_sender
+
+    if inbound_number_id:
+        existing_inbound_sender = ServiceSmsSender.query.filter_by(inbound_number_id=inbound_number_id).one_or_none()
+        if existing_inbound_sender is not None:
+            if is_default:
+                for service_sms_sender in service_sms_senders:
+                    if service_sms_sender.id != existing_inbound_sender.id and service_sms_sender.is_default:
+                        service_sms_sender.is_default = False
+                        db.session.add(service_sms_sender)
+
+            previous_service_id = existing_inbound_sender.service_id
+            existing_inbound_sender.service_id = service_id
+            existing_inbound_sender.sms_sender = sms_sender
+            existing_inbound_sender.is_default = is_default
+            existing_inbound_sender.archived = False
+            db.session.add(existing_inbound_sender)
+            db.session.commit()
+
+            if previous_service_id != service_id:
+                current_app.logger.info(
+                    "Reassigned inbound sms sender for number %s from service %s to fixture service %s",
+                    sms_sender,
+                    previous_service_id,
+                    service_id,
+                )
+
+            return existing_inbound_sender
 
     return dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id)
 
