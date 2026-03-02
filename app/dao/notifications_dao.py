@@ -1017,10 +1017,11 @@ def _duplicate_update_warning(notification, status):
     )
 
 
-def get_service_ids_with_notifications_before(notification_type, timestamp):
+@retryable_query()
+def get_service_ids_with_notifications_before(notification_type, timestamp, session=db.session):
     return {
         row.service_id
-        for row in db.session.query(Notification.service_id)
+        for row in session.query(Notification.service_id)
         .filter(Notification.notification_type == notification_type, Notification.created_at < timestamp)
         .distinct()
     }

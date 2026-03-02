@@ -42,6 +42,7 @@ from app.dao.notifications_dao import (
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
+    get_service_ids_with_notifications_before,
     get_service_ids_with_notifications_on_date,
     is_delivery_slow_for_providers,
     notifications_not_yet_sent,
@@ -2101,3 +2102,22 @@ def test_dao_get_notifications_processing_time_stats(
         == notifications_within_ten_seconds + notifications_greater_than_ten_seconds
     )
     assert processing_time_stats.messages_within_10_secs == notifications_within_ten_seconds
+
+
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_fetch_service_data_retention_by_for_all_services_by_notification_type_uses_session(
+    sample_template, session, expected_bind_key
+):
+    create_notification(template=sample_template, created_at="2022-01-01T09:30")
+
+    with QueryRecorder() as query_recorder:
+        get_service_ids_with_notifications_before("email", datetime.utcnow(), session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}

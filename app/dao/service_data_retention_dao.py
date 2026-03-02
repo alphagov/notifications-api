@@ -3,6 +3,7 @@ from datetime import datetime
 from app import db
 from app.dao.dao_utils import autocommit
 from app.models import ServiceDataRetention
+from app.utils import retryable_query
 
 
 def fetch_service_data_retention_by_id(service_id, data_retention_id):
@@ -47,5 +48,6 @@ def update_service_data_retention(service_data_retention_id, service_id, days_of
     return updated_count
 
 
-def fetch_service_data_retention_for_all_services_by_notification_type(notification_type):
-    return ServiceDataRetention.query.filter(ServiceDataRetention.notification_type == notification_type).all()
+@retryable_query()
+def fetch_service_data_retention_for_all_services_by_notification_type(notification_type, session=db.session):
+    return session.query(ServiceDataRetention).filter(ServiceDataRetention.notification_type == notification_type).all()
