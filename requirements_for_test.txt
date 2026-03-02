@@ -25,7 +25,7 @@ bcrypt==5.0.0
     # via
     #   -r requirements.txt
     #   flask-bcrypt
-beautifulsoup4==4.12.3
+beautifulsoup4==4.14.3
     # via -r requirements_for_test_common.in
 billiard==4.2.4
     # via
@@ -139,7 +139,7 @@ flask-sqlalchemy==3.1.1
     #   flask-migrate
 fqdn==1.5.1
     # via -r requirements.txt
-freezegun==1.5.1
+freezegun==1.5.5
     # via -r requirements_for_test_common.in
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.txt
@@ -226,7 +226,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0fc47126305fa1930b427b21d413b363cb3b702b
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@e4fd0f03f2475329250dac85d1fb778a4fc053b4
     # via -r requirements.txt
 ordered-set==4.1.0
     # via
@@ -263,6 +263,8 @@ pycparser==3.0
     # via cffi
 pycurl==7.45.7
     # via -r requirements.txt
+pygments==2.19.2
+    # via pytest
 pyjwt==2.10.1
     # via
     #   -r requirements.txt
@@ -273,22 +275,22 @@ pypdf==6.7.3
     # via
     #   -r requirements.txt
     #   notifications-utils
-pytest==8.3.4
+pytest==9.0.2
     # via
     #   -r requirements_for_test_common.in
     #   pytest-env
     #   pytest-mock
     #   pytest-testmon
     #   pytest-xdist
-pytest-env==1.1.5
+pytest-env==1.5.0
     # via -r requirements_for_test_common.in
 pytest-httpserver==1.1.5
     # via -r requirements_for_test.in
-pytest-mock==3.14.0
+pytest-mock==3.15.1
     # via -r requirements_for_test_common.in
-pytest-testmon==2.1.1
+pytest-testmon==2.2.0
     # via -r requirements_for_test_common.in
-pytest-xdist==3.6.1
+pytest-xdist==3.8.0
     # via -r requirements_for_test_common.in
 python-dateutil==2.9.0.post0
     # via
@@ -299,6 +301,8 @@ python-dateutil==2.9.0.post0
     #   freezegun
     #   moto
     #   notifications-utils
+python-dotenv==1.2.1
+    # via pytest-env
 python-json-logger==4.0.0
     # via
     #   -r requirements.txt
@@ -339,7 +343,7 @@ rpds-py==0.30.0
     #   -r requirements.txt
     #   jsonschema
     #   referencing
-ruff==0.11.4
+ruff==0.15.2
     # via -r requirements_for_test_common.in
 s3transfer==0.16.0
     # via
@@ -368,7 +372,7 @@ sqlalchemy==2.0.41
     #   alembic
     #   flask-sqlalchemy
     #   marshmallow-sqlalchemy
-squawk-cli==2.41.0
+squawk-cli==2.42.0
     # via -r requirements_for_test.in
 statsd==4.0.1
     # via
@@ -388,6 +392,7 @@ typing-extensions==4.15.0
     # via
     #   -r requirements.txt
     #   alembic
+    #   beautifulsoup4
     #   mypy
     #   sqlalchemy
 tzdata==2025.3
