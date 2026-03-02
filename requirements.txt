@@ -62,7 +62,7 @@ dnspython==2.8.0
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-eventlet==0.39.1
+eventlet==0.40.4
     # via
     #   -r requirements.in
     #   gunicorn
@@ -98,7 +98,7 @@ govuk-bank-holidays==0.18
     # via notifications-utils
 greenlet==3.3.2
     # via eventlet
-gunicorn==23.0.0
+gunicorn==25.1.0
     # via
     #   -r requirements.in
     #   notifications-utils
