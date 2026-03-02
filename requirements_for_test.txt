@@ -247,7 +247,7 @@ phonenumbers==9.0.24
     #   notifications-utils
 pluggy==1.6.0
     # via pytest
-prometheus-client==0.14.1
+prometheus-client==0.24.1
     # via
     #   -r requirements.txt
     #   gds-metrics
