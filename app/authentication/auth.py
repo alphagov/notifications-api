@@ -78,6 +78,8 @@ def requires_internal_auth(expected_client_id):
 
     _decode_jwt_token(auth_token, api_keys, client_id)
     g.service_id = client_id
+    # If other headers are required (or this one no longer need) update
+    # https://github.com/alphagov/notifications-manuals/wiki/Request-headers-used
     g.user_id = request.headers.get("X-Notify-User-Id")
 
 
@@ -111,6 +113,8 @@ def requires_auth():
     extra = {
         "service_id": service_id,
         "api_key_id": api_key.id,
+        # If other headers are required (or this one no is longer needed) update the docs:
+        # https://github.com/alphagov/notifications-manuals/wiki/Request-headers-used
         "issuer": request.headers.get("User-Agent"),
         "url": request.base_url,
     }
@@ -132,6 +136,8 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
                 "error_message": err_msg,
                 "token_iat": e.token.get("iat"),
                 "local_unix_time": int(time.time()),
+                # If other headers are required (or this one no is longer needed) update the docs:
+                # https://github.com/alphagov/notifications-manuals/wiki/Request-headers-used
                 "cloudfront_request_id": request.headers.get("x-amz-cf-id"),
             }
             current_app.logger.info(
