@@ -21,16 +21,16 @@ blinker==1.9.0
     #   flask
     #   gds-metrics
     #   sentry-sdk
-boto3==1.42.56
+boto3==1.42.60
     # via
     #   celery
     #   kombu
     #   notifications-utils
-botocore==1.42.56
+botocore==1.42.60
     # via
     #   boto3
     #   s3transfer
-cachetools==7.0.1
+cachetools==7.0.2
     # via notifications-utils
 celery==5.6.0
     # via
@@ -50,7 +50,7 @@ click==8.3.1
     #   click-plugins
     #   click-repl
     #   flask
-click-datetime==0.2
+click-datetime==0.4.0
     # via -r requirements.in
 click-didyoumean==0.3.1
     # via celery
@@ -94,7 +94,7 @@ fqdn==1.5.1
     # via jsonschema
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.in
-govuk-bank-holidays==0.18
+govuk-bank-holidays==0.19
     # via notifications-utils
 greenlet==3.3.2
     # via eventlet
@@ -161,7 +161,7 @@ packaging==26.0
     #   gunicorn
     #   kombu
     #   marshmallow
-phonenumbers==9.0.24
+phonenumbers==9.0.25
     # via notifications-utils
 prometheus-client==0.24.1
     # via gds-metrics
@@ -181,7 +181,7 @@ pyjwt==2.10.1
     #   notifications-python-client
 pyorc==0.10.0
     # via -r requirements.in
-pypdf==6.7.3
+pypdf==6.7.5
     # via notifications-utils
 python-dateutil==2.9.0.post0
     # via
@@ -193,7 +193,7 @@ python-json-logger==4.0.0
     # via notifications-utils
 pyyaml==6.0.3
     # via notifications-utils
-redis==7.2.0
+redis==7.2.1
     # via flask-redis
 referencing==0.37.0
     # via
@@ -263,3 +263,5 @@ webcolors==25.10.0
     # via jsonschema
 werkzeug==3.1.6
     # via flask
+wheel==0.44.0
+    # via click-datetime
