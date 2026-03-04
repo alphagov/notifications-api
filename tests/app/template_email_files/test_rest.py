@@ -16,6 +16,7 @@ def test_create_template_email_file_happy_path(sample_service, sample_email_temp
         "retention_period": 90,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
+        "pending": False,
     }
     response = admin_request.post(
         "template_email_files.create_template_email_file",
@@ -90,7 +91,7 @@ def test_create_template_email_file_fails_if_template_does_not_exist(sample_serv
 
 @pytest.mark.parametrize("filename", ("example.pdf", "EXAMPLE.PDF", "Exa mple.pdf"))
 def test_create_template_email_file_fails_if_template_already_has_file_with_same_name(
-    sample_service, admin_request, sample_email_template, sample_template_email_file, filename
+    sample_service, admin_request, sample_email_template, sample_template_email_file_not_pending, filename
 ):
     data = {
         "filename": filename,
@@ -111,10 +112,10 @@ def test_create_template_email_file_fails_if_template_already_has_file_with_same
 
 
 def test_create_template_email_file_creates_file_with_latest_template_version(
-    sample_service, sample_email_template, sample_template_email_file, admin_request
+    sample_service, sample_email_template, sample_template_email_file_not_pending, admin_request
 ):
     # template version after creating the first email file
-    assert sample_template_email_file.template_version == 2
+    assert sample_template_email_file_not_pending.template_version == 2
 
     # updating the template
     sample_email_template.content = "here is some new content"
@@ -128,6 +129,7 @@ def test_create_template_email_file_creates_file_with_latest_template_version(
         "retention_period": 30,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
+        "pending": False,
     }
     response = admin_request.post(
         "template_email_files.create_template_email_file",
