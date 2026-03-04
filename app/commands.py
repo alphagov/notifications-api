@@ -864,7 +864,11 @@ def functional_test_fixtures():
 
     """
     if current_app.config["REGISTER_FUNCTIONAL_TESTING_BLUEPRINT"]:
-        apply_fixtures()
+        try:
+            apply_fixtures()
+        except Exception:
+            current_app.logger.exception("Functional test fixtures failed")
+            raise
     else:
         print("Functional test fixtures are disabled. Set REGISTER_FUNCTIONAL_TESTING_BLUEPRINT to True in config.")
         raise SystemExit(1)
