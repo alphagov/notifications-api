@@ -3,7 +3,6 @@ import re
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from iso8601 import ParseError, iso8601
 from jsonschema import Draft7Validator, FormatChecker, ValidationError
 from notifications_utils.recipient_validation.email_address import validate_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
@@ -67,12 +66,12 @@ def validate_schema_postage_including_international(instance):
 def validate_schema_date_with_hour(instance):
     if isinstance(instance, str):
         try:
-            dt = iso8601.parse_date(instance).replace(tzinfo=None)
+            dt = datetime.fromisoformat(instance).replace(tzinfo=None)
             if dt < datetime.utcnow():
                 raise ValidationError("datetime can not be in the past")
             if dt > datetime.utcnow() + timedelta(hours=24):
                 raise ValidationError("datetime can only be 24 hours in the future")
-        except ParseError as e:
+        except ValueError as e:
             raise ValidationError(
                 "datetime format is invalid. It must be a valid ISO8601 date time format, "
                 "https://en.wikipedia.org/wiki/ISO_8601"

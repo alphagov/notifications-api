@@ -106,8 +106,6 @@ idna==3.11
     # via
     #   jsonschema
     #   requests
-iso8601==2.1.0
-    # via -r requirements.in
 isoduration==20.11.0
     # via jsonschema
 itsdangerous==2.2.0

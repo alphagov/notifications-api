@@ -162,8 +162,6 @@ idna==3.11
     #   trustme
 iniconfig==2.3.0
     # via pytest
-iso8601==2.1.0
-    # via -r requirements.txt
 isoduration==20.11.0
     # via -r requirements.txt
 itsdangerous==2.2.0

@@ -11,7 +11,6 @@ flask-sqlalchemy==3.1.1
 click-datetime~=0.2
 gunicorn[eventlet]~=25.1
 eventlet~=0.40.4
-iso8601~=2.1
 jsonschema[format]==4.23.0
 marshmallow-sqlalchemy==1.0.0
 marshmallow==3.21.3
