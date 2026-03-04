@@ -1886,7 +1886,11 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
 def test_get_email_template_with_file_returns_files(client, admin_request, sample_service, mocker, files_to_create):
     template = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="sample_template")
     for filename in files_to_create:
-        [create_template_email_file(template.id, created_by_id=sample_service.users[0].id, filename=filename)]
+        [
+            create_template_email_file(
+                template.id, created_by_id=sample_service.users[0].id, filename=filename, pending=False
+            )
+        ]
     json_resp = admin_request.get(
         "template.get_template_by_id_and_service_id", service_id=sample_service.id, template_id=template.id
     )
