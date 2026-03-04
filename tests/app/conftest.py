@@ -319,9 +319,16 @@ def sample_email_template_with_html(sample_service):
 
 
 @pytest.fixture(scope="function")
-def sample_template_email_file(sample_email_template):
+def sample_template_email_file_not_pending(sample_email_template):
     return create_template_email_file(
         template_id=sample_email_template.id, created_by_id=sample_email_template.created_by_id
+    )
+
+
+@pytest.fixture(scope="function")
+def sample_template_email_file_pending(sample_email_template):
+    return create_template_email_file(
+        template_id=sample_email_template.id, created_by_id=sample_email_template.created_by_id, pending=True
     )
 
 
@@ -334,6 +341,7 @@ def sample_email_template_with_template_email_files(sample_email_template_with_e
         filename="invitation.pdf",
         validate_users_email=True,
         retention_period=26,
+        pending=False,
     )
 
     create_template_email_file(
@@ -342,6 +350,7 @@ def sample_email_template_with_template_email_files(sample_email_template_with_e
         filename="form.pdf",
         validate_users_email=True,
         retention_period=26,
+        pending=False,
     )
 
     return template
