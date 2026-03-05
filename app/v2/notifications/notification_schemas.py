@@ -203,6 +203,7 @@ post_email_request = {
         "scheduled_for": {"type": ["string", "null"], "format": "datetime_within_next_day"},
         "email_reply_to_id": uuid,
         "one_click_unsubscribe_url": https_url,
+        "sanitise_content_for": {"type": ["array", "null"]},
     },
     "required": ["email_address", "template_id"],
     "additionalProperties": False,
