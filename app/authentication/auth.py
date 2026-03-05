@@ -78,7 +78,7 @@ def requires_internal_auth(expected_client_id):
 
     _decode_jwt_token(auth_token, api_keys, client_id)
     g.service_id = client_id
-    # If other headers are required (or this one no longer need) update
+    # If other headers are required (or this one is no longer needed) update the docs:
     # https://github.com/alphagov/notifications-manuals/wiki/Request-headers-used
     g.user_id = request.headers.get("X-Notify-User-Id")
 
