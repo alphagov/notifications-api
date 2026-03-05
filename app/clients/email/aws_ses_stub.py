@@ -49,7 +49,7 @@ class AwsSesStubClient(EmailClient):
         else:
             elapsed_time = monotonic() - start_time
             current_app.logger.info(
-                "AWS SES stub request finished in %.4g seconds", elapsed_time, {"duration": elapsed_time}
+                "AWS SES stub request finished in %.4g seconds", elapsed_time, extra={"duration": elapsed_time}
             )
             self.statsd_client.timing("clients.ses_stub.request-time", elapsed_time)
             self.statsd_client.incr("clients.ses_stub.success")
