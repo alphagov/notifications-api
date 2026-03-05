@@ -73,7 +73,7 @@ click==8.3.1
     #   click-plugins
     #   click-repl
     #   flask
-click-datetime==0.4.0
+click-datetime==0.2
     # via -r requirements.txt
 click-didyoumean==0.3.1
     # via
@@ -237,6 +237,7 @@ packaging==26.0
     #   kombu
     #   marshmallow
     #   pytest
+    #   wheel
 pathspec==1.0.4
     # via mypy
 phonenumbers==9.0.25
@@ -430,9 +431,7 @@ werkzeug==3.1.6
     #   flask
     #   moto
     #   pytest-httpserver
-wheel==0.44.0
-    # via
-    #   -r requirements.txt
-    #   click-datetime
+wheel==0.46.3
+    # via -r requirements.txt
 xmltodict==1.0.4
     # via moto
