@@ -175,7 +175,7 @@ def _prepare_personalisation_for_post_notification(personalisation, sanitise_con
 
 
 def sanitise_personalisation_item(value):
-    value = _sanitise_urls(value)
+    value = _find_and_sanitise_urls(value)
     sanitised_value = _escape_markdown_characters(value)
 
     return sanitised_value
@@ -185,23 +185,12 @@ def _escape_markdown_characters(value):
     return re.sub(r"([`*_()\\{}\[\]<>#+\-.!|])", r"\\\1", value, flags=re.M)
 
 
-def _sanitise_urls(value):
-    processed_parts = []
-    unprocessed = value
-    while (match := re.search(url, unprocessed)) is not None:
-        # any non-url text before the match
-        processed_parts.append(unprocessed[: match.start(0)])
+def _find_and_sanitise_urls(value):
+    return re.sub(url, lambda m: _sanitise_url(m.group()), value)
 
-        # the match, processed in one way or another
-        processed_parts.append(_break_up_link(match.group(0)) if _could_be_accidental_link(match.group(0)) else "")
 
-        # advance unprocessed
-        unprocessed = unprocessed[match.end(0) :]
-
-    # any remaining unprocessed after no more urls can be found
-    processed_parts.append(unprocessed)
-
-    return "".join(processed_parts)
+def _sanitise_url(url):
+    return _break_up_link(url) if _could_be_accidental_link(url) else ""
 
 
 def _could_be_accidental_link(link):
