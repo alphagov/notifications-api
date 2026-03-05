@@ -36,18 +36,18 @@ blinker==1.9.0
     #   -r requirements.txt
     #   flask
     #   gds-metrics
-boto3==1.42.56
+boto3==1.42.60
     # via
     #   -r requirements.txt
     #   moto
     #   notifications-utils
-botocore==1.42.56
+botocore==1.42.60
     # via
     #   -r requirements.txt
     #   boto3
     #   moto
     #   s3transfer
-cachetools==7.0.1
+cachetools==7.0.2
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -73,7 +73,7 @@ click==8.3.1
     #   click-plugins
     #   click-repl
     #   flask
-click-datetime==0.2
+click-datetime==0.4.0
     # via -r requirements.txt
 click-didyoumean==0.3.1
     # via
@@ -143,7 +143,7 @@ freezegun==1.5.5
     # via -r requirements_for_test_common.in
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.txt
-govuk-bank-holidays==0.18
+govuk-bank-holidays==0.19
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -162,8 +162,6 @@ idna==3.11
     #   trustme
 iniconfig==2.3.0
     # via pytest
-iso8601==2.1.0
-    # via -r requirements.txt
 isoduration==20.11.0
     # via -r requirements.txt
 itsdangerous==2.2.0
@@ -241,7 +239,7 @@ packaging==26.0
     #   pytest
 pathspec==1.0.4
     # via mypy
-phonenumbers==9.0.24
+phonenumbers==9.0.25
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -271,7 +269,7 @@ pyjwt==2.10.1
     #   notifications-python-client
 pyorc==0.10.0
     # via -r requirements.txt
-pypdf==6.7.3
+pypdf==6.7.5
     # via
     #   -r requirements.txt
     #   notifications-utils
@@ -301,7 +299,7 @@ python-dateutil==2.9.0.post0
     #   freezegun
     #   moto
     #   notifications-utils
-python-dotenv==1.2.1
+python-dotenv==1.2.2
     # via pytest-env
 python-json-logger==4.0.0
     # via
@@ -312,7 +310,7 @@ pyyaml==6.0.3
     #   -r requirements.txt
     #   notifications-utils
     #   responses
-redis==7.2.0
+redis==7.2.1
     # via
     #   -r requirements.txt
     #   flask-redis
@@ -372,7 +370,7 @@ sqlalchemy==2.0.41
     #   alembic
     #   flask-sqlalchemy
     #   marshmallow-sqlalchemy
-squawk-cli==2.42.0
+squawk-cli==2.43.0
     # via -r requirements_for_test.in
 statsd==4.0.1
     # via
@@ -384,7 +382,7 @@ types-cachetools==6.2.0.20251022
     # via -r requirements_for_test.in
 types-pycurl==7.45.7.20251101
     # via -r requirements_for_test.in
-types-python-dateutil==2.9.0.20260124
+types-python-dateutil==2.9.0.20260302
     # via -r requirements_for_test.in
 types-requests==2.32.4.20260107
     # via -r requirements_for_test.in
@@ -432,5 +430,9 @@ werkzeug==3.1.6
     #   flask
     #   moto
     #   pytest-httpserver
+wheel==0.44.0
+    # via
+    #   -r requirements.txt
+    #   click-datetime
 xmltodict==1.0.4
     # via moto

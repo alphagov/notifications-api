@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timedelta
 
-import iso8601
 from celery.exceptions import Retry
 from flask import current_app, json
 from sqlalchemy.orm.exc import NoResultFound
@@ -42,7 +41,7 @@ def process_ses_results(self, response):
         try:
             notification = notifications_dao.dao_get_notification_or_history_by_reference(reference=reference)
         except NoResultFound:
-            message_time = iso8601.parse_date(ses_message["mail"]["timestamp"]).replace(tzinfo=None)
+            message_time = datetime.fromisoformat(ses_message["mail"]["timestamp"]).replace(tzinfo=None)
             if datetime.utcnow() - message_time < timedelta(minutes=5):
                 extra = {"notification_reference": reference, "notification_status": notification_status}
                 current_app.logger.info(

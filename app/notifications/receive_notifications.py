@@ -1,7 +1,6 @@
 from datetime import datetime
 from urllib.parse import unquote
 
-import iso8601
 from flask import Blueprint, abort, current_app, jsonify, request
 from gds_metrics.metrics import Counter
 
@@ -142,9 +141,9 @@ def format_mmg_datetime(date):
     """
     try:
         orig_date = format_mmg_message(date)
-        parsed_datetime = iso8601.parse_date(orig_date).replace(tzinfo=None)
+        parsed_datetime = datetime.fromisoformat(orig_date).replace(tzinfo=None)
         return parsed_datetime
-    except iso8601.ParseError:
+    except ValueError:
         return datetime.utcnow()
 
 
