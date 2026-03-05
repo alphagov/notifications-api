@@ -15,11 +15,11 @@ def child_exit(server, worker):
     multiprocess.mark_process_dead(worker.pid)
 
 
-workers = 4
+workers = int(os.getenv("GUNICORN_WORKERS", "4"))
 worker_class = "eventlet"
-worker_connections = 8  # limit runaway greenthread creation
+worker_connections = int(os.getenv("GUNICORN_WORKER_CONNECTIONS", "8"))
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
-keepalive = 0  # disable temporarily for diagnosing issues
+keepalive = int(os.getenv("GUNICORN_KEEPALIVE", "0"))
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
 
 debug_post_threshold = os.getenv("NOTIFY_GUNICORN_DEBUG_POST_REQUEST_LOG_THRESHOLD_SECONDS", None)
