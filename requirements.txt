@@ -173,10 +173,8 @@ pycurl==7.45.7
     # via
     #   celery
     #   kombu
-pyjwt==2.10.1
-    # via
-    #   -r requirements.in
-    #   notifications-python-client
+pyjwt==2.11.0
+    # via notifications-python-client
 pyorc==0.10.0
     # via -r requirements.in
 pypdf==6.7.5
