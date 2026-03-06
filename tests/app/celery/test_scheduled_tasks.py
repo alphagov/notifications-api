@@ -724,7 +724,12 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template,
         )
     ]
     assert mock_save_email.mock_calls == [
-        mock.call((str(job.service_id), "some-uuid", "something_encoded"), {}, queue="database-tasks")
+        mock.call(
+            (str(job.service_id), "some-uuid", "something_encoded"),
+            {},
+            queue="database-tasks",
+            MessageGroupId=None,
+        )
     ]
 
 
@@ -765,7 +770,10 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(
     ]
     assert mock_save_email.mock_calls == [
         mock.call(
-            (str(job.service_id), "some-uuid", "something_encoded"), {"sender_id": fake_uuid}, queue="database-tasks"
+            (str(job.service_id), "some-uuid", "something_encoded"),
+            {"sender_id": fake_uuid},
+            queue="database-tasks",
+            MessageGroupId=None,
         )
     ]
 
