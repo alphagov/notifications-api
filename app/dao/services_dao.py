@@ -410,7 +410,7 @@ def delete_service_and_all_associated_db_objects(service):
     _delete(ApiKey.get_history_model().query.filter_by(service_id=service.id))
     _delete(AnnualBilling.query.filter_by(service_id=service.id))
 
-    verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
+    verify_codes = VerifyCode.query.join(User).filter(User.id.in_(x.id for x in service.users))
     list(map(db.session.delete, verify_codes))
     users = list(service.users)
     for user in users:
