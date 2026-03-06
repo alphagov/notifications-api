@@ -115,19 +115,19 @@ class UserSchema(BaseSchema):
         )
 
     @validates("name")
-    def validate_name(self, value):
+    def validate_name(self, value, data_key):
         if not value:
             raise ValidationError("Invalid name")
 
     @validates("email_address")
-    def validate_email_address(self, value):
+    def validate_email_address(self, value, data_key):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
             raise ValidationError(str(e)) from e
 
     @validates("mobile_number")
-    def validate_mobile_number(self, value):
+    def validate_mobile_number(self, value, data_key):
         try:
             if value is not None:
                 number = PhoneNumber(value)
@@ -155,19 +155,19 @@ class UserUpdateAttributeSchema(BaseSchema):
         )
 
     @validates("name")
-    def validate_name(self, value):
+    def validate_name(self, value, data_key):
         if not value:
             raise ValidationError("Invalid name")
 
     @validates("email_address")
-    def validate_email_address(self, value):
+    def validate_email_address(self, value, data_key):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
             raise ValidationError(str(e)) from e
 
     @validates("mobile_number")
-    def validate_mobile_number(self, value):
+    def validate_mobile_number(self, value, data_key):
         try:
             if value is not None:
                 number = PhoneNumber(value)
@@ -176,7 +176,7 @@ class UserUpdateAttributeSchema(BaseSchema):
             raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
 
     @validates("platform_admin")
-    def validate_platform_admin(self, value):
+    def validate_platform_admin(self, value, data_key):
         if value is not False:
             raise ValidationError(f"Cannot set platform_admin to {value}")
 
@@ -292,7 +292,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
         )
 
     @validates("permissions")
-    def validate_permissions(self, value):
+    def validate_permissions(self, value, data_key):
         permissions = [v.permission for v in value]
         for p in permissions:
             if p not in app.constants.SERVICE_PERMISSION_TYPES:
@@ -513,7 +513,7 @@ class JobSchema(BaseSchema):
         return job.template.template_type
 
     @validates("scheduled_for")
-    def validate_scheduled_for(self, value):
+    def validate_scheduled_for(self, value, data_key):
         if value < datetime.utcnow():
             raise ValidationError("Date cannot be in the past")
 
@@ -542,7 +542,7 @@ class SmsNotificationSchema(NotificationSchema):
     to = fields.Str(required=True)
 
     @validates("to")
-    def validate_to(self, value):
+    def validate_to(self, value, data_key):
         try:
             number = PhoneNumber(value)
             number.validate(allow_international_number=True)
@@ -608,7 +608,7 @@ class InvitedUserSchema(BaseSchema):
         model = models.InvitedUser
 
     @validates("email_address")
-    def validate_to(self, value):
+    def validate_to(self, value, data_key):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
@@ -628,7 +628,7 @@ class EmailDataSchema(ma.Schema):
         self.partial_email = partial_email
 
     @validates("email")
-    def validate_email(self, value):
+    def validate_email(self, value, data_key):
         if self.partial_email:
             return
         try:
@@ -675,11 +675,11 @@ class NotificationsFilterSchema(ma.Schema):
         return in_data
 
     @validates("page")
-    def validate_page(self, value):
+    def validate_page(self, value, data_key):
         _validate_positive_number(value)
 
     @validates("page_size")
-    def validate_page_size(self, value):
+    def validate_page_size(self, value, data_key):
         _validate_positive_number(value)
 
 

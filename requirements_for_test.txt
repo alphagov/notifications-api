@@ -125,7 +125,7 @@ flask==3.1.3
     #   notifications-utils
 flask-bcrypt==1.0.1
     # via -r requirements.txt
-flask-marshmallow==1.3.0
+flask-marshmallow==1.4.0
     # via -r requirements.txt
 flask-migrate==3.1.0
     # via -r requirements.txt
@@ -205,12 +205,12 @@ markupsafe==3.0.3
     #   jinja2
     #   mako
     #   werkzeug
-marshmallow==3.21.3
+marshmallow==4.2.2
     # via
     #   -r requirements.txt
     #   flask-marshmallow
     #   marshmallow-sqlalchemy
-marshmallow-sqlalchemy==1.0.0
+marshmallow-sqlalchemy==1.4.2
     # via -r requirements.txt
 mistune==0.8.4
     # via
@@ -235,7 +235,6 @@ packaging==26.0
     #   -r requirements.txt
     #   gunicorn
     #   kombu
-    #   marshmallow
     #   pytest
 pathspec==1.0.4
     # via mypy
