@@ -4,8 +4,10 @@ from uuid import uuid4
 
 import boto3
 from flask import current_app
+from itsdangerous.exc import BadSignature
 from sqlalchemy.exc import NoResultFound
 
+from app import db
 from app.constants import (
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
@@ -20,6 +22,7 @@ from app.dao.annual_billing_dao import (
     set_default_free_allowance_for_service,
 )
 from app.dao.api_key_dao import (
+    expire_api_key,
     get_model_api_keys,
     save_model_api_key,
 )
@@ -32,7 +35,6 @@ from app.dao.organisation_dao import (
     dao_create_organisation,
     dao_get_organisation_by_id,
     dao_get_organisations_by_partial_name,
-    dao_update_organisation,
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_callback_api_dao import get_service_callback_api_by_callback_type, save_service_callback_api
@@ -63,6 +65,7 @@ from app.dao.templates_dao import (
 )
 from app.dao.users_dao import get_user_by_email, save_model_user
 from app.models import (
+    Domain,
     InboundNumber,
     InboundSms,
     Organisation,
@@ -70,6 +73,7 @@ from app.models import (
     Service,
     ServiceCallbackApi,
     ServiceEmailReplyTo,
+    ServiceSmsSender,
     User,
 )
 from app.schemas import api_key_schema, template_schema
@@ -153,8 +157,11 @@ def _create_db_objects(
 ) -> dict[str, str]:
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
+    service_name_with_environment = f"Functional Tests ({environment})"
+    org_name_with_environment = f"{org_name} ({environment})"
+
     current_app.logger.info("--> Ensure organisation exists")
-    org = _create_organiation(email_domain, org_name)
+    org = _create_organiation(email_domain, org_name_with_environment)
 
     current_app.logger.info("--> Ensure users exists")
     func_test_user = _create_user(
@@ -178,7 +185,7 @@ def _create_db_objects(
     )
 
     current_app.logger.info("--> Ensure service exists")
-    service = _create_service(org.id, service_admin_user)
+    service = _create_service(org.id, service_admin_user, service_name_with_environment)
 
     current_app.logger.info("--> Ensure users are added to service")
     dao_add_user_to_service(service, service_admin_user)
@@ -392,10 +399,31 @@ def _create_organiation(email_domain, org_name):
 
     if org is None:
         org = Organisation(name=org_name, active=True, crown=False, organisation_type="central")
-
         dao_create_organisation(org)
 
-    dao_update_organisation(org.id, domains=[email_domain], can_approve_own_go_live_requests=True)
+    org.name = org_name
+    org.active = True
+    org.crown = False
+    org.organisation_type = "central"
+    org.can_approve_own_go_live_requests = True
+    db.session.add(org)
+
+    normalised_email_domain = email_domain.lower()
+    existing_domain = Domain.query.filter_by(domain=normalised_email_domain).one_or_none()
+    if existing_domain is None:
+        db.session.add(Domain(domain=normalised_email_domain, organisation_id=org.id))
+    elif existing_domain.organisation_id != org.id:
+        previous_org_id = existing_domain.organisation_id
+        existing_domain.organisation_id = org.id
+        db.session.add(existing_domain)
+        current_app.logger.info(
+            "Reassigned domain %s from organisation %s to fixture organisation %s",
+            normalised_email_domain,
+            previous_org_id,
+            org.id,
+        )
+
+    db.session.commit()
 
     return org
 
@@ -444,6 +472,20 @@ def _create_api_key(name, service_id, user_id, key_type="normal"):
     api_keys = get_model_api_keys(service_id=service_id)
     for key in api_keys:
         if key.name == name:
+            if key.expiry_date is not None:
+                continue
+
+            try:
+                _ = key.secret
+            except BadSignature:
+                current_app.logger.warning(
+                    "Fixture api key %s for service %s had invalid signature; expiring and recreating",
+                    name,
+                    service_id,
+                )
+                expire_api_key(service_id=service_id, api_key_id=key.id)
+                continue
+
             return key
 
     request = {"created_by": user_id, "key_type": key_type, "name": name}
@@ -459,7 +501,37 @@ def _create_api_key(name, service_id, user_id, key_type="normal"):
 def _create_inbound_numbers(service_id, user_id, number="07700900500", provider="mmg"):
     inbound_number = dao_get_inbound_number_for_service(service_id=service_id)
 
+    if inbound_number is not None and inbound_number.number == number:
+        return inbound_number.id
+
+    inbound_number_by_number = InboundNumber.query.filter_by(number=number).one_or_none()
+    if inbound_number_by_number is not None:
+        if inbound_number is not None and inbound_number.id != inbound_number_by_number.id:
+            inbound_number.service_id = None
+            db.session.add(inbound_number)
+
+        previous_service_id = inbound_number_by_number.service_id
+        inbound_number_by_number.service_id = service_id
+        inbound_number_by_number.active = True
+        db.session.add(inbound_number_by_number)
+        db.session.commit()
+
+        if previous_service_id and previous_service_id != service_id:
+            current_app.logger.info(
+                "Reassigned inbound number %s from service %s to fixture service %s",
+                number,
+                previous_service_id,
+                service_id,
+            )
+
+        return inbound_number_by_number.id
+
     if inbound_number is not None:
+        inbound_number.number = number
+        inbound_number.provider = provider
+        inbound_number.active = True
+        db.session.add(inbound_number)
+        db.session.commit()
         return inbound_number.id
 
     inbound_number = InboundNumber()
@@ -629,6 +701,35 @@ def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_numb
     for service_sms_sender in service_sms_senders:
         if service_sms_sender.sms_sender == sms_sender:
             return service_sms_sender
+        if inbound_number_id and service_sms_sender.inbound_number_id == inbound_number_id:
+            return service_sms_sender
+
+    if inbound_number_id:
+        existing_inbound_sender = ServiceSmsSender.query.filter_by(inbound_number_id=inbound_number_id).one_or_none()
+        if existing_inbound_sender is not None:
+            if is_default:
+                for service_sms_sender in service_sms_senders:
+                    if service_sms_sender.id != existing_inbound_sender.id and service_sms_sender.is_default:
+                        service_sms_sender.is_default = False
+                        db.session.add(service_sms_sender)
+
+            previous_service_id = existing_inbound_sender.service_id
+            existing_inbound_sender.service_id = service_id
+            existing_inbound_sender.sms_sender = sms_sender
+            existing_inbound_sender.is_default = is_default
+            existing_inbound_sender.archived = False
+            db.session.add(existing_inbound_sender)
+            db.session.commit()
+
+            if previous_service_id != service_id:
+                current_app.logger.info(
+                    "Reassigned inbound sms sender for number %s from service %s to fixture service %s",
+                    sms_sender,
+                    previous_service_id,
+                    service_id,
+                )
+
+            return existing_inbound_sender
 
     return dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id)
 
