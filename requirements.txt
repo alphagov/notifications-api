@@ -50,7 +50,7 @@ click==8.3.1
     #   click-plugins
     #   click-repl
     #   flask
-click-datetime==0.4.0
+click-datetime==0.2
     # via -r requirements.in
 click-didyoumean==0.3.1
     # via celery
@@ -159,6 +159,7 @@ packaging==26.0
     #   gunicorn
     #   kombu
     #   marshmallow
+    #   wheel
 phonenumbers==9.0.25
     # via notifications-utils
 prometheus-client==0.24.1
@@ -261,5 +262,5 @@ webcolors==25.10.0
     # via jsonschema
 werkzeug==3.1.6
     # via flask
-wheel==0.44.0
-    # via click-datetime
+wheel==0.46.3
+    # via -r requirements.in
