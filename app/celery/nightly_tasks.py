@@ -82,8 +82,16 @@ def _remove_csv_files(job_types):
 @notify_celery.task(name="archive-unsubscribe-requests")
 def archive_unsubscribe_requests():
     for service_id in get_service_ids_with_unsubscribe_requests():
-        archive_batched_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
-        archive_old_unsubscribe_requests.apply_async(queue=QueueNames.REPORTING, args=[service_id])
+        archive_batched_unsubscribe_requests.apply_async(
+            queue=QueueNames.REPORTING,
+            args=[service_id],
+            MessageGroupId=str(service_id),
+        )
+        archive_old_unsubscribe_requests.apply_async(
+            queue=QueueNames.REPORTING,
+            args=[service_id],
+            MessageGroupId=str(service_id),
+        )
 
 
 @notify_celery.task(name="archive-batched-unsubscribe-requests")
@@ -163,6 +171,7 @@ def _delete_notifications_older_than_retention_by_type(
                 "datetime_to_delete_before": day_to_delete_backwards_from,
             },
             countdown=(i / len(flexible_data_retention)) * stagger_total_period.seconds,
+            MessageGroupId=str(f.service_id),
         )
 
     seven_days_ago = get_london_midnight_in_utc(convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7))
@@ -185,6 +194,7 @@ def _delete_notifications_older_than_retention_by_type(
                 "datetime_to_delete_before": seven_days_ago,
             },
             countdown=(i / len(service_ids_to_purge)) * stagger_total_period.seconds,
+            MessageGroupId=str(service_id),
         )
 
     extra = {
@@ -204,8 +214,8 @@ def _delete_notifications_older_than_retention_by_type(
     )
 
 
-@notify_celery.task(name="delete-notifications-for-service-and-type")
-def delete_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before):
+@notify_celery.task(bind=True, name="delete-notifications-for-service-and-type")
+def delete_notifications_for_service_and_type(self, service_id, notification_type, datetime_to_delete_before):
     start = datetime.utcnow()
     num_deleted = move_notifications_to_notification_history(
         notification_type,
@@ -237,12 +247,14 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
         delete_notifications_for_service_and_type.apply_async(
             args=(service_id, notification_type, datetime_to_delete_before),
             queue=QueueNames.REPORTING,
+            MessageGroupId=self.message_group_id,
         )
     else:
         # now we've deleted all the real notifications, clean up the test notifications
         delete_test_notifications_for_service_and_type.apply_async(
             args=(service_id, notification_type, datetime_to_delete_before),
             queue=QueueNames.REPORTING,
+            MessageGroupId=self.message_group_id,
         )
 
 
@@ -254,6 +266,7 @@ def delete_test_notifications_for_service_and_type(service_id, notification_type
         delete_test_notifications_for_service_and_type.apply_async(
             args=(service_id, notification_type, datetime_to_delete_before),
             queue=QueueNames.REPORTING,
+            MessageGroupId=str(service_id),
         )
 
 

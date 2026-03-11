@@ -63,6 +63,7 @@ from tests.app.db import (
     create_unsubscribe_request,
     create_unsubscribe_request_report,
 )
+from tests.conftest import _with_message_group_id
 
 
 @freeze_time("2016-10-18T10:00:00")
@@ -173,6 +174,12 @@ def test_archive_unsubscribe_requests(notify_db_session, mock_celery_task):
         {call[1]["args"][0] for call in mock_archive_processed.call_args_list}
         == {call[1]["args"][0] for call in mock_archive_old.call_args_list}
         == {service.id for service in services_with_requests}
+    )
+
+    assert (
+        {call[1]["MessageGroupId"] for call in mock_archive_processed.call_args_list}
+        == {call[1]["MessageGroupId"] for call in mock_archive_old.call_args_list}
+        == {str(service.id) for service in services_with_requests}
     )
 
     assert (
@@ -570,6 +577,7 @@ def test_delete_notifications_task_calls_task_for_services_with_data_retention_o
             "datetime_to_delete_before": datetime(2021, 6, 1, 23, 0),
         },
         countdown=0.0,
+        MessageGroupId=str(sms_service.id),
     )
 
 
@@ -598,6 +606,7 @@ def test_delete_notifications_task_calls_task_for_services_with_data_retention_b
                     "datetime_to_delete_before": datetime(2021, 3, 22, 0, 0),
                 },
                 countdown=ANY,
+                MessageGroupId=str(service_14_days.id),
             ),
             call(
                 queue=ANY,
@@ -607,6 +616,7 @@ def test_delete_notifications_task_calls_task_for_services_with_data_retention_b
                     "datetime_to_delete_before": datetime(2021, 4, 1, 23, 0),
                 },
                 countdown=ANY,
+                MessageGroupId=str(service_3_days.id),
             ),
         ],
     )
@@ -655,6 +665,7 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
                     "datetime_to_delete_before": datetime(2021, 3, 27, 0, 0),
                 },
                 countdown=ANY,
+                MessageGroupId=str(service_will_delete_1.id),
             ),
             call(
                 queue=ANY,
@@ -664,6 +675,7 @@ def test_delete_notifications_task_calls_task_for_services_that_have_sent_notifi
                     "datetime_to_delete_before": datetime(2021, 3, 27, 0, 0),
                 },
                 countdown=ANY,
+                MessageGroupId=str(service_will_delete_2.id),
             ),
         ],
     )
@@ -682,12 +694,15 @@ def test_delete_notifications_for_service_and_type_queues_up_second_task_if_thin
     notification_type = "some-str"
     datetime_to_delete_before = datetime.utcnow()
 
-    delete_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before)
+    with _with_message_group_id(delete_notifications_for_service_and_type, str(service_id)):
+        delete_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before)
 
     mock_move.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
     # the next task is queued up with the exact same args
     mock_task_call.assert_called_once_with(
-        args=(service_id, notification_type, datetime_to_delete_before), queue="reporting-tasks"
+        args=(service_id, notification_type, datetime_to_delete_before),
+        queue="reporting-tasks",
+        MessageGroupId=str(service_id),
     )
     assert not mock_delete_tests.called
 
@@ -703,13 +718,16 @@ def test_delete_notifications_for_service_and_type_removes_test_notifications_if
     notification_type = "some-str"
     datetime_to_delete_before = datetime.utcnow()
 
-    delete_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before)
+    with _with_message_group_id(delete_notifications_for_service_and_type, str(service_id)):
+        delete_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before)
 
     mock_move.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
     # the next task is not queued up
     assert not mock_delete_live_notis_task_call.called
     mock_delete_tests_task_call.assert_called_once_with(
-        args=(service_id, notification_type, datetime_to_delete_before), queue="reporting-tasks"
+        args=(service_id, notification_type, datetime_to_delete_before),
+        queue="reporting-tasks",
+        MessageGroupId=str(service_id),
     )
 
 
@@ -727,7 +745,9 @@ def test_delete_test_notifications_for_service_and_type_queues_up_second_task_if
 
     mock_delete.assert_called_once_with(notification_type, service_id, datetime_to_delete_before)
     mock_task_call.assert_called_once_with(
-        args=(service_id, notification_type, datetime_to_delete_before), queue="reporting-tasks"
+        args=(service_id, notification_type, datetime_to_delete_before),
+        queue="reporting-tasks",
+        MessageGroupId=str(service_id),
     )
 
 
