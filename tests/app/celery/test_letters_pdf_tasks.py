@@ -891,6 +891,7 @@ def test_resanitise_pdf_calls_template_preview_with_letter_details(
             "allow_international_letters": expected_international_letters_allowed,
         },
         queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=str(sample_letter_notification.service_id),
     )
 
 
