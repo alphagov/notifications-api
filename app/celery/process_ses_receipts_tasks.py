@@ -47,7 +47,8 @@ def process_ses_results(self, response):
                 current_app.logger.info(
                     "notification not found for reference: %(notification_reference)s "
                     "(update to %(notification_status)s). "
-                    "Callback may have arrived before notification was persisted to the DB. Adding task to retry queue",
+                    "Callback may have arrived before notification's reference was persisted to the DB. "
+                    "Adding task to retry queue",
                     extra,
                     extra=extra,
                 )
