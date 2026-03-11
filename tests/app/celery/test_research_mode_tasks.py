@@ -71,9 +71,10 @@ def test_make_ses_callback(notify_api, mock_celery_task):
     mock_task = mock_celery_task(process_ses_results)
     some_ref = str(uuid.uuid4())
 
-    send_email_response(reference=some_ref, to="test@test.com")
+    service_id = uuid.uuid4()
+    send_email_response(reference=some_ref, to="test@test.com", service_id=service_id)
 
-    mock_task.assert_called_once_with(ANY, queue=QueueNames.RESEARCH_MODE)
+    mock_task.assert_called_once_with(ANY, queue=QueueNames.RESEARCH_MODE, MessageGroupId=str(service_id))
     assert mock_task.call_args[0][0][0] == ses_notification_callback(some_ref)
 
 

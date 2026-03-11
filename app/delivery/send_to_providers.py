@@ -163,7 +163,7 @@ def send_email_to_provider(notification):
         if notification.key_type == KEY_TYPE_TEST:
             notification.reference = str(create_uuid())
             update_notification_to_sending(notification, provider)
-            send_email_response(notification.reference, notification.to)
+            send_email_response(notification.reference, notification.to, notification.service_id)
         else:
             email_sender_name = service.custom_email_sender_name or service.name
             from_address = (
