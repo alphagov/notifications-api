@@ -271,6 +271,7 @@ def process_sms_or_email_notification(
             key_type=api_user.key_type,
             notification_type=notification_type,
             notification_id=notification_id,
+            message_group_id=str(service.id),
         )
     else:
         current_app.logger.info(
@@ -373,12 +374,17 @@ def process_letter_notification(
         postage=postage,
     )
 
-    get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue)
+    get_pdf_for_templated_letter.apply_async(
+        [str(notification.id)],
+        queue=queue,
+        MessageGroupId=str(service.id),
+    )
 
     if test_key and current_app.config["TEST_LETTERS_FAKE_DELIVERY"]:
         create_fake_letter_callback.apply_async(
             [notification.id, notification.billable_units, notification.postage],
             queue=queue,
+            MessageGroupId=str(service.id),
         )
 
     resp = create_response_for_post_notification(
@@ -428,10 +434,15 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
             name=TaskNames.SCAN_FILE,
             kwargs={"filename": filename},
             queue=QueueNames.ANTIVIRUS,
+            MessageGroupId=str(service.id),
         )
     else:
         # stub out antivirus in dev
-        sanitise_letter.apply_async([filename], queue=QueueNames.LETTERS)
+        sanitise_letter.apply_async(
+            [filename],
+            queue=QueueNames.LETTERS,
+            MessageGroupId=str(service.id),
+        )
 
     return resp
 
