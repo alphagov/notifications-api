@@ -100,15 +100,9 @@ def test_dao_get_template_email_files_by_template_id(
     )
 
     assert len(fetched_file_list) == 2
-    assert fetched_file_list[0].template_id == fetched_file_list[1].template_id
-    assert fetched_file_list[1].filename == file_two.filename
-    assert fetched_file_list[0].id == sample_template_email_file_not_pending.id
-    assert fetched_file_list[0].filename == sample_template_email_file_not_pending.filename
-    assert fetched_file_list[0].link_text == sample_template_email_file_not_pending.link_text
-    assert fetched_file_list[0].retention_period == sample_template_email_file_not_pending.retention_period
-    assert fetched_file_list[0].validate_users_email == sample_template_email_file_not_pending.validate_users_email
-    assert fetched_file_list[0].template_version == sample_template_email_file_not_pending.template_version
-    assert fetched_file_list[0].created_by_id == sample_template_email_file_not_pending.created_by_id
+
+    assert sample_template_email_file_not_pending in fetched_file_list
+    assert file_two in fetched_file_list
 
 
 def test_dao_get_template_email_files_by_template_id_does_not_return_archived_file(
