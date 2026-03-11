@@ -1,6 +1,7 @@
 from datetime import datetime
 from urllib.parse import unquote
 
+import iso8601
 from flask import Blueprint, abort, current_app, jsonify, request
 from gds_metrics.metrics import Counter
 
@@ -69,7 +70,9 @@ def receive_mmg_sms():
     )
 
     service_callback_tasks.send_inbound_sms_to_service.apply_async(
-        [str(inbound.id), str(service.id)], queue=QueueNames.CALLBACKS
+        [str(inbound.id), str(service.id)],
+        queue=QueueNames.CALLBACKS,
+        MessageGroupId=str(service.id),
     )
 
     current_app.logger.info(
@@ -115,7 +118,9 @@ def receive_firetext_sms():
     INBOUND_SMS_COUNTER.labels("firetext").inc()
 
     service_callback_tasks.send_inbound_sms_to_service.apply_async(
-        [str(inbound.id), str(service.id)], queue=QueueNames.CALLBACKS
+        [str(inbound.id), str(service.id)],
+        queue=QueueNames.CALLBACKS,
+        MessageGroupId=str(service.id),
     )
     current_app.logger.info(
         "%s received inbound SMS with reference %s from Firetext",
@@ -141,9 +146,9 @@ def format_mmg_datetime(date):
     """
     try:
         orig_date = format_mmg_message(date)
-        parsed_datetime = datetime.fromisoformat(orig_date).replace(tzinfo=None)
+        parsed_datetime = iso8601.parse_date(orig_date).replace(tzinfo=None)
         return parsed_datetime
-    except ValueError:
+    except iso8601.ParseError:
         return datetime.utcnow()
 
 
