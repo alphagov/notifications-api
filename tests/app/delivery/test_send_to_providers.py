@@ -366,7 +366,10 @@ def test_send_email_to_provider_should_call_response_task_if_test_key(sample_ema
     send_to_providers.send_email_to_provider(notification)
 
     assert not app.aws_ses_client.send_email.called
-    app.delivery.send_to_providers.send_email_response.assert_called_once_with(str(reference), "john@smith.com")
+    call_args = app.delivery.send_to_providers.send_email_response.call_args
+    assert call_args[0][0] == str(reference)
+    assert call_args[0][1] == "john@smith.com"
+    assert call_args[0][2] in (notification.service_id, str(notification.service_id))
     persisted_notification = Notification.query.filter_by(id=notification.id).one()
     assert persisted_notification.to == "john@smith.com"
     assert persisted_notification.template_id == sample_email_template.id

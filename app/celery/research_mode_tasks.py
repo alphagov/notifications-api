@@ -54,7 +54,7 @@ def send_sms_response(provider, reference, to):
     make_request(SMS_TYPE, provider, body, headers)
 
 
-def send_email_response(reference, to):
+def send_email_response(reference, to, service_id):
     if to == perm_fail_email:
         body = ses_hard_bounce_callback(reference)
     elif to == temp_fail_email:
@@ -62,7 +62,11 @@ def send_email_response(reference, to):
     else:
         body = ses_notification_callback(reference)
 
-    process_ses_results.apply_async([body], queue=QueueNames.RESEARCH_MODE)
+    process_ses_results.apply_async(
+        [body],
+        queue=QueueNames.RESEARCH_MODE,
+        MessageGroupId=str(service_id),
+    )
 
 
 def send_letter_response(notification_id: uuid.UUID, billable_units: int, postage: str):

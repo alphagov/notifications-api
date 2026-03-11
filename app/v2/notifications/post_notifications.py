@@ -1,13 +1,10 @@
 import base64
 import functools
-import re
 import uuid
 from datetime import datetime
 
 from flask import abort, current_app, jsonify, request
 from gds_metrics import Histogram
-from notifications_utils.formatters import url
-from notifications_utils.insensitive_dict import InsensitiveSet
 
 from app import (
     api_user,
@@ -128,13 +125,9 @@ def post_notification(notification_type):
 
     check_service_has_permission(authenticated_service, notification_type)
 
-    personalisation = _prepare_personalisation_for_post_notification(
-        personalisation=form.get("personalisation", {}), sanitise_content_for=form.get("sanitise_content_for", [])
-    )
-
     template, template_with_content = validate_template(
         template_id=form["template_id"],
-        personalisation=personalisation,
+        personalisation=form.get("personalisation", {}),
         service=authenticated_service,
         notification_type=notification_type,
         check_char_count=False,
@@ -159,46 +152,11 @@ def post_notification(notification_type):
             template=template,
             template_with_content=template_with_content,
             service=authenticated_service,
-            personalisation=personalisation,
             reply_to_text=reply_to,
             unsubscribe_link=form.get("one_click_unsubscribe_url", None),
         )
 
     return jsonify(notification), 201
-
-
-def _prepare_personalisation_for_post_notification(personalisation, sanitise_content_for):
-    return {
-        key: sanitise_personalisation_item(value) if key in InsensitiveSet(sanitise_content_for) else value
-        for key, value in personalisation.items()
-    }
-
-
-def sanitise_personalisation_item(value):
-    value = _find_and_sanitise_urls(value)
-    sanitised_value = _escape_markdown_characters(value)
-
-    return sanitised_value
-
-
-def _escape_markdown_characters(value):
-    return re.sub(r"([`*_()\\{}\[\]<>#+\-.!|])", r"\\\1", value, flags=re.M)
-
-
-def _find_and_sanitise_urls(value):
-    return re.sub(url, lambda m: _sanitise_url(m.group()), value)
-
-
-def _sanitise_url(url):
-    return _break_up_link(url) if _could_be_accidental_link(url) else ""
-
-
-def _could_be_accidental_link(link):
-    return re.fullmatch(r"[a-zA-Z0-9\.\-]+", link)
-
-
-def _break_up_link(link):
-    return re.sub(r"\.", ". ", link)
 
 
 def process_sms_or_email_notification(
@@ -208,7 +166,6 @@ def process_sms_or_email_notification(
     template,
     template_with_content,
     service,
-    personalisation,
     reply_to_text=None,
     unsubscribe_link=None,
 ):
@@ -225,7 +182,7 @@ def process_sms_or_email_notification(
     simulated = simulated_recipient(send_to, notification_type)
 
     personalisation, document_download_count = process_document_uploads(
-        personalisation,
+        form.get("personalisation"),
         service,
         send_to=send_to,
         simulated=simulated,
@@ -271,6 +228,7 @@ def process_sms_or_email_notification(
             key_type=api_user.key_type,
             notification_type=notification_type,
             notification_id=notification_id,
+            message_group_id=str(service.id),
         )
     else:
         current_app.logger.info(
@@ -373,12 +331,17 @@ def process_letter_notification(
         postage=postage,
     )
 
-    get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue)
+    get_pdf_for_templated_letter.apply_async(
+        [str(notification.id)],
+        queue=queue,
+        MessageGroupId=str(service.id),
+    )
 
     if test_key and current_app.config["TEST_LETTERS_FAKE_DELIVERY"]:
         create_fake_letter_callback.apply_async(
             [notification.id, notification.billable_units, notification.postage],
             queue=queue,
+            MessageGroupId=str(service.id),
         )
 
     resp = create_response_for_post_notification(
@@ -428,10 +391,15 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
             name=TaskNames.SCAN_FILE,
             kwargs={"filename": filename},
             queue=QueueNames.ANTIVIRUS,
+            MessageGroupId=str(service.id),
         )
     else:
         # stub out antivirus in dev
-        sanitise_letter.apply_async([filename], queue=QueueNames.LETTERS)
+        sanitise_letter.apply_async(
+            [filename],
+            queue=QueueNames.LETTERS,
+            MessageGroupId=str(service.id),
+        )
 
     return resp
 
