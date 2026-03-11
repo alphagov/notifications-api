@@ -98,7 +98,11 @@ def test_should_update_scheduled_jobs_and_put_on_queue(mock_celery_task, sample_
 
     updated_job = dao_get_job_by_id(job.id)
     assert updated_job.job_status == "pending"
-    mocked.assert_called_with([str(job.id)], queue="job-tasks")
+    mocked.assert_called_with(
+        [str(job.id)],
+        queue="job-tasks",
+        MessageGroupId=str(job.service_id),
+    )
 
 
 def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock_celery_task):
@@ -117,11 +121,12 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock
     assert dao_get_job_by_id(job_2.id).job_status == "pending"
     assert dao_get_job_by_id(job_2.id).job_status == "pending"
 
+    service_id = str(sample_template.service_id)
     mocked.assert_has_calls(
         [
-            call([str(job_3.id)], queue="job-tasks"),
-            call([str(job_2.id)], queue="job-tasks"),
-            call([str(job_1.id)], queue="job-tasks"),
+            call([str(job_3.id)], queue="job-tasks", MessageGroupId=service_id),
+            call([str(job_2.id)], queue="job-tasks", MessageGroupId=service_id),
+            call([str(job_1.id)], queue="job-tasks", MessageGroupId=service_id),
         ]
     )
 
@@ -274,7 +279,10 @@ def test_check_job_status_task_calls_process_incomplete_jobs(mock_celery_task, s
     create_notification(template=sample_template, job=job)
     check_job_status()
 
-    mock_celery.assert_called_once_with([[str(job.id)]], queue=QueueNames.JOBS)
+    mock_celery.assert_called_once_with(
+        [[str(job.id)]],
+        queue=QueueNames.JOBS,
+    )
 
 
 def test_check_job_status_task_calls_process_incomplete_jobs_when_scheduled_job_is_not_complete(
@@ -291,7 +299,10 @@ def test_check_job_status_task_calls_process_incomplete_jobs_when_scheduled_job_
     )
     check_job_status()
 
-    mock_celery.assert_called_once_with([[str(job.id)]], queue=QueueNames.JOBS)
+    mock_celery.assert_called_once_with(
+        [[str(job.id)]],
+        queue=QueueNames.JOBS,
+    )
 
 
 def test_check_job_status_task_calls_process_incomplete_jobs_for_pending_scheduled_jobs(
@@ -308,7 +319,10 @@ def test_check_job_status_task_calls_process_incomplete_jobs_for_pending_schedul
 
     check_job_status()
 
-    mock_celery.assert_called_once_with([[str(job.id)]], queue=QueueNames.JOBS)
+    mock_celery.assert_called_once_with(
+        [[str(job.id)]],
+        queue=QueueNames.JOBS,
+    )
 
 
 def test_check_job_status_task_does_not_call_process_incomplete_jobs_for_non_scheduled_pending_jobs(
@@ -347,7 +361,10 @@ def test_check_job_status_task_calls_process_incomplete_jobs_for_multiple_jobs(m
     )
     check_job_status()
 
-    mock_celery.assert_called_once_with([[str(job.id), str(job_2.id)]], queue=QueueNames.JOBS)
+    mock_celery.assert_called_once_with(
+        [[str(job.id), str(job_2.id)]],
+        queue=QueueNames.JOBS,
+    )
 
 
 def test_check_job_status_task_only_sends_old_tasks(mock_celery_task, sample_template):
@@ -377,7 +394,10 @@ def test_check_job_status_task_only_sends_old_tasks(mock_celery_task, sample_tem
     check_job_status()
 
     # jobs 2 and 3 were created less than 30 minutes ago, so are not sent to Celery task
-    mock_celery.assert_called_once_with([[str(job.id)]], queue=QueueNames.JOBS)
+    mock_celery.assert_called_once_with(
+        [[str(job.id)]],
+        queue=QueueNames.JOBS,
+    )
 
 
 def test_check_job_status_task_sets_jobs_to_error(mock_celery_task, sample_template):
@@ -400,7 +420,10 @@ def test_check_job_status_task_sets_jobs_to_error(mock_celery_task, sample_templ
     check_job_status()
 
     # job 2 not in celery task
-    mock_celery.assert_called_once_with([[str(job.id)]], queue=QueueNames.JOBS)
+    mock_celery.assert_called_once_with(
+        [[str(job.id)]],
+        queue=QueueNames.JOBS,
+    )
     assert job.job_status == JOB_STATUS_ERROR
     assert job_2.job_status == JOB_STATUS_IN_PROGRESS
 
@@ -430,8 +453,12 @@ def test_replay_created_notifications(sample_service, mock_celery_task):
     create_notification(template=email_template, created_at=datetime.utcnow(), status="created")
 
     replay_created_notifications()
-    email_delivery_queue.assert_called_once_with([str(old_email.id)], queue="send-email-tasks")
-    sms_delivery_queue.assert_called_once_with([str(old_sms.id)], queue="send-sms-tasks")
+    email_delivery_queue.assert_called_once_with(
+        [str(old_email.id)], queue="send-email-tasks", MessageGroupId=str(sample_service.id)
+    )
+    sms_delivery_queue.assert_called_once_with(
+        [str(old_sms.id)], queue="send-sms-tasks", MessageGroupId=str(sample_service.id)
+    )
 
 
 def test_replay_created_notifications_get_pdf_for_templated_letter_tasks_for_letters_not_ready_to_send(
@@ -454,9 +481,10 @@ def test_replay_created_notifications_get_pdf_for_templated_letter_tasks_for_let
 
     replay_created_notifications()
 
+    service_id = str(sample_letter_template.service_id)
     calls = [
-        call([str(notification_1.id)], queue=QueueNames.CREATE_LETTERS_PDF),
-        call([str(notification_2.id)], queue=QueueNames.CREATE_LETTERS_PDF),
+        call([str(notification_1.id)], queue=QueueNames.CREATE_LETTERS_PDF, MessageGroupId=service_id),
+        call([str(notification_2.id)], queue=QueueNames.CREATE_LETTERS_PDF, MessageGroupId=service_id),
     ]
     mock_task.assert_has_calls(calls, any_order=True)
 
@@ -512,7 +540,10 @@ def test_check_if_letters_still_pending_virus_check_restarts_scan_for_stuck_lett
     mock_file_exists.assert_called_once_with("test-letters-scan", expected_filename)
 
     mock_celery.assert_called_once_with(
-        name=TaskNames.SCAN_FILE, kwargs={"filename": expected_filename}, queue=QueueNames.ANTIVIRUS
+        name=TaskNames.SCAN_FILE,
+        kwargs={"filename": expected_filename},
+        queue=QueueNames.ANTIVIRUS,
+        MessageGroupId=str(sample_letter_template.service_id),
     )
 
     assert mock_create_ticket.called is False
@@ -724,7 +755,12 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template,
         )
     ]
     assert mock_save_email.mock_calls == [
-        mock.call((str(job.service_id), "some-uuid", "something_encoded"), {}, queue="database-tasks")
+        mock.call(
+            (str(job.service_id), "some-uuid", "something_encoded"),
+            {},
+            queue="database-tasks",
+            MessageGroupId=str(job.service_id),
+        )
     ]
 
 
@@ -765,7 +801,10 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(
     ]
     assert mock_save_email.mock_calls == [
         mock.call(
-            (str(job.service_id), "some-uuid", "something_encoded"), {"sender_id": fake_uuid}, queue="database-tasks"
+            (str(job.service_id), "some-uuid", "something_encoded"),
+            {"sender_id": fake_uuid},
+            queue="database-tasks",
+            MessageGroupId=str(job.service_id),
         )
     ]
 
