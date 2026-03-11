@@ -92,7 +92,10 @@ def get_pdf_for_templated_letter(self, notification_id):
         encoded_data = signing.encode(letter_data)
 
         notify_celery.send_task(
-            name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER, args=(encoded_data,), queue=QueueNames.SANITISE_LETTERS
+            name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER,
+            args=(encoded_data,),
+            queue=QueueNames.SANITISE_LETTERS,
+            MessageGroupId=self.message_group_id if self.message_group_id is not None else str(notification.service_id),
         )
     except Exception as e:
         try:
@@ -541,8 +544,8 @@ def replay_letters_in_error(filename=None):
                 sanitise_letter.apply_async([filename], queue=QueueNames.LETTERS)
 
 
-@notify_celery.task(name="resanitise-pdf")
-def resanitise_pdf(notification_id):
+@notify_celery.task(bind=True, name="resanitise-pdf")
+def resanitise_pdf(self, notification_id):
     """
     `notification_id` is the notification id for a PDF letter which was either uploaded or sent using the API.
 
@@ -570,11 +573,12 @@ def resanitise_pdf(notification_id):
             "allow_international_letters": notification.service.has_permission(INTERNATIONAL_LETTERS),
         },
         queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=self.message_group_id if self.message_group_id is not None else str(notification.service_id),
     )
 
 
-@notify_celery.task(name="resanitise-letter-attachment")
-def resanitise_letter_attachment(service_id, attachment_id, original_filename):
+@notify_celery.task(bind=True, name="resanitise-letter-attachment")
+def resanitise_letter_attachment(self, service_id, attachment_id, original_filename):
     """
     `service_id` is the service id for a PDF letter attachment/template.
     `attachment_id` is the attachment id for a PDF letter attachment which was uploaded for a template.
@@ -593,4 +597,5 @@ def resanitise_letter_attachment(service_id, attachment_id, original_filename):
             "original_filename": original_filename,
         },
         queue=QueueNames.SANITISE_LETTERS,
+        MessageGroupId=self.message_group_id if self.message_group_id is not None else str(service_id),
     )
