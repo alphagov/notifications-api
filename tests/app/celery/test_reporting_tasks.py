@@ -78,6 +78,7 @@ def test_create_nightly_notification_status_triggers_tasks(
     mock_celery.assert_called_with(
         kwargs={"service_id": sample_service.id, "process_day": "2019-07-31", "notification_type": SMS_TYPE},
         queue=QueueNames.REPORTING,
+        MessageGroupId=str(sample_service.id),
     )
 
 

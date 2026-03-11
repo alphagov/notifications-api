@@ -1610,6 +1610,7 @@ def create_report_request_by_type(service_id):
     process_report_request.apply_async(
         kwargs={"service_id": report_request.service_id, "report_request_id": report_request.id},
         queue=QueueNames.REPORT_REQUESTS_NOTIFICATIONS,
+        MessageGroupId=str(report_request.service_id),
     )
 
     return jsonify(data=created_request.serialize()), 201
