@@ -73,7 +73,7 @@ click==8.3.1
     #   click-plugins
     #   click-repl
     #   flask
-click-datetime==0.4.0
+click-datetime==0.2
     # via -r requirements.txt
 click-didyoumean==0.3.1
     # via
@@ -160,6 +160,10 @@ idna==3.11
     #   -r requirements.txt
     #   requests
     #   trustme
+importlib-metadata==8.7.1
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-api
 iniconfig==2.3.0
     # via pytest
 isoduration==20.11.0
@@ -224,8 +228,12 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@e4fd0f03f2475329250dac85d1fb778a4fc053b4
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@48f3925b60edc0208c18d93a98111178c2357138
     # via -r requirements.txt
+opentelemetry-api==1.40.0
+    # via
+    #   -r requirements.txt
+    #   notifications-utils
 ordered-set==4.1.0
     # via
     #   -r requirements.txt
@@ -391,7 +399,10 @@ typing-extensions==4.15.0
     #   -r requirements.txt
     #   alembic
     #   beautifulsoup4
+    #   exceptiongroup
     #   mypy
+    #   opentelemetry-api
+    #   referencing
     #   sqlalchemy
 tzdata==2025.3
     # via
@@ -430,9 +441,9 @@ werkzeug==3.1.6
     #   flask
     #   moto
     #   pytest-httpserver
-wheel==0.44.0
-    # via
-    #   -r requirements.txt
-    #   click-datetime
 xmltodict==1.0.4
     # via moto
+zipp==3.23.0
+    # via
+    #   -r requirements.txt
+    #   importlib-metadata

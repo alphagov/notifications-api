@@ -50,7 +50,7 @@ click==8.3.1
     #   click-plugins
     #   click-repl
     #   flask
-click-datetime==0.4.0
+click-datetime==0.2
     # via -r requirements.in
 click-didyoumean==0.3.1
     # via celery
@@ -106,6 +106,8 @@ idna==3.11
     # via
     #   jsonschema
     #   requests
+importlib-metadata==8.7.1
+    # via opentelemetry-api
 isoduration==20.11.0
     # via jsonschema
 itsdangerous==2.2.0
@@ -150,8 +152,10 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@e4fd0f03f2475329250dac85d1fb778a4fc053b4
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@48f3925b60edc0208c18d93a98111178c2357138
     # via -r requirements.in
+opentelemetry-api==1.40.0
+    # via notifications-utils
 ordered-set==4.1.0
     # via notifications-utils
 packaging==26.0
@@ -234,6 +238,9 @@ statsd==4.0.1
 typing-extensions==4.15.0
     # via
     #   alembic
+    #   exceptiongroup
+    #   opentelemetry-api
+    #   referencing
     #   sqlalchemy
 tzdata==2025.3
     # via
@@ -261,5 +268,5 @@ webcolors==25.10.0
     # via jsonschema
 werkzeug==3.1.6
     # via flask
-wheel==0.44.0
-    # via click-datetime
+zipp==3.23.0
+    # via importlib-metadata
