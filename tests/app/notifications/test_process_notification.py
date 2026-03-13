@@ -667,17 +667,19 @@ def test_send_notification_to_queue(
     mocker,
 ):
     mocked = mocker.patch(f"app.celery.{expected_task}.apply_async")
-    Notification = namedtuple("Notification", ["id", "key_type", "notification_type", "created_at"])
+    Notification = namedtuple("Notification", ["id", "key_type", "notification_type", "created_at", "service_id"])
+    service_id = uuid.uuid4()
     notification = Notification(
         id=uuid.uuid4(),
         key_type=key_type,
         notification_type=notification_type,
         created_at=datetime.datetime(2016, 11, 11, 16, 8, 18),
+        service_id=service_id,
     )
 
     send_notification_to_queue(notification=notification, queue=requested_queue)
 
-    mocked.assert_called_once_with([str(notification.id)], queue=expected_queue)
+    mocked.assert_called_once_with([str(notification.id)], queue=expected_queue, MessageGroupId=str(service_id))
 
 
 def test_send_notification_to_queue_throws_exception_deletes_notification(sample_notification, mocker):
@@ -687,7 +689,11 @@ def test_send_notification_to_queue_throws_exception_deletes_notification(sample
     )
     with pytest.raises(Boto3Error):
         send_notification_to_queue(sample_notification)
-    mocked.assert_called_once_with([str(sample_notification.id)], queue="send-sms-tasks")
+    mocked.assert_called_once_with(
+        [str(sample_notification.id)],
+        queue="send-sms-tasks",
+        MessageGroupId=str(sample_notification.service_id),
+    )
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0

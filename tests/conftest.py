@@ -2,6 +2,7 @@ import os
 import subprocess
 from collections import namedtuple
 from contextlib import contextmanager
+from unittest.mock import patch
 from urllib.parse import urlparse
 
 import freezegun
@@ -263,6 +264,12 @@ def set_config_values(app, dict):
     finally:
         for key in dict:
             app.config[key] = old_values[key]
+
+
+@contextmanager
+def _with_message_group_id(task, value):
+    with patch("notifications_utils.celery.NotifyTask.message_group_id", new=value, create=True):
+        yield
 
 
 class Matcher:

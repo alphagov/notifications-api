@@ -96,7 +96,11 @@ from app.utils import get_london_midnight_in_utc
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
-            process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
+            process_job.apply_async(
+                [str(job.id)],
+                queue=QueueNames.JOBS,
+                MessageGroupId=str(job.service_id),
+            )
             current_app.logger.info("Job ID %s added to process job queue", job.id, extra={"job_id": job.id})
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
@@ -335,7 +339,11 @@ def replay_created_notifications() -> None:
             letter.id,
             extra={"notification_id": letter.id},
         )
-        get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+        get_pdf_for_templated_letter.apply_async(
+            [str(letter.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF,
+            MessageGroupId=str(letter.service_id),
+        )
 
 
 @notify_celery.task(name="check-if-letters-still-pending-virus-check")
@@ -359,6 +367,7 @@ def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 3
                 name=TaskNames.SCAN_FILE,
                 kwargs={"filename": filename},
                 queue=QueueNames.ANTIVIRUS,
+                MessageGroupId=str(letter.service_id),
             )
         else:
             current_app.logger.warning(
@@ -438,7 +447,7 @@ def check_for_missing_rows_in_completed_jobs():
 
             extra = {"job_row_number": row_to_process.missing_row, "job_id": job.id}
             current_app.logger.info("Processing missing row %(job_row_number)s for job %(job_id)s", extra, extra=extra)
-            process_job_row(template.template_type, task_args_kwargs)
+            process_job_row(template.template_type, task_args_kwargs, str(job.service_id))
 
 
 @notify_celery.task(name="update-status-of-fully-processed-jobs")
