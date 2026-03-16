@@ -143,6 +143,11 @@ freezegun==1.5.5
     # via -r requirements_for_test_common.in
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.txt
+googleapis-common-protos==1.73.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 govuk-bank-holidays==0.19
     # via
     #   -r requirements.txt
@@ -151,6 +156,10 @@ greenlet==3.3.2
     # via
     #   -r requirements.txt
     #   eventlet
+grpcio==1.78.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp-proto-grpc
 gunicorn==25.1.0
     # via
     #   -r requirements.txt
@@ -234,6 +243,50 @@ opentelemetry-api==1.40.0
     # via
     #   -r requirements.txt
     #   notifications-utils
+    #   opentelemetry-distro
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-instrumentation
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-distro==0.61b0
+    # via -r requirements.txt
+opentelemetry-exporter-otlp==1.40.0
+    # via -r requirements.txt
+opentelemetry-exporter-otlp-proto-common==1.40.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-grpc==1.40.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp
+opentelemetry-exporter-otlp-proto-http==1.40.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp
+opentelemetry-instrumentation==0.61b0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-distro
+opentelemetry-proto==1.40.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-exporter-otlp-proto-common
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk==1.40.0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-distro
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-semantic-conventions==0.61b0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation
+    #   opentelemetry-sdk
 ordered-set==4.1.0
     # via
     #   -r requirements.txt
@@ -244,6 +297,7 @@ packaging==26.0
     #   gunicorn
     #   kombu
     #   marshmallow
+    #   opentelemetry-instrumentation
     #   pytest
 pathspec==1.0.4
     # via mypy
@@ -261,6 +315,11 @@ prompt-toolkit==3.0.52
     # via
     #   -r requirements.txt
     #   click-repl
+protobuf==6.33.5
+    # via
+    #   -r requirements.txt
+    #   googleapis-common-protos
+    #   opentelemetry-proto
 psutil==6.1.1
     # via -r requirements.txt
 psycopg2-binary==2.9.10
@@ -334,6 +393,7 @@ requests==2.32.5
     #   moto
     #   notifications-python-client
     #   notifications-utils
+    #   opentelemetry-exporter-otlp-proto-http
     #   requests-mock
     #   responses
 requests-mock==1.12.1
@@ -399,8 +459,13 @@ typing-extensions==4.15.0
     #   -r requirements.txt
     #   alembic
     #   beautifulsoup4
+    #   grpcio
     #   mypy
     #   opentelemetry-api
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
     #   sqlalchemy
 tzdata==2025.3
     # via
@@ -443,6 +508,10 @@ wheel==0.44.0
     # via
     #   -r requirements.txt
     #   click-datetime
+wrapt==1.17.3
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation
 xmltodict==1.0.4
     # via moto
 zipp==3.23.0

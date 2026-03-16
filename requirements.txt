@@ -94,10 +94,16 @@ fqdn==1.5.1
     # via jsonschema
 gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
     # via -r requirements.in
+googleapis-common-protos==1.73.0
+    # via
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 govuk-bank-holidays==0.19
     # via notifications-utils
 greenlet==3.3.2
     # via eventlet
+grpcio==1.78.0
+    # via opentelemetry-exporter-otlp-proto-grpc
 gunicorn==25.1.0
     # via
     #   -r requirements.in
@@ -155,7 +161,42 @@ notifications-python-client==10.0.1
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@900cb380b9f92b23886586207f44c99893d2b56b
     # via -r requirements.in
 opentelemetry-api==1.40.0
-    # via notifications-utils
+    # via
+    #   notifications-utils
+    #   opentelemetry-distro
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-instrumentation
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
+opentelemetry-distro==0.61b0
+    # via -r requirements.in
+opentelemetry-exporter-otlp==1.40.0
+    # via opentelemetry-distro
+opentelemetry-exporter-otlp-proto-common==1.40.0
+    # via
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-otlp-proto-grpc==1.40.0
+    # via opentelemetry-exporter-otlp
+opentelemetry-exporter-otlp-proto-http==1.40.0
+    # via opentelemetry-exporter-otlp
+opentelemetry-instrumentation==0.61b0
+    # via opentelemetry-distro
+opentelemetry-proto==1.40.0
+    # via
+    #   opentelemetry-exporter-otlp-proto-common
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-sdk==1.40.0
+    # via
+    #   opentelemetry-distro
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+opentelemetry-semantic-conventions==0.61b0
+    # via
+    #   opentelemetry-instrumentation
+    #   opentelemetry-sdk
 ordered-set==4.1.0
     # via notifications-utils
 packaging==26.0
@@ -163,12 +204,17 @@ packaging==26.0
     #   gunicorn
     #   kombu
     #   marshmallow
+    #   opentelemetry-instrumentation
 phonenumbers==9.0.25
     # via notifications-utils
 prometheus-client==0.24.1
     # via gds-metrics
 prompt-toolkit==3.0.52
     # via click-repl
+protobuf==6.33.5
+    # via
+    #   googleapis-common-protos
+    #   opentelemetry-proto
 psutil==6.1.1
     # via -r requirements.in
 psycopg2-binary==2.9.10
@@ -206,6 +252,7 @@ requests==2.32.5
     #   govuk-bank-holidays
     #   notifications-python-client
     #   notifications-utils
+    #   opentelemetry-exporter-otlp-proto-http
 rfc3339-validator==0.1.4
     # via jsonschema
 rfc3987==1.3.8
@@ -238,7 +285,12 @@ statsd==4.0.1
 typing-extensions==4.15.0
     # via
     #   alembic
+    #   grpcio
     #   opentelemetry-api
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
+    #   opentelemetry-sdk
+    #   opentelemetry-semantic-conventions
     #   sqlalchemy
 tzdata==2025.3
     # via
@@ -268,5 +320,7 @@ werkzeug==3.1.6
     # via flask
 wheel==0.44.0
     # via click-datetime
+wrapt==1.17.3
+    # via opentelemetry-instrumentation
 zipp==3.23.0
     # via importlib-metadata
