@@ -27,7 +27,15 @@ sms_response_mapper = {
 @notify_celery.task(
     bind=True, name="process-sms-client-response", max_retries=5, default_retry_delay=300, early_log_level=logging.DEBUG
 )
-def process_sms_client_response(self, status, provider_reference, client_name, detailed_status_code=None):
+def process_sms_client_response(
+    self,
+    status,
+    provider_reference,
+    client_name,
+    detailed_status_code=None,
+    delivery_iso_timestamp: str | None = None,
+    receipt_iso_timestamp: str | None = None,
+):
     # validate reference
     try:
         uuid.UUID(provider_reference, version=4)
@@ -50,12 +58,32 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
     try:
         try:
             notification_status, detailed_status = response_parser(status, detailed_status_code)
+
+            delivery_dt = None
+            if delivery_iso_timestamp is not None:
+                try:
+                    delivery_dt = datetime.fromisoformat(delivery_iso_timestamp)
+                except ValueError:
+                    pass  # None it is, then
+
+            receipt_dt = None
+            if receipt_iso_timestamp is not None:
+                try:
+                    receipt_dt = datetime.fromisoformat(receipt_iso_timestamp)
+                except ValueError:
+                    pass  # None it is, then
+
+            uniform_now = datetime.utcnow()
             extra = {
                 "client_name": client_name,
                 "notification_status": notification_status,
                 "provider_status": status,
                 "detailed_status": detailed_status,
                 "detailed_status_code": detailed_status_code,
+                "receipt_received_at": receipt_dt,
+                "receipt_received_ago": (uniform_now - receipt_dt).total_seconds() if receipt_dt is not None else None,
+                "delivered_at": delivery_dt,
+                "delivered_ago": (uniform_now - delivery_dt).total_seconds() if delivery_dt is not None else None,
                 # for sms, we happen to use notification id as the "provider reference"
                 "notification_id": provider_reference,
             }

@@ -34,6 +34,7 @@ def test_process_sms_response_raises_client_exception_for_unknown_status(
     assert sample_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
+@freeze_time("2020-10-20T03:06:07.3")
 @pytest.mark.parametrize(
     "status, detailed_status_code, sms_provider, expected_notification_status, reason",
     [
@@ -52,10 +53,23 @@ def test_process_sms_client_response_updates_notification_status(
     sample_notification.status = "sending"
 
     with caplog.at_level("INFO"):
-        process_sms_client_response(status, str(sample_notification.id), sms_provider, detailed_status_code)
+        process_sms_client_response(
+            status,
+            str(sample_notification.id),
+            sms_provider,
+            detailed_status_code,
+            "2020-10-20T03:04:05.1",
+            "2020-10-20T03:05:06.2",
+        )
 
     message = f"{sms_provider} callback returned status of {expected_notification_status}({status}): {reason}({detailed_status_code}) for reference: {sample_notification.id}"  # noqa
-    assert message in caplog.messages
+    record = next(r for r in caplog.records if "callback returned status of" in r.msg)
+    assert record.message == message
+    assert record.receipt_received_at == datetime(2020, 10, 20, 3, 5, 6, 200000)
+    assert record.receipt_received_ago == 61.1
+    assert record.delivered_at == datetime(2020, 10, 20, 3, 4, 5, 100000)
+    assert record.delivered_ago == 122.2
+
     assert sample_notification.status == expected_notification_status
 
 
