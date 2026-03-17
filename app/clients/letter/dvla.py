@@ -1,4 +1,3 @@
-import base64
 import contextlib
 import secrets
 import string
@@ -254,6 +253,43 @@ class DVLAClient:
             "X-API-Key": self.dvla_api_key.get(),
         }
 
+    def _get_upload_url(self):
+        """
+        Calls the DVLA endpoint to get a presigned URL to use to upload a letter.
+        URLs are valid for 1 hour.
+        """
+
+        def _handle_http_errors(e: requests.HTTPError):
+            if e.response.status_code == 400:
+                raise DvlaNonRetryableException(e.response.json()["errors"][0]["detail"]) from e
+            elif e.response.status_code in {401, 403}:
+                # probably the api key is not valid
+                self.dvla_api_key.clear()
+
+                raise DvlaUnauthorisedRequestException(e.response.json()["errors"][0]["detail"]) from e
+
+        with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_http_errors):
+            response = self.session.get(
+                f"{self.base_url}/print-request/v1/print/files/upload-url",
+                headers=self._get_auth_headers(),
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def _upload_file(self, *, upload_url: str, pdf_file: bytes):
+        """
+        Uploads the letter to DVLA's S3 account using the given presigned URL.
+
+        While the endpoint isn't a DVLA one, we still want the error handling behaviour of `_handle_common_dvla_errors`.
+
+        Being rate limited when uploading the file will give a `503` status code instead of a `429` code. However, this
+        isn't handled separately because we should hit DVLA rate limits before being rate limited here, and 5xx status
+        codes are retried.
+        """
+        with _handle_common_dvla_errors():
+            response = self.session.put(upload_url, headers={"Content-Type": "application/pdf"}, data=pdf_file)
+            response.raise_for_status()
+
     def send_letter(
         self,
         *,
@@ -269,6 +305,17 @@ class DVLAClient:
         """
         Sends a letter to the DVLA for printing
         """
+        url_response = self._get_upload_url()
+        upload_id = url_response["uploadId"]
+        upload_url = url_response["uploadUrl"]
+
+        self._upload_file(upload_url=upload_url, pdf_file=pdf_file)
+        current_app.logger.info(
+            "Letter with notification id %s uploaded to DVLA presigned URL with upload_id %s",
+            notification_id,
+            upload_id,
+            extra={"notification_id": notification_id, "dvla_upload_id": upload_id},
+        )
 
         def _handle_http_errors(e: requests.HTTPError):
             if e.response.status_code == 400:
@@ -292,7 +339,7 @@ class DVLAClient:
                     postage=postage,
                     service_id=service_id,
                     organisation_id=organisation_id,
-                    pdf_file=pdf_file,
+                    upload_id=upload_id,
                     callback_url=callback_url,
                 ),
             )
@@ -300,7 +347,7 @@ class DVLAClient:
             return response.json()
 
     def _format_create_print_job_json(
-        self, *, notification_id, reference, address, postage, service_id, organisation_id, pdf_file, callback_url
+        self, *, notification_id, reference, address, postage, service_id, organisation_id, upload_id, callback_url
     ):
         # We shouldn't need to pass the postage in, as the address has a postage field. However, at this point we've
         # recorded the postage on the notification so we should respect that rather than introduce any possible
@@ -320,7 +367,6 @@ class DVLAClient:
                 "address": address_data,
             },
             "customParams": [
-                {"key": "pdfContent", "value": base64.b64encode(pdf_file).decode("utf-8")},
                 {"key": "organisationIdentifier", "value": organisation_id},
                 {"key": "serviceIdentifier", "value": service_id},
             ],
@@ -330,6 +376,8 @@ class DVLAClient:
             "target": callback_url,
             "retryParams": {"enabled": True, "maxRetryWindow": 10800},
         }
+
+        json_payload["fileParams"] = [{"fileId": notification_id, "uploadId": upload_id}]
 
         # `despatchMethod` should not be added for second class letters
         if postage == FIRST_CLASS:
