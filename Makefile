@@ -10,6 +10,8 @@ GIT_COMMIT ?= $(shell git rev-parse HEAD)
 VIRTUALENV_ROOT := $(shell [ -z $$VIRTUAL_ENV ] && echo $$(pwd)/venv || echo $$VIRTUAL_ENV)
 PYTHON_EXECUTABLE_PREFIX := $(shell test -d "$${VIRTUALENV_ROOT}" && echo "$${VIRTUALENV_ROOT}/bin/" || echo "")
 
+EXCLUDE_REQUIREMENTS_NEWER_THAN_DAYS ?= 30
+
 
 ## DEVELOPMENT
 
@@ -101,7 +103,7 @@ lint: ## Run static type checks
 
 .PHONY: refreeze-requirements
 refreeze-requirements: ## Upgrade unpinned requirements
-	EXTRA_UV_PIP_COMPILE_FLAGS="--upgrade --exclude-newer 30d" make freeze-requirements
+	EXTRA_UV_PIP_COMPILE_FLAGS="--upgrade --exclude-newer $(EXCLUDE_REQUIREMENTS_NEWER_THAN_DAYS)d" make freeze-requirements
 
 .PHONY: freeze-requirements
 freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt
