@@ -31,6 +31,25 @@ from app.clients.letter.dvla import (
 
 
 @pytest.fixture
+def mock_get_presigned_url(rmock):
+    return rmock.get(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/files/upload-url",
+        json={"uploadId": "upload_id", "uploadUrl": "https://s3bucketaddress/upload_id"},
+        status_code=200,
+    )
+
+
+@pytest.fixture
+def mock_upload_file(rmock):
+    return rmock.put("https://s3bucketaddress/upload_id", status_code=200)
+
+
+@pytest.fixture
+def mock_create_print_request(rmock):
+    return rmock.post(f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs", status_code=202)
+
+
+@pytest.fixture
 def ssm():
     with mock_aws():
         ssm_client = boto3.client("ssm", "eu-west-1")
@@ -420,7 +439,7 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
         postage="second",
         service_id="my_service_id",
         organisation_id="my_organisation_id",
-        pdf_file=b"pdf_content",
+        upload_id="my_upload_id",
         callback_url="/my-callback",
     )
 
@@ -435,10 +454,10 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
         },
         "callbackParams": {"retryParams": {"enabled": True, "maxRetryWindow": 10800}, "target": "/my-callback"},
         "customParams": [
-            {"key": "pdfContent", "value": "cGRmX2NvbnRlbnQ="},
             {"key": "organisationIdentifier", "value": "my_organisation_id"},
             {"key": "serviceIdentifier", "value": "my_service_id"},
         ],
+        "fileParams": [{"fileId": "my_notification_id", "uploadId": "my_upload_id"}],
     }
 
 
@@ -450,7 +469,7 @@ def test_format_create_print_job_json_adds_callback_key_if_url_provided(dvla_cli
         postage="second",
         service_id="my_service_id",
         organisation_id="my_organisation_id",
-        pdf_file=b"pdf_content",
+        upload_id="my_upload_id",
         callback_url="https://www.example.com?token=1234",
     )
 
@@ -468,11 +487,26 @@ def test_format_create_print_job_json_adds_despatchMethod_key_for_first_class_po
         postage="first",
         service_id="my_service_id",
         organisation_id="my_organisation_id",
-        pdf_file=b"pdf_content",
+        upload_id="my_upload_id",
         callback_url="/my-callback",
     )
 
     assert formatted_json["standardParams"]["despatchMethod"] == "FIRST"
+
+
+def test_format_create_print_job_json_adds_despatchMethod_key_for_economy_class_post(dvla_client):
+    formatted_json = dvla_client._format_create_print_job_json(
+        notification_id="my_notification_id",
+        reference="ABCDEFGHIJKL",
+        address=PostalAddress("A. User\nThe road\nCity\nSW1 1AA"),
+        postage="economy",
+        service_id="my_service_id",
+        organisation_id="my_organisation_id",
+        upload_id="my_upload_id",
+        callback_url="/my-callback",
+    )
+
+    assert formatted_json["standardParams"]["despatchMethod"] == "ECONOMY"
 
 
 @pytest.mark.parametrize(
@@ -509,7 +543,7 @@ def test_format_create_print_job_json_formats_address_lines(dvla_client, address
         postage="first",
         service_id="my_service_id",
         organisation_id="my_organisation_id",
-        pdf_file=b"pdf_content",
+        upload_id="my_upload_id",
         callback_url="/my-callback",
     )
 
@@ -528,7 +562,7 @@ def test_format_create_print_job_json_formats_international_address_lines(dvla_c
         postage="europe",
         service_id="my_service_id",
         organisation_id="my_organisation_id",
-        pdf_file=b"pdf_content",
+        upload_id="my_upload_id",
         callback_url="/my-callback",
     )
 
@@ -536,7 +570,7 @@ def test_format_create_print_job_json_formats_international_address_lines(dvla_c
     assert formatted_json["standardParams"]["address"]["internationalAddress"] == expected_address
 
 
-def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
+def test_send_domestic_letter(dvla_client, dvla_authenticate, mock_get_presigned_url, mock_upload_file, rmock):
     print_mock = rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         json={"id": "noti_id"},
@@ -556,6 +590,15 @@ def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
 
     assert response == {"id": "noti_id"}
 
+    presigned_url_headers = mock_get_presigned_url.last_request.headers
+    assert mock_get_presigned_url.called_once is True
+    assert presigned_url_headers["Accept"] == "application/json"
+    assert presigned_url_headers["X-API-Key"] == "some api key"
+    assert presigned_url_headers["Authorization"]
+
+    assert mock_upload_file.last_request.body == b"pdf"
+    assert mock_upload_file.last_request.headers["Content-Type"] == "application/pdf"
+
     assert print_mock.last_request.json() == {
         "id": "noti_id",
         "standardParams": {
@@ -566,7 +609,6 @@ def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
             "address": {"unstructuredAddress": {"line1": "city", "postcode": "postcode"}},
         },
         "customParams": [
-            {"key": "pdfContent", "value": "cGRm"},
             {"key": "organisationIdentifier", "value": "org_id"},
             {"key": "serviceIdentifier", "value": "service_id"},
         ],
@@ -574,6 +616,7 @@ def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
             "target": "https://www.example.com?token=1234",
             "retryParams": {"enabled": True, "maxRetryWindow": 10800},
         },
+        "fileParams": [{"fileId": "noti_id", "uploadId": "upload_id"}],
     }
 
     request_headers = print_mock.last_request.headers
@@ -587,7 +630,9 @@ def test_send_domestic_letter(dvla_client, dvla_authenticate, rmock):
 @pytest.mark.parametrize(
     "postage, despatch_method", (("europe", "INTERNATIONAL_EU"), ("rest-of-world", "INTERNATIONAL_ROW"))
 )
-def test_send_international_letter(dvla_client, dvla_authenticate, postage, despatch_method, rmock):
+def test_send_international_letter(
+    dvla_client, dvla_authenticate, postage, despatch_method, mock_get_presigned_url, mock_upload_file, rmock
+):
     print_mock = rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         json={"id": "noti_id"},
@@ -607,6 +652,15 @@ def test_send_international_letter(dvla_client, dvla_authenticate, postage, desp
 
     assert response == {"id": "noti_id"}
 
+    presigned_url_headers = mock_get_presigned_url.last_request.headers
+    assert mock_get_presigned_url.called_once is True
+    assert presigned_url_headers["Accept"] == "application/json"
+    assert presigned_url_headers["X-API-Key"] == "some api key"
+    assert presigned_url_headers["Authorization"]
+
+    assert mock_upload_file.last_request.body == b"pdf"
+    assert mock_upload_file.last_request.headers["Content-Type"] == "application/pdf"
+
     assert print_mock.last_request.json() == {
         "id": "noti_id",
         "standardParams": {
@@ -619,14 +673,14 @@ def test_send_international_letter(dvla_client, dvla_authenticate, postage, desp
         },
         "callbackParams": {"retryParams": {"enabled": True, "maxRetryWindow": 10800}, "target": "/my-callback"},
         "customParams": [
-            {"key": "pdfContent", "value": "cGRm"},
             {"key": "organisationIdentifier", "value": "org_id"},
             {"key": "serviceIdentifier", "value": "service_id"},
         ],
+        "fileParams": [{"fileId": "noti_id", "uploadId": "upload_id"}],
     }
 
 
-def test_send_bfpo_letter(dvla_client, dvla_authenticate, rmock):
+def test_send_bfpo_letter(dvla_client, dvla_authenticate, mock_get_presigned_url, mock_upload_file, rmock):
     print_mock = rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         json={"id": "noti_id"},
@@ -646,6 +700,15 @@ def test_send_bfpo_letter(dvla_client, dvla_authenticate, rmock):
 
     assert response == {"id": "noti_id"}
 
+    presigned_url_headers = mock_get_presigned_url.last_request.headers
+    assert mock_get_presigned_url.called_once is True
+    assert presigned_url_headers["Accept"] == "application/json"
+    assert presigned_url_headers["X-API-Key"] == "some api key"
+    assert presigned_url_headers["Authorization"]
+
+    assert mock_upload_file.last_request.body == b"pdf"
+    assert mock_upload_file.last_request.headers["Content-Type"] == "application/pdf"
+
     assert print_mock.last_request.json() == {
         "id": "noti_id",
         "standardParams": {
@@ -657,14 +720,299 @@ def test_send_bfpo_letter(dvla_client, dvla_authenticate, rmock):
         },
         "callbackParams": {"retryParams": {"enabled": True, "maxRetryWindow": 10800}, "target": "/my-callback"},
         "customParams": [
-            {"key": "pdfContent", "value": "cGRm"},
             {"key": "organisationIdentifier", "value": "org_id"},
             {"key": "serviceIdentifier", "value": "service_id"},
         ],
+        "fileParams": [{"fileId": "noti_id", "uploadId": "upload_id"}],
     }
 
 
-def test_send_letter_when_bad_request_error_is_raised(dvla_authenticate, dvla_client, rmock):
+def test_send_letter_when_bad_request_error_is_raised_getting_upload_url(
+    dvla_authenticate, dvla_client, mock_upload_file, mock_create_print_request, rmock
+):
+    rmock.get(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/files/upload-url",
+        json={
+            "errors": [
+                {
+                    "status": "400 BAD_REQUEST",
+                    "code": "NotNull",
+                    "detail": "Bad request.",
+                },
+            ]
+        },
+        status_code=400,
+    )
+
+    with pytest.raises(DvlaNonRetryableException) as exc:
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+    assert "Bad request." in str(exc.value)
+    assert mock_upload_file.called is False
+    assert mock_create_print_request.called is False
+
+
+@pytest.mark.parametrize("status_code", [401, 403])
+def test_send_letter_when_auth_error_is_raised_getting_upload_url(
+    dvla_authenticate, dvla_client, mock_upload_file, mock_create_print_request, rmock, status_code
+):
+    rmock.get(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/files/upload-url",
+        json={
+            "errors": [
+                {
+                    "status": f"{status_code}",
+                    "code": "Unauthorized",
+                    "detail": "API Key or JWT is either not provided, expired or invalid",
+                }
+            ]
+        },
+        status_code=status_code,
+    )
+
+    assert dvla_client.dvla_api_key.get() == "some api key"
+
+    with pytest.raises(DvlaUnauthorisedRequestException) as exc:
+        dvla_client.send_letter(
+            notification_id="noti_id",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+
+    # make sure we clear down the api key
+    assert dvla_client.dvla_api_key._value is None
+
+    assert "API Key or JWT is either not provided, expired or invalid" in str(exc.value)
+    assert mock_upload_file.called is False
+    assert mock_create_print_request.called is False
+
+
+def test_send_letter_when_throttling_error_is_raised_getting_upload_url(
+    dvla_authenticate, dvla_client, mock_upload_file, mock_create_print_request, rmock
+):
+    rmock.get(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/files/upload-url",
+        json={
+            "errors": [
+                {
+                    "status": "429",
+                    "title": "Too Many Requests",
+                    "detail": "Too Many Requests",
+                }
+            ]
+        },
+        status_code=429,
+    )
+
+    with pytest.raises(DvlaThrottlingException):
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+    assert mock_upload_file.called is False
+    assert mock_create_print_request.called is False
+
+
+def test_send_letter_when_5xx_status_code_is_returned_getting_upload_url(
+    dvla_authenticate, dvla_client, mock_upload_file, mock_create_print_request, rmock
+):
+    url = f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/files/upload-url"
+    rmock.get(
+        url,
+        json={
+            "errors": [
+                {
+                    "status": "500 INTERNAL_SERVER_ERROR",
+                    "code": "2",
+                    "detail": "An unexpected exception was raised by the service with Error Id: 16",
+                }
+            ]
+        },
+        status_code=500,
+    )
+
+    with pytest.raises(DvlaRetryableException) as exc:
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+    assert str(exc.value) == f"Received 500 from {url}"
+    assert mock_upload_file.called is False
+    assert mock_create_print_request.called is False
+
+
+@pytest.mark.parametrize(
+    "exc_type", [ConnectionResetError, requests.exceptions.SSLError, requests.exceptions.ConnectTimeout]
+)
+def test_send_letter_when_connection_error_is_returned_getting_upload_url(
+    dvla_authenticate,
+    dvla_client,
+    mock_upload_file,
+    mock_create_print_request,
+    rmock,
+    exc_type,
+):
+    rmock.get(f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/files/upload-url", exc=exc_type)
+
+    with pytest.raises(DvlaRetryableException):
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+
+    assert mock_upload_file.called is False
+    assert mock_create_print_request.called is False
+
+
+def test_send_letter_when_unknown_exception_is_raised_getting_upload_url(
+    dvla_authenticate, dvla_client, mock_upload_file, mock_create_print_request, rmock
+):
+    rmock.get(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/files/upload-url",
+        status_code=418,
+    )
+
+    with pytest.raises(DvlaNonRetryableException):
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+
+    assert mock_upload_file.called is False
+    assert mock_create_print_request.called is False
+
+
+def test_send_letter_when_429_error_is_raised_uploading_file_in_s3(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_create_print_request, rmock
+):
+    # If rate limited by AWS, the status code should be a 503, which will be retried. However, since we're making use of
+    # error handling includes handling for 429s, this tests that logic anyway
+    rmock.put("https://s3bucketaddress/upload_id", status_code=429)
+
+    with pytest.raises(DvlaThrottlingException):
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+
+    assert mock_create_print_request.called is False
+
+
+def test_send_letter_when_5xx_status_code_is_returned_uploading_file_in_s3(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_create_print_request, rmock
+):
+    url = "https://s3bucketaddress/upload_id"
+    rmock.put(url, status_code=503)
+
+    with pytest.raises(DvlaRetryableException) as exc:
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+    assert str(exc.value) == f"Received 503 from {url}"
+    assert mock_create_print_request.called is False
+
+
+@pytest.mark.parametrize(
+    "exc_type", [ConnectionResetError, requests.exceptions.SSLError, requests.exceptions.ConnectTimeout]
+)
+def test_send_letter_when_connection_error_is_returned_uploading_file_in_s3(
+    dvla_authenticate,
+    dvla_client,
+    mock_get_presigned_url,
+    mock_create_print_request,
+    rmock,
+    exc_type,
+):
+    rmock.put("https://s3bucketaddress/upload_id", exc=exc_type)
+
+    with pytest.raises(DvlaRetryableException):
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+
+    assert mock_create_print_request.called is False
+
+
+def test_send_letter_when_unknown_exception_is_raised_uploading_file_in_s3(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_create_print_request, rmock
+):
+    rmock.put("https://s3bucketaddress/upload_id", status_code=418)
+
+    with pytest.raises(DvlaNonRetryableException):
+        dvla_client.send_letter(
+            notification_id="1",
+            reference="ABCDEFGHIJKL",
+            address=PostalAddress("line\nline2\npostcode"),
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+            callback_url="/my-callback",
+        )
+
+    assert mock_create_print_request.called is False
+
+
+def test_send_letter_when_bad_request_error_is_raised_posting_letter_data(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_upload_file, rmock
+):
     rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         json={
@@ -702,7 +1050,9 @@ def test_send_letter_when_bad_request_error_is_raised(dvla_authenticate, dvla_cl
 
 
 @pytest.mark.parametrize("status_code", [401, 403])
-def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, rmock, status_code):
+def test_send_letter_when_auth_error_is_raised_posting_letter_data(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_upload_file, rmock, status_code
+):
     rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         json={
@@ -736,7 +1086,9 @@ def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, r
     assert "API Key or JWT is either not provided, expired or invalid" in str(exc.value)
 
 
-def test_send_letter_when_conflict_error_is_raised(dvla_authenticate, dvla_client, rmock):
+def test_send_letter_when_conflict_error_is_raised_posting_letter_data(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_upload_file, rmock
+):
     rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         json={
@@ -769,7 +1121,9 @@ def test_send_letter_when_conflict_error_is_raised(dvla_authenticate, dvla_clien
     assert "The supplied identifier 1 conflicts with another print job" in str(exc.value)
 
 
-def test_send_letter_when_throttling_error_is_raised(dvla_authenticate, dvla_client, rmock):
+def test_send_letter_when_throttling_error_is_raised_posting_letter_data(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_upload_file, rmock
+):
     rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         json={
@@ -797,7 +1151,9 @@ def test_send_letter_when_throttling_error_is_raised(dvla_authenticate, dvla_cli
         )
 
 
-def test_send_letter_when_5xx_status_code_is_returned(dvla_authenticate, dvla_client, rmock):
+def test_send_letter_when_5xx_status_code_is_returned_posting_letter_data(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_upload_file, rmock
+):
     url = f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs"
     rmock.post(url, status_code=500)
 
@@ -818,7 +1174,14 @@ def test_send_letter_when_5xx_status_code_is_returned(dvla_authenticate, dvla_cl
 @pytest.mark.parametrize(
     "exc_type", [ConnectionResetError, requests.exceptions.SSLError, requests.exceptions.ConnectTimeout]
 )
-def test_send_letter_when_connection_error_is_returned(dvla_authenticate, dvla_client, rmock, exc_type):
+def test_send_letter_when_connection_error_is_returned_posting_letter_data(
+    dvla_authenticate,
+    dvla_client,
+    mock_get_presigned_url,
+    mock_upload_file,
+    rmock,
+    exc_type,
+):
     rmock.post(f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs", exc=exc_type)
 
     with pytest.raises(DvlaRetryableException):
@@ -834,7 +1197,9 @@ def test_send_letter_when_connection_error_is_returned(dvla_authenticate, dvla_c
         )
 
 
-def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_client, rmock):
+def test_send_letter_when_unknown_exception_is_raised_posting_letter_data(
+    dvla_authenticate, dvla_client, mock_get_presigned_url, mock_upload_file, rmock
+):
     rmock.post(
         f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
         status_code=418,
@@ -1021,18 +1386,3 @@ class TestDVLAApiClientRestrictedCiphers:
                 )
 
         assert "alert handshake failure" in str(e.value)
-
-
-def test_format_create_print_job_json_adds_despatchMethod_key_for_economy_class_post(dvla_client):
-    formatted_json = dvla_client._format_create_print_job_json(
-        notification_id="my_notification_id",
-        reference="ABCDEFGHIJKL",
-        address=PostalAddress("A. User\nThe road\nCity\nSW1 1AA"),
-        postage="economy",
-        service_id="my_service_id",
-        organisation_id="my_organisation_id",
-        pdf_file=b"pdf_content",
-        callback_url="/my-callback",
-    )
-
-    assert formatted_json["standardParams"]["despatchMethod"] == "ECONOMY"
