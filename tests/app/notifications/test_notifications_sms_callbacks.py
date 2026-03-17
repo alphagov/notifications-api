@@ -51,6 +51,7 @@ def test_firetext_callback_should_return_400_if_no_status(client):
     assert json_resp["message"] == ["Firetext callback failed: status missing"]
 
 
+@freeze_time("2016-03-10 15:02:08.1")
 def test_firetext_callback_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
     mock_celery = mock_celery_task(process_sms_client_response)
 
@@ -61,11 +62,44 @@ def test_firetext_callback_should_return_200_and_call_task_with_valid_data(clien
     assert json_resp["result"] == "success"
 
     mock_celery.assert_called_once_with(
-        ["0", "notification_id", "Firetext", None],
+        ["0", "notification_id", "Firetext", None, "2016-03-10T14:17:00", "2016-03-10T15:02:08.100000"],
         queue="sms-callbacks",
     )
 
 
+@freeze_time("2016-03-10 15:02:08.1")
+def test_firetext_callback_should_return_200_and_call_task_with_invalid_time(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
+
+    data = "mobile=441234123123&status=0&time=bananas&reference=notification_id"
+    response = firetext_post(client, data)
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert json_resp["result"] == "success"
+
+    mock_celery.assert_called_once_with(
+        ["0", "notification_id", "Firetext", None, None, "2016-03-10T15:02:08.100000"],
+        queue="sms-callbacks",
+    )
+
+
+@freeze_time("2016-03-10 15:02:08.1")
+def test_firetext_callback_should_return_200_and_call_task_with_missing_time(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
+
+    data = "mobile=441234123123&status=0&reference=notification_id"
+    response = firetext_post(client, data)
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert json_resp["result"] == "success"
+
+    mock_celery.assert_called_once_with(
+        ["0", "notification_id", "Firetext", None, None, "2016-03-10T15:02:08.100000"],
+        queue="sms-callbacks",
+    )
+
+
+@freeze_time("2016-03-10 15:02:08.1")
 def test_firetext_callback_including_a_code_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
     mock_celery = mock_celery_task(process_sms_client_response)
 
@@ -76,7 +110,7 @@ def test_firetext_callback_including_a_code_should_return_200_and_call_task_with
     assert json_resp["result"] == "success"
 
     mock_celery.assert_called_once_with(
-        ["1", "notification_id", "Firetext", "101"],
+        ["1", "notification_id", "Firetext", "101", "2016-03-10T14:17:00", "2016-03-10T15:02:08.100000"],
         queue="sms-callbacks",
     )
 
