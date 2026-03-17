@@ -1,4 +1,5 @@
 from flask import json
+from freezegun import freeze_time
 
 from app.celery.process_sms_client_response_tasks import process_sms_client_response
 from app.notifications.notifications_sms_callback import validate_callback_data
@@ -116,6 +117,7 @@ def test_process_mmg_response_returns_400_for_malformed_data(client):
     assert "{} callback failed: {} missing".format("MMG", "CID") in json_data["message"]
 
 
+@freeze_time("2016-04-05 16:02:08.1")
 def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
     mock_celery = mock_celery_task(process_sms_client_response)
     data = json.dumps(
@@ -136,7 +138,58 @@ def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mo
     assert json_data["result"] == "success"
 
     mock_celery.assert_called_once_with(
-        ["3", "notification_id", "MMG", "5"],
+        ["3", "notification_id", "MMG", "5", "2016-04-05T16:01:07", "2016-04-05T16:02:08.100000"],
+        queue="sms-callbacks",
+    )
+
+
+@freeze_time("2016-04-05 16:02:08.1")
+def test_mmg_callback_should_return_200_and_call_task_with_invalid_deliverytime(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
+    data = json.dumps(
+        {
+            "reference": "mmg_reference",
+            "CID": "notification_id",
+            "MSISDN": "447777349060",
+            "status": "3",
+            "substatus": "5",
+            "deliverytime": "bananas",
+        }
+    )
+
+    response = mmg_post(client, data)
+
+    assert response.status_code == 200
+    json_data = json.loads(response.data)
+    assert json_data["result"] == "success"
+
+    mock_celery.assert_called_once_with(
+        ["3", "notification_id", "MMG", "5", None, "2016-04-05T16:02:08.100000"],
+        queue="sms-callbacks",
+    )
+
+
+@freeze_time("2016-04-05 16:02:08.1")
+def test_mmg_callback_should_return_200_and_call_task_with_missing_deliverytime(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
+    data = json.dumps(
+        {
+            "reference": "mmg_reference",
+            "CID": "notification_id",
+            "MSISDN": "447777349060",
+            "status": "3",
+            "substatus": "5",
+        }
+    )
+
+    response = mmg_post(client, data)
+
+    assert response.status_code == 200
+    json_data = json.loads(response.data)
+    assert json_data["result"] == "success"
+
+    mock_celery.assert_called_once_with(
+        ["3", "notification_id", "MMG", "5", None, "2016-04-05T16:02:08.100000"],
         queue="sms-callbacks",
     )
 
