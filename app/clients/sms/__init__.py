@@ -45,8 +45,11 @@ class SmsClient(Client):
                     **adapter.poolmanager.connection_pool_kw,
                 }
 
-    def record_outcome(self, success):
-        if success:
+    def send_sms(self, to, content, reference, international, sender):
+        start_time = monotonic()
+
+        try:
+            response = self.try_send_sms(to, content, reference, international, sender)
             self.current_app.logger.info(
                 "Provider request for %s succeeded",
                 self.name,
@@ -55,7 +58,7 @@ class SmsClient(Client):
                 },
             )
             self.statsd_client.incr(f"clients.{self.name}.success")
-        else:
+        except SmsClientResponseException as e:
             self.statsd_client.incr(f"clients.{self.name}.error")
             self.current_app.logger.warning(
                 "Provider request for %s failed",
@@ -64,15 +67,6 @@ class SmsClient(Client):
                     "provider_name": self.name,
                 },
             )
-
-    def send_sms(self, to, content, reference, international, sender):
-        start_time = monotonic()
-
-        try:
-            response = self.try_send_sms(to, content, reference, international, sender)
-            self.record_outcome(True)
-        except SmsClientResponseException as e:
-            self.record_outcome(False)
             raise e
         finally:
             elapsed_time = monotonic() - start_time
