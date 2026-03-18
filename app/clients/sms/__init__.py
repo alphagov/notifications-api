@@ -47,40 +47,30 @@ class SmsClient(Client):
 
     def send_sms(self, to, content, reference, international, sender):
         start_time = monotonic()
+        status = "succeeded"
 
         try:
             response = self.try_send_sms(to, content, reference, international, sender)
-            self.current_app.logger.info(
-                "Provider request for %s succeeded",
-                self.name,
-                extra={
-                    "provider_name": self.name,
-                },
-            )
             self.statsd_client.incr(f"clients.{self.name}.success")
         except SmsClientResponseException as e:
+            status = "failed"
             self.statsd_client.incr(f"clients.{self.name}.error")
-            self.current_app.logger.warning(
-                "Provider request for %s failed",
-                self.name,
-                extra={
-                    "provider_name": self.name,
-                },
-            )
             raise e
         finally:
             elapsed_time = monotonic() - start_time
             self.statsd_client.timing(f"clients.{self.name}.request-time", elapsed_time)
             self.current_app.logger.info(
-                "%s request for %s finished in %.4g",
+                "Provider %s request for %s %s in %.4g",
                 self.name,
                 reference,
+                status,
                 elapsed_time,
                 extra={
                     "provider_name": self.name,
                     # for SMS, we happen to use the notification id as the "reference" for the provider
                     "notification_id": reference,
                     "duration": elapsed_time,
+                    "status": status,
                 },
             )
 
