@@ -12,6 +12,7 @@ from app.constants import (
     INBOUND_SMS_TYPE,
     SECOND_CLASS,
     SEND_EMAILS,
+    SEND_FILES_VIA_UI,
     SEND_LETTERS,
     SEND_TEXTS,
     VIEW_ACTIVITY,
@@ -732,7 +733,7 @@ def _create_service_email_reply_to(service_id, email_address, is_default):
 
 def _create_service_permissions(service_id, permissions=None):
     if permissions is None:
-        permissions = [EDIT_FOLDER_PERMISSIONS, INBOUND_SMS_TYPE, EMAIL_AUTH]
+        permissions = [EDIT_FOLDER_PERMISSIONS, INBOUND_SMS_TYPE, EMAIL_AUTH, SEND_FILES_VIA_UI]
 
     service_permissions = dao_fetch_service_permissions(service_id)
 
