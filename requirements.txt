@@ -158,7 +158,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@900cb380b9f92b23886586207f44c99893d2b56b
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@70e245b5bdd9234ddd8f1f1adbee3401ed1909cf
     # via -r requirements.in
 opentelemetry-api==1.40.0
     # via
