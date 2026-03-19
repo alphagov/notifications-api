@@ -39,6 +39,7 @@ from app.dao.notifications_dao import (
     dao_get_unknown_references,
     dao_update_notifications_by_reference,
     get_notification_by_id,
+    get_notification_by_job_and_job_row_number,
 )
 from app.dao.report_requests_dao import dao_get_report_request_by_id, dao_update_report_request
 from app.dao.returned_letters_dao import _get_notification_ids_for_references, insert_returned_letters
@@ -513,12 +514,16 @@ def save_letter(
 
 
 def handle_exception(task, notification, notification_id, exc):
-    if not get_notification_by_id(notification_id):
+    job_id = notification.get("job", None)
+    job_row_number = notification.get("row_number", None)
+    if not get_notification_by_id(notification_id) and not get_notification_by_job_and_job_row_number(
+        job_id, job_row_number
+    ):
         extra = {
             "notification_id": notification_id,
             "celery_task": task.name,
-            "job_id": notification.get("job", None),
-            "job_row_number": notification.get("row_number", None),
+            "job_id": job_id,
+            "job_row_number": job_row_number,
         }
         base_msg = (
             "task %(celery_task)s notification for job %(job_id)s row number %(job_row_number)s "
