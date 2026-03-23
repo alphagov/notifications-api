@@ -174,6 +174,7 @@ def create_nightly_notification_status():
                         "service_id": service_id,
                     },
                     queue=QueueNames.REPORTING,
+                    MessageGroupId=str(service_id),
                 )
 
 

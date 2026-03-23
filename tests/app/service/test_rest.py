@@ -2598,7 +2598,11 @@ def test_verify_reply_to_email_address_should_send_verification_email(
     notification = Notification.query.first()
     assert notification.template_id == verify_reply_to_address_email_template.id
     assert response["data"] == {"id": str(notification.id)}
-    mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
+    mocked.assert_called_once_with(
+        [str(notification.id)],
+        queue="notify-internal-tasks",
+        MessageGroupId=str(notification.service_id),
+    )
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
@@ -4594,7 +4598,11 @@ def test_update_service_join_request_by_id_notification_sent(
     )
 
     notification = Notification.query.first()
-    mock_deliver_email_task.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mock_deliver_email_task.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify-internal-tasks",
+        MessageGroupId=str(notification.service_id),
+    )
 
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
     assert notification.to == f"{requester_id}@digital.cabinet-office.gov.uk"
@@ -4640,7 +4648,11 @@ def test_update_service_join_request_get_template(
     )
 
     notification = Notification.query.first()
-    mock_deliver_email_task.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    mock_deliver_email_task.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify-internal-tasks",
+        MessageGroupId=str(notification.service_id),
+    )
 
     assert notification.template.version == template.version
     assert notification.template_id == template.id
@@ -4786,6 +4798,7 @@ def test_create_report_request_by_type(
             "service_id": sample_service.id,
         },
         queue="report-requests-notifications-tasks",
+        MessageGroupId=str(sample_service.id),
     )
 
     assert json_resp["data"]["id"]
@@ -4869,6 +4882,7 @@ def test_create_report_request_by_type_creates_new_when_no_existing(admin_reques
             "service_id": sample_service.id,
         },
         queue="report-requests-notifications-tasks",
+        MessageGroupId=str(sample_service.id),
     )
 
 
@@ -4917,4 +4931,5 @@ def test_create_report_request_by_type_creates_new_if_existing_is_stale(
             "service_id": sample_service.id,
         },
         queue="report-requests-notifications-tasks",
+        MessageGroupId=str(sample_service.id),
     )
