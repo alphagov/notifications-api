@@ -237,7 +237,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@70e245b5bdd9234ddd8f1f1adbee3401ed1909cf
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@417ef9217b11dab90bf6c5e7f25bf5dd84094f59
     # via -r requirements.txt
 opentelemetry-api==1.40.0
     # via
@@ -247,6 +247,27 @@ opentelemetry-api==1.40.0
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-asyncio
+    #   opentelemetry-instrumentation-boto3sqs
+    #   opentelemetry-instrumentation-botocore
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-instrumentation-click
+    #   opentelemetry-instrumentation-dbapi
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-grpc
+    #   opentelemetry-instrumentation-jinja2
+    #   opentelemetry-instrumentation-logging
+    #   opentelemetry-instrumentation-psycopg2
+    #   opentelemetry-instrumentation-redis
+    #   opentelemetry-instrumentation-requests
+    #   opentelemetry-instrumentation-sqlalchemy
+    #   opentelemetry-instrumentation-sqlite3
+    #   opentelemetry-instrumentation-system-metrics
+    #   opentelemetry-instrumentation-threading
+    #   opentelemetry-instrumentation-urllib
+    #   opentelemetry-instrumentation-urllib3
+    #   opentelemetry-instrumentation-wsgi
+    #   opentelemetry-propagator-aws-xray
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
 opentelemetry-distro==0.61b0
@@ -270,6 +291,75 @@ opentelemetry-instrumentation==0.61b0
     # via
     #   -r requirements.txt
     #   opentelemetry-distro
+    #   opentelemetry-instrumentation-asyncio
+    #   opentelemetry-instrumentation-boto3sqs
+    #   opentelemetry-instrumentation-botocore
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-instrumentation-click
+    #   opentelemetry-instrumentation-dbapi
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-grpc
+    #   opentelemetry-instrumentation-jinja2
+    #   opentelemetry-instrumentation-logging
+    #   opentelemetry-instrumentation-psycopg2
+    #   opentelemetry-instrumentation-redis
+    #   opentelemetry-instrumentation-requests
+    #   opentelemetry-instrumentation-sqlalchemy
+    #   opentelemetry-instrumentation-sqlite3
+    #   opentelemetry-instrumentation-system-metrics
+    #   opentelemetry-instrumentation-threading
+    #   opentelemetry-instrumentation-urllib
+    #   opentelemetry-instrumentation-urllib3
+    #   opentelemetry-instrumentation-wsgi
+opentelemetry-instrumentation-asyncio==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-boto3sqs==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-botocore==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-celery==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-click==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-dbapi==0.61b0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-psycopg2
+    #   opentelemetry-instrumentation-sqlite3
+opentelemetry-instrumentation-flask==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-grpc==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-jinja2==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-logging==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-psycopg2==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-redis==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-requests==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-sqlalchemy==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-sqlite3==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-system-metrics==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-threading==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-urllib==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-urllib3==0.61b0
+    # via -r requirements.txt
+opentelemetry-instrumentation-wsgi==0.61b0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-flask
+opentelemetry-propagator-aws-xray==1.0.2
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-botocore
 opentelemetry-proto==1.40.0
     # via
     #   -r requirements.txt
@@ -286,7 +376,29 @@ opentelemetry-semantic-conventions==0.61b0
     # via
     #   -r requirements.txt
     #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-asyncio
+    #   opentelemetry-instrumentation-boto3sqs
+    #   opentelemetry-instrumentation-botocore
+    #   opentelemetry-instrumentation-celery
+    #   opentelemetry-instrumentation-click
+    #   opentelemetry-instrumentation-dbapi
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-grpc
+    #   opentelemetry-instrumentation-redis
+    #   opentelemetry-instrumentation-requests
+    #   opentelemetry-instrumentation-sqlalchemy
+    #   opentelemetry-instrumentation-urllib
+    #   opentelemetry-instrumentation-urllib3
+    #   opentelemetry-instrumentation-wsgi
     #   opentelemetry-sdk
+opentelemetry-util-http==0.61b0
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-requests
+    #   opentelemetry-instrumentation-urllib
+    #   opentelemetry-instrumentation-urllib3
+    #   opentelemetry-instrumentation-wsgi
 ordered-set==4.1.0
     # via
     #   -r requirements.txt
@@ -298,6 +410,8 @@ packaging==26.0
     #   kombu
     #   marshmallow
     #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-flask
+    #   opentelemetry-instrumentation-sqlalchemy
     #   pytest
 pathspec==1.0.4
     # via mypy
@@ -321,7 +435,9 @@ protobuf==6.33.5
     #   googleapis-common-protos
     #   opentelemetry-proto
 psutil==6.1.1
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   opentelemetry-instrumentation-system-metrics
 psycopg2-binary==2.9.10
     # via -r requirements.txt
 pycparser==3.0
@@ -512,6 +628,16 @@ wrapt==1.17.3
     # via
     #   -r requirements.txt
     #   opentelemetry-instrumentation
+    #   opentelemetry-instrumentation-asyncio
+    #   opentelemetry-instrumentation-boto3sqs
+    #   opentelemetry-instrumentation-click
+    #   opentelemetry-instrumentation-dbapi
+    #   opentelemetry-instrumentation-grpc
+    #   opentelemetry-instrumentation-jinja2
+    #   opentelemetry-instrumentation-redis
+    #   opentelemetry-instrumentation-sqlalchemy
+    #   opentelemetry-instrumentation-threading
+    #   opentelemetry-instrumentation-urllib3
 xmltodict==1.0.4
     # via moto
 zipp==3.23.0
