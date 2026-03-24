@@ -19,7 +19,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import Table, delete, func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db, notify_celery, statsd_client, zendesk_client
+from app import db, notify_celery, zendesk_client
 from app.aws import s3
 from app.config import QueueNames
 from app.constants import (
@@ -281,7 +281,6 @@ def timeout_notifications():
         notifications = dao_timeout_notifications(cutoff_time)
 
         for notification in notifications:
-            statsd_client.incr(f"timeout-sending.{notification.sent_by}")
             check_and_queue_callback_task(notification)
 
         extra = {"notification_count": len(notifications)}
