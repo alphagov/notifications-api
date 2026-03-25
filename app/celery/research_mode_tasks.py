@@ -47,7 +47,7 @@ def send_sms_response(provider, reference, to):
                 "mobile": to,
                 "status": "1",
                 "detailed_status_code": "102",
-                "time": "2016-03-10 14:17:00",
+                "time": datetime.utcnow().isoformat(" ", timespec="seconds"),
                 "reference": reference,
             }
 
@@ -184,7 +184,7 @@ def mmg_callback(notification_id, to):
             "CID": str(notification_id),
             "MSISDN": to,
             "status": status,
-            "deliverytime": "2016-04-05 16:01:07",
+            "deliverytime": datetime.utcnow().isoformat(" ", timespec="seconds"),
         }
     )
 
@@ -200,7 +200,12 @@ def firetext_callback(notification_id, to):
         status = "2"
     else:
         status = "0"
-    return {"mobile": to, "status": status, "time": "2016-03-10 14:17:00", "reference": notification_id}
+    return {
+        "mobile": to,
+        "status": status,
+        "time": datetime.utcnow().isoformat(" ", timespec="seconds"),
+        "reference": notification_id,
+    }
 
 
 @notify_celery.task(bind=True, name="create-fake-letter-callback", max_retries=3, default_retry_delay=60)
@@ -219,6 +224,7 @@ def create_fake_letter_callback(self, notification_id: uuid.UUID, billable_units
 
 
 def ses_notification_callback(reference):
+    uniform_timestamp = datetime.utcnow().isoformat() + "Z"
     ses_message_body = {
         "delivery": {
             "processingTimeMillis": 2003,
@@ -226,7 +232,7 @@ def ses_notification_callback(reference):
             "remoteMtaIp": "123.123.123.123",
             "reportingMTA": "a7-32.smtp-out.eu-west-1.amazonses.com",
             "smtpResponse": "250 2.6.0 Message received",
-            "timestamp": "2017-11-17T12:14:03.646Z",
+            "timestamp": uniform_timestamp,
         },
         "mail": {
             "commonHeaders": {
@@ -251,7 +257,7 @@ def ses_notification_callback(reference):
             "source": '"TEST" <TEST@notify.works>',
             "sourceArn": "arn:aws:ses:eu-west-1:12341234:identity/notify.works",
             "sourceIp": "0.0.0.1",
-            "timestamp": "2017-11-17T12:14:01.643Z",
+            "timestamp": uniform_timestamp,
         },
         "notificationType": "Delivery",
     }
@@ -262,7 +268,7 @@ def ses_notification_callback(reference):
         "TopicArn": "arn:aws:sns:eu-west-1:12341234:ses_notifications",
         "Subject": None,
         "Message": json.dumps(ses_message_body),
-        "Timestamp": "2017-11-17T12:14:03.710Z",
+        "Timestamp": uniform_timestamp,
         "SignatureVersion": "1",
         "Signature": "[REDACTED]",
         "SigningCertUrl": "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-[REDACTED].pem",
@@ -280,6 +286,7 @@ def ses_soft_bounce_callback(reference):
 
 
 def _ses_bounce_callback(reference, bounce_type):
+    uniform_timestamp = datetime.utcnow().isoformat() + "Z"
     ses_message_body = {
         "bounce": {
             "bounceSubType": "General",
@@ -295,7 +302,7 @@ def _ses_bounce_callback(reference, bounce_type):
             "feedbackId": "0102015fc9e676fb-12341234-1234-1234-1234-9301e86a4fa8-000000",
             "remoteMtaIp": "123.123.123.123",
             "reportingMTA": "dsn; a7-31.smtp-out.eu-west-1.amazonses.com",
-            "timestamp": "2017-11-17T12:14:05.131Z",
+            "timestamp": uniform_timestamp,
         },
         "mail": {
             "commonHeaders": {
@@ -320,7 +327,7 @@ def _ses_bounce_callback(reference, bounce_type):
             "source": '"TEST" <TEST@notify.works>',
             "sourceArn": "arn:aws:ses:eu-west-1:12341234:identity/notify.works",
             "sourceIp": "0.0.0.1",
-            "timestamp": "2017-11-17T12:14:03.000Z",
+            "timestamp": uniform_timestamp,
         },
         "notificationType": "Bounce",
     }
@@ -330,7 +337,7 @@ def _ses_bounce_callback(reference, bounce_type):
         "TopicArn": "arn:aws:sns:eu-west-1:12341234:ses_notifications",
         "Subject": None,
         "Message": json.dumps(ses_message_body),
-        "Timestamp": "2017-11-17T12:14:05.149Z",
+        "Timestamp": uniform_timestamp,
         "SignatureVersion": "1",
         "Signature": "[REDACTED]",
         "SigningCertUrl": "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-[REDACTED]].pem",

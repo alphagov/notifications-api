@@ -67,6 +67,7 @@ def test_make_firetext_callback(notify_api, rmock, phone_number, number_of_calls
         assert f"detailed_status_code={detailed_status_code}" in rmock.request_history[1].text
 
 
+@freeze_time("2017-11-17T12:14:03.646")
 def test_make_ses_callback(notify_api, mock_celery_task):
     mock_task = mock_celery_task(process_ses_results)
     some_ref = str(uuid.uuid4())
@@ -107,6 +108,7 @@ def test_temp_failure_mmg_callback(phone_number):
     assert data["CID"] == "1234"
 
 
+@freeze_time("2016-03-10T14:17:00")
 @pytest.mark.parametrize(
     "phone_number", ["07700900001", "+447700900001", "7700900001", "+44 7700900001", "+447700900256"]
 )
@@ -119,6 +121,7 @@ def test_delivered_firetext_callback(phone_number):
     }
 
 
+@freeze_time("2016-03-10T14:17:00")
 @pytest.mark.parametrize("phone_number", ["07700900002", "+447700900002", "7700900002", "+44 7700900002"])
 def test_failure_firetext_callback(phone_number):
     assert firetext_callback("1234", phone_number) == {
