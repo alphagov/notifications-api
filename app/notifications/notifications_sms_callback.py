@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Blueprint, json, jsonify, request
 
 from app.celery.process_sms_client_response_tasks import (
@@ -12,6 +14,7 @@ register_errors(sms_callback_blueprint)
 
 @sms_callback_blueprint.route("/mmg", methods=["POST"])
 def process_mmg_response():
+    uniform_now = datetime.utcnow()
     client_name = "MMG"
     data = json.loads(request.data)
     errors = validate_callback_data(data=data, fields=["status", "CID"], client_name=client_name)
@@ -23,8 +26,21 @@ def process_mmg_response():
 
     provider_reference = data.get("CID")
 
+    delivery_iso_timestamp = None
+    try:
+        delivery_iso_timestamp = datetime.fromisoformat(data.get("deliverytime") or "").isoformat()
+    except ValueError:
+        pass  # None it is, then
+
     process_sms_client_response.apply_async(
-        [status, provider_reference, client_name, detailed_status_code],
+        [
+            status,
+            provider_reference,
+            client_name,
+            detailed_status_code,
+            delivery_iso_timestamp,
+            uniform_now.isoformat(),
+        ],
         queue=QueueNames.SMS_CALLBACKS,
     )
 
@@ -33,6 +49,7 @@ def process_mmg_response():
 
 @sms_callback_blueprint.route("/firetext", methods=["POST"])
 def process_firetext_response():
+    uniform_now = datetime.utcnow()
     client_name = "Firetext"
     errors = validate_callback_data(data=request.form, fields=["status", "reference"], client_name=client_name)
     if errors:
@@ -42,8 +59,21 @@ def process_firetext_response():
     detailed_status_code = request.form.get("code")
     provider_reference = request.form.get("reference")
 
+    delivery_iso_timestamp = None
+    try:
+        delivery_iso_timestamp = datetime.fromisoformat(request.form.get("time") or "").isoformat()
+    except ValueError:
+        pass  # None it is, then
+
     process_sms_client_response.apply_async(
-        [status, provider_reference, client_name, detailed_status_code],
+        [
+            status,
+            provider_reference,
+            client_name,
+            detailed_status_code,
+            delivery_iso_timestamp,
+            uniform_now.isoformat(),
+        ],
         queue=QueueNames.SMS_CALLBACKS,
     )
 
