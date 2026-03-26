@@ -7,6 +7,7 @@ from notifications_utils.template import SMSMessageTemplate
 from sqlalchemy.exc import OperationalError
 
 from app import notify_celery, statsd_client
+from app.celery import notification_deliver_duration_histogram
 from app.clients import ClientException
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
@@ -122,11 +123,24 @@ def _process_for_status(notification_status, client_name, provider_reference, de
 
     statsd_client.incr(f"callback.{client_name.lower()}.{notification_status}")
 
+    # n.b. notification.sent_at should never be None here
     if notification.sent_at:
         statsd_client.timing_with_dates(
             f"callback.{client_name.lower()}.{notification_status}.elapsed-time",
             datetime.utcnow(),
             notification.sent_at,
+        )
+
+        notification_deliver_duration_histogram.record(
+            (datetime.utcnow() - notification.sent_at).total_seconds(),
+            {
+                "key.type": notification.key_type,
+                "notification.status": notification_status,
+                "notification.type": "sms",
+                "notification.sms.country_code": notification.phone_prefix,
+                "notification.sms.international": notification.international,
+                "provider.name": client_name.lower(),
+            },
         )
 
     if notification.billable_units == 0:

@@ -7,6 +7,7 @@ from flask import current_app, json
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery, statsd_client
+from app.celery import notification_deliver_duration_histogram
 from app.clients.email.aws_ses import get_aws_responses
 from app.config import QueueNames
 from app.constants import NOTIFICATION_PENDING, NOTIFICATION_SENDING
@@ -124,9 +125,20 @@ def process_ses_results(  # noqa: C901
 
         statsd_client.incr(f"callback.ses.{notification_status}")
 
+        # n.b. notification.sent_at should never be None here
         if notification.sent_at:
             statsd_client.timing_with_dates(
                 f"callback.ses.{notification_status}.elapsed-time", datetime.utcnow(), notification.sent_at
+            )
+
+            notification_deliver_duration_histogram.record(
+                (datetime.utcnow() - notification.sent_at).total_seconds(),
+                {
+                    "key.type": notification.key_type,
+                    "notification.status": notification_status,
+                    "notification.type": "email",
+                    "provider.name": "ses",
+                },
             )
 
         check_and_queue_callback_task(notification)

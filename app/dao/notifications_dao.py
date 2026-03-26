@@ -198,7 +198,9 @@ def _update_notification_status(notification, status, detailed_status_code=None)
 
 
 @autocommit
-def update_notification_status_by_id(notification_id, status, sent_by=None, detailed_status_code=None):
+def update_notification_status_by_id(
+    notification_id, status, sent_by=None, detailed_status_code=None
+) -> Notification | None:
     notification = Notification.query.with_for_update().filter(Notification.id == notification_id).first()
 
     if not notification:

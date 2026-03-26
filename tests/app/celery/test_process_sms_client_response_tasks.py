@@ -1,10 +1,11 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
 
 from app import statsd_client
+from app.celery import notification_deliver_duration_histogram
 from app.celery.process_sms_client_response_tasks import (
     process_sms_client_response,
 )
@@ -134,17 +135,30 @@ def test_sms_response_does_not_send_callback_if_notification_is_not_in_the_db(sa
 
 @freeze_time("2001-01-01T12:00:00")
 def test_process_sms_client_response_records_statsd_metrics(sample_notification, client, mocker):
+    record_mock = mocker.patch.object(notification_deliver_duration_histogram, "record")
     mocker.patch("app.statsd_client.incr")
     mocker.patch("app.statsd_client.timing_with_dates")
 
     sample_notification.status = "sending"
-    sample_notification.sent_at = datetime.utcnow()
+    sample_notification.sent_at = datetime.utcnow() - timedelta(seconds=5)
+    sample_notification.phone_prefix = "44"
 
     process_sms_client_response("0", str(sample_notification.id), "Firetext")
 
     statsd_client.incr.assert_any_call("callback.firetext.delivered")
     statsd_client.timing_with_dates.assert_any_call(
         "callback.firetext.delivered.elapsed-time", datetime.utcnow(), sample_notification.sent_at
+    )
+    record_mock.assert_called_once_with(
+        5.0,
+        {
+            "key.type": "normal",
+            "notification.status": "delivered",
+            "notification.type": "sms",
+            "notification.sms.country_code": "44",
+            "notification.sms.international": False,
+            "provider.name": "firetext",
+        },
     )
 
 

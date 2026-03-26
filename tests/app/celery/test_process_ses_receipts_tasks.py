@@ -1,9 +1,10 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from freezegun import freeze_time
 
 from app import signing, statsd_client
+from app.celery import notification_deliver_duration_histogram
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.celery.research_mode_tasks import (
     ses_hard_bounce_callback,
@@ -62,10 +63,9 @@ def test_remove_email_from_bounce():
     assert "bounce@simulator.amazonses.com" not in json.dumps(test_json)
 
 
-def test_ses_callback_should_update_notification_status(
-    client, notify_db_session, sample_email_template, caplog, mocker
-):
-    with freeze_time("2001-01-01T12:00:00") as frozen_time:
+def test_ses_callback_should_update_notification_status(client, notify_db_session, sample_email_template, mocker):
+    with freeze_time("2001-01-01T12:00:00"):
+        histogram_record_mock = mocker.patch.object(notification_deliver_duration_histogram, "record")
         mocker.patch("app.statsd_client.incr")
         mocker.patch("app.statsd_client.timing_with_dates")
         send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
@@ -73,6 +73,7 @@ def test_ses_callback_should_update_notification_status(
             template=sample_email_template,
             status="sending",
             reference="ref",
+            sent_at=datetime.utcnow() - timedelta(seconds=5),
         )
         assert get_notification_by_id(notification.id).status == "sending"
 
@@ -92,6 +93,15 @@ def test_ses_callback_should_update_notification_status(
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         updated_notification = Notification.query.get(notification.id)
         send_mock.assert_called_once_with(updated_notification)
+        histogram_record_mock.assert_called_once_with(
+            5.0,
+            {
+                "key.type": "normal",
+                "notification.status": "delivered",
+                "notification.type": "email",
+                "provider.name": "ses",
+            },
+        )
 
         record = next(r for r in caplog.records if "SES successful delivery" in r.msg)
         assert record.delivered_at == datetime(2001, 1, 1, 12, 0)
