@@ -163,23 +163,31 @@ def shatter_job_rows(
     self,
     template_type: str,
     args_kwargs_seq: Sequence,
+    has_files: bool = False,
 ):
     for task_args_kwargs in args_kwargs_seq:
-        process_job_row(template_type, task_args_kwargs, self.message_group_id)
+        process_job_row(template_type, task_args_kwargs, has_files, self.message_group_id)
 
 
-def process_job_row(template_type, task_args_kwargs, message_group_id=None):
+def process_job_row(template_type, task_args_kwargs, has_files=False, message_group_id=None):
     send_fn = {
         SMS_TYPE: save_sms,
         EMAIL_TYPE: save_email,
         LETTER_TYPE: save_letter,
     }[template_type]
+    if has_files:
+        send_fn.apply_async(
+            *task_args_kwargs,
+            queue=QueueNames.DATABASE_DOCUMENTS,
+            MessageGroupId=message_group_id,
+        )
 
-    send_fn.apply_async(
-        *task_args_kwargs,
-        queue=QueueNames.DATABASE,
-        MessageGroupId=message_group_id,
-    )
+    else:
+        send_fn.apply_async(
+            *task_args_kwargs,
+            queue=QueueNames.DATABASE,
+            MessageGroupId=message_group_id,
+        )
 
 
 def job_complete(job, resumed=False, start=None):

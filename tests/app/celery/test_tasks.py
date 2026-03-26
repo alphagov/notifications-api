@@ -112,6 +112,11 @@ def email_job_with_placeholders(notify_db_session, sample_email_template_with_pl
     return create_job(template=sample_email_template_with_placeholders)
 
 
+@pytest.fixture
+def email_job_with_file_placeholders(notify_db_session, sample_email_template_with_template_email_files):
+    return create_job(template=sample_email_template_with_template_email_files)
+
+
 # -------------- process_job tests -------------- #
 #
 # Most tests simulate the broker by setting message_group_id on the task (via _with_message_group_id)
@@ -144,7 +149,7 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_task):
                 "row_number": 0,
                 "personalisation": {"phonenumber": "+441234123123"},
                 "client_reference": None,
-            }
+            },
         )
     ]
 
@@ -404,7 +409,10 @@ def test_should_not_create_shatter_task_for_empty_file(sample_job, mocker, mock_
     assert mock_shatter_job_rows.called is False
 
 
-def test_should_process_email_job(email_job_with_placeholders, mocker, mock_celery_task):
+@pytest.mark.parametrize("send_file", [True, False])
+def test_should_process_email_job(
+    email_job_with_placeholders, email_job_with_file_placeholders, mocker, mock_celery_task, send_file
+):
     email_csv = """email_address,name
     test@test.com,foo
     """
@@ -416,36 +424,38 @@ def test_should_process_email_job(email_job_with_placeholders, mocker, mock_cele
     mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
     mocker.patch("app.celery.tasks.create_uuid", return_value="some_uuid")
 
-    with _with_message_group_id(process_job, str(email_job_with_placeholders.service_id)):
-        process_job(email_job_with_placeholders.id)
+    email_job = email_job_with_file_placeholders if send_file else email_job_with_placeholders
 
-    s3.get_job_and_metadata_from_s3.assert_called_once_with(
-        service_id=str(email_job_with_placeholders.service.id),
-        job_id=str(email_job_with_placeholders.id),
-    )
+    with _with_message_group_id(process_job, str(email_job_with_placeholders.service_id)):
+        process_job(email_job.id)
+
+        s3.get_job_and_metadata_from_s3.assert_called_once_with(
+            service_id=str(email_job.service.id),
+            job_id=str(email_job.id),
+        )
 
     assert mock_encode.mock_calls == [
         call(
             {
-                "template": str(email_job_with_placeholders.template.id),
-                "template_version": email_job_with_placeholders.template.version,
-                "job": str(email_job_with_placeholders.id),
+                "template": str(email_job.template.id),
+                "template_version": email_job.template.version,
+                "job": str(email_job.id),
                 "to": "test@test.com",
                 "row_number": 0,
                 "personalisation": {"emailaddress": "test@test.com", "name": "foo"},
                 "client_reference": None,
-            }
+            },
         )
     ]
 
     assert mock_shatter_job_rows.mock_calls == [
         call(
             (
-                email_job_with_placeholders.template.template_type,
+                email_job.template.template_type,
                 [
                     (
                         (
-                            str(email_job_with_placeholders.service_id),
+                            str(email_job.service_id),
                             "some_uuid",
                             "something_encoded",
                         ),
@@ -454,15 +464,18 @@ def test_should_process_email_job(email_job_with_placeholders, mocker, mock_cele
                 ],
             ),
             queue="job-tasks",
-            MessageGroupId=str(email_job_with_placeholders.service_id),
+            MessageGroupId=str(email_job.service_id),
         )
     ]
 
-    job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
+    job = jobs_dao.dao_get_job_by_id(email_job.id)
     assert job.job_status == "finished"
 
 
-def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mocker, mock_celery_task, fake_uuid):
+@pytest.mark.parametrize("send_file", [True, False])
+def test_should_process_email_job_with_sender_id(
+    email_job_with_placeholders, email_job_with_file_placeholders, mocker, mock_celery_task, fake_uuid, send_file
+):
     email_csv = """email_address,name
     test@test.com,foo
     """
@@ -473,21 +486,22 @@ def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mo
     mock_shatter_job_rows = mock_celery_task(shatter_job_rows)
     mock_encode = mocker.patch("app.signing.encode", return_value="something_encoded")
     mocker.patch("app.celery.tasks.create_uuid", return_value="some_uuid")
+    email_job = email_job_with_file_placeholders if send_file else email_job_with_placeholders
 
-    with _with_message_group_id(process_job, str(email_job_with_placeholders.service_id)):
-        process_job(email_job_with_placeholders.id, sender_id=fake_uuid)
+    with _with_message_group_id(process_job, str(email_job.service_id)):
+        process_job(email_job.id, sender_id=fake_uuid)
 
     s3.get_job_and_metadata_from_s3.assert_called_once_with(
-        service_id=str(email_job_with_placeholders.service.id),
-        job_id=str(email_job_with_placeholders.id),
+        service_id=str(email_job.service.id),
+        job_id=str(email_job.id),
     )
 
     assert mock_encode.mock_calls == [
         call(
             {
-                "template": str(email_job_with_placeholders.template.id),
-                "template_version": email_job_with_placeholders.template.version,
-                "job": str(email_job_with_placeholders.id),
+                "template": str(email_job.template.id),
+                "template_version": email_job.template.version,
+                "job": str(email_job.id),
                 "to": "test@test.com",
                 "row_number": 0,
                 "personalisation": {"emailaddress": "test@test.com", "name": "foo"},
@@ -499,11 +513,11 @@ def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mo
     assert mock_shatter_job_rows.mock_calls == [
         call(
             (
-                email_job_with_placeholders.template.template_type,
+                email_job.template.template_type,
                 [
                     (
                         (
-                            str(email_job_with_placeholders.service_id),
+                            str(email_job.service_id),
                             "some_uuid",
                             "something_encoded",
                         ),
@@ -512,11 +526,11 @@ def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mo
                 ],
             ),
             queue="job-tasks",
-            MessageGroupId=str(email_job_with_placeholders.service_id),
+            MessageGroupId=str(email_job.service_id),
         )
     ]
 
-    job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
+    job = jobs_dao.dao_get_job_by_id(email_job.id)
     assert job.job_status == "finished"
 
 
@@ -554,7 +568,7 @@ def test_should_process_letter_job(sample_letter_job, mocker, mock_celery_task):
                     "postcode": "A_POST",
                 },
                 "client_reference": None,
-            }
+            },
         )
     ]
 
@@ -613,7 +627,7 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
                 "row_number": 0,
                 "personalisation": {"phonenumber": "+441234123121", "name": "chris"},
                 "client_reference": None,
-            }
+            },
         ),
         call(
             {
@@ -624,7 +638,7 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
                 "row_number": 1,
                 "personalisation": {"phonenumber": "+441234123122", "name": "chris"},
                 "client_reference": None,
-            }
+            },
         ),
         ANY,
         ANY,
@@ -1165,6 +1179,7 @@ def test_shatter_job_rows(template_type, send_fn, mock_celery_task, mocker):
                     {} if template_type == LETTER_TYPE else {"sender_id": "2"},
                 ),
             ],
+            False,
         )
     assert mock_send_fn.mock_calls == [
         call(

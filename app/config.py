@@ -12,6 +12,7 @@ from app.constants import EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, SMS_T
 class QueueNames:
     PERIODIC = "periodic-tasks"
     DATABASE = "database-tasks"
+    DATABASE_DOCUMENTS = "database-tasks-documents"
     SEND_SMS = "send-sms-tasks"
     SEND_EMAIL = "send-email-tasks"
     SEND_LETTER = "send-letter-tasks"
@@ -36,6 +37,7 @@ class QueueNames:
         return [
             QueueNames.PERIODIC,
             QueueNames.DATABASE,
+            QueueNames.DATABASE_DOCUMENTS,
             QueueNames.SEND_SMS,
             QueueNames.SEND_EMAIL,
             QueueNames.SEND_LETTER,
