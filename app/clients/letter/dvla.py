@@ -8,6 +8,7 @@ from typing import Literal
 import boto3
 import jwt
 import requests
+import sentry_sdk
 from flask import current_app
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from requests.adapters import HTTPAdapter
@@ -305,11 +306,13 @@ class DVLAClient:
         """
         Sends a letter to the DVLA for printing
         """
-        url_response = self._get_upload_url()
+        with sentry_sdk.start_span(op="http", description="DVLA GET upload URL"):
+            url_response = self._get_upload_url()
         upload_id = url_response["uploadId"]
         upload_url = url_response["uploadUrl"]
 
-        self._upload_file(upload_url=upload_url, pdf_file=pdf_file)
+        with sentry_sdk.start_span(op="http", description="DVLA PUT upload PDF"):
+            self._upload_file(upload_url=upload_url, pdf_file=pdf_file)
         current_app.logger.info(
             "Letter with notification id %s uploaded to DVLA presigned URL with upload_id %s",
             notification_id,
@@ -329,21 +332,22 @@ class DVLAClient:
                 raise DvlaDuplicatePrintRequestException(e.response.json()["errors"][0]["detail"]) from e
 
         with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_http_errors):
-            response = self.session.post(
-                f"{self.base_url}/print-request/v1/print/jobs",
-                headers=self._get_auth_headers(),
-                json=self._format_create_print_job_json(
-                    notification_id=notification_id,
-                    reference=reference,
-                    address=address,
-                    postage=postage,
-                    service_id=service_id,
-                    organisation_id=organisation_id,
-                    upload_id=upload_id,
-                    callback_url=callback_url,
-                ),
-            )
-            response.raise_for_status()
+            with sentry_sdk.start_span(op="http", description="DVLA POST create letter"):
+                response = self.session.post(
+                    f"{self.base_url}/print-request/v1/print/jobs",
+                    headers=self._get_auth_headers(),
+                    json=self._format_create_print_job_json(
+                        notification_id=notification_id,
+                        reference=reference,
+                        address=address,
+                        postage=postage,
+                        service_id=service_id,
+                        organisation_id=organisation_id,
+                        upload_id=upload_id,
+                        callback_url=callback_url,
+                    ),
+                )
+                response.raise_for_status()
             return response.json()
 
     def _format_create_print_job_json(
