@@ -628,10 +628,9 @@ def _create_email_template(service, user_id, name, subject, content, alt_names=f
             "content": content,
             "subject": subject,
             "created_by": user_id,
+            "service": service.id,
         }
     )
-
-    new_template.service = service
 
     dao_create_template(new_template)
 
@@ -657,10 +656,9 @@ def _create_sms_template(service, user_id, name, content, alt_names=frozenset())
             "template_type": "sms",
             "content": content,
             "created_by": user_id,
+            "service": service.id,
         }
     )
-
-    new_template.service = service
 
     dao_create_template(new_template)
 
@@ -687,10 +685,10 @@ def _create_letter_template(service, user_id, name, subject, content, letter_con
             "content": content,
             "subject": subject,
             "created_by": user_id,
+            "service": service.id,
         }
     )
 
-    new_template.service = service
     new_template.postage = SECOND_CLASS
     new_template.service_letter_contact_id = letter_contact_id
 
