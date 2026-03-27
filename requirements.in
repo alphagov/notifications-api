@@ -15,7 +15,6 @@ jsonschema[format]==4.23.0
 marshmallow-sqlalchemy==1.0.0
 marshmallow==3.21.3
 psycopg2-binary==2.9.10
-PyJWT==2.10.1
 SQLAlchemy==2.0.41
 pyorc~=0.10
 
