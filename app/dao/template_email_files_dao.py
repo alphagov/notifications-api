@@ -90,7 +90,7 @@ def dao_make_pending_template_email_file_live(template_email_file: TemplateEmail
 )
 def dao_archive_template_email_file(file_to_archive, archived_by_id, template_version):
     if not file_to_archive.archived_at:
-        file_to_archive.archived_at = datetime.datetime.now(datetime.UTC)
+        file_to_archive.archived_at = datetime.datetime.utcnow()
         file_to_archive.archived_by_id = archived_by_id
         file_to_archive.template_version = template_version
         db.session.add(file_to_archive)

@@ -1262,6 +1262,7 @@ def test_notification_serialization_for_csv_returns_all_fields(notify_db_session
         }
 
 
+@freeze_time("2026-03-10 14:00")
 def test_notification_serialization_for_csv_with_minimal_fields(notify_db_session, sample_template):
     # Create notification without job and without created_by
     notification = create_notification(
