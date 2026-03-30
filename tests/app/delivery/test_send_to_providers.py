@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections import namedtuple
+from contextlib import nullcontext
 from datetime import datetime, timedelta
 from unittest.mock import ANY, call
 
@@ -23,7 +24,7 @@ from app.constants import (
 )
 from app.dao import notifications_dao
 from app.dao.provider_details_dao import get_provider_details_by_identifier
-from app.delivery import send_to_providers
+from app.delivery import provider_request_duration_histogram, send_to_providers
 from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import EmailBranding, Notification
@@ -969,3 +970,77 @@ def test_send_email_to_provider_sends_unsubscribe_link_if_template_is_unsubscrib
 
     assert mock_html_email.call_args[1]["unsubscribe_link"] == "https://www.notify.example.com"
     assert mock_plain_text_email.call_args[1]["unsubscribe_link"] == "https://www.notify.example.com"
+
+
+@freeze_time("2026-01-01 09:00")
+@pytest.mark.parametrize("should_raise", [False, True])
+def test_send_email_to_provider_should_capture_metrics(mocker, sample_email_template, should_raise):
+    provider_request_duration_histogram_mock = mocker.patch.object(provider_request_duration_histogram, "record")
+    mocker.patch(
+        "app.aws_ses_client.send_email", return_value="reference", side_effect=RuntimeError() if should_raise else None
+    )
+
+    notification = create_notification(
+        template=sample_email_template,
+        to_field="test@example.com",
+        created_at=datetime.utcnow() - timedelta(minutes=1),
+    )
+
+    with pytest.raises(RuntimeError) if should_raise else nullcontext():
+        send_to_providers.send_email_to_provider(notification)
+
+    expected_attributes = {
+        "notification.type": "email",
+        "provider.name": "ses",
+    }
+
+    if should_raise:
+        expected_attributes["error.type"] = "builtins.RuntimeError"
+
+    provider_request_duration_histogram_mock.assert_called_once_with(
+        0.0,
+        expected_attributes,
+    )
+
+
+@freeze_time("2026-01-01 09:00")
+@pytest.mark.parametrize(
+    "phone_number, international, country_code, should_raise",
+    [
+        ("+447700900855", False, "44", False),
+        ("+15555550199", True, "1", False),
+        ("+447700900855", False, "44", False),
+        ("+447700900855", False, "44", True),
+    ],
+)
+def test_send_sms_to_provider_should_capture_metrics(
+    mocker, sample_template, phone_number, international, country_code, should_raise
+):
+    provider_request_duration_histogram_mock = mocker.patch.object(provider_request_duration_histogram, "record")
+    mocker.patch("app.mmg_client.send_sms", side_effect=RuntimeError() if should_raise else None)
+
+    notification = create_notification(
+        template=sample_template,
+        to_field=phone_number,
+        international=international,
+        phone_prefix=country_code,
+        created_at=datetime.utcnow() - timedelta(minutes=1),
+    )
+
+    with pytest.raises(RuntimeError) if should_raise else nullcontext():
+        send_to_providers.send_sms_to_provider(notification)
+
+    expected_attributes = {
+        "notification.type": "sms",
+        "notification.sms.international": international,
+        "notification.sms.country_code": country_code,
+        "provider.name": "mmg",
+    }
+
+    if should_raise:
+        expected_attributes["error.type"] = "builtins.RuntimeError"
+
+    provider_request_duration_histogram_mock.assert_called_once_with(
+        0.0,
+        expected_attributes,
+    )

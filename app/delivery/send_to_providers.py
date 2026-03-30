@@ -1,13 +1,16 @@
 import random
 from datetime import datetime, timedelta
+from time import monotonic
 from urllib import parse
 
 from flask import current_app
+from notifications_utils.semconv import set_error_type
 from notifications_utils.template import (
     HTMLEmailTemplate,
     PlainTextEmailTemplate,
     SMSMessageTemplate,
 )
+from opentelemetry.util.types import AttributeValue
 
 from app import create_uuid, db, notification_provider_clients, redis_store, statsd_client
 from app.celery.research_mode_tasks import (
@@ -32,6 +35,7 @@ from app.dao.notifications_dao import dao_update_notification
 from app.dao.provider_details_dao import (
     dao_reduce_sms_provider_priority,
 )
+from app.delivery import provider_request_duration_histogram
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import Notification
 from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
@@ -64,6 +68,7 @@ def send_sms_to_provider(notification: Notification) -> None:
             send_sms_response(provider.name, str(notification.id), notification.to)
 
         else:
+            provider_request_start_time = monotonic()
             try:
                 # End DB session here so that we don't have a connection stuck open waiting on the call
                 # to one of the SMS providers
@@ -99,6 +104,15 @@ def send_sms_to_provider(notification: Notification) -> None:
                 update_notification_to_sending(notification, provider)
                 if notification.international:
                     statsd_client.incr(f"international-sms.{NOTIFICATION_SENT}.{notification.phone_prefix}")
+            finally:
+                attributes: dict[str, AttributeValue] = {
+                    "notification.type": "sms",
+                    "notification.sms.international": notification.international,
+                    "notification.sms.country_code": notification.phone_prefix,
+                    "provider.name": provider.name,
+                }
+                set_error_type(attributes)
+                provider_request_duration_histogram.record(monotonic() - provider_request_start_time, attributes)
 
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
         statsd_client.timing("sms.total-time", delta_seconds)
@@ -170,15 +184,24 @@ def send_email_to_provider(notification):
                 f'"{email_sender_name}" <{service.email_sender_local_part}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
             )
 
-            reference = provider.send_email(
-                from_address=from_address,
-                to_address=notification.normalised_to,
-                subject=plain_text_email.subject,
-                body=str(plain_text_email),
-                html_body=str(html_email),
-                reply_to_address=notification.reply_to_text,
-                headers=_get_email_headers(notification, template),
-            )
+            provider_request_start_time = monotonic()
+            try:
+                reference = provider.send_email(
+                    from_address=from_address,
+                    to_address=notification.normalised_to,
+                    subject=plain_text_email.subject,
+                    body=str(plain_text_email),
+                    html_body=str(html_email),
+                    reply_to_address=notification.reply_to_text,
+                    headers=_get_email_headers(notification, template),
+                )
+            finally:
+                attributes: dict[str, AttributeValue] = {
+                    "notification.type": "email",
+                    "provider.name": provider.name,
+                }
+                set_error_type(attributes)
+                provider_request_duration_histogram.record(monotonic() - provider_request_start_time, attributes)
             notification.reference = reference
             update_notification_to_sending(notification, provider)
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
