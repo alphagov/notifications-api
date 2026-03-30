@@ -111,8 +111,10 @@ def test_ses_callback_should_retry_if_notification_is_new(client, notify_db_sess
 def test_ses_callback_should_log_if_notification_is_missing(client, notify_db_session, mocker, caplog):
     mock_retry = mocker.patch("app.celery.process_ses_receipts_tasks.process_ses_results.retry")
 
-    with freeze_time("2017-11-17T12:34:03.646Z"), caplog.at_level("WARNING"):
-        assert process_ses_results(ses_notification_callback(reference="ref")) is None
+    with freeze_time("2017-11-17T12:34:03.646Z") as frozen_time, caplog.at_level("WARNING"):
+        payload = ses_notification_callback(reference="ref")
+        frozen_time.tick(400)
+        assert process_ses_results(payload) is None
 
     assert "notification not found for reference: ref (update to delivered)" in caplog.messages
     assert mock_retry.call_count == 0
@@ -121,8 +123,10 @@ def test_ses_callback_should_log_if_notification_is_missing(client, notify_db_se
 def test_ses_callback_should_not_retry_if_notification_is_old(client, notify_db_session, mocker, caplog):
     mock_retry = mocker.patch("app.celery.process_ses_receipts_tasks.process_ses_results.retry")
 
-    with freeze_time("2017-11-21T12:14:03.646Z"), caplog.at_level("ERROR"):
-        assert process_ses_results(ses_notification_callback(reference="ref")) is None
+    with freeze_time("2017-11-21T12:14:03.646Z") as frozen_time, caplog.at_level("ERROR"):
+        payload = ses_notification_callback(reference="ref")
+        frozen_time.tick(400)
+        assert process_ses_results(payload) is None
 
     assert caplog.messages == []
     assert mock_retry.call_count == 0
