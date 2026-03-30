@@ -25,9 +25,7 @@ def unsubscribe_url_post(client, notification_id, token):
 
 def test_valid_one_click_unsubscribe_url(mocker, client, sample_email_notification):
     mock_redis = mocker.patch("app.one_click_unsubscribe.rest.redis_store.delete")
-    token = generate_token(
-        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-    )
+    token = generate_token(sample_email_notification.to, current_app.config["SECRET_KEY"], "one_click_unsubscribe")
     response = unsubscribe_url_post(client, sample_email_notification.id, token)
     response_json_data = response.get_json()
     created_unsubscribe_request = get_unsubscribe_request_by_notification_id_dao(sample_email_notification.id)
@@ -46,9 +44,7 @@ def test_valid_one_click_unsubscribe_url(mocker, client, sample_email_notificati
 
 
 def test_duplicate_unsubscribe_requests(mocker, client, sample_email_notification):
-    token = generate_token(
-        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-    )
+    token = generate_token(sample_email_notification.to, current_app.config["SECRET_KEY"], "one_click_unsubscribe")
     # first unsubscribe request
     unsubscribe_url_post(client, sample_email_notification.id, token)
     # duplicate unsubscribe request
@@ -67,7 +63,7 @@ def test_unsubscribe_request_object_refers_to_correct_template_version_after_tem
     )
     notification = create_notification(template=test_template, to_field="foo@bar.com")
     initial_template_version = test_template.version
-    token = generate_token(notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
+    token = generate_token(notification.to, current_app.config["SECRET_KEY"], "one_click_unsubscribe")
 
     # update template content to generate new template version
     test_template.content = "New content"
@@ -92,7 +88,7 @@ def test_unsubscribe_request_object_refers_to_correct_template_version_after_tem
     )
     initial_template_version = test_template.version
     notification = create_notification(template=test_template, to_field="foo@bar.com")
-    token = generate_token(notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
+    token = generate_token(notification.to, current_app.config["SECRET_KEY"], "one_click_unsubscribe")
 
     # archive template
     test_template.archived = True
@@ -111,7 +107,7 @@ def test_unsubscribe_request_object_refers_to_correct_template_version_after_tem
 
 
 def test_valid_one_click_unsubscribe_url_after_data_retention_period(client, sample_notification_history):
-    token = generate_token("foo@bar.com", current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
+    token = generate_token("foo@bar.com", current_app.config["SECRET_KEY"], "one_click_unsubscribe")
     response = unsubscribe_url_post(client, sample_notification_history.id, token)
     response_json_data = response.get_json()
     created_unsubscribe_request = get_unsubscribe_request_by_notification_id_dao(sample_notification_history.id)
@@ -135,9 +131,7 @@ def test_invalid_one_click_unsubscribe_url_token(client, sample_email_notificati
 
 def test_invalid_one_click_unsubscribe_url_notification_id(client, sample_email_notification):
     invalid_notification_id = uuid.uuid4()
-    token = generate_token(
-        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-    )
+    token = generate_token(sample_email_notification.to, current_app.config["SECRET_KEY"], "one_click_unsubscribe")
     response = unsubscribe_url_post(client, invalid_notification_id, token)
     response_json_data = response.get_json()
     assert response.status_code == 404
@@ -178,9 +172,7 @@ def test_unsubscribe_from_notify_research(mocker, client, sample_email_notificat
     )
     sample_email_notification.service_id = service.id
 
-    token = generate_token(
-        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-    )
+    token = generate_token(sample_email_notification.to, current_app.config["SECRET_KEY"], "one_click_unsubscribe")
     response = unsubscribe_url_post(client, sample_email_notification.id, token)
     response_json_data = response.get_json()
 
@@ -205,9 +197,7 @@ def test_unsubscribe_from_notify_features(mocker, client, sample_email_notificat
     )
     sample_email_notification.service_id = service.id
 
-    token = generate_token(
-        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-    )
+    token = generate_token(sample_email_notification.to, current_app.config["SECRET_KEY"], "one_click_unsubscribe")
     response = unsubscribe_url_post(client, sample_email_notification.id, token)
     response_json_data = response.get_json()
 
@@ -236,9 +226,8 @@ def test_unsubscribe_from_notify_service_for_unknown_user(client, service_id, sa
     )
     sample_email_notification.service_id = service.id
 
-    token = generate_token(
-        sample_email_notification.to, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-    )
+    token = generate_token(sample_email_notification.to, current_app.config["SECRET_KEY"], "one_click_unsubscribe")
+
     response = unsubscribe_url_post(client, sample_email_notification.id, token)
     response_json_data = response.get_json()
 

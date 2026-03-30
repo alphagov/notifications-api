@@ -26,9 +26,7 @@ def one_click_unsubscribe(notification_id, token):
     max_age_seconds = 60 * 60 * 24 * 365  # set to 1 year for now
 
     try:
-        email_address = check_token(
-            token, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"], max_age_seconds
-        )
+        email_address = check_token(token, current_app.config["SECRET_KEY"], "one_click_unsubscribe", max_age_seconds)
     except BadData as e:
         errors = {"unsubscribe request": "This is not a valid unsubscribe link."}
         raise InvalidRequest(errors, status_code=404) from e

@@ -189,9 +189,7 @@ def test_update_org_invited_user_for_invalid_data_returns_400(admin_request, sam
     ],
 )
 def test_validate_invitation_token_returns_200_when_token_valid(client, sample_invited_org_user, endpoint_format_str):
-    token = generate_token(
-        str(sample_invited_org_user.id), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-    )
+    token = generate_token(str(sample_invited_org_user.id), current_app.config["SECRET_KEY"], "invite_organisation")
 
     url = endpoint_format_str.format(token)
     auth_header = create_admin_authorization_header()
@@ -204,9 +202,7 @@ def test_validate_invitation_token_returns_200_when_token_valid(client, sample_i
 
 def test_validate_invitation_token_for_expired_token_returns_400(client):
     with freeze_time("2016-01-01T12:00:00"):
-        token = generate_token(
-            str(uuid.uuid4()), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-        )
+        token = generate_token(str(uuid.uuid4()), current_app.config["SECRET_KEY"], "invite_organisation")
     url = f"/invite/organisation/{token}"
     auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[("Content-Type", "application/json"), auth_header])
@@ -221,7 +217,7 @@ def test_validate_invitation_token_for_expired_token_returns_400(client):
 
 
 def test_validate_invitation_token_returns_400_when_invited_user_does_not_exist(client):
-    token = generate_token(str(uuid.uuid4()), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
+    token = generate_token(str(uuid.uuid4()), current_app.config["SECRET_KEY"], "invite_organisation")
     url = f"/invite/organisation/{token}"
     auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[("Content-Type", "application/json"), auth_header])
@@ -233,9 +229,7 @@ def test_validate_invitation_token_returns_400_when_invited_user_does_not_exist(
 
 
 def test_validate_invitation_token_returns_400_when_token_is_malformed(client):
-    token = generate_token(str(uuid.uuid4()), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])[
-        :-2
-    ]
+    token = generate_token(str(uuid.uuid4()), current_app.config["SECRET_KEY"], "invite_organisation")[:-2]
 
     url = f"/invite/organisation/{token}"
     auth_header = create_admin_authorization_header()
