@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 import freezegun
@@ -115,12 +116,12 @@ def test_create_template_email_file_creates_file_with_latest_template_version(
     sample_service, sample_email_template, sample_template_email_file_not_pending, admin_request
 ):
     # template version after creating the first email file
-    assert sample_template_email_file_not_pending.template_version == 2
+    assert sample_template_email_file_not_pending.template_version == 1
 
     # updating the template
     sample_email_template.content = "here is some new content"
     dao_update_template(sample_email_template)
-    assert sample_email_template.version == 3
+    assert sample_email_template.version == 2
 
     # create second email file
     file_two_data = {
@@ -142,7 +143,7 @@ def test_create_template_email_file_creates_file_with_latest_template_version(
     # test that second email file is created with newest template version
     file_two_id = response["data"]["id"]
     file_two_fetched = TemplateEmailFile.query.get(str(file_two_id))
-    assert file_two_fetched.template_version == 4
+    assert file_two_fetched.template_version == 2
 
 
 @pytest.mark.parametrize(
@@ -326,7 +327,7 @@ def test_update_template_email_file(
         "validate_users_email": False,
     }
 
-    assert sample_template_email_file_not_pending.template_version == 2
+    assert sample_template_email_file_not_pending.template_version == 1
     assert sample_template_email_file_not_pending.version == 1
 
     response = admin_request.post(
@@ -339,13 +340,13 @@ def test_update_template_email_file(
     )
 
     # template version has been updated
-    assert sample_email_template.version == 3
+    assert sample_email_template.version == 2
 
     # we serve updated email file in the response
     assert response["data"]["link_text"] == "click this new link!"
     assert response["data"]["retention_period"] == 30
     assert response["data"]["validate_users_email"] is False
-    assert response["data"]["template_version"] == 3
+    assert response["data"]["template_version"] == 2
     assert response["data"]["version"] == 2
 
     # email file updated in the database
@@ -353,7 +354,7 @@ def test_update_template_email_file(
     assert template_email_file.link_text == "click this new link!"
     assert template_email_file.retention_period == 30
     assert template_email_file.validate_users_email is False
-    assert template_email_file.template_version == 3
+    assert template_email_file.template_version == 2
     assert template_email_file.version == 2
 
     # historical email file record from before update
@@ -363,7 +364,7 @@ def test_update_template_email_file(
     assert template_email_file_history_version_one.link_text == "follow this link"
     assert template_email_file_history_version_one.retention_period == 90
     assert template_email_file_history_version_one.validate_users_email is True
-    assert template_email_file_history_version_one.template_version == 2
+    assert template_email_file_history_version_one.template_version == 1
     assert template_email_file_history_version_one.version == 1
 
     # historical email file record from after update
@@ -373,7 +374,7 @@ def test_update_template_email_file(
     assert template_email_file_history_version_two.link_text == "click this new link!"
     assert template_email_file_history_version_two.retention_period == 30
     assert template_email_file_history_version_two.validate_users_email is False
-    assert template_email_file_history_version_two.template_version == 3
+    assert template_email_file_history_version_two.template_version == 2
     assert template_email_file_history_version_two.version == 2
 
 
@@ -529,8 +530,14 @@ def test_create_and_make_live_file(sample_service, sample_email_template, admin_
     assert template_email_file.template_version == 1
     assert template_email_file.pending
 
-    # check that making the file live bumps the version by one and bumps the template
-    # version by 1 and updates pending to False
+    # check that updating the template to include a file placeholder bumps the file version
+    # and that making the file live sets the file to the latest file version
+
+    sample_email_template.content = """This is a template
+    ((example.pdf))"""
+    sample_email_template.updated_at = datetime.datetime.utcnow()
+    dao_update_template(sample_email_template)
+
     update_data = {"pending": False}
     response = admin_request.post(
         "template_email_files.update_template_email_file",
