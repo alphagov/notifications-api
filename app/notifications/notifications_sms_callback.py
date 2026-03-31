@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import Blueprint, json, jsonify, request
+from notifications_utils.timezones import local_timezone
 
 from app.celery.process_sms_client_response_tasks import (
     process_sms_client_response,
@@ -28,7 +29,12 @@ def process_mmg_response():
 
     delivery_iso_timestamp = None
     try:
-        delivery_iso_timestamp = datetime.fromisoformat(data.get("deliverytime") or "").isoformat()
+        # timestamp with no explicit offset will be in local time :(, convert this into
+        # a naive UTC timestamp for further use
+        ts = datetime.fromisoformat(data.get("deliverytime") or "")
+        delivery_iso_timestamp = (
+            ts.replace(tzinfo=ts.tzinfo or local_timezone).astimezone(UTC).replace(tzinfo=None).isoformat()
+        )
     except ValueError:
         pass  # None it is, then
 
@@ -61,7 +67,12 @@ def process_firetext_response():
 
     delivery_iso_timestamp = None
     try:
-        delivery_iso_timestamp = datetime.fromisoformat(request.form.get("time") or "").isoformat()
+        # timestamp with no explicit offset will be in local time :(, convert this into
+        # a naive UTC timestamp for further use
+        ts = datetime.fromisoformat(request.form.get("time") or "")
+        delivery_iso_timestamp = (
+            ts.replace(tzinfo=ts.tzinfo or local_timezone).astimezone(UTC).replace(tzinfo=None).isoformat()
+        )
     except ValueError:
         pass  # None it is, then
 
