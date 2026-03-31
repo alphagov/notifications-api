@@ -135,6 +135,7 @@ def test_dao_get_default_annual_allowance_for_service(sample_service, org_type, 
     assert default_allowance.allowance == expected_allowance
 
 
+@freeze_time("2026-04-01T01:00:00")
 @pytest.mark.parametrize(
     "org_type, year, expected_default",
     [
@@ -163,19 +164,29 @@ def test_dao_get_default_annual_allowance_for_service(sample_service, org_type, 
         ("nhs_local", 2022, 20000),
         ("emergency_service", 2022, 20000),
         ("central", 2023, 40000),
+        ("central", 2026, 20_000),
+        ("local", 2026, 10_000),
+        ("nhs_central", 2026, 20_000),
+        ("nhs_local", 2026, 10_000),
+        ("nhs_gp", 2026, 0),
+        ("emergency_service", 2026, 10_000),
+        ("school_or_college", 2026, 5_000),
+        ("other", 2026, 5_000),
+        (None, 2026, 5_000),
         # Some test cases that will make valid assertions as time inevitably marches on
-        ("central", get_current_financial_year_start_year(), 30_000),
-        ("local", get_current_financial_year_start_year(), 10_000),
-        ("nhs_central", get_current_financial_year_start_year(), 30_000),
-        ("nhs_local", get_current_financial_year_start_year(), 10_000),
-        ("nhs_gp", get_current_financial_year_start_year(), 0),
-        ("emergency_service", get_current_financial_year_start_year(), 10_000),
-        ("school_or_college", get_current_financial_year_start_year(), 5_000),
-        ("other", get_current_financial_year_start_year(), 5_000),
-        (None, get_current_financial_year_start_year(), 5_000),
+        ("central", get_current_financial_year_start_year, 20_000),
+        ("local", get_current_financial_year_start_year, 10_000),
+        ("nhs_central", get_current_financial_year_start_year, 20_000),
+        ("nhs_local", get_current_financial_year_start_year, 10_000),
+        ("nhs_gp", get_current_financial_year_start_year, 0),
+        ("emergency_service", get_current_financial_year_start_year, 10_000),
+        ("school_or_college", get_current_financial_year_start_year, 5_000),
+        ("other", get_current_financial_year_start_year, 5_000),
+        (None, get_current_financial_year_start_year, 5_000),
     ],
 )
 def test_set_default_free_allowance_for_service(notify_db_session, org_type, year, expected_default):
+    year = year() if callable(year) else year
     service = create_service(organisation_type=org_type)
 
     set_default_free_allowance_for_service(service=service, year_start=year)
