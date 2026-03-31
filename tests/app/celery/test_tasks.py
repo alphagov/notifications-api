@@ -1848,6 +1848,29 @@ def test_save_email_does_not_send_duplicate_and_does_not_put_in_retry_queue(
     assert not retry.called
 
 
+def test_save_email_does_not_send_duplicate_and_does_not_put_in_retry_queue_based_on_job_info(
+    sample_email_notification, mocker, mock_celery_task
+):
+    json = _notification_json(
+        sample_email_notification.template,
+        sample_email_notification.to,
+        job_id=sample_email_notification.job_id,
+        row_number=sample_email_notification.job_row_number,
+    )
+    mock_task = mock_celery_task(provider_tasks.deliver_email)
+    retry = mocker.patch("app.celery.tasks.save_email.retry", side_effect=Exception())
+
+    save_email(
+        sample_email_notification.service_id,
+        uuid.uuid4(),
+        signing.encode(json),
+    )
+
+    assert Notification.query.count() == 1
+    assert not mock_task.called
+    assert not retry.called
+
+
 def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(
     sample_notification, mocker, mock_celery_task
 ):

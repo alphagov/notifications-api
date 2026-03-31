@@ -39,6 +39,7 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     dao_update_notifications_by_reference,
     get_notification_by_id,
+    get_notification_by_job_and_job_row_number,
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
@@ -401,6 +402,20 @@ def test_get_notification_by_id_when_notification_exists(sample_notification):
 
 def test_get_notification_by_id_when_notification_does_not_exist(notify_db_session, fake_uuid):
     notification_from_db = get_notification_by_id(fake_uuid)
+
+    assert notification_from_db is None
+
+
+def test_get_notification_by_job_and_row_number_when_notification_exists(sample_email_notification):
+    notification_from_db = get_notification_by_job_and_job_row_number(
+        sample_email_notification.job_id, sample_email_notification.job_row_number
+    )
+
+    assert sample_email_notification == notification_from_db
+
+
+def test_get_notification_by_job_and_row_number_when_job_id_notification_does_not_exist(notify_db_session, fake_uuid):
+    notification_from_db = get_notification_by_job_and_job_row_number(fake_uuid, 1)
 
     assert notification_from_db is None
 

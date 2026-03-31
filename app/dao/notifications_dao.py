@@ -272,6 +272,12 @@ def get_notification_by_id(notification_id, service_id=None, _raise=False):
     return query.one() if _raise else query.first()
 
 
+def get_notification_by_job_and_job_row_number(job_id, job_row_number):
+    filters = [Notification.job_id == job_id, Notification.job_row_number == job_row_number]
+    query = Notification.query.filter(*filters)
+    return query.first()
+
+
 def dao_get_notification_or_history_by_id(notification_id):
     if notification := Notification.query.get(notification_id):
         return notification
