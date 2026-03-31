@@ -6,6 +6,7 @@ from datetime import datetime
 import requests
 from flask import current_app, jsonify
 from notifications_utils.local_vars import LazyLocalGetter
+from notifications_utils.timezones import local_timezone
 from werkzeug.local import LocalProxy
 
 from app import memo_resetters, notify_celery, signing
@@ -47,7 +48,7 @@ def send_sms_response(provider, reference, to):
                 "mobile": to,
                 "status": "1",
                 "detailed_status_code": "102",
-                "time": datetime.utcnow().isoformat(" ", timespec="seconds"),
+                "time": datetime.now(local_timezone).replace(tzinfo=None).isoformat(" ", timespec="seconds"),
                 "reference": reference,
             }
 
@@ -184,7 +185,7 @@ def mmg_callback(notification_id, to):
             "CID": str(notification_id),
             "MSISDN": to,
             "status": status,
-            "deliverytime": datetime.utcnow().isoformat(" ", timespec="seconds"),
+            "deliverytime": datetime.now(local_timezone).replace(tzinfo=None).isoformat(" ", timespec="seconds"),
         }
     )
 
@@ -203,7 +204,7 @@ def firetext_callback(notification_id, to):
     return {
         "mobile": to,
         "status": status,
-        "time": datetime.utcnow().isoformat(" ", timespec="seconds"),
+        "time": datetime.now(local_timezone).replace(tzinfo=None).isoformat(" ", timespec="seconds"),
         "reference": notification_id,
     }
 
