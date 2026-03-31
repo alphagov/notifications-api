@@ -1,10 +1,15 @@
 import logging
+from collections.abc import MutableMapping
 from datetime import datetime
 from uuid import UUID
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.recipient_validation.postal_address import PostalAddress
+from notifications_utils.semconv import TASK_DURATION_HISTOGRAM_BUCKETS, set_error_type
+from opentelemetry.baggage import get_baggage
+from opentelemetry.metrics import get_meter
+from opentelemetry.util.types import AttributeValue
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import dvla_client, notify_celery, signing
@@ -33,11 +38,19 @@ from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 
+notification_send_duration_histogram = get_meter(__name__).create_histogram(
+    "notification.send.duration",
+    unit="s",
+    description="The elapsed time between when a notification was created and when it was sent to a provider.",
+    explicit_bucket_boundaries_advisory=TASK_DURATION_HISTOGRAM_BUCKETS,
+)
+
 
 @notify_celery.task(
     bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300, early_log_level=logging.DEBUG
 )
 def deliver_sms(self, notification_id):
+    notification = None
     try:
         current_app.logger.info(
             "Start sending SMS for notification id: %s", notification_id, extra={"notification_id": notification_id}
@@ -73,12 +86,27 @@ def deliver_sms(self, notification_id):
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message) from e
+    finally:
+        if notification is not None:
+            attributes: dict[str, AttributeValue] = {
+                "key.type": notification.key_type,
+                "notification.type": "sms",
+                "notification.sms.international": notification.international,
+                "notification.sms.country_code": notification.phone_prefix,
+            }
+            _set_provider_name(attributes)
+            set_error_type(attributes)
+            notification_send_duration_histogram.record(
+                (datetime.utcnow() - notification.created_at).total_seconds(),
+                attributes,
+            )
 
 
 @notify_celery.task(
     bind=True, name="deliver_email", max_retries=48, default_retry_delay=300, early_log_level=logging.DEBUG
 )
 def deliver_email(self, notification_id):
+    notification = None
     try:
         current_app.logger.info(
             "Start sending email for notification id: %s", notification_id, extra={"notification_id": notification_id}
@@ -114,6 +142,18 @@ def deliver_email(self, notification_id):
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message) from e
+    finally:
+        if notification is not None:
+            attributes: dict[str, AttributeValue] = {
+                "key.type": notification.key_type,
+                "notification.type": "email",
+            }
+            _set_provider_name(attributes)
+            set_error_type(attributes)
+            notification_send_duration_histogram.record(
+                (datetime.utcnow() - notification.created_at).total_seconds(),
+                attributes,
+            )
 
 
 @notify_celery.task(bind=True, name="deliver_letter", max_retries=55)
@@ -192,6 +232,18 @@ def deliver_letter(self, notification_id):
     except Exception as e:
         update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException(f"Error when sending letter notification {notification_id}") from e
+    finally:
+        if notification is not None:
+            attributes: dict[str, AttributeValue] = {
+                "key.type": notification.key_type,
+                "notification.type": "letter",
+                "provider.name": "dvla",
+            }
+            set_error_type(attributes)
+            notification_send_duration_histogram.record(
+                (datetime.utcnow() - notification.created_at).total_seconds(),
+                attributes,
+            )
 
 
 def update_letter_to_sending(notification):
@@ -208,3 +260,9 @@ def _get_callback_url(notification_id: UUID) -> str:
     signed_notification_id = signing.encode(str(notification_id))
 
     return f"{current_app.config['API_HOST_NAME']}/notifications/letter/status?token={signed_notification_id}"
+
+
+def _set_provider_name(attributes: MutableMapping[str, AttributeValue]) -> None:
+    provider_name = get_baggage("provider.name")
+    if isinstance(provider_name, str):
+        attributes["provider.name"] = provider_name

@@ -10,6 +10,8 @@ from notifications_utils.template import (
     PlainTextEmailTemplate,
     SMSMessageTemplate,
 )
+from opentelemetry import context
+from opentelemetry.baggage import set_baggage
 from opentelemetry.util.types import AttributeValue
 
 from app import create_uuid, db, notification_provider_clients, redis_store, statsd_client
@@ -50,6 +52,7 @@ def send_sms_to_provider(notification: Notification) -> None:
 
     if notification.status == "created":
         provider = provider_to_use(SMS_TYPE, notification.international)
+        context.attach(set_baggage("provider.name", provider.name))
 
         template_model = SerialisedTemplate.from_id_service_id_and_version(
             template_id=notification.template_id, service_id=service.id, version=notification.template_version
@@ -151,6 +154,7 @@ def send_email_to_provider(notification):
         return
     if notification.status == "created":
         provider = provider_to_use(EMAIL_TYPE)
+        context.attach(set_baggage("provider.name", provider.name))
 
         template = SerialisedTemplate.from_id_service_id_and_version(
             template_id=notification.template_id, service_id=service.id, version=notification.template_version
