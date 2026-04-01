@@ -11,6 +11,7 @@ from freezegun import freeze_time
 from notifications_utils.testing.comparisons import AnyStringMatching, RestrictedAny
 from sqlalchemy.exc import SQLAlchemyError
 
+from app import db
 from app.celery.provider_tasks import deliver_email
 from app.celery.tasks import process_report_request
 from app.constants import (
@@ -1538,6 +1539,38 @@ def test_get_all_notifications_for_service_in_order(client, notify_db_session):
     assert resp["notifications"][1]["created_at"] == "2025-01-02T03:04:05.000000Z"
     assert resp["notifications"][2]["created_at"] == "2025-01-02T03:04:05.000000Z"
     assert response.status_code == 200
+
+
+def test_get_all_notifications_for_service_uses_session_bulk(admin_request, sample_service, mocker):
+    mock_get_notifications = mocker.patch(
+        "app.dao.notifications_dao.get_notifications_for_service",
+    )
+
+    mock_pagination = mocker.MagicMock()
+    mock_pagination.items = []
+    mock_get_notifications.return_value = mock_pagination
+
+    admin_request.get("service.get_all_notifications_for_service", service_id=sample_service.id)
+
+    assert mock_get_notifications.call_count == 2
+
+    for call in mock_get_notifications.call_args_list:
+        assert call.kwargs["session"] == db.session_bulk
+
+
+def test_get_all_notifications_for_service_search_uses_session_bulk(admin_request, sample_service, mocker):
+    mock_search = mocker.patch(
+        "app.dao.notifications_dao.dao_get_notifications_by_recipient_or_reference",
+    )
+    mock_pagination = mocker.MagicMock()
+    mock_pagination.items = []
+    mock_search.return_value = mock_pagination
+
+    admin_request.get("service.get_all_notifications_for_service", service_id=sample_service.id, to="test@example.com")
+
+    assert mock_search.call_count == 2
+    for call in mock_search.call_args_list:
+        assert call.kwargs["session"] == db.session_bulk
 
 
 def test_get_all_notifications_for_service_in_order_with_post_request(client, notify_db_session):

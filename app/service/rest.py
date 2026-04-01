@@ -522,6 +522,8 @@ def get_all_notifications_for_service(service_id):
         include_jobs=include_jobs,
         include_from_test_key=include_from_test_key,
         include_one_off=include_one_off,
+        session=db.session_bulk,
+        retry_attempts=2,
     )
 
     kwargs = request.args.to_dict()
@@ -546,6 +548,8 @@ def get_all_notifications_for_service(service_id):
         include_from_test_key=include_from_test_key,
         include_one_off=include_one_off,
         error_out=False,  # False so that if there are no results, it doesn't end in aborting with a 404
+        session=db.session_bulk,
+        retry_attempts=2,
     )
 
     # count_pages is not being used for whether to count the number of pages, but instead as a flag
