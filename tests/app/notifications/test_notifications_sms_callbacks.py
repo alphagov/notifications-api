@@ -51,23 +51,39 @@ def test_firetext_callback_should_return_400_if_no_status(client):
     assert json_resp["message"] == ["Firetext callback failed: status missing"]
 
 
-@freeze_time("2016-03-10 15:02:08.1")
+@freeze_time("2016-07-10 15:02:08.1")
 def test_firetext_callback_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
     mock_celery = mock_celery_task(process_sms_client_response)
 
-    data = "mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=notification_id"
+    data = "mobile=441234123123&status=0&time=2016-07-10 15:17:00&reference=notification_id"
     response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
     assert json_resp["result"] == "success"
 
     mock_celery.assert_called_once_with(
-        ["0", "notification_id", "Firetext", None, "2016-03-10T14:17:00", "2016-03-10T15:02:08.100000"],
+        ["0", "notification_id", "Firetext", None, "2016-07-10T14:17:00", "2016-07-10T15:02:08.100000"],
         queue="sms-callbacks",
     )
 
 
-@freeze_time("2016-03-10 15:02:08.1")
+@freeze_time("2016-07-10 15:02:08.1")
+def test_firetext_callback_should_return_200_and_call_task_with_explicit_time_offset(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
+
+    data = "mobile=441234123123&status=0&time=2016-07-10 16:17:00%2B0200&reference=notification_id"
+    response = firetext_post(client, data)
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert json_resp["result"] == "success"
+
+    mock_celery.assert_called_once_with(
+        ["0", "notification_id", "Firetext", None, "2016-07-10T14:17:00", "2016-07-10T15:02:08.100000"],
+        queue="sms-callbacks",
+    )
+
+
+@freeze_time("2016-07-10 15:02:08.1")
 def test_firetext_callback_should_return_200_and_call_task_with_invalid_time(client, mock_celery_task):
     mock_celery = mock_celery_task(process_sms_client_response)
 
@@ -78,12 +94,12 @@ def test_firetext_callback_should_return_200_and_call_task_with_invalid_time(cli
     assert json_resp["result"] == "success"
 
     mock_celery.assert_called_once_with(
-        ["0", "notification_id", "Firetext", None, None, "2016-03-10T15:02:08.100000"],
+        ["0", "notification_id", "Firetext", None, None, "2016-07-10T15:02:08.100000"],
         queue="sms-callbacks",
     )
 
 
-@freeze_time("2016-03-10 15:02:08.1")
+@freeze_time("2016-07-10 15:02:08.1")
 def test_firetext_callback_should_return_200_and_call_task_with_missing_time(client, mock_celery_task):
     mock_celery = mock_celery_task(process_sms_client_response)
 
@@ -94,23 +110,23 @@ def test_firetext_callback_should_return_200_and_call_task_with_missing_time(cli
     assert json_resp["result"] == "success"
 
     mock_celery.assert_called_once_with(
-        ["0", "notification_id", "Firetext", None, None, "2016-03-10T15:02:08.100000"],
+        ["0", "notification_id", "Firetext", None, None, "2016-07-10T15:02:08.100000"],
         queue="sms-callbacks",
     )
 
 
-@freeze_time("2016-03-10 15:02:08.1")
+@freeze_time("2016-07-10 15:02:08.1")
 def test_firetext_callback_including_a_code_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
     mock_celery = mock_celery_task(process_sms_client_response)
 
-    data = "mobile=441234123123&status=1&code=101&time=2016-03-10 14:17:00&reference=notification_id"
+    data = "mobile=441234123123&status=1&code=101&time=2016-07-10 15:17:00&reference=notification_id"
     response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
     assert json_resp["result"] == "success"
 
     mock_celery.assert_called_once_with(
-        ["1", "notification_id", "Firetext", "101", "2016-03-10T14:17:00", "2016-03-10T15:02:08.100000"],
+        ["1", "notification_id", "Firetext", "101", "2016-07-10T14:17:00", "2016-07-10T15:02:08.100000"],
         queue="sms-callbacks",
     )
 
@@ -151,7 +167,7 @@ def test_process_mmg_response_returns_400_for_malformed_data(client):
     assert "{} callback failed: {} missing".format("MMG", "CID") in json_data["message"]
 
 
-@freeze_time("2016-04-05 16:02:08.1")
+@freeze_time("2016-07-05 16:02:08.1")
 def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mock_celery_task):
     mock_celery = mock_celery_task(process_sms_client_response)
     data = json.dumps(
@@ -161,7 +177,7 @@ def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mo
             "MSISDN": "447777349060",
             "status": "3",
             "substatus": "5",
-            "deliverytime": "2016-04-05 16:01:07",
+            "deliverytime": "2016-07-05 17:01:07",  # note BST, but with no explicit offset
         }
     )
 
@@ -172,7 +188,33 @@ def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mo
     assert json_data["result"] == "success"
 
     mock_celery.assert_called_once_with(
-        ["3", "notification_id", "MMG", "5", "2016-04-05T16:01:07", "2016-04-05T16:02:08.100000"],
+        ["3", "notification_id", "MMG", "5", "2016-07-05T16:01:07", "2016-07-05T16:02:08.100000"],
+        queue="sms-callbacks",
+    )
+
+
+@freeze_time("2016-07-05 16:02:08.1")
+def test_mmg_callback_should_return_200_and_call_task_with_explicit_deliverytime_offset(client, mock_celery_task):
+    mock_celery = mock_celery_task(process_sms_client_response)
+    data = json.dumps(
+        {
+            "reference": "mmg_reference",
+            "CID": "notification_id",
+            "MSISDN": "447777349060",
+            "status": "3",
+            "substatus": "5",
+            "deliverytime": "2016-07-05 18:01:07+0200",  # just in case mmg decide to start doing it properly
+        }
+    )
+
+    response = mmg_post(client, data)
+
+    assert response.status_code == 200
+    json_data = json.loads(response.data)
+    assert json_data["result"] == "success"
+
+    mock_celery.assert_called_once_with(
+        ["3", "notification_id", "MMG", "5", "2016-07-05T16:01:07", "2016-07-05T16:02:08.100000"],
         queue="sms-callbacks",
     )
 

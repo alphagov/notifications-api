@@ -20,6 +20,7 @@ from app.celery.research_mode_tasks import (
 from app.config import QueueNames
 
 
+@freeze_time("2017-07-17T12:14:03.646")
 def test_make_mmg_callback(notify_api, rmock):
     endpoint = "http://localhost:6011/notifications/sms/mmg"
     rmock.request("POST", endpoint, json={"status": "success"}, status_code=200)
@@ -27,7 +28,9 @@ def test_make_mmg_callback(notify_api, rmock):
 
     assert rmock.called
     assert rmock.request_history[0].url == endpoint
-    assert json.loads(rmock.request_history[0].text)["MSISDN"] == "07700900001"
+    payload = json.loads(rmock.request_history[0].text)
+    assert payload["MSISDN"] == "07700900001"
+    assert payload["deliverytime"] == "2017-07-17 13:14:03"
 
 
 def test_callback_logs_on_api_call_failure(notify_api, rmock, caplog):
@@ -108,7 +111,7 @@ def test_temp_failure_mmg_callback(phone_number):
     assert data["CID"] == "1234"
 
 
-@freeze_time("2016-03-10T14:17:00")
+@freeze_time("2016-06-10T14:17:00")
 @pytest.mark.parametrize(
     "phone_number", ["07700900001", "+447700900001", "7700900001", "+44 7700900001", "+447700900256"]
 )
@@ -116,18 +119,18 @@ def test_delivered_firetext_callback(phone_number):
     assert firetext_callback("1234", phone_number) == {
         "mobile": phone_number,
         "status": "0",
-        "time": "2016-03-10 14:17:00",
+        "time": "2016-06-10 15:17:00",
         "reference": "1234",
     }
 
 
-@freeze_time("2016-03-10T14:17:00")
+@freeze_time("2016-06-10T14:17:00")
 @pytest.mark.parametrize("phone_number", ["07700900002", "+447700900002", "7700900002", "+44 7700900002"])
 def test_failure_firetext_callback(phone_number):
     assert firetext_callback("1234", phone_number) == {
         "mobile": phone_number,
         "status": "1",
-        "time": "2016-03-10 14:17:00",
+        "time": "2016-06-10 15:17:00",
         "reference": "1234",
     }
 
