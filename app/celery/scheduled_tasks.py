@@ -75,6 +75,7 @@ from app.dao.services_dao import (
     dao_find_services_sending_to_tv_numbers,
     dao_find_services_with_high_failure_rates,
 )
+from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago, get_users_for_research
 from app.letters.utils import generate_letter_pdf_filename
@@ -444,11 +445,14 @@ def check_for_missing_rows_in_completed_jobs():
             _, task_args_kwargs = get_id_task_args_kwargs_for_job_row(
                 row, template, job, job.service, sender_id=sender_id
             )
-
+            has_files = bool(dao_get_template_email_files_by_template_id(job.template_id))
             extra = {"job_row_number": row_to_process.missing_row, "job_id": job.id}
             current_app.logger.info("Processing missing row %(job_row_number)s for job %(job_id)s", extra, extra=extra)
             process_job_row(
-                template.template_type, task_args_kwargs, has_files=False, message_group_id=str(job.service_id)
+                template.template_type,
+                task_args_kwargs,
+                has_files=has_files,
+                message_group_id=str(job.service_id),
             )
 
 

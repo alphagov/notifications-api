@@ -46,6 +46,7 @@ from app.dao.returned_letters_dao import _get_notification_ids_for_references, i
 from app.dao.service_callback_api_dao import get_returned_letter_callback_api_for_service
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
+from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.notifications.process_notifications import add_email_file_links_to_personalisation, persist_notification
 from app.notifications.validators import (
@@ -105,6 +106,8 @@ def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER
 
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
+    has_files = bool(dao_get_template_email_files_by_template_id(job.template_id))
+
     current_app.logger.info(
         "Starting job %s processing %s notifications",
         job_id,
@@ -117,17 +120,22 @@ def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER
             get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=sender_id)[1]
             for row in shatter_batch
         ]
-        _shatter_job_rows_with_subdivision(template.template_type, batch_args_kwargs, self.message_group_id)
+        _shatter_job_rows_with_subdivision(
+            template.template_type, batch_args_kwargs, self.message_group_id, has_files=has_files
+        )
 
     job_complete(job, start=start)
 
 
-def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, message_group_id, top_level=True):
+def _shatter_job_rows_with_subdivision(
+    template_type, args_kwargs_seq, message_group_id, top_level=True, has_files=False
+):
     try:
         shatter_job_rows.apply_async(
             (
                 template_type,
                 args_kwargs_seq,
+                has_files,
             ),
             queue=QueueNames.JOBS,
             MessageGroupId=message_group_id,
@@ -148,7 +156,9 @@ def _shatter_job_rows_with_subdivision(template_type, args_kwargs_seq, message_g
             raise UnprocessableJobRow from e
 
         for sub_batch in (args_kwargs_seq[:split_batch_size], args_kwargs_seq[split_batch_size:]):
-            _shatter_job_rows_with_subdivision(template_type, sub_batch, message_group_id, top_level=False)
+            _shatter_job_rows_with_subdivision(
+                template_type, sub_batch, message_group_id, top_level=False, has_files=has_files
+            )
 
     else:
         if not top_level:

@@ -706,9 +706,12 @@ def test_check_for_missing_rows_in_completed_jobs_ignores_old_and_new_jobs(
     assert process_job_row.called is False
 
 
-def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template, mock_celery_task):
+@pytest.mark.parametrize("has_files", [True, False])
+def test_check_for_missing_rows_in_completed_jobs(
+    mocker, sample_email_template, sample_email_template_with_template_email_files, mock_celery_task, has_files
+):
     job = create_job(
-        template=sample_email_template,
+        template=sample_email_template_with_template_email_files if has_files else sample_email_template,
         notification_count=5,
         job_status=JOB_STATUS_FINISHED,
         processing_finished=datetime.utcnow() - timedelta(minutes=20),
@@ -743,7 +746,7 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template,
         mock.call(
             (str(job.service_id), "some-uuid", "something_encoded"),
             {},
-            queue="database-tasks",
+            queue="database-tasks-documents" if has_files else "database-tasks",
             MessageGroupId=str(job.service_id),
         )
     ]
