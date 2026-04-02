@@ -4,8 +4,10 @@ from uuid import uuid4
 
 import boto3
 from flask import current_app
+from itsdangerous.exc import BadSignature
 from sqlalchemy.exc import NoResultFound
 
+from app import db
 from app.constants import (
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
@@ -33,7 +35,6 @@ from app.dao.organisation_dao import (
     dao_create_organisation,
     dao_get_organisation_by_id,
     dao_get_organisations_by_partial_name,
-    dao_update_organisation,
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_callback_api_dao import get_service_callback_api_by_callback_type, save_service_callback_api
@@ -64,6 +65,7 @@ from app.dao.templates_dao import (
 )
 from app.dao.users_dao import get_user_by_email, save_model_user
 from app.models import (
+    Domain,
     InboundNumber,
     InboundSms,
     Organisation,
@@ -71,6 +73,7 @@ from app.models import (
     Service,
     ServiceCallbackApi,
     ServiceEmailReplyTo,
+    ServiceSmsSender,
     User,
 )
 from app.schemas import api_key_schema, template_schema
@@ -99,6 +102,86 @@ def _upload_env_to_ssm(ssm_upload_path, env_config, description):
         raise Exception(
             f"Failed to upload {description} to SSM path {ssm_upload_path} (payload size={payload_size} bytes): {exc}"
         ) from exc
+
+
+def _build_sanitised_renamed_name(name):
+    # Keep the original fixture name discoverable while making space for a clean canonical row.
+    suffix = f" [sanitised-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}]"
+    max_name_length = 255
+    if len(name) + len(suffix) <= max_name_length:
+        return f"{name}{suffix}"
+    return f"{name[: max_name_length - len(suffix)]}{suffix}"
+
+
+def _is_sanitised_org(organisation):
+    # These values are written by the sanitise scripts and are a stable signal that this is a copied prod org.
+    return (
+        organisation.request_to_go_live_notes == "redacted"
+        or organisation.notes == "redacted"
+        or organisation.agreement_signed_on_behalf_of_name == "redacted"
+        or organisation.agreement_signed_on_behalf_of_email_address == "redacted@redacted.com"
+    )
+
+
+def _is_sanitised_service(service):
+    # These fields are rewritten during sanitisation; if they are present on canonical fixture names we rotate them.
+    return (
+        service.contact_link == "redacted.gov.uk"
+        or service.notes == "redacted"
+        or service.billing_contact_names == "redacted"
+        or service.billing_contact_email_addresses == "redacted@redacted.com"
+        or service.email_sender_local_part.endswith(".redacted")
+    )
+
+
+def _rename_sanitised_fixture_org(org_name):
+    organisations = dao_get_organisations_by_partial_name(org_name)
+
+    candidate = None
+    for organisation in organisations:
+        if organisation.name == org_name:
+            candidate = organisation
+            break
+
+    if candidate is None or not _is_sanitised_org(candidate):
+        return
+
+    # We rename rather than mutate in place so fixtures can recreate a known-good canonical org deterministically.
+    old_name = candidate.name
+    candidate.name = _build_sanitised_renamed_name(candidate.name)
+    db.session.add(candidate)
+    db.session.commit()
+    current_app.logger.info("Renamed sanitised fixture organisation '%s' to '%s'", old_name, candidate.name)
+
+
+def _rename_sanitised_fixture_service(service_name):
+    services = get_services_by_partial_name(service_name)
+
+    candidate = None
+    for service in services:
+        if service.name == service_name:
+            candidate = service
+            break
+
+    if candidate is None or not _is_sanitised_service(candidate):
+        return
+
+    # Unique constraints on inbound numbers/senders can block fixture creation, so detach these before rotating name.
+    if candidate.inbound_number is not None:
+        candidate.inbound_number.service_id = None
+        db.session.add(candidate.inbound_number)
+
+    for sms_sender in candidate.service_sms_senders:
+        if sms_sender.inbound_number_id is not None:
+            sms_sender.inbound_number_id = None
+            sms_sender.archived = True
+            db.session.add(sms_sender)
+
+    old_name = candidate.name
+    candidate.name = _build_sanitised_renamed_name(candidate.name)
+    db.session.add(candidate)
+    db.session.commit()
+    current_app.logger.info("Renamed sanitised fixture service '%s' to '%s'", old_name, candidate.name)
 
 
 """
@@ -185,6 +268,14 @@ def _create_db_objects(
 ) -> tuple[dict[str, str], dict[str, str]]:
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
+    functional_service_name = "Functional Tests"
+    performance_service_name = "Performance Tests"
+
+    # First clear out sanitised copies that may be occupying canonical fixture names.
+    _rename_sanitised_fixture_org(org_name)
+    _rename_sanitised_fixture_service(functional_service_name)
+    _rename_sanitised_fixture_service(performance_service_name)
+
     current_app.logger.info("--> Ensure organisation exists")
     org = _create_organiation(email_domain, org_name)
 
@@ -210,16 +301,21 @@ def _create_db_objects(
     )
 
     current_app.logger.info("--> Ensure service exists")
-    service = _create_service(org.id, service_admin_user)
+    service = _create_service(org.id, service_admin_user, service_name=functional_service_name)
     performance_service = _create_service(
         org.id,
         service_admin_user,
-        service_name="Performance Tests",
+        service_name=performance_service_name,
         rate_limit=performance_test_rate_limit,
         sms_message_limit=performance_test_sms_limit,
         letter_message_limit=performance_test_letter_limit,
         email_message_limit=performance_test_email_limit,
     )
+
+    # Repair invalid key payloads early so later auth/serialization paths do not fail with BadSignature.
+    _repair_invalid_service_api_keys(service.id)
+    _repair_invalid_service_api_keys(performance_service.id)
+    _repair_invalid_service_api_keys(govuk_service_id)
 
     current_app.logger.info("--> Ensure users are added to service")
     dao_add_user_to_service(service, service_admin_user)
@@ -504,7 +600,30 @@ def _create_organiation(email_domain, org_name):
 
         dao_create_organisation(org)
 
-    dao_update_organisation(org.id, domains=[email_domain], can_approve_own_go_live_requests=True)
+    org.name = org_name
+    org.active = True
+    org.crown = False
+    org.organisation_type = "central"
+    org.can_approve_own_go_live_requests = True
+    db.session.add(org)
+
+    normalised_email_domain = email_domain.lower()
+    existing_domain = Domain.query.filter_by(domain=normalised_email_domain).one_or_none()
+    if existing_domain is None:
+        db.session.add(Domain(domain=normalised_email_domain, organisation_id=org.id))
+    elif existing_domain.organisation_id != org.id:
+        # Domain ownership is unique across orgs; reclaim it so fixture users resolve to this fixture org.
+        previous_org_id = existing_domain.organisation_id
+        existing_domain.organisation_id = org.id
+        db.session.add(existing_domain)
+        current_app.logger.info(
+            "Reassigned domain %s from organisation %s to fixture organisation %s",
+            normalised_email_domain,
+            previous_org_id,
+            org.id,
+        )
+
+    db.session.commit()
 
     return org
 
@@ -542,6 +661,10 @@ def _create_service(
         )
         dao_create_service(service, user)
 
+    service.active = True
+    service.restricted = False
+    service.organisation_id = org_id
+    service.organisation_type = "central"
     service.rate_limit = rate_limit
     service.sms_message_limit = sms_message_limit
     service.letter_message_limit = letter_message_limit
@@ -568,6 +691,23 @@ def _create_api_key(name, service_id, user_id, key_type="normal"):
     api_keys = get_model_api_keys(service_id=service_id)
     for key in api_keys:
         if key.name == name:
+            if key.expiry_date is not None:
+                continue
+
+            try:
+                _ = key.secret
+            except BadSignature:
+                # Keep key identity stable and rotate the secret in place to avoid dangling references.
+                current_app.logger.warning(
+                    "Fixture api key %s for service %s had invalid signature; rotating in place",
+                    name,
+                    service_id,
+                )
+                key.secret = uuid4()
+                db.session.add(key)
+                db.session.commit()
+                return key
+
             return key
 
     request = {"created_by": user_id, "key_type": key_type, "name": name}
@@ -580,10 +720,63 @@ def _create_api_key(name, service_id, user_id, key_type="normal"):
     return valid_api_key
 
 
+def _repair_invalid_service_api_keys(service_id):
+    # Use get_model_api_keys so we cover the same key set auth paths read (active + recently expired).
+    api_keys = get_model_api_keys(service_id=service_id)
+    repaired_count = 0
+
+    for key in api_keys:
+        try:
+            _ = key.secret
+        except BadSignature:
+            key.secret = uuid4()
+            db.session.add(key)
+            repaired_count += 1
+
+    if repaired_count > 0:
+        db.session.commit()
+        current_app.logger.info(
+            "Rotated %s invalid api key secret(s) for fixture service %s",
+            repaired_count,
+            service_id,
+        )
+
+
 def _create_inbound_numbers(service_id, user_id, number="07700900500", provider="mmg"):
     inbound_number = dao_get_inbound_number_for_service(service_id=service_id)
 
+    if inbound_number is not None and inbound_number.number == number:
+        return inbound_number.id
+
+    inbound_number_by_number = InboundNumber.query.filter_by(number=number).one_or_none()
+    if inbound_number_by_number is not None:
+        # Number is globally unique; reclaim it if sanitised data left it attached to another service.
+        if inbound_number is not None and inbound_number.id != inbound_number_by_number.id:
+            inbound_number.service_id = None
+            db.session.add(inbound_number)
+
+        previous_service_id = inbound_number_by_number.service_id
+        inbound_number_by_number.service_id = service_id
+        inbound_number_by_number.active = True
+        db.session.add(inbound_number_by_number)
+        db.session.commit()
+
+        if previous_service_id and previous_service_id != service_id:
+            current_app.logger.info(
+                "Reassigned inbound number %s from service %s to fixture service %s",
+                number,
+                previous_service_id,
+                service_id,
+            )
+
+        return inbound_number_by_number.id
+
     if inbound_number is not None:
+        inbound_number.number = number
+        inbound_number.provider = provider
+        inbound_number.active = True
+        db.session.add(inbound_number)
+        db.session.commit()
         return inbound_number.id
 
     inbound_number = InboundNumber()
@@ -751,6 +944,36 @@ def _create_service_sms_senders(service_id, sms_sender, is_default, inbound_numb
     for service_sms_sender in service_sms_senders:
         if service_sms_sender.sms_sender == sms_sender:
             return service_sms_sender
+        if inbound_number_id and service_sms_sender.inbound_number_id == inbound_number_id:
+            return service_sms_sender
+
+    if inbound_number_id:
+        existing_inbound_sender = ServiceSmsSender.query.filter_by(inbound_number_id=inbound_number_id).one_or_none()
+        if existing_inbound_sender is not None:
+            # inbound_number_id is unique; move the sender row over instead of creating a conflicting duplicate.
+            if is_default:
+                for service_sms_sender in service_sms_senders:
+                    if service_sms_sender.id != existing_inbound_sender.id and service_sms_sender.is_default:
+                        service_sms_sender.is_default = False
+                        db.session.add(service_sms_sender)
+
+            previous_service_id = existing_inbound_sender.service_id
+            existing_inbound_sender.service_id = service_id
+            existing_inbound_sender.sms_sender = sms_sender
+            existing_inbound_sender.is_default = is_default
+            existing_inbound_sender.archived = False
+            db.session.add(existing_inbound_sender)
+            db.session.commit()
+
+            if previous_service_id != service_id:
+                current_app.logger.info(
+                    "Reassigned inbound sms sender for number %s from service %s to fixture service %s",
+                    sms_sender,
+                    previous_service_id,
+                    service_id,
+                )
+
+            return existing_inbound_sender
 
     return dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id)
 
