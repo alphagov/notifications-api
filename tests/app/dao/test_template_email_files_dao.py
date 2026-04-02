@@ -141,8 +141,8 @@ def test_dao_get_template_email_files_by_template_id_historical(
     # dao_update_template(sample_email_template)
     sample_template_email_file_not_pending.retention_period = 20
     dao_update_template_email_file(sample_template_email_file_not_pending)
-    assert sample_email_template.version == 4
-    template_version_to_get = 2
+    assert sample_email_template.version == 3
+    template_version_to_get = 1
     template_email_file_fetched = dao_get_template_email_files_by_template_id(
         sample_email_template.id, template_version=template_version_to_get
     )[0]
@@ -164,10 +164,10 @@ def test_dao_update_template_email_file(sample_email_template, sample_template_e
     fetched_template_email_file = TemplateEmailFile.query.get(sample_template_email_file_not_pending.id)
     fetched_template = Template.query.get(sample_email_template.id)
     assert fetched_template_email_file.version == 2
-    assert fetched_template_email_file.template_version == 3
+    assert fetched_template_email_file.template_version == 2
     assert fetched_template_email_file.link_text == "click this new link"
     assert fetched_template_email_file.retention_period == 30
-    assert fetched_template.version == 3
+    assert fetched_template.version == 2
 
 
 @freeze_time("2025-07-30 16:06:04.000000")

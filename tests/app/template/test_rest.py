@@ -997,7 +997,7 @@ def test_update_template_content_and_archive_email_files(
     client, sample_email_template_with_template_email_files, sample_user
 ):
     template = sample_email_template_with_template_email_files
-    assert template.version == 3
+    assert template.version == 1
 
     auth_header = create_admin_authorization_header()
     data = {
@@ -1015,8 +1015,8 @@ def test_update_template_content_and_archive_email_files(
 
     template = dao_get_template_by_id(template.id)
     assert template.content == "New content"
-    assert template.version == 4
-    assert TemplateHistory.query.filter_by(id=template.id, version=4).one()
+    assert template.version == 2
+    assert TemplateHistory.query.filter_by(id=template.id, version=2).one()
 
     fetched_template_email_files = TemplateEmailFile.query.filter_by(template_id=template.id).all()
     assert len(fetched_template_email_files) == 2
@@ -1025,7 +1025,7 @@ def test_update_template_content_and_archive_email_files(
         assert file.archived_at == datetime(2025, 12, 30, 16, 6, 4)
         assert file.archived_by_id == sample_user.id
         assert file.version == 2
-        assert file.template_version == 4
+        assert file.template_version == 2
 
 
 @freeze_time("2025-12-30 16:06:04.000000")
@@ -1033,7 +1033,7 @@ def test_update_template_content_and_archive_just_one_of_two_email_files(
     client, sample_email_template_with_template_email_files, sample_user
 ):
     template = sample_email_template_with_template_email_files
-    assert template.version == 3
+    assert template.version == 1
 
     file_to_keep = template.email_files[0]
     file_to_archive = template.email_files[1]
@@ -1054,22 +1054,22 @@ def test_update_template_content_and_archive_just_one_of_two_email_files(
 
     template = dao_get_template_by_id(template.id)
     assert template.content == "Just bring the invite ((invitation.pdf))"
-    assert template.version == 4
-    assert TemplateHistory.query.filter_by(id=template.id, version=4).one()
+    assert template.version == 2
+    assert TemplateHistory.query.filter_by(id=template.id, version=2).one()
 
     archived_file = TemplateEmailFile.query.filter_by(id=file_to_archive.id).one()
 
     assert archived_file.archived_at == datetime(2025, 12, 30, 16, 6, 4)
     assert archived_file.archived_by_id == sample_user.id
     assert archived_file.version == 2
-    assert archived_file.template_version == 4
+    assert archived_file.template_version == 2
 
     remaining_file = TemplateEmailFile.query.filter_by(id=file_to_keep.id).one()
 
     assert remaining_file.archived_at == None  # noqa
     assert remaining_file.archived_by_id == None  # noqa
     assert remaining_file.version == 1
-    assert remaining_file.template_version == 2
+    assert remaining_file.template_version == 1
 
 
 def test_update_template_reply_to(client, sample_letter_template):

@@ -18,12 +18,10 @@ def dao_create_pending_template_email_file(template_email_file: TemplateEmailFil
 @autocommit
 @version_class(
     VersionOptions(TemplateEmailFile, history_class=TemplateEmailFileHistory),
-    VersionOptions(Template, history_class=TemplateHistory),
 )
 def dao_create_template_email_file(template_email_file: TemplateEmailFile):
     template = Template.query.get(template_email_file.template_id)
-    template.updated_at = datetime.datetime.utcnow()
-    template_email_file.template_version = template.version + 1
+    template_email_file.template_version = template.version
     db.session.add(template_email_file)
 
 
@@ -74,14 +72,11 @@ def dao_update_pending_template_email_file(template_email_file: TemplateEmailFil
 @autocommit
 @version_class(
     VersionOptions(TemplateEmailFile, history_class=TemplateEmailFileHistory),
-    VersionOptions(Template, history_class=TemplateHistory),
 )
 def dao_make_pending_template_email_file_live(template_email_file: TemplateEmailFile):
     template = Template.query.get(template_email_file.template_id)
-    template.updated_at = datetime.datetime.utcnow()
-    template_email_file.template_version = template.version + 1
+    template_email_file.template_version = template.version
     db.session.add(template_email_file)
-    db.session.add(template)
 
 
 @autocommit
