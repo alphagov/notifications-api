@@ -10,15 +10,16 @@ from tests.app.db import create_template_email_file
 
 
 @freezegun.freeze_time("2025-07-01 11:09:00.000000")
-def test_create_template_email_file_happy_path(sample_service, sample_email_template, admin_request):
+@pytest.mark.parametrize("extra_data", ({}, {"pending": True}, {"pending": False}))  # pending is ignored
+def test_create_template_email_file_happy_path(sample_service, sample_email_template, admin_request, extra_data):
     data = {
         "filename": "example.pdf",
         "link_text": "click this link!",
         "retention_period": 90,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
-        "pending": False,
-    }
+    } | extra_data
+
     response = admin_request.post(
         "template_email_files.create_template_email_file",
         service_id=sample_service.id,
@@ -45,7 +46,7 @@ def test_create_template_email_file_happy_path(sample_service, sample_email_temp
     assert template_email_file.template_id == sample_email_template.id
     assert template_email_file.template_version == int(sample_email_template.version)
     assert template_email_file.created_by_id == sample_service.users[0].id
-    assert template_email_file.version == 1
+    assert template_email_file.version == 0
     assert str(template_email_file.created_at) == "2025-07-01 11:09:00"
 
 
@@ -112,8 +113,9 @@ def test_create_template_email_file_fails_if_template_already_has_file_with_same
     assert response["result"] == "error"
 
 
+@pytest.mark.parametrize("extra_data", ({}, {"pending": True}, {"pending": False}))  # pending is ignored
 def test_create_template_email_file_creates_file_with_latest_template_version(
-    sample_service, sample_email_template, sample_template_email_file_not_pending, admin_request
+    sample_service, sample_email_template, sample_template_email_file_not_pending, extra_data, admin_request
 ):
     # template version after creating the first email file
     assert sample_template_email_file_not_pending.template_version == 1
@@ -130,8 +132,8 @@ def test_create_template_email_file_creates_file_with_latest_template_version(
         "retention_period": 30,
         "validate_users_email": True,
         "created_by_id": str(sample_service.users[0].id),
-        "pending": False,
-    }
+    } | extra_data
+
     response = admin_request.post(
         "template_email_files.create_template_email_file",
         service_id=sample_service.id,

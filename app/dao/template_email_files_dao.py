@@ -12,6 +12,7 @@ from app.models import Template, TemplateEmailFile, TemplateEmailFileHistory, Te
 def dao_create_pending_template_email_file(template_email_file: TemplateEmailFile):
     template = Template.query.get(template_email_file.template_id)
     template_email_file.template_version = template.version
+    template_email_file.pending = True
     db.session.add(template_email_file)
 
 

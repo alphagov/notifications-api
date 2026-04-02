@@ -7,7 +7,6 @@ from app.constants import EMAIL_TYPE
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_email_files_dao import (
     dao_create_pending_template_email_file,
-    dao_create_template_email_file,
     dao_get_template_email_file_by_id,
     dao_get_template_email_files_by_template_id,
     dao_make_pending_template_email_file_live,
@@ -39,8 +38,6 @@ def create_template_email_file(service_id, template_id):
     template_email_file_json = validate(request.get_json(), post_create_template_email_files_schema)
     fetched_template = dao_get_template_by_id_and_service_id(template_id, service_id)
 
-    pending = template_email_file_json.get("pending", False)
-
     if fetched_template.template_type != EMAIL_TYPE:
         raise InvalidRequest(message="Cannot add an email file to a non-email template", status_code=400)
 
@@ -51,10 +48,9 @@ def create_template_email_file(service_id, template_id):
     template_email_file = TemplateEmailFile.from_json(template_email_file_json)
 
     _check_if_filename_unique_for_email_files_within_one_template(template_email_file.filename, template_id)
-    if pending:
-        dao_create_pending_template_email_file(template_email_file)
-    else:
-        dao_create_template_email_file(template_email_file)
+
+    dao_create_pending_template_email_file(template_email_file)
+
     return jsonify(data=template_email_files_schema.dump(template_email_file)), 201
 
 
