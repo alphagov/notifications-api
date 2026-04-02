@@ -6,8 +6,21 @@ import pytest
 from moto import mock_aws
 
 from app import db
-from app.functional_tests_fixtures import _create_db_objects, _create_user, apply_fixtures
-from app.models import Service, Template
+from app.functional_tests_fixtures import (
+    _create_api_key,
+    _create_db_objects,
+    _create_user,
+    _repair_invalid_service_api_keys,
+    apply_fixtures,
+)
+from app.models import ApiKey, InboundNumber, Organisation, Service, ServiceSmsSender, Template
+from tests.app.db import (
+    create_api_key,
+    create_inbound_number,
+    create_organisation,
+    create_service,
+    create_service_sms_sender,
+)
 from tests.conftest import set_config_values
 
 
@@ -174,6 +187,137 @@ def test_create_db_objects_creates_dedicated_performance_service_with_limits_and
         template = db.session.get(Template, performance_vars[template_id_key])
         assert template is not None
         assert template.service_id == performance_service.id
+
+
+def test_create_db_objects_renames_sanitised_org_and_recreates_canonical_org(notify_api, notify_service):
+    sanitised_org = create_organisation(name="Functional Tests Org", domains=["digital.cabinet-office.gov.uk"])
+    sanitised_org.request_to_go_live_notes = "redacted"
+    sanitised_org.notes = "redacted"
+    db.session.add(sanitised_org)
+    db.session.commit()
+
+    with set_config_values(
+        notify_api,
+        {
+            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
+            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
+            "ADMIN_BASE_URL": "http://localhost:6012",
+            "API_HOST_NAME": "http://localhost:6011",
+        },
+    ):
+        functional_vars, _ = _create_db_objects(
+            "fake password",
+            "test_request_bin_token",
+            "dev-env",
+            "notify-tests-preview",
+            "digital.cabinet-office.gov.uk",
+            "govuk_notify",
+            "functional_tests_service_live_key",
+            "functional_tests_service_test_key",
+            str(notify_service.id),
+            "Functional Tests Org",
+            "07700900500",
+        )
+
+    recreated_org = Organisation.query.get(functional_vars["FUNCTIONAL_TESTS_ORGANISATION_ID"])
+    original_org = Organisation.query.get(sanitised_org.id)
+
+    assert recreated_org.name == "Functional Tests Org"
+    assert recreated_org.id != sanitised_org.id
+    assert original_org.name != "Functional Tests Org"
+    assert original_org.name.startswith("Functional Tests Org [sanitised-")
+
+
+def test_create_db_objects_renames_sanitised_services_and_reclaims_inbound_number(notify_api, notify_service):
+    sanitised_org = create_organisation(name="Legacy Sanitised Org")
+    sanitised_functional_service = create_service(
+        service_name="Functional Tests",
+        organisation=sanitised_org,
+        contact_link="redacted.gov.uk",
+    )
+    create_service(
+        service_name="Performance Tests",
+        organisation=sanitised_org,
+        contact_link="redacted.gov.uk",
+    )
+
+    inbound_number = create_inbound_number(number="07700900500", service_id=sanitised_functional_service.id)
+    create_service_sms_sender(
+        service=sanitised_functional_service,
+        sms_sender="07700900500",
+        is_default=True,
+        inbound_number_id=inbound_number.id,
+    )
+
+    with set_config_values(
+        notify_api,
+        {
+            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
+            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
+            "ADMIN_BASE_URL": "http://localhost:6012",
+            "API_HOST_NAME": "http://localhost:6011",
+        },
+    ):
+        functional_vars, _ = _create_db_objects(
+            "fake password",
+            "test_request_bin_token",
+            "dev-env",
+            "notify-tests-preview",
+            "digital.cabinet-office.gov.uk",
+            "govuk_notify",
+            "functional_tests_service_live_key",
+            "functional_tests_service_test_key",
+            str(notify_service.id),
+            "Functional Tests Org",
+            "07700900500",
+        )
+
+    recreated_functional_service = Service.query.get(functional_vars["FUNCTIONAL_TESTS_SERVICE_ID"])
+    renamed_service = Service.query.get(sanitised_functional_service.id)
+    reassigned_inbound = InboundNumber.query.filter_by(number="07700900500").one()
+    inbound_sender = ServiceSmsSender.query.filter_by(inbound_number_id=reassigned_inbound.id).one()
+
+    assert recreated_functional_service.name == "Functional Tests"
+    assert recreated_functional_service.id != sanitised_functional_service.id
+    assert renamed_service.name != "Functional Tests"
+    assert renamed_service.name.startswith("Functional Tests [sanitised-")
+    assert str(reassigned_inbound.service_id) == str(recreated_functional_service.id)
+    assert str(inbound_sender.service_id) == str(recreated_functional_service.id)
+
+
+def test_create_api_key_repairs_when_existing_key_secret_is_invalid(notify_service, sample_user):
+    broken_key = create_api_key(notify_service, key_name="functional_tests_service_live_key")
+    broken_key._secret = "broken-signature-value"
+    db.session.add(broken_key)
+    db.session.commit()
+
+    repaired_key = _create_api_key(
+        "functional_tests_service_live_key",
+        notify_service.id,
+        sample_user.id,
+        "normal",
+    )
+
+    refreshed_broken_key = ApiKey.query.get(broken_key.id)
+    assert refreshed_broken_key.expiry_date is None
+    assert repaired_key.id == broken_key.id
+    assert repaired_key.secret is not None
+
+
+def test_repair_invalid_service_api_keys_repairs_recently_expired_keys(notify_service):
+    broken_key = create_api_key(notify_service, key_name="broken_expired_key")
+    broken_key.expiry_date = datetime.utcnow()
+    broken_key._secret = "broken-signature-value"
+    db.session.add(broken_key)
+    db.session.commit()
+
+    _repair_invalid_service_api_keys(notify_service.id)
+
+    refreshed_broken_key = ApiKey.query.get(broken_key.id)
+    assert refreshed_broken_key.expiry_date is not None
+    assert refreshed_broken_key.secret is not None
 
 
 @mock_aws
