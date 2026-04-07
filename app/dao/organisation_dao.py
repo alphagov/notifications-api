@@ -1,4 +1,5 @@
 from flask import current_app
+from sqlalchemy.orm import Session, scoped_session
 from sqlalchemy.sql.expression import func
 
 from app import db
@@ -17,7 +18,7 @@ from app.models import (
     Service,
     User,
 )
-from app.utils import escape_special_characters, get_archived_db_column_value
+from app.utils import escape_special_characters, get_archived_db_column_value, retryable_query
 
 
 def dao_get_organisations():
@@ -46,12 +47,13 @@ def dao_get_organisation_by_id(organisation_id):
     return Organisation.query.filter_by(id=organisation_id).one()
 
 
-def dao_get_organisation_by_email_address(email_address):
+@retryable_query()
+def dao_get_organisation_by_email_address(email_address: str, session: Session | scoped_session = db.session):
     email_address = email_address.lower().replace(".gsi.gov.uk", ".gov.uk")
 
-    for domain in Domain.query.order_by(func.char_length(Domain.domain).desc()).all():
+    for domain in session.query(Domain).order_by(func.char_length(Domain.domain).desc()).all():
         if email_address.endswith((f"@{domain.domain}", f".{domain.domain}")):
-            return Organisation.query.filter_by(id=domain.organisation_id).one()
+            return session.query(Organisation).filter_by(id=domain.organisation_id).one()
 
     return None
 

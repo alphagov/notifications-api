@@ -86,7 +86,11 @@ def get_organisation_by_domain():
     if not domain or "@" in domain:
         abort(400)
 
-    organisation = dao_get_organisation_by_email_address("example@{}".format(request.args.get("domain")))
+    organisation = dao_get_organisation_by_email_address(
+        f"example@{domain}",
+        session=db.session_bulk,
+        retry_attempts=2,
+    )
 
     if not organisation:
         abort(404)
