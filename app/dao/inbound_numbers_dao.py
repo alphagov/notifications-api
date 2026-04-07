@@ -1,13 +1,17 @@
 from uuid import UUID
 
+from sqlalchemy.orm import Session, scoped_session
+
 from app import db
 from app.constants import INBOUND_SMS_TYPE
 from app.dao.dao_utils import autocommit
 from app.models import InboundNumber
+from app.utils import retryable_query
 
 
-def dao_get_inbound_numbers():
-    return InboundNumber.query.order_by(InboundNumber.updated_at).all()
+@retryable_query()
+def dao_get_inbound_numbers(session: Session | scoped_session = db.session):
+    return session.query(InboundNumber).order_by(InboundNumber.updated_at).all()
 
 
 def dao_get_available_inbound_numbers():

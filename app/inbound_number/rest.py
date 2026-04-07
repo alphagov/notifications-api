@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 
+from app import db
 from app.dao.inbound_numbers_dao import (
     dao_allocate_number_for_service,
     dao_get_available_inbound_numbers,
@@ -24,7 +25,7 @@ register_errors(inbound_number_blueprint)
 
 @inbound_number_blueprint.route("", methods=["GET"])
 def get_inbound_numbers():
-    inbound_numbers = [i.serialize() for i in dao_get_inbound_numbers()]
+    inbound_numbers = [i.serialize() for i in dao_get_inbound_numbers(session=db.session_bulk, retry_attempts=2)]
 
     return jsonify(data=inbound_numbers if inbound_numbers else [])
 
