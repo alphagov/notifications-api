@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy import event
@@ -13,9 +14,9 @@ class QueryInfo:
 
 
 class QueryRecorder:
-    def __init__(self):
+    def __init__(self) -> None:
         self.queries: list[QueryInfo] = []
-        self._listeners = []
+        self._listeners: list[Callable] = []
 
     def __enter__(self):
         # Register listeners for all engines to capture bind_key
