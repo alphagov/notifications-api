@@ -2,10 +2,10 @@ from collections import namedtuple
 from collections.abc import Sequence
 from datetime import date, datetime, timedelta
 from itertools import chain, groupby
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 from uuid import UUID
 
-from sqlalchemy import Date, Row, case, delete, func
+from sqlalchemy import CursorResult, Date, Row, case, delete, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, scoped_session
 from sqlalchemy.sql.expression import extract, literal
@@ -137,14 +137,17 @@ def update_fact_notification_status(
 
     # delete any existing rows in case some no longer exist in `rows` e.g. if all messages are sent
     # (an upsert alone would not be sufficient here)
-    deleted_row_count = db.session.execute(
-        delete(FactNotificationStatus)
-        .where(
-            FactNotificationStatus.bst_date == process_day,
-            FactNotificationStatus.notification_type == notification_type,
-            FactNotificationStatus.service_id == service_id,
-        )
-        .execution_options(synchronize_session=False)
+    deleted_row_count = cast(
+        CursorResult,
+        db.session.execute(
+            delete(FactNotificationStatus)
+            .where(
+                FactNotificationStatus.bst_date == process_day,
+                FactNotificationStatus.notification_type == notification_type,
+                FactNotificationStatus.service_id == service_id,
+            )
+            .execution_options(synchronize_session=False)
+        ),
     ).rowcount
 
     db.session.execute(
