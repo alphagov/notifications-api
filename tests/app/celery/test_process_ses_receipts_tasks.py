@@ -62,8 +62,10 @@ def test_remove_email_from_bounce():
     assert "bounce@simulator.amazonses.com" not in json.dumps(test_json)
 
 
-def test_ses_callback_should_update_notification_status(client, notify_db_session, sample_email_template, mocker):
-    with freeze_time("2001-01-01T12:00:00"):
+def test_ses_callback_should_update_notification_status(
+    client, notify_db_session, sample_email_template, caplog, mocker
+):
+    with freeze_time("2001-01-01T12:00:00") as frozen_time:
         mocker.patch("app.statsd_client.incr")
         mocker.patch("app.statsd_client.timing_with_dates")
         send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
@@ -74,7 +76,15 @@ def test_ses_callback_should_update_notification_status(client, notify_db_sessio
         )
         assert get_notification_by_id(notification.id).status == "sending"
 
-        assert process_ses_results(ses_notification_callback(reference="ref"))
+        payload = ses_notification_callback(reference="ref")
+
+        frozen_time.tick(1)
+
+        receipt_iso_timestamp = datetime.utcnow().isoformat()
+
+        frozen_time.tick(1)
+
+        assert process_ses_results(payload, receipt_iso_timestamp)
         assert get_notification_by_id(notification.id).status == "delivered"
         statsd_client.timing_with_dates.assert_any_call(
             "callback.ses.delivered.elapsed-time", datetime.utcnow(), notification.sent_at
@@ -82,6 +92,12 @@ def test_ses_callback_should_update_notification_status(client, notify_db_sessio
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         updated_notification = Notification.query.get(notification.id)
         send_mock.assert_called_once_with(updated_notification)
+
+        record = next(r for r in caplog.records if "SES successful delivery" in r.msg)
+        assert record.delivered_at == datetime(2001, 1, 1, 12, 0)
+        assert record.delivered_ago == 2
+        assert record.receipt_received_at == datetime(2001, 1, 1, 12, 0, 1)
+        assert record.receipt_received_ago == 1
 
 
 def test_ses_callback_should_not_update_notification_status_if_already_delivered(sample_email_template, mocker):
@@ -162,18 +178,32 @@ def test_ses_callback_should_set_status_to_temporary_failure(
 ):
     send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
 
-    with caplog.at_level("INFO"):
+    with freeze_time("2001-01-01T12:00:00") as frozen_time, caplog.at_level("INFO"):
         notification = create_notification(
             template=sample_email_template,
             status="sending",
             reference="ref",
         )
         assert get_notification_by_id(notification.id).status == "sending"
-        assert process_ses_results(ses_soft_bounce_callback(reference="ref"))
+        payload = ses_soft_bounce_callback(reference="ref")
+
+        frozen_time.tick(1)
+
+        receipt_iso_timestamp = datetime.utcnow().isoformat()
+
+        frozen_time.tick(1)
+
+        assert process_ses_results(payload, receipt_iso_timestamp)
         assert get_notification_by_id(notification.id).status == "temporary-failure"
 
     assert send_mock.called
-    assert f"SES bounce for notification ID {notification.id}" in caplog.messages
+
+    bounce_record = next(r for r in caplog.records if r.message == f"SES bounce for notification ID {notification.id}")
+    assert hasattr(bounce_record, "bounce_message")
+    assert bounce_record.bounced_at == datetime(2001, 1, 1, 12, 0)
+    assert bounce_record.bounced_ago == 2
+    assert bounce_record.receipt_received_at == datetime(2001, 1, 1, 12, 0, 1)
+    assert bounce_record.receipt_received_ago == 1
 
 
 def test_ses_callback_should_set_status_to_permanent_failure(
@@ -181,23 +211,32 @@ def test_ses_callback_should_set_status_to_permanent_failure(
 ):
     send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
 
-    with caplog.at_level("INFO"):
+    with freeze_time("2001-01-01T12:00:00") as frozen_time, caplog.at_level("INFO"):
         notification = create_notification(
             template=sample_email_template,
             status="sending",
             reference="ref",
         )
         assert get_notification_by_id(notification.id).status == "sending"
-        assert process_ses_results(ses_hard_bounce_callback(reference="ref"))
+        payload = ses_hard_bounce_callback(reference="ref")
+
+        frozen_time.tick(1)
+
+        receipt_iso_timestamp = datetime.utcnow().isoformat()
+
+        frozen_time.tick(1)
+
+        assert process_ses_results(payload, receipt_iso_timestamp)
         assert get_notification_by_id(notification.id).status == "permanent-failure"
 
     assert send_mock.called
 
-    bounce_record = next(
-        filter(lambda r: r.message == f"SES bounce for notification ID {notification.id}", caplog.records), None
-    )
-    assert bounce_record is not None
+    bounce_record = next(r for r in caplog.records if r.message == f"SES bounce for notification ID {notification.id}")
     assert hasattr(bounce_record, "bounce_message")
+    assert bounce_record.bounced_at == datetime(2001, 1, 1, 12, 0)
+    assert bounce_record.bounced_ago == 2
+    assert bounce_record.receipt_received_at == datetime(2001, 1, 1, 12, 0, 1)
+    assert bounce_record.receipt_received_ago == 1
 
 
 def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email_template, mock_celery_task):
