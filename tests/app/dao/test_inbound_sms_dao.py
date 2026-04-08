@@ -1,6 +1,7 @@
 from datetime import datetime
 from itertools import product
 
+import pytest
 from freezegun import freeze_time
 
 from app import db
@@ -25,14 +26,28 @@ from tests.app.db import (
     create_template,
 )
 from tests.conftest import set_config
+from tests.utils import QueryRecorder
 
 
-def test_get_all_inbound_sms(sample_service):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_get_all_inbound_sms(sample_service, session, expected_bind_key):
     inbound = create_inbound_sms(sample_service)
 
-    res = dao_get_inbound_sms_for_service(sample_service.id)
+    service_id = sample_service.id
+
+    with QueryRecorder() as query_recorder:
+        res = dao_get_inbound_sms_for_service(service_id, session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
     assert len(res) == 1
-    assert res[0] == inbound
+    assert res[0].id == inbound.id
 
 
 def test_get_all_inbound_sms_when_none_exist(sample_service):
@@ -80,7 +95,15 @@ def test_get_all_inbound_sms_filters_on_time(sample_service, notify_db_session):
     assert res[0] == sms_two
 
 
-def test_count_inbound_sms_for_service(notify_db_session):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_count_inbound_sms_for_service(notify_db_session, session, expected_bind_key):
     service_one = create_service(service_name="one")
     service_two = create_service(service_name="two")
 
@@ -88,7 +111,13 @@ def test_count_inbound_sms_for_service(notify_db_session):
     create_inbound_sms(service_one)
     create_inbound_sms(service_two)
 
-    assert dao_count_inbound_sms_for_service(service_one.id, limit_days=1) == 2
+    service_id = service_one.id
+
+    with QueryRecorder() as query_recorder:
+        results = dao_count_inbound_sms_for_service(service_id, limit_days=1, session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+    assert results == 2
 
 
 def test_count_inbound_sms_for_service_filters_messages_older_than_n_days(sample_service):
