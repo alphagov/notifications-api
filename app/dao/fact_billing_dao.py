@@ -1246,10 +1246,12 @@ def fetch_volumes_by_service(
     return results
 
 
+@retryable_query()
 def get_count_of_notifications_sent(
     service_id,
     template_types,
     limit_days,
+    session: Session | scoped_session = db.session,
 ):
     filters = [
         FactBilling.service_id == service_id,
@@ -1257,7 +1259,7 @@ def get_count_of_notifications_sent(
         FactBilling.notification_type.in_(template_types),
     ]
 
-    query = FactBilling.query.filter(*filters)
+    query = session.query(FactBilling).filter(*filters)
 
     notifications_count = query.with_entities(func.sum(FactBilling.notifications_sent)).scalar()
 

@@ -591,6 +591,8 @@ def count_notifications_for_service(service_id):
         service_id=service_id,
         template_types=template_types,
         limit_days=limit_days,
+        session=db.session_bulk,
+        retry_attempts=2,
     )
 
     return jsonify({"notifications_sent_count": notification_count}), 200

@@ -2042,7 +2042,12 @@ test_cases = [
     test_cases,
     ids=["All template types within 7 days", "Only SMS template type within 7 days", "Limit days exclude all data"],
 )
-def test_get_count_of_notifications_sent(sample_service, test_case):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    ((db.session, None), (db.session_bulk, "bulk")),
+    ids=("default", "bulk"),
+)
+def test_get_count_of_notifications_sent(sample_service, test_case, session, expected_bind_key):
     assert len(FactBilling.query.all()) == 0
 
     sms_template = create_template(service=sample_service, template_type="sms")
@@ -2056,9 +2061,18 @@ def test_get_count_of_notifications_sent(sample_service, test_case):
             notifications_sent=notification_data["notifications_sent"],
         )
 
-    count = get_count_of_notifications_sent(
-        service_id=sample_service.id, template_types=test_case.template_types, limit_days=test_case.limit_days
-    )
+    count = 0
+    service_id = sample_service.id
+
+    with QueryRecorder() as query_recorder:
+        count = get_count_of_notifications_sent(
+            service_id=service_id,
+            template_types=test_case.template_types,
+            limit_days=test_case.limit_days,
+            session=session,
+        )
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
 
     assert count == test_case.expected_count
 
