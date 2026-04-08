@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from app import db
 from app.constants import INBOUND_SMS_TYPE
 from app.dao.inbound_numbers_dao import (
     archive_or_release_inbound_number_for_service,
@@ -16,13 +17,24 @@ from app.dao.inbound_numbers_dao import (
 from app.dao.service_sms_sender_dao import dao_add_sms_sender_for_service, dao_get_sms_senders_by_service_id
 from app.models import InboundNumber
 from tests.app.db import create_inbound_number, create_service
+from tests.utils import QueryRecorder
 
 
-def test_get_inbound_numbers(notify_db_session, sample_inbound_numbers):
-    res = dao_get_inbound_numbers()
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_get_inbound_numbers(notify_db_session, sample_inbound_numbers, session, expected_bind_key):
+    with QueryRecorder() as query_recorder:
+        res = dao_get_inbound_numbers(session=session)
 
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
     assert len(res) == len(sample_inbound_numbers)
-    assert res == sample_inbound_numbers
+    assert {num.id for num in sample_inbound_numbers} == {x.id for x in sample_inbound_numbers}
 
 
 def test_get_available_inbound_numbers(notify_db_session):
