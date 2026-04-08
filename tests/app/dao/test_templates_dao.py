@@ -4,6 +4,7 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.orm.exc import NoResultFound
 
+from app import db
 from app.dao.templates_dao import (
     dao_create_template,
     dao_get_all_templates_for_service,
@@ -15,6 +16,7 @@ from app.dao.templates_dao import (
 )
 from app.models import Template, TemplateHistory, TemplateRedacted
 from tests.app.db import create_letter_contact, create_template
+from tests.utils import QueryRecorder
 
 
 @pytest.mark.parametrize(
@@ -275,9 +277,26 @@ def test_get_all_templates_ignores_hidden_templates(sample_service):
     assert templates[0] == normal_template
 
 
-def test_get_template_by_id_and_service(sample_service):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_get_template_by_id_and_service(sample_service, session, expected_bind_key):
     sample_template = create_template(template_name="Test Template", service=sample_service)
-    template = dao_get_template_by_id_and_service_id(template_id=sample_template.id, service_id=sample_service.id)
+
+    service_id = sample_service.id
+    template_id = sample_template.id
+
+    with QueryRecorder() as query_recorder:
+        template = dao_get_template_by_id_and_service_id(
+            template_id=template_id, service_id=service_id, session=session
+        )
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
     assert template.id == sample_template.id
     assert template.name == "Test Template"
     assert template.version == sample_template.version
