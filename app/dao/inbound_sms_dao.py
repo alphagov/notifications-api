@@ -64,10 +64,13 @@ def dao_get_paginated_inbound_sms_for_service_for_public_api(service_id, older_t
     return query.order_by(desc(InboundSms.created_at)).paginate(per_page=page_size).items
 
 
-def dao_count_inbound_sms_for_service(service_id, limit_days):
-    return InboundSms.query.filter(
-        InboundSms.service_id == service_id, InboundSms.created_at >= midnight_n_days_ago(limit_days)
-    ).count()
+@retryable_query()
+def dao_count_inbound_sms_for_service(service_id, limit_days, session: Session | scoped_session = db.session):
+    return (
+        session.query(InboundSms)
+        .filter(InboundSms.service_id == service_id, InboundSms.created_at >= midnight_n_days_ago(limit_days))
+        .count()
+    )
 
 
 def _insert_inbound_sms_history(subquery, query_limit=10000):
