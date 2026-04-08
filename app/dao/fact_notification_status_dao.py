@@ -160,9 +160,12 @@ def update_fact_notification_status(
     return deleted_row_count
 
 
-def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):
+@retryable_query()
+def fetch_notification_status_for_service_by_month(
+    start_date, end_date, service_id, session: Session | scoped_session = db.session
+):
     return (
-        db.session.query(
+        session.query(
             func.date_trunc("month", FactNotificationStatus.bst_date).label("month"),
             FactNotificationStatus.notification_type,
             FactNotificationStatus.notification_status,
@@ -183,9 +186,10 @@ def fetch_notification_status_for_service_by_month(start_date, end_date, service
     )
 
 
-def fetch_notification_status_for_service_for_day(bst_day, service_id):
+@retryable_query()
+def fetch_notification_status_for_service_for_day(bst_day, service_id, session: Session | scoped_session = db.session):
     return (
-        db.session.query(
+        session.query(
             # return current month as a datetime so the data has the same shape as the ft_notification_status query
             literal(bst_day.replace(day=1), type_=DateTime).label("month"),
             Notification.notification_type,

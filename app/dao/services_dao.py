@@ -171,8 +171,11 @@ def dao_fetch_live_services_data(session: Session | scoped_session = db.session)
     return [row._asdict() for row in data]
 
 
-def dao_fetch_service_by_id(service_id, only_active=False, with_users=True):
-    query = Service.query.filter_by(id=service_id)
+@retryable_query()
+def dao_fetch_service_by_id(
+    service_id, only_active=False, with_users=True, session: Session | scoped_session = db.session
+):
+    query = session.query(Service).filter_by(id=service_id)
 
     if with_users:
         query = query.options(joinedload(Service.users))

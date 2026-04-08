@@ -47,7 +47,15 @@ from tests.app.db import (
 from tests.utils import QueryRecorder
 
 
-def test_fetch_notification_status_for_service_by_month(notify_db_session):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_fetch_notification_status_for_service_by_month(notify_db_session, session, expected_bind_key):
     service_1 = create_service(service_name="service_1")
     service_2 = create_service(service_name="service_2")
 
@@ -67,10 +75,18 @@ def test_fetch_notification_status_for_service_by_month(notify_db_session):
     # not included - test keys
     create_ft_notification_status(date(2018, 1, 3), "sms", service_1, key_type=KEY_TYPE_TEST)
 
-    results = sorted(
-        fetch_notification_status_for_service_by_month(date(2018, 1, 1), date(2018, 2, 28), service_1.id),
-        key=lambda x: (x.month, x.notification_type, x.notification_status),
-    )
+    results = []
+    start_date = date(2018, 1, 1)
+    end_date = date(2018, 2, 28)
+    service_id = service_1.id
+
+    with QueryRecorder() as query_recorder:
+        results = sorted(
+            fetch_notification_status_for_service_by_month(start_date, end_date, service_id, session=session),
+            key=lambda x: (x.month, x.notification_type, x.notification_status),
+        )
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
 
     assert len(results) == 4
 
