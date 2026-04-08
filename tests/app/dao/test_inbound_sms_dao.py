@@ -1,6 +1,7 @@
 from datetime import datetime
 from itertools import product
 
+import pytest
 from freezegun import freeze_time
 
 from app import db
@@ -25,14 +26,28 @@ from tests.app.db import (
     create_template,
 )
 from tests.conftest import set_config
+from tests.utils import QueryRecorder
 
 
-def test_get_all_inbound_sms(sample_service):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_get_all_inbound_sms(sample_service, session, expected_bind_key):
     inbound = create_inbound_sms(sample_service)
 
-    res = dao_get_inbound_sms_for_service(sample_service.id)
+    service_id = sample_service.id
+
+    with QueryRecorder() as query_recorder:
+        res = dao_get_inbound_sms_for_service(service_id, session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
     assert len(res) == 1
-    assert res[0] == inbound
+    assert res[0].id == inbound.id
 
 
 def test_get_all_inbound_sms_when_none_exist(sample_service):

@@ -1,5 +1,6 @@
 from flask import Blueprint, current_app, jsonify, request
 
+from app import db
 from app.dao.inbound_numbers_dao import (
     dao_get_inbound_number_for_service,
     dao_remove_inbound_sms_for_service,
@@ -58,7 +59,7 @@ def get_most_recent_inbound_sms_for_service(service_id):
 def get_inbound_sms_summary_for_service(service_id):
     # this is for the dashboard, so always limit to 7 days, even if they have a longer data retention
     count = dao_count_inbound_sms_for_service(service_id, limit_days=7)
-    most_recent = dao_get_inbound_sms_for_service(service_id, limit=1)
+    most_recent = dao_get_inbound_sms_for_service(service_id, limit=1, session=db.session_bulk, retry_attempts=2)
 
     return jsonify(
         count=count,

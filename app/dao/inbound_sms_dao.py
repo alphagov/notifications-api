@@ -4,7 +4,7 @@ from uuid import UUID
 from flask import current_app
 from sqlalchemy import and_, desc
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Session, aliased, scoped_session
 
 from app import db
 from app.constants import SMS_TYPE
@@ -17,7 +17,7 @@ from app.models import (
     Service,
     ServiceDataRetention,
 )
-from app.utils import midnight_n_days_ago
+from app.utils import midnight_n_days_ago, retryable_query
 
 
 @autocommit
@@ -25,8 +25,17 @@ def dao_create_inbound_sms(inbound_sms):
     db.session.add(inbound_sms)
 
 
-def dao_get_inbound_sms_for_service(service_id, user_number=None, *, limit_days=None, limit=None):
-    q = InboundSms.query.filter(InboundSms.service_id == service_id).order_by(InboundSms.created_at.desc())
+@retryable_query()
+def dao_get_inbound_sms_for_service(
+    service_id,
+    user_number=None,
+    *,
+    limit_days=None,
+    limit=None,
+    session: Session | scoped_session = db.session,
+):
+    q = session.query(InboundSms).filter(InboundSms.service_id == service_id).order_by(InboundSms.created_at.desc())
+
     if limit_days is not None:
         start_date = midnight_n_days_ago(limit_days)
         q = q.filter(InboundSms.created_at >= start_date)
