@@ -3,6 +3,7 @@ from datetime import UTC
 import dateutil
 from flask import Blueprint, current_app, jsonify, request
 
+from app import db
 from app.aws.s3 import get_job_metadata_from_s3
 from app.celery.tasks import process_job
 from app.config import QueueNames
@@ -191,7 +192,7 @@ def create_job(service_id):
 
 @job_blueprint.route("/scheduled-job-stats", methods=["GET"])
 def get_scheduled_job_stats(service_id):
-    count, soonest_scheduled_for = dao_get_scheduled_job_stats(service_id)
+    count, soonest_scheduled_for = dao_get_scheduled_job_stats(service_id, session=db.session_bulk, retry_attempts=2)
     return (
         jsonify(
             count=count,

@@ -8,6 +8,7 @@ from notifications_utils.letter_timings import (
     letter_can_be_cancelled,
 )
 from sqlalchemy import and_, asc, desc, func
+from sqlalchemy.orm import Session, scoped_session
 
 from app import db, redis_store
 from app.constants import (
@@ -31,7 +32,7 @@ from app.models import (
     ServiceDataRetention,
     Template,
 )
-from app.utils import midnight_n_days_ago
+from app.utils import midnight_n_days_ago, retryable_query
 
 
 def dao_get_notification_outcomes_for_job(job_id):
@@ -85,11 +86,13 @@ def dao_get_jobs_by_service_id(
     )
 
 
+@retryable_query()
 def dao_get_scheduled_job_stats(
     service_id,
+    session: Session | scoped_session = db.session,
 ):
     return (
-        db.session.query(
+        session.query(
             func.count(Job.id),
             func.min(Job.scheduled_for),
         )
