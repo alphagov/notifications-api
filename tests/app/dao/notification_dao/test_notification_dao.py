@@ -457,24 +457,54 @@ def test_save_notification_no_job_id(sample_template):
     assert data.get("job_id") is None
 
 
-def test_get_all_notifications_for_job(sample_job):
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_get_all_notifications_for_job(sample_job, session, expected_bind_key):
+    service_id = sample_job.service.id
+    job_id = sample_job.id
+
     for _ in range(5):
         try:
             create_notification(template=sample_job.template, job=sample_job)
         except IntegrityError:
             pass
 
-    notifications_from_db = get_notifications_for_job(sample_job.service.id, sample_job.id).items
+    notifications_from_db = []
+
+    with QueryRecorder() as query_recorder:
+        notifications_from_db = get_notifications_for_job(service_id, job_id, session=session).items
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+
     assert len(notifications_from_db) == 5
 
 
-def test_get_all_notifications_for_job_by_status(sample_job):
-    notifications = partial(get_notifications_for_job, sample_job.service.id, sample_job.id)
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_get_all_notifications_for_job_by_status(sample_job, session, expected_bind_key):
+    notifications = partial(get_notifications_for_job, sample_job.service.id, sample_job.id, session=session)
 
     for status in NOTIFICATION_STATUS_TYPES:
         create_notification(template=sample_job.template, job=sample_job, status=status)
 
-    assert len(notifications().items) == len(NOTIFICATION_STATUS_TYPES)
+    with QueryRecorder() as query_recorder:
+        all_for_job = notifications().items
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+
+    assert len(all_for_job) == len(NOTIFICATION_STATUS_TYPES)
 
     for status in NOTIFICATION_STATUS_TYPES:
         if status == "failed":
