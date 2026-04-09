@@ -1,5 +1,6 @@
 from flask import current_app
 from sqlalchemy import desc
+from sqlalchemy.orm import Session, scoped_session
 
 from app import db
 from app.constants import HIGH_VOLUME_SERVICE_THRESHOLD, ORG_TYPE_OTHER, SMS_TYPE
@@ -7,6 +8,7 @@ from app.dao.dao_utils import autocommit
 from app.dao.date_util import get_current_financial_year_start_year
 from app.dao.fact_billing_dao import get_sms_fragments_sent_last_financial_year
 from app.models import AnnualBilling, DefaultAnnualAllowance
+from app.utils import retryable_query
 
 
 @autocommit
@@ -38,11 +40,16 @@ def dao_create_or_update_annual_billing_for_year(
     return result
 
 
-def dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start=None):
+@retryable_query()
+def dao_get_free_sms_fragment_limit_for_year(
+    service_id, financial_year_start=None, session: Session | scoped_session = db.session
+):
     if not financial_year_start:
         financial_year_start = get_current_financial_year_start_year()
 
-    return AnnualBilling.query.filter_by(service_id=service_id, financial_year_start=financial_year_start).first()
+    return (
+        session.query(AnnualBilling).filter_by(service_id=service_id, financial_year_start=financial_year_start).first()
+    )
 
 
 def dao_get_default_annual_allowance_for_service(service, year_start):

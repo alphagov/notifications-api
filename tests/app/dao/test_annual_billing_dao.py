@@ -3,6 +3,7 @@ import datetime
 import pytest
 from freezegun import freeze_time
 
+from app import db
 from app.dao.annual_billing_dao import (
     dao_create_or_update_annual_billing_for_year,
     dao_get_default_annual_allowance_for_service,
@@ -12,6 +13,28 @@ from app.dao.annual_billing_dao import (
 from app.dao.date_util import get_current_financial_year_start_year
 from app.models import AnnualBilling
 from tests.app.db import create_annual_billing, create_service
+from tests.utils import QueryRecorder
+
+
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_dao_get_free_sms_fragment_limit_for_year(sample_service, session, expected_bind_key):
+    dao_create_or_update_annual_billing_for_year(sample_service.id, 2500, 1999)
+
+    sample_service_id = sample_service.id
+
+    with QueryRecorder() as query_recorder:
+        annual_billing_row = dao_get_free_sms_fragment_limit_for_year(sample_service_id, 1999, session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+    assert annual_billing_row.free_sms_fragment_limit == 2500
+    assert annual_billing_row.financial_year_start == 1999
 
 
 def test_dao_update_free_sms_fragment_limit(sample_service):
