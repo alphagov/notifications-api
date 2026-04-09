@@ -845,6 +845,7 @@ def functional_test_fixtures():
         SQLALCHEMY_DATABASE_URI
         REDIS_URL
         SECRET_KEY
+        TOKEN_SECRET_KEY
         INTERNAL_CLIENT_API_KEYS
         ADMIN_BASE_URL
         API_HOST_NAME
