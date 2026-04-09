@@ -79,7 +79,12 @@ def batched[A](iterable: Iterable[A], n: int, *, strict: bool = False) -> Genera
 
 
 def url_with_token(data, url: str, base_url: str | None = None) -> str:
-    token = generate_token(data, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"])
+    token = generate_token(
+        data,
+        current_app.config["SECRET_KEY"],
+        current_app.config["DANGEROUS_SALT"],
+        current_app.config["TOKEN_SECRET_KEY"],
+    )
     base_url = (base_url or current_app.config["ADMIN_BASE_URL"]) + url
     return urljoin(base_url, token)
 

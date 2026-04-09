@@ -104,7 +104,10 @@ def update_org_invite_status(organisation_id, invited_org_user_id):
 
 def invited_org_user_url(invited_org_user_id, invite_link_host=None):
     token = generate_token(
-        str(invited_org_user_id), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
+        str(invited_org_user_id),
+        current_app.config["SECRET_KEY"],
+        current_app.config["DANGEROUS_SALT"],
+        current_app.config["TOKEN_SECRET_KEY"],
     )
 
     if invite_link_host is None:
