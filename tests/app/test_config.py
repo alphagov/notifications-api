@@ -8,10 +8,11 @@ from app.config import Config, QueueNames
 def test_queue_names_all_queues_correct():
     # Need to ensure that all_queues() only returns queue names used in API
     queues = QueueNames.all_queues()
-    assert len(queues) == 18
+    assert len(queues) == 19
     assert {
         QueueNames.PERIODIC,
         QueueNames.DATABASE,
+        QueueNames.DATABASE_DOCUMENTS,
         QueueNames.SEND_SMS,
         QueueNames.SEND_EMAIL,
         QueueNames.SEND_LETTER,
