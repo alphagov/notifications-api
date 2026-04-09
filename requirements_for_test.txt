@@ -228,7 +228,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@900cb380b9f92b23886586207f44c99893d2b56b
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@58855282da48d522d0639e3f7732027f6ac73ab3
     # via -r requirements.txt
 opentelemetry-api==1.40.0
     # via
