@@ -24,8 +24,30 @@ psutil>=6.0.0,<7.0.0
 notifications-python-client==10.0.1
 
 # Run `make bump-utils` to update to the latest version
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@111.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@113.3.0
 
 git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
 
 sentry-sdk[flask,celery,sqlalchemy]~=1.45
+
+opentelemetry-distro[otlp]
+opentelemetry-instrumentation-asyncio
+opentelemetry-instrumentation-dbapi
+opentelemetry-instrumentation-logging
+opentelemetry-instrumentation-sqlite3
+opentelemetry-instrumentation-threading
+opentelemetry-instrumentation-urllib
+opentelemetry-instrumentation-wsgi
+opentelemetry-instrumentation-boto3sqs
+opentelemetry-instrumentation-botocore
+opentelemetry-instrumentation-celery
+opentelemetry-instrumentation-click
+opentelemetry-instrumentation-flask
+opentelemetry-instrumentation-grpc
+opentelemetry-instrumentation-jinja2
+opentelemetry-instrumentation-psycopg2
+opentelemetry-instrumentation-redis
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-sqlalchemy
+opentelemetry-instrumentation-system-metrics
+opentelemetry-instrumentation-urllib3
