@@ -27,7 +27,11 @@ def one_click_unsubscribe(notification_id, token):
 
     try:
         email_address = check_token(
-            token, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"], max_age_seconds
+            token,
+            current_app.config["SECRET_KEY"],
+            current_app.config["DANGEROUS_SALT"],
+            max_age_seconds,
+            current_app.config["TOKEN_SECRET_KEY"],
         )
     except BadData as e:
         errors = {"unsubscribe request": "This is not a valid unsubscribe link."}

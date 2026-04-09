@@ -108,6 +108,7 @@ class Config:
 
     # encyption secret/salt
     SECRET_KEY = os.getenv("SECRET_KEY")
+    TOKEN_SECRET_KEY = os.getenv("TOKEN_SECRET_KEY")
     DANGEROUS_SALT = os.getenv("DANGEROUS_SALT")
 
     # DB conection string
@@ -614,6 +615,7 @@ class Development(Config):
     }
 
     SECRET_KEY = "dev-notify-secret-key"
+    TOKEN_SECRET_KEY = "5YNWU0e_pN5ZyaSZvBd5uZb_sZlrVDFeOjiea6dq4zQ="
     DANGEROUS_SALT = "dev-notify-salt"
 
     MMG_INBOUND_SMS_AUTH = ["testkey"]
