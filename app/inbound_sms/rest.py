@@ -38,7 +38,13 @@ def post_inbound_sms_for_service(service_id):
     inbound_data_retention = fetch_service_data_retention_by_notification_type(service_id, "sms")
     limit_days = inbound_data_retention.days_of_retention if inbound_data_retention else 7
 
-    results = dao_get_inbound_sms_for_service(service_id, user_number=user_number, limit_days=limit_days)
+    results = dao_get_inbound_sms_for_service(
+        service_id,
+        user_number=user_number,
+        limit_days=limit_days,
+        session=db.session_bulk,
+        retry_attempts=2,
+    )
     return jsonify(data=[row.serialize() for row in results])
 
 
