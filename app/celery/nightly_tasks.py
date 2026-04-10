@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from tempfile import TemporaryFile
+from typing import cast
 from urllib.parse import urlencode
 from uuid import UUID, uuid4
 
@@ -16,7 +17,7 @@ from notifications_utils.letter_timings import (
     is_dvla_working_day,
 )
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import Table, delete, func, inspect, select
+from sqlalchemy import CursorResult, Table, delete, func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db, notify_celery, zendesk_client
@@ -574,11 +575,14 @@ def _deep_archive_notification_history_hour_starting(
             # get to mark its uploaded archive as contents_deleted (thereby preventing
             # a lifecycle rule from reaping it). any other ones will have been killed
             # by the deadlock detector.
-            deleted_row_count = db.session.execute(
-                delete(table).where(
-                    table.c.created_at >= start_datetime,
-                    table.c.created_at < end_datetime,
-                )
+            deleted_row_count = cast(
+                CursorResult,
+                db.session.execute(
+                    delete(table).where(
+                        table.c.created_at >= start_datetime,
+                        table.c.created_at < end_datetime,
+                    )
+                ),
             ).rowcount
 
             if deleted_row_count != final_current_row:
