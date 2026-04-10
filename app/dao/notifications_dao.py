@@ -89,15 +89,16 @@ FIELDS_TO_TRANSFER_TO_NOTIFICATION_HISTORY = [
 ]
 
 
-def dao_get_last_date_template_was_used(template):
+@retryable_query()
+def dao_get_last_date_template_was_used(template, session: Session | scoped_session = db.session):
     uniform_now = datetime.now()
 
     # first, just check if there are any rows present for this template in the notification table.
     # we can use the ix_notifications_template_id. If there are rows, then lets check to find out exactly
     # when the most recent created date was (also checking key type test too)
-    if db.session.query(Notification.query.filter(Notification.template_id == template.id).exists()).scalar():
+    if session.query(Notification.query.filter(Notification.template_id == template.id).exists()).scalar():
         last_date_from_notifications = (
-            db.session.query(functions.max(Notification.created_at))
+            session.query(functions.max(Notification.created_at))
             .filter(
                 Notification.template_id == template.id,
                 Notification.key_type != KEY_TYPE_TEST,
@@ -116,11 +117,11 @@ def dao_get_last_date_template_was_used(template):
         if last_date_from_notifications:
             return last_date_from_notifications
 
-    if db.session.query(
+    if session.query(
         FactNotificationStatus.query.filter(FactNotificationStatus.template_id == template.id).exists()
     ).scalar():
         last_date = (
-            db.session.query(functions.max(FactNotificationStatus.bst_date))
+            session.query(functions.max(FactNotificationStatus.bst_date))
             .filter(
                 FactNotificationStatus.template_id == template.id,
                 FactNotificationStatus.key_type != KEY_TYPE_TEST,

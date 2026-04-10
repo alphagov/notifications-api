@@ -2,12 +2,14 @@ from datetime import datetime
 
 from flask import current_app
 from sqlalchemy import asc, desc
+from sqlalchemy.orm import Session, scoped_session
 
 from app import db
 from app.constants import LETTER_TYPE, SECOND_CLASS
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.users_dao import get_user_by_id
 from app.models import Template, TemplateHistory, TemplateRedacted
+from app.utils import retryable_query
 
 
 @autocommit
@@ -43,12 +45,17 @@ def dao_redact_template(template, user_id):
     db.session.add(template.template_redacted)
 
 
-def dao_get_template_by_id_and_service_id(template_id, service_id, version=None):
+@retryable_query()
+def dao_get_template_by_id_and_service_id(
+    template_id, service_id, version=None, session: Session | scoped_session = db.session
+):
     if version is not None:
-        return TemplateHistory.query.filter_by(
-            id=template_id, hidden=False, service_id=service_id, version=version
-        ).one()
-    return Template.query.filter_by(id=template_id, hidden=False, service_id=service_id).one()
+        return (
+            session.query(TemplateHistory)
+            .filter_by(id=template_id, hidden=False, service_id=service_id, version=version)
+            .one()
+        )
+    return session.query(Template).filter_by(id=template_id, hidden=False, service_id=service_id).one()
 
 
 def dao_get_template_by_id(template_id, version=None):
