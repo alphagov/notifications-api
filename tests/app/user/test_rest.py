@@ -6,6 +6,7 @@ import pytest
 from flask import current_app, url_for
 from freezegun import freeze_time
 
+from app import db
 from app.constants import (
     EMAIL_AUTH_TYPE,
     MANAGE_SETTINGS,
@@ -943,12 +944,16 @@ def test_get_orgs_and_services_nests_services(admin_request, sample_user):
     service1 = create_service(service_name="service1")
     service2 = create_service(service_name="service2")
     service3 = create_service(service_name="service3")
+    # in org, but user not a member
+    service4 = create_service(service_name="service4")
 
-    org1.services = [service1, service2]
+    org1.services = [service1, service2, service4]
     org2.services = []
 
     sample_user.organisations = [org1, org2]
     sample_user.services = [service1, service2, service3]
+
+    db.session.commit()
 
     resp = admin_request.get("user.get_organisations_and_services_for_user", user_id=sample_user.id)
 
@@ -956,38 +961,44 @@ def test_get_orgs_and_services_nests_services(admin_request, sample_user):
         "organisations",
         "services",
     }
-    assert resp["organisations"] == [
-        {
-            "name": org1.name,
-            "id": str(org1.id),
-            "count_of_live_services": 2,
-        },
-        {
-            "name": org2.name,
-            "id": str(org2.id),
-            "count_of_live_services": 0,
-        },
-    ]
-    assert resp["services"] == [
-        {
-            "name": service1.name,
-            "id": str(service1.id),
-            "restricted": False,
-            "organisation": str(org1.id),
-        },
-        {
-            "name": service2.name,
-            "id": str(service2.id),
-            "restricted": False,
-            "organisation": str(org1.id),
-        },
-        {
-            "name": service3.name,
-            "id": str(service3.id),
-            "restricted": False,
-            "organisation": None,
-        },
-    ]
+    assert sorted(resp["organisations"], key=lambda i: i["id"]) == sorted(
+        [
+            {
+                "name": org1.name,
+                "id": str(org1.id),
+                "count_of_live_services": 3,
+            },
+            {
+                "name": org2.name,
+                "id": str(org2.id),
+                "count_of_live_services": 0,
+            },
+        ],
+        key=lambda i: i["id"],
+    )
+    assert sorted(resp["services"], key=lambda i: i["id"]) == sorted(
+        [
+            {
+                "name": service1.name,
+                "id": str(service1.id),
+                "restricted": False,
+                "organisation": str(org1.id),
+            },
+            {
+                "name": service2.name,
+                "id": str(service2.id),
+                "restricted": False,
+                "organisation": str(org1.id),
+            },
+            {
+                "name": service3.name,
+                "id": str(service3.id),
+                "restricted": False,
+                "organisation": None,
+            },
+        ],
+        key=lambda i: i["id"],
+    )
 
 
 def test_get_orgs_and_services_only_returns_active(admin_request, sample_user):
@@ -1009,6 +1020,8 @@ def test_get_orgs_and_services_only_returns_active(admin_request, sample_user):
     sample_user.organisations = [org1, org2]
     sample_user.services = [service1, service2, service3, service4, service5]
 
+    db.session.commit()
+
     resp = admin_request.get("user.get_organisations_and_services_for_user", user_id=sample_user.id)
 
     assert set(resp.keys()) == {
@@ -1022,16 +1035,19 @@ def test_get_orgs_and_services_only_returns_active(admin_request, sample_user):
             "count_of_live_services": 1,
         }
     ]
-    assert resp["services"] == [
-        {"name": service1.name, "id": str(service1.id), "restricted": False, "organisation": str(org1.id)},
-        {"name": service3.name, "id": str(service3.id), "restricted": False, "organisation": str(org2.id)},
-        {
-            "name": service4.name,
-            "id": str(service4.id),
-            "restricted": False,
-            "organisation": None,
-        },
-    ]
+    assert sorted(resp["services"], key=lambda i: i["id"]) == sorted(
+        [
+            {"name": service1.name, "id": str(service1.id), "restricted": False, "organisation": str(org1.id)},
+            {"name": service3.name, "id": str(service3.id), "restricted": False, "organisation": str(org2.id)},
+            {
+                "name": service4.name,
+                "id": str(service4.id),
+                "restricted": False,
+                "organisation": None,
+            },
+        ],
+        key=lambda i: i["id"],
+    )
 
 
 def test_get_orgs_and_services_only_shows_users_orgs_and_services(admin_request, sample_user):
@@ -1049,6 +1065,8 @@ def test_get_orgs_and_services_only_shows_users_orgs_and_services(admin_request,
 
     other_user.organisations = [org1, org2]
     other_user.services = [service1, service2]
+
+    db.session.commit()
 
     resp = admin_request.get("user.get_organisations_and_services_for_user", user_id=sample_user.id)
 
