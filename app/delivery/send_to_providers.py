@@ -34,6 +34,7 @@ from app.dao.provider_details_dao import (
 )
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import Notification
+from app.otel_metrics.notification import record_international_sms
 from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
 
 
@@ -99,6 +100,9 @@ def send_sms_to_provider(notification: Notification) -> None:
                 update_notification_to_sending(notification, provider)
                 if notification.international:
                     statsd_client.incr(f"international-sms.{NOTIFICATION_SENT}.{notification.phone_prefix}")
+                    record_international_sms(
+                        1, notification_status=NOTIFICATION_SENT, sms_country_code=notification.phone_prefix
+                    )
 
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
         statsd_client.timing("sms.total-time", delta_seconds)

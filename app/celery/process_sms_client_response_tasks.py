@@ -17,6 +17,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
+from app.otel_metrics.notification import record_international_sms
 
 sms_response_mapper = {
     "MMG": get_mmg_responses,
@@ -146,3 +147,6 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         check_and_queue_callback_task(notification)
         if notification.international:
             statsd_client.incr(f"international-sms.{notification_status}.{notification.phone_prefix}")
+            record_international_sms(
+                1, notification_status=notification_status, sms_country_code=notification.phone_prefix
+            )

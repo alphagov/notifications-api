@@ -27,6 +27,7 @@ from app.delivery import send_to_providers
 from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import EmailBranding, Notification
+from app.otel_metrics.notification import _international_sms
 from app.serialised_models import (
     SerialisedProvider,
     SerialisedProviders,
@@ -635,6 +636,7 @@ def test_should_set_notification_billable_units_and_reduce_provider_priority_if_
 
 
 def test_should_send_sms_to_international_providers(sample_template, mocker):
+    add_international_sms_mock = mocker.patch.object(_international_sms, "add")
     mocker.patch("app.mmg_client.send_sms")
     mocker.patch("app.firetext_client.send_sms")
 
@@ -650,6 +652,7 @@ def test_should_send_sms_to_international_providers(sample_template, mocker):
         international=True,
         reply_to_text=sample_template.service.get_default_sms_sender(),
         normalised_to="601117224412",
+        phone_prefix="60",
     )
 
     send_to_providers.send_sms_to_provider(notification_international)
@@ -660,6 +663,14 @@ def test_should_send_sms_to_international_providers(sample_template, mocker):
         reference=str(notification_international.id),
         sender=current_app.config["FROM_NUMBER"],
         international=True,
+    )
+
+    add_international_sms_mock.assert_called_once_with(
+        1,
+        {
+            "notification.status": "sent",
+            "notification.sms.country_code": "60",
+        },
     )
 
     assert notification_international.status == "sent"
