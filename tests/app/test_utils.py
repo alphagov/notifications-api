@@ -7,7 +7,7 @@ import pytest
 from flask import current_app
 from freezegun import freeze_time
 from notifications_utils.s3 import S3ObjectNotFound
-from notifications_utils.url_safe_token import generate_token
+from notifications_utils.url_safe_token import check_token
 from sqlalchemy.orm import Session
 
 from app.utils import (
@@ -79,24 +79,41 @@ def test_url_with_token_unsubscribe_link(sample_email_notification, hostnames, n
     notification_id = sample_email_notification.id
     base_url = hostnames.api
     url = f"/unsubscribe/{str(notification_id)}/"
-    token = generate_token(data, notify_api.config["SECRET_KEY"], notify_api.config["DANGEROUS_SALT"])
 
-    expected_unsubscribe_link = f"{base_url}/unsubscribe/{notification_id}/{token}"
-    generated_unsubscribe_link = url_with_token(data, url=url, base_url=base_url)
-
-    assert generated_unsubscribe_link == expected_unsubscribe_link
+    expected_unsubscribe_link_preamble = f"{base_url}/unsubscribe/{notification_id}/"
+    generated_url = url_with_token(data, url=url, base_url=base_url)
+    url_fragments = generated_url.split("/")
+    token = url_fragments[-1]
+    decrypted_data = check_token(
+        token,
+        notify_api.config["SECRET_KEY"],
+        notify_api.config["DANGEROUS_SALT"],
+        1000,
+        notify_api.config["TOKEN_SECRET_KEY"],
+    )
+    assert expected_unsubscribe_link_preamble == "/".join(url_fragments[:-1]) + "/"
+    assert decrypted_data == data
 
 
 def test_url_with_token__create_confirmation_url(hostnames, notify_api):
+
     data = json.dumps({"user_id": str(uuid.uuid4()), "email": "foo@bar.com"})
     base_url = hostnames.admin
     url = "/your-account/email/confirm/"
-    token = generate_token(str(data), notify_api.config["SECRET_KEY"], notify_api.config["DANGEROUS_SALT"])
 
-    expected_unsubscribe_link = f"{base_url}/your-account/email/confirm/{token}"
-    generated_unsubscribe_link = url_with_token(data, url=url, base_url=base_url)
-
-    assert generated_unsubscribe_link == expected_unsubscribe_link
+    expected_confirmation_link_preamble = f"{base_url}/your-account/email/confirm/"
+    generated_url = url_with_token(data, url=url, base_url=base_url)
+    url_fragments = generated_url.split("/")
+    token = url_fragments[-1]
+    decrypted_data = check_token(
+        token,
+        notify_api.config["SECRET_KEY"],
+        notify_api.config["DANGEROUS_SALT"],
+        1000,
+        notify_api.config["TOKEN_SECRET_KEY"],
+    )
+    assert expected_confirmation_link_preamble == "/".join(url_fragments[:-1]) + "/"
+    assert decrypted_data == data
 
 
 def test_try_download_template_email_file_from_s3(mocker, sample_service, fake_uuid, mock_utils_s3_download):
