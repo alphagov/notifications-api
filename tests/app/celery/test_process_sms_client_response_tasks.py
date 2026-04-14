@@ -10,6 +10,7 @@ from app.celery.process_sms_client_response_tasks import (
 )
 from app.clients import ClientException
 from app.constants import NOTIFICATION_TECHNICAL_FAILURE
+from app.otel_metrics.notification import _international_sms
 
 
 def test_process_sms_client_response_raises_error_if_reference_is_not_a_valid_uuid(client):
@@ -145,6 +146,23 @@ def test_process_sms_client_response_records_statsd_metrics(sample_notification,
     statsd_client.incr.assert_any_call("callback.firetext.delivered")
     statsd_client.timing_with_dates.assert_any_call(
         "callback.firetext.delivered.elapsed-time", datetime.utcnow(), sample_notification.sent_at
+    )
+
+
+def test_process_sms_client_response_records_international_sms_metrics(sample_notification, mocker):
+    add_international_sms_mock = mocker.patch.object(_international_sms, "add")
+
+    sample_notification.international = True
+    sample_notification.phone_prefix = "852"
+
+    process_sms_client_response(status="3", provider_reference=str(sample_notification.id), client_name="MMG")
+
+    add_international_sms_mock.assert_called_once_with(
+        1,
+        {
+            "notification.status": "delivered",
+            "notification.sms.country_code": "852",
+        },
     )
 
 
