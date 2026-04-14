@@ -21,18 +21,18 @@ blinker==1.9.0
     #   flask
     #   gds-metrics
     #   sentry-sdk
-boto3==1.42.63
+boto3[crt]==1.42.63
     # via
     #   celery
     #   kombu
     #   notifications-utils
-botocore==1.42.63
+botocore[crt]==1.42.63
     # via
     #   boto3
     #   s3transfer
 cachetools==7.0.3
     # via notifications-utils
-celery==5.6.0
+celery[sqs]==5.6.0
     # via
     #   -r requirements.in
     #   sentry-sdk
@@ -105,10 +105,12 @@ googleapis-common-protos==1.74.0
 govuk-bank-holidays==0.19
     # via notifications-utils
 greenlet==3.3.2
-    # via eventlet
+    # via
+    #   eventlet
+    #   sqlalchemy
 grpcio==1.80.0
     # via opentelemetry-exporter-otlp-proto-grpc
-gunicorn==25.1.0
+gunicorn[eventlet]==25.1.0
     # via
     #   -r requirements.in
     #   notifications-utils
@@ -134,11 +136,11 @@ jmespath==1.1.0
     #   botocore
 jsonpointer==3.0.0
     # via jsonschema
-jsonschema==4.26.0
+jsonschema[format]==4.26.0
     # via -r requirements.in
 jsonschema-specifications==2025.9.1
     # via jsonschema
-kombu @ git+https://github.com/celery/kombu.git@860e40a6c904c4d8551577d9f4e8c00f03b6e06c
+kombu[sqs] @ git+https://github.com/celery/kombu.git@860e40a6c904c4d8551577d9f4e8c00f03b6e06c
     # via
     #   -r requirements.in
     #   celery
@@ -162,7 +164,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==10.0.1
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@6356f2c4544118a09c112ebf854fa867051bbed1
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@113.5.1
     # via -r requirements.in
 opentelemetry-api==1.40.0
     # via
@@ -194,7 +196,7 @@ opentelemetry-api==1.40.0
     #   opentelemetry-propagator-aws-xray
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
-opentelemetry-distro==0.61b0
+opentelemetry-distro[otlp]==0.61b0
     # via -r requirements.in
 opentelemetry-exporter-otlp==1.40.0
     # via opentelemetry-distro
@@ -347,7 +349,7 @@ pyjwt==2.12.1
     # via notifications-python-client
 pyorc==0.10.0
     # via -r requirements.in
-pypdf==6.7.5
+pypdf==6.10.0
     # via notifications-utils
 python-dateutil==2.9.0.post0
     # via
@@ -383,7 +385,7 @@ s3transfer==0.16.0
     # via boto3
 segno==1.6.6
     # via notifications-utils
-sentry-sdk==1.45.1
+sentry-sdk[celery,flask,sqlalchemy]==1.45.1
     # via -r requirements.in
 six==1.17.0
     # via
