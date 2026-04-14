@@ -10,6 +10,7 @@ from app.clients.email import (
     EmailClientException,
     EmailClientNonRetryableException,
 )
+from app.otel_metrics.provider import record_request_duration
 
 ses_response_map = {
     "Permanent": {
@@ -65,6 +66,7 @@ class AwsSesClient(EmailClient):
         self._client = boto3.client("sesv2", region_name=region)
         self.statsd_client = statsd_client
 
+    @record_request_duration(notification_type="email", provider_name="ses")
     def send_email(
         self,
         *,
