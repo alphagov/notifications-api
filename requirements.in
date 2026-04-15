@@ -22,7 +22,7 @@ pyorc~=0.10
 # temporary for debug output
 psutil>=6.0.0,<7.0.0
 
-notifications-python-client==10.0.1
+notifications-python-client~=10.0
 
 # Run `make bump-utils` to update to the latest version
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@113.5.1
