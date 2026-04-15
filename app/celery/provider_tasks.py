@@ -32,6 +32,7 @@ from app.dao.provider_details_dao import (
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
+from app.otel_metrics.notification import record_send_duration
 
 
 @notify_celery.task(
@@ -151,16 +152,24 @@ def deliver_letter(self, notification_id):
         ) from e
 
     try:
-        dvla_client.send_letter(
-            notification_id=str(notification.id),
-            reference=str(notification.reference),
-            address=postal_address,
-            postage=notification.postage,
-            service_id=str(notification.service_id),
-            organisation_id=str(notification.service.organisation_id),
-            pdf_file=file_bytes,
-            callback_url=_get_callback_url(notification_id),
-        )
+        try:
+            dvla_client.send_letter(
+                notification_id=str(notification.id),
+                reference=str(notification.reference),
+                address=postal_address,
+                postage=notification.postage,
+                service_id=str(notification.service_id),
+                organisation_id=str(notification.service.organisation_id),
+                pdf_file=file_bytes,
+                callback_url=_get_callback_url(notification_id),
+            )
+        finally:
+            record_send_duration(
+                (datetime.utcnow() - notification.created_at).total_seconds(),
+                key_type=notification.key_type,
+                notification_type="letter",
+                provider_name="dvla",
+            )
         update_letter_to_sending(notification)
     except DvlaRetryableException as e:
         if isinstance(e, DvlaThrottlingException):
