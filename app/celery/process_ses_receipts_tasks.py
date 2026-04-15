@@ -17,6 +17,7 @@ from app.notifications.notifications_ses_callback import (
     determine_notification_bounce_type,
     handle_complaint,
 )
+from app.otel_metrics.notification import record_deliver_duration
 
 
 @notify_celery.task(
@@ -123,6 +124,15 @@ def process_ses_results(  # noqa: C901
             )
 
         statsd_client.incr(f"callback.ses.{notification_status}")
+
+        delivered_at = delivery_dt or datetime.utcnow()
+        record_deliver_duration(
+            (delivered_at - notification.created_at).total_seconds(),
+            key_type=notification.key_type,
+            notification_status=notification.status,
+            notification_type="email",
+            provider_name="ses",
+        )
 
         if notification.sent_at:
             statsd_client.timing_with_dates(
