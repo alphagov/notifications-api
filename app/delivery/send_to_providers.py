@@ -34,7 +34,7 @@ from app.dao.provider_details_dao import (
 )
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import Notification
-from app.otel_metrics.notification import record_international_sms
+from app.otel_metrics.notification import record_international_sms, record_send_duration
 from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
 
 
@@ -60,49 +60,57 @@ def send_sms_to_provider(notification: Notification) -> None:
         )
         created_at = notification.created_at
         key_type = notification.key_type
-        if notification.key_type == KEY_TYPE_TEST:
-            update_notification_to_sending(notification, provider)
-            send_sms_response(provider.name, str(notification.id), notification.to)
-
-        else:
-            try:
-                # End DB session here so that we don't have a connection stuck open waiting on the call
-                # to one of the SMS providers
-                # We don't want to tie our DB connections being open to the performance of our SMS
-                # providers as a slow down of our providers can cause us to run out of DB connections
-                # Therefore we pull all the data from our DB models into `send_sms_kwargs`now before
-                # closing the session (as otherwise it would be reopened immediately)
-                send_sms_kwargs = {
-                    "to": notification.normalised_to,
-                    "content": str(template),
-                    "reference": str(notification.id),
-                    "sender": notification.reply_to_text,
-                    "international": notification.international,
-                }
-                db.session.close()  # no commit needed as no changes to objects have been made above
-                provider.send_sms(**send_sms_kwargs)
-            except Exception as e:
-                notification.billable_units = template.fragment_count
-                dao_update_notification(notification)
-
-                if redis_store.exceeded_rate_limit(
-                    f"{provider.name}-error-rate", SMS_PROVIDER_ERROR_THRESHOLD, SMS_PROVIDER_ERROR_INTERVAL
-                ):
-                    dao_reduce_sms_provider_priority(provider.name, time_threshold=timedelta(minutes=1))
-                    current_app.logger.warning(
-                        "Error threshold exceeded for provider %s",
-                        provider.name,
-                        extra={"provider_name": provider.name},
-                    )
-                raise e
-            else:
-                notification.billable_units = template.fragment_count
+        try:
+            if notification.key_type == KEY_TYPE_TEST:
                 update_notification_to_sending(notification, provider)
-                if notification.international:
-                    statsd_client.incr(f"international-sms.{NOTIFICATION_SENT}.{notification.phone_prefix}")
-                    record_international_sms(
-                        1, notification_status=NOTIFICATION_SENT, sms_country_code=notification.phone_prefix
-                    )
+                send_sms_response(provider.name, str(notification.id), notification.to)
+
+            else:
+                try:
+                    # End DB session here so that we don't have a connection stuck open waiting on the call
+                    # to one of the SMS providers
+                    # We don't want to tie our DB connections being open to the performance of our SMS
+                    # providers as a slow down of our providers can cause us to run out of DB connections
+                    # Therefore we pull all the data from our DB models into `send_sms_kwargs`now before
+                    # closing the session (as otherwise it would be reopened immediately)
+                    send_sms_kwargs = {
+                        "to": notification.normalised_to,
+                        "content": str(template),
+                        "reference": str(notification.id),
+                        "sender": notification.reply_to_text,
+                        "international": notification.international,
+                    }
+                    db.session.close()  # no commit needed as no changes to objects have been made above
+                    provider.send_sms(**send_sms_kwargs)
+                except Exception as e:
+                    notification.billable_units = template.fragment_count
+                    dao_update_notification(notification)
+
+                    if redis_store.exceeded_rate_limit(
+                        f"{provider.name}-error-rate", SMS_PROVIDER_ERROR_THRESHOLD, SMS_PROVIDER_ERROR_INTERVAL
+                    ):
+                        dao_reduce_sms_provider_priority(provider.name, time_threshold=timedelta(minutes=1))
+                        current_app.logger.warning(
+                            "Error threshold exceeded for provider %s",
+                            provider.name,
+                            extra={"provider_name": provider.name},
+                        )
+                    raise e
+                else:
+                    notification.billable_units = template.fragment_count
+                    update_notification_to_sending(notification, provider)
+                    if notification.international:
+                        statsd_client.incr(f"international-sms.{NOTIFICATION_SENT}.{notification.phone_prefix}")
+                        record_international_sms(
+                            1, notification_status=NOTIFICATION_SENT, sms_country_code=notification.phone_prefix
+                        )
+        finally:
+            record_send_duration(
+                (datetime.utcnow() - created_at).total_seconds(),
+                key_type=key_type,
+                notification_type="sms",
+                provider_name=provider.name,
+            )
 
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
         statsd_client.timing("sms.total-time", delta_seconds)
@@ -164,27 +172,33 @@ def send_email_to_provider(notification):
         )
         created_at = notification.created_at
         key_type = notification.key_type
-        if notification.key_type == KEY_TYPE_TEST:
-            notification.reference = str(create_uuid())
-            update_notification_to_sending(notification, provider)
-            send_email_response(notification.reference, notification.to, notification.service_id)
-        else:
-            email_sender_name = service.custom_email_sender_name or service.name
-            from_address = (
-                f'"{email_sender_name}" <{service.email_sender_local_part}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'
-            )
+        try:
+            if notification.key_type == KEY_TYPE_TEST:
+                notification.reference = str(create_uuid())
+                update_notification_to_sending(notification, provider)
+                send_email_response(notification.reference, notification.to, notification.service_id)
+            else:
+                email_sender_name = service.custom_email_sender_name or service.name
+                from_address = f'"{email_sender_name}" <{service.email_sender_local_part}@{current_app.config["NOTIFY_EMAIL_DOMAIN"]}>'  # noqa: E501
 
-            reference = provider.send_email(
-                from_address=from_address,
-                to_address=notification.normalised_to,
-                subject=plain_text_email.subject,
-                body=str(plain_text_email),
-                html_body=str(html_email),
-                reply_to_address=notification.reply_to_text,
-                headers=_get_email_headers(notification, template),
+                reference = provider.send_email(
+                    from_address=from_address,
+                    to_address=notification.normalised_to,
+                    subject=plain_text_email.subject,
+                    body=str(plain_text_email),
+                    html_body=str(html_email),
+                    reply_to_address=notification.reply_to_text,
+                    headers=_get_email_headers(notification, template),
+                )
+                notification.reference = reference
+                update_notification_to_sending(notification, provider)
+        finally:
+            record_send_duration(
+                (datetime.utcnow() - created_at).total_seconds(),
+                key_type=key_type,
+                notification_type="email",
+                provider_name=provider.name,
             )
-            notification.reference = reference
-            update_notification_to_sending(notification, provider)
         delta_seconds = (datetime.utcnow() - created_at).total_seconds()
 
         if key_type == KEY_TYPE_TEST:
