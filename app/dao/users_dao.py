@@ -152,10 +152,12 @@ def get_user_and_accounts(user_id):
     return (
         User.query.filter(User.id == user_id)
         .options(
-            # eagerly load the user's services and organisations, and also the service's org and vice versa
-            # (so we can see if the user knows about it)
+            # eagerly load the user's services and organisations, and also the org's other services
+            # (though only enough information to determine their liveness)
             joinedload(User.services),
-            joinedload(User.organisations).joinedload(Organisation.services).joinedload(Service.organisation),
+            joinedload(User.organisations)
+            .joinedload(Organisation.services)
+            .load_only(Service.active, Service.restricted),
         )
         .one()
     )
