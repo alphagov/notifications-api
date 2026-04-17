@@ -12,6 +12,7 @@ from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from pypdf.errors import PdfReadError
 
+from app import db
 from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id
 from app.dao.templates_dao import (
@@ -578,20 +579,27 @@ def test_should_get_only_templates_for_that_service(admin_request, notify_db_ses
     assert {template["id"] for template in json_resp_2["data"]} == {str(id_3)}
 
 
+@pytest.mark.parametrize("in_folder", (False, True))
 @pytest.mark.parametrize("template_type", (EMAIL_TYPE, SMS_TYPE, LETTER_TYPE))
-def test_should_not_return_content_and_subject_if_requested(admin_request, sample_service, template_type):
-    create_template(sample_service, template_type=template_type)
+def test_get_all_templates_folder_info(admin_request, sample_service, template_type, in_folder):
+    parent_folder = create_template_folder(service=sample_service, name="my parent folder")
+    template = create_template(sample_service, template_type=template_type, folder=parent_folder if in_folder else None)
+
+    db.session.commit()
+
     json_response = admin_request.get(
         "template.get_all_templates_for_service",
         service_id=sample_service.id,
     )
-    assert json_response["data"][0].keys() == {
-        "folder",
-        "id",
-        "is_precompiled_letter",
-        "name",
-        "template_type",
-    }
+    assert json_response["data"] == [
+        {
+            "folder": str(parent_folder.id) if in_folder else None,
+            "id": str(template.id),
+            "is_precompiled_letter": template.is_precompiled_letter,
+            "name": template.name,
+            "template_type": template.template_type,
+        }
+    ]
 
 
 @pytest.mark.parametrize(
