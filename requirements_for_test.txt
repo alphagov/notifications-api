@@ -241,7 +241,7 @@ mypy-extensions==1.1.0
     # via mypy
 notifications-python-client==10.0.1
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@6356f2c4544118a09c112ebf854fa867051bbed1
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@c720a3fc2cf724dd6f4c3a0f45dabd87012491b3
     # via -r requirements.txt
 opentelemetry-api==1.40.0
     # via
@@ -416,6 +416,7 @@ packaging==26.0
     #   opentelemetry-instrumentation-flask
     #   opentelemetry-instrumentation-sqlalchemy
     #   pytest
+    #   requirements-parser
     #   wheel
 pathspec==1.0.4
     # via mypy
@@ -520,6 +521,10 @@ requests==2.32.5
     #   responses
 requests-mock==1.12.1
     # via -r requirements_for_test_common.in
+requirements-parser==0.13.0
+    # via
+    #   -r requirements.txt
+    #   notifications-utils
 responses==0.26.0
     # via moto
 rfc3339-validator==0.1.4
