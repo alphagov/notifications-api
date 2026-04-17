@@ -20,7 +20,7 @@ SQLAlchemy~=2.0
 pyorc~=0.10
 
 # temporary for debug output
-psutil>=6.0.0,<7.0.0
+psutil~=6.0
 
 notifications-python-client~=10.0
 
