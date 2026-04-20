@@ -242,10 +242,18 @@ def dao_update_notification(notification):
     db.session.add(notification)
 
 
-def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page_size=None):
+@retryable_query()
+def get_notifications_for_job(
+    service_id,
+    job_id,
+    filter_dict=None,
+    page=1,
+    page_size=None,
+    session: Session | scoped_session = db.session,
+):
     if page_size is None:
         page_size = current_app.config["PAGE_SIZE"]
-    query = Notification.query.filter_by(service_id=service_id, job_id=job_id)
+    query = session.query(Notification).filter_by(service_id=service_id, job_id=job_id)
     query = _filter_query(query, filter_dict)
     return query.order_by(asc(Notification.job_row_number)).paginate(page=page, per_page=page_size)
 

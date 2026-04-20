@@ -8,6 +8,7 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
 
+from app import db
 from app.constants import EMAIL_TYPE, JOB_STATUS_FINISHED, LETTER_TYPE, SMS_TYPE
 from app.dao.jobs_dao import (
     can_letter_job_be_cancelled,
@@ -18,6 +19,7 @@ from app.dao.jobs_dao import (
     dao_get_jobs_older_than_data_retention,
     dao_get_notification_outcomes_for_job,
     dao_get_scheduled_job_by_id_and_service_id,
+    dao_get_scheduled_job_stats,
     dao_set_scheduled_jobs_to_pending,
     dao_update_job,
     find_jobs_that_completed_processing,
@@ -34,6 +36,7 @@ from tests.app.db import (
     create_service_contact_list,
     create_template,
 )
+from tests.utils import QueryRecorder
 
 
 def test_should_count_of_statuses_for_notifications_associated_with_job(sample_template, sample_job):
@@ -159,6 +162,29 @@ def test_get_jobs_for_service_in_processed_at_then_created_at_order(notify_db_se
 
     for index in range(len(created_jobs)):
         assert jobs[index].id == created_jobs[index].id
+
+
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_dao_get_scheduled_job_stats_uses_expected_session_binding(notify_db_session, session, expected_bind_key):
+    service = create_service(service_name="service with scheduled jobs")
+    template = create_template(service=service)
+    create_job(template, job_status="scheduled", scheduled_for=datetime.utcnow() + timedelta(hours=1))
+    service_id = service.id
+
+    with QueryRecorder() as query_recorder:
+        count, soonest_scheduled_for = dao_get_scheduled_job_stats(service_id, session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+
+    assert count == 1
+    assert soonest_scheduled_for is not None
 
 
 def test_get_jobs_for_service_by_contact_list(sample_template):

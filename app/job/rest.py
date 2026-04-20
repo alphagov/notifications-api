@@ -3,6 +3,7 @@ from datetime import UTC
 import dateutil
 from flask import Blueprint, current_app, jsonify, request
 
+from app import db
 from app.aws.s3 import get_job_metadata_from_s3
 from app.celery.tasks import process_job
 from app.config import QueueNames
@@ -84,7 +85,13 @@ def get_all_notifications_for_service_job(service_id, job_id):
     page = data["page"] if "page" in data else 1
     page_size = data["page_size"] if "page_size" in data else current_app.config.get("PAGE_SIZE")
     paginated_notifications = get_notifications_for_job(
-        service_id, job_id, filter_dict=data, page=page, page_size=page_size
+        service_id,
+        job_id,
+        filter_dict=data,
+        page=page,
+        page_size=page_size,
+        session=db.session_bulk,
+        retry_attempts=2,
     )
 
     kwargs = request.args.to_dict()
@@ -191,7 +198,7 @@ def create_job(service_id):
 
 @job_blueprint.route("/scheduled-job-stats", methods=["GET"])
 def get_scheduled_job_stats(service_id):
-    count, soonest_scheduled_for = dao_get_scheduled_job_stats(service_id)
+    count, soonest_scheduled_for = dao_get_scheduled_job_stats(service_id, session=db.session_bulk, retry_attempts=2)
     return (
         jsonify(
             count=count,

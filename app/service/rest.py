@@ -591,6 +591,8 @@ def count_notifications_for_service(service_id):
         service_id=service_id,
         template_types=template_types,
         limit_days=limit_days,
+        session=db.session_bulk,
+        retry_attempts=2,
     )
 
     return jsonify({"notifications_sent_count": notification_count}), 200
@@ -691,7 +693,7 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
 @service_blueprint.route("/<uuid:service_id>/notifications/monthly", methods=["GET"])
 def get_monthly_notification_stats(service_id):
     # check service_id validity
-    dao_fetch_service_by_id(service_id)
+    dao_fetch_service_by_id(service_id, session=db.session_bulk, retry_attempts=2)
 
     try:
         year = int(request.args.get("year", "NaN"))
@@ -702,12 +704,19 @@ def get_monthly_notification_stats(service_id):
 
     data = statistics.create_empty_monthly_notification_status_stats_dict(year)
 
-    stats = fetch_notification_status_for_service_by_month(start_date, end_date, service_id)
+    session = db.session_bulk
+    retry_attempts = 2
+
+    stats = fetch_notification_status_for_service_by_month(
+        start_date, end_date, service_id, session=session, retry_attempts=retry_attempts
+    )
     statistics.add_monthly_notification_status_stats(data, stats)
 
     now = datetime.utcnow()
     if end_date > now:
-        todays_deltas = fetch_notification_status_for_service_for_day(convert_utc_to_bst(now), service_id=service_id)
+        todays_deltas = fetch_notification_status_for_service_for_day(
+            convert_utc_to_bst(now), service_id=service_id, session=session, retry_attempts=retry_attempts
+        )
         statistics.add_monthly_notification_status_stats(data, todays_deltas)
 
     return jsonify(data=data)
