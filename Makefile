@@ -10,7 +10,7 @@ GIT_COMMIT ?= $(shell git rev-parse HEAD)
 VIRTUALENV_ROOT := $(shell [ -z $$VIRTUAL_ENV ] && echo $$(pwd)/venv || echo $$VIRTUAL_ENV)
 PYTHON_EXECUTABLE_PREFIX := $(shell test -d "$${VIRTUALENV_ROOT}" && echo "$${VIRTUALENV_ROOT}/bin/" || echo "")
 
-EXCLUDE_REQUIREMENTS_NEWER_THAN_DAYS ?= 30
+EXCLUDE_REQUIREMENTS_NEWER_THAN_DAYS ?= 7
 
 
 ## DEVELOPMENT
