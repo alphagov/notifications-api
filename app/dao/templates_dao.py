@@ -2,13 +2,13 @@ from datetime import datetime
 
 from flask import current_app
 from sqlalchemy import asc, desc
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session, defaultload, load_only, scoped_session
 
 from app import db
 from app.constants import LETTER_TYPE, SECOND_CLASS
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.users_dao import get_user_by_id
-from app.models import Template, TemplateHistory, TemplateRedacted
+from app.models import Template, TemplateFolder, TemplateHistory, TemplateRedacted
 from app.utils import retryable_query
 
 
@@ -64,25 +64,24 @@ def dao_get_template_by_id(template_id, version=None):
     return Template.query.filter_by(id=template_id).one()
 
 
-def dao_get_all_templates_for_service(service_id, template_type=None):
+def dao_get_all_templates_for_service(service_id, template_type=None, no_detail=False) -> list[Template]:
     if template_type is not None:
-        return (
-            Template.query.filter_by(service_id=service_id, template_type=template_type, hidden=False, archived=False)
-            .order_by(
-                asc(Template.name),
-                asc(Template.template_type),
-            )
-            .all()
+        base_query = Template.query.filter_by(
+            service_id=service_id, template_type=template_type, hidden=False, archived=False
+        )
+    else:
+        base_query = Template.query.filter_by(service_id=service_id, hidden=False, archived=False)
+
+    if no_detail:
+        base_query = base_query.options(
+            load_only(Template.template_type, Template.hidden, Template.name, raiseload=True),
+            defaultload(Template.folder).load_only(TemplateFolder.id),  # type: ignore # mypy bug?
         )
 
-    return (
-        Template.query.filter_by(service_id=service_id, hidden=False, archived=False)
-        .order_by(
-            asc(Template.name),
-            asc(Template.template_type),
-        )
-        .all()
-    )
+    return base_query.order_by(
+        asc(Template.name),
+        asc(Template.template_type),
+    ).all()
 
 
 def dao_get_template_versions(service_id, template_id):

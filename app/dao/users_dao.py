@@ -157,7 +157,7 @@ def get_user_and_accounts(user_id):
             joinedload(User.services),
             joinedload(User.organisations)
             .joinedload(Organisation.services)
-            .load_only(Service.active, Service.restricted),
+            .load_only(Service.active, Service.restricted, raiseload=True),
         )
         .one()
     )
