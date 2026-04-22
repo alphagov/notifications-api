@@ -10,7 +10,7 @@ GIT_COMMIT ?= $(shell git rev-parse HEAD)
 VIRTUALENV_ROOT := $(shell [ -z $$VIRTUAL_ENV ] && echo $$(pwd)/venv || echo $$VIRTUAL_ENV)
 PYTHON_EXECUTABLE_PREFIX := $(shell test -d "$${VIRTUALENV_ROOT}" && echo "$${VIRTUALENV_ROOT}/bin/" || echo "")
 
-EXCLUDE_REQUIREMENTS_NEWER_THAN_DAYS ?= 30
+EXCLUDE_REQUIREMENTS_NEWER_THAN_DAYS ?= 7
 
 
 ## DEVELOPMENT
@@ -112,6 +112,10 @@ freeze-requirements: ## Pin all requirements including sub dependencies into req
 	python -c "from notifications_utils.version_tools import copy_config; copy_config()"
 	uv pip compile requirements_for_test.in -o requirements_for_test.txt $(EXTRA_UV_PIP_COMPILE_FLAGS)
 	uv pip sync requirements_for_test.txt
+
+.PHONY: show-outdated-requirements
+show-outdated-requirements: ## Audit requirements.in
+	python -c "from notifications_utils.version_tools import show_outdated_requirements; show_outdated_requirements()"
 
 .PHONY: bump-utils
 bump-utils:  # Bump notifications-utils package to latest version

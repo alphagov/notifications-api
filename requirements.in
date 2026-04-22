@@ -20,12 +20,12 @@ SQLAlchemy~=2.0
 pyorc~=0.10
 
 # temporary for debug output
-psutil>=6.0.0,<7.0.0
+psutil~=6.0
 
 notifications-python-client~=10.0
 
 # Run `make bump-utils` to update to the latest version
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@113.5.1
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@113.6.1
 
 git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
 
