@@ -79,7 +79,7 @@ def test_url_with_token_unsubscribe_link(sample_email_notification, hostnames, n
     notification_id = sample_email_notification.id
     base_url = hostnames.api
     url = f"/unsubscribe/{str(notification_id)}/"
-    token = generate_token(data, notify_api.config["SECRET_KEY"], notify_api.config["DANGEROUS_SALT"])
+    token = generate_token(data, notify_api.config["SECRET_KEY"], "one_click_unsubscribe")
 
     expected_unsubscribe_link = f"{base_url}/unsubscribe/{notification_id}/{token}"
     generated_unsubscribe_link = url_with_token(data, url=url, base_url=base_url)

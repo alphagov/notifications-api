@@ -103,9 +103,7 @@ def update_org_invite_status(organisation_id, invited_org_user_id):
 
 
 def invited_org_user_url(invited_org_user_id, invite_link_host=None):
-    token = generate_token(
-        str(invited_org_user_id), current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"]
-    )
+    token = generate_token(str(invited_org_user_id), current_app.config["SECRET_KEY"], "invite_organisation")
 
     if invite_link_host is None:
         invite_link_host = current_app.config["ADMIN_BASE_URL"]
@@ -125,9 +123,7 @@ def validate_invitation_token(token):
     max_age_seconds = 60 * 60 * 24 * current_app.config["INVITATION_EXPIRATION_DAYS"]
 
     try:
-        invited_user_id = check_token(
-            token, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"], max_age_seconds
-        )
+        invited_user_id = check_token(token, current_app.config["SECRET_KEY"], "invite_organisation", max_age_seconds)
     except SignatureExpired as e:
         errors = {
             "invitation": "Your invitation to GOV.UK Notify has expired. "
