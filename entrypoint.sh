@@ -39,12 +39,6 @@ case "$1" in
   api-worker-jobs-save-documents)
     exec $COMMON_CMD database-tasks-documents
     ;;
-  api-worker-jobs-save)
-    exec $COMMON_CMD database-tasks,job-tasks
-    ;;
-  api-worker-jobs-save-documents)
-    exec $COMMON_CMD database-tasks,job-tasks
-    ;;
   api-worker-research)
     exec $COMMON_CMD research-mode-tasks
     ;;
