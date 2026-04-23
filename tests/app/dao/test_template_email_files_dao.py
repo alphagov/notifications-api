@@ -4,10 +4,12 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import NoResultFound
 
+from app import db
 from app.constants import EMAIL_TYPE
 from app.dao.template_email_files_dao import (
     dao_archive_template_email_file,
     dao_create_template_email_file,
+    dao_get_archived_template_email_files_older_than,
     dao_get_template_email_file_by_id,
     dao_get_template_email_files_by_template_id,
     dao_update_template_email_file,
@@ -15,6 +17,7 @@ from app.dao.template_email_files_dao import (
 from app.dao.templates_dao import dao_update_template
 from app.models import Template, TemplateEmailFile
 from tests.app.db import create_template, create_template_email_file
+from tests.utils import QueryRecorder
 
 
 def test_create_template_email_files_dao(sample_email_template, sample_service):
@@ -191,3 +194,202 @@ def test_dao_archive_template_email_file(sample_email_template, sample_template_
     assert fetched_latest_history.archived_at == datetime.datetime(2025, 7, 30, 16, 6, 4)
     assert fetched_latest_history.archived_by_id == sample_template_email_file_not_pending.created_by_id
     assert fetched_latest_history.template_version == sample_email_template.version + 1
+
+
+@freeze_time("2026-04-23 12:00:00")
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
+def test_dao_get_archived_template_email_files_older_than_filters_by_archived_to(
+    sample_email_template, session, expected_bind_key
+):
+    old_archived_file = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="old.pdf",
+    )
+    recent_archived_file = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="recent.pdf",
+    )
+    unarchived_file = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="live.pdf",
+    )
+
+    old_archived_file.archived_at = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=30)
+    old_archived_file.archived_by_id = sample_email_template.created_by_id
+    recent_archived_file.archived_at = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=10)
+    recent_archived_file.archived_by_id = sample_email_template.created_by_id
+    unarchived_file.archived_at = None
+
+    archived_to = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=14)
+    db.session.commit()
+
+    with QueryRecorder() as query_recorder:
+        results = dao_get_archived_template_email_files_older_than(
+            session=session,
+            archived_to=archived_to,
+            limit=10,
+            offset=0,
+        )
+
+    assert len(results) == 1
+    archived_file, service_id = results[0]
+    assert archived_file.id == old_archived_file.id
+    assert service_id == sample_email_template.service_id
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+
+
+@freeze_time("2026-04-23 12:00:00")
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
+def test_dao_get_archived_template_email_files_older_than_supports_limit_and_offset(
+    sample_email_template, session, expected_bind_key
+):
+    archived_file_one = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="one.pdf",
+    )
+    archived_file_two = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="two.pdf",
+    )
+    archived_file_three = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="three.pdf",
+    )
+
+    now = datetime.datetime.now(datetime.UTC)
+    archived_file_one.archived_at = now - datetime.timedelta(days=20)
+    archived_file_two.archived_at = now - datetime.timedelta(days=19)
+    archived_file_three.archived_at = now - datetime.timedelta(days=18)
+    archived_file_one.archived_by_id = sample_email_template.created_by_id
+    archived_file_two.archived_by_id = sample_email_template.created_by_id
+    archived_file_three.archived_by_id = sample_email_template.created_by_id
+
+    archived_to = now - datetime.timedelta(days=14)
+    db.session.commit()
+
+    with QueryRecorder() as query_recorder:
+        first_batch = dao_get_archived_template_email_files_older_than(
+            session=session,
+            archived_to=archived_to,
+            limit=2,
+            offset=0,
+        )
+        second_batch = dao_get_archived_template_email_files_older_than(
+            session=session,
+            archived_to=archived_to,
+            limit=2,
+            offset=2,
+        )
+
+    assert [row[0].id for row in first_batch] == [archived_file_one.id, archived_file_two.id]
+    assert [row[0].id for row in second_batch] == [archived_file_three.id]
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+
+
+@freeze_time("2026-04-23 12:00:00")
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
+def test_dao_get_archived_template_email_files_older_than_filters_by_archived_from(
+    sample_email_template, session, expected_bind_key
+):
+    old_archived_file = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="old-window.pdf",
+    )
+    in_window_archived_file = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="in-window.pdf",
+    )
+
+    now = datetime.datetime.now(datetime.UTC)
+    old_archived_file.archived_at = now - datetime.timedelta(days=30)
+    old_archived_file.archived_by_id = sample_email_template.created_by_id
+    in_window_archived_file.archived_at = now - datetime.timedelta(days=15)
+    in_window_archived_file.archived_by_id = sample_email_template.created_by_id
+
+    archived_to = now - datetime.timedelta(days=14)
+    archived_from = now - datetime.timedelta(days=20)
+    db.session.commit()
+
+    with QueryRecorder() as query_recorder:
+        results = dao_get_archived_template_email_files_older_than(
+            session=session,
+            archived_to=archived_to,
+            archived_from=archived_from,
+            limit=10,
+            offset=0,
+        )
+
+    assert [archived_file.id for archived_file, _ in results] == [in_window_archived_file.id]
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+
+
+@freeze_time("2026-04-23 12:00:00")
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+)
+def test_dao_get_archived_template_email_files_older_than_archived_from_does_not_bypass_retention(
+    sample_email_template, session, expected_bind_key
+):
+    old_archived_file = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="old-eligible.pdf",
+    )
+    not_old_enough_file = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="not-old-enough.pdf",
+    )
+
+    now = datetime.datetime.now(datetime.UTC)
+    old_archived_file.archived_at = now - datetime.timedelta(days=30)
+    old_archived_file.archived_by_id = sample_email_template.created_by_id
+    # archived_from should never allow this one through because retention is 14 days.
+    not_old_enough_file.archived_at = now - datetime.timedelta(days=10)
+    not_old_enough_file.archived_by_id = sample_email_template.created_by_id
+
+    archived_to = now - datetime.timedelta(days=14)
+    archived_from = now - datetime.timedelta(days=60)
+    db.session.commit()
+
+    with QueryRecorder() as query_recorder:
+        results = dao_get_archived_template_email_files_older_than(
+            session=session,
+            archived_to=archived_to,
+            archived_from=archived_from,
+            limit=10,
+            offset=0,
+        )
+
+    assert [archived_file.id for archived_file, _ in results] == [old_archived_file.id]
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
