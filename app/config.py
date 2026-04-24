@@ -6,7 +6,12 @@ from typing import Any
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 
-from app.constants import EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, SMS_TYPE
+from app.constants import (
+    EMAIL_TYPE,
+    INTERNATIONAL_SMS_TYPE,
+    LETTER_TYPE,
+    SMS_TYPE,
+)
 
 
 class QueueNames:
@@ -401,6 +406,11 @@ class Config:
                 "task": "remove_letter_jobs",
                 "schedule": crontab(hour=4, minute=20),
                 # since we mark jobs as archived
+                "options": {"queue": QueueNames.PERIODIC},
+            },
+            "remove-archived-template-email-files-from-s3": {
+                "task": "remove-archived-template-email-files-from-s3",
+                "schedule": crontab(hour=4, minute=40),
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "check-if-letters-still-in-created": {
