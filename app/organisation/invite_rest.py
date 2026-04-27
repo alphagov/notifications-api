@@ -126,7 +126,11 @@ def validate_invitation_token(token):
 
     try:
         invited_user_id = check_token(
-            token, current_app.config["SECRET_KEY"], current_app.config["DANGEROUS_SALT"], max_age_seconds
+            token,
+            current_app.config["SECRET_KEY"],
+            current_app.config["DANGEROUS_SALT"],
+            max_age_seconds,
+            current_app.config["TOKEN_SECRET_KEY"],
         )
     except SignatureExpired as e:
         errors = {
