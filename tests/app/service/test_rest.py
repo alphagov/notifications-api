@@ -1453,48 +1453,51 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db_session, s
             assert result["message"] == expected_message
 
 
-def test_remove_user_from_service(client, sample_user_service_permission):
-    second_user = create_user(email="new@digital.cabinet-office.gov.uk")
+def test_remove_user_from_service(sample_user_service_permission, admin_request):
+    second_user = create_user(email="new_2@digital.cabinet-office.gov.uk")
+    third_user = create_user(email="new_3@digital.cabinet-office.gov.uk")
+
     service = sample_user_service_permission.service
 
-    # Simulates successfully adding a user to the service
+    # Adds 2 additional users to the service so it is possible to remove 1
     dao_add_user_to_service(
         service,
         second_user,
         permissions=[Permission(service_id=service.id, user_id=second_user.id, permission="manage_settings")],
     )
-
-    endpoint = url_for("service.remove_user_from_service", service_id=str(service.id), user_id=str(second_user.id))
-    auth_header = create_admin_authorization_header()
-    resp = client.delete(endpoint, headers=[("Content-Type", "application/json"), auth_header])
-    assert resp.status_code == 204
-
-
-def test_remove_non_existant_user_from_service(client, sample_user_service_permission):
-    second_user = create_user(email="new@digital.cabinet-office.gov.uk")
-    endpoint = url_for(
-        "service.remove_user_from_service",
-        service_id=str(sample_user_service_permission.service.id),
-        user_id=str(second_user.id),
+    dao_add_user_to_service(
+        service,
+        third_user,
+        permissions=[Permission(service_id=service.id, user_id=second_user.id, permission="manage_settings")],
     )
-    auth_header = create_admin_authorization_header()
-    resp = client.delete(endpoint, headers=[("Content-Type", "application/json"), auth_header])
-    assert resp.status_code == 404
+
+    admin_request.delete(
+        "service.remove_user_from_service",
+        service_id=service.id,
+        user_id=second_user.id,
+    )
 
 
-def test_cannot_remove_only_user_from_service(notify_api, notify_db_session, sample_user_service_permission):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            endpoint = url_for(
-                "service.remove_user_from_service",
-                service_id=str(sample_user_service_permission.service.id),
-                user_id=str(sample_user_service_permission.user.id),
-            )
-            auth_header = create_admin_authorization_header()
-            resp = client.delete(endpoint, headers=[("Content-Type", "application/json"), auth_header])
-            assert resp.status_code == 400
-            result = resp.json
-            assert result["message"] == "You cannot remove the only user for a service"
+def test_remove_non_existent_user_from_service(sample_user_service_permission, admin_request):
+    second_user = create_user(email="new@digital.cabinet-office.gov.uk")
+
+    response = admin_request.delete(
+        "service.remove_user_from_service",
+        service_id=sample_user_service_permission.service.id,
+        user_id=second_user.id,
+        _expected_status=404,
+    )
+    assert response["message"] == "User not found"
+
+
+def test_cannot_remove_only_user_from_service(admin_request, sample_user_service_permission):
+    response = admin_request.delete(
+        "service.remove_user_from_service",
+        service_id=sample_user_service_permission.service.id,
+        user_id=sample_user_service_permission.user.id,
+        _expected_status=400,
+    )
+    assert response["message"] == "User cannot be removed from the service"
 
 
 # This test is just here verify get_service_and_api_key_history that is a temp solution

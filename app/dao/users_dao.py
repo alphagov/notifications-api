@@ -8,7 +8,12 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db, redis_store
-from app.constants import EMAIL_AUTH_TYPE, NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID, NOTIFY_RESEARCH_SERVICE_ID
+from app.constants import (
+    EMAIL_AUTH_TYPE,
+    MANAGE_SETTINGS,
+    NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID,
+    NOTIFY_RESEARCH_SERVICE_ID,
+)
 from app.dao.dao_utils import autocommit
 from app.dao.organisation_dao import dao_remove_user_from_organisation
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
@@ -190,6 +195,38 @@ def dao_archive_user(user):
     user.state = "inactive"
 
     db.session.add(user)
+
+
+def _count_manage_settings_users(service):
+    active_users = [u for u in service.users if u.state == "active"]
+
+    return sum(MANAGE_SETTINGS in u.get_permissions(service_id=service.id) for u in active_users)
+
+
+def _min_manage_settings_users(service):
+    return 1 if service.restricted and not service.has_active_go_live_request else 2
+
+
+def _can_remove_manage_settings_user(service):
+    """
+    Returns False if removing a single user with `manage_settings`
+    would leave the service with too few such users.
+    """
+    return _count_manage_settings_users(service) - 1 >= _min_manage_settings_users(service)
+
+
+def user_can_be_removed_from_service(user, service):
+    active_users = [u for u in service.users if u.state == "active"]
+
+    # Must always leave at least one active user
+    if len(active_users) == 1:
+        return False
+
+    # Removing users without the `manage_settings` permission is always safe
+    if MANAGE_SETTINGS not in user.get_permissions(service_id=service.id):
+        return True
+
+    return _can_remove_manage_settings_user(service)
 
 
 def user_can_be_archived(user):
