@@ -394,15 +394,15 @@ def test_reset_failed_login_count_returns_404_when_user_does_not_exist(client):
     (
         (
             {},
-            "{hostnames.admin}/email-auth/%2E",
+            "{hostnames.admin}/email-auth/gAA",
         ),
         (
             {"to": None},
-            "{hostnames.admin}/email-auth/%2E",
+            "{hostnames.admin}/email-auth/gAA",
         ),
         (
             {"to": None, "email_auth_link_host": "https://example.com"},
-            "https://example.com/email-auth/%2E",
+            "https://example.com/email-auth/gAA",
         ),
     ),
 )
