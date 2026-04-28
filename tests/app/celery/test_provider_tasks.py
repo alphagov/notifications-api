@@ -1,4 +1,6 @@
-from datetime import datetime
+from contextlib import nullcontext
+from datetime import datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 import boto3
@@ -9,6 +11,7 @@ from flask import current_app
 from freezegun import freeze_time
 from moto import mock_aws
 from notifications_utils.recipient_validation.postal_address import PostalAddress
+from pytest_mock import MockerFixture
 
 import app
 from app.celery import provider_tasks
@@ -38,6 +41,8 @@ from app.constants import (
     NOTIFICATION_TECHNICAL_FAILURE,
 )
 from app.exceptions import NotificationTechnicalFailureException
+from app.models import Organisation, Template
+from app.otel_metrics.notification import _send_duration
 from tests.app.db import create_notification
 
 
@@ -521,4 +526,149 @@ def test_get_callback_url_returns_unique_callback_for_notification(notify_api, f
     assert callback_url == (
         "http://localhost:6011/notifications/letter/status?"
         "token=IjZjZTQ2NmQwLWZkNmEtMTFlNS04MmY1LWUwYWNjYjlkMTFhNiI._E6xCZE858swMk0xoYI_KHoTKd8"
+    )
+
+
+@freeze_time("2026-01-01 09:00:00")
+@pytest.mark.parametrize(
+    "key_type, phone_number, international, country_code, should_raise",
+    [
+        ("normal", "+447700900855", False, "44", False),
+        ("normal", "+15555550199", True, "1", False),
+        ("test", "+447700900855", False, "44", False),
+        ("normal", "+447700900855", False, "44", True),
+    ],
+)
+def test_deliver_sms_records_duration_histogram(
+    mocker: MockerFixture,
+    sample_template: Template,
+    key_type: str,
+    phone_number: str,
+    international: bool,
+    country_code: str,
+    should_raise: bool,
+) -> None:
+    record_send_duration_mock = mocker.patch.object(_send_duration, "record")
+    mocker.patch("app.celery.provider_tasks.deliver_sms.retry", side_effect=MaxRetriesExceededError())
+    mocker.patch("app.delivery.send_to_providers.send_sms_response")
+    mocker.patch("app.mmg_client.send_sms", side_effect=RuntimeError() if should_raise else None)
+
+    notification = create_notification(
+        template=sample_template,
+        to_field=phone_number,
+        international=international,
+        phone_prefix=country_code,
+        key_type=key_type,
+        created_at=datetime.utcnow() - timedelta(minutes=1),
+    )
+
+    with pytest.raises(NotificationTechnicalFailureException) if should_raise else nullcontext():
+        deliver_sms(notification.id)
+
+    expected_attributes = {
+        "key.type": key_type,
+        "notification.type": "sms",
+        "provider.name": "mmg",
+    }
+
+    if should_raise:
+        expected_attributes["error.type"] = "builtins.RuntimeError"
+
+    record_send_duration_mock.assert_called_once_with(
+        60.0,
+        expected_attributes,
+    )
+
+
+@freeze_time("2026-01-01 09:00:00")
+@pytest.mark.parametrize(
+    "key_type, should_raise",
+    [
+        ("normal", False),
+        ("test", False),
+        ("normal", True),
+    ],
+)
+def test_deliver_email_records_duration_histogram(
+    mocker: MockerFixture,
+    sample_email_template: Template,
+    key_type: str,
+    should_raise: bool,
+) -> None:
+    record_send_duration_mock = mocker.patch.object(_send_duration, "record")
+    mocker.patch("app.celery.provider_tasks.deliver_email.retry", side_effect=MaxRetriesExceededError())
+    mocker.patch(
+        "app.aws_ses_client.send_email", return_value="reference", side_effect=RuntimeError() if should_raise else None
+    )
+    mocker.patch("app.delivery.send_to_providers.send_email_response")
+
+    notification = create_notification(
+        template=sample_email_template,
+        key_type=key_type,
+        created_at=datetime.utcnow() - timedelta(minutes=1),
+    )
+
+    with pytest.raises(NotificationTechnicalFailureException) if should_raise else nullcontext():
+        deliver_email(notification.id)
+
+    expected_attributes = {
+        "key.type": key_type,
+        "notification.type": "email",
+        "provider.name": "ses",
+    }
+
+    if should_raise:
+        expected_attributes["error.type"] = "builtins.RuntimeError"
+
+    record_send_duration_mock.assert_called_once_with(
+        60.0,
+        expected_attributes,
+    )
+
+
+@mock_aws
+@freeze_time("2026-01-01 09:00:01")
+@pytest.mark.parametrize("should_raise", [False, True])
+def test_deliver_letter_records_duration_histogram(
+    mocker: MockerFixture,
+    sample_letter_template: Any,  # sqlalchemy types are weird
+    sample_organisation: Organisation,
+    should_raise: bool,
+) -> None:
+    record_send_duration_mock = mocker.patch.object(_send_duration, "record")
+    mocker.patch(
+        "app.celery.provider_tasks.dvla_client.send_letter", side_effect=RuntimeError() if should_raise else None
+    )
+    mocker.patch("app.celery.provider_tasks._get_callback_url", return_value="example.com?token=1")
+
+    letter = create_notification(
+        template=sample_letter_template,
+        to_field="A. User\nMy Street,\nLondon,\nSW1 1AA",
+        personalisation={"address_line_1": "Provided as PDF"},
+        status=NOTIFICATION_CREATED,
+        reference="ref1",
+        created_at=datetime.now() - timedelta(minutes=1),
+    )
+    sample_letter_template.service.organisation = sample_organisation
+
+    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
+    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3.put_object(Bucket=pdf_bucket, Key="2026-01-01/NOTIFY.REF1.D.2.C.20260101090000.PDF", Body=b"file")
+
+    with pytest.raises(NotificationTechnicalFailureException) if should_raise else nullcontext():
+        deliver_letter(letter.id)
+
+    expected_attributes = {
+        "key.type": "normal",
+        "notification.type": "letter",
+        "provider.name": "dvla",
+    }
+
+    if should_raise:
+        expected_attributes["error.type"] = "builtins.RuntimeError"
+
+    record_send_duration_mock.assert_called_once_with(
+        60.0,
+        expected_attributes,
     )
