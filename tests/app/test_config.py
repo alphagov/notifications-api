@@ -89,3 +89,10 @@ def test_celery_config_contains_task_ignore_result_is_true():
     # task_ignore_result have been declared in the CELERY config
     # in order to prevent celery from expending resources on trying to process results from tasks
     assert Config.CELERY["task_ignore_result"] is True
+
+
+def test_celery_config_contains_archived_template_email_file_cleanup_task():
+    task_config = Config.CELERY["beat_schedule"]["remove-archived-template-email-files-from-s3"]
+    assert task_config["task"] == "remove-archived-template-email-files-from-s3"
+    assert task_config["options"]["queue"] == QueueNames.PERIODIC
+    assert task_config["schedule"] == crontab(hour=4, minute=40)

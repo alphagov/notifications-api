@@ -2,10 +2,12 @@ import datetime
 from itertools import chain
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.models import Template, TemplateEmailFile, TemplateEmailFileHistory, TemplateHistory
+from app.utils import retryable_query
 
 
 @autocommit
@@ -50,6 +52,35 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
 @autocommit
 def dao_get_template_email_file_by_id(template_email_file_id):
     return TemplateEmailFile.query.filter(TemplateEmailFile.id == template_email_file_id).one()
+
+
+@retryable_query()
+def dao_get_archived_template_email_files_older_than(
+    session: Session | scoped_session = db.session,
+    archived_from=None,
+    archived_to=None,
+    limit=1000,
+    offset=0,
+):
+    # this function sorts the rows the same way every time so the cleanup task
+    # can skip rows already processed by earlier batches in this run (using offset and limit)
+    return (
+        session.query(TemplateEmailFile, Template.service_id)
+        .join(Template, Template.id == TemplateEmailFile.template_id)
+        .filter(
+            TemplateEmailFile.archived_at.is_not(None),
+            *(() if archived_from is None else (TemplateEmailFile.archived_at >= archived_from,)),
+            TemplateEmailFile.archived_at <= archived_to,
+        )
+        .order_by(
+            TemplateEmailFile.archived_at.asc(),
+            TemplateEmailFile.id.asc(),
+        )
+        .limit(limit)
+        # skip rows already processed by earlier batches in this run.
+        .offset(offset)
+        .all()
+    )
 
 
 @autocommit
