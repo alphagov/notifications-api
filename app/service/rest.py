@@ -128,7 +128,7 @@ from app.dao.unsubscribe_request_dao import (
     get_unsubscribe_requests_statistics_dao,
     update_unsubscribe_request_report_processed_by_date_dao,
 )
-from app.dao.users_dao import get_user_by_id, save_user_attribute
+from app.dao.users_dao import get_user_by_id, save_user_attribute, user_can_be_removed_from_service
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import adjust_daily_service_limits_for_cancelled_letters, letter_print_day
 from app.models import (
@@ -410,9 +410,8 @@ def remove_user_from_service(service_id, user_id):
         error = "User not found"
         raise InvalidRequest(error, status_code=404)
 
-    elif len(service.users) == 1:
-        error = "You cannot remove the only user for a service"
-        raise InvalidRequest(error, status_code=400)
+    if not user_can_be_removed_from_service(user=user, service=service):
+        raise InvalidRequest("User cannot be removed from the service", status_code=400)
 
     dao_remove_user_from_service(service, user)
     return jsonify({}), 204

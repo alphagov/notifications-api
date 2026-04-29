@@ -8,7 +8,12 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db, redis_store
-from app.constants import EMAIL_AUTH_TYPE, NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID, NOTIFY_RESEARCH_SERVICE_ID
+from app.constants import (
+    EMAIL_AUTH_TYPE,
+    MANAGE_SETTINGS,
+    NOTIFY_FEATURES_AND_IMPROVEMENTS_SERVICE_ID,
+    NOTIFY_RESEARCH_SERVICE_ID,
+)
 from app.dao.dao_utils import autocommit
 from app.dao.organisation_dao import dao_remove_user_from_organisation
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
@@ -166,7 +171,7 @@ def get_user_and_accounts(user_id):
 @autocommit
 def dao_archive_user(user):
     if not user_can_be_archived(user):
-        msg = "User can’t be removed from a service - check all services have another team member with manage_settings"
+        msg = "User cannot be removed from a service"
         raise InvalidRequest(msg, 400)
 
     permission_dao.remove_user_service_permissions_for_all_services(user)
@@ -192,20 +197,40 @@ def dao_archive_user(user):
     db.session.add(user)
 
 
+def _count_manage_settings_users(service):
+    active_users = [u for u in service.users if u.state == "active"]
+
+    return sum(MANAGE_SETTINGS in u.get_permissions(service_id=service.id) for u in active_users)
+
+
+def _min_manage_settings_users(service):
+    return 1 if service.restricted and not service.has_active_go_live_request else 2
+
+
+def _can_remove_manage_settings_user(service):
+    """
+    Returns False if removing a single user with `manage_settings`
+    would leave the service with too few such users.
+    """
+    return _count_manage_settings_users(service) - 1 >= _min_manage_settings_users(service)
+
+
+def user_can_be_removed_from_service(user, service):
+    active_users = [u for u in service.users if u.state == "active"]
+
+    # Must always leave at least one active user
+    if len(active_users) == 1:
+        return False
+
+    # Removing users without the `manage_settings` permission is always safe
+    if MANAGE_SETTINGS not in user.get_permissions(service_id=service.id):
+        return True
+
+    return _can_remove_manage_settings_user(service)
+
+
 def user_can_be_archived(user):
-    active_services = [x for x in user.services if x.active]
-
-    for service in active_services:
-        other_active_users = [x for x in service.users if x.state == "active" and x != user]
-
-        if not other_active_users:
-            return False
-
-        if not any("manage_settings" in user.get_permissions(service.id) for user in other_active_users):
-            # no-one else has manage settings
-            return False
-
-    return True
+    return all(user_can_be_removed_from_service(user, service) for service in user.services if service.active)
 
 
 def get_users_for_research(start_date: date, end_date: date) -> list[User]:
