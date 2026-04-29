@@ -738,14 +738,21 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         "sanitise_content_for": [placeholder_name],
     }
 
-    resp_json = api_client_request.post(
+    response = api_client_request.post(
         sample_email_template_with_distinct_placeholders.service_id,
         "v2_notifications.post_notification",
         notification_type="email",
         _data=data,
     )
 
-    assert validate(resp_json, post_email_response) == resp_json
+    assert validate(response, post_email_response) == response
+    assert response["sanitised_content"] == {
+        "First_Name": {
+            "sanitised": "Amala, please \\[click this evil link\\]\\(\\)",
+            "unsanitised": "Amala, please [click this evil link](https://evil.link)",
+        }
+    }
+
     notification = Notification.query.one()
 
     assert notification.content == (
