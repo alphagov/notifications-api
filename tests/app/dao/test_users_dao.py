@@ -32,6 +32,7 @@ from app.dao.users_dao import (
     update_user_password,
     user_can_be_archived,
     user_can_be_removed_from_service,
+    users_permissions_can_be_changed,
 )
 from app.errors import InvalidRequest
 from app.models import OrganisationUserPermissions, Permission, User, VerifyCode
@@ -280,6 +281,127 @@ def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
     assert not sample_user.check_password("password")
     assert not sample_user.platform_admin
     assert sample_user.get_organisation_permissions() == {}
+
+
+@pytest.mark.parametrize(
+    "new_permissions",
+    [
+        ["manage_settings"],
+        ["view_activity"],
+        ["send_messages", "manage_settings", "manage_api_keys"],
+    ],
+)
+def test_users_permissions_can_be_changed_when_user_does_not_have_manage_settings_originally(
+    sample_service,
+    notify_db_session,
+    new_permissions,
+):
+    user = create_user()
+    create_permissions(user, sample_service, "view_activity")
+
+    sample_service.users = [user]
+    notify_db_session.commit()
+
+    assert users_permissions_can_be_changed(user, sample_service, new_permissions) is True
+
+
+def test_users_permissions_can_be_changed_when_user_is_keeping_manage_settings_permission(
+    sample_service,
+    notify_db_session,
+):
+    user = create_user()
+    create_permissions(user, sample_service, "manage_settings")
+
+    sample_service.users = [user]
+    notify_db_session.commit()
+
+    assert (
+        users_permissions_can_be_changed(user, sample_service, ["send_messages", "manage_settings", "manage_api_keys"])
+        is True
+    )
+
+
+@pytest.mark.parametrize(
+    "num_admin_users, num_non_admin_users, permissions_can_be_changed",
+    [
+        (1, 1, False),
+        (1, 5, False),
+        (2, 0, False),
+        (2, 10, False),
+        (3, 2, True),
+        (6, 0, True),
+    ],
+)
+def test_users_permissions_can_be_changed_when_removing_manage_settings_from_user_of_live_service(
+    sample_service,
+    notify_db_session,
+    num_admin_users,
+    num_non_admin_users,
+    permissions_can_be_changed,
+):
+    admin_users = [create_user() for i in range(num_admin_users)]
+    for user in admin_users:
+        create_permissions(user, sample_service, "manage_settings")
+
+    non_admin_users = [create_user() for i in range(num_non_admin_users)]
+    for user in non_admin_users:
+        create_permissions(user, sample_service, "view_activity")
+
+    sample_service.users = [*admin_users, *non_admin_users]
+    notify_db_session.commit()
+
+    assert (
+        users_permissions_can_be_changed(
+            admin_users[0],
+            sample_service,
+            ["manage_templates", "manage_api_keys"],
+        )
+        is permissions_can_be_changed
+    )
+
+
+@pytest.mark.parametrize(
+    "num_admin_users, num_non_admin_users, has_go_live_request, permissions_can_be_changed",
+    [
+        (1, 3, True, False),
+        (1, 3, False, False),
+        (2, 0, True, False),
+        (2, 0, False, True),
+        (2, 4, True, False),
+        (2, 4, False, True),
+        (3, 2, True, True),
+        (3, 2, False, True),
+    ],
+)
+def test_users_permissions_can_be_changed_when_removing_manage_settings_from_user_of_trial_mode_service(
+    sample_service,
+    notify_db_session,
+    num_admin_users,
+    num_non_admin_users,
+    has_go_live_request,
+    permissions_can_be_changed,
+):
+    admin_users = [create_user() for i in range(num_admin_users)]
+    for user in admin_users:
+        create_permissions(user, sample_service, "manage_settings")
+
+    non_admin_users = [create_user() for i in range(num_non_admin_users)]
+    for user in non_admin_users:
+        create_permissions(user, sample_service, "view_activity")
+
+    sample_service.users = [*admin_users, *non_admin_users]
+    sample_service.restricted = True
+    sample_service.has_active_go_live_request = has_go_live_request
+    notify_db_session.commit()
+
+    assert (
+        users_permissions_can_be_changed(
+            admin_users[0],
+            sample_service,
+            ["manage_templates", "manage_api_keys"],
+        )
+        is permissions_can_be_changed
+    )
 
 
 @pytest.mark.parametrize("user_permission", ["manage_settings", "view_activity"])

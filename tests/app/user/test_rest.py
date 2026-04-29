@@ -449,10 +449,28 @@ def test_set_user_permissions_remove_old(admin_request, sample_user, sample_serv
     assert query.first().permission == MANAGE_SETTINGS
 
 
+def test_set_user_permissions_when_permissions_cannot_be_changed(admin_request, sample_user, sample_service):
+    data = {"permissions": [{"permission": MANAGE_TEMPLATES}]}
+
+    result = admin_request.post(
+        "user.set_permissions",
+        user_id=str(sample_user.id),
+        service_id=str(sample_service.id),
+        _data=data,
+        _expected_status=400,
+    )
+
+    assert result["message"] == "Cannot change user permissions - service would have too few users with manage_settings"
+
+    # check the user still has the original permissions
+    query = Permission.query.filter_by(user=sample_user)
+    assert query.count() == 8
+
+
 def test_set_user_folder_permissions(admin_request, sample_user, sample_service):
     tf1 = create_template_folder(sample_service)
     tf2 = create_template_folder(sample_service)
-    data = {"permissions": [], "folder_permissions": [str(tf1.id), str(tf2.id)]}
+    data = {"permissions": [{"permission": MANAGE_SETTINGS}], "folder_permissions": [str(tf1.id), str(tf2.id)]}
 
     admin_request.post(
         "user.set_permissions",
@@ -503,7 +521,7 @@ def test_set_user_folder_permissions_does_not_affect_permissions_for_other_servi
     service_2_user.folders = [tf3]
     dao_update_service_user(service_2_user)
 
-    data = {"permissions": [], "folder_permissions": [str(tf2.id)]}
+    data = {"permissions": [{"permission": MANAGE_SETTINGS}], "folder_permissions": [str(tf2.id)]}
 
     admin_request.post(
         "user.set_permissions",
@@ -526,7 +544,7 @@ def test_update_user_folder_permissions(admin_request, sample_user, sample_servi
     service_user.folders = [tf1, tf2]
     dao_update_service_user(service_user)
 
-    data = {"permissions": [], "folder_permissions": [str(tf2.id), str(tf3.id)]}
+    data = {"permissions": [{"permission": MANAGE_SETTINGS}], "folder_permissions": [str(tf2.id), str(tf3.id)]}
 
     admin_request.post(
         "user.set_permissions",
@@ -549,7 +567,7 @@ def test_remove_user_folder_permissions(admin_request, sample_user, sample_servi
     service_user.folders = [tf1, tf2]
     dao_update_service_user(service_user)
 
-    data = {"permissions": [], "folder_permissions": []}
+    data = {"permissions": [{"permission": MANAGE_SETTINGS}], "folder_permissions": []}
 
     admin_request.post(
         "user.set_permissions",

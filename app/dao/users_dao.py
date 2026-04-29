@@ -215,6 +215,19 @@ def _can_remove_manage_settings_user(service):
     return _count_manage_settings_users(service) - 1 >= _min_manage_settings_users(service)
 
 
+def users_permissions_can_be_changed(user, service, new_permissions):
+    current_permissions = user.get_permissions(service_id=service.id)
+
+    had_permission = MANAGE_SETTINGS in current_permissions
+    will_have_permission = MANAGE_SETTINGS in new_permissions
+
+    # If we're not removing the permission, it's always safe
+    if not had_permission or will_have_permission:
+        return True
+
+    return _can_remove_manage_settings_user(service)
+
+
 def user_can_be_removed_from_service(user, service):
     active_users = [u for u in service.users if u.state == "active"]
 
