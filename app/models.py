@@ -1604,11 +1604,11 @@ class Notification(db.Model):
             },
         ),
         Index(
-            "ix_notifications_failed_service_id_composite",
+            "ix_notifications_nondelivered_service_id_composite",
             "service_id",
             "notification_type",
             "created_at",
-            postgresql_where=status.in_(NOTIFICATION_STATUS_TYPES_FAILED),
+            postgresql_where=(status != NOTIFICATION_DELIVERED),
         ),
     )
 
