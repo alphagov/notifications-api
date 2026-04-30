@@ -1,6 +1,6 @@
 FROM python:3.13-slim-bookworm AS base
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.28 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
