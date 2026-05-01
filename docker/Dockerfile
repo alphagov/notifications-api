@@ -143,7 +143,10 @@ RUN \
 # Add the gpg key for postgresql package repository
 RUN set -x \
     && export GNUPGHOME="$(mktemp -d)" \
-    && gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$POSTGRES_REPO_KEY" \
+    && ( \
+      gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$POSTGRES_REPO_KEY" \
+      || gpg --batch --keyserver hkps://pgp.mit.edu --recv-keys "$POSTGRES_REPO_KEY" \
+    ) \
     && gpg --batch --export "$POSTGRES_REPO_KEY" > /etc/apt/trusted.gpg.d/postgres.gpg \
     && command -v gpgconf > /dev/null && gpgconf --kill all \
     &&rm -rf "$GNUPGHOME" \
