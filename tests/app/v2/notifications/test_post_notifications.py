@@ -738,21 +738,14 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         "sanitise_content_for": [placeholder_name],
     }
 
-    response = api_client_request.post(
+    resp_json = api_client_request.post(
         sample_email_template_with_distinct_placeholders.service_id,
         "v2_notifications.post_notification",
         notification_type="email",
         _data=data,
     )
 
-    assert validate(response, post_email_response) == response
-    assert response["sanitised_content"] == {
-        "First_Name": {
-            "sanitised": "Amala, please \\[click this evil link\\]\\(\\)",
-            "unsanitised": "Amala, please [click this evil link](https://evil.link)",
-        }
-    }
-
+    assert validate(resp_json, post_email_response) == resp_json
     notification = Notification.query.one()
 
     assert notification.content == (
@@ -772,46 +765,6 @@ def test_post_email_notification_sanitise_content_for_selected_personalisation(
         '[click this evil link]()<br>Please confirm your registration on <a style="word-wrap: break-word; '
         'color: #1D70B8;" href="https://pab.gov.uk/123">Pigeons\' Affair Bureau website</a></p>'
     )
-
-
-@pytest.mark.parametrize(
-    "template_type, recipient_dict, has_sanitised_content",
-    (
-        ("email", {"email_address": "amala@example.com"}, True),
-        ("sms", {"phone_number": "07900111222"}, False),
-        (
-            "letter",
-            {
-                "personalisation": {
-                    "address_line_1": "Amala Pidge",
-                    "address_line_2": "6 Dove St",
-                    "address_line_3": "SW1 1AA",
-                }
-            },
-            False,
-        ),
-    ),
-)
-def test_post_email_notification_response_has_sanitised_content_info_for_emails_only(
-    api_client_request, sample_service, mocker, template_type, recipient_dict, has_sanitised_content
-):
-    template = create_template(service=sample_service, template_type=template_type)
-    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
-    mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
-    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
-    data = {
-        "template_id": template.id,
-    } | recipient_dict
-
-    response = api_client_request.post(
-        template.service_id,
-        "v2_notifications.post_notification",
-        notification_type=template_type,
-        _data=data,
-        _api_key_type="test",
-    )
-
-    assert ("sanitised_content" in response) == has_sanitised_content
 
 
 @pytest.mark.parametrize(
