@@ -37,6 +37,7 @@ from app.dao.users_dao import (
     save_user_attribute,
     update_user_password,
     use_user_code,
+    users_permissions_can_be_changed,
 )
 from app.dao.webauthn_credential_dao import (
     dao_get_webauthn_credential_by_user_and_id,
@@ -473,9 +474,16 @@ def set_permissions(user_id, service_id):
     data = request.get_json()
     validate(data, post_set_permissions_schema)
 
+    permissions = [p["permission"] for p in data["permissions"]]
     permission_list = [
         Permission(service_id=service_id, user_id=user_id, permission=p["permission"]) for p in data["permissions"]
     ]
+
+    if not users_permissions_can_be_changed(user, service, new_permissions=permissions):
+        raise InvalidRequest(
+            "Cannot change user permissions - service would have too few users with manage_settings",
+            400,
+        )
 
     permission_dao.set_user_service_permission(user, service, permission_list, _commit=True, replace=True)
 
