@@ -10,6 +10,7 @@ from celery.exceptions import MaxRetriesExceededError
 from flask import current_app
 from freezegun import freeze_time
 from moto import mock_aws
+from notifications_utils.testing.comparisons import AnyStringMatching
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import signing
@@ -96,6 +97,12 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         "letter_filename": "LETTER.PDF",
         "notification_id": str(sample_letter_notification.id),
         "key_type": sample_letter_notification.key_type,
+        "date": AnyStringMatching(
+            # There’s a few ms delay between calling the task and creating the datetime here.
+            # Celery evades `freeze_time` so the best we can say is the date is close enough
+            # to not be in the wrong timezone or format, for example.
+            datetime.now(UTC).strftime(r"^%Y-%m-%dT%H:\d{2}:\d{2}\.\d{6}\+00:00$")
+        ),
     }
 
     mock_celery.assert_called_once_with(
