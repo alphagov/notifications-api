@@ -348,7 +348,10 @@ class DVLAClient:
                     ),
                 )
                 response.raise_for_status()
-            return response.json()
+            try:
+                return response.json()
+            except Exception:
+                current_app.logger.warning("Non-JSON response (status %s): %s", response.status_code, response.text)
 
     def _format_create_print_job_json(
         self, *, notification_id, reference, address, postage, service_id, organisation_id, upload_id, callback_url
