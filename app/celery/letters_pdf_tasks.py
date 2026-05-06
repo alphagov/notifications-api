@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from datetime import time as dt_time
 
 from botocore.exceptions import ClientError as BotoClientError
@@ -87,6 +87,7 @@ def get_pdf_for_templated_letter(self, notification_id):
             "letter_filename": letter_filename,
             "notification_id": str(notification_id),
             "key_type": notification.key_type,
+            "date": notification.created_at.replace(tzinfo=UTC).isoformat(),
         }
 
         encoded_data = signing.encode(letter_data)
