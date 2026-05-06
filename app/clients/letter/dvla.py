@@ -272,8 +272,18 @@ class DVLAClient:
                 f"{self.base_url}/print-request/v1/print/files/upload-url",
                 headers=self._get_auth_headers(),
             )
+            try:
+                data = response.json()
+            except Exception:
+                current_app.logger.warning(
+                    "Non-JSON response (status %s): %s",
+                    response.status_code,
+                    response.text,
+                )
+                response.raise_for_status()
+                raise
             response.raise_for_status()
-            return response.json()
+            return data
 
     def _upload_file(self, *, upload_url: str, pdf_file: bytes):
         """
@@ -346,8 +356,20 @@ class DVLAClient:
                         callback_url=callback_url,
                     ),
                 )
+            try:
+                data = response.json()
+            except Exception:
+                current_app.logger.warning(
+                    "Non-JSON response for notification_id %s (status %s): %s",
+                    notification_id,
+                    response.status_code,
+                    response.text,
+                )
                 response.raise_for_status()
-            return response.json()
+                raise
+
+            response.raise_for_status()
+            return data
 
     def _format_create_print_job_json(
         self, *, notification_id, reference, address, postage, service_id, organisation_id, upload_id, callback_url
