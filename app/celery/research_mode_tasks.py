@@ -64,7 +64,7 @@ def send_email_response(reference, to, service_id):
         body = ses_notification_callback(reference)
 
     process_ses_results.apply_async(
-        [body],
+        [body, datetime.utcnow().isoformat()],
         queue=QueueNames.RESEARCH_MODE,
         MessageGroupId=str(service_id),
     )

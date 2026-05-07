@@ -25,7 +25,7 @@ from app.notifications.notifications_ses_callback import (
 def process_ses_results(  # noqa: C901
     self: Task,
     response: dict,
-    receipt_iso_timestamp: str | None = None,
+    receipt_iso_timestamp: str,
 ):
     try:
         ses_message = json.loads(response["Message"])
@@ -50,17 +50,12 @@ def process_ses_results(  # noqa: C901
             except ValueError:
                 pass  # None it is, then
 
-        receipt_dt = None
-        if receipt_iso_timestamp is not None:
-            try:
-                receipt_dt = datetime.fromisoformat(receipt_iso_timestamp).replace(tzinfo=None)
-            except ValueError:
-                pass  # None it is, then
+        receipt_dt = datetime.fromisoformat(receipt_iso_timestamp).replace(tzinfo=None)
 
         uniform_now = datetime.utcnow()
         common_extra = {
             "receipt_received_at": receipt_dt,
-            "receipt_received_ago": (uniform_now - receipt_dt).total_seconds() if receipt_dt is not None else None,
+            "receipt_received_ago": (uniform_now - receipt_dt).total_seconds(),
         }
         try:
             notification = notifications_dao.dao_get_notification_or_history_by_reference(reference=reference)
