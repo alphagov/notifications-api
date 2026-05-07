@@ -16,6 +16,7 @@ from urllib3.util.ssl_ import create_urllib3_context
 
 from app.clients import ClientException
 from app.constants import ECONOMY_CLASS, EUROPE, FIRST_CLASS, INTERNATIONAL_POSTAGE_TYPES, REST_OF_WORLD
+from app.otel_metrics.provider import record_request_duration
 
 
 class DvlaException(ClientException):
@@ -254,6 +255,7 @@ class DVLAClient:
             "X-API-Key": self.dvla_api_key.get(),
         }
 
+    @record_request_duration(notification_type="letter", provider_name="dvla")
     def send_letter(
         self,
         *,

@@ -17,6 +17,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
+from app.otel_metrics.notification import record_deliver_duration, record_international_sms
 
 sms_response_mapper = {
     "MMG": get_mmg_responses,
@@ -56,17 +57,17 @@ def process_sms_client_response(
 
     # validate status
     try:
+        delivery_dt = None
+        receipt_dt = None
         try:
             notification_status, detailed_status = response_parser(status, detailed_status_code)
 
-            delivery_dt = None
             if delivery_iso_timestamp is not None:
                 try:
                     delivery_dt = datetime.fromisoformat(delivery_iso_timestamp)
                 except ValueError:
                     pass  # None it is, then
 
-            receipt_dt = None
             if receipt_iso_timestamp is not None:
                 try:
                     receipt_dt = datetime.fromisoformat(receipt_iso_timestamp)
@@ -95,7 +96,11 @@ def process_sms_client_response(
             )
         except KeyError as e:
             _process_for_status(
-                notification_status="technical-failure", client_name=client_name, provider_reference=provider_reference
+                notification_status="technical-failure",
+                client_name=client_name,
+                provider_reference=provider_reference,
+                delivery_dt=delivery_dt,
+                receipt_dt=receipt_dt,
             )
             raise ClientException(f"{client_name} callback failed: status {status} not found.") from e
 
@@ -103,13 +108,22 @@ def process_sms_client_response(
             notification_status=notification_status,
             client_name=client_name,
             provider_reference=provider_reference,
+            delivery_dt=delivery_dt,
+            receipt_dt=receipt_dt,
             detailed_status_code=detailed_status_code,
         )
     except OperationalError:
         self.retry(queue=QueueNames.RETRY)
 
 
-def _process_for_status(notification_status, client_name, provider_reference, detailed_status_code=None):
+def _process_for_status(
+    notification_status,
+    client_name,
+    provider_reference,
+    delivery_dt: datetime | None,
+    receipt_dt: datetime | None,
+    detailed_status_code=None,
+):
     # record stats
     notification = notifications_dao.update_notification_status_by_id(
         notification_id=provider_reference,
@@ -121,6 +135,16 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         return
 
     statsd_client.incr(f"callback.{client_name.lower()}.{notification_status}")
+
+    record_deliver_duration(
+        callback_duration=(receipt_dt - notification.created_at).total_seconds() if receipt_dt else None,
+        deliver_duration=(delivery_dt - notification.created_at).total_seconds() if delivery_dt else None,
+        key_type=notification.key_type,
+        notification_status=notification.status,
+        notification_type="sms",
+        provider_name=client_name.lower(),
+        sms_international=notification.international,
+    )
 
     if notification.sent_at:
         statsd_client.timing_with_dates(
@@ -146,3 +170,6 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         check_and_queue_callback_task(notification)
         if notification.international:
             statsd_client.incr(f"international-sms.{notification_status}.{notification.phone_prefix}")
+            record_international_sms(
+                1, notification_status=notification_status, sms_country_code=notification.phone_prefix
+            )

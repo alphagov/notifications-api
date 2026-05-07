@@ -4,6 +4,7 @@ import logging
 import requests
 
 from app.clients.sms import SmsClient, SmsClientResponseException
+from app.otel_metrics.provider import record_request_duration
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ class FiretextClient(SmsClient):
         self.url = self.current_app.config.get("FIRETEXT_URL")
         self.receipt_url = self.current_app.config.get("FIRETEXT_RECEIPT_URL")
 
+    @record_request_duration(notification_type="sms", provider_name="firetext")
     def try_send_sms(self, to, content, reference, international, sender):
         data = {
             "apiKey": self.international_api_key if international else self.api_key,
