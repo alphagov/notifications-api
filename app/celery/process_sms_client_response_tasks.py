@@ -32,9 +32,9 @@ def process_sms_client_response(
     status,
     provider_reference,
     client_name,
-    detailed_status_code=None,
-    delivery_iso_timestamp: str | None = None,
-    receipt_iso_timestamp: str | None = None,
+    detailed_status_code,
+    delivery_iso_timestamp: str | None,
+    receipt_iso_timestamp: str,
 ):
     # validate reference
     try:
@@ -66,12 +66,7 @@ def process_sms_client_response(
                 except ValueError:
                     pass  # None it is, then
 
-            receipt_dt = None
-            if receipt_iso_timestamp is not None:
-                try:
-                    receipt_dt = datetime.fromisoformat(receipt_iso_timestamp)
-                except ValueError:
-                    pass  # None it is, then
+            receipt_dt = datetime.fromisoformat(receipt_iso_timestamp)
 
             uniform_now = datetime.utcnow()
             extra = {
@@ -81,7 +76,7 @@ def process_sms_client_response(
                 "detailed_status": detailed_status,
                 "detailed_status_code": detailed_status_code,
                 "receipt_received_at": receipt_dt,
-                "receipt_received_ago": (uniform_now - receipt_dt).total_seconds() if receipt_dt is not None else None,
+                "receipt_received_ago": (uniform_now - receipt_dt).total_seconds(),
                 "delivered_at": delivery_dt,
                 "delivered_ago": (uniform_now - delivery_dt).total_seconds() if delivery_dt is not None else None,
                 # for sms, we happen to use notification id as the "provider reference"
