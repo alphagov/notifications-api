@@ -17,7 +17,7 @@ from app.notifications.notifications_ses_callback import (
     remove_emails_from_bounce,
     remove_emails_from_complaint,
 )
-from app.otel_metrics.notification import _deliver_duration
+from app.otel_metrics.notification import _callback_duration, _deliver_duration
 from tests.app.db import (
     create_notification,
     create_service_callback_api,
@@ -68,6 +68,7 @@ def test_ses_callback_should_update_notification_status(
 ):
     with freeze_time("2001-01-01T12:00:00") as frozen_time:
         record_deliver_duration_mock = mocker.patch.object(_deliver_duration, "record")
+        record_callback_duration_mock = mocker.patch.object(_callback_duration, "record")
         mocker.patch("app.statsd_client.incr")
         mocker.patch("app.statsd_client.timing_with_dates")
         send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
@@ -96,6 +97,15 @@ def test_ses_callback_should_update_notification_status(
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         record_deliver_duration_mock.assert_called_once_with(
             1.0,
+            {
+                "key.type": "normal",
+                "notification.status": "delivered",
+                "notification.type": "email",
+                "provider.name": "ses",
+            },
+        )
+        record_callback_duration_mock.assert_called_once_with(
+            2.0,
             {
                 "key.type": "normal",
                 "notification.status": "delivered",

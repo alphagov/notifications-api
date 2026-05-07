@@ -58,6 +58,7 @@ def process_sms_client_response(
     # validate status
     try:
         delivery_dt = None
+        receipt_dt = None
         try:
             notification_status, detailed_status = response_parser(status, detailed_status_code)
 
@@ -67,7 +68,6 @@ def process_sms_client_response(
                 except ValueError:
                     pass  # None it is, then
 
-            receipt_dt = None
             if receipt_iso_timestamp is not None:
                 try:
                     receipt_dt = datetime.fromisoformat(receipt_iso_timestamp)
@@ -99,7 +99,8 @@ def process_sms_client_response(
                 notification_status="technical-failure",
                 client_name=client_name,
                 provider_reference=provider_reference,
-                delivered_at=delivery_dt or datetime.utcnow(),
+                delivery_dt=delivery_dt,
+                receipt_dt=receipt_dt,
             )
             raise ClientException(f"{client_name} callback failed: status {status} not found.") from e
 
@@ -107,7 +108,8 @@ def process_sms_client_response(
             notification_status=notification_status,
             client_name=client_name,
             provider_reference=provider_reference,
-            delivered_at=delivery_dt or datetime.utcnow(),
+            delivery_dt=delivery_dt,
+            receipt_dt=receipt_dt,
             detailed_status_code=detailed_status_code,
         )
     except OperationalError:
@@ -115,7 +117,12 @@ def process_sms_client_response(
 
 
 def _process_for_status(
-    notification_status, client_name, provider_reference, delivered_at: datetime, detailed_status_code=None
+    notification_status,
+    client_name,
+    provider_reference,
+    delivery_dt: datetime | None,
+    receipt_dt: datetime | None,
+    detailed_status_code=None,
 ):
     # record stats
     notification = notifications_dao.update_notification_status_by_id(
@@ -130,7 +137,8 @@ def _process_for_status(
     statsd_client.incr(f"callback.{client_name.lower()}.{notification_status}")
 
     record_deliver_duration(
-        (delivered_at - notification.created_at).total_seconds(),
+        callback_duration=(receipt_dt - notification.created_at).total_seconds() if receipt_dt else None,
+        deliver_duration=(delivery_dt - notification.created_at).total_seconds() if delivery_dt else None,
         key_type=notification.key_type,
         notification_status=notification.status,
         notification_type="sms",

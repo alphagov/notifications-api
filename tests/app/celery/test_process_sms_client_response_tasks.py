@@ -10,7 +10,7 @@ from app.celery.process_sms_client_response_tasks import (
 )
 from app.clients import ClientException
 from app.constants import NOTIFICATION_TECHNICAL_FAILURE
-from app.otel_metrics.notification import _deliver_duration, _international_sms
+from app.otel_metrics.notification import _callback_duration, _deliver_duration, _international_sms
 
 
 def test_process_sms_client_response_raises_error_if_reference_is_not_a_valid_uuid(client):
@@ -136,6 +136,7 @@ def test_sms_response_does_not_send_callback_if_notification_is_not_in_the_db(sa
 @freeze_time("2001-01-01T12:00:00")
 def test_process_sms_client_response_records_metrics(sample_notification, client, mocker):
     record_deliver_duration_mock = mocker.patch.object(_deliver_duration, "record")
+    record_callback_duration_mock = mocker.patch.object(_callback_duration, "record")
     mocker.patch("app.statsd_client.incr")
     mocker.patch("app.statsd_client.timing_with_dates")
 
@@ -144,7 +145,11 @@ def test_process_sms_client_response_records_metrics(sample_notification, client
     sample_notification.sent_at = sample_notification.created_at
 
     process_sms_client_response(
-        "0", str(sample_notification.id), "Firetext", delivery_iso_timestamp="2001-01-01T12:00:42"
+        "0",
+        str(sample_notification.id),
+        "Firetext",
+        delivery_iso_timestamp="2001-01-01T12:00:42",
+        receipt_iso_timestamp="2001-01-01T12:00:50",
     )
 
     statsd_client.incr.assert_any_call("callback.firetext.delivered")
@@ -154,6 +159,16 @@ def test_process_sms_client_response_records_metrics(sample_notification, client
 
     record_deliver_duration_mock.assert_called_once_with(
         42.0,
+        {
+            "key.type": "normal",
+            "notification.status": "delivered",
+            "notification.type": "sms",
+            "notification.sms.international": "false",
+            "provider.name": "firetext",
+        },
+    )
+    record_callback_duration_mock.assert_called_once_with(
+        50.0,
         {
             "key.type": "normal",
             "notification.status": "delivered",

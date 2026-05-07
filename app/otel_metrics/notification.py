@@ -22,6 +22,38 @@ _send_duration = _meter.create_histogram(
     explicit_bucket_boundaries_advisory=TASK_DURATION_HISTOGRAM_BUCKETS,
 )
 
+# Buckets ranging from 1 second to 30 hours
+DELIVER_DURATION_HISTOGRAM_BUCKETS = [
+    1,
+    2,
+    4,
+    8,
+    15,
+    30,
+    60,
+    120,
+    240,
+    480,
+    900,
+    1800,
+    3600,
+    7200,
+    14400,
+    28800,
+    54000,
+    108000,
+]
+
+_callback_duration = _meter.create_histogram(
+    "notification.callback.duration",
+    unit="s",
+    description=(
+        "Elapsed time between notification creation datetime and receipt of a callback from the provider; "
+        "might be recorded multiple times per notification as it changes status from pending to delivered/failure"
+    ),
+    explicit_bucket_boundaries_advisory=DELIVER_DURATION_HISTOGRAM_BUCKETS,
+)
+
 _deliver_duration = _meter.create_histogram(
     "notification.deliver.duration",
     unit="s",
@@ -29,27 +61,7 @@ _deliver_duration = _meter.create_histogram(
         "Elapsed time between notification creation datetime and delivery datetime reported by provider; "
         "might be recorded multiple times per notification as it changes status from pending to delivered/failure"
     ),
-    # Buckets ranging from 1 second to 30 hours
-    explicit_bucket_boundaries_advisory=[
-        1,
-        2,
-        4,
-        8,
-        15,
-        30,
-        60,
-        120,
-        240,
-        480,
-        900,
-        1800,
-        3600,
-        7200,
-        14400,
-        28800,
-        54000,
-        108000,
-    ],
+    explicit_bucket_boundaries_advisory=DELIVER_DURATION_HISTOGRAM_BUCKETS,
 )
 
 
@@ -88,7 +100,8 @@ def record_send_duration(duration: float, key_type: str, notification_type: str,
 
 
 def record_deliver_duration(
-    duration: float,
+    callback_duration: float | None,
+    deliver_duration: float | None,
     key_type: str,
     notification_status: str,
     notification_type: str,
@@ -110,4 +123,7 @@ def record_deliver_duration(
         # OTel semconv specifically dictates JSON encoding for booleans
         attrs["notification.sms.international"] = json.dumps(sms_international)
 
-    _deliver_duration.record(duration, attrs)
+    if callback_duration is not None:
+        _callback_duration.record(callback_duration, attrs)
+    if deliver_duration is not None:
+        _deliver_duration.record(deliver_duration, attrs)

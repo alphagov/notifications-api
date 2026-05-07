@@ -125,9 +125,9 @@ def process_ses_results(  # noqa: C901
 
         statsd_client.incr(f"callback.ses.{notification_status}")
 
-        delivered_at = delivery_dt or datetime.utcnow()
         record_deliver_duration(
-            (delivered_at - notification.created_at).total_seconds(),
+            callback_duration=(receipt_dt - notification.created_at).total_seconds() if receipt_dt else None,
+            deliver_duration=(delivery_dt - notification.created_at).total_seconds() if delivery_dt else None,
             key_type=notification.key_type,
             notification_status=notification.status,
             notification_type="email",
