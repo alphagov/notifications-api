@@ -27,7 +27,9 @@ from tests.app.db import (
 def test_process_ses_results(sample_email_template):
     create_notification(sample_email_template, reference="ref1", sent_at=datetime.utcnow(), status="sending")
 
-    assert process_ses_results(response=ses_notification_callback(reference="ref1"))
+    assert process_ses_results(
+        response=ses_notification_callback(reference="ref1"), receipt_iso_timestamp=datetime.utcnow().isoformat()
+    )
 
 
 def test_process_ses_results_retry_called(sample_email_template, mocker):
@@ -35,14 +37,16 @@ def test_process_ses_results_retry_called(sample_email_template, mocker):
 
     mocker.patch("app.dao.notifications_dao.dao_update_notifications_by_reference", side_effect=Exception("EXPECTED"))
     mocked = mocker.patch("app.celery.process_ses_receipts_tasks.process_ses_results.retry")
-    process_ses_results(response=ses_notification_callback(reference="ref1"))
+    process_ses_results(
+        response=ses_notification_callback(reference="ref1"), receipt_iso_timestamp=datetime.utcnow().isoformat()
+    )
     assert mocked.call_count != 0
 
 
 def test_process_ses_results_in_complaint(sample_email_template, mocker):
     notification = create_notification(template=sample_email_template, reference="ref1")
     old_updated_at = notification.updated_at
-    process_ses_results(response=ses_complaint_callback())
+    process_ses_results(response=ses_complaint_callback(), receipt_iso_timestamp=datetime.utcnow().isoformat())
     complaints = Complaint.query.all()
     assert len(complaints) == 1
     assert complaints[0].notification_id == notification.id
@@ -107,7 +111,7 @@ def test_ses_callback_should_not_update_notification_status_if_already_delivered
     )
     notification = create_notification(template=sample_email_template, reference="ref", status="delivered")
 
-    assert process_ses_results(ses_notification_callback(reference="ref")) is None
+    assert process_ses_results(ses_notification_callback(reference="ref"), datetime.utcnow().isoformat()) is None
     assert get_notification_by_id(notification.id).status == "delivered"
 
     mock_dup.assert_called_once_with(notification=notification, status="delivered")
@@ -118,7 +122,7 @@ def test_ses_callback_should_retry_if_notification_is_new(client, notify_db_sess
     mock_retry = mocker.patch("app.celery.process_ses_receipts_tasks.process_ses_results.retry")
 
     with freeze_time("2017-11-17T12:14:03.646Z"), caplog.at_level("ERROR"):
-        assert process_ses_results(ses_notification_callback(reference="ref")) is None
+        assert process_ses_results(ses_notification_callback(reference="ref"), datetime.utcnow().isoformat()) is None
 
     assert caplog.messages == []
     assert mock_retry.call_count == 1
@@ -130,7 +134,7 @@ def test_ses_callback_should_log_if_notification_is_missing(client, notify_db_se
     with freeze_time("2017-11-17T12:34:03.646Z") as frozen_time, caplog.at_level("WARNING"):
         payload = ses_notification_callback(reference="ref")
         frozen_time.tick(400)
-        assert process_ses_results(payload) is None
+        assert process_ses_results(payload, datetime.utcnow().isoformat()) is None
 
     assert "notification not found for reference: ref (update to delivered)" in caplog.messages
     assert mock_retry.call_count == 0
@@ -142,7 +146,7 @@ def test_ses_callback_should_not_retry_if_notification_is_old(client, notify_db_
     with freeze_time("2017-11-21T12:14:03.646Z") as frozen_time, caplog.at_level("ERROR"):
         payload = ses_notification_callback(reference="ref")
         frozen_time.tick(400)
-        assert process_ses_results(payload) is None
+        assert process_ses_results(payload, datetime.utcnow().isoformat()) is None
 
     assert caplog.messages == []
     assert mock_retry.call_count == 0
@@ -167,9 +171,9 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         status="sending",
         reference="ref3",
     )
-    assert process_ses_results(ses_notification_callback(reference="ref1"))
-    assert process_ses_results(ses_notification_callback(reference="ref2"))
-    assert process_ses_results(ses_notification_callback(reference="ref3"))
+    assert process_ses_results(ses_notification_callback(reference="ref1"), datetime.utcnow().isoformat())
+    assert process_ses_results(ses_notification_callback(reference="ref2"), datetime.utcnow().isoformat())
+    assert process_ses_results(ses_notification_callback(reference="ref3"), datetime.utcnow().isoformat())
     assert send_mock.called
 
 
@@ -249,7 +253,7 @@ def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email
         template=sample_email_template, reference="ref1", sent_at=datetime.utcnow(), status="sending"
     )
     response = ses_complaint_callback()
-    assert process_ses_results(response)
+    assert process_ses_results(response, datetime.utcnow().isoformat())
 
     assert send_mock.call_count == 1
     assert signing.decode(send_mock.call_args[0][0][0]) == {
