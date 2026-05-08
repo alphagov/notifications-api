@@ -1,11 +1,15 @@
 import datetime
 from itertools import chain
+from uuid import UUID
 
-from sqlalchemy import select
+from flask import current_app
+from sqlalchemy import and_, or_, select
+from sqlalchemy.orm import Session, scoped_session
 
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.models import Template, TemplateEmailFile, TemplateEmailFileHistory, TemplateHistory
+from app.utils import retryable_query
 
 
 @autocommit
@@ -50,6 +54,55 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
 @autocommit
 def dao_get_template_email_file_by_id(template_email_file_id):
     return TemplateEmailFile.query.filter(TemplateEmailFile.id == template_email_file_id).one()
+
+
+@retryable_query()
+def dao_get_archived_template_email_files_older_than(
+    session: Session | scoped_session = db.session,
+    *,
+    archived_before: datetime.datetime,
+    archived_after: datetime.datetime | None = None,
+    page_size: int | None = None,
+    older_than: UUID | None = None,
+):
+    if page_size is None:
+        page_size = current_app.config.get("API_PAGE_SIZE")
+
+    next_page_filter = []
+    if older_than is not None:
+        last_archived_at = (
+            session.query(TemplateEmailFile.archived_at).filter(TemplateEmailFile.id == older_than).scalar()
+        )
+
+        if last_archived_at is None:
+            return []
+
+        next_page_filter.append(
+            or_(
+                TemplateEmailFile.archived_at > last_archived_at,
+                and_(
+                    TemplateEmailFile.archived_at == last_archived_at,
+                    TemplateEmailFile.id > older_than,
+                ),
+            ),
+        )
+
+    return (
+        session.query(TemplateEmailFile, Template.service_id)
+        .join(Template, Template.id == TemplateEmailFile.template_id)
+        .filter(
+            TemplateEmailFile.archived_at.is_not(None),
+            *(() if archived_after is None else (TemplateEmailFile.archived_at >= archived_after,)),
+            TemplateEmailFile.archived_at <= archived_before,
+            *next_page_filter,
+        )
+        .order_by(
+            TemplateEmailFile.archived_at.asc(),
+            TemplateEmailFile.id.asc(),
+        )
+        .limit(page_size)
+        .all()
+    )
 
 
 @autocommit
