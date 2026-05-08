@@ -594,7 +594,7 @@ def dao_timeout_notifications(cutoff_time, limit=100000):
     )
 
     Notification.query.filter(
-        Notification.id.in_([n.id for n in notifications]),
+        Notification.id.in_(n.id for n in notifications),
     ).update({"status": new_status, "updated_at": updated_at}, synchronize_session=False)
 
     db.session.commit()
@@ -713,7 +713,7 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 
 def dao_get_unknown_references(references):
-    v = values(column("reference", String), name="references").data([(r,) for r in references])
+    v = values(column("reference", String), name="references").data((r,) for r in references)
 
     return (
         db.session.execute(
