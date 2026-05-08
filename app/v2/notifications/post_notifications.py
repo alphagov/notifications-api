@@ -128,8 +128,17 @@ def post_notification(notification_type):
 
     check_service_has_permission(authenticated_service, notification_type)
 
-    personalisation = _prepare_personalisation_for_post_notification(
-        personalisation=form.get("personalisation", {}), sanitise_content_for=form.get("sanitise_content_for", [])
+    unsanitised_personalisation = form.get("personalisation", {})
+    personalisation = (
+        _prepare_personalisation_for_post_notification(
+            personalisation=unsanitised_personalisation, sanitise_content_for=form.get("sanitise_content_for", [])
+        )
+        if notification_type == "email"
+        else unsanitised_personalisation
+    )
+
+    sanitised_content = (
+        _get_sanitised_content(unsanitised_personalisation, personalisation) if notification_type == "email" else {}
     )
 
     template, template_with_content = validate_template(
@@ -164,7 +173,7 @@ def post_notification(notification_type):
             unsubscribe_link=form.get("one_click_unsubscribe_url", None),
         )
 
-    return jsonify(notification), 201
+    return jsonify(notification | sanitised_content), 201
 
 
 def _prepare_personalisation_for_post_notification(personalisation, sanitise_content_for):
@@ -199,6 +208,16 @@ def _could_be_accidental_link(link):
 
 def _break_up_link(link):
     return re.sub(r"\.", ". ", link)
+
+
+def _get_sanitised_content(unsanitised_personalisation, personalisation):
+    return {
+        "sanitised_content": {
+            key: {"unsanitised": unsanitised_personalisation[key], "sanitised": personalisation[key]}
+            for key, value in personalisation.items()
+            if personalisation[key] != unsanitised_personalisation[key]
+        }
+    }
 
 
 def process_sms_or_email_notification(
