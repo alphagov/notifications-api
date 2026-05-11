@@ -29,6 +29,8 @@ from app.constants import (
     LETTER_TYPE,
     NOTIFICATION_SENDING,
     SMS_TYPE,
+    TEMPLATE_EMAIL_FILE_ARCHIVE_RETENTION_DAYS,
+    TEMPLATE_EMAIL_FILE_S3_CLEANUP_CATCH_UP_WINDOW_DAYS,
 )
 from app.cronitor import cronitor
 from app.dao.fact_processing_time_dao import insert_update_processing_time
@@ -48,6 +50,7 @@ from app.dao.report_requests_dao import update_report_requests_status_to_deleted
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention_for_all_services_by_notification_type,
 )
+from app.dao.template_email_files_dao import dao_get_archived_template_email_files_older_than
 from app.dao.unsubscribe_request_dao import (
     dao_archive_batched_unsubscribe_requests,
     dao_archive_old_unsubscribe_requests,
@@ -78,6 +81,73 @@ def _remove_csv_files(job_types):
         s3.remove_job_from_s3(job.service_id, job.id)
         dao_archive_job(job)
         current_app.logger.info("Job ID %s has been removed from s3.", job.id, extra={"job_id": job.id})
+
+
+@notify_celery.task(name="remove-archived-template-email-files-from-s3")
+@cronitor("remove-archived-template-email-files-from-s3")
+def remove_archived_template_email_files_from_s3(archived_after=None):
+    archived_before = datetime.now(UTC) - timedelta(days=TEMPLATE_EMAIL_FILE_ARCHIVE_RETENTION_DAYS)
+
+    if archived_after is not None:
+        try:
+            parsed_date = datetime.strptime(archived_after, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
+
+        archived_after_dt = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC)
+    else:
+        archived_after_dt = archived_before - timedelta(days=TEMPLATE_EMAIL_FILE_S3_CLEANUP_CATCH_UP_WINDOW_DAYS)
+
+    if archived_after_dt > archived_before:
+        raise ValueError(
+            "Invalid archived_after for archived template email file s3 cleanup: "
+            f"archived_after ({archived_after_dt.isoformat()}) "
+            f"must be on or before archived_before ({archived_before.isoformat()})"
+        )
+
+    bucket_name = current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"]
+
+    older_than = None
+    scoped = deleted = failed = 0
+
+    while True:
+        archived_files_batch = dao_get_archived_template_email_files_older_than(
+            session=db.session_bulk,
+            retry_attempts=2,  # type: ignore
+            archived_after=archived_after_dt,
+            archived_before=archived_before,
+            page_size=current_app.config.get("API_PAGE_SIZE"),
+            older_than=older_than,
+        )
+        if not archived_files_batch:
+            break
+
+        scoped += len(archived_files_batch)
+
+        for template_email_file, service_id in archived_files_batch:
+            object_key = f"{service_id}/{template_email_file.id}"
+
+            try:
+                s3.remove_s3_object(bucket_name, object_key)
+                deleted += 1
+            except Exception:
+                failed += 1
+
+                current_app.logger.exception(
+                    ("Failed to remove archived template email file from s3: template_email_file_id=%s service_id=%s"),
+                    str(template_email_file.id),
+                    str(service_id),
+                )
+
+        last_archived_file = archived_files_batch[-1][0]
+        older_than = last_archived_file.id
+
+    current_app.logger.info(
+        ("Archived template email file s3 cleanup complete: scoped=%s deleted=%s failed=%s"),
+        scoped,
+        deleted,
+        failed,
+    )
 
 
 @notify_celery.task(name="archive-unsubscribe-requests")

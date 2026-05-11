@@ -31,7 +31,11 @@ from app.dao.service_sms_sender_dao import (
     update_existing_sms_sender_with_inbound_number,
 )
 from app.dao.services_dao import dao_add_user_to_service, dao_create_service
-from app.dao.template_email_files_dao import dao_create_pending_template_email_file, dao_create_template_email_file
+from app.dao.template_email_files_dao import (
+    dao_archive_template_email_file,
+    dao_create_pending_template_email_file,
+    dao_create_template_email_file,
+)
 from app.dao.templates_dao import dao_create_template, dao_update_template
 from app.dao.unsubscribe_request_dao import create_unsubscribe_request_dao, create_unsubscribe_request_reports_dao
 from app.dao.users_dao import save_model_user
@@ -215,6 +219,23 @@ def create_template_email_file(
         dao_create_pending_template_email_file(template_email_file)
     else:
         dao_create_template_email_file(template_email_file)
+    return template_email_file
+
+
+def create_archived_template_email_file(template, archived_at, filename):
+    template_email_file = create_template_email_file(
+        template_id=template.id,
+        created_by_id=template.created_by_id,
+        filename=filename,
+    )
+    dao_archive_template_email_file(
+        template_email_file,
+        template.created_by_id,
+        template_version=template.version + 1,
+    )
+    template_email_file.archived_at = archived_at
+    db.session.add(template_email_file)
+    db.session.commit()
     return template_email_file
 
 
