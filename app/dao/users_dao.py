@@ -4,7 +4,7 @@ from secrets import SystemRandom
 
 from flask import current_app
 from sqlalchemy import func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db, redis_store
@@ -159,9 +159,9 @@ def get_user_and_accounts(user_id):
         .options(
             # eagerly load the user's services and organisations, and also the org's other services
             # (though only enough information to determine their liveness)
-            joinedload(User.services),
+            selectinload(User.services),
             joinedload(User.organisations)
-            .joinedload(Organisation.services)
+            .selectinload(Organisation.services)
             .load_only(Service.active, Service.restricted, raiseload=True),
         )
         .one()
