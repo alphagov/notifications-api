@@ -33,7 +33,7 @@ from app.clients.letter.dvla import (
 @pytest.fixture
 def ssm():
     with mock_aws():
-        ssm_client = boto3.client("ssm", "eu-west-1")
+        ssm_client = boto3.client("ssm", "eu-west-2")
         ssm_client.put_parameter(
             Name="/notify/api/dvla_username",
             Value="some username",
