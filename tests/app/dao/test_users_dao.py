@@ -26,6 +26,7 @@ from app.dao.users_dao import (
     get_users_for_research,
     get_users_list,
     increment_failed_login_count,
+    is_gov_user,
     reset_failed_login_count,
     save_model_user,
     save_user_attribute,
@@ -37,6 +38,7 @@ from app.dao.users_dao import (
 from app.errors import InvalidRequest
 from app.models import OrganisationUserPermissions, Permission, User, VerifyCode
 from tests.app.db import (
+    create_organisation,
     create_permissions,
     create_service,
     create_template_folder,
@@ -763,3 +765,16 @@ def test_get_users_list_multiple_filters(
     )
 
     assert len(users) == expected_count
+
+
+@pytest.mark.parametrize(
+    "email_address",
+    [
+        "user@gov.uk",  # email address not belonging to an org
+        "user@other.com",  # email address linked to an org
+    ],
+)
+def test_is_gov_user(notify_db_session, email_address):
+    create_organisation(domains=["other.com"])
+
+    assert is_gov_user(email_address) is True

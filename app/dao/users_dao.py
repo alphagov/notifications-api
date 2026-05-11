@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from secrets import SystemRandom
 
 from flask import current_app
+from notifications_utils.user import GOVERNMENT_EMAIL_DOMAIN_NAMES, email_address_ends_with
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.exc import NoResultFound
@@ -15,7 +16,7 @@ from app.constants import (
     NOTIFY_RESEARCH_SERVICE_ID,
 )
 from app.dao.dao_utils import autocommit
-from app.dao.organisation_dao import dao_remove_user_from_organisation
+from app.dao.organisation_dao import dao_get_organisation_domains, dao_remove_user_from_organisation
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import dao_get_service_users_by_user_id
@@ -309,3 +310,9 @@ def unsubscribe_user_from_notify_services(service_id, email_address):
     redis_store.delete(f"user-{user.id}")
 
     return True
+
+
+def is_gov_user(email_address):
+    return email_address_ends_with(email_address, GOVERNMENT_EMAIL_DOMAIN_NAMES) or email_address_ends_with(
+        email_address, dao_get_organisation_domains()
+    )
