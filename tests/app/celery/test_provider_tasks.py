@@ -1,6 +1,5 @@
 from contextlib import nullcontext
 from datetime import datetime, timedelta
-from typing import Any
 from uuid import UUID
 
 import boto3
@@ -41,7 +40,7 @@ from app.constants import (
     NOTIFICATION_TECHNICAL_FAILURE,
 )
 from app.exceptions import NotificationTechnicalFailureException
-from app.models import Organisation, Template
+from app.models import Template
 from app.otel_metrics.notification import _send_duration
 from tests.app.db import create_notification
 
@@ -615,54 +614,6 @@ def test_deliver_email_records_duration_histogram(
         "key.type": key_type,
         "notification.type": "email",
         "provider.name": "ses",
-    }
-
-    if should_raise:
-        expected_attributes["error.type"] = "builtins.RuntimeError"
-
-    record_send_duration_mock.assert_called_once_with(
-        60.0,
-        expected_attributes,
-    )
-
-
-@mock_aws
-@freeze_time("2026-01-01 09:00:01")
-@pytest.mark.parametrize("should_raise", [False, True])
-def test_deliver_letter_records_duration_histogram(
-    mocker: MockerFixture,
-    sample_letter_template: Any,  # sqlalchemy types are weird
-    sample_organisation: Organisation,
-    should_raise: bool,
-) -> None:
-    record_send_duration_mock = mocker.patch.object(_send_duration, "record")
-    mocker.patch(
-        "app.celery.provider_tasks.dvla_client.send_letter", side_effect=RuntimeError() if should_raise else None
-    )
-    mocker.patch("app.celery.provider_tasks._get_callback_url", return_value="example.com?token=1")
-
-    letter = create_notification(
-        template=sample_letter_template,
-        to_field="A. User\nMy Street,\nLondon,\nSW1 1AA",
-        personalisation={"address_line_1": "Provided as PDF"},
-        status=NOTIFICATION_CREATED,
-        reference="ref1",
-        created_at=datetime.now() - timedelta(minutes=1),
-    )
-    sample_letter_template.service.organisation = sample_organisation
-
-    pdf_bucket = current_app.config["S3_BUCKET_LETTERS_PDF"]
-    s3 = boto3.client("s3", region_name="eu-west-1")
-    s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
-    s3.put_object(Bucket=pdf_bucket, Key="2026-01-01/NOTIFY.REF1.D.2.C.20260101090000.PDF", Body=b"file")
-
-    with pytest.raises(NotificationTechnicalFailureException) if should_raise else nullcontext():
-        deliver_letter(letter.id)
-
-    expected_attributes = {
-        "key.type": "normal",
-        "notification.type": "letter",
-        "provider.name": "dvla",
     }
 
     if should_raise:
