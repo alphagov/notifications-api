@@ -103,10 +103,11 @@ def record_deliver_duration(
     notification_status: str,
     notification_type: str,
     provider_name: str,
-    sms_international: bool | None = None,
+    notification_sms_international: bool | None = None,
 ) -> None:
     """
-    Records a sample with the given `duration` and attributes for histogram metric `notification.deliver.duration`.
+    Records samples with the given duration and attributes for histogram metrics `notification.callback.duration` and
+    `notification.deliver.duration`.
     """
 
     attrs = {
@@ -116,9 +117,9 @@ def record_deliver_duration(
         "provider.name": provider_name,
     }
 
-    if sms_international is not None:
+    if notification_sms_international is not None:
         # OTel semconv specifically dictates JSON encoding for booleans
-        attrs["notification.sms.international"] = json.dumps(sms_international)
+        attrs["notification.sms.international"] = json.dumps(notification_sms_international)
 
     if callback_duration is not None:
         _callback_duration.record(callback_duration, attrs)

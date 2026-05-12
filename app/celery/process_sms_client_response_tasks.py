@@ -142,8 +142,8 @@ def _process_for_status(
         key_type=notification.key_type,
         notification_status=notification.status,
         notification_type="sms",
+        notification_sms_international=notification.international,
         provider_name=client_name.lower(),
-        sms_international=notification.international,
     )
 
     if notification.sent_at:
