@@ -232,16 +232,16 @@ def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
 
     # create 2 services for sample_user to be a member of (each with another 2 active users)
     service_1 = create_service(service_name="Service 1")
-    service_1_user_a = create_user(email="1a@test.com")
-    service_1_user_b = create_user(email="1b@test.com")
+    service_1_user_a = create_user(email="1a@gov.uk")
+    service_1_user_b = create_user(email="1b@gov.uk")
     service_1.users = [sample_user, service_1_user_a, service_1_user_b]
     create_permissions(sample_user, service_1, "manage_settings")
     create_permissions(service_1_user_a, service_1, "manage_settings", "view_activity")
     create_permissions(service_1_user_b, service_1, "manage_settings", "view_activity")
 
     service_2 = create_service(service_name="Service 2")
-    service_2_user_a = create_user(email="2a@test.com")
-    service_2_user_b = create_user(email="2b@test.com")
+    service_2_user_a = create_user(email="2a@gov.uk")
+    service_2_user_b = create_user(email="2b@gov.uk")
     service_2.users = [sample_user, service_2_user_a, service_2_user_b]
     create_permissions(sample_user, service_2, "view_activity")
     create_permissions(service_2_user_a, service_2, "manage_settings")
@@ -323,38 +323,58 @@ def test_users_permissions_can_be_changed_when_user_is_keeping_manage_settings_p
     )
 
 
+def test_users_permissions_can_be_changed_when_user_is_not_a_government_user(
+    sample_service,
+    notify_db_session,
+):
+    user = create_user(email="user@example.com")
+    create_permissions(user, sample_service, "manage_settings")
+
+    sample_service.users = [user]
+    notify_db_session.commit()
+
+    assert users_permissions_can_be_changed(user, sample_service, ["send_messages", "manage_api_keys"]) is True
+
+
 @pytest.mark.parametrize(
-    "num_admin_users, num_non_admin_users, permissions_can_be_changed",
+    "num_admin_gov_users, num_admin_non_gov_users, num_non_admin_users, permissions_can_be_changed",
     [
-        (1, 1, False),
-        (1, 5, False),
-        (2, 0, False),
-        (2, 10, False),
-        (3, 2, True),
-        (6, 0, True),
+        (1, 0, 1, False),
+        (1, 0, 5, False),
+        (1, 3, 1, False),
+        (1, 3, 5, False),
+        (2, 1, 0, False),
+        (2, 1, 10, False),
+        (3, 1, 2, True),
+        (6, 1, 0, True),
     ],
 )
 def test_users_permissions_can_be_changed_when_removing_manage_settings_from_user_of_live_service(
     sample_service,
     notify_db_session,
-    num_admin_users,
+    num_admin_gov_users,
+    num_admin_non_gov_users,
     num_non_admin_users,
     permissions_can_be_changed,
 ):
-    admin_users = [create_user() for i in range(num_admin_users)]
-    for user in admin_users:
+    admin_gov_users = [create_user() for i in range(num_admin_gov_users)]
+    for user in admin_gov_users:
+        create_permissions(user, sample_service, "manage_settings")
+
+    admin_non_gov_users = [create_user(email=f"{i}@example.com") for i in range(num_admin_non_gov_users)]
+    for user in admin_non_gov_users:
         create_permissions(user, sample_service, "manage_settings")
 
     non_admin_users = [create_user() for i in range(num_non_admin_users)]
     for user in non_admin_users:
         create_permissions(user, sample_service, "view_activity")
 
-    sample_service.users = [*admin_users, *non_admin_users]
+    sample_service.users = [*admin_gov_users, *admin_non_gov_users, *non_admin_users]
     notify_db_session.commit()
 
     assert (
         users_permissions_can_be_changed(
-            admin_users[0],
+            admin_gov_users[0],
             sample_service,
             ["manage_templates", "manage_api_keys"],
         )
@@ -363,42 +383,49 @@ def test_users_permissions_can_be_changed_when_removing_manage_settings_from_use
 
 
 @pytest.mark.parametrize(
-    "num_admin_users, num_non_admin_users, has_go_live_request, permissions_can_be_changed",
+    "num_admin_gov_users,num_admin_non_gov_users,num_non_admin_users,has_go_live_request,permissions_can_be_changed",
     [
-        (1, 3, True, False),
-        (1, 3, False, False),
-        (2, 0, True, False),
-        (2, 0, False, True),
-        (2, 4, True, False),
-        (2, 4, False, True),
-        (3, 2, True, True),
-        (3, 2, False, True),
+        (1, 1, 3, True, False),
+        (1, 1, 3, False, False),
+        (2, 0, 0, True, False),
+        (2, 0, 0, False, True),
+        (2, 1, 0, True, False),
+        (2, 1, 0, False, True),
+        (2, 3, 4, True, False),
+        (2, 3, 4, False, True),
+        (3, 2, 2, True, True),
+        (3, 2, 2, False, True),
     ],
 )
 def test_users_permissions_can_be_changed_when_removing_manage_settings_from_user_of_trial_mode_service(
     sample_service,
     notify_db_session,
-    num_admin_users,
+    num_admin_gov_users,
+    num_admin_non_gov_users,
     num_non_admin_users,
     has_go_live_request,
     permissions_can_be_changed,
 ):
-    admin_users = [create_user() for i in range(num_admin_users)]
-    for user in admin_users:
+    admin_gov_users = [create_user() for i in range(num_admin_gov_users)]
+    for user in admin_gov_users:
+        create_permissions(user, sample_service, "manage_settings")
+
+    admin_non_gov_users = [create_user(email=f"{i}@example.com") for i in range(num_admin_non_gov_users)]
+    for user in admin_non_gov_users:
         create_permissions(user, sample_service, "manage_settings")
 
     non_admin_users = [create_user() for i in range(num_non_admin_users)]
     for user in non_admin_users:
         create_permissions(user, sample_service, "view_activity")
 
-    sample_service.users = [*admin_users, *non_admin_users]
+    sample_service.users = [*admin_gov_users, *admin_non_gov_users, *non_admin_users]
     sample_service.restricted = True
     sample_service.has_active_go_live_request = has_go_live_request
     notify_db_session.commit()
 
     assert (
         users_permissions_can_be_changed(
-            admin_users[0],
+            admin_gov_users[0],
             sample_service,
             ["manage_templates", "manage_api_keys"],
         )
@@ -427,7 +454,7 @@ def test_user_can_be_removed_from_service_is_false_if_service_has_one_active_use
 
 @pytest.mark.parametrize("service_in_trial_mode", [True, False])
 @pytest.mark.parametrize(
-    "num_admin_users, num_non_admin_users",
+    "num_admin_gov_users, num_non_admin_users",
     [
         (1, 1),
         (1, 3),
@@ -440,91 +467,147 @@ def test_user_can_be_removed_from_service_when_user_does_not_have_manage_setting
     sample_service,
     notify_db_session,
     service_in_trial_mode,
-    num_admin_users,
+    num_admin_gov_users,
     num_non_admin_users,
 ):
-    admin_users = [create_user() for i in range(num_admin_users)]
-    for user in admin_users:
+    admin_gov_users = [create_user() for i in range(num_admin_gov_users)]
+    for user in admin_gov_users:
         create_permissions(user, sample_service, "manage_settings")
 
     non_admin_users = [create_user() for i in range(num_non_admin_users)]
     for user in non_admin_users:
         create_permissions(user, sample_service, "view_activity")
 
-    sample_service.users = [*admin_users, *non_admin_users]
+    sample_service.users = [*admin_gov_users, *non_admin_users]
     sample_service.restricted = service_in_trial_mode
     notify_db_session.commit()
 
     assert user_can_be_removed_from_service(user=non_admin_users[0], service=sample_service) is True
 
 
+@pytest.mark.parametrize("service_in_trial_mode", [True, False])
 @pytest.mark.parametrize(
-    "num_admin_users, num_non_admin_users, has_go_live_request, can_be_removed",
+    "num_admin_gov_users, num_non_admin_users",
     [
-        (1, 3, True, False),
-        (1, 3, False, False),
-        (2, 0, True, False),
-        (2, 0, False, True),
-        (2, 4, True, False),
-        (2, 4, False, True),
-        (3, 2, True, True),
-        (3, 2, False, True),
+        (0, 1),
+        (1, 0),
+        (1, 1),
+        (1, 3),
+        (2, 1),
+        (4, 1),
+        (4, 5),
     ],
 )
-def test_user_can_be_removed_from_service_when_service_is_trial_mode_and_user_has_manage_settings(
+def test_user_can_be_removed_from_service_when_user_is_not_a_government_user(
     sample_service,
     notify_db_session,
-    num_admin_users,
+    service_in_trial_mode,
+    num_admin_gov_users,
+    num_non_admin_users,
+):
+    admin_gov_users = [create_user() for i in range(num_admin_gov_users)]
+    for user in admin_gov_users:
+        create_permissions(user, sample_service, "manage_settings")
+
+    non_admin_users = [create_user() for i in range(num_non_admin_users)]
+    for user in non_admin_users:
+        create_permissions(user, sample_service, "view_activity")
+
+    admin_non_gov_user = create_user(email="user@example.com")
+    create_permissions(admin_non_gov_user, sample_service, "manage_settings")
+
+    sample_service.users = [*admin_gov_users, *non_admin_users, admin_non_gov_user]
+    sample_service.restricted = service_in_trial_mode
+    notify_db_session.commit()
+
+    assert user_can_be_removed_from_service(user=admin_non_gov_user, service=sample_service) is True
+
+
+@pytest.mark.parametrize(
+    "num_admin_gov_users, num_admin_non_gov_users, num_non_admin_users, has_go_live_request, can_be_removed",
+    [
+        (1, 0, 3, True, False),
+        (1, 1, 3, True, False),
+        (1, 0, 3, False, False),
+        (1, 1, 3, False, False),
+        (2, 0, 0, True, False),
+        (2, 1, 0, True, False),
+        (2, 1, 0, False, True),
+        (2, 0, 4, True, False),
+        (2, 1, 4, True, False),
+        (2, 1, 4, False, True),
+        (3, 1, 2, True, True),
+        (3, 1, 2, False, True),
+    ],
+)
+def test_user_can_be_removed_from_service_when_service_is_trial_mode_and_user_is_gov_user_with_manage_settings(
+    sample_service,
+    notify_db_session,
+    num_admin_gov_users,
+    num_admin_non_gov_users,
     num_non_admin_users,
     has_go_live_request,
     can_be_removed,
 ):
-    admin_users = [create_user() for i in range(num_admin_users)]
-    for user in admin_users:
+    admin_gov_users = [create_user() for i in range(num_admin_gov_users)]
+    for user in admin_gov_users:
+        create_permissions(user, sample_service, "manage_settings")
+
+    admin_non_gov_users = [create_user(email=f"{i}@example.com") for i in range(num_admin_non_gov_users)]
+    for user in admin_non_gov_users:
         create_permissions(user, sample_service, "manage_settings")
 
     non_admin_users = [create_user() for i in range(num_non_admin_users)]
     for user in non_admin_users:
         create_permissions(user, sample_service, "view_activity")
 
-    sample_service.users = [*admin_users, *non_admin_users]
+    sample_service.users = [*admin_gov_users, *admin_non_gov_users, *non_admin_users]
     sample_service.restricted = True
     sample_service.has_active_go_live_request = has_go_live_request
     notify_db_session.commit()
 
-    assert user_can_be_removed_from_service(user=admin_users[0], service=sample_service) is can_be_removed
+    assert user_can_be_removed_from_service(user=admin_gov_users[0], service=sample_service) is can_be_removed
 
 
 @pytest.mark.parametrize(
-    "num_admin_users, num_non_admin_users, can_be_removed",
+    "num_admin_gov_users, num_admin_non_gov_users, num_non_admin_users, can_be_removed",
     [
-        (1, 1, False),
-        (1, 5, False),
-        (2, 0, False),
-        (2, 10, False),
-        (3, 2, True),
-        (6, 0, True),
+        (1, 0, 1, False),
+        (1, 1, 1, False),
+        (1, 0, 5, False),
+        (1, 1, 5, False),
+        (2, 0, 0, False),
+        (2, 1, 0, False),
+        (2, 0, 10, False),
+        (2, 1, 10, False),
+        (3, 1, 2, True),
+        (6, 1, 0, True),
     ],
 )
-def test_user_can_be_removed_from_service_when_service_is_live_and_user_has_manage_settings(
+def test_user_can_be_removed_from_service_when_service_is_live_and_user_is_gov_user_with_manage_settings(
     sample_service,
     notify_db_session,
-    num_admin_users,
+    num_admin_gov_users,
+    num_admin_non_gov_users,
     num_non_admin_users,
     can_be_removed,
 ):
-    admin_users = [create_user() for i in range(num_admin_users)]
-    for user in admin_users:
+    admin_gov_users = [create_user() for i in range(num_admin_gov_users)]
+    for user in admin_gov_users:
+        create_permissions(user, sample_service, "manage_settings")
+
+    admin_non_gov_users = [create_user(email=f"{i}@example.com") for i in range(num_admin_non_gov_users)]
+    for user in admin_non_gov_users:
         create_permissions(user, sample_service, "manage_settings")
 
     non_admin_users = [create_user() for i in range(num_non_admin_users)]
     for user in non_admin_users:
         create_permissions(user, sample_service, "view_activity")
 
-    sample_service.users = [*admin_users, *non_admin_users]
+    sample_service.users = [*admin_gov_users, *admin_non_gov_users, *non_admin_users]
     notify_db_session.commit()
 
-    assert user_can_be_removed_from_service(user=admin_users[0], service=sample_service) is can_be_removed
+    assert user_can_be_removed_from_service(user=admin_gov_users[0], service=sample_service) is can_be_removed
 
 
 def test_user_can_be_archived_if_they_do_not_belong_to_any_services(sample_user):
@@ -540,10 +623,12 @@ def test_user_can_be_archived_if_they_do_not_belong_to_any_active_services(sampl
     assert user_can_be_archived(sample_user)
 
 
-def test_user_can_be_archived_if_the_other_service_members_have_the_manage_settings_permission(sample_service):
-    user_1 = create_user(email="1@test.com")
-    user_2 = create_user(email="2@test.com")
-    user_3 = create_user(email="3@test.com")
+def test_user_can_be_archived_if_the_other_service_members_are_gov_users_with_the_manage_settings_permission(
+    sample_service,
+):
+    user_1 = create_user()
+    user_2 = create_user()
+    user_3 = create_user()
 
     sample_service.users = [user_1, user_2, user_3]
 
@@ -563,9 +648,9 @@ def test_dao_archive_user_raises_error_if_user_cannot_be_archived(sample_user, m
 
 
 def test_user_cannot_be_archived_if_they_belong_to_a_service_with_no_other_active_users(sample_service):
-    active_user = create_user(email="1@test.com")
-    pending_user = create_user(email="2@test.com", state="pending")
-    inactive_user = create_user(email="3@test.com", state="inactive")
+    active_user = create_user(email="1@gov.uk")
+    pending_user = create_user(email="2@gov.uk", state="pending")
+    inactive_user = create_user(email="3@gov.uk", state="inactive")
 
     sample_service.users = [active_user, pending_user, inactive_user]
 
@@ -576,9 +661,9 @@ def test_user_cannot_be_archived_if_they_belong_to_a_service_with_no_other_activ
 def test_user_cannot_be_archived_if_the_other_service_members_do_not_have_the_manage_setting_permission(
     sample_service,
 ):
-    active_user = create_user(email="1@test.com")
-    pending_user = create_user(email="2@test.com")
-    inactive_user = create_user(email="3@test.com")
+    active_user = create_user(email="1@gov.uk")
+    pending_user = create_user(email="2@gov.uk")
+    inactive_user = create_user(email="3@gov.uk")
 
     sample_service.users = [active_user, pending_user, inactive_user]
 
@@ -590,10 +675,26 @@ def test_user_cannot_be_archived_if_the_other_service_members_do_not_have_the_ma
     assert not user_can_be_archived(active_user)
 
 
+def test_user_cannot_be_archived_if_there_are_not_enough_gov_users(sample_service, notify_db_session):
+    gov_user = create_user(email="1@gov.uk")
+    another_gov_user = create_user(email="2@gov.com")
+    non_gov_user = create_user(email="3@gexample.com")
+
+    sample_service.users = [gov_user, another_gov_user, non_gov_user]
+
+    create_permissions(gov_user, sample_service, "manage_settings")
+    create_permissions(another_gov_user, sample_service, "manage_settings")
+    create_permissions(non_gov_user, sample_service, "manage_settings")
+    notify_db_session.commit()
+
+    assert len(sample_service.users) == 3
+    assert not user_can_be_archived(gov_user)
+
+
 def test_user_cannot_be_archived_unless_they_can_be_removed_from_every_service(sample_service, notify_db_session):
-    user_to_archive = create_user(email="1@test.com")
-    user_two = create_user(email="2@test.com")
-    user_three = create_user(email="3@test.com")
+    user_to_archive = create_user(email="1@gov.uk")
+    user_two = create_user(email="2@gov.uk")
+    user_three = create_user(email="3@gov.uk")
 
     sample_service.users = [user_to_archive, user_two, user_three]
 
