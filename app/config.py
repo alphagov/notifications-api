@@ -147,6 +147,8 @@ class Config:
     # URL of redis instance
     REDIS_URL = os.getenv("REDIS_URL")
     REDIS_ENABLED = False if os.environ.get("REDIS_ENABLED") == "0" else True
+    REDIS_SOCKET_TIMEOUT = 5
+    REDIS_SOCKET_CONNECT_TIMEOUT = 5
 
     ENABLE_SQS_MESSAGE_GROUP_IDS = os.environ.get("ENABLE_SQS_MESSAGE_GROUP_IDS", "1") == "1"
 
