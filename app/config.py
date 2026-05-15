@@ -422,15 +422,15 @@ class Config:
             "check-if-letters-still-pending-virus-check-ten-minutely": {
                 "task": "check-if-letters-still-pending-virus-check",
                 "schedule": crontab(minute="*/10"),
-                # check last half hour, every ten minutes
-                "kwargs": {"max_minutes_ago_to_check": 30},
+                # check last two hours, every ten minutes
+                "kwargs": {"max_minutes_ago_to_check": 120},
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "check-if-letters-still-pending-virus-check-nightly": {
                 "task": "check-if-letters-still-pending-virus-check",
                 "schedule": crontab(hour=20, minute=0),
-                # check back two entire days, once per day, just in case things slipped through the net somehow
-                "kwargs": {"max_minutes_ago_to_check": 60 * 24 * 2},
+                # check back three entire days, once per day, just in case things slipped through the net somehow
+                "kwargs": {"max_minutes_ago_to_check": 60 * 24 * 3},
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "check-for-services-with-high-failure-rates-or-sending-to-tv-numbers": {
