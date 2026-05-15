@@ -240,6 +240,7 @@ def register_blueprint(application):
     )
     from app.one_click_unsubscribe.rest import one_click_unsubscribe_blueprint
     from app.organisation.invite_rest import organisation_invite_blueprint
+    from app.replication.rest import replication_blueprint
     from app.organisation.rest import organisation_blueprint
     from app.performance_dashboard.rest import performance_dashboard_blueprint
     from app.platform_admin.rest import platform_admin_blueprint
@@ -373,6 +374,9 @@ def register_blueprint(application):
 
     one_click_unsubscribe_blueprint.before_request(requires_no_auth)
     application.register_blueprint(one_click_unsubscribe_blueprint)
+
+    replication_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(replication_blueprint)
 
     if application.config["REGISTER_FUNCTIONAL_TESTING_BLUEPRINT"]:
         test_blueprint.before_request(requires_functional_test_auth)
