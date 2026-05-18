@@ -1,6 +1,6 @@
 import json
 
-from app.replication.process_replication_changes import parse_change_data, parse_row_data, process_replication_changes
+from app.replication.replication_changes_utils import get_replication_changes, parse_change_data, parse_row_data
 
 
 def test_process_replication_changes_flattens_rows_across_changes():
@@ -33,7 +33,7 @@ def test_process_replication_changes_flattens_rows_across_changes():
         )
     }
 
-    result = process_replication_changes([first_change, second_change])
+    result = get_replication_changes([first_change, second_change])
 
     assert result == [
         {

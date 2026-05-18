@@ -1,7 +1,6 @@
-from sqlalchemy import text  # pyright: ignore[reportMissingImports]
-
-from app import current_app, db, notify_celery
+from app import current_app, notify_celery
 from app.cronitor import cronitor
+from app.replication.replication_changes_utils import get_replication_changes
 
 
 # @TODO: this is a temporary task to check the replication slot changes,
@@ -10,16 +9,7 @@ from app.cronitor import cronitor
 @cronitor("check-replication-slot-changes")
 def check_replication_slot_changes(self):
     try:
-        result = db.session.execute(
-            text("""
-            SELECT * FROM pg_logical_slot_peek_changes(
-                'notify_dashboard_replication_slot',
-                NULL,
-                NULL
-            );
-        """)
-        )
-        changes = result.fetchall()
+        changes = get_replication_changes()
         current_app.logger.info(
             "Replication slot changes retrieved",
             extra={

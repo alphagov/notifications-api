@@ -1,10 +1,27 @@
 import json
 
+from sqlalchemy import text
 
-def process_replication_changes(changes):
+from app import db
+
+
+def get_replication_changes(peak=True):
     """
     Process the replication changes and return a list of parsed changes.
     """
+    result = db.session.execute(
+        text(f"""
+            SELECT * FROM {"pg_logical_slot_peek_changes" if peak else "pg_logical_slot_get_changes"}(
+                'notify_dashboard_replication_slot',
+                NULL,
+                NULL,
+                'pretty-print', 'on',
+                'add-tables', 'public.notifications'
+            );
+        """)
+    )
+    changes = [dict(change) for change in result.mappings().all()]
+
     parsed_data = [row for change in changes for row in (parse_change_data(change) or [])]
 
     return parsed_data
