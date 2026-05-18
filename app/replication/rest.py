@@ -1,11 +1,9 @@
-import json
-
-from sqlalchemy import text
-
 from flask import Blueprint, jsonify
+from sqlalchemy import text
 
 from app import db
 from app.celery.process_replication_slot_changes import check_replication_slot_changes
+from app.replication.process_replication_changes import process_replication_changes
 from app.v2.errors import register_errors
 
 replication_blueprint = Blueprint("replication", __name__, url_prefix="/replication")
@@ -33,11 +31,6 @@ def trigger_check_replication_slot_changes():
     )
     changes = [dict(change) for change in result.mappings().all()]
 
-    parsed_data = []
-    for change in changes:
-        parsed_change = json.loads(change["data"])
-        if len(parsed_change.get("change", [])) == 0:
-            continue
-        parsed_data.append(parsed_change)
+    parsed_data = process_replication_changes(changes)
 
-    return jsonify({"data": parsed_data}), 200
+    return jsonify({"changes": parsed_data}), 200
