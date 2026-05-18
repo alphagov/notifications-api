@@ -240,7 +240,6 @@ def register_blueprint(application):
     )
     from app.one_click_unsubscribe.rest import one_click_unsubscribe_blueprint
     from app.organisation.invite_rest import organisation_invite_blueprint
-    from app.replication.rest import replication_blueprint
     from app.organisation.rest import organisation_blueprint
     from app.performance_dashboard.rest import performance_dashboard_blueprint
     from app.platform_admin.rest import platform_admin_blueprint
@@ -249,6 +248,7 @@ def register_blueprint(application):
     from app.provider_details.rest import (
         provider_details as provider_details_blueprint,
     )
+    from app.replication.rest import replication_blueprint
     from app.service.callback_rest import service_callback_blueprint
     from app.service.rest import service_blueprint
     from app.service_invite.rest import (

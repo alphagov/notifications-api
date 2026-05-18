@@ -11,9 +11,7 @@ def replication_client(notify_api):
 
 
 def test_trigger_process_replication_slot_changes_queues_task(replication_client, mocker):
-    mock_apply_async = mocker.patch(
-        "app.replication.rest.check_replication_slot_changes.apply_async"
-    )
+    mock_apply_async = mocker.patch("app.replication.rest.check_replication_slot_changes.apply_async")
     auth_header = create_admin_authorization_header()
 
     response = replication_client.post(
@@ -37,6 +35,43 @@ def test_trigger_process_replication_slot_changes_rejects_get(replication_client
 
     response = replication_client.get(
         "/replication/process-slot-changes",
+        headers=[auth_header],
+    )
+
+    assert response.status_code == 405
+
+
+def test_trigger_check_replication_slot_changes_returns_data(replication_client, mocker):
+    mock_result = mocker.Mock()
+    mock_result.fetchall.return_value = [{"lsn": "0/1", "xid": 1, "data": "mock-change"}]
+    mock_execute = mocker.patch(
+        "app.replication.rest.db.session.execute",
+        return_value=mock_result,
+    )
+    auth_header = create_admin_authorization_header()
+
+    response = replication_client.get(
+        "/replication/check-slot-changes",
+        headers=[auth_header],
+    )
+
+    assert response.status_code == 200
+    assert response.get_json() == {"data": [{"lsn": "0/1", "xid": 1, "data": "mock-change"}]}
+    mock_execute.assert_called_once()
+    mock_result.fetchall.assert_called_once_with()
+
+
+def test_trigger_check_replication_slot_changes_requires_auth(replication_client):
+    response = replication_client.get("/replication/check-slot-changes")
+
+    assert response.status_code == 401
+
+
+def test_trigger_check_replication_slot_changes_rejects_post(replication_client):
+    auth_header = create_admin_authorization_header()
+
+    response = replication_client.post(
+        "/replication/check-slot-changes",
         headers=[auth_header],
     )
 
