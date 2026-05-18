@@ -1,10 +1,12 @@
-from pydoc import text
+import json
+
+from sqlalchemy import text
 
 from flask import Blueprint, jsonify
 
+from app import db
 from app.celery.process_replication_slot_changes import check_replication_slot_changes
 from app.v2.errors import register_errors
-from tests.app import db
 
 replication_blueprint = Blueprint("replication", __name__, url_prefix="/replication")
 register_errors(replication_blueprint)
@@ -29,6 +31,13 @@ def trigger_check_replication_slot_changes():
             );
         """)
     )
-    changes = result.fetchall()
+    changes = [dict(change) for change in result.mappings().all()]
 
-    return jsonify({"data": changes}), 200
+    parsed_data = []
+    for change in changes:
+        parsed_change = json.loads(change["data"])
+        if len(parsed_change.get("change", [])) == 0:
+            continue
+        parsed_data.append(parsed_change)
+
+    return jsonify({"data": parsed_data}), 200

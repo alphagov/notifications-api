@@ -375,7 +375,7 @@ def register_blueprint(application):
     one_click_unsubscribe_blueprint.before_request(requires_no_auth)
     application.register_blueprint(one_click_unsubscribe_blueprint)
 
-    replication_blueprint.before_request(requires_admin_auth)
+    replication_blueprint.before_request(requires_no_auth)
     application.register_blueprint(replication_blueprint)
 
     if application.config["REGISTER_FUNCTIONAL_TESTING_BLUEPRINT"]:
