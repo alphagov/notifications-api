@@ -1,11 +1,47 @@
 import json
+from typing import TypedDict, cast
 
 from sqlalchemy import text
 
 from app import db
 
+type JsonPrimitive = str | int | float | bool | None
+type JsonValue = JsonPrimitive | dict[str, "JsonValue"] | list["JsonValue"]
+type RowData = dict[str, JsonValue]
 
-def get_replication_changes(peek=True):
+
+class ReplicationChangeRow(TypedDict):
+    data: str
+
+
+class OldKeys(TypedDict, total=False):
+    keynames: list[str]
+    keyvalues: list[JsonValue]
+
+
+class ReplicationJsonRow(TypedDict, total=False):
+    kind: str
+    table: str
+    columnnames: list[str]
+    columnvalues: list[JsonValue]
+    oldkeys: OldKeys
+
+
+class ChangePayload(TypedDict, total=False):
+    change: list[ReplicationJsonRow]
+
+
+class ParsedRow(TypedDict):
+    type: str
+    table: str
+    current_row_data: RowData
+    previous_row_data: RowData
+
+
+DEFAULT_CHANGE_ROWS: list[ReplicationJsonRow] = [{}]
+
+
+def get_replication_changes(peek: bool = True) -> list[ParsedRow]:
     """
     Process the replication changes and return a list of parsed changes.
     """
@@ -22,24 +58,25 @@ def get_replication_changes(peek=True):
     )
     changes = [dict(change) for change in result.mappings().all()]
 
-    parsed_data = [row for change in changes for row in (parse_change_data(change) or [])]
+    parsed_data = [row for change in changes for row in (parse_change_data(cast(ReplicationChangeRow, change)) or [])]
 
     return parsed_data
 
 
-def parse_change_data(change):
+def parse_change_data(change: ReplicationChangeRow) -> list[ParsedRow] | None:
     """
     Parse the change data and return a dictionary with the relevant information.
     """
-    change = json.loads(change["data"]).get("change", [{}])
+    payload = cast(ChangePayload, json.loads(change["data"]))
+    raw_changes = payload.get("change", DEFAULT_CHANGE_ROWS)
 
-    if len(change) == 0:
+    if len(raw_changes) == 0:
         return None
 
-    return list(map(parse_row_data, change))
+    return [parse_row_data(row) for row in raw_changes]
 
 
-def parse_row_data(row):
+def parse_row_data(row: ReplicationJsonRow) -> ParsedRow:
     """
     Create a mapping of column names to their values for the given change.
     """

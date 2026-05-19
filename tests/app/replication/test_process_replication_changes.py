@@ -1,5 +1,5 @@
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from app.replication.replication_changes_utils import get_replication_changes, parse_change_data, parse_row_data
 
