@@ -92,3 +92,14 @@ def parse_row_data(row: ReplicationJsonRow) -> ParsedRow:
         "current_row_data": dict(zip(column_names, column_values, strict=False)),
         "previous_row_data": dict(zip(old_column_names, old_column_values, strict=False)),
     }
+
+
+def get_str_value(row_data: RowData, key: str) -> str | None:
+    value = row_data.get(key)
+    if isinstance(value, str):
+        return value
+    return None
+
+
+def get_notification_status(row_data: RowData) -> str | None:
+    return get_str_value(row_data, "notification_status") or get_str_value(row_data, "status")

@@ -1,0 +1,76 @@
+import uuid
+from typing import TypedDict
+from uuid import UUID
+
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert
+
+from app import db
+from app.models import ServiceStats
+
+
+class ServiceStatsDimensions(TypedDict):
+    service_id: UUID
+    template_id: UUID
+    notification_type: str
+    notification_status: str
+
+
+def _increment_service_stats_count(dimensions: ServiceStatsDimensions, increment_by: int) -> None:
+    stmt = insert(ServiceStats).values(
+        id=uuid.uuid4(),
+        service_id=dimensions["service_id"],
+        template_id=dimensions["template_id"],
+        notification_type=dimensions["notification_type"],
+        notification_status=dimensions["notification_status"],
+        count=increment_by,
+    )
+    stmt = stmt.on_conflict_do_update(
+        constraint="uix_service_stats_dimensions",
+        set_={
+            "count": ServiceStats.count + increment_by,
+        },
+    )
+    db.session.execute(stmt)
+
+
+def _decrement_service_stats_count(dimensions: ServiceStatsDimensions, decrement_by: int) -> None:
+    (
+        db.session.query(ServiceStats)
+        .filter(
+            ServiceStats.service_id == dimensions["service_id"],
+            ServiceStats.template_id == dimensions["template_id"],
+            ServiceStats.notification_type == dimensions["notification_type"],
+            ServiceStats.notification_status == dimensions["notification_status"],
+        )
+        .update(
+            {
+                "count": func.greatest(ServiceStats.count - decrement_by, 0),
+            },
+            synchronize_session=False,
+        )
+    )
+
+
+def apply_service_stats_insert(dimensions: ServiceStatsDimensions) -> None:
+    _increment_service_stats_count(dimensions, increment_by=1)
+
+
+def apply_service_stats_delete(dimensions: ServiceStatsDimensions) -> None:
+    _decrement_service_stats_count(dimensions, decrement_by=1)
+
+
+def apply_service_stats_update_transition(
+    old_dimensions: ServiceStatsDimensions,
+    new_dimensions: ServiceStatsDimensions,
+) -> None:
+    if (
+        old_dimensions["service_id"] == new_dimensions["service_id"]
+        and old_dimensions["template_id"] == new_dimensions["template_id"]
+        and old_dimensions["notification_type"] == new_dimensions["notification_type"]
+        and old_dimensions["notification_status"] == new_dimensions["notification_status"]
+    ):
+        return
+
+    _decrement_service_stats_count(old_dimensions, decrement_by=1)
+    _increment_service_stats_count(new_dimensions, increment_by=1)

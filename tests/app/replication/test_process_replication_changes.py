@@ -1,7 +1,13 @@
 import json
 from unittest.mock import MagicMock, patch
 
-from app.replication.replication_changes_utils import get_replication_changes, parse_change_data, parse_row_data
+from app.replication.replication_changes_utils import (
+    get_notification_status,
+    get_replication_changes,
+    get_str_value,
+    parse_change_data,
+    parse_row_data,
+)
 
 
 def test_process_replication_changes_flattens_rows_across_changes():
@@ -89,3 +95,19 @@ def test_parse_row_data_maps_current_and_previous_rows():
             "status": "sending",
         },
     }
+
+
+def test_get_str_value_returns_none_for_non_string_values():
+    assert get_str_value({"status": 123}, "status") is None
+
+
+def test_get_notification_status_prefers_notification_status_key():
+    result = get_notification_status({"notification_status": "delivered", "status": "sending"})
+
+    assert result == "delivered"
+
+
+def test_get_notification_status_falls_back_to_status_key():
+    result = get_notification_status({"status": "temporary-failure"})
+
+    assert result == "temporary-failure"

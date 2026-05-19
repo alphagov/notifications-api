@@ -2414,6 +2414,44 @@ class FactNotificationStatus(db.Model):
     )
 
 
+class ServiceStats(db.Model):
+    __tablename__ = "service_stats"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), nullable=False)
+    notification_type = db.Column(notification_types, nullable=False)
+    notification_status = db.Column(db.Text, db.ForeignKey("notification_status_types.name"), nullable=False)
+    count = db.Column(db.Integer(), nullable=False, default=0, server_default=db.text("0"))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "service_id",
+            "template_id",
+            "notification_type",
+            "notification_status",
+            name="uix_service_stats_dimensions",
+        ),
+        Index(
+            "ix_svc_stats_svc_ntype_nstatus",
+            "service_id",
+            "notification_type",
+            "notification_status",
+        ),
+        Index(
+            "ix_svc_stats_tmpl_ntype_nstatus",
+            "template_id",
+            "notification_type",
+            "notification_status",
+        ),
+        Index(
+            "ix_service_stats_service_id_template_id",
+            "service_id",
+            "template_id",
+        ),
+    )
+
+
 class FactProcessingTime(db.Model):
     __tablename__ = "ft_processing_time"
 
