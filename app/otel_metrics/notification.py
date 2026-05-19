@@ -1,6 +1,6 @@
 import json
 
-from notifications_utils.semconv import TASK_DURATION_HISTOGRAM_BUCKETS, set_error_type
+from notifications_utils.semconv import set_error_type
 from opentelemetry.metrics import get_meter
 from opentelemetry.util.types import AttributeValue
 
@@ -15,11 +15,28 @@ _international_sms = _meter.create_counter(
     ),
 )
 
+# Buckets ranging from 50 milliseconds to 10 minutes
+SEND_DURATION_HISTOGRAM_BUCKETS = [
+    0.05,
+    0.1,
+    0.2,
+    0.5,
+    1,
+    2,
+    5,
+    10,
+    30,
+    60,
+    120,
+    300,
+    600,
+]
+
 _send_duration = _meter.create_histogram(
     "notification.send.duration",
     unit="s",
     description="Elapsed time between notification creation and sending to provider",
-    explicit_bucket_boundaries_advisory=TASK_DURATION_HISTOGRAM_BUCKETS,
+    explicit_bucket_boundaries_advisory=SEND_DURATION_HISTOGRAM_BUCKETS,
 )
 
 # Buckets ranging from 1 second to 30 hours
