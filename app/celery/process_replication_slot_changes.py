@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from app import current_app, notify_celery
+from app import current_app, db, notify_celery
 from app.cronitor import cronitor
 from app.dao.service_stats_dao import (
     ServiceStatsDimensions,
@@ -54,6 +54,23 @@ def _build_dimensions(change: ParsedRow, *, use_previous_row: bool) -> ServiceSt
     }
 
 
+def _build_old_dimensions_from_previous_status(change: ParsedRow) -> ServiceStatsDimensions | None:
+    current_dimensions = _build_dimensions(change, use_previous_row=False)
+    if not current_dimensions:
+        return None
+
+    previous_status = get_notification_status(change["previous_row_data"])
+    if not previous_status:
+        return None
+
+    return {
+        "service_id": current_dimensions["service_id"],
+        "template_id": current_dimensions["template_id"],
+        "notification_type": current_dimensions["notification_type"],
+        "notification_status": previous_status,
+    }
+
+
 # @TODO: this is a temporary task to check the replication slot changes,
 # we will need to implement the logic to process the changes and update the dashboard accordingly
 @notify_celery.task(bind=True, name="check-replication-slot-changes")
@@ -97,12 +114,17 @@ def check_replication_slot_changes(self):
                 continue
 
             if change_type == "update":
-                old_dimensions = _build_dimensions(change, use_previous_row=True)
                 new_dimensions = _build_dimensions(change, use_previous_row=False)
-                if not old_dimensions or not new_dimensions:
+                if not new_dimensions:
                     ignored_changes += 1
                     continue
-                apply_service_stats_update_transition(old_dimensions, new_dimensions)
+
+                old_dimensions = _build_old_dimensions_from_previous_status(change)
+                if old_dimensions:
+                    apply_service_stats_update_transition(old_dimensions, new_dimensions)
+                else:
+                    apply_service_stats_insert(new_dimensions)
+
                 processed_changes += 1
                 continue
 
@@ -117,7 +139,10 @@ def check_replication_slot_changes(self):
                 "ignored_changes": ignored_changes,
             },
         )
+
+        db.session.commit()
     except Exception as exc:
+        db.session.rollback()
         retry_count = self.request.retries
         if retry_count < 3:
             raise self.retry(exc=exc, countdown=2**retry_count) from exc
