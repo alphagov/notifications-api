@@ -5,13 +5,13 @@ from sqlalchemy import text
 from app import db
 
 
-def get_replication_changes(peak=True):
+def get_replication_changes(peek=True):
     """
     Process the replication changes and return a list of parsed changes.
     """
     result = db.session.execute(
         text(f"""
-            SELECT * FROM {"pg_logical_slot_peek_changes" if peak else "pg_logical_slot_get_changes"}(
+            SELECT * FROM {"pg_logical_slot_peek_changes" if peek else "pg_logical_slot_get_changes"}(
                 'notify_dashboard_replication_slot',
                 NULL,
                 NULL,

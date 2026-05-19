@@ -10,12 +10,12 @@ register_errors(replication_blueprint)
 
 @replication_blueprint.route("/process-slot-changes", methods=["POST"])
 def trigger_process_replication_slot_changes():
-    check_replication_slot_changes.apply_async()
-    return jsonify({"message": "check-replication-slot-changes task queued"}), 201
+    check_replication_slot_changes()
+    return jsonify({"message": "check-replication-slot-changes task executed"}), 201
 
 
 @replication_blueprint.route("/check-slot-changes", methods=["GET"])
 def trigger_check_replication_slot_changes():
-    changes = get_replication_changes(peak=True)
+    changes = get_replication_changes(peek=True)
 
     return jsonify({"changes": changes}), 200

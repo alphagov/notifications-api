@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch, MagicMock
 
 from app.replication.replication_changes_utils import get_replication_changes, parse_change_data, parse_row_data
 
@@ -33,7 +34,11 @@ def test_process_replication_changes_flattens_rows_across_changes():
         )
     }
 
-    result = get_replication_changes([first_change, second_change])
+    mock_result = MagicMock()
+    mock_result.mappings().all.return_value = [first_change, second_change]
+
+    with patch("app.replication.replication_changes_utils.db.session.execute", return_value=mock_result):
+        result = get_replication_changes()
 
     assert result == [
         {
