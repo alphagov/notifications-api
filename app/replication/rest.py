@@ -19,6 +19,7 @@ from app.constants import (
     NOTIFICATION_RETURNED_LETTER,
     SMS_TYPE,
 )
+from app.dao.service_stats_dao import dao_fetch_stats_for_service
 from app.models import Notification, Template
 from app.replication.replication_changes_utils import get_replication_changes
 from app.v2.errors import register_errors
@@ -99,6 +100,35 @@ def simulate_notification_load():
         ),
         200,
     )
+
+
+@replication_blueprint.route("/stats/<uuid:service_id>", methods=["GET"])
+def get_service_stats(service_id):
+    """
+    Get service stats for a specific service.
+
+    Path parameter:
+    - service_id: UUID of the service
+
+    Returns:
+    - List of stats entries with:
+      - template_id: UUID of the template
+      - notification_type: Type of notification (email, sms, letter)
+      - notification_status: Status of the notification
+      - count: Number of notifications with this status
+    """
+    stats = dao_fetch_stats_for_service(service_id)
+
+    result = []
+    for stat in stats:
+        result.append({
+            "template_id": str(stat.template_id),
+            "notification_type": stat.notification_type,
+            "notification_status": stat.notification_status,
+            "count": stat.count,
+        })
+
+    return jsonify({"stats": result}), 200
 
 
 def _parse_positive_int(value, field_name, max_value):

@@ -74,3 +74,19 @@ def apply_service_stats_update_transition(
 
     _decrement_service_stats_count(old_dimensions, decrement_by=1)
     _increment_service_stats_count(new_dimensions, increment_by=1)
+
+
+def dao_fetch_stats_for_service(service_id: UUID) -> list[ServiceStats]:
+    """
+    Fetch service stats for a specific service.
+
+    Args:
+        service_id: UUID of the service to fetch stats for
+
+    Returns:
+        List of ServiceStats records for the specified service
+    """
+    if not service_id:
+        return []
+
+    return db.session.query(ServiceStats).filter(ServiceStats.service_id == service_id).all()
