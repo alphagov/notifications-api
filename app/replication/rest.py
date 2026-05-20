@@ -27,7 +27,7 @@ from app.v2.errors import register_errors
 replication_blueprint = Blueprint("replication", __name__, url_prefix="/replication")
 register_errors(replication_blueprint)
 
-MAX_NOTIFICATION_COUNT = 5000
+MAX_NOTIFICATION_COUNT = 50000
 MAX_UPDATES_PER_NOTIFICATION = 5
 DEFAULT_NOTIFICATION_COUNT = 1000
 DEFAULT_UPDATES_PER_NOTIFICATION = 2
