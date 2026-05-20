@@ -97,9 +97,10 @@ def test_simulate_notification_load_inserts_and_updates_notifications(replicatio
         "/replication/simulate-notification-load",
         headers=[auth_header],
         json={
-            "notification_count": 3,
+            "notification_count": 30,
             "updates_per_notification": 2,
             "template_id": str(sample_template.id),
+            "random_seed": 7,
         },
     )
 
@@ -107,19 +108,24 @@ def test_simulate_notification_load_inserts_and_updates_notifications(replicatio
     inserted_ids = response_json["inserted_notification_ids"]
     inserted_uuid_ids = [UUID(notification_id) for notification_id in inserted_ids]
     inserted_notifications = Notification.query.filter(Notification.id.in_(inserted_uuid_ids)).all()
+    distinct_statuses = {notification.status for notification in inserted_notifications}
+    status_breakdown = response_json["status_breakdown"]
 
     assert response.status_code == 200
     assert response_json["message"] == "notification send/update load inserted into notifications table"
-    assert response_json["notification_count"] == 3
+    assert response_json["notification_count"] == 30
     assert response_json["updates_per_notification"] == 2
-    assert response_json["inserted_count"] == 3
-    assert response_json["updated_count"] == 6
+    assert response_json["inserted_count"] == 30
+    assert response_json["updated_count"] == 60
     assert response_json["service_id"] == str(sample_template.service_id)
     assert response_json["template_id"] == str(sample_template.id)
     assert response_json["template_version"] == sample_template.version
-    assert len(inserted_ids) == 3
-    assert len(inserted_notifications) == 3
-    assert all(notification.status == "delivered" for notification in inserted_notifications)
+    assert len(inserted_ids) == 20
+    assert len(inserted_notifications) == 20
+    assert len(status_breakdown) >= 2
+    assert len(distinct_statuses) >= 1
+    assert sum(status_breakdown.values()) == response_json["inserted_count"]
+    assert distinct_statuses.issubset(set(status_breakdown.keys()))
 
 
 @pytest.mark.parametrize(

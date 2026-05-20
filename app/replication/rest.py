@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 from uuid import UUID, uuid4
 
 from flask import Blueprint, jsonify, request
@@ -10,8 +11,12 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_DELIVERED,
+    NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_RETURNED_LETTER,
     SMS_TYPE,
 )
 from app.models import Notification, Template
@@ -65,10 +70,14 @@ def simulate_notification_load():
     if error:
         return jsonify({"message": error}), 400
 
-    notification_ids = _insert_and_update_notifications(
+    random_seed = payload.get("random_seed")
+    randomizer = random.Random(random_seed) if random_seed is not None else random.Random()
+
+    notification_ids, status_breakdown = _insert_and_update_notifications(
         template=template,
         notification_count=notification_count,
         updates_per_notification=updates_per_notification,
+        randomizer=randomizer,
     )
     returned_id_count = min(len(notification_ids), DEFAULT_RETURNED_IDS)
     total_updates = notification_count * updates_per_notification
@@ -84,6 +93,7 @@ def simulate_notification_load():
                 "service_id": str(template.service_id),
                 "template_id": str(template.id),
                 "template_version": template.version,
+                "status_breakdown": status_breakdown,
                 "inserted_notification_ids": notification_ids[:returned_id_count],
             }
         ),
@@ -130,12 +140,15 @@ def _resolve_template(payload):
     return template, None
 
 
-def _insert_and_update_notifications(template, notification_count, updates_per_notification):
-    status_progression = [NOTIFICATION_SENT, NOTIFICATION_DELIVERED]
+def _insert_and_update_notifications(template, notification_count, updates_per_notification, randomizer):
     inserted_notifications = []
+    status_breakdown = {}
     now = datetime.utcnow()
 
     for index in range(notification_count):
+        terminal_status = _pick_terminal_status(template.template_type, randomizer)
+        status_path = _build_status_path(terminal_status, updates_per_notification)
+
         notification = Notification(
             id=uuid4(),
             to=_build_recipient(template.template_type, index),
@@ -151,20 +164,59 @@ def _insert_and_update_notifications(template, notification_count, updates_per_n
             rate_multiplier=1 if template.template_type == SMS_TYPE else None,
         )
         db.session.add(notification)
-        inserted_notifications.append(notification)
+        inserted_notifications.append((notification, status_path))
 
     db.session.flush()
 
-    for notification in inserted_notifications:
-        for update_number in range(updates_per_notification):
-            notification.status = status_progression[min(update_number, len(status_progression) - 1)]
+    for notification, status_path in inserted_notifications:
+        for status in status_path:
+            notification.status = status
             notification.updated_at = datetime.utcnow()
-            if notification.status in {NOTIFICATION_SENT, NOTIFICATION_DELIVERED}:
+            if status in {NOTIFICATION_SENT, NOTIFICATION_DELIVERED}:
                 notification.sent_at = datetime.utcnow()
+
+        status_breakdown[notification.status] = status_breakdown.get(notification.status, 0) + 1
 
     db.session.commit()
 
-    return [str(notification.id) for notification in inserted_notifications]
+    return [str(notification.id) for notification, _ in inserted_notifications], status_breakdown
+
+
+def _pick_terminal_status(template_type, randomizer):
+    if template_type == LETTER_TYPE:
+        statuses = [NOTIFICATION_DELIVERED, NOTIFICATION_TECHNICAL_FAILURE, NOTIFICATION_RETURNED_LETTER]
+        weights = [70, 20, 10]
+    else:
+        statuses = [
+            NOTIFICATION_DELIVERED,
+            NOTIFICATION_SENT,
+            NOTIFICATION_TEMPORARY_FAILURE,
+            NOTIFICATION_PERMANENT_FAILURE,
+            NOTIFICATION_TECHNICAL_FAILURE,
+        ]
+        weights = [55, 15, 10, 10, 10]
+
+    return randomizer.choices(statuses, weights=weights, k=1)[0]
+
+
+def _build_status_path(terminal_status, updates_per_notification):
+    if updates_per_notification <= 0:
+        return []
+
+    if updates_per_notification == 1:
+        return [terminal_status]
+
+    if terminal_status == NOTIFICATION_DELIVERED:
+        base_path = [NOTIFICATION_SENT, NOTIFICATION_DELIVERED]
+    elif terminal_status == NOTIFICATION_SENT:
+        base_path = [NOTIFICATION_SENT]
+    else:
+        base_path = [NOTIFICATION_SENT, terminal_status]
+
+    if len(base_path) >= updates_per_notification:
+        return base_path[:updates_per_notification]
+
+    return base_path + [base_path[-1]] * (updates_per_notification - len(base_path))
 
 
 def _build_recipient(template_type, index):
