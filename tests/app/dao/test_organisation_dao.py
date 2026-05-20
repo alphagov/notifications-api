@@ -20,6 +20,7 @@ from app.dao.organisation_dao import (
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
+    dao_get_organisation_domains,
     dao_get_organisation_services,
     dao_get_organisations,
     dao_get_users_for_organisation,
@@ -55,6 +56,21 @@ def test_get_organisations_gets_all_organisations_alphabetically_with_active_org
     assert organisations[2] == z_active_org
     assert organisations[3] == a_inactive_org
     assert organisations[4] == z_inactive_org
+
+
+def test_dao_get_organisation_domains(notify_db_session):
+    create_organisation("org_1", domains=["dept_of_health.com", "eg.com"])
+    create_organisation("org_2", domains=["other.com", "number10.com"])
+    create_organisation("org_3", domains=["my_org.gov", "whitechapel.com"])
+
+    assert set(dao_get_organisation_domains()) == {
+        "dept_of_health.com",
+        "eg.com",
+        "other.com",
+        "number10.com",
+        "my_org.gov",
+        "whitechapel.com",
+    }
 
 
 def test_get_organisation_by_id_gets_correct_organisation(notify_db_session):

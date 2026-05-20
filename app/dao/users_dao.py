@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from secrets import SystemRandom
 
 from flask import current_app
+from notifications_utils.user import GOVERNMENT_EMAIL_DOMAIN_NAMES, email_address_ends_with
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.exc import NoResultFound
@@ -15,7 +16,7 @@ from app.constants import (
     NOTIFY_RESEARCH_SERVICE_ID,
 )
 from app.dao.dao_utils import autocommit
-from app.dao.organisation_dao import dao_remove_user_from_organisation
+from app.dao.organisation_dao import dao_get_organisation_domains, dao_remove_user_from_organisation
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import dao_get_service_users_by_user_id
@@ -197,22 +198,22 @@ def dao_archive_user(user):
     db.session.add(user)
 
 
-def _count_manage_settings_users(service):
-    active_users = [u for u in service.users if u.state == "active"]
+def _count_gov_users_with_manage_settings(service):
+    active_government_users = [u for u in service.users if u.state == "active" and is_gov_user(u.email_address)]
 
-    return sum(MANAGE_SETTINGS in u.get_permissions(service_id=service.id) for u in active_users)
+    return sum(MANAGE_SETTINGS in u.get_permissions(service_id=service.id) for u in active_government_users)
 
 
-def _min_manage_settings_users(service):
+def _min_gov_users_with_manage_settings(service):
     return 1 if service.restricted and not service.has_active_go_live_request else 2
 
 
-def _can_remove_manage_settings_user(service):
+def _can_remove_gov_user_with_manage_settings(service):
     """
-    Returns False if removing a single user with `manage_settings`
-    would leave the service with too few such users.
+    Returns False if removing a single user with a government email address and
+    `manage_settings` permission would leave the service with too few such users.
     """
-    return _count_manage_settings_users(service) - 1 >= _min_manage_settings_users(service)
+    return _count_gov_users_with_manage_settings(service) - 1 >= _min_gov_users_with_manage_settings(service)
 
 
 def users_permissions_can_be_changed(user, service, new_permissions):
@@ -225,7 +226,11 @@ def users_permissions_can_be_changed(user, service, new_permissions):
     if not had_permission or will_have_permission:
         return True
 
-    return _can_remove_manage_settings_user(service)
+    # If the user is not a government user, it's always safe
+    if not is_gov_user(user.email_address):
+        return True
+
+    return _can_remove_gov_user_with_manage_settings(service)
 
 
 def user_can_be_removed_from_service(user, service):
@@ -239,7 +244,11 @@ def user_can_be_removed_from_service(user, service):
     if MANAGE_SETTINGS not in user.get_permissions(service_id=service.id):
         return True
 
-    return _can_remove_manage_settings_user(service)
+    # Removing users who are not government users is always safe
+    if not is_gov_user(user.email_address):
+        return True
+
+    return _can_remove_gov_user_with_manage_settings(service)
 
 
 def user_can_be_archived(user):
@@ -309,3 +318,9 @@ def unsubscribe_user_from_notify_services(service_id, email_address):
     redis_store.delete(f"user-{user.id}")
 
     return True
+
+
+def is_gov_user(email_address):
+    return email_address_ends_with(email_address, GOVERNMENT_EMAIL_DOMAIN_NAMES) or email_address_ends_with(
+        email_address, dao_get_organisation_domains()
+    )
