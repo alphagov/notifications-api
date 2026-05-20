@@ -1,4 +1,5 @@
 from flask import Blueprint, current_app, jsonify, request
+from notifications_utils.interruptible_io import InterruptibleIterableList, interruptible_iter
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import raiseload, selectinload
 from sqlalchemy.orm.exc import NoResultFound
@@ -49,7 +50,9 @@ def get_template_folders_for_service(service_id):
         .one()
     )
 
-    template_folders = [o.serialize() for o in service.all_template_folders]
+    template_folders = InterruptibleIterableList(
+        o.serialize() for o in interruptible_iter(service.all_template_folders, 32)
+    )
     return jsonify(template_folders=template_folders)
 
 
