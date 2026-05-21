@@ -21,9 +21,8 @@ class AwsSesStubClient(EmailClient):
 
     name = "ses"
 
-    def __init__(self, region, statsd_client, stub_url):
+    def __init__(self, region, stub_url):
         super().__init__()
-        self.statsd_client = statsd_client
         self.url = stub_url
         self.requests_session = requests.Session()
 
@@ -46,13 +45,10 @@ class AwsSesStubClient(EmailClient):
             response_json = json.loads(response.text)
 
         except Exception as e:
-            self.statsd_client.incr("clients.ses_stub.error")
             raise AwsSesStubClientException(str(e)) from e
         else:
             elapsed_time = monotonic() - start_time
             current_app.logger.info(
                 "AWS SES stub request finished in %.4g seconds", elapsed_time, extra={"duration": elapsed_time}
             )
-            self.statsd_client.timing("clients.ses_stub.request-time", elapsed_time)
-            self.statsd_client.incr("clients.ses_stub.success")
             return response_json["MessageId"]

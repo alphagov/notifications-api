@@ -3,7 +3,7 @@ from datetime import datetime
 
 from freezegun import freeze_time
 
-from app import signing, statsd_client
+from app import signing
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.celery.research_mode_tasks import (
     ses_hard_bounce_callback,
@@ -69,8 +69,6 @@ def test_ses_callback_should_update_notification_status(
     with freeze_time("2001-01-01T12:00:00") as frozen_time:
         record_deliver_duration_mock = mocker.patch.object(_deliver_duration, "record")
         record_callback_duration_mock = mocker.patch.object(_callback_duration, "record")
-        mocker.patch("app.statsd_client.incr")
-        mocker.patch("app.statsd_client.timing_with_dates")
         send_mock = mocker.patch("app.celery.process_ses_receipts_tasks.check_and_queue_callback_task")
         notification = create_notification(
             template=sample_email_template,
@@ -91,10 +89,6 @@ def test_ses_callback_should_update_notification_status(
 
         assert process_ses_results(payload, receipt_iso_timestamp)
         assert get_notification_by_id(notification.id).status == "delivered"
-        statsd_client.timing_with_dates.assert_any_call(
-            "callback.ses.delivered.elapsed-time", datetime.utcnow(), notification.sent_at
-        )
-        statsd_client.incr.assert_any_call("callback.ses.delivered")
         record_deliver_duration_mock.assert_called_once_with(
             1.0,
             {

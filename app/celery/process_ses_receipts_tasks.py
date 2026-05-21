@@ -6,7 +6,7 @@ from celery.exceptions import Retry
 from flask import current_app, json
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import notify_celery, statsd_client
+from app import notify_celery
 from app.clients.email.aws_ses import get_aws_responses
 from app.config import QueueNames
 from app.constants import NOTIFICATION_PENDING, NOTIFICATION_SENDING
@@ -127,8 +127,6 @@ def process_ses_results(  # noqa: C901
                 references=[reference], update_dict={"status": notification_status}
             )
 
-        statsd_client.incr(f"callback.ses.{notification_status}")
-
         record_deliver_duration(
             callback_duration=(receipt_dt - notification.created_at).total_seconds() if receipt_dt else None,
             deliver_duration=(delivery_dt - notification.created_at).total_seconds() if delivery_dt else None,
@@ -137,11 +135,6 @@ def process_ses_results(  # noqa: C901
             notification_type="email",
             provider_name="ses",
         )
-
-        if notification.sent_at:
-            statsd_client.timing_with_dates(
-                f"callback.ses.{notification_status}.elapsed-time", datetime.utcnow(), notification.sent_at
-            )
 
         check_and_queue_callback_task(notification)
 

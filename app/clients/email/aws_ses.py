@@ -61,10 +61,9 @@ class AwsSesClient(EmailClient):
 
     name = "ses"
 
-    def __init__(self, region, statsd_client):
+    def __init__(self, region):
         super().__init__()
         self._client = boto3.client("sesv2", region_name=region)
-        self.statsd_client = statsd_client
 
     @record_request_duration(notification_type="email", provider_name="ses")
     def send_email(
@@ -103,18 +102,14 @@ class AwsSesClient(EmailClient):
                 ReplyToAddresses=reply_to_addresses,
             )
         except botocore.exceptions.ClientError as e:
-            self.statsd_client.incr("clients.ses.error")
-
             # https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html#API_SendEmail_Errors
             if e.response["Error"]["Code"] == "InvalidParameterValue":
                 raise EmailClientNonRetryableException(e.response["Error"]["Message"]) from e
             elif e.response["Error"]["Code"] == "TooManyRequestsException":
                 raise AwsSesClientThrottlingSendRateException(str(e)) from e
             else:
-                self.statsd_client.incr("clients.ses.error")
                 raise AwsSesClientException(str(e) + e.response["Error"]["Code"]) from e
         except Exception as e:
-            self.statsd_client.incr("clients.ses.error")
             raise AwsSesClientException(str(e)) from e
         else:
             elapsed_time = monotonic() - start_time
@@ -125,8 +120,6 @@ class AwsSesClient(EmailClient):
                     "duration": elapsed_time,
                 },
             )
-            self.statsd_client.timing("clients.ses.request-time", elapsed_time)
-            self.statsd_client.incr("clients.ses.success")
             return response["MessageId"]
 
 
