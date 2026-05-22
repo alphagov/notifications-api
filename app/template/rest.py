@@ -189,7 +189,7 @@ def get_precompiled_template_for_service(service_id):
 @template_blueprint.route("", methods=["GET"])
 def get_all_templates_for_service(service_id):
     templates = dao_get_all_templates_for_service(service_id=service_id, no_detail=True)
-    data = template_schema_no_detail.dump(interruptible_iter(templates), many=True)
+    data = template_schema_no_detail.dump(interruptible_iter(templates, 32), many=True)
     return jsonify(data=data)
 
 
