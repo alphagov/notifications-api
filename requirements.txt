@@ -564,7 +564,9 @@ greenlet==3.3.2 \
     --hash=sha256:d3a62fa76a32b462a97198e4c9e99afb9ab375115e74e9a83ce180e7a496f643 \
     --hash=sha256:e26e72bec7ab387ac80caa7496e0f908ff954f31065b0ffc1f8ecb1338b11b54 \
     --hash=sha256:e3cb43ce200f59483eb82949bf1835a99cf43d7571e900d7c8d5c62cdf25d2f9
-    # via eventlet
+    # via
+    #   eventlet
+    #   sqlalchemy
 grpcio==1.80.0 \
     --hash=sha256:00168469238b022500e486c1c33916acf2f2a9b2c022202cf8a1885d2e3073c1 \
     --hash=sha256:02e64bb0bb2da14d947a49e6f120a75e947250aebe65f9629b62bb1f5c14e6e9 \
@@ -800,7 +802,7 @@ mistune==0.8.4 \
 notifications-python-client==10.0.1 \
     --hash=sha256:00d88eacb6fd6eb0467d7396a7e23677194cfebe0ebd88de2efa031fb51eb23f
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@fad26d684f87a832cc54cee072844ad5dccd2305
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@7630d3a54d82b26daee1260bbdc3ed54f9373a83
     # via -r requirements.in
 opentelemetry-api==1.40.0 \
     --hash=sha256:159be641c0b04d11e9ecd576906462773eb97ae1b657730f0ecf64d32071569f \
