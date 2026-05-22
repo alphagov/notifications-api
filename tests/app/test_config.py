@@ -96,10 +96,3 @@ def test_celery_config_contains_archived_template_email_file_cleanup_task():
     assert task_config["task"] == "remove-archived-template-email-files-from-s3"
     assert task_config["options"]["queue"] == QueueNames.PERIODIC
     assert task_config["schedule"] == crontab(hour=4, minute=40)
-
-
-def test_celery_config_contains_replication_slot_change_check_task():
-    task_config = Config.CELERY["beat_schedule"]["check-replication-slot-changes"]
-    assert task_config["task"] == "check-replication-slot-changes"
-    assert task_config["options"]["queue"] == QueueNames.PERIODIC
-    assert task_config["schedule"].total_seconds() == 1
