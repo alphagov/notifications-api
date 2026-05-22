@@ -39,13 +39,8 @@ def handle_integrity_error(exc):
     raise
 
 
-def foo(label):
-    current_app.logger.info("_allow_interruption label = %s", label, extra={"label": label})
-
 @template_folder_blueprint.route("", methods=["GET"])
 def get_template_folders_for_service(service_id):
-    from notifications_utils import interruptible_io
-    interruptible_io._allow_interruption = foo
     service = (
         Service.query.filter_by(id=service_id)
         .options(
