@@ -5,6 +5,7 @@ import botocore
 from flask import Blueprint, current_app, jsonify, request
 from flask.ctx import has_request_context
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
+from notifications_utils.interruptible_io import interruptible_iter
 from notifications_utils.pdf import extract_page_from_pdf
 from notifications_utils.template import (
     LetterPreviewTemplate,
@@ -188,7 +189,7 @@ def get_precompiled_template_for_service(service_id):
 @template_blueprint.route("", methods=["GET"])
 def get_all_templates_for_service(service_id):
     templates = dao_get_all_templates_for_service(service_id=service_id, no_detail=True)
-    data = template_schema_no_detail.dump(templates, many=True)
+    data = template_schema_no_detail.dump(interruptible_iter(templates, 32), many=True)
     return jsonify(data=data)
 
 
