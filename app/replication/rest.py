@@ -11,12 +11,8 @@ from app.constants import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_RETURNED_LETTER,
     SMS_TYPE,
 )
 from app.dao.service_stats_dao import dao_fetch_stats_for_service
@@ -214,17 +210,11 @@ def _insert_and_update_notifications(template, notification_count, updates_per_n
 
 def _pick_terminal_status(template_type, randomizer):
     if template_type == LETTER_TYPE:
-        statuses = [NOTIFICATION_DELIVERED, NOTIFICATION_TECHNICAL_FAILURE, NOTIFICATION_RETURNED_LETTER]
-        weights = [70, 20, 10]
+        statuses = [NOTIFICATION_DELIVERED, NOTIFICATION_SENT]
+        weights = [85, 15]
     else:
-        statuses = [
-            NOTIFICATION_DELIVERED,
-            NOTIFICATION_SENT,
-            NOTIFICATION_TEMPORARY_FAILURE,
-            NOTIFICATION_PERMANENT_FAILURE,
-            NOTIFICATION_TECHNICAL_FAILURE,
-        ]
-        weights = [55, 15, 10, 10, 10]
+        statuses = [NOTIFICATION_DELIVERED, NOTIFICATION_SENT]
+        weights = [80, 20]
 
     return randomizer.choices(statuses, weights=weights, k=1)[0]
 

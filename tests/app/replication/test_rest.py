@@ -1,6 +1,7 @@
 import pytest
 from uuid import UUID
 
+from app.constants import NOTIFICATION_DELIVERED, NOTIFICATION_SENT
 from app.models import Notification
 from tests import create_admin_authorization_header
 
@@ -110,6 +111,7 @@ def test_simulate_notification_load_inserts_and_updates_notifications(replicatio
     inserted_notifications = Notification.query.filter(Notification.id.in_(inserted_uuid_ids)).all()
     distinct_statuses = {notification.status for notification in inserted_notifications}
     status_breakdown = response_json["status_breakdown"]
+    simulated_statuses = {NOTIFICATION_SENT, NOTIFICATION_DELIVERED}
 
     assert response.status_code == 200
     assert response_json["message"] == "notification send/update load inserted into notifications table"
@@ -125,7 +127,8 @@ def test_simulate_notification_load_inserts_and_updates_notifications(replicatio
     assert len(status_breakdown) >= 2
     assert len(distinct_statuses) >= 1
     assert sum(status_breakdown.values()) == response_json["inserted_count"]
-    assert distinct_statuses.issubset(set(status_breakdown.keys()))
+    assert set(status_breakdown).issubset(simulated_statuses)
+    assert distinct_statuses.issubset(simulated_statuses)
 
 
 @pytest.mark.parametrize(
