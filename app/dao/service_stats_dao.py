@@ -16,47 +16,51 @@ class ServiceStatsDimensions(TypedDict):
     notification_status: str
 
 
-def _increment_service_stats_count(dimensions: ServiceStatsDimensions, increment_by: int) -> None:
-    stmt = insert(ServiceStats).values(
-        id=uuid.uuid4(),
-        service_id=dimensions["service_id"],
-        template_id=dimensions["template_id"],
-        notification_type=dimensions["notification_type"],
-        notification_status=dimensions["notification_status"],
-        count=increment_by,
-    )
-    stmt = stmt.on_conflict_do_update(
-        constraint="uix_service_stats_dimensions",
-        set_={
-            "count": ServiceStats.count + increment_by,
-        },
-    )
-    db.session.execute(stmt)
+def _update_service_stats_count(dimensions: ServiceStatsDimensions, delta: int) -> None:
+    if delta == 0:
+        return
 
+    dimension_values = {
+        "service_id": dimensions["service_id"],
+        "template_id": dimensions["template_id"],
+        "notification_type": dimensions["notification_type"],
+        "notification_status": dimensions["notification_status"],
+    }
+    filters = (
+        ServiceStats.service_id == dimension_values["service_id"],
+        ServiceStats.template_id == dimension_values["template_id"],
+        ServiceStats.notification_type == dimension_values["notification_type"],
+        ServiceStats.notification_status == dimension_values["notification_status"],
+    )
 
-def _decrement_service_stats_count(dimensions: ServiceStatsDimensions, decrement_by: int) -> None:
-    (
-        db.session.query(ServiceStats)
-        .filter(
-            ServiceStats.service_id == dimensions["service_id"],
-            ServiceStats.template_id == dimensions["template_id"],
-            ServiceStats.notification_type == dimensions["notification_type"],
-            ServiceStats.notification_status == dimensions["notification_status"],
+    if delta > 0:
+        stmt = insert(ServiceStats).values(
+            id=uuid.uuid4(),
+            **dimension_values,
+            count=delta,
         )
-        .update(
-            {
-                "count": func.greatest(ServiceStats.count - decrement_by, 0),
+        stmt = stmt.on_conflict_do_update(
+            constraint="uix_service_stats_dimensions",
+            set_={
+                "count": ServiceStats.count + delta,
             },
-            synchronize_session=False,
         )
-    )
+        db.session.execute(stmt)
+    else:
+        (
+            db.session.query(ServiceStats)
+            .filter(*filters)
+            .update(
+                {
+                    "count": func.greatest(ServiceStats.count + delta, 0),
+                },
+                synchronize_session=False,
+            )
+        )
 
 
 def apply_service_stats_delta(dimensions: ServiceStatsDimensions, delta: int) -> None:
-    if delta > 0:
-        _increment_service_stats_count(dimensions, increment_by=delta)
-    elif delta < 0:
-        _decrement_service_stats_count(dimensions, decrement_by=abs(delta))
+    _update_service_stats_count(dimensions, delta)
 
 
 def dao_fetch_stats_for_service(service_id: UUID) -> list[ServiceStats]:
