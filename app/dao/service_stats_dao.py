@@ -16,6 +16,14 @@ class ServiceStatsDimensions(TypedDict):
     notification_status: str
 
 
+# 1. Public write API used by callers to apply a single aggregated delta into
+# service statistics for a specific dimensions tuple.
+def apply_service_stats_delta(dimensions: ServiceStatsDimensions, delta: int) -> None:
+    _update_service_stats_count(dimensions, delta)
+
+
+# 2. Internal persistence routine that applies the delta with UPSERT behavior for
+# positive changes and bounded decrement behavior for negative changes.
 def _update_service_stats_count(dimensions: ServiceStatsDimensions, delta: int) -> None:
     if delta == 0:
         return
@@ -59,10 +67,8 @@ def _update_service_stats_count(dimensions: ServiceStatsDimensions, delta: int) 
         )
 
 
-def apply_service_stats_delta(dimensions: ServiceStatsDimensions, delta: int) -> None:
-    _update_service_stats_count(dimensions, delta)
-
-
+# 3. Public read API that returns all stats rows for a single service, with a
+# defensive guard to avoid querying when no service id is provided.
 def dao_fetch_stats_for_service(service_id: UUID) -> list[ServiceStats]:
     """
     Fetch service stats for a specific service.
