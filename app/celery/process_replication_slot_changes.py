@@ -7,7 +7,7 @@ from sqlalchemy import text
 
 from app import current_app, db, notify_celery
 from app.cronitor import cronitor
-from app.dao.service_stats_dao import ServiceStatsDimensions, apply_service_stats_delta
+from app.dao.fact_service_stats_dao import ServiceStatsDimensions, apply_service_stats_delta
 from app.replication.replication_changes_utils import (
     ParsedRow,
     RowData,
@@ -247,7 +247,7 @@ def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
 
 
 # 7. Collapse full-dimension deltas down to service stats dimensions used by
-# app.dao.service_stats_dao.apply_service_stats_delta.
+# app.dao.fact_service_stats_dao.apply_service_stats_delta.
 def _roll_up_service_stats_deltas(counter: Counter[FullDimensions]) -> Counter[ServiceStatsDimensionsKey]:
     deltas: Counter[ServiceStatsDimensionsKey] = Counter()
     for dimensions, delta in counter.items():

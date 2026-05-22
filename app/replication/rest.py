@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 
 from app.celery.process_replication_slot_changes import check_replication_slot_changes
-from app.dao.service_stats_dao import dao_fetch_stats_for_service
+from app.dao.fact_service_stats_dao import dao_fetch_stats_for_service
 from app.replication.performance_test import simulate_notification_load as performance_test_simulate_notification_load
 from app.replication.replication_changes_utils import get_replication_changes
 from app.v2.errors import register_errors

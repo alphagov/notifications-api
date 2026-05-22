@@ -2414,8 +2414,8 @@ class FactNotificationStatus(db.Model):
     )
 
 
-class ServiceStats(db.Model):
-    __tablename__ = "service_stats"
+class FactServiceStats(db.Model):
+    __tablename__ = "ft_service_stats"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
@@ -2430,22 +2430,22 @@ class ServiceStats(db.Model):
             "template_id",
             "notification_type",
             "notification_status",
-            name="uix_service_stats_dimensions",
+            name="uix_ft_service_stats_dimensions",
         ),
         Index(
-            "ix_svc_stats_svc_ntype_nstatus",
+            "ix_ft_svc_stats_svc_ntype_nstatus",
             "service_id",
             "notification_type",
             "notification_status",
         ),
         Index(
-            "ix_svc_stats_tmpl_ntype_nstatus",
+            "ix_ft_svc_stats_tmpl_ntype_nstatus",
             "template_id",
             "notification_type",
             "notification_status",
         ),
         Index(
-            "ix_service_stats_service_id_template_id",
+            "ix_ft_service_stats_service_id_template_id",
             "service_id",
             "template_id",
         ),
