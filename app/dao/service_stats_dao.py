@@ -52,28 +52,11 @@ def _decrement_service_stats_count(dimensions: ServiceStatsDimensions, decrement
     )
 
 
-def apply_service_stats_insert(dimensions: ServiceStatsDimensions) -> None:
-    _increment_service_stats_count(dimensions, increment_by=1)
-
-
-def apply_service_stats_delete(dimensions: ServiceStatsDimensions) -> None:
-    _decrement_service_stats_count(dimensions, decrement_by=1)
-
-
-def apply_service_stats_update_transition(
-    old_dimensions: ServiceStatsDimensions,
-    new_dimensions: ServiceStatsDimensions,
-) -> None:
-    if (
-        old_dimensions["service_id"] == new_dimensions["service_id"]
-        and old_dimensions["template_id"] == new_dimensions["template_id"]
-        and old_dimensions["notification_type"] == new_dimensions["notification_type"]
-        and old_dimensions["notification_status"] == new_dimensions["notification_status"]
-    ):
-        return
-
-    _decrement_service_stats_count(old_dimensions, decrement_by=1)
-    _increment_service_stats_count(new_dimensions, increment_by=1)
+def apply_service_stats_delta(dimensions: ServiceStatsDimensions, delta: int) -> None:
+    if delta > 0:
+        _increment_service_stats_count(dimensions, increment_by=delta)
+    elif delta < 0:
+        _decrement_service_stats_count(dimensions, decrement_by=abs(delta))
 
 
 def dao_fetch_stats_for_service(service_id: UUID) -> list[ServiceStats]:

@@ -50,12 +50,14 @@ def test_process_replication_changes_flattens_rows_across_changes():
         {
             "type": "insert",
             "table": "notifications",
+            "nextlsn": None,
             "current_row_data": {"id": "111", "to": "447700900001"},
             "previous_row_data": {},
         },
         {
             "type": "update",
             "table": "notifications",
+            "nextlsn": None,
             "current_row_data": {"id": "222", "status": "sent"},
             "previous_row_data": {},
         },
@@ -85,6 +87,7 @@ def test_parse_row_data_maps_current_and_previous_rows():
     assert result == {
         "type": "update",
         "table": "notifications",
+        "nextlsn": None,
         "current_row_data": {
             "id": "abc",
             "status": "delivered",
@@ -95,6 +98,37 @@ def test_parse_row_data_maps_current_and_previous_rows():
             "status": "sending",
         },
     }
+
+
+def test_parse_change_data_propagates_nextlsn_to_all_rows():
+    result = parse_change_data(
+        {
+            "data": json.dumps(
+                {
+                    "nextlsn": "0/16B6A28",
+                    "change": [
+                        {
+                            "kind": "insert",
+                            "table": "notifications",
+                            "columnnames": ["id", "status"],
+                            "columnvalues": ["abc", "sending"],
+                        }
+                    ],
+                }
+            ),
+            "lsn": "0/16B6A20",
+        }
+    )
+
+    assert result == [
+        {
+            "type": "insert",
+            "table": "notifications",
+            "nextlsn": "0/16B6A28",
+            "current_row_data": {"id": "abc", "status": "sending"},
+            "previous_row_data": {},
+        }
+    ]
 
 
 def test_get_str_value_returns_none_for_non_string_values():
