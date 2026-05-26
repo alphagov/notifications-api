@@ -43,7 +43,6 @@ from app.schema_validation import validate
 from app.schemas import (
     template_history_schema,
     template_schema,
-    template_schema_no_detail,
 )
 from app.template.template_schemas import (
     post_create_template_schema,
@@ -188,7 +187,7 @@ def get_precompiled_template_for_service(service_id):
 @template_blueprint.route("", methods=["GET"])
 def get_all_templates_for_service(service_id):
     templates = dao_get_all_templates_for_service(service_id=service_id, no_detail=True)
-    data = template_schema_no_detail.dump(templates, many=True)
+    data = [template.serialize_no_detail() for template in templates]
     return jsonify(data=data)
 
 

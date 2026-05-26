@@ -437,18 +437,6 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
                 raise ValidationError("Invalid template subject", "subject")
 
 
-class TemplateSchemaNoDetail(TemplateSchema):
-    class Meta(TemplateSchema.Meta):
-        fields = [
-            "folder",
-            "id",
-            "is_precompiled_letter",
-            "name",
-            "template_type",
-        ]
-        exclude: list[str] = []
-
-
 class TemplateHistorySchema(BaseTemplateSchema, UUIDsAsStringsMixin):
     created_by = fields.Nested(UserSchema, only=["id", "name", "email_address"], dump_only=True)
 
@@ -738,7 +726,6 @@ user_update_password_schema_load_json = UserUpdatePasswordSchema(only=("_passwor
 service_schema = ServiceSchema()
 detailed_service_schema = DetailedServiceSchema()
 template_schema = TemplateSchema()
-template_schema_no_detail = TemplateSchemaNoDetail()
 template_email_files_schema = TemplateEmailFilesSchema()
 api_key_schema = ApiKeySchema()
 job_schema = JobSchema()
