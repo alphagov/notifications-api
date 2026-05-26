@@ -105,6 +105,7 @@ from app.models_types import (
     SerializedServiceSmsSender,
     SerializedTemplateEmailFile,
     SerializedTemplateFolder,
+    SerializedTemplateNoDetail,
     SerializedUnsubscribeRequestReport,
     SerializedUser,
     SerializedUserForList,
@@ -1253,6 +1254,15 @@ class Template(TemplateBase):
         fields["service_id"] = fields.pop("service")
         fields["folder"] = folder
         return cls(**fields)
+
+    def serialize_no_detail(self) -> SerializedTemplateNoDetail:
+        return SerializedTemplateNoDetail(
+            folder=str(self.folder.id) if self.folder else None,
+            id=str(self.id),
+            is_precompiled_letter=self.is_precompiled_letter,
+            name=self.name,
+            template_type=self.template_type,
+        )
 
 
 class TemplateRedacted(db.Model):

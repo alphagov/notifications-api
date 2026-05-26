@@ -360,3 +360,11 @@ class SerializedTemplateEmailFile(TypedDict):
     retention_period: int
     validate_users_email: bool
     pending: bool
+
+
+class SerializedTemplateNoDetail(TypedDict):
+    folder: str | None
+    id: str
+    is_precompiled_letter: bool
+    name: str
+    template_type: str
