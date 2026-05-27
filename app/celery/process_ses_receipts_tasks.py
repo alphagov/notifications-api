@@ -92,6 +92,7 @@ def process_ses_results(  # noqa: C901
             return
 
         if bounce_message:
+            bounce_message_bounce = bounce_message.get("bounce") or {}
             current_app.logger.info(
                 "SES bounce for notification ID %s",
                 notification.id,
@@ -100,6 +101,9 @@ def process_ses_results(  # noqa: C901
                     "bounce_message": json.dumps(bounce_message),
                     "bounced_at": delivery_dt,
                     "bounced_ago": (uniform_now - delivery_dt).total_seconds() if delivery_dt is not None else None,
+                    "bounce_message_type": bounce_message_bounce.get("bounceType"),
+                    "bounce_message_sub_type": bounce_message_bounce.get("bounceSubType"),
+                    "bounce_message_remote_mta_ip": bounce_message_bounce.get("remoteMtaIp"),
                     **common_extra,
                 },
             )
