@@ -136,7 +136,7 @@ def process_ses_results(  # noqa: C901
             provider_name="ses",
         )
 
-        check_and_queue_callback_task(notification)
+        check_and_queue_callback_task(notification, receipt_dt=receipt_dt)
 
         return True
 

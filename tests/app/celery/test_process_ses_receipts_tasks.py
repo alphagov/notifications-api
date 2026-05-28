@@ -108,7 +108,7 @@ def test_ses_callback_should_update_notification_status(
             },
         )
         updated_notification = Notification.query.get(notification.id)
-        send_mock.assert_called_once_with(updated_notification)
+        send_mock.assert_called_once_with(updated_notification, receipt_dt=datetime(2001, 1, 1, 12, 0, 2))
 
         record = next(r for r in caplog.records if "SES successful delivery" in r.msg)
         assert record.delivered_at == datetime(2001, 1, 1, 12, 0, 1)
