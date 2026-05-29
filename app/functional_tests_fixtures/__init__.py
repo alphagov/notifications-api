@@ -6,6 +6,7 @@ import boto3
 from flask import current_app
 from sqlalchemy.exc import NoResultFound
 
+from app import db
 from app.constants import (
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
@@ -67,6 +68,7 @@ from app.models import (
     InboundSms,
     Organisation,
     Permission,
+    ProtectedSenderId,
     Service,
     ServiceCallbackApi,
     ServiceEmailReplyTo,
@@ -405,6 +407,10 @@ def _create_db_objects(
 
     current_app.logger.info("--> Ensure dummy inbound SMS objects exist")
     _create_inbound_sms(service, 3)
+
+    current_app.logger.info("--> Ensure dummy protected sender ids exist")
+    _create_protected_sender_id("TEAM_DOVE")
+    _create_protected_sender_id("TEAM_PIGEON")
 
     functional_env_var_dict = {
         "FUNCTIONAL_TESTS_API_HOST": current_app.config["API_HOST_NAME"],
@@ -784,3 +790,11 @@ def _create_inbound_sms(service, count):
                 provider="mmg",
             )
         )
+
+
+def _create_protected_sender_id(sender_id):
+    exists_already = ProtectedSenderId.query.filter(ProtectedSenderId.sender_id == sender_id).scalar()
+    if exists_already is None:
+        protected_sender_id = ProtectedSenderId(sender_id=sender_id)
+        db.session.add(protected_sender_id)
+        db.session.commit()
