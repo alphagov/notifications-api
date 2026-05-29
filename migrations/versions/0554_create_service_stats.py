@@ -16,7 +16,7 @@ down_revision = "0553_notifications_id_status_idx"
 
 def upgrade():
     op.create_table(
-        "service_stats",
+        "ft_service_stats",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("service_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("template_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -32,38 +32,38 @@ def upgrade():
             "template_id",
             "notification_type",
             "notification_status",
-            name="uix_service_stats_dimensions",
+            name="uix_ft_service_stats_dimensions",
         ),
     )
 
     op.create_index(
-        "ix_svc_stats_svc_ntype_nstatus",
-        "service_stats",
+        "ix_ft_svc_stats_svc_ntype_nstatus",
+        "ft_service_stats",
         ["service_id", "notification_type", "notification_status"],
         unique=False,
     )
     op.create_index(
-        "ix_svc_stats_tmpl_ntype_nstatus",
-        "service_stats",
+        "ix_ft_svc_stats_tmpl_ntype_nstatus",
+        "ft_service_stats",
         ["template_id", "notification_type", "notification_status"],
         unique=False,
     )
     op.create_index(
-        "ix_service_stats_service_id_template_id",
-        "service_stats",
+        "ix_ft_service_stats_service_id_template_id",
+        "ft_service_stats",
         ["service_id", "template_id"],
         unique=False,
     )
 
 
 def downgrade():
-    op.drop_index("ix_service_stats_service_id_template_id", table_name="service_stats")
+    op.drop_index("ix_ft_service_stats_service_id_template_id", table_name="ft_service_stats")
     op.drop_index(
-        "ix_svc_stats_tmpl_ntype_nstatus",
-        table_name="service_stats",
+        "ix_ft_svc_stats_tmpl_ntype_nstatus",
+        table_name="ft_service_stats",
     )
     op.drop_index(
-        "ix_svc_stats_svc_ntype_nstatus",
-        table_name="service_stats",
+        "ix_ft_svc_stats_svc_ntype_nstatus",
+        table_name="ft_service_stats",
     )
-    op.drop_table("service_stats")
+    op.drop_table("ft_service_stats")
