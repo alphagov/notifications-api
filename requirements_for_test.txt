@@ -1127,7 +1127,7 @@ mypy-extensions==1.1.0 \
 notifications-python-client==10.0.1 \
     --hash=sha256:00d88eacb6fd6eb0467d7396a7e23677194cfebe0ebd88de2efa031fb51eb23f
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0a40a62a04c06e6f09ecea5d2c03daa9bd2f684d
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@79a5807653c2752e61db68e63acbc7bcab0d69c2
     # via -r requirements.txt
 opentelemetry-api==1.40.0 \
     --hash=sha256:159be641c0b04d11e9ecd576906462773eb97ae1b657730f0ecf64d32071569f \
