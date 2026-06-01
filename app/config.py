@@ -421,6 +421,11 @@ class Config:
                 "schedule": crontab(day_of_week="mon-fri", hour=7, minute=0),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "check-if-letters-in-technical-failure": {
+                "task": "check-if-letters-in-technical-failure",
+                "schedule": crontab(hour=7, minute=0),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             "check-if-letters-still-pending-virus-check-ten-minutely": {
                 "task": "check-if-letters-still-pending-virus-check",
                 "schedule": crontab(minute="*/10"),

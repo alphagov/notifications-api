@@ -27,6 +27,7 @@ from app.celery.scheduled_tasks import (
     check_for_low_available_inbound_sms_numbers,
     check_for_missing_rows_in_completed_jobs,
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
+    check_if_letters_in_technical_failure,
     check_if_letters_still_in_created,
     check_if_letters_still_pending_virus_check,
     check_job_status,
@@ -665,6 +666,57 @@ def test_check_if_letters_still_in_created_during_utc(sample_letter_template, ca
         ticket_type="task",
         notify_ticket_type=NotifyTicketType.TECHNICAL,
         notify_task_type="notify_task_letters_created_status",
+    )
+    mock_send_ticket_to_zendesk.assert_called_once()
+
+
+def test_check_if_letters_in_technical_failure(sample_letter_template, caplog, mocker):
+    mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
+    mock_send_ticket_to_zendesk = mocker.patch(
+        "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
+        autospec=True,
+    )
+
+    with caplog.at_level("ERROR"):
+        create_notification(
+            template=sample_letter_template,
+            status="technical-failure",
+            created_at=datetime.utcnow() - timedelta(hours=6),
+        )
+        create_notification(
+            template=sample_letter_template,
+            status="technical-failure",
+            created_at=datetime.utcnow() - timedelta(minutes=10),
+        )
+        create_notification(
+            template=sample_letter_template,
+            status="technical-failure",
+            created_at=datetime.utcnow() - timedelta(days=2),
+        )
+        create_notification(
+            template=sample_letter_template,
+            status="technical-failure",
+            created_at=datetime.utcnow() - timedelta(days=3),
+        )
+        create_notification(
+            template=sample_letter_template,
+            status="technical-failure",
+            created_at=datetime.utcnow() - timedelta(days=4),
+        )
+        check_if_letters_in_technical_failure()
+
+    assert "3 letter notifications have 'technical-failure' status" in caplog.messages
+    mock_create_ticket.assert_called_once_with(
+        ANY,
+        message=(
+            "3 letters have 'technical-failure' status. "
+            "Follow runbook to resolve: "
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#fixing-letters-in-technical-failure."
+        ),
+        subject="[test] Letters in 'technical-failure' status",
+        ticket_type="task",
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
+        notify_task_type="notify_task_letters_technical_failure_status",
     )
     mock_send_ticket_to_zendesk.assert_called_once()
 
