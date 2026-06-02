@@ -1127,7 +1127,7 @@ mypy-extensions==1.1.0 \
 notifications-python-client==10.0.1 \
     --hash=sha256:00d88eacb6fd6eb0467d7396a7e23677194cfebe0ebd88de2efa031fb51eb23f
     # via -r requirements.txt
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0a40a62a04c06e6f09ecea5d2c03daa9bd2f684d
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@b7b535c0cfb83e80f746568dbe43f8d7ac16f46f
     # via -r requirements.txt
 opentelemetry-api==1.40.0 \
     --hash=sha256:159be641c0b04d11e9ecd576906462773eb97ae1b657730f0ecf64d32071569f \
@@ -2050,12 +2050,6 @@ squawk-cli==2.43.0 \
     --hash=sha256:99321a4fb54fa51ada0817546fa693198fd4699ea902be80575a4643e2a33712 \
     --hash=sha256:ece91fa7caa3e2970e5d587493ab56f6013581d50148848a42fbfe9c6c3fe384
     # via -r requirements_for_test.in
-statsd==4.0.1 \
-    --hash=sha256:99763da81bfea8daf6b3d22d11aaccb01a8d0f52ea521daab37e758a4ca7d128 \
-    --hash=sha256:c2676519927f7afade3723aca9ca8ea986ef5b059556a980a867721ca69df093
-    # via
-    #   -r requirements.txt
-    #   notifications-utils
 trustme==1.2.1 \
     --hash=sha256:6528ba2bbc7f2db41f33825c8dd13e3e3eb9d334ba0f909713c8c3139f4ae47f \
     --hash=sha256:d768e5fc57c86dfc5ec9365102e9b092541cd6954b35d8c1eea01a84f35a762a

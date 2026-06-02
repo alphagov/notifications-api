@@ -26,10 +26,9 @@ class SmsClient(Client):
     Base Sms client for sending smss.
     """
 
-    def __init__(self, current_app, statsd_client):
+    def __init__(self, current_app):
         super().__init__()
         self.current_app = current_app
-        self.statsd_client = statsd_client
 
         self.requests_session = requests.Session()
         if platform.system() == "Linux":  # these are linux-specific socket options enabling tcp keepalive
@@ -54,9 +53,7 @@ class SmsClient(Client):
                     "provider_name": self.name,
                 },
             )
-            self.statsd_client.incr(f"clients.{self.name}.success")
         else:
-            self.statsd_client.incr(f"clients.{self.name}.error")
             self.current_app.logger.warning(
                 "Provider request for %s failed",
                 self.name,
@@ -76,7 +73,6 @@ class SmsClient(Client):
             raise e
         finally:
             elapsed_time = monotonic() - start_time
-            self.statsd_client.timing(f"clients.{self.name}.request-time", elapsed_time)
             self.current_app.logger.info(
                 "%s request for %s finished in %.4g",
                 self.name,

@@ -499,10 +499,6 @@ class Config:
     if os.getenv("CELERYD_PREFETCH_MULTIPLIER"):
         CELERY["worker_prefetch_multiplier"] = os.getenv("CELERYD_PREFETCH_MULTIPLIER")
 
-    STATSD_HOST = os.getenv("STATSD_HOST")
-    STATSD_PORT = 8125
-    STATSD_ENABLED = bool(STATSD_HOST)
-
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
 
     SIMULATED_EMAIL_ADDRESSES = (

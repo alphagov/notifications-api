@@ -18,7 +18,6 @@ def child_exit(server, worker):
 workers = int(os.getenv("GUNICORN_WORKERS", "4"))
 worker_class = "eventlet"
 worker_connections = int(os.getenv("GUNICORN_WORKER_CONNECTIONS", "8"))
-statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 keepalive = int(os.getenv("GUNICORN_KEEPALIVE", "0"))
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
 

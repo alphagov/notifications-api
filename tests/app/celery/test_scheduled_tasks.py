@@ -191,26 +191,12 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
         "app.celery.scheduled_tasks.get_slow_text_message_delivery_reports_by_provider",
         return_value=slow_delivery_reports,
     )
-    mock_statsd = mocker.patch("app.celery.scheduled_tasks.statsd_client.gauge")
     mock_check_slow_delivery = mocker.patch(
         "app.celery.scheduled_tasks._check_slow_text_message_delivery_reports_and_raise_error_if_needed"
     )
 
     with set_config(notify_api, "CHECK_SLOW_TEXT_MESSAGE_DELIVERY", slow_delivery_config_option):
         generate_sms_delivery_stats()
-
-    calls = [
-        call("slow-delivery.mmg.delivered-within-minutes.1.ratio", 0.4),
-        call("slow-delivery.mmg.delivered-within-minutes.5.ratio", 0.4),
-        call("slow-delivery.mmg.delivered-within-minutes.10.ratio", 0.4),
-        call("slow-delivery.firetext.delivered-within-minutes.1.ratio", 0.8),
-        call("slow-delivery.firetext.delivered-within-minutes.5.ratio", 0.8),
-        call("slow-delivery.firetext.delivered-within-minutes.10.ratio", 0.8),
-        call("slow-delivery.sms.delivered-within-minutes.1.ratio", 0.6),
-        call("slow-delivery.sms.delivered-within-minutes.5.ratio", 0.6),
-        call("slow-delivery.sms.delivered-within-minutes.10.ratio", 0.6),
-    ]
-    mock_statsd.assert_has_calls(calls, any_order=True)
 
     assert mock_check_slow_delivery.call_args_list == (
         [mocker.call(slow_delivery_reports)] if expect_check_slow_delivery else []

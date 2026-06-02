@@ -18,7 +18,7 @@ from redis.exceptions import LockError
 from sqlalchemy import and_, between, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db, dvla_client, notify_celery, redis_store, statsd_client, zendesk_client
+from app import db, dvla_client, notify_celery, redis_store, zendesk_client
 from app.aws import s3
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
@@ -239,19 +239,6 @@ def generate_sms_delivery_stats():
     for delivery_interval in (1, 5, 10):
         providers_slow_delivery_reports = get_slow_text_message_delivery_reports_by_provider(
             created_within_minutes=15, delivered_within_minutes=delivery_interval
-        )
-
-        for report in providers_slow_delivery_reports:
-            statsd_client.gauge(
-                f"slow-delivery.{report.provider}.delivered-within-minutes.{delivery_interval}.ratio", report.slow_ratio
-            )
-
-        total_notifications = sum(report.total_notifications for report in providers_slow_delivery_reports)
-        slow_notifications = sum(report.slow_notifications for report in providers_slow_delivery_reports)
-        ratio_slow_notifications = slow_notifications / total_notifications
-
-        statsd_client.gauge(
-            f"slow-delivery.sms.delivered-within-minutes.{delivery_interval}.ratio", ratio_slow_notifications
         )
 
         # For the 5-minute delivery interval, let's check the percentage of all text messages sent that were slow.

@@ -4,7 +4,6 @@ from datetime import datetime
 import pytest
 from freezegun import freeze_time
 
-from app import statsd_client
 from app.celery.process_sms_client_response_tasks import (
     process_sms_client_response,
 )
@@ -137,8 +136,6 @@ def test_sms_response_does_not_send_callback_if_notification_is_not_in_the_db(sa
 def test_process_sms_client_response_records_metrics(sample_notification, client, mocker):
     record_deliver_duration_mock = mocker.patch.object(_deliver_duration, "record")
     record_callback_duration_mock = mocker.patch.object(_callback_duration, "record")
-    mocker.patch("app.statsd_client.incr")
-    mocker.patch("app.statsd_client.timing_with_dates")
 
     sample_notification.status = "sending"
     sample_notification.created_at = datetime.utcnow()
@@ -150,11 +147,6 @@ def test_process_sms_client_response_records_metrics(sample_notification, client
         "Firetext",
         delivery_iso_timestamp="2001-01-01T12:00:42",
         receipt_iso_timestamp="2001-01-01T12:00:50",
-    )
-
-    statsd_client.incr.assert_any_call("callback.firetext.delivered")
-    statsd_client.timing_with_dates.assert_any_call(
-        "callback.firetext.delivered.elapsed-time", datetime.utcnow(), sample_notification.sent_at
     )
 
     record_deliver_duration_mock.assert_called_once_with(

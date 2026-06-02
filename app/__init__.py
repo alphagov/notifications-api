@@ -25,7 +25,6 @@ from notifications_utils import request_helper
 from notifications_utils.celery import NotifyCelery
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.signing.signing_client import Signing
-from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.eventlet import EventletTimeout
 from notifications_utils.local_vars import LazyLocalGetter
@@ -54,7 +53,6 @@ migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
 signing = Signing()
-statsd_client = StatsdClient()
 redis_store = RedisClient()
 metrics = GDSMetrics()
 
@@ -75,7 +73,7 @@ memo_resetters: list[Callable] = []
 _firetext_client_context_var: ContextVar[FiretextClient] = ContextVar("firetext_client")
 get_firetext_client: LazyLocalGetter[FiretextClient] = LazyLocalGetter(
     _firetext_client_context_var,
-    lambda: FiretextClient(current_app, statsd_client=statsd_client),
+    lambda: FiretextClient(current_app),
     expected_type=FiretextClient,
 )
 memo_resetters.append(lambda: get_firetext_client.clear())
@@ -84,7 +82,7 @@ firetext_client = LocalProxy(get_firetext_client)
 _mmg_client_context_var: ContextVar[MMGClient] = ContextVar("mmg_client")
 get_mmg_client: LazyLocalGetter[MMGClient] = LazyLocalGetter(
     _mmg_client_context_var,
-    lambda: MMGClient(current_app, statsd_client=statsd_client),
+    lambda: MMGClient(current_app),
     expected_type=MMGClient,
 )
 memo_resetters.append(lambda: get_mmg_client.clear())
@@ -93,7 +91,7 @@ mmg_client = LocalProxy(get_mmg_client)
 _aws_ses_client_context_var: ContextVar[AwsSesClient] = ContextVar("aws_ses_client")
 get_aws_ses_client: LazyLocalGetter[AwsSesClient] = LazyLocalGetter(
     _aws_ses_client_context_var,
-    lambda: AwsSesClient(current_app.config["AWS_REGION"], statsd_client=statsd_client),
+    lambda: AwsSesClient(current_app.config["AWS_REGION"]),
     expected_type=AwsSesClient,
 )
 memo_resetters.append(lambda: get_aws_ses_client.clear())
@@ -104,7 +102,6 @@ get_aws_ses_stub_client: LazyLocalGetter[AwsSesStubClient] = LazyLocalGetter(
     _aws_ses_stub_client_context_var,
     lambda: AwsSesStubClient(
         current_app.config["AWS_REGION"],
-        statsd_client=statsd_client,
         stub_url=current_app.config["SES_STUB_URL"],
     ),
     expected_type=AwsSesStubClient,
@@ -140,7 +137,7 @@ notification_provider_clients = LocalProxy(get_notification_provider_clients)
 _dvla_client_context_var: ContextVar[DVLAClient] = ContextVar("dvla_client")
 get_dvla_client: LazyLocalGetter[DVLAClient] = LazyLocalGetter(
     _dvla_client_context_var,
-    lambda: DVLAClient(current_app, statsd_client=statsd_client),
+    lambda: DVLAClient(current_app),
 )
 memo_resetters.append(lambda: get_dvla_client.clear())
 dvla_client = LocalProxy(get_dvla_client)
@@ -181,8 +178,7 @@ def create_app(application):
     db.init_app(application)
     migrate.init_app(application, db=db)
     ma.init_app(application)
-    statsd_client.init_app(application)
-    utils_logging.init_app(application, statsd_client)
+    utils_logging.init_app(application)
 
     notify_celery.init_app(application)
     signing.init_app(application)

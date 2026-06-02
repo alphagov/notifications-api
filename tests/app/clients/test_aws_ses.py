@@ -60,7 +60,6 @@ def test_should_be_none_if_unrecognised_status_code():
 )
 def test_send_email_handles_reply_to_address(notify_api, mocker, reply_to_address, expected_value):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
 
     with notify_api.app_context():
         aws_ses_client.send_email(
@@ -80,7 +79,6 @@ def test_send_email_handles_reply_to_address(notify_api, mocker, reply_to_addres
 
 def test_send_email_handles_punycode_to_address(notify_api, mocker):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
 
     with notify_api.app_context():
         aws_ses_client.send_email(
@@ -103,7 +101,6 @@ def test_send_email_handles_punycode_to_address(notify_api, mocker):
 
 def test_send_email_sends_content_correctly(notify_api, mocker):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
 
     mock_subject = Mock()
     mock_body = Mock()
@@ -136,12 +133,10 @@ def test_send_email_sends_content_correctly(notify_api, mocker):
 
 def test_send_email_raises_invalid_parameter_value_error_as_EmailClientNonRetryableException(mocker):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
     error_response = {
         "Error": {"Code": "InvalidParameterValue", "Message": "some error message from amazon", "Type": "Sender"}
     }
     boto_mock.send_email.side_effect = botocore.exceptions.ClientError(error_response, "opname")
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
 
     with pytest.raises(EmailClientNonRetryableException) as excinfo:
         aws_ses_client.send_email(
@@ -159,7 +154,6 @@ def test_send_email_raises_invalid_parameter_value_error_as_EmailClientNonRetrya
 
 def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRateException(mocker):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
     error_response = {
         "Error": {"Code": "TooManyRequestsException", "Message": "Maximum sending rate exceeded.", "Type": "Sender"}
     }
@@ -179,7 +173,6 @@ def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRat
 
 def test_send_email_does_not_raise_AwsSesClientThrottlingSendRateException_if_non_send_rate_throttling(mocker):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
     error_response = {
         "Error": {"Code": "TooManyRequestsException", "Message": "Daily message quota exceeded", "Type": "Sender"}
     }
@@ -199,12 +192,10 @@ def test_send_email_does_not_raise_AwsSesClientThrottlingSendRateException_if_no
 
 def test_send_email_raises_other_errs_as_AwsSesClientException(notify_api, mocker):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
     error_response = {
         "Error": {"Code": "ServiceUnavailable", "Message": "some error message from amazon", "Type": "Sender"}
     }
     boto_mock.send_email.side_effect = botocore.exceptions.ClientError(error_response, "opname")
-    mocker.patch.object(aws_ses_client, "statsd_client", create=True)
 
     with pytest.raises(AwsSesClientException) as excinfo:
         aws_ses_client.send_email(
