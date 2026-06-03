@@ -1,6 +1,7 @@
 import json
 import logging
 from contextvars import ContextVar
+from datetime import datetime
 
 import requests
 from flask import current_app
@@ -9,9 +10,11 @@ from werkzeug.local import LocalProxy
 
 from app import memo_resetters, notify_celery, signing
 from app.config import QueueNames
+from app.constants import ServiceCallbackTypes
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.returned_letters_dao import fetch_returned_letter_callback_data_dao
 from app.dao.service_callback_api_dao import get_service_callback_api_by_callback_type
+from app.otel_metrics.service_callback import record_service_callback_forward_duration
 from app.utils import DATETIME_FORMAT
 
 # thread-local copies of persistent requests.Session
@@ -54,7 +57,9 @@ def send_returned_letter_to_service(self, encoded_returned_letter):
 @notify_celery.task(
     bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300, early_log_level=logging.DEBUG
 )
-def send_delivery_status_to_service(self, notification_id, encoded_status_update):
+def send_delivery_status_to_service(
+    self, notification_id, encoded_status_update, *, receipt_iso_timestamp: str | None = None
+):
     status_update = signing.decode(encoded_status_update)
 
     data = {
@@ -70,14 +75,25 @@ def send_delivery_status_to_service(self, notification_id, encoded_status_update
         "template_version": status_update["template_version"],
     }
 
-    _send_data_to_service_callback_api(
-        self,
-        data,
-        status_update["service_callback_api_url"],
-        status_update["service_callback_api_bearer_token"],
-        data["id"],
-        {"notification_id": data["id"]},
-    )
+    start_dt = datetime.utcnow()
+
+    try:
+        _send_data_to_service_callback_api(
+            self,
+            data,
+            status_update["service_callback_api_url"],
+            status_update["service_callback_api_bearer_token"],
+            data["id"],
+            {"notification_id": data["id"]},
+        )
+    finally:
+        if receipt_iso_timestamp:
+            record_service_callback_forward_duration(
+                (start_dt - datetime.fromisoformat(receipt_iso_timestamp)).total_seconds(),
+                str(ServiceCallbackTypes.delivery_status),
+                self.request.retries,
+                status_update["notification_type"],
+            )
 
 
 @notify_celery.task(bind=True, name="send-complaint", max_retries=5, default_retry_delay=300)

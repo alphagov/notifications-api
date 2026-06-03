@@ -1,5 +1,6 @@
 import json
 import uuid
+from contextlib import nullcontext
 from datetime import datetime, timedelta
 from unittest import mock
 
@@ -23,6 +24,7 @@ from app.constants import (
     NOTIFICATION_RETURNED_LETTER,
     ServiceCallbackTypes,
 )
+from app.otel_metrics.service_callback import _service_callback_forward_duration
 from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_api_key,
@@ -129,28 +131,44 @@ def _set_up_test_data_for_returned_letter_callback(template):
     return callback_api, job, notification_1
 
 
+@freeze_time("2017-06-20T12:34:56")
 @pytest.mark.parametrize("notification_type", ["email", "sms"])
-def test_send_delivery_status_to_service_sends_callback_to_service(notify_db_session, notification_type, mocker):
+@pytest.mark.parametrize("receipt_iso_timestamp", ["2017-06-20T12:34:55", None])
+@pytest.mark.parametrize("callback_successful", [False, True])
+def test_send_delivery_status_to_service_sends_callback_to_service(
+    notify_db_session, notification_type, receipt_iso_timestamp, callback_successful, mocker
+):
     callback_api, template = _set_up_test_data(notification_type, "delivery_status")
-    datestr = datetime(2017, 6, 20)
+    now = datetime.now()
 
     notification = create_notification(
-        template=template, created_at=datestr, updated_at=datestr, sent_at=datestr, status="sent"
+        template=template,
+        created_at=now - timedelta(seconds=5),
+        sent_at=now - timedelta(seconds=4),
+        updated_at=now - timedelta(seconds=2),
+        status="sent",
     )
     encoded_status_update = _set_up_data_for_status_update(callback_api, notification)
 
     send_callback_mock = mocker.patch("app.celery.service_callback_tasks._send_data_to_service_callback_api")
+    if not callback_successful:
+        send_callback_mock.side_effect = ValueError
 
-    send_delivery_status_to_service(notification.id, encoded_status_update=encoded_status_update)
+    service_callback_forward_duration_record_mock = mocker.patch.object(_service_callback_forward_duration, "record")
+
+    with nullcontext() if callback_successful else pytest.raises(ValueError):
+        send_delivery_status_to_service(
+            notification.id, encoded_status_update=encoded_status_update, receipt_iso_timestamp=receipt_iso_timestamp
+        )
 
     expected_data = {
         "id": str(notification.id),
         "reference": notification.client_reference,
         "to": notification.to,
         "status": notification.status,
-        "created_at": datestr.strftime(DATETIME_FORMAT),
-        "completed_at": datestr.strftime(DATETIME_FORMAT),
-        "sent_at": datestr.strftime(DATETIME_FORMAT),
+        "created_at": (now - timedelta(seconds=5)).strftime(DATETIME_FORMAT),
+        "sent_at": (now - timedelta(seconds=4)).strftime(DATETIME_FORMAT),
+        "completed_at": (now - timedelta(seconds=2)).strftime(DATETIME_FORMAT),
         "notification_type": notification_type,
         "template_id": str(template.id),
         "template_version": 1,
@@ -163,6 +181,21 @@ def test_send_delivery_status_to_service_sends_callback_to_service(notify_db_ses
         callback_api.bearer_token,
         expected_data["id"],
         {"notification_id": expected_data["id"]},
+    )
+    assert service_callback_forward_duration_record_mock.mock_calls == (
+        []
+        if receipt_iso_timestamp is None
+        else [
+            mocker.call(
+                1.0,
+                {
+                    "callback.type": "delivery_status",
+                    "callback.attempt": 0,
+                    "notification.type": notification_type,
+                }
+                | ({} if callback_successful else {"error.type": "builtins.ValueError"}),
+            ),
+        ]
     )
 
 
