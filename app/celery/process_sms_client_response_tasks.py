@@ -158,7 +158,7 @@ def _process_for_status(
         notifications_dao.dao_update_notification(notification)
 
     if notification_status != NOTIFICATION_PENDING:
-        check_and_queue_callback_task(notification)
+        check_and_queue_callback_task(notification, receipt_dt=receipt_dt)
         if notification.international:
             record_international_sms(
                 1, notification_status=notification_status, sms_country_code=notification.phone_prefix

@@ -206,7 +206,7 @@ def test_outcome_statistics_called_for_successful_callback(sample_notification, 
     reference = str(sample_notification.id)
 
     process_sms_client_response("3", reference, "MMG")
-    send_mock.assert_called_once_with(sample_notification)
+    send_mock.assert_called_once_with(sample_notification, receipt_dt=None)
 
 
 def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(sample_notification):
