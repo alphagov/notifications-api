@@ -1,7 +1,7 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements.in
 
-celery[sqs]==5.6.0
+celery[sqs]==5.6.3
 # Pin kombu to merge of PR #2342 (SQS fair queue / MessageGroupId support) until kombu 5.7 is released
 kombu @ git+https://github.com/celery/kombu.git@860e40a6c904c4d8551577d9f4e8c00f03b6e06c
 
@@ -11,7 +11,7 @@ Flask-Migrate~=4.1
 flask-sqlalchemy~=3.1
 click-datetime~=0.2
 gunicorn[eventlet]~=25.1
-eventlet~=0.40.4
+eventlet~=0.41.0
 jsonschema[format]~=4.23
 marshmallow-sqlalchemy~=1.4
 marshmallow~=4.2
@@ -22,10 +22,10 @@ pyorc~=0.10
 # temporary for debug output
 psutil~=6.0
 
-notifications-python-client~=10.0
+notifications-python-client~=12.1
 
 # Run `make bump-utils` to update to the latest version
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@117.0.1
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@117.0.2
 
 git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
 
