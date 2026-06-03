@@ -843,8 +843,8 @@ mistune==0.8.4 \
     --hash=sha256:59a3429db53c50b5c6bcc8a07f8848cb00d7dc8bdb431a4ab41920d201d4756e \
     --hash=sha256:88a1051873018da288eee8538d476dffe1262495144b33ecb586c4ab266bb8d4
     # via notifications-utils
-notifications-python-client==10.0.1 \
-    --hash=sha256:00d88eacb6fd6eb0467d7396a7e23677194cfebe0ebd88de2efa031fb51eb23f
+notifications-python-client==12.1.0 \
+    --hash=sha256:bc44987acbb72de4cded700447d0d246c020dcd0f0311ff2ca884ce1c4001b76
     # via -r requirements.in
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@3f3fadcf89e026154b99c466727eada7a26307b0
     # via -r requirements.in

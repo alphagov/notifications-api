@@ -1206,8 +1206,8 @@ mypy-extensions==1.1.0 \
     --hash=sha256:1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505 \
     --hash=sha256:52e68efc3284861e772bbcd66823fde5ae21fd2fdb51c62a211403730b916558
     # via mypy
-notifications-python-client==10.0.1 \
-    --hash=sha256:00d88eacb6fd6eb0467d7396a7e23677194cfebe0ebd88de2efa031fb51eb23f
+notifications-python-client==12.1.0 \
+    --hash=sha256:bc44987acbb72de4cded700447d0d246c020dcd0f0311ff2ca884ce1c4001b76
     # via -r requirements.txt
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@3f3fadcf89e026154b99c466727eada7a26307b0
     # via -r requirements.txt
