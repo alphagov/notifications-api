@@ -71,6 +71,7 @@ from app.dao.provider_details_dao import (
     dao_adjust_provider_priority_back_to_resting_points,
     dao_reduce_sms_provider_priority,
 )
+from app.dao.replication_slot_changes_dao import dao_process_replication_slot_changes
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_find_services_sending_to_tv_numbers,
@@ -821,3 +822,8 @@ def populate_annual_billing(year, missing_services_only):
 def run_populate_annual_billing():
     year = get_current_financial_year_start_year()
     populate_annual_billing(year=year, missing_services_only=True)
+
+
+@notify_celery.task(name="process-replication-slot-changes")
+def process_replication_slot_changes():
+    dao_process_replication_slot_changes()
