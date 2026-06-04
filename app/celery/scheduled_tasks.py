@@ -59,6 +59,7 @@ from app.dao.jobs_dao import (
 )
 from app.dao.notifications_dao import (
     SlowProviderDeliveryReport,
+    dao_letters_in_technical_failure,
     dao_old_letters_with_created_status,
     dao_precompiled_letters_still_pending_virus_check,
     get_slow_text_message_delivery_reports_by_provider,
@@ -411,6 +412,36 @@ def check_if_letters_still_in_created():
             current_app.logger.error(
                 "%(notification_count)s letter notifications created before 17:30 yesterday "
                 "still have 'created' status",
+                extra,
+                extra=extra,
+            )
+
+
+@notify_celery.task(name="check-if-letters-in-technical-failure")
+def check_if_letters_in_technical_failure():
+    technical_failed_letters = dao_letters_in_technical_failure(session=db.session_bulk, retry_attempts=2)
+
+    if len(technical_failed_letters) > 0:
+        msg = (
+            f"{len(technical_failed_letters)} letters have 'technical-failure' status. "
+            "Follow runbook to resolve: "
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook"
+            "#fixing-letters-in-technical-failure."
+        )
+
+        if current_app.should_send_zendesk_alerts:
+            ticket = NotifySupportTicket(
+                subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters in 'technical-failure' status",
+                message=msg,
+                ticket_type=NotifySupportTicket.TYPE_TASK,
+                notify_ticket_type=NotifyTicketType.TECHNICAL,
+                notify_task_type="notify_task_letters_technical_failure_status",
+            )
+            zendesk_client.send_ticket_to_zendesk(ticket)
+
+            extra = {"notification_count": len(technical_failed_letters)}
+            current_app.logger.error(
+                "%(notification_count)s letter notifications have 'technical-failure' status",
                 extra,
                 extra=extra,
             )

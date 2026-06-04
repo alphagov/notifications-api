@@ -41,6 +41,7 @@ from app.constants import (
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
     NOTIFICATION_STATUS_TYPES_DEPRECATED,
+    NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
 )
@@ -942,6 +943,23 @@ def dao_old_letters_with_created_status():
         .all()
     )
     return notifications
+
+
+@retryable_query()
+def dao_letters_in_technical_failure(session: Session | scoped_session = db.session):
+    start_dt = datetime.utcnow() - timedelta(days=3)
+    end_dt = datetime.utcnow()
+    return (
+        session.query(Notification)
+        .filter(
+            Notification.notification_type == LETTER_TYPE,
+            Notification.status == NOTIFICATION_TECHNICAL_FAILURE,
+            Notification.created_at >= start_dt,
+            Notification.created_at < end_dt,
+        )
+        .order_by(Notification.created_at)
+        .all()
+    )
 
 
 @retryable_query()

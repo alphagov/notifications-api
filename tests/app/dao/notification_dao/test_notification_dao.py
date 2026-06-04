@@ -34,6 +34,7 @@ from app.dao.notifications_dao import (
     dao_get_notification_or_history_by_reference,
     dao_get_notifications_by_recipient_or_reference,
     dao_get_notifications_processing_time_stats,
+    dao_letters_in_technical_failure,
     dao_record_letter_despatched_on_by_id,
     dao_timeout_notifications,
     dao_update_notification,
@@ -2166,3 +2167,32 @@ def test_fetch_service_data_retention_by_for_all_services_by_notification_type_u
         get_service_ids_with_notifications_before("email", datetime.utcnow(), session=session)
 
     assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+
+
+@pytest.mark.parametrize(
+    "session,expected_bind_key",
+    (
+        (db.session, None),
+        (db.session_bulk, "bulk"),
+    ),
+    ids=("default", "bulk"),
+)
+def test_dao_letters_in_technical_failure(sample_letter_template, sample_email_template, session, expected_bind_key):
+
+    letter_tf_1 = create_notification(template=sample_letter_template, status="technical-failure")
+    letter_tf_2 = create_notification(template=sample_letter_template, status="technical-failure")
+
+    create_notification(template=sample_letter_template, status="delivered")
+    create_notification(template=sample_letter_template, status="created")
+
+    create_notification(template=sample_email_template, status="technical-failure")
+
+    results = []
+
+    with QueryRecorder() as query_recorder:
+        results = dao_letters_in_technical_failure(session=session)
+
+    assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
+
+    assert len(results) == 2
+    assert {n.id for n in results} == {letter_tf_1.id, letter_tf_2.id}
