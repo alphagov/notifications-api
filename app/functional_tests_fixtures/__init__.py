@@ -7,7 +7,7 @@ from flask import current_app
 from itsdangerous.exc import BadSignature
 from sqlalchemy.exc import NoResultFound
 
-from app import db
+from app import db, reset_memos
 from app.constants import (
     EDIT_FOLDER_PERMISSIONS,
     EMAIL_AUTH,
@@ -77,6 +77,12 @@ from app.models import (
     User,
 )
 from app.schemas import api_key_schema, template_schema
+from app.serialised_models import (
+    SerialisedAPIKeyCollection,
+    SerialisedProviders,
+    SerialisedService,
+    SerialisedTemplate,
+)
 
 
 def _upload_env_to_ssm(ssm_upload_path, env_config, description):
@@ -184,6 +190,16 @@ def _rename_sanitised_fixture_service(service_name):
     current_app.logger.info("Renamed sanitised fixture service '%s' to '%s'", old_name, candidate.name)
 
 
+def _clear_sanitised_fixture_caches():
+    # Sanitisation rotates canonical fixture entities; clear short-lived memoised lookups so they repopulate cleanly.
+    reset_memos()
+    SerialisedTemplate.from_id_and_service_id.cache_clear()
+    SerialisedTemplate.from_id_service_id_and_version.cache_clear()
+    SerialisedService.from_id.cache_clear()
+    SerialisedAPIKeyCollection.from_service_id.cache_clear()
+    SerialisedProviders.from_notification_type.cache_clear()
+
+
 """
 This function creates a set of database fixtures that functional tests use to run against.
 
@@ -275,6 +291,7 @@ def _create_db_objects(
     _rename_sanitised_fixture_org(org_name)
     _rename_sanitised_fixture_service(functional_service_name)
     _rename_sanitised_fixture_service(performance_service_name)
+    _clear_sanitised_fixture_caches()
 
     current_app.logger.info("--> Ensure organisation exists")
     org = _create_organiation(email_domain, org_name)

@@ -287,6 +287,36 @@ def test_create_db_objects_renames_sanitised_services_and_reclaims_inbound_numbe
     assert str(inbound_sender.service_id) == str(recreated_functional_service.id)
 
 
+def test_create_db_objects_clears_caches_after_sanitised_fixture_renames(notify_api, notify_service, mocker):
+    clear_caches_mock = mocker.patch("app.functional_tests_fixtures._clear_sanitised_fixture_caches")
+
+    with set_config_values(
+        notify_api,
+        {
+            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
+            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
+            "ADMIN_BASE_URL": "http://localhost:6012",
+            "API_HOST_NAME": "http://localhost:6011",
+        },
+    ):
+        _create_db_objects(
+            "fake password",
+            "test_request_bin_token",
+            "dev-env",
+            "notify-tests-preview",
+            "digital.cabinet-office.gov.uk",
+            "govuk_notify",
+            "functional_tests_service_live_key",
+            "functional_tests_service_test_key",
+            str(notify_service.id),
+            "Functional Tests Org",
+            "07700900500",
+        )
+
+    clear_caches_mock.assert_called_once_with()
+
+
 def test_create_api_key_repairs_when_existing_key_secret_is_invalid(notify_service, sample_user):
     broken_key = create_api_key(notify_service, key_name="functional_tests_service_live_key")
     broken_key._secret = "broken-signature-value"
