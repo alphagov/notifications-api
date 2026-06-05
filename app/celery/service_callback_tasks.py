@@ -120,7 +120,7 @@ def send_complaint_to_service(self, complaint_data):
 
 @notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
 def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
-    inbound_api = get_service_callback_api_by_callback_type(service_id, "inbound_sms")
+    inbound_api = get_service_callback_api_by_callback_type(service_id, str(ServiceCallbackTypes.inbound_sms))
 
     if not inbound_api:
         # No API data has been set for this service
@@ -136,9 +136,18 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT),
     }
 
-    _send_data_to_service_callback_api(
-        self, data, inbound_api.url, inbound_api.bearer_token, data["id"], {"inbound_sms_id": data["id"]}
-    )
+    start_dt = datetime.utcnow()
+
+    try:
+        _send_data_to_service_callback_api(
+            self, data, inbound_api.url, inbound_api.bearer_token, data["id"], {"inbound_sms_id": data["id"]}
+        )
+    finally:
+        record_service_callback_forward_duration(
+            (start_dt - inbound_sms.created_at).total_seconds(),
+            str(ServiceCallbackTypes.inbound_sms),
+            self.request.retries,
+        )
 
 
 def _send_data_to_service_callback_api(self, data, service_callback_url, token, id_display, log_extra):
