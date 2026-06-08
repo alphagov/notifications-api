@@ -199,6 +199,7 @@ def create_service_with_defined_sms_sender(sms_sender_value="1234567", *args, **
 def create_template_email_file(
     template_id,
     created_by_id,
+    created_at=None,
     filename="example.pdf",
     link_text="follow this link",
     retention_period=90,
@@ -212,6 +213,7 @@ def create_template_email_file(
         "validate_users_email": validate_users_email,
         "template_id": template_id,
         "created_by_id": created_by_id,
+        "created_at": created_at if created_at is not None else datetime.utcnow(),
         "pending": pending,
     }
     template_email_file = TemplateEmailFile(**data)
