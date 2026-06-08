@@ -143,3 +143,14 @@ def dao_archive_template_email_file(file_to_archive, archived_by_id, template_ve
         file_to_archive.archived_by_id = archived_by_id
         file_to_archive.template_version = template_version
         db.session.add(file_to_archive)
+
+
+def dao_archive_pending_files():
+    files_in_pending = TemplateEmailFile.query.filter(
+        TemplateEmailFile.pending,
+        datetime.datetime.utcnow() - TemplateEmailFile.created_at
+        > datetime.timedelta(hours=current_app.config.get("TEMPLATE_EMAIL_FILE_ARCHIVE_PERIOD_IN_HOURS")),
+    ).all()
+    for file in files_in_pending:
+        template = Template.query.get(file.template_id)
+        dao_archive_template_email_file(file, archived_by_id=file.created_by_id, template_version=template.version)
