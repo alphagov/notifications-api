@@ -9,6 +9,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import db
 from app.constants import EMAIL_AUTH_TYPE, OrganisationUserPermissionTypes
 from app.dao.date_util import parse_date_range
+from app.dao.organisation_dao import dao_get_organisation_domains
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
 from app.dao.service_user_dao import (
     dao_get_service_user,
@@ -878,4 +879,4 @@ def test_get_users_list_multiple_filters(
 def test_is_gov_user(notify_db_session, email_address):
     create_organisation(domains=["other.com"])
 
-    assert is_gov_user(email_address) is True
+    assert is_gov_user(email_address, dao_get_organisation_domains()) is True

@@ -199,7 +199,10 @@ def dao_archive_user(user):
 
 
 def _count_gov_users_with_manage_settings(service):
-    active_government_users = [u for u in service.users if u.state == "active" and is_gov_user(u.email_address)]
+    organisation_domains = dao_get_organisation_domains()
+    active_government_users = [
+        u for u in service.users if u.state == "active" and is_gov_user(u.email_address, organisation_domains)
+    ]
 
     return sum(MANAGE_SETTINGS in u.get_permissions(service_id=service.id) for u in active_government_users)
 
@@ -227,13 +230,15 @@ def users_permissions_can_be_changed(user, service, new_permissions):
         return True
 
     # If the user is not a government user, it's always safe
-    if not is_gov_user(user.email_address):
+    if not is_gov_user(user.email_address, dao_get_organisation_domains()):
         return True
 
     return _can_remove_gov_user_with_manage_settings(service)
 
 
-def user_can_be_removed_from_service(user, service):
+def user_can_be_removed_from_service(user, service, organisation_domains=None):
+    if not organisation_domains:
+        organisation_domains = dao_get_organisation_domains()
     active_users = [u for u in service.users if u.state == "active"]
 
     # Must always leave at least one active user
@@ -245,14 +250,19 @@ def user_can_be_removed_from_service(user, service):
         return True
 
     # Removing users who are not government users is always safe
-    if not is_gov_user(user.email_address):
+    if not is_gov_user(user.email_address, organisation_domains):
         return True
 
     return _can_remove_gov_user_with_manage_settings(service)
 
 
 def user_can_be_archived(user):
-    return all(user_can_be_removed_from_service(user, service) for service in user.services if service.active)
+    organisation_domains = dao_get_organisation_domains()
+    return all(
+        user_can_be_removed_from_service(user, service, organisation_domains)
+        for service in user.services
+        if service.active
+    )
 
 
 def get_users_for_research(start_date: date, end_date: date) -> list[User]:
@@ -320,7 +330,7 @@ def unsubscribe_user_from_notify_services(service_id, email_address):
     return True
 
 
-def is_gov_user(email_address):
+def is_gov_user(email_address, organisation_domains):
     return email_address_ends_with(email_address, GOVERNMENT_EMAIL_DOMAIN_NAMES) or email_address_ends_with(
-        email_address, dao_get_organisation_domains()
+        email_address, organisation_domains
     )

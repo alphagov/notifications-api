@@ -1,5 +1,3 @@
-from itertools import chain
-
 from flask import current_app
 from sqlalchemy.orm import Session, scoped_session
 from sqlalchemy.sql.expression import func
@@ -28,9 +26,7 @@ def dao_get_organisations():
 
 
 def dao_get_organisation_domains():
-    organisations = dao_get_organisations()
-
-    return [domain.domain for domain in chain.from_iterable(org.domains for org in organisations)]
+    return db.session.scalars(db.session.query(Domain.domain)).all()
 
 
 def dao_count_organisations_with_live_services():
