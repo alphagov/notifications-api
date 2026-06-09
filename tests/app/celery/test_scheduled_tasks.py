@@ -110,9 +110,7 @@ def test_should_update_scheduled_jobs_and_put_on_queue(mock_celery_task, sample_
 
 
 @pytest.mark.parametrize("pending_expirary_exceeded", (True, False))
-def test_archive_pending_files_only_scopes_stale_files(
-    sample_email_template, pending_expirary_exceeded
-):
+def test_archive_pending_files_only_scopes_stale_files(sample_email_template, pending_expirary_exceeded):
     with freeze_time("2016-01-01 01:00:00.000000"):
         pending_file = create_template_email_file(
             template_id=sample_email_template.id,

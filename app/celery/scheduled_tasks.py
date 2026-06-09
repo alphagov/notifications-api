@@ -112,8 +112,11 @@ def run_scheduled_jobs():
 @notify_celery.task(name="archive-pending-files")
 def archive_pending_files():
     try:
-        dao_archive_pending_files()
-        current_app.logger.info("Archived files created more than 24 hours ago that are still in pending")
+        number_of_files_archived = dao_archive_pending_files()
+        current_app.logger.info(
+            "Archived %(number_of_files_archived) files created more than 24 hours ago that are still in pending",
+            extra={"number_of_files_archived": number_of_files_archived},
+        )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to archive pending files")
 

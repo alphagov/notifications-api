@@ -155,3 +155,4 @@ def dao_archive_pending_files():
     ).all()
     for file in files_in_pending:
         dao_archive_template_email_file(file, archived_by_id=file.created_by_id)
+    return len(files_in_pending)
