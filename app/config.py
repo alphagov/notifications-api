@@ -180,7 +180,7 @@ class Config:
     ###########################
 
     NOTIFY_ENVIRONMENT = os.environ.get("NOTIFY_ENVIRONMENT", "development")
-    AWS_REGION = "eu-west-1"
+    AWS_REGION = "eu-west-2"
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = "api"
 
@@ -269,7 +269,7 @@ class Config:
 
     AWS_ACCOUNT_ID = os.environ.get("AWS_ACCOUNT_ID", "123456789012")
     CELERY = {
-        "broker_url": "https://sqs.eu-west-1.amazonaws.com",
+        "broker_url": "https://sqs.eu-west-2.amazonaws.com",
         "broker_transport": "sqs",
         "task_ignore_result": True,
         "broker_transport_options": {

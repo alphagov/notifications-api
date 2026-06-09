@@ -34,7 +34,7 @@ def test_queue_names_all_queues_correct():
 
 def test_predefined_queues():
     prefix = "test-prefix-"
-    aws_region = "eu-west-1"
+    aws_region = "eu-west-2"
     aws_account_id = "123456789012"
 
     class_queues = [

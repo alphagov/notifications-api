@@ -185,8 +185,8 @@ def test_function_test_fixtures_uploads_to_ssm(notify_api, os_environ, mocker):
 
     os.environ["SSM_UPLOAD_PATH"] = "/test/ssm/environment"
     # AWS are changing from AWS_DEFAULT_REGION to AWS_REGION for v2 clients. Set both for now.
-    os.environ["AWS_REGION"] = "eu-west-1"
-    os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
+    os.environ["AWS_REGION"] = "eu-west-2"
+    os.environ["AWS_DEFAULT_REGION"] = "eu-west-2"
 
     apply_fixtures()
 
