@@ -113,7 +113,7 @@ def run_scheduled_jobs():
 def archive_pending_files():
     try:
         dao_archive_pending_files()
-        current_app.logger.info("Archiving files created more than 24 hours ago that are still in pending")
+        current_app.logger.info("Archived files created more than 24 hours ago that are still in pending")
     except SQLAlchemyError:
         current_app.logger.exception("Failed to archive pending files")
 
