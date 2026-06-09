@@ -137,7 +137,9 @@ def dao_make_pending_template_email_file_live(template_email_file: TemplateEmail
 @version_class(
     VersionOptions(TemplateEmailFile, history_class=TemplateEmailFileHistory),
 )
-def dao_archive_template_email_file(file_to_archive, archived_by_id, template_version):
+def dao_archive_template_email_file(file_to_archive, archived_by_id, template_version=None):
+    if not template_version:
+        template_version = Template.query.get(file_to_archive.template_id).version
     if not file_to_archive.archived_at:
         file_to_archive.archived_at = datetime.datetime.utcnow()
         file_to_archive.archived_by_id = archived_by_id
@@ -152,5 +154,4 @@ def dao_archive_pending_files():
         > datetime.timedelta(hours=current_app.config.get("TEMPLATE_EMAIL_FILE_ARCHIVE_PERIOD_IN_HOURS")),
     ).all()
     for file in files_in_pending:
-        template = Template.query.get(file.template_id)
-        dao_archive_template_email_file(file, archived_by_id=file.created_by_id, template_version=template.version)
+        dao_archive_template_email_file(file, archived_by_id=file.created_by_id)
