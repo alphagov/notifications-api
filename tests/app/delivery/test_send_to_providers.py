@@ -338,6 +338,39 @@ def test_should_send_sms_with_downgraded_content(notify_db_session, mocker):
     )
 
 
+def test_should_log_sms_sent_with_downgraded_content(mocker, caplog):
+    service = create_service(service_name="Unicode test")
+    template = create_template(service, content="Hello ((name))")
+    db_notification = create_notification(
+        template=template,
+        personalisation={
+            " Name": (
+                "Ŵ"  # Welsh, sent as-is
+                "Ł"  # Polish Ł, gets downgraded to L
+                "🍍🍍🍌🥝"  # Other non-GSM characters, replaced with ? and logged
+            )
+        },
+    )
+
+    mocker.patch("app.mmg_client.send_sms")
+
+    send_to_providers.send_sms_to_provider(db_notification)
+
+    mmg_client.send_sms.assert_called_once_with(
+        to=ANY,
+        content="Unicode test: Hello ŴL????",
+        reference=ANY,
+        sender=ANY,
+        international=False,
+    )
+
+    assert (
+        "test",
+        30,
+        f"3 character(s) replaced with ? in SMS content for notification {db_notification.id}",
+    ) in caplog.record_tuples
+
+
 def test_send_sms_should_use_service_sms_sender(sample_service, sample_template, mocker):
     mocker.patch("app.mmg_client.send_sms")
 

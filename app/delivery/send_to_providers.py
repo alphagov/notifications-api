@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from urllib import parse
 
 from flask import current_app
+from notifications_utils.sanitise_text import SanitiseSMS
 from notifications_utils.template import (
     HTMLEmailTemplate,
     PlainTextEmailTemplate,
@@ -58,6 +59,14 @@ def send_sms_to_provider(notification: Notification) -> None:
             prefix=service.name,
             show_prefix=service.prefix_sms,
         )
+
+        if non_compatible_characters := SanitiseSMS.get_non_compatible_characters(template.unsanitised_content):
+            current_app.logger.warning(
+                "%s character(s) replaced with ? in SMS content for notification %s",
+                len(non_compatible_characters),
+                notification.id,
+            )
+
         created_at = notification.created_at
         key_type = notification.key_type
         try:
