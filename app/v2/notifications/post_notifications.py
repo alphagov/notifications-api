@@ -8,6 +8,7 @@ from flask import abort, current_app, jsonify, request
 from gds_metrics import Histogram
 from notifications_utils.formatters import url
 from notifications_utils.insensitive_dict import InsensitiveSet
+from notifications_utils.sanitise_text import SanitiseSMS
 
 from app import (
     api_user,
@@ -255,6 +256,16 @@ def process_sms_or_email_notification(
 
     # validate content length after url is replaced in personalisation.
     check_is_message_too_long(template_with_content)
+
+    if notification_type == SMS_TYPE:
+        if non_compatible_characters := SanitiseSMS.get_non_compatible_characters(
+            template_with_content.unsanitised_content
+        ):
+            current_app.logger.warning(
+                "%s character(s) replaced with ? in SMS content for notification %s",
+                len(non_compatible_characters),
+                notification_id,
+            )
 
     response = create_response_for_post_notification(
         notification_id=notification_id,

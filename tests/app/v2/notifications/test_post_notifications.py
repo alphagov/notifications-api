@@ -1652,3 +1652,36 @@ def test_post_sms_notification_returns_400_with_correct_error_message_if_empty_s
 
     assert error_json["status_code"] == 400
     assert error_json["errors"] == [{"error": "ValidationError", "message": "phone_number Not enough digits"}]
+
+
+def test_post_sms_notification_logs_non_compatible_characters(
+    api_client_request, sample_template_with_placeholders, caplog, mocker
+):
+    mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
+    data = {
+        "phone_number": "+447700900855",
+        "template_id": str(sample_template_with_placeholders.id),
+        "personalisation": {
+            " Name": (
+                "Ŵ"  # Welsh, sent as-is
+                "Ł"  # Polish Ł, gets downgraded to L
+                "🍍🍍🍌🥝"  # Other non-GSM characters, replaced with ? and logged
+            )
+        },
+    }
+
+    resp_json = api_client_request.post(
+        sample_template_with_placeholders.service_id,
+        "v2_notifications.post_notification",
+        notification_type="sms",
+        _data=data,
+    )
+
+    assert resp_json["content"]["body"] == "Hello ŴL????\nYour thing is due soon"
+    notification_id = resp_json["id"]
+
+    assert (
+        "test",
+        30,
+        f"3 character(s) replaced with ? in SMS content for notification {notification_id}",
+    ) in caplog.record_tuples
