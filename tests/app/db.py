@@ -213,7 +213,7 @@ def create_template_email_file(
         "validate_users_email": validate_users_email,
         "template_id": template_id,
         "created_by_id": created_by_id,
-        "created_at": created_at if not None else datetime.utcnow(),
+        "created_at": created_at if created_at is not None else datetime.utcnow(),
         "pending": pending,
     }
     template_email_file = TemplateEmailFile(**data)
