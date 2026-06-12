@@ -119,6 +119,7 @@ def archive_pending_files():
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to archive pending files")
+        raise
 
 
 @notify_celery.task(name="delete-verify-codes")
