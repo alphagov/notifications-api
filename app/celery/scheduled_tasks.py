@@ -114,7 +114,7 @@ def archive_pending_files():
     try:
         number_of_files_archived = dao_archive_pending_files()
         current_app.logger.info(
-            "Archived %(number_of_files_archived) files created more than 24 hours ago that are still in pending",
+            "Archived %(number_of_files_archived)s files created more than 24 hours ago that are still in pending",
             extra={"number_of_files_archived": number_of_files_archived},
         )
     except SQLAlchemyError:
