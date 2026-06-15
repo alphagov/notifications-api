@@ -102,7 +102,7 @@ class MMGClient(SmsClient):
                 self.mmg_url,
                 data=json.dumps(data),
                 headers={"Content-Type": "application/json", "Authorization": f"Basic {self.api_key}"},
-                timeout=60,
+                timeout=10,
             )
 
             response.raise_for_status()

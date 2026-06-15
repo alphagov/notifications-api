@@ -72,7 +72,7 @@ class FiretextClient(SmsClient):
             data["receipt"] = self.receipt_url
 
         try:
-            response = self.requests_session.request("POST", self.url, data=data, timeout=60)
+            response = self.requests_session.request("POST", self.url, data=data, timeout=10)
             response.raise_for_status()
             try:
                 json.loads(response.text)
