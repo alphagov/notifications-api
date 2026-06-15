@@ -231,6 +231,8 @@ class Config:
     MAX_VERIFY_CODE_COUNT = 5
     MAX_FAILED_LOGIN_COUNT = 10
 
+    TEMPLATE_EMAIL_FILE_ARCHIVE_PERIOD_IN_HOURS = 24
+
     # these should always add up to 100%
     SMS_PROVIDER_RESTING_POINTS = {"mmg": 51, "firetext": 49}
 
@@ -483,6 +485,11 @@ class Config:
             "weekly-user-research-email": {
                 "task": "weekly-user-research-email",
                 "schedule": crontab(hour=10, minute=0, day_of_week="wed"),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
+            "archive-pending-files": {
+                "task": "archive-pending-files",
+                "schedule": crontab(hour=3, minute=33),
                 "options": {"queue": QueueNames.PERIODIC},
             },
             # first tuesday of every month
