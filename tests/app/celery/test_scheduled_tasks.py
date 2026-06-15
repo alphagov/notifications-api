@@ -22,6 +22,7 @@ from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.provider_tasks import deliver_email, deliver_sms
 from app.celery.scheduled_tasks import (
     _check_slow_text_message_delivery_reports_and_raise_error_if_needed,
+    archive_pending_files,
     change_dvla_api_key,
     change_dvla_password,
     check_for_low_available_inbound_sms_numbers,
@@ -64,6 +65,7 @@ from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import SlowProviderDeliveryReport
 from app.dao.provider_details_dao import get_provider_details_by_identifier
+from app.dao.template_email_files_dao import dao_get_template_email_file_by_id
 from app.models import Event, InboundNumber, Notification
 from tests.app import load_example_csv
 from tests.app.db import (
@@ -72,6 +74,7 @@ from tests.app.db import (
     create_notification,
     create_organisation,
     create_template,
+    create_template_email_file,
     create_user,
 )
 from tests.conftest import _with_message_group_id, set_config, set_config_values
@@ -104,6 +107,32 @@ def test_should_update_scheduled_jobs_and_put_on_queue(mock_celery_task, sample_
         queue="job-tasks",
         MessageGroupId=str(job.service_id),
     )
+
+
+@pytest.mark.parametrize("pending_expirary_exceeded", (True, False))
+def test_archive_pending_files_only_scopes_stale_files(sample_email_template, pending_expirary_exceeded):
+    with freeze_time("2016-01-01 01:00:00.000000"):
+        pending_file = create_template_email_file(
+            template_id=sample_email_template.id,
+            created_by_id=sample_email_template.created_by_id,
+            pending=True,
+            created_at=datetime.utcnow(),
+        )
+        live_file = create_template_email_file(
+            template_id=sample_email_template.id,
+            created_by_id=sample_email_template.created_by_id,
+            pending=False,
+            created_at=datetime.utcnow(),
+        )
+    with freeze_time("2016-01-02 01:00:01.00000" if pending_expirary_exceeded else "2016-01-02 00:00:00.00000"):
+        archive_pending_files()
+        expected_archived_file = dao_get_template_email_file_by_id(str(pending_file.id))
+        expected_live_file = dao_get_template_email_file_by_id(str(live_file.id))
+        if pending_expirary_exceeded:
+            assert expected_archived_file.archived_at == datetime.utcnow()
+        else:
+            assert not expected_archived_file.archived_at
+        assert not expected_live_file.archived_at
 
 
 def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock_celery_task):

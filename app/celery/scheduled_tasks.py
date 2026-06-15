@@ -76,7 +76,7 @@ from app.dao.services_dao import (
     dao_find_services_sending_to_tv_numbers,
     dao_find_services_with_high_failure_rates,
 )
-from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id
+from app.dao.template_email_files_dao import dao_archive_pending_files, dao_get_template_email_files_by_template_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago, get_users_for_research
 from app.letters.utils import generate_letter_pdf_filename
@@ -106,6 +106,19 @@ def run_scheduled_jobs():
             current_app.logger.info("Job ID %s added to process job queue", job.id, extra={"job_id": job.id})
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
+        raise
+
+
+@notify_celery.task(name="archive-pending-files")
+def archive_pending_files():
+    try:
+        number_of_files_archived = dao_archive_pending_files()
+        current_app.logger.info(
+            "Archived %(number_of_files_archived)s files created more than 24 hours ago that are still in pending",
+            extra={"number_of_files_archived": number_of_files_archived},
+        )
+    except SQLAlchemyError:
+        current_app.logger.exception("Failed to archive pending files")
         raise
 
 
