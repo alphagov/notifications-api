@@ -109,27 +109,30 @@ def test_should_update_scheduled_jobs_and_put_on_queue(mock_celery_task, sample_
     )
 
 
-@pytest.mark.parametrize("pending_expirary_exceeded", (True, False))
-def test_archive_pending_files_only_scopes_stale_files(sample_email_template, pending_expirary_exceeded):
+@pytest.mark.parametrize("pending_expiry_exceeded", (True, False))
+def test_archive_pending_files_only_scopes_stale_files(sample_email_template, pending_expiry_exceeded):
     with freeze_time("2016-01-01 01:00:00.000000"):
         pending_file = create_template_email_file(
             template_id=sample_email_template.id,
             created_by_id=sample_email_template.created_by_id,
             pending=True,
             created_at=datetime.utcnow(),
+            version=0,
         )
         live_file = create_template_email_file(
             template_id=sample_email_template.id,
             created_by_id=sample_email_template.created_by_id,
             pending=False,
             created_at=datetime.utcnow(),
+            version=0,
         )
-    with freeze_time("2016-01-02 01:00:01.00000" if pending_expirary_exceeded else "2016-01-02 00:00:00.00000"):
+    with freeze_time("2016-01-02 01:00:01.00000" if pending_expiry_exceeded else "2016-01-02 00:00:00.00000"):
         archive_pending_files()
         expected_archived_file = dao_get_template_email_file_by_id(str(pending_file.id))
         expected_live_file = dao_get_template_email_file_by_id(str(live_file.id))
-        if pending_expirary_exceeded:
-            assert expected_archived_file.archived_at == datetime.utcnow()
+        if pending_expiry_exceeded:
+            assert expected_archived_file.archived_at == datetime.fromisoformat("2016-01-02 01:00:01.00000")
+            assert expected_archived_file.created_at == datetime.fromisoformat("2016-01-01 01:00:00.000000")
         else:
             assert not expected_archived_file.archived_at
         assert not expected_live_file.archived_at

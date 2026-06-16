@@ -205,6 +205,7 @@ def create_template_email_file(
     retention_period=90,
     validate_users_email=True,
     pending=False,
+    version=0,
 ):
     data = {
         "filename": filename,
@@ -215,6 +216,7 @@ def create_template_email_file(
         "created_by_id": created_by_id,
         "created_at": created_at if created_at is not None else datetime.utcnow(),
         "pending": pending,
+        "version": version,
     }
     template_email_file = TemplateEmailFile(**data)
     if pending:
