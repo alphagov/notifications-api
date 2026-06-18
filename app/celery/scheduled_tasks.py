@@ -113,9 +113,11 @@ def run_scheduled_jobs():
 def archive_pending_files():
     try:
         number_of_files_archived = dao_archive_pending_files()
+        base_params = {"number_of_files_archived": number_of_files_archived}
         current_app.logger.info(
             "Archived %(number_of_files_archived)s files created more than 24 hours ago that are still in pending",
-            extra={"number_of_files_archived": number_of_files_archived},
+            base_params,
+            extra={**base_params},
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to archive pending files")

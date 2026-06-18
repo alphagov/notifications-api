@@ -145,6 +145,7 @@ def dao_archive_template_email_file(file_to_archive, archived_by_id, template_ve
 def dao_archive_pending_files():
     files_in_pending = TemplateEmailFile.query.filter(
         TemplateEmailFile.pending,
+        TemplateEmailFile.archived_at == None,  # noqa: E711
         datetime.datetime.utcnow() - TemplateEmailFile.created_at
         > datetime.timedelta(hours=current_app.config.get("TEMPLATE_EMAIL_FILE_ARCHIVE_PERIOD_IN_HOURS")),
     ).all()
