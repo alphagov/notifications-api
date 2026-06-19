@@ -629,6 +629,62 @@ def test_get_notification_by_id_renames_letter_statuses(
     assert json_response["status"] == expected_status
 
 
+@pytest.mark.parametrize(
+    "key_type",
+    ("test", "team", pytest.param("normal", marks=pytest.mark.xfail)),
+)
+def test_get_notification_by_id_logs_on_different_key_type(
+    api_client_request,
+    sample_template,
+    sms_rate,
+    caplog,
+    key_type,
+):
+    notification = create_notification(template=sample_template, key_type="normal")
+
+    with caplog.at_level("WARNING"):
+        api_client_request.get(
+            notification.service_id,
+            "v2_notifications.get_notification_by_id",
+            notification_id=notification.id,
+            _api_key_type=key_type,
+        )
+    assert (
+        f"Key type for get_notification_by_id ({key_type}) does not match key type used to send notification (normal)"
+    ) in caplog.messages
+
+
+@pytest.mark.parametrize(
+    "key_type",
+    ("test", "team", pytest.param("normal", marks=pytest.mark.xfail)),
+)
+def test_get_pdf_for_notification_logs_on_different_key_type(
+    api_client_request,
+    sample_letter_template,
+    letter_rate,
+    caplog,
+    key_type,
+    mocker,
+):
+    mocker.patch(
+        "app.v2.notifications.get_notifications.get_letter_pdf_and_metadata",
+        return_value=(b"foo", {"message": "", "invalid_pages": "", "page_count": "1"}),
+    )
+    notification = create_notification(template=sample_letter_template, key_type="normal")
+
+    with caplog.at_level("WARNING"):
+        api_client_request.get(
+            notification.service_id,
+            "v2_notifications.get_pdf_for_notification",
+            notification_id=notification.id,
+            _api_key_type=key_type,
+            _expected_content_type="application/pdf",
+        )
+    assert (
+        f"Key type for get_pdf_for_notification ({key_type}) does not match key type used to send notification (normal)"
+    ) in caplog.messages
+
+
 def test_get_pdf_for_notification_returns_pdf_content(
     client,
     sample_letter_notification,
