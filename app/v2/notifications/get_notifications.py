@@ -27,6 +27,14 @@ def get_notification_by_id(notification_id):
     notification = notifications_dao.get_notification_with_personalisation(
         authenticated_service.id, notification_id, key_type=None
     )
+
+    if api_user.key_type != notification.key_type:
+        current_app.logger.warning(
+            "Key type for get_notification_by_id (%s) does not match key type used to send notification (%s)",
+            api_user.key_type,
+            notification.key_type,
+        )
+
     return jsonify(notification.serialize_with_cost_data()), 200
 
 
@@ -35,6 +43,13 @@ def get_pdf_for_notification(notification_id):
     _data = {"notification_id": notification_id}
     validate(_data, notification_by_id)
     notification = notifications_dao.get_notification_by_id(notification_id, authenticated_service.id, _raise=True)
+
+    if api_user.key_type != notification.key_type:
+        current_app.logger.warning(
+            "Key type for get_pdf_for_notification (%s) does not match key type used to send notification (%s)",
+            api_user.key_type,
+            notification.key_type,
+        )
 
     if notification.notification_type != LETTER_TYPE:
         raise BadRequestError(message="Notification is not a letter")

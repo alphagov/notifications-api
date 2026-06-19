@@ -1312,14 +1312,21 @@ def api_client_request(client, notify_user):
         app = client.application
 
         @staticmethod
-        def get(service_id, endpoint, _api_key_type="normal", _expected_status=200, **endpoint_kwargs):
+        def get(
+            service_id,
+            endpoint,
+            _api_key_type="normal",
+            _expected_status=200,
+            _expected_content_type="application/json",
+            **endpoint_kwargs,
+        ):
             resp = client.get(
                 url_for(endpoint, **(endpoint_kwargs or {})),
                 headers=[create_service_authorization_header(service_id, _api_key_type)],
             )
             json_resp = resp.json
             assert resp.status_code == _expected_status
-            assert resp.headers["Content-type"] == "application/json"
+            assert resp.headers["Content-type"] == _expected_content_type
             return json_resp
 
         @staticmethod
