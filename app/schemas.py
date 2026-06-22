@@ -701,6 +701,7 @@ class ApiKeyHistorySchema(ma.Schema):
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
     created_by_id = fields.UUID()
+    updated_by_id = fields.UUID(allow_none=True)
 
 
 class EventSchema(BaseSchema):

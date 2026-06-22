@@ -13,6 +13,7 @@ from app.dao.api_key_dao import (
     save_model_api_key,
 )
 from app.models import ApiKey
+from tests.app.db import create_user
 
 
 def test_save_api_key_should_create_new_api_key_and_history(sample_service):
@@ -33,13 +34,20 @@ def test_save_api_key_should_create_new_api_key_and_history(sample_service):
 
 
 def test_expire_api_key_should_update_the_api_key_and_create_history_record(notify_api, sample_api_key):
-    expire_api_key(service_id=sample_api_key.service_id, api_key_id=sample_api_key.id)
+    revoker = create_user(email="revoker@digital.cabinet-office.gov.uk")
+
+    expire_api_key(
+        service_id=sample_api_key.service_id,
+        api_key_id=sample_api_key.id,
+        updated_by_id=revoker.id,
+    )
     all_api_keys = get_model_api_keys(service_id=sample_api_key.service_id)
     assert len(all_api_keys) == 1
     assert all_api_keys[0].expiry_date <= datetime.utcnow()
     assert all_api_keys[0].secret == sample_api_key.secret
     assert all_api_keys[0].id == sample_api_key.id
     assert all_api_keys[0].service_id == sample_api_key.service_id
+    assert all_api_keys[0].updated_by_id == revoker.id
 
     all_history = sample_api_key.get_history_model().query.all()
     assert len(all_history) == 2
@@ -48,6 +56,8 @@ def test_expire_api_key_should_update_the_api_key_and_create_history_record(noti
     sorted_all_history = sorted(all_history, key=lambda hist: hist.version)
     sorted_all_history[0].version = 1
     sorted_all_history[1].version = 2
+    assert sorted_all_history[0].updated_by_id is None
+    assert sorted_all_history[1].updated_by_id == revoker.id
 
 
 def test_get_api_key_should_raise_exception_when_api_key_does_not_exist(sample_service, fake_uuid):
