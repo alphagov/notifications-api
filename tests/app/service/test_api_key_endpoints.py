@@ -62,14 +62,30 @@ def test_revoke_should_expire_api_key_for_service(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert ApiKey.query.count() == 1
+            revoker = create_user(email="revoker@digital.cabinet-office.gov.uk")
             auth_header = create_admin_authorization_header()
             response = client.post(
                 url_for("service.revoke_api_key", service_id=sample_api_key.service_id, api_key_id=sample_api_key.id),
-                headers=[auth_header],
+                data=json.dumps({"created_by": str(revoker.id)}),
+                headers=[("Content-Type", "application/json"), auth_header],
             )
             assert response.status_code == 202
             api_keys_for_service = ApiKey.query.get(sample_api_key.id)
             assert api_keys_for_service.expiry_date is not None
+            assert api_keys_for_service.updated_by_id == revoker.id
+
+
+def test_revoke_api_key_without_updated_by_id_still_revokes(client, sample_api_key):
+    auth_header = create_admin_authorization_header()
+    response = client.post(
+        url_for("service.revoke_api_key", service_id=sample_api_key.service_id, api_key_id=sample_api_key.id),
+        data=json.dumps({}),
+        headers=[("Content-Type", "application/json"), auth_header],
+    )
+    assert response.status_code == 202
+    api_key = ApiKey.query.get(sample_api_key.id)
+    assert api_key.expiry_date is not None
+    assert api_key.updated_by_id is None
 
 
 def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, sample_service):
