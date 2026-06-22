@@ -367,7 +367,10 @@ def test_should_log_sms_sent_with_downgraded_content(mocker, caplog):
     assert (
         "test",
         30,
-        f"3 character(s) replaced with ? in SMS content for notification {db_notification.id}",
+        (
+            f"3 character(s) replaced with ? in SMS content for service {db_notification.service_id} "
+            f"and notification {db_notification.id}"
+        ),
     ) in caplog.record_tuples
 
 
