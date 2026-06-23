@@ -1386,6 +1386,7 @@ class ProviderDetails(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_by = db.relationship("User")
+    reason = db.Column(db.String, nullable=True)
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
     def serialize(self):
@@ -1409,6 +1410,7 @@ class ProviderDetailsHistory(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_by = db.relationship("User")
+    reason = db.Column(db.String, nullable=True)
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
     @classmethod

@@ -192,7 +192,9 @@ def switch_current_sms_provider_on_slow_delivery():
                     provider_name,
                     extra={"provider_name": provider_name},
                 )
-                dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=5))
+                dao_reduce_sms_provider_priority(
+                    provider_name, time_threshold=timedelta(minutes=5), reason="Automated change due to slow delivery"
+                )
 
 
 def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports: list[SlowProviderDeliveryReport]):
