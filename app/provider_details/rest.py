@@ -29,6 +29,7 @@ def get_providers():
             "updated_at": row.updated_at,
             "supports_international": row.supports_international,
             "created_by_name": row.created_by_name,
+            "reason": row.reason,
             "current_month_billable_sms": row.current_month_billable_sms,
         }
         for row in data
@@ -52,7 +53,7 @@ def get_provider_versions(provider_details_id):
 
 @provider_details.route("/<uuid:provider_details_id>", methods=["POST"])
 def update_provider_details(provider_details_id):
-    valid_keys = {"priority", "created_by", "active"}
+    valid_keys = {"priority", "created_by", "active", "reason"}
     req_json = request.get_json()
 
     invalid_keys = req_json.keys() - valid_keys

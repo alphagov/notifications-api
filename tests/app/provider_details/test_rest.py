@@ -41,6 +41,7 @@ def test_get_provider_contains_correct_fields(client, sample_template):
         "notification_type",
         "active",
         "updated_at",
+        "reason",
         "supports_international",
         "current_month_billable_sms",
     }
@@ -107,6 +108,7 @@ def test_get_provider_versions_contains_correct_fields(client, notify_db_session
         "notification_type",
         "active",
         "version",
+        "reason",
         "updated_at",
         "supports_international",
     }
