@@ -26,6 +26,8 @@ from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
+    LETTER_ATTACHMENT_ARCHIVE_RETENTION_DAYS,
+    LETTER_ATTACHMENT_S3_CLEANUP_CATCH_UP_WINDOW_DAYS,
     LETTER_TYPE,
     NOTIFICATION_SENDING,
     SMS_TYPE,
@@ -39,6 +41,7 @@ from app.dao.jobs_dao import (
     dao_archive_job,
     dao_get_jobs_older_than_data_retention,
 )
+from app.dao.letter_attachment_dao import dao_get_archived_letter_attachments_older_than
 from app.dao.notifications_dao import (
     dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
@@ -144,6 +147,71 @@ def remove_archived_template_email_files_from_s3(archived_after=None):
 
     current_app.logger.info(
         ("Archived template email file s3 cleanup complete: scoped=%s deleted=%s failed=%s"),
+        scoped,
+        deleted,
+        failed,
+    )
+
+
+def remove_archived_letter_attachments_from_s3(archived_after=None):
+    archived_before = datetime.now(UTC) - timedelta(days=LETTER_ATTACHMENT_ARCHIVE_RETENTION_DAYS)
+
+    if archived_after is not None:
+        try:
+            parsed_date = datetime.strptime(archived_after, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
+
+        archived_after = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC)
+    else:
+        archived_after = archived_before - timedelta(days=LETTER_ATTACHMENT_S3_CLEANUP_CATCH_UP_WINDOW_DAYS)
+
+    if archived_after > archived_before:
+        raise ValueError(
+            "Invalid archived_after for archived letter attachment s3 cleanup: "
+            f"archived_after ({archived_after.isoformat()}) "
+            f"must be on or before archived_before ({archived_before.isoformat()})"
+        )
+
+    bucket_name = current_app.config["S3_BUCKET_LETTER_ATTACHMENTS"]
+
+    older_than = None
+    scoped = deleted = failed = 0
+
+    while True:
+        archived_attachments_batch = dao_get_archived_letter_attachments_older_than(
+            session=db.session_bulk,
+            retry_attempts=2,  # type: ignore
+            archived_after=archived_after,
+            archived_before=archived_before,
+            page_size=current_app.config.get("API_PAGE_SIZE"),
+            older_than=older_than,
+        )
+        if not archived_attachments_batch:
+            break
+
+        scoped += len(archived_attachments_batch)
+
+        for letter_attachment, service_id in archived_attachments_batch:
+            object_key = f"{service_id}/{letter_attachment.id}"
+
+            try:
+                s3.remove_s3_object(bucket_name, object_key)
+                deleted += 1
+            except Exception:
+                failed += 1
+
+                current_app.logger.exception(
+                    ("Failed to remove archived letter attachment from s3: letter_attachment_id=%s service_id=%s"),
+                    str(letter_attachment.id),
+                    str(service_id),
+                )
+
+        last_archived_file = archived_attachments_batch[-1][0]
+        older_than = last_archived_file.id
+
+    current_app.logger.info(
+        ("Archived letter attachment s3 cleanup complete: scoped=%s deleted=%s failed=%s"),
         scoped,
         deleted,
         failed,

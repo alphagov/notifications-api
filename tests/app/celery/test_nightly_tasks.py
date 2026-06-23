@@ -39,6 +39,7 @@ from app.celery.nightly_tasks import (
     delete_test_notifications_for_service_and_type,
     get_letter_notifications_still_sending_when_they_shouldnt_be,
     raise_alert_if_letter_notifications_still_sending,
+    remove_archived_letter_attachments_from_s3,
     remove_archived_template_email_files_from_s3,
     remove_letter_csv_files,
     remove_sms_email_csv_files,
@@ -334,6 +335,23 @@ def test_remove_archived_template_email_files_from_s3_continues_after_delete_err
         call(notify_api.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"], f"{service_one.id}/{file_two.id}"),
     ]
     assert ("Failed to remove archived template email file from s3" in message for message in caplog.messages)
+
+
+@freeze_time("2026-04-28 16:00:00")
+def test_remove_archived_letter_attachments_from_s3_uses_default_three_day_window(mocker, notify_api):
+    mocker.patch("app.celery.nightly_tasks.dao_get_archived_letter_attachments_older_than", return_value=[])
+    mocker.patch("app.celery.nightly_tasks.s3.remove_s3_object")
+
+    remove_archived_letter_attachments_from_s3()
+
+    nightly_tasks.dao_get_archived_letter_attachments_older_than.assert_called_once_with(
+        session=db.session_bulk,
+        retry_attempts=2,
+        archived_before=datetime(2026, 4, 14, 16, 0, tzinfo=UTC),
+        archived_after=datetime(2026, 4, 11, 16, 0, tzinfo=UTC),
+        page_size=notify_api.config["API_PAGE_SIZE"],
+        older_than=None,
+    )
 
 
 def test_archive_unsubscribe_requests(notify_db_session, mock_celery_task):
