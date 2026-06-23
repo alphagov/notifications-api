@@ -189,6 +189,7 @@ def dao_get_provider_stats():
             ProviderDetails.priority,
             ProviderDetails.notification_type,
             ProviderDetails.active,
+            ProviderDetails.reason,
             ProviderDetails.updated_at,
             ProviderDetails.supports_international,
             User.name.label("created_by_name"),
