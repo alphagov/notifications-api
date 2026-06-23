@@ -1,7 +1,6 @@
-import datetime
-
 from flask import Blueprint, jsonify, request
 
+from app.dao.letter_attachment_dao import dao_archive_letter_attachment
 from app.dao.templates_dao import dao_get_template_by_id, dao_update_template
 from app.errors import InvalidRequest, register_errors
 from app.letter_attachment.schema import post_archive_letter_attachment_schema, post_create_letter_attachment_schema
@@ -54,9 +53,6 @@ def archive_letter_attachment(letter_attachment_id):
     letter_attachment = LetterAttachment.query.get_or_404(letter_attachment_id)
     if not (template := letter_attachment.template):
         raise InvalidRequest("letter-attachment-already-archived", 400)
-    template.letter_attachment = None
-    letter_attachment.archived_at = datetime.datetime.utcnow()
-    letter_attachment.archived_by_id = data["archived_by"]
-    dao_update_template(template)
+    dao_archive_letter_attachment(letter_attachment, template, data["archived_by"])
 
     return "", 204

@@ -16,6 +16,7 @@ from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.invited_org_user_dao import save_invited_org_user
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
+from app.dao.letter_attachment_dao import dao_archive_letter_attachment
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
@@ -1227,6 +1228,16 @@ def create_letter_attachment(created_by_id):
     db.session.add(letter_attachment)
     db.session.commit()
     return letter_attachment
+
+
+def create_archived_letter_attachment(template):
+    attachment = LetterAttachment(
+        created_by_id=template.created_by_id, original_filename="abc.pdf", page_count=1, template=template
+    )
+    dao_update_template(template)
+
+    dao_archive_letter_attachment(attachment, template, template.created_by_id)
+    return attachment
 
 
 def create_unsubscribe_request(

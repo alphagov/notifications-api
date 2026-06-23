@@ -154,7 +154,7 @@ def remove_archived_template_email_files_from_s3(archived_after=None):
 
 
 def remove_archived_letter_attachments_from_s3(archived_after=None):
-    archived_before = datetime.now(UTC) - timedelta(days=LETTER_ATTACHMENT_ARCHIVE_RETENTION_DAYS)
+    archived_before = datetime.utcnow() - timedelta(days=LETTER_ATTACHMENT_ARCHIVE_RETENTION_DAYS)
 
     if archived_after is not None:
         try:
@@ -162,7 +162,7 @@ def remove_archived_letter_attachments_from_s3(archived_after=None):
         except ValueError as exc:
             raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
 
-        archived_after = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC)
+        archived_after = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC).replace(tzinfo=None)
     else:
         archived_after = archived_before - timedelta(days=LETTER_ATTACHMENT_S3_CLEANUP_CATCH_UP_WINDOW_DAYS)
 
@@ -187,13 +187,14 @@ def remove_archived_letter_attachments_from_s3(archived_after=None):
             page_size=current_app.config.get("API_PAGE_SIZE"),
             older_than=older_than,
         )
+
         if not archived_attachments_batch:
             break
 
         scoped += len(archived_attachments_batch)
 
         for letter_attachment, service_id in archived_attachments_batch:
-            object_key = f"{service_id}/{letter_attachment.id}"
+            object_key = f"service-{service_id}/{letter_attachment.id}"
 
             try:
                 s3.remove_s3_object(bucket_name, object_key)

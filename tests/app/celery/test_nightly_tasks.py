@@ -57,6 +57,7 @@ from app.models import (
 )
 from app.utils import midnight_n_days_ago
 from tests.app.db import (
+    create_archived_letter_attachment,
     create_archived_template_email_file,
     create_job,
     create_notification,
@@ -160,6 +161,9 @@ def test_remove_csv_files_filters_by_type(mocker, sample_service):
     assert s3.remove_job_from_s3.call_args_list == [
         call(job_to_delete.service_id, job_to_delete.id),
     ]
+
+
+# ======== Test delete archived template email files from S3 ========
 
 
 @freeze_time("2026-04-28 16:00:00")
@@ -337,6 +341,9 @@ def test_remove_archived_template_email_files_from_s3_continues_after_delete_err
     assert ("Failed to remove archived template email file from s3" in message for message in caplog.messages)
 
 
+# ======== Test delete archived letter attachments from S3 ========
+
+
 @freeze_time("2026-04-28 16:00:00")
 def test_remove_archived_letter_attachments_from_s3_uses_default_three_day_window(mocker, notify_api):
     mocker.patch("app.celery.nightly_tasks.dao_get_archived_letter_attachments_older_than", return_value=[])
@@ -352,6 +359,49 @@ def test_remove_archived_letter_attachments_from_s3_uses_default_three_day_windo
         page_size=notify_api.config["API_PAGE_SIZE"],
         older_than=None,
     )
+
+
+@freeze_time("2026-04-28 16:00:00")
+def test_remove_archived_letter_attachments_from_s3_removes_only_files_in_default_window(
+    mocker, notify_api, notify_db_session, sample_letter_template
+):
+
+    # With retention 14 days and this frozen time:
+    # - archived_before is 2026-04-14 16:00 UTC
+    # - default archived_after is 2026-04-11 16:00 UTC
+    # So the task should only process files archived in that 3-day window:
+
+    # archived too long ago:
+    with freeze_time("2026-04-11 15:59:00"):
+        create_archived_letter_attachment(sample_letter_template)
+
+    # within deletion window:
+    with freeze_time("2026-04-11 16:10:00"):
+        within_deletion_window_one = create_archived_letter_attachment(sample_letter_template)
+    with freeze_time("2026-04-12 17:00:00"):
+        within_deletion_window_two = create_archived_letter_attachment(sample_letter_template)
+
+    # archived too recently:
+    with freeze_time("2026-04-14 16:01:00"):
+        create_archived_letter_attachment(sample_letter_template)
+
+    mock_remove_s3_object = mocker.patch("app.celery.nightly_tasks.s3.remove_s3_object")
+
+    remove_archived_letter_attachments_from_s3()
+
+    assert mock_remove_s3_object.call_args_list == [
+        call(
+            notify_api.config["S3_BUCKET_LETTER_ATTACHMENTS"],
+            f"service-{sample_letter_template.service_id}/{within_deletion_window_one.id}",
+        ),
+        call(
+            notify_api.config["S3_BUCKET_LETTER_ATTACHMENTS"],
+            f"service-{sample_letter_template.service_id}/{within_deletion_window_two.id}",
+        ),
+    ]
+
+
+# ======== Test archive unsubscribe requests ========
 
 
 def test_archive_unsubscribe_requests(notify_db_session, mock_celery_task):
