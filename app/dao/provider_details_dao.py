@@ -40,19 +40,22 @@ def dao_get_provider_versions(provider_id):
     )
 
 
-def _adjust_provider_priority(provider, new_priority):
+def _adjust_provider_priority(provider, new_priority, reason="no reason given"):
     current_app.logger.info(
-        "Adjusting provider priority - %s going from %s to %s",
+        "Adjusting provider priority - %s going from %s to %s for %s",
         provider.identifier,
         provider.priority,
         new_priority,
+        reason,
         extra={
             "provider_name": provider.identifier,
             "provider_priority": provider.priority,
             "provider_priority_new": new_priority,
+            "reason": reason,
         },
     )
     provider.priority = new_priority
+    provider.reason = reason
 
     # Automatic update so set as notify user
     provider.created_by_id = current_app.config["NOTIFY_USER_ID"]
@@ -112,8 +115,10 @@ def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
     reduced_provider_priority = max(0, reduced_provider.priority - amount_to_reduce_by)
     increased_provider_priority = min(100, increased_provider.priority + amount_to_reduce_by)
 
-    _adjust_provider_priority(reduced_provider, reduced_provider_priority)
-    _adjust_provider_priority(increased_provider, increased_provider_priority)
+    _adjust_provider_priority(reduced_provider, reduced_provider_priority, reason="Reduced due to reduced reliability")
+    _adjust_provider_priority(
+        increased_provider, increased_provider_priority, reason="Increased due to reduced reliability in other provider"
+    )
 
 
 @autocommit
@@ -137,7 +142,7 @@ def dao_adjust_provider_priority_back_to_resting_points():
             else:
                 new_priority = min(target, provider.priority + amount_to_reduce_by)
 
-            _adjust_provider_priority(provider, new_priority)
+            _adjust_provider_priority(provider, new_priority, reason="Adjusted back to resting point")
 
 
 def get_provider_details_by_notification_type(notification_type, supports_international=False):
