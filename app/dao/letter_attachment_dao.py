@@ -6,8 +6,16 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, scoped_session
 
 from app import db
-from app.models import LetterAttachment, Template
+from app.dao.templates_dao import dao_update_template
+from app.models import LetterAttachment, TemplateHistory
 from app.utils import retryable_query
+
+
+def dao_archive_letter_attachment(letter_attachment, template, archived_by):
+    template.letter_attachment = None
+    letter_attachment.archived_at = datetime.datetime.utcnow()
+    letter_attachment.archived_by_id = archived_by
+    dao_update_template(template)
 
 
 @retryable_query()
@@ -42,8 +50,8 @@ def dao_get_archived_letter_attachments_older_than(
         )
 
     return (
-        session.query(LetterAttachment, Template.service_id)
-        .join(Template, Template.letter_attachment_id == LetterAttachment.id)
+        session.query(LetterAttachment, TemplateHistory.service_id)
+        .join(TemplateHistory, TemplateHistory.letter_attachment_id == LetterAttachment.id)
         .filter(
             LetterAttachment.archived_at.is_not(None),
             *(() if archived_after is None else (LetterAttachment.archived_at >= archived_after,)),
