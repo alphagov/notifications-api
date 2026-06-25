@@ -444,6 +444,40 @@ def test_remove_archived_letter_attachments_from_s3_when_nothing_to_delete(
     mock_remove_s3_object.assert_not_called()
 
 
+@freeze_time("2026-04-28 16:00:00")
+def test_remove_archived_letter_attachments_from_s3_continues_after_delete_error(
+    mocker,
+    caplog,
+    notify_api,
+    notify_db_session,
+    sample_letter_template,
+):
+    with freeze_time("2026-04-13 16:10:00"):
+        file_1 = create_archived_letter_attachment(sample_letter_template)
+    with freeze_time("2026-04-13 17:00:00"):
+        file_2 = create_archived_letter_attachment(sample_letter_template)
+
+    mock_remove_s3_object = mocker.patch(
+        "app.celery.nightly_tasks.s3.remove_s3_object",
+        side_effect=S3ObjectNotFound({}, ""),
+    )
+
+    with caplog.at_level(logging.ERROR):
+        remove_archived_letter_attachments_from_s3()
+
+    assert mock_remove_s3_object.call_args_list == [
+        call(
+            notify_api.config["S3_BUCKET_LETTER_ATTACHMENTS"],
+            f"service-{sample_letter_template.service_id}/{file_1.id}",
+        ),
+        call(
+            notify_api.config["S3_BUCKET_LETTER_ATTACHMENTS"],
+            f"service-{sample_letter_template.service_id}/{file_2.id}",
+        ),
+    ]
+    assert ("Failed to remove archived template email file from s3" in message for message in caplog.messages)
+
+
 # ======== Test archive unsubscribe requests ========
 
 
