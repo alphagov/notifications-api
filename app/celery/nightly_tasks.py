@@ -24,15 +24,13 @@ from app import db, notify_celery, zendesk_client
 from app.aws import s3
 from app.config import QueueNames
 from app.constants import (
+    ARCHIVED_FILE_DELETION_WINDOW_DAYS,
+    ARCHIVED_FILE_RETENTION_DAYS,
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
-    LETTER_ATTACHMENT_ARCHIVE_RETENTION_DAYS,
-    LETTER_ATTACHMENT_S3_CLEANUP_CATCH_UP_WINDOW_DAYS,
     LETTER_TYPE,
     NOTIFICATION_SENDING,
     SMS_TYPE,
-    TEMPLATE_EMAIL_FILE_ARCHIVE_RETENTION_DAYS,
-    TEMPLATE_EMAIL_FILE_S3_CLEANUP_CATCH_UP_WINDOW_DAYS,
 )
 from app.cronitor import cronitor
 from app.dao.fact_processing_time_dao import insert_update_processing_time
@@ -89,24 +87,7 @@ def _remove_csv_files(job_types):
 @notify_celery.task(name="remove-archived-template-email-files-from-s3")
 @cronitor("remove-archived-template-email-files-from-s3")
 def remove_archived_template_email_files_from_s3(archived_after=None):
-    archived_before = datetime.now(UTC) - timedelta(days=TEMPLATE_EMAIL_FILE_ARCHIVE_RETENTION_DAYS)
-
-    if archived_after is not None:
-        try:
-            parsed_date = datetime.strptime(archived_after, "%Y-%m-%d").date()
-        except ValueError as exc:
-            raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
-
-        archived_after_dt = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC)
-    else:
-        archived_after_dt = archived_before - timedelta(days=TEMPLATE_EMAIL_FILE_S3_CLEANUP_CATCH_UP_WINDOW_DAYS)
-
-    if archived_after_dt > archived_before:
-        raise ValueError(
-            "Invalid archived_after for archived template email file s3 cleanup: "
-            f"archived_after ({archived_after_dt.isoformat()}) "
-            f"must be on or before archived_before ({archived_before.isoformat()})"
-        )
+    archived_before, archived_after = get_archived_before_and_after(archived_after)
 
     bucket_name = current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"]
 
@@ -117,7 +98,7 @@ def remove_archived_template_email_files_from_s3(archived_after=None):
         archived_files_batch = dao_get_archived_template_email_files_older_than(
             session=db.session_bulk,
             retry_attempts=2,  # type: ignore
-            archived_after=archived_after_dt,
+            archived_after=archived_after,
             archived_before=archived_before,
             page_size=current_app.config.get("API_PAGE_SIZE"),
             older_than=older_than,
@@ -156,30 +137,7 @@ def remove_archived_template_email_files_from_s3(archived_after=None):
 @notify_celery.task(name="remove-archived-letter-attachments-from-s3")
 @cronitor("remove-archived-letter-attachments-from-s3")
 def remove_archived_letter_attachments_from_s3(archived_after=None):
-    archived_before = (
-        (datetime.now(UTC) - timedelta(days=LETTER_ATTACHMENT_ARCHIVE_RETENTION_DAYS))
-        .astimezone(UTC)
-        .replace(tzinfo=None)
-    )
-
-    if archived_after is not None:
-        try:
-            parsed_date = datetime.strptime(archived_after, "%Y-%m-%d").date()
-        except ValueError as exc:
-            raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
-
-        archived_after = (
-            datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC).astimezone(UTC).replace(tzinfo=None)
-        )
-    else:
-        archived_after = archived_before - timedelta(days=LETTER_ATTACHMENT_S3_CLEANUP_CATCH_UP_WINDOW_DAYS)
-
-    if archived_after > archived_before:
-        raise ValueError(
-            "Invalid archived_after for archived letter attachment s3 cleanup: "
-            f"archived_after ({archived_after.isoformat()}) "
-            f"must be on or before archived_before ({archived_before.isoformat()})"
-        )
+    archived_before, archived_after = get_archived_before_and_after(archived_after)
 
     bucket_name = current_app.config["S3_BUCKET_LETTER_ATTACHMENTS"]
 
@@ -225,6 +183,33 @@ def remove_archived_letter_attachments_from_s3(archived_after=None):
         deleted,
         failed,
     )
+
+
+def get_archived_before_and_after(archived_after):
+    archived_before = (
+        (datetime.now(UTC) - timedelta(days=ARCHIVED_FILE_RETENTION_DAYS)).astimezone(UTC).replace(tzinfo=None)
+    )
+
+    if archived_after is not None:
+        try:
+            parsed_date = datetime.strptime(archived_after, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
+
+        archived_after = (
+            datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC).astimezone(UTC).replace(tzinfo=None)
+        )
+    else:
+        archived_after = archived_before - timedelta(days=ARCHIVED_FILE_DELETION_WINDOW_DAYS)
+
+    if archived_after > archived_before:
+        raise ValueError(
+            f"Invalid archived_after for s3 cleanup of archived files: "
+            f"archived_after ({archived_after.isoformat()}) "
+            f"must be on or before archived_before ({archived_before.isoformat()})"
+        )
+
+    return archived_before, archived_after
 
 
 @notify_celery.task(name="archive-unsubscribe-requests")

@@ -176,8 +176,8 @@ def test_remove_archived_template_email_files_from_s3_uses_default_three_day_win
     nightly_tasks.dao_get_archived_template_email_files_older_than.assert_called_once_with(
         session=db.session_bulk,
         retry_attempts=2,
-        archived_before=datetime(2026, 4, 14, 16, 0, tzinfo=UTC),
-        archived_after=datetime(2026, 4, 11, 16, 0, tzinfo=UTC),
+        archived_before=datetime(2026, 4, 14, 16, 0),
+        archived_after=datetime(2026, 4, 11, 16, 0),
         page_size=notify_api.config["API_PAGE_SIZE"],
         older_than=None,
     )
@@ -194,59 +194,42 @@ def test_remove_archived_template_email_files_from_s3_removes_only_files_in_defa
     # - archived_before is 2026-04-14 16:00 UTC
     # - default archived_after is 2026-04-11 16:00 UTC
     # So the task should only process files archived in that 3-day window.
-    expected_archived_before = datetime(2026, 4, 14, 16, 0, tzinfo=UTC)
-    expected_archived_after = datetime(2026, 4, 11, 16, 0, tzinfo=UTC)
 
-    template_one = sample_email_template
-    service_one = template_one.service
+    # archived too long ago:
+    with freeze_time("2026-04-11 15:59:00"):
+        create_archived_template_email_file(
+            template=sample_email_template, archived_at=datetime.utcnow(), filename="too_old_archived_file.pdf"
+        )
 
-    create_archived_template_email_file(
-        template_one, datetime(2026, 4, 11, 15, 59, 59, tzinfo=UTC), "too_old_archived_file.pdf"
-    )
-    within_deletion_window_one = create_archived_template_email_file(
-        template_one, datetime(2026, 4, 11, 16, 10, tzinfo=UTC), "in-window-archived-file-one.pdf"
-    )
-    within_deletion_window_two = create_archived_template_email_file(
-        template_one, datetime(2026, 4, 12, 17, 0, tzinfo=UTC), "in-window-archived-file-two.pdf"
-    )
-    create_archived_template_email_file(
-        template_one, datetime(2026, 4, 14, 16, 0, 1, tzinfo=UTC), "too-recently-archived-file.pdf"
-    )
+    # within deletion window:
+    with freeze_time("2026-04-11 16:10:00"):
+        within_deletion_window_one = create_archived_template_email_file(
+            template=sample_email_template, archived_at=datetime.utcnow(), filename="in-window-archived-file-one.pdf"
+        )
+    with freeze_time("2026-04-12 17:00:00"):
+        within_deletion_window_two = create_archived_template_email_file(
+            template=sample_email_template, archived_at=datetime.utcnow(), filename="in-window-archived-file-two.pdf"
+        )
 
-    dao_get_archived_files_mock = mocker.patch(
-        "app.celery.nightly_tasks.dao_get_archived_template_email_files_older_than",
-        wraps=nightly_tasks.dao_get_archived_template_email_files_older_than,
-    )
+    # archived too recently:
+    with freeze_time("2026-04-14 16:01:00"):
+        create_archived_template_email_file(
+            template=sample_email_template, archived_at=datetime.utcnow(), filename="too-recently-archived-file.pdf"
+        )
+
     mock_remove_s3_object = mocker.patch("app.celery.nightly_tasks.s3.remove_s3_object")
 
     remove_archived_template_email_files_from_s3()
 
-    dao_get_archived_files_mock.assert_has_calls(
-        [
-            call(
-                session=db.session_bulk,
-                retry_attempts=2,
-                archived_before=expected_archived_before,
-                archived_after=expected_archived_after,
-                page_size=notify_api.config["API_PAGE_SIZE"],
-                older_than=None,
-            ),
-            call(
-                session=db.session_bulk,
-                retry_attempts=2,
-                archived_before=expected_archived_before,
-                archived_after=expected_archived_after,
-                page_size=notify_api.config["API_PAGE_SIZE"],
-                older_than=within_deletion_window_two.id,
-            ),
-        ]
-    )
     assert mock_remove_s3_object.call_args_list == [
         call(
             notify_api.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"],
-            f"{service_one.id}/{within_deletion_window_one.id}",
+            f"{sample_email_template.service_id}/{within_deletion_window_one.id}",
         ),
-        call(notify_api.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"], f"{service_one.id}/{within_deletion_window_two.id}"),
+        call(
+            notify_api.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"],
+            f"{sample_email_template.service_id}/{within_deletion_window_two.id}",
+        ),
     ]
 
 
@@ -260,8 +243,8 @@ def test_remove_archived_template_email_files_from_s3_uses_explicit_archived_aft
     nightly_tasks.dao_get_archived_template_email_files_older_than.assert_called_once_with(
         session=db.session_bulk,
         retry_attempts=2,
-        archived_before=datetime(2026, 4, 14, 16, 0, tzinfo=UTC),
-        archived_after=datetime(2026, 1, 1, 0, 0, tzinfo=UTC),
+        archived_before=datetime(2026, 4, 14, 16, 0),
+        archived_after=datetime(2026, 1, 1, 0, 0),
         page_size=notify_api.config["API_PAGE_SIZE"],
         older_than=None,
     )
@@ -272,7 +255,7 @@ def test_remove_archived_template_email_files_from_s3_raises_if_archived_after_i
     mock_dao = mocker.patch("app.celery.nightly_tasks.dao_get_archived_template_email_files_older_than")
     mock_remove_s3_object = mocker.patch("app.celery.nightly_tasks.s3.remove_s3_object")
 
-    with pytest.raises(ValueError, match="Invalid archived_after for archived template email file s3 cleanup"):
+    with pytest.raises(ValueError, match="Invalid archived_after for s3 cleanup of archived files"):
         remove_archived_template_email_files_from_s3(archived_after="2026-04-15")
 
     mock_dao.assert_not_called()
@@ -292,7 +275,7 @@ def test_remove_archived_template_email_files_from_s3_when_nothing_to_delete(
     mocker, notify_db_session, sample_email_template
 ):
     create_archived_template_email_file(
-        sample_email_template, datetime.now(UTC) - timedelta(days=7), "outside-window.pdf"
+        template=sample_email_template, archived_at=datetime.utcnow(), filename="outside-window.pdf"
     )
 
     dao_get_archived_files_mock = mocker.patch(
@@ -416,6 +399,18 @@ def test_remove_archived_letter_attachments_from_s3_uses_explicit_archived_after
         page_size=notify_api.config["API_PAGE_SIZE"],
         older_than=None,
     )
+
+
+@freeze_time("2026-04-28 16:00:00")
+def test_remove_archived_letter_attachments_from_s3_raises_if_archived_after_is_after_archived_before(mocker):
+    mock_dao = mocker.patch("app.celery.nightly_tasks.dao_get_archived_letter_attachments_older_than")
+    mock_remove_s3_object = mocker.patch("app.celery.nightly_tasks.s3.remove_s3_object")
+
+    with pytest.raises(ValueError, match="Invalid archived_after for s3 cleanup of archived files"):
+        remove_archived_letter_attachments_from_s3(archived_after="2026-04-15")
+
+    mock_dao.assert_not_called()
+    mock_remove_s3_object.assert_not_called()
 
 
 def test_remove_archived_letter_attachments_from_s3_rejects_non_date_string_archived_after(mocker):
