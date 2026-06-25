@@ -413,6 +413,11 @@ class Config:
                 # since we mark jobs as archived
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "remove-archived-letter-attachments-from-s3": {
+                "task": "remove-archived-letter-attachments-from-s3",
+                "schedule": crontab(hour=4, minute=30),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             "remove-archived-template-email-files-from-s3": {
                 "task": "remove-archived-template-email-files-from-s3",
                 "schedule": crontab(hour=4, minute=40),

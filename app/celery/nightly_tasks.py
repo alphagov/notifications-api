@@ -153,6 +153,8 @@ def remove_archived_template_email_files_from_s3(archived_after=None):
     )
 
 
+@notify_celery.task(name="remove-archived-letter-attachments-from-s3")
+@cronitor("remove-archived-letter-attachments-from-s3")
 def remove_archived_letter_attachments_from_s3(archived_after=None):
     archived_before = (
         (datetime.now(UTC) - timedelta(days=LETTER_ATTACHMENT_ARCHIVE_RETENTION_DAYS))
