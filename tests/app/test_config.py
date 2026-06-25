@@ -96,3 +96,10 @@ def test_celery_config_contains_archived_template_email_file_cleanup_task():
     assert task_config["task"] == "remove-archived-template-email-files-from-s3"
     assert task_config["options"]["queue"] == QueueNames.PERIODIC
     assert task_config["schedule"] == crontab(hour=4, minute=40)
+
+
+def test_celery_config_contains_archived_letter_attachments_cleanup_task():
+    task_config = Config.CELERY["beat_schedule"]["remove-archived-letter-attachments-from-s3"]
+    assert task_config["task"] == "remove-archived-letter-attachments-from-s3"
+    assert task_config["options"]["queue"] == QueueNames.PERIODIC
+    assert task_config["schedule"] == crontab(hour=4, minute=30)
