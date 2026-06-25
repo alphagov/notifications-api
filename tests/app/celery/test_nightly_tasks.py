@@ -401,6 +401,23 @@ def test_remove_archived_letter_attachments_from_s3_removes_only_files_in_defaul
     ]
 
 
+@freeze_time("2026-04-28 16:00:00")
+def test_remove_archived_letter_attachments_from_s3_uses_explicit_archived_after(mocker, notify_api):
+    mocker.patch("app.celery.nightly_tasks.dao_get_archived_letter_attachments_older_than", return_value=[])
+    mocker.patch("app.celery.nightly_tasks.s3.remove_s3_object")
+
+    remove_archived_letter_attachments_from_s3(archived_after="2026-01-01")
+
+    nightly_tasks.dao_get_archived_letter_attachments_older_than.assert_called_once_with(
+        session=db.session_bulk,
+        retry_attempts=2,
+        archived_before=datetime(2026, 4, 14, 16, 0),
+        archived_after=datetime(2026, 1, 1, 0, 0),
+        page_size=notify_api.config["API_PAGE_SIZE"],
+        older_than=None,
+    )
+
+
 # ======== Test archive unsubscribe requests ========
 
 
