@@ -1194,7 +1194,16 @@ def test_get_id_task_args_kwargs_for_job_row_when_sender_id_is_provided(mocker, 
     )
 
 
-def test_get_id_task_args_kwargs_for_job_row_when_reference_is_provided(mocker, mock_celery_task, fake_uuid):
+@pytest.mark.parametrize(
+    "reference_field_name",
+    ("reference", "  Reference-  "),
+)
+def test_get_id_task_args_kwargs_for_job_row_when_reference_is_provided(
+    mocker,
+    mock_celery_task,
+    fake_uuid,
+    reference_field_name,
+):
     mocker.patch("app.celery.tasks.create_uuid", return_value="noti_uuid")
     signing_mock = mocker.patch("app.celery.tasks.signing.encode", return_value="foo")
     template = Mock(id="template_id", template_type=SMS_TYPE)
@@ -1203,7 +1212,7 @@ def test_get_id_task_args_kwargs_for_job_row_when_reference_is_provided(mocker, 
 
     get_id_task_args_kwargs_for_job_row(
         Row(
-            {"to": "07900100100", "name": "foo", "reference": "ab1234"},
+            {"to": "07900100100", "name": "foo", reference_field_name: "ab1234"},
             index=0,
             error_fn=lambda k, v: None,
             recipient_column_headers=["to"],
