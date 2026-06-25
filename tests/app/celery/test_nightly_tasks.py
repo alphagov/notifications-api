@@ -418,6 +418,15 @@ def test_remove_archived_letter_attachments_from_s3_uses_explicit_archived_after
     )
 
 
+def test_remove_archived_letter_attachments_from_s3_rejects_non_date_string_archived_after(mocker):
+    mock_dao = mocker.patch("app.celery.nightly_tasks.dao_get_archived_letter_attachments_older_than")
+
+    with pytest.raises(ValueError, match='archived_after must be in "YYYY-MM-DD" format'):
+        remove_archived_letter_attachments_from_s3(archived_after="2026-01-01T00:00:00Z")
+
+    mock_dao.assert_not_called()
+
+
 # ======== Test archive unsubscribe requests ========
 
 
