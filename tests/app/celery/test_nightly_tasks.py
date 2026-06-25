@@ -354,8 +354,8 @@ def test_remove_archived_letter_attachments_from_s3_uses_default_three_day_windo
     nightly_tasks.dao_get_archived_letter_attachments_older_than.assert_called_once_with(
         session=db.session_bulk,
         retry_attempts=2,
-        archived_before=datetime(2026, 4, 14, 16, 0, tzinfo=UTC),
-        archived_after=datetime(2026, 4, 11, 16, 0, tzinfo=UTC),
+        archived_before=datetime(2026, 4, 14, 16, 0),
+        archived_after=datetime(2026, 4, 11, 16, 0),
         page_size=notify_api.config["API_PAGE_SIZE"],
         older_than=None,
     )
