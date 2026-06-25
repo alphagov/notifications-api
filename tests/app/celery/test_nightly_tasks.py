@@ -427,6 +427,23 @@ def test_remove_archived_letter_attachments_from_s3_rejects_non_date_string_arch
     mock_dao.assert_not_called()
 
 
+def test_remove_archived_letter_attachments_from_s3_when_nothing_to_delete(
+    mocker, notify_db_session, sample_letter_template
+):
+    create_archived_letter_attachment(sample_letter_template)
+
+    dao_get_archived_files_mock = mocker.patch(
+        "app.celery.nightly_tasks.dao_get_archived_letter_attachments_older_than",
+        wraps=nightly_tasks.dao_get_archived_letter_attachments_older_than,
+    )
+    mock_remove_s3_object = mocker.patch("app.celery.nightly_tasks.s3.remove_s3_object")
+
+    remove_archived_letter_attachments_from_s3()
+
+    dao_get_archived_files_mock.assert_called_once()
+    mock_remove_s3_object.assert_not_called()
+
+
 # ======== Test archive unsubscribe requests ========
 
 
