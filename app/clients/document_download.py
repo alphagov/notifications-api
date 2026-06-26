@@ -45,6 +45,8 @@ class DocumentDownloadClient:
         confirmation_email: str | None = None,
         retention_period: str | None = None,
         filename: str | None = None,
+        from_job: bool | None = None,
+        validation_emails_csv: list | None = None,
     ):
         try:
             data = {
@@ -60,6 +62,12 @@ class DocumentDownloadClient:
 
             if filename:
                 data["filename"] = filename
+
+            if from_job:
+                data["from_job"] = from_job
+
+            if validation_emails_csv:
+                data["validation_emails_csv"] = validation_emails_csv
 
             headers = {"Authorization": f"Bearer {self.auth_token}"}
             if has_request_context() and hasattr(request, "get_onwards_request_headers"):
