@@ -101,7 +101,7 @@ lint: ## Run static type checks
 
 .PHONY: refreeze-requirements
 refreeze-requirements: ## Upgrade unpinned requirements
-	EXTRA_UV_PIP_COMPILE_FLAGS="--upgrade --exclude-newer" make freeze-requirements
+	EXTRA_UV_PIP_COMPILE_FLAGS="--upgrade" make freeze-requirements
 
 .PHONY: freeze-requirements
 freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt
