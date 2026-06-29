@@ -1,4 +1,5 @@
 import csv
+from datetime import UTC, datetime, timedelta
 from io import StringIO
 from typing import Any
 from uuid import UUID
@@ -26,7 +27,6 @@ class ReportRequestProcessor:
         self.report_request = dao_get_report_request_by_id(service_id, report_request_id)
         self.notification_type = self.report_request.parameter["notification_type"]
         self.notification_status = self.report_request.parameter["notification_status"]
-        self.page_size = current_app.config.get("REPORT_REQUEST_NOTIFICATIONS_CSV_BATCH_SIZE")
         self.s3_bucket = current_app.config["S3_BUCKET_REPORT_REQUESTS_DOWNLOAD"]
         self.filename = f"notifications_report/{report_request_id}.csv"
         self.upload_id: str | None = None
@@ -69,21 +69,27 @@ class ReportRequestProcessor:
     def _fetch_and_upload_notifications(self) -> None:
         service_retention = fetch_service_data_retention_by_notification_type(self.service_id, self.notification_type)
         limit_days = service_retention.days_of_retention if service_retention else 7
-        older_than = None
-        is_notification = True
-        while is_notification:
-            serialized_notifications = self._fetch_serialized_notifications(limit_days, older_than)
 
-            is_notification = len(serialized_notifications) != 0
+        end_date = datetime.now(UTC)
+        start_date = end_date - timedelta(days=limit_days)
 
-            csv_data = self._convert_notifications_to_csv(serialized_notifications)
-            self.csv_writer.writerows(csv_data)
-            self._upload_csv_part_if_needed()
-            older_than = serialized_notifications[-1]["id"] if is_notification else None
-        # Upload any remaining data
+        current_start = start_date
+
+        while current_start < end_date:
+            current_end = min(current_start + timedelta(hours=1), end_date)
+
+            serialized_notifications = self._fetch_serialized_notifications(current_start, current_end)
+
+            if serialized_notifications:
+                csv_data = self._convert_notifications_to_csv(serialized_notifications)
+                self.csv_writer.writerows(csv_data)
+                self._upload_csv_part_if_needed()
+
+            current_start = current_end
+
         self._upload_remaining_data()
 
-    def _fetch_serialized_notifications(self, limit_days: int, older_than: str | None) -> list[dict[str, Any]]:
+    def _fetch_serialized_notifications(self, start_time: datetime, end_time: datetime) -> list[dict[str, Any]]:
         statuses = NOTIFICATION_REPORT_REQUEST_MAPPING[self.notification_status]
 
         notifications = get_notifications_for_service(  # type: ignore[call-arg]
@@ -92,28 +98,25 @@ class ReportRequestProcessor:
                 "template_type": self.notification_type,
                 "status": statuses,
             },
-            page_size=self.page_size,
+            start_time=start_time,
+            end_time=end_time,
             count_pages=False,
-            limit_days=limit_days,
             include_jobs=True,
             with_personalisation=False,
             include_from_test_key=False,
             error_out=False,
             include_one_off=True,
-            older_than=older_than,
             session=db.session_bulk,
             retry_attempts=2,
         )
 
-        serialized_notifications = [notification.serialize_for_csv() for notification in notifications]
-        return serialized_notifications
+        return [notification.serialize_for_csv() for notification in notifications]
 
     def _convert_notifications_to_csv(self, serialized_notifications: list[dict[str, Any]]) -> list[tuple]:
         values = []
         for notification in serialized_notifications:
             values.append(
                 (
-                    # the recipient for precompiled letters is the full address block
                     notification["recipient"].splitlines()[0].lstrip().rstrip(" ,"),
                     notification["client_reference"],
                     notification["template_name"],
@@ -133,8 +136,6 @@ class ReportRequestProcessor:
         if len(data_bytes) >= S3_MULTIPART_UPLOAD_MIN_PART_SIZE:
             self._upload_part(data_bytes)
 
-            # Reset the buffer for the next part
-            # truncate(0) does not reset the cursor so seek(0) is needed to reset the cursor
             self.csv_buffer.seek(0)
             self.csv_buffer.truncate(0)
             self.csv_writer = csv.writer(self.csv_buffer)
