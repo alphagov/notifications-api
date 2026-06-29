@@ -76,7 +76,7 @@ class ReportRequestProcessor:
         current_start = start_date
 
         while current_start < end_date:
-            current_end = min(current_start + timedelta(hours=1), end_date)
+            current_end = min(current_start + timedelta(minutes=15), end_date)
 
             serialized_notifications = self._fetch_serialized_notifications(current_start, current_end)
 
