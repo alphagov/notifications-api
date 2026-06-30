@@ -45,6 +45,27 @@ def get_returned_letters():
     service_id = str(authenticated_service.id)
     data = validate(request.args.to_dict(), get_returned_letters_request)
     report_date = data.get("report_date")
+    result = get_returned_letters_for_v2_endpoint(service_id=service_id, report_date=report_date)
+
+    return jsonify(result), 200
+
+
+redis_cache = RequestCache(redis_store)
+cache_expiration_time = int(timedelta(days=1).total_seconds())
+
+
+@redis_cache.set("service-{service_id}-returned-letter-summary", ttl_in_seconds=cache_expiration_time)
+def get_returned_letter_summary_for_v2_endpoint(service_id: UUID | str) -> list[Any]:
+    result = [
+        {"returned_letter_count": row.returned_letter_count, "report_date": row.reported_at.strftime(DATE_FORMAT)}
+        for row in fetch_returned_letter_summary(service_id)
+    ]
+
+    return result
+
+
+@redis_cache.set("service-{service_id}-returned-letters-{report_date}", ttl_in_seconds=cache_expiration_time)
+def get_returned_letters_for_v2_endpoint(service_id: UUID | str, report_date: str) -> dict[Any]:
     result = [
         {
             "notification_id": str(row["notification_id"]),
@@ -66,17 +87,3 @@ def get_returned_letters():
         "returned_letters": sorted(result, key=lambda i: i["created_at"], reverse=True),
         "orphaned_count": count_orphaned_returned_letters(service_id, report_date),
     }
-
-
-redis_cache = RequestCache(redis_store)
-cache_expiration_time = int(timedelta(days=1).total_seconds())
-
-
-@redis_cache.set("service-{service_id}-returned-letter-summary", ttl_in_seconds=cache_expiration_time)
-def get_returned_letter_summary_for_v2_endpoint(service_id: UUID | str) -> list[Any]:
-    result = [
-        {"returned_letter_count": row.returned_letter_count, "report_date": row.reported_at.strftime(DATE_FORMAT)}
-        for row in fetch_returned_letter_summary(service_id)
-    ]
-
-    return result

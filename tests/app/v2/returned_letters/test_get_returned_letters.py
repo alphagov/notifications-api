@@ -58,7 +58,7 @@ def test_v2_get_returned_letter_summary_raises_error_for_non_live_keys(api_clien
 
 
 @freeze_time("2026-06-23 13:30")
-def test_v2_get_returned_endpoint(api_client_request, sample_letter_template):
+def test_v2_get_returned_endpoint(mocker, api_client_request, sample_letter_template):
     job = create_job(template=sample_letter_template)
     letter_from_job = create_notification(
         template=sample_letter_template,
@@ -168,16 +168,21 @@ def test_v2_get_returned_endpoint(api_client_request, sample_letter_template):
         notification_id=uuid.uuid4(),
     )
 
+    mock_redis_set = mocker.patch(
+        "app.redis_store.set",
+    )
+
+    report_date = "2026-06-23"
     response = api_client_request.get(
         sample_letter_template.service.id, "v2_returned_letters.get_returned_letters", report_date="2026-06-23"
     )
 
-    assert response == {
+    data = {
         "returned_letters": [
             {
                 "notification_id": str(letter_from_job.id),
                 "reference": None,
-                "report_date": "2026-06-23",
+                "report_date": report_date,
                 "created_at": letter_from_job.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
                 "email_address": letter_from_job.get_created_by_email_address(),
                 "template_name": sample_letter_template.name,
@@ -190,7 +195,7 @@ def test_v2_get_returned_endpoint(api_client_request, sample_letter_template):
             {
                 "notification_id": str(one_off_letter.id),
                 "reference": None,
-                "report_date": "2026-06-23",
+                "report_date": report_date,
                 "created_at": one_off_letter.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
                 "email_address": one_off_letter.get_created_by_email_address(),
                 "template_name": sample_letter_template.name,
@@ -203,7 +208,7 @@ def test_v2_get_returned_endpoint(api_client_request, sample_letter_template):
             {
                 "notification_id": str(api_letter.id),
                 "reference": api_letter.client_reference,
-                "report_date": "2026-06-23",
+                "report_date": report_date,
                 "created_at": api_letter.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
                 "email_address": "API",
                 "template_name": sample_letter_template.name,
@@ -216,7 +221,7 @@ def test_v2_get_returned_endpoint(api_client_request, sample_letter_template):
             {
                 "notification_id": str(precompiled_letter.id),
                 "reference": precompiled_letter.client_reference,
-                "report_date": "2026-06-23",
+                "report_date": report_date,
                 "created_at": precompiled_letter.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
                 "email_address": "API",
                 "template_name": "None",
@@ -229,7 +234,7 @@ def test_v2_get_returned_endpoint(api_client_request, sample_letter_template):
             {
                 "notification_id": str(uploaded_letter.id),
                 "reference": None,
-                "report_date": "2026-06-23",
+                "report_date": report_date,
                 "created_at": uploaded_letter.created_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
                 "email_address": sample_letter_template.service.users[0].email_address,
                 "template_name": "None",
@@ -242,6 +247,12 @@ def test_v2_get_returned_endpoint(api_client_request, sample_letter_template):
         ],
         "orphaned_count": 2,
     }
+
+    assert response == data
+
+    cache_key = f"service-{sample_letter_template.service.id}-returned-letters-{report_date}"
+
+    assert mock_redis_set.call_args_list[1] == call(cache_key, json.dumps(data), ex=86400)
 
 
 def test_v2_get_returned_letters_raises_error_for_non_live_keys(api_client_request, sample_service):
