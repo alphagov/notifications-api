@@ -346,15 +346,12 @@ def test_insert_returned_letters_clears_v2_returned_letters_caches(mocker, sampl
     )
     rl_caching_test_letter_template = create_template(service=rl_caching_test_service, template_type=LETTER_TYPE)
     create_notification_history(template=rl_caching_test_letter_template, reference="ref2")
-    mock_redis_delete = mocker.patch("app.dao.returned_letters_dao.redis_store.delete")
+    mock_redis_delete = mocker.patch("app.dao.returned_letters_dao.redis_store.delete_by_pattern")
     current_http_date = datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")
     with freeze_time(current_http_date):
         insert_returned_letters(["ref1", "ref2"])
 
-    mock_redis_delete_expected_call_list = [
-        call(f"service-{sample_letter_template.service_id}-returned-letter-summary"),
-        call(f"service-{rl_caching_test_letter_template.service_id}-returned-letter-summary"),
+    assert len(mock_redis_delete.call_args_list) == 1
+    assert mock_redis_delete.call_args_list == [
+        call("service-????????-????-????-????-????????????-returned-letter-summary")
     ]
-
-    assert len(mock_redis_delete.call_args_list) == 2
-    mock_redis_delete.assert_has_calls(mock_redis_delete_expected_call_list, any_order=True)

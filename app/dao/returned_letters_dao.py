@@ -33,9 +33,7 @@ def _get_notification_ids_for_references(references):
 @autocommit
 def insert_returned_letters(references):
     data = _get_notification_ids_for_references(references)
-    service_ids = set()
     for row in data:
-        service_ids.add(str(row.service_id))
         table = ReturnedLetter.__table__
 
         stmt = (
@@ -50,10 +48,8 @@ def insert_returned_letters(references):
         )
         db.session.connection().execute(stmt)
 
-    # clear the service-{service_id}-returned-letter-summary cache for each service
-
-    for service_id in service_ids:
-        redis_store.delete(f"service-{service_id}-returned-letter-summary")
+    # clear all service-{service_id}-returned-letter-summary caches
+    redis_store.delete_by_pattern("service-????????-????-????-????-????????????-returned-letter-summary")
 
 
 def fetch_recent_returned_letter_count(service_id):
