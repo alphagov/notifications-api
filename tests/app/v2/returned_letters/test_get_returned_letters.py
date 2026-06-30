@@ -1,5 +1,7 @@
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
+from unittest.mock import call
 
 from freezegun import freeze_time
 
@@ -17,10 +19,14 @@ from tests.app.db import (
 
 
 @freeze_time("2026-06-22 13:30")
-def test_v2_get_returned_letter_summary(api_client_request, sample_service):
+def test_v2_get_returned_letter_summary(mocker, api_client_request, sample_service):
     create_returned_letter(sample_service, reported_at=datetime.now(UTC) - timedelta(days=3))
     create_returned_letter(sample_service, reported_at=datetime.now(UTC))
     create_returned_letter(sample_service, reported_at=datetime.now(UTC))
+
+    mock_redis_set = mocker.patch(
+        "app.redis_store.set",
+    )
 
     response = api_client_request.get(
         sample_service.id,
@@ -30,10 +36,16 @@ def test_v2_get_returned_letter_summary(api_client_request, sample_service):
 
     assert len(response) == 2
 
-    assert response == [
+    data = [
         {"returned_letter_count": 2, "report_date": "2026-06-22"},
         {"returned_letter_count": 1, "report_date": "2026-06-19"},
     ]
+
+    assert response == data
+
+    cache_key = f"service-{sample_service.id}-returned-letter-summary"
+
+    assert mock_redis_set.call_args_list[1] == call(cache_key, json.dumps(data), ex=86400)
 
 
 def test_v2_get_returned_letter_summary_raises_error_for_non_live_keys(api_client_request, sample_service):
