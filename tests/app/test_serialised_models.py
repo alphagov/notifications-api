@@ -43,6 +43,7 @@ def test_template_caches_in_redis_with_correct_keys(
         f"service-{sample_service.id}-template-{sample_template.id}-version-None",
         ANY,
         ex=2419200,
+        skippable=True,
     )
 
     assert json.loads(mock_redis_set.call_args_list[0][0][1]) == {
@@ -95,6 +96,7 @@ def test_template_version_caches_in_redis_with_correct_keys(
         f"service-{sample_service.id}-template-{sample_template.id}-version-1",
         ANY,
         ex=2419200,
+        skippable=True,
     )
 
     assert json.loads(mock_redis_set.call_args_list[0][0][1]) == {

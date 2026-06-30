@@ -107,9 +107,9 @@ def test_get_uploads(admin_request, sample_template, mocker):
     }
 
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{upload_5.id}-notification-outcomes"),
-        mocker.call(f"job-{upload_4.id}-notification-outcomes"),
-        mocker.call(f"job-{upload_2.id}-notification-outcomes"),
+        mocker.call(f"job-{upload_5.id}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{upload_4.id}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{upload_2.id}-notification-outcomes", skippable=True),
     ]
 
 
@@ -145,9 +145,9 @@ def test_get_uploads_should_return_statistics(admin_request, sample_template, mo
     assert resp_json[3]["statistics"] == []
 
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{job_1.id}-notification-outcomes"),
-        mocker.call(f"job-{job_3.id}-notification-outcomes"),
-        mocker.call(f"job-{job_2.id}-notification-outcomes"),
+        mocker.call(f"job-{job_1.id}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{job_3.id}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{job_2.id}-notification-outcomes", skippable=True),
     ]
 
 
@@ -168,8 +168,8 @@ def test_get_uploads_should_paginate(admin_request, sample_template, mocker):
     assert set(resp_json["links"].keys()) == {"next", "last"}
 
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{resp_json['data'][0]['id']}-notification-outcomes"),
-        mocker.call(f"job-{resp_json['data'][1]['id']}-notification-outcomes"),
+        mocker.call(f"job-{resp_json['data'][0]['id']}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{resp_json['data'][1]['id']}-notification-outcomes", skippable=True),
     ]
 
 
@@ -190,8 +190,8 @@ def test_get_uploads_accepts_page_parameter(admin_request, sample_template, mock
     assert set(resp_json["links"].keys()) == {"prev", "next", "last"}
 
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{resp_json['data'][0]['id']}-notification-outcomes"),
-        mocker.call(f"job-{resp_json['data'][1]['id']}-notification-outcomes"),
+        mocker.call(f"job-{resp_json['data'][0]['id']}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{resp_json['data'][1]['id']}-notification-outcomes", skippable=True),
     ]
 
 
@@ -233,9 +233,9 @@ def test_get_uploads_should_retrieve_from_ft_notification_status_for_old_jobs(ad
     assert resp_json[2]["statistics"] == [{"status": "delivered", "count": 6}]
 
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{resp_json[0]['id']}-notification-outcomes"),
-        mocker.call(f"job-{resp_json[1]['id']}-notification-outcomes"),
-        mocker.call(f"job-{resp_json[2]['id']}-notification-outcomes"),
+        mocker.call(f"job-{resp_json[0]['id']}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{resp_json[1]['id']}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{resp_json[2]['id']}-notification-outcomes", skippable=True),
     ]
 
 
