@@ -41,7 +41,7 @@ def init_performance_monitoring():
             environment=environment,
             sample_rate=error_sample_rate,
             send_default_pii=send_pii,
-            max_request_body_size=send_request_bodies,
+            request_bodies=send_request_bodies,
             traces_sampler=traces_sampler,
             # We explicitly enable the celery integration here so that we can toggle `monitor_beat_tasks` on (default
             # is off). This doesn't stop a number of other integrations being automatically enabled, eg Flask, Redis,
