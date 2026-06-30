@@ -226,7 +226,7 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
         # again. This should mean that each instance of the error on Sentry actually deserves to be investigated as
         # a separate issue/potential incident.
         if count == 10:
-            with sentry_sdk.new_scope() as scope:
+            with sentry_sdk.push_scope() as scope:
                 error_context = {
                     "Support runbook": (
                         "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#slow-sms-delivery"
