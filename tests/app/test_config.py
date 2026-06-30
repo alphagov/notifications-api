@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from celery.schedules import crontab
 from sqlalchemy import text
 
@@ -96,3 +98,10 @@ def test_celery_config_contains_archived_template_email_file_cleanup_task():
     assert task_config["task"] == "remove-archived-template-email-files-from-s3"
     assert task_config["options"]["queue"] == QueueNames.PERIODIC
     assert task_config["schedule"] == crontab(hour=4, minute=40)
+
+
+def test_celery_config_contains_process_replication_slot_changes_task():
+    task_config = Config.CELERY["beat_schedule"]["process-replication-slot-changes"]
+    assert task_config["task"] == "process-replication-slot-changes"
+    assert task_config["options"]["queue"] == QueueNames.PERIODIC
+    assert task_config["schedule"] == timedelta(seconds=1)

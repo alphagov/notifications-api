@@ -504,6 +504,11 @@ class Config:
                 "schedule": crontab(hour=9, minute=0, day_of_week="wed", day_of_month="2-8"),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "process-replication-slot-changes": {
+                "task": "process-replication-slot-changes",
+                "schedule": timedelta(seconds=1),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
         },
     }
 
