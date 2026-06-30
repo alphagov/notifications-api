@@ -1,9 +1,10 @@
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from unittest.mock import call
 
 from freezegun import freeze_time
 
-from app.constants import NOTIFICATION_RETURNED_LETTER
+from app.constants import LETTER_TYPE, NOTIFICATION_RETURNED_LETTER
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -19,6 +20,7 @@ from tests.app.db import (
     create_notification_history,
     create_returned_letter,
     create_service,
+    create_template,
 )
 
 
@@ -335,3 +337,24 @@ def test_fetch_returned_letter_callback_data_dao(sample_letter_template):
     assert expected_result["original_file_name"] == result["original_file_name"]
     assert expected_result["job_row_number"] == result["job_row_number"]
     assert expected_result["upload_letter_file_name"] == result["client_reference"]
+
+
+def test_insert_returned_letters_clears_v2_returned_letters_caches(mocker, sample_letter_template):
+    create_notification(template=sample_letter_template, reference="ref1")
+    rl_caching_test_service = create_service(
+        service_name="returned_letters_caching_test_service", service_id="d5c574e6-cbc2-46a6-a65e-d79d3a8ef950"
+    )
+    rl_caching_test_letter_template = create_template(service=rl_caching_test_service, template_type=LETTER_TYPE)
+    create_notification_history(template=rl_caching_test_letter_template, reference="ref2")
+    mock_redis_delete = mocker.patch("app.dao.returned_letters_dao.redis_store.delete")
+    current_http_date = datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")
+    with freeze_time(current_http_date):
+        insert_returned_letters(["ref1", "ref2"])
+
+    mock_redis_delete_expected_call_list = [
+        call(f"service-{sample_letter_template.service_id}-returned-letter-summary"),
+        call(f"service-{rl_caching_test_letter_template.service_id}-returned-letter-summary"),
+    ]
+
+    assert len(mock_redis_delete.call_args_list) == 2
+    mock_redis_delete.assert_has_calls(mock_redis_delete_expected_call_list, any_order=True)

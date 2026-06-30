@@ -383,6 +383,10 @@ def register_v2_blueprints(application):
         post_notifications,
         v2_notification_blueprint,
     )
+    from app.v2.returned_letters import (  # noqa
+        get_returned_letters,
+        v2_returned_letters_blueprint,
+    )
     from app.v2.template import (  # noqa
         get_template,
         post_template,
@@ -392,6 +396,9 @@ def register_v2_blueprints(application):
 
     v2_notification_blueprint.before_request(requires_auth)
     application.register_blueprint(v2_notification_blueprint)
+
+    v2_returned_letters_blueprint.before_request(requires_auth)
+    application.register_blueprint(v2_returned_letters_blueprint)
 
     v2_templates_blueprint.before_request(requires_auth)
     application.register_blueprint(v2_templates_blueprint)
