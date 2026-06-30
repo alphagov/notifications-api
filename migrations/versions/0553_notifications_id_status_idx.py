@@ -15,23 +15,28 @@ def upgrade():
     # We need a unique index on (id, notification_status) for REPLICA IDENTITY USING INDEX.
     # Build a validated check first so PostgreSQL can avoid a table scan when setting NOT NULL.
     with op.get_context().autocommit_block():
-        op.execute("BEGIN;")
+        op.execute(
+            "ALTER TABLE notifications "
+            "DROP CONSTRAINT IF EXISTS ck_notifications_notification_status_not_null;"
+        )
         op.execute(
             "ALTER TABLE notifications "
             "ADD CONSTRAINT ck_notifications_notification_status_not_null "
             "CHECK (notification_status IS NOT NULL) NOT VALID;"
         )
-        op.execute("COMMIT;")
 
     with op.get_context().autocommit_block():
-        op.execute("BEGIN;")
         op.execute(
             "ALTER TABLE notifications "
             "VALIDATE CONSTRAINT ck_notifications_notification_status_not_null;"
         )
-        op.execute("COMMIT;")
 
     op.execute("ALTER TABLE notifications ALTER COLUMN notification_status SET NOT NULL;")
+
+    with op.get_context().autocommit_block():
+        op.execute(
+            "DROP INDEX CONCURRENTLY IF EXISTS ix_notifications_id_notification_status;"
+        )
 
     with op.get_context().autocommit_block():
         op.execute(
@@ -50,15 +55,11 @@ def downgrade():
     op.execute("ALTER TABLE notifications DROP CONSTRAINT IF EXISTS ck_notifications_notification_status_not_null;")
 
     with op.get_context().autocommit_block():
-        op.drop_index(
-            "ix_notifications_id_notification_status",
-            table_name="notifications",
-            postgresql_concurrently=True,
+        op.execute(
+            "DROP INDEX CONCURRENTLY IF EXISTS ix_notifications_id_notification_status;"
         )
-        op.create_index(
-            "ix_notifications_id_notification_status",
-            "notifications",
-            ["id", "notification_status"],
-            unique=False,
-            postgresql_concurrently=True,
+        op.execute(
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS "
+            "ix_notifications_id_notification_status "
+            "ON notifications (id, notification_status);"
         )
