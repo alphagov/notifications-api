@@ -853,14 +853,17 @@ def test_get_possibly_cached_notification_outcomes_for_job_empty_cache(
     if expect_redis_set:
         assert mock_redis_set.mock_calls == [
             mocker.call(
-                f"job-{job.id}-notification-outcomes", json.dumps(retval), ex=timedelta(days=1).total_seconds()
+                f"job-{job.id}-notification-outcomes",
+                json.dumps(retval),
+                ex=timedelta(days=1).total_seconds(),
+                skippable=True,
             ),
         ]
     else:
         assert not mock_redis_set.mock_calls
 
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{job.id}-notification-outcomes"),
+        mocker.call(f"job-{job.id}-notification-outcomes", skippable=True),
     ]
 
 
@@ -887,5 +890,5 @@ def test_get_possibly_cached_notification_outcomes_for_job_present_cache(
     assert retval == [{"status": "delivered", "count": 12}, {"status": "sent", "count": 34}]
 
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{fake_uuid}-notification-outcomes"),
+        mocker.call(f"job-{fake_uuid}-notification-outcomes", skippable=True),
     ]

@@ -763,8 +763,8 @@ def test_get_jobs_with_limit_days(admin_request, sample_template, mocker):
 
     assert len(resp_json["data"]) == 2
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{jobs[2].id}-notification-outcomes"),
-        mocker.call(f"job-{jobs[1].id}-notification-outcomes"),
+        mocker.call(f"job-{jobs[2].id}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{jobs[1].id}-notification-outcomes", skippable=True),
     ]
 
 
@@ -784,7 +784,7 @@ def test_get_jobs_by_contact_list(admin_request, sample_template, mocker):
 
     assert len(resp_json["data"]) == 1
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{job_2.id}-notification-outcomes"),
+        mocker.call(f"job-{job_2.id}-notification-outcomes", skippable=True),
     ]
 
 
@@ -811,8 +811,8 @@ def test_get_jobs_should_return_statistics(admin_request, sample_template, mocke
     assert resp_json["data"][1]["id"] == str(job_1.id)
     assert {"status": "created", "count": 3} in resp_json["data"][1]["statistics"]
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{job_2.id}-notification-outcomes"),
-        mocker.call(f"job-{job_1.id}-notification-outcomes"),
+        mocker.call(f"job-{job_2.id}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{job_1.id}-notification-outcomes", skippable=True),
     ]
 
 
@@ -833,8 +833,8 @@ def test_get_jobs_should_return_no_stats_if_no_rows_in_notifications(admin_reque
     assert resp_json["data"][1]["id"] == str(job_1.id)
     assert resp_json["data"][1]["statistics"] == []
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{job_2.id}-notification-outcomes"),
-        mocker.call(f"job-{job_1.id}-notification-outcomes"),
+        mocker.call(f"job-{job_2.id}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{job_1.id}-notification-outcomes", skippable=True),
     ]
 
 
@@ -872,8 +872,8 @@ def test_get_jobs_accepts_page_parameter(admin_request, sample_template, mocker)
     assert "links" in resp_json
     assert set(resp_json["links"].keys()) == {"prev", "next", "last"}
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{resp_json['data'][0]['id']}-notification-outcomes"),
-        mocker.call(f"job-{resp_json['data'][1]['id']}-notification-outcomes"),
+        mocker.call(f"job-{resp_json['data'][0]['id']}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{resp_json['data'][1]['id']}-notification-outcomes", skippable=True),
     ]
 
 
@@ -984,9 +984,9 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
     assert resp_json["data"][2]["id"] == str(job_1.id)
     assert resp_json["data"][2]["statistics"] == [{"status": "delivered", "count": 6}]
     assert mock_redis_get.mock_calls == [
-        mocker.call(f"job-{resp_json['data'][0]['id']}-notification-outcomes"),
-        mocker.call(f"job-{resp_json['data'][1]['id']}-notification-outcomes"),
-        mocker.call(f"job-{resp_json['data'][2]['id']}-notification-outcomes"),
+        mocker.call(f"job-{resp_json['data'][0]['id']}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{resp_json['data'][1]['id']}-notification-outcomes", skippable=True),
+        mocker.call(f"job-{resp_json['data'][2]['id']}-notification-outcomes", skippable=True),
     ]
 
 

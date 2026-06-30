@@ -285,8 +285,8 @@ def test_should_cache_template_and_service_in_redis(mocker, api_client_request, 
     expected_templates_key = f"service-{sample_template.service_id}-template-{sample_template.id}-version-None"
 
     assert mock_redis_get.call_args_list == [
-        call(expected_service_key),
-        call(expected_templates_key),
+        call(expected_service_key, skippable=True),
+        call(expected_templates_key, skippable=True),
     ]
 
     service_dict = service_schema.dump(sample_template.service)
