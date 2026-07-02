@@ -286,6 +286,7 @@ class Config:
         },
         "result_expires": 0,
         "timezone": "UTC",
+        "worker_max_tasks_per_child": int(os.getenv("CELERYD_WORKER_MAX_TASKS_PER_CHILD", 20_000)),
         "imports": [
             "app.celery.tasks",
             "app.celery.scheduled_tasks",
