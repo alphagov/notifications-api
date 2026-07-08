@@ -639,6 +639,63 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
     mock_send_ticket_to_zendesk.assert_called_once()
 
 
+@freeze_time("2026-05-30 14:00:00")
+def test_check_if_letters_still_pending_virus_check_with_letters_both_missing_from_scan_bucket_and_in_it(
+    sample_letter_template,
+    mocker,
+):
+    mock_file_exists = mocker.patch("app.aws.s3.file_exists", side_effect=[False, True])
+    mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.notify_celery.send_task")
+    mock_send_ticket_to_zendesk = mocker.patch(
+        "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
+        autospec=True,
+    )
+    notification_1 = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(seconds=601),
+        reference="one",
+    )
+    notification_2 = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(seconds=1000),
+        reference="two",
+    )
+
+    check_if_letters_still_pending_virus_check()
+
+    assert mock_file_exists.call_count == 2
+    mock_file_exists.assert_has_calls(
+        [
+            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20260530134959.PDF"),
+            call("test-letters-scan", "NOTIFY.TWO.D.2.C.20260530134320.PDF"),
+        ],
+        any_order=True,
+    )
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.SCAN_FILE,
+        kwargs={"filename": "NOTIFY.ONE.D.2.C.20260530134959.PDF"},
+        queue=QueueNames.ANTIVIRUS,
+        MessageGroupId=str(sample_letter_template.service_id),
+    )
+
+    mock_create_ticket.assert_called_once_with(
+        ANY,
+        subject="[test] Letters still pending virus check",
+        message=ANY,
+        ticket_type="task",
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
+        notify_task_type="notify_task_letters_pending_scan",
+    )
+    assert "1 precompiled letters have been pending-virus-check" in mock_create_ticket.call_args.kwargs["message"]
+    assert f"{(str(notification_1.id), notification_1.reference)}" not in mock_create_ticket.call_args.kwargs["message"]
+    assert f"{(str(notification_2.id), notification_2.reference)}" in mock_create_ticket.call_args.kwargs["message"]
+    mock_send_ticket_to_zendesk.assert_called_once()
+
+
 @freeze_time("2019-05-30 14:00:00")
 def test_check_if_letters_still_in_created_during_bst(sample_letter_template, caplog, mocker):
     mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
