@@ -17,9 +17,11 @@ def save_model_api_key(api_key):
 
 @autocommit
 @version_class(ApiKey)
-def expire_api_key(service_id, api_key_id):
+def expire_api_key(service_id, api_key_id, created_by_id=None):
     api_key = ApiKey.query.filter_by(id=api_key_id, service_id=service_id).one()
     api_key.expiry_date = datetime.utcnow()
+    if created_by_id is not None:
+        api_key.created_by_id = created_by_id
     db.session.add(api_key)
 
 
