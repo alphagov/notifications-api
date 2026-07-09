@@ -15,7 +15,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 )
 from notifications_utils.timezones import convert_utc_to_bst
 from redis.exceptions import LockError
-from sqlalchemy import and_, between, text
+from sqlalchemy import and_, between, quoted_name, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db, dvla_client, notify_celery, redis_store, zendesk_client
@@ -829,6 +829,10 @@ def populate_annual_billing(year, missing_services_only):
 
     for service in active_services:
         set_default_free_allowance_for_service(service, year)
+
+    # this table's write volume isn't enough to reliably trigger the autovacuum auto-analyze and
+    # poor statistics on this table can cause very bad query plans
+    db.session.execute(text(f"ANALYZE {quoted_name(AnnualBilling.__table__.name, True)}"))
 
 
 @notify_celery.task(name="run-populate-annual-billing")
