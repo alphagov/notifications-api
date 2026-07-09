@@ -66,6 +66,11 @@ def send_sms_to_provider(notification: Notification) -> None:
                 len(non_compatible_characters),
                 service.id,
                 notification.id,
+                extra={
+                    "non_compatible_character_count": len(non_compatible_characters),
+                    "service_id": service.id,
+                    "notification_id": notification.id,
+                },
             )
 
         created_at = notification.created_at
