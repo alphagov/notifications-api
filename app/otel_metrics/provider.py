@@ -15,6 +15,16 @@ _request_duration = _meter.create_histogram(
     explicit_bucket_boundaries_advisory=HTTP_DURATION_HISTOGRAM_BUCKETS,
 )
 
+_sms_legacy_proportion_delivered_within = _meter.create_gauge(
+    "provider.sms.legacy.proportion_delivered_within",
+    unit="1",
+    description="Proportion of SMS messages sent in the last time_window.evaluation seconds "
+    "that were delivered within time_window.delivery seconds. BEWARE this is a flawed metric as "
+    "it includes notifications sent too recently to be able to determine this for sensibly, "
+    "however this is the measure currently used by the SMS provider balancer for better or "
+    "worse.",
+)
+
 
 def record_request_duration[**P, T](
     notification_type: str, provider_name: str
@@ -43,3 +53,14 @@ def record_request_duration[**P, T](
         return wrapper
 
     return decorator
+
+
+def record_sms_legacy_proportion_delivered_within(
+    proportion: float, provider_name: str, delivery_window: int, evaluation_window: int
+) -> None:
+    attributes: dict[str, AttributeValue] = {
+        "provider.name": provider_name,
+        "time_window.evaluation": evaluation_window,
+        "time_window.delivery": delivery_window,
+    }
+    _sms_legacy_proportion_delivered_within.set(proportion, attributes)

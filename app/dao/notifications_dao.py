@@ -640,16 +640,6 @@ class SlowProviderDeliveryReport:
 def get_slow_text_message_delivery_reports_by_provider(
     created_within_minutes, delivered_within_minutes
 ) -> list[SlowProviderDeliveryReport]:
-    """
-    Returns a dict of providers with the ratio of their messages sent in the
-    last `created_within_minutes` minutes that took over
-    `delivered_within_minutes` minutes to be delivered
-
-    {
-        'mmg': 0.4,
-        'firetext': 0.12
-    }
-    """
     created_since = datetime.utcnow() - timedelta(minutes=created_within_minutes)
     delivery_time = timedelta(minutes=delivered_within_minutes)
     slow_notification_counts = (

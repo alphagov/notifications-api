@@ -67,6 +67,7 @@ from app.dao.notifications_dao import SlowProviderDeliveryReport
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.dao.template_email_files_dao import dao_get_template_email_file_by_id
 from app.models import Event, InboundNumber, Notification
+from app.otel_metrics.provider import _sms_legacy_proportion_delivered_within
 from tests.app import load_example_csv
 from tests.app.db import (
     create_email_branding,
@@ -232,6 +233,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
         SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.4, slow_notifications=40, total_notifications=100),
         SlowProviderDeliveryReport(provider="firetext", slow_ratio=0.8, slow_notifications=80, total_notifications=100),
     ]
+    set_sms_proportion_delivered_within_mock = mocker.patch.object(_sms_legacy_proportion_delivered_within, "set")
     mocker.patch(
         "app.celery.scheduled_tasks.get_slow_text_message_delivery_reports_by_provider",
         return_value=slow_delivery_reports,
@@ -246,6 +248,15 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
     assert mock_check_slow_delivery.call_args_list == (
         [mocker.call(slow_delivery_reports)] if expect_check_slow_delivery else []
     )
+
+    assert set_sms_proportion_delivered_within_mock.mock_calls == [
+        mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 60}),
+        mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 60}),
+        mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 300}),
+        mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 300}),
+        mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 600}),
+        mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 600}),
+    ]
 
 
 @pytest.mark.parametrize("consecutive_failures,should_log", ((1, False), (9, False), (10, True)))

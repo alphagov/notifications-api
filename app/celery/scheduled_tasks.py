@@ -90,6 +90,7 @@ from app.models import (
     User,
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
+from app.otel_metrics.provider import record_sms_legacy_proportion_delivered_within
 from app.utils import get_london_midnight_in_utc
 
 
@@ -256,6 +257,11 @@ def generate_sms_delivery_stats():
         providers_slow_delivery_reports = get_slow_text_message_delivery_reports_by_provider(
             created_within_minutes=15, delivered_within_minutes=delivery_interval
         )
+
+        for report in providers_slow_delivery_reports:
+            record_sms_legacy_proportion_delivered_within(
+                report.slow_ratio, report.provider, delivery_interval * 60, 15 * 60
+            )
 
         # For the 5-minute delivery interval, let's check the percentage of all text messages sent that were slow.
         # TODO: delete this when we have a way to raise these alerts from eg grafana, prometheus, something else.
