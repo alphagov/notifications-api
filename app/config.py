@@ -437,10 +437,14 @@ class Config:
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "check-if-letters-still-pending-virus-check-nightly": {
-                "task": "check-if-letters-still-pending-virus-check",
+                "task": "check-if-letters-still-pending-virus-check-nightly",
                 "schedule": crontab(hour=20, minute=0),
-                # check back three entire days, once per day, just in case things slipped through the net somehow
-                "kwargs": {"max_minutes_ago_to_check": 60 * 24 * 3},
+                # check back 5 entire days, attempting to rescan the last 3 days, once per day,
+                # just in case things slipped through the net somehow
+                "kwargs": {
+                    "max_minutes_ago_to_check_only": 60 * 24 * 5,
+                    "max_minutes_ago_to_check_and_rescan": 60 * 24 * 3,
+                },
                 "options": {"queue": QueueNames.PERIODIC},
             },
             "check-for-services-with-high-failure-rates-or-sending-to-tv-numbers": {

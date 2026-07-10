@@ -31,6 +31,7 @@ from app.celery.scheduled_tasks import (
     check_if_letters_in_technical_failure,
     check_if_letters_still_in_created,
     check_if_letters_still_pending_virus_check,
+    check_if_letters_still_pending_virus_check_nightly,
     check_job_status,
     delete_invitations,
     delete_old_records_from_events_table,
@@ -633,9 +634,12 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
         notify_ticket_type=NotifyTicketType.TECHNICAL,
         notify_task_type="notify_task_letters_pending_scan",
     )
-    assert "2 precompiled letters have been pending-virus-check" in mock_create_ticket.call_args.kwargs["message"]
-    assert f"{(str(notification_1.id), notification_1.reference)}" in mock_create_ticket.call_args.kwargs["message"]
-    assert f"{(str(notification_2.id), notification_2.reference)}" in mock_create_ticket.call_args.kwargs["message"]
+    ticket_message = mock_create_ticket.call_args.kwargs["message"]
+    assert "2 precompiled letters have been pending-virus-check" in ticket_message
+    assert f"{(str(notification_1.id), notification_1.reference)}" in ticket_message
+    assert f"{(str(notification_2.id), notification_2.reference)}" in ticket_message
+    assert "have reached the maximum number of retries" not in ticket_message
+    assert "We couldn't find them in the scan bucket" in ticket_message
     mock_send_ticket_to_zendesk.assert_called_once()
 
 
@@ -690,9 +694,230 @@ def test_check_if_letters_still_pending_virus_check_with_letters_both_missing_fr
         notify_ticket_type=NotifyTicketType.TECHNICAL,
         notify_task_type="notify_task_letters_pending_scan",
     )
-    assert "1 precompiled letters have been pending-virus-check" in mock_create_ticket.call_args.kwargs["message"]
-    assert f"{(str(notification_1.id), notification_1.reference)}" not in mock_create_ticket.call_args.kwargs["message"]
-    assert f"{(str(notification_2.id), notification_2.reference)}" in mock_create_ticket.call_args.kwargs["message"]
+    ticket_message = mock_create_ticket.call_args.kwargs["message"]
+    assert "1 precompiled letters have been pending-virus-check" in ticket_message
+    assert f"{(str(notification_1.id), notification_1.reference)}" not in ticket_message
+    assert f"{(str(notification_2.id), notification_2.reference)}" in ticket_message
+    assert "have reached the maximum number of retries" not in ticket_message
+    assert "We couldn't find them in the scan bucket" in ticket_message
+
+    mock_send_ticket_to_zendesk.assert_called_once()
+
+
+def test_check_if_letters_still_pending_virus_check_nightly_raises_error_if_args_in_wrong_order():
+    with pytest.raises(ValueError):
+        check_if_letters_still_pending_virus_check_nightly(
+            max_minutes_ago_to_check_only=500,
+            max_minutes_ago_to_check_and_rescan=1000,
+        )
+
+
+@freeze_time("2026-05-30 14:00:00")
+def test_check_if_letters_still_pending_virus_check_nightly_when_all_letters_can_be_processed(
+    sample_letter_template,
+    mocker,
+):
+    mock_file_exists = mocker.patch("app.aws.s3.file_exists", return_value=True)
+    mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.notify_celery.send_task")
+
+    create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(minutes=10, seconds=1),
+        reference="one",
+    )
+    create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(minutes=9, seconds=59),
+        reference="still has time to send",
+    )
+    expected_filename = "NOTIFY.ONE.D.2.C.20260530134959.PDF"
+
+    check_if_letters_still_pending_virus_check_nightly()
+
+    mock_file_exists.assert_called_once_with("test-letters-scan", expected_filename)
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.SCAN_FILE,
+        kwargs={"filename": expected_filename},
+        queue=QueueNames.ANTIVIRUS,
+        MessageGroupId=str(sample_letter_template.service_id),
+    )
+    assert mock_create_ticket.called is False
+
+
+@freeze_time("2026-05-30 14:00:00")
+def test_check_if_letters_still_pending_virus_check_nightly_alerts_on_old_letters_that_wont_be_retried(
+    sample_letter_template,
+    mocker,
+):
+    mock_file_exists = mocker.patch("app.aws.s3.file_exists", return_value=False)
+    mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.notify_celery.send_task")
+    mock_send_ticket_to_zendesk = mocker.patch(
+        "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
+        autospec=True,
+    )
+
+    create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_DELIVERED,
+        created_at=datetime.utcnow() - timedelta(days=4),
+        reference="ignore as status in delivered",
+    )
+    notification_1 = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(days=3, seconds=1),
+        reference="one",
+    )
+    notification_2 = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(days=5),
+        reference="two",
+    )
+
+    check_if_letters_still_pending_virus_check_nightly()
+
+    assert not mock_file_exists.called
+    assert not mock_celery.called
+
+    mock_create_ticket.assert_called_once_with(
+        ANY,
+        subject="[test] Letters still pending virus check",
+        message=ANY,
+        ticket_type="task",
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
+        notify_task_type="notify_task_letters_pending_scan",
+    )
+    ticket_message = mock_create_ticket.call_args.kwargs["message"]
+    assert "2 precompiled letters have been pending-virus-check" in ticket_message
+    assert f"{(str(notification_1.id), notification_1.reference)}" in ticket_message
+    assert f"{(str(notification_2.id), notification_2.reference)}" in ticket_message
+    assert "have reached the maximum number of retries" in ticket_message
+    assert "We couldn't find them in the scan bucket" not in ticket_message
+    mock_send_ticket_to_zendesk.assert_called_once()
+
+
+@freeze_time("2026-05-30 14:00:00")
+def test_check_if_letters_still_pending_virus_check_nightly_warns_about_letters_not_in_scan_bucket(
+    sample_letter_template,
+    mocker,
+):
+    mock_file_exists = mocker.patch("app.aws.s3.file_exists", side_effect=[False, True])
+    mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.notify_celery.send_task")
+    mock_send_ticket_to_zendesk = mocker.patch(
+        "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
+        autospec=True,
+    )
+    notification_1 = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(seconds=601),
+        reference="one",
+    )
+    # notification_2 is returned first from dao function, so is the file not found
+    notification_2 = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(seconds=1000),
+        reference="two",
+    )
+
+    check_if_letters_still_pending_virus_check_nightly()
+
+    assert mock_file_exists.call_count == 2
+    mock_file_exists.assert_has_calls(
+        [
+            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20260530134959.PDF"),
+            call("test-letters-scan", "NOTIFY.TWO.D.2.C.20260530134320.PDF"),
+        ],
+        any_order=True,
+    )
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.SCAN_FILE,
+        kwargs={"filename": "NOTIFY.ONE.D.2.C.20260530134959.PDF"},
+        queue=QueueNames.ANTIVIRUS,
+        MessageGroupId=str(sample_letter_template.service_id),
+    )
+
+    mock_create_ticket.assert_called_once_with(
+        ANY,
+        subject="[test] Letters still pending virus check",
+        message=ANY,
+        ticket_type="task",
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
+        notify_task_type="notify_task_letters_pending_scan",
+    )
+    ticket_message = mock_create_ticket.call_args.kwargs["message"]
+    assert "1 precompiled letters have been pending-virus-check" in ticket_message
+    assert f"{(str(notification_1.id), notification_1.reference)}" not in ticket_message
+    assert f"{(str(notification_2.id), notification_2.reference)}" in ticket_message
+    assert "have reached the maximum number of retries" not in ticket_message
+    assert "We couldn't find them in the scan bucket" in ticket_message
+
+    mock_send_ticket_to_zendesk.assert_called_once()
+
+
+@freeze_time("2026-05-30 14:00:00")
+def test_check_if_letters_still_pending_virus_check_nightly_with_both_types_of_zendesk_warning(
+    sample_letter_template,
+    mocker,
+):
+    mock_file_exists = mocker.patch("app.aws.s3.file_exists", return_value=False)
+    mock_create_ticket = mocker.spy(NotifySupportTicket, "__init__")
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.notify_celery.send_task")
+    mock_send_ticket_to_zendesk = mocker.patch(
+        "app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk",
+        autospec=True,
+    )
+    # notification_1 is too old to be rescanned
+    notification_1 = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(days=4),
+        reference="one",
+    )
+    # notification_2 cannot be found in the scan bucket
+    notification_2 = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(seconds=1000),
+        reference="two",
+    )
+
+    check_if_letters_still_pending_virus_check_nightly()
+
+    assert mock_file_exists.call_count == 1
+    mock_file_exists.assert_has_calls(
+        [
+            call("test-letters-scan", "NOTIFY.TWO.D.2.C.20260530134320.PDF"),
+        ],
+    )
+
+    assert mock_celery.called is False
+
+    mock_create_ticket.assert_called_once_with(
+        ANY,
+        subject="[test] Letters still pending virus check",
+        message=ANY,
+        ticket_type="task",
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
+        notify_task_type="notify_task_letters_pending_scan",
+    )
+    normalized_ticket_message = " ".join(mock_create_ticket.call_args.kwargs["message"].split())
+    assert "1 precompiled letters have been pending-virus-check for over 10 minutes" in normalized_ticket_message
+    assert "1 precompiled letters have been pending-virus-check for over 3 days" in normalized_ticket_message
+    assert f"{(str(notification_1.id), notification_1.reference)}" in normalized_ticket_message
+    assert f"{(str(notification_2.id), notification_2.reference)}" in normalized_ticket_message
+    assert "have reached the maximum number of retries" in normalized_ticket_message
+    assert "We couldn't find them in the scan bucket" in normalized_ticket_message
+
     mock_send_ticket_to_zendesk.assert_called_once()
 
 
