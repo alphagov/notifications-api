@@ -156,6 +156,7 @@ from app.schemas import (
     service_schema,
 )
 from app.service import statistics
+from app.service.api_key_schema import post_revoke_api_key_schema
 from app.service.report_request_schema import add_report_request_schema
 from app.service.send_notification import (
     send_one_off_notification,
@@ -353,7 +354,9 @@ def create_api_key(service_id=None):
 
 @service_blueprint.route("/<uuid:service_id>/api-key/revoke/<uuid:api_key_id>", methods=["POST"])
 def revoke_api_key(service_id, api_key_id):
-    expire_api_key(service_id=service_id, api_key_id=api_key_id)
+    data = request.get_json(silent=True) or {}
+    validate(data, post_revoke_api_key_schema)
+    expire_api_key(service_id=service_id, api_key_id=api_key_id, created_by_id=data.get("created_by"))
     return jsonify(), 202
 
 
