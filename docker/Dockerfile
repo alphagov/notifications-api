@@ -158,7 +158,16 @@ RUN \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         postgresql-$POSTGRES_VERSION \
+        postgresql-$POSTGRES_VERSION-wal2json \
     && rm -rf /var/lib/apt/lists/* /tmp/*
+
+# add WAL configuration to postgresql.conf to enable logical replication
+RUN printf '%s\n' \
+    "wal_level = logical" \
+    "max_replication_slots = 10" \
+    "max_wal_senders = 10" \
+    "max_slot_wal_keep_size = 1GB" \
+    >> /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf
 
 RUN \
     service postgresql start \
