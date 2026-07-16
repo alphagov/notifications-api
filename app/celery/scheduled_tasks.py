@@ -85,6 +85,7 @@ from app.models import (
     EmailBranding,
     Event,
     Job,
+    Notification,
     Organisation,
     Service,
     User,
@@ -355,10 +356,83 @@ def replay_created_notifications() -> None:
 
 
 @notify_celery.task(name="check-if-letters-still-pending-virus-check")
-def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 30):
+def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 30) -> None:
     # this task runs every ten minutes, so allowing a couple of runs
     # if this task doesn't run for some reason, we may need to manually trigger it with a longer max_minutes_ago value
-    letters = []
+    letters_missing_from_scan_bucket = _attempt_to_rescan_letters_pending_virus_check(max_minutes_ago_to_check)
+
+    if letters_missing_from_scan_bucket:
+        if current_app.should_send_zendesk_alerts:  # type: ignore[attr-defined]
+            ticket = NotifySupportTicket(
+                subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still pending virus check",
+                message=_message_about_letters_pending_virus_check(
+                    letters_to_alert_on_but_not_retry=[],
+                    letters_missing_from_scan_bucket=letters_missing_from_scan_bucket,
+                ),
+                ticket_type=NotifySupportTicket.TYPE_TASK,
+                notify_ticket_type=NotifyTicketType.TECHNICAL,
+                notify_task_type="notify_task_letters_pending_scan",
+            )
+            zendesk_client.send_ticket_to_zendesk(ticket)  # type: ignore[attr-defined]
+
+
+@notify_celery.task(name="check-if-letters-still-pending-virus-check-nightly")
+def check_if_letters_still_pending_virus_check_nightly(
+    max_minutes_ago_to_check_only: int = 7200,
+    max_minutes_ago_to_check_and_rescan: int = 4320,
+) -> None:
+    """
+    This looks for letters pending-virus-check between two time periods.
+    For the older time period, we don't attempt to rescan any letters found, we create a Zendesk ticket about them.
+
+    For the more recent time period, we do the same as the `check-if-letters-still-pending-virus-check` task -
+    attempt to reprocess the letters, but create a Zendesk ticket if the letters couldn't be found.
+
+    This task aims to catch any letters that are still pending-virus-check and have slipped through the net
+    """
+    if max_minutes_ago_to_check_only <= max_minutes_ago_to_check_and_rescan:
+        raise ValueError("max_minutes_ago_to_check_only must be greater than max_minutes_ago_to_check_and_rescan")
+
+    # Check for letters over 3 days old that we won't attempt to rescan or find
+    letters_to_alert_on_but_not_retry = []
+    for letter in dao_precompiled_letters_still_pending_virus_check(
+        max_minutes_ago_to_check=max_minutes_ago_to_check_only,
+        min_minutes_ago_to_check=max_minutes_ago_to_check_and_rescan,
+    ):
+        letters_to_alert_on_but_not_retry.append(letter)
+        current_app.logger.warning(
+            "Letter notification %s is stuck in pending-virus-check and has reached the maximum number of retries.",
+            letter.id,
+            extra={"notification_id": letter.id},
+        )
+
+    # Attempt to reprocess letters less than 3 days old that are still pending-virus-check
+    letters_missing_from_scan_bucket = _attempt_to_rescan_letters_pending_virus_check(
+        max_minutes_ago_to_check=max_minutes_ago_to_check_and_rescan
+    )
+
+    # Create a Zendesk ticket about letters pending-virus-check if necessary
+    has_letters_to_alert_on = letters_to_alert_on_but_not_retry or letters_missing_from_scan_bucket
+    if not has_letters_to_alert_on or not current_app.should_send_zendesk_alerts:  # type: ignore[attr-defined]
+        return
+
+    zendesk_ticket_message = _message_about_letters_pending_virus_check(
+        letters_to_alert_on_but_not_retry=letters_to_alert_on_but_not_retry,
+        letters_missing_from_scan_bucket=letters_missing_from_scan_bucket,
+    )
+
+    ticket = NotifySupportTicket(
+        subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still pending virus check",
+        message=zendesk_ticket_message,
+        ticket_type=NotifySupportTicket.TYPE_TASK,
+        notify_ticket_type=NotifyTicketType.TECHNICAL,
+        notify_task_type="notify_task_letters_pending_scan",
+    )
+    zendesk_client.send_ticket_to_zendesk(ticket)  # type: ignore[attr-defined]
+
+
+def _attempt_to_rescan_letters_pending_virus_check(max_minutes_ago_to_check):
+    letters_not_in_scan_bucket = []
     for letter in dao_precompiled_letters_still_pending_virus_check(max_minutes_ago_to_check):
         # find letter in the scan bucket
         filename = generate_letter_pdf_filename(
@@ -383,26 +457,41 @@ def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 3
                 letter.id,
                 extra={"notification_id": letter.id},
             )
-            letters.append(letter)
+            letters_not_in_scan_bucket.append(letter)
 
-    if len(letters) > 0:
-        letter_ids = [(str(letter.id), letter.reference) for letter in letters]
+    return letters_not_in_scan_bucket
 
-        msg = f"""{len(letters)} precompiled letters have been pending-virus-check for over 10 minutes
-            We couldn't find them in the scan bucket. We'll need to find out where the files are and kick them off
-            again or move them to technical failure.
 
-            Notifications: {sorted(letter_ids)}"""
+def _message_about_letters_pending_virus_check(
+    letters_to_alert_on_but_not_retry: list[Notification],
+    letters_missing_from_scan_bucket: list[Notification],
+) -> str:
+    msg = ""
 
-        if current_app.should_send_zendesk_alerts:  # type: ignore[attr-defined]
-            ticket = NotifySupportTicket(
-                subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still pending virus check",
-                message=msg,
-                ticket_type=NotifySupportTicket.TYPE_TASK,
-                notify_ticket_type=NotifyTicketType.TECHNICAL,
-                notify_task_type="notify_task_letters_pending_scan",
-            )
-            zendesk_client.send_ticket_to_zendesk(ticket)  # type: ignore[attr-defined]
+    if letters_to_alert_on_but_not_retry:
+        letter_ids = [(str(letter.id), letter.reference) for letter in letters_to_alert_on_but_not_retry]
+
+        msg += f"""
+                {len(letters_to_alert_on_but_not_retry)} precompiled letters have been pending-virus-check for
+                over 3 days and have reached the maximum number of retries for letters in this state. We will need
+                to decide whether to manually retry the letters again, or to change their status to permanent-failure
+
+                Notifications: {sorted(letter_ids)}\n\n\n
+            """
+
+    if letters_missing_from_scan_bucket:
+        letter_ids = [(str(letter.id), letter.reference) for letter in letters_missing_from_scan_bucket]
+
+        msg += f"""
+            {len(letters_missing_from_scan_bucket)} precompiled letters have been pending-virus-check for over
+            10 minutes. We couldn't find them in the scan bucket. We'll need to find out if the files were slow to
+            process and are now in the expected state. If not we'll need to find out where the files are and kick
+            them off again or move them to technical failure.
+
+            Notifications: {sorted(letter_ids)}
+        """
+
+    return msg
 
 
 @notify_celery.task(name="check-if-letters-still-in-created")

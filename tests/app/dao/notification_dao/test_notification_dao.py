@@ -35,6 +35,7 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_recipient_or_reference,
     dao_get_notifications_processing_time_stats,
     dao_letters_in_technical_failure,
+    dao_precompiled_letters_still_pending_virus_check,
     dao_record_letter_despatched_on_by_id,
     dao_timeout_notifications,
     dao_update_notification,
@@ -2196,3 +2197,42 @@ def test_dao_letters_in_technical_failure(sample_letter_template, sample_email_t
 
     assert len(results) == 2
     assert {n.id for n in results} == {letter_tf_1.id, letter_tf_2.id}
+
+
+@freeze_time("2026-07-01 13:00:00")
+def test_dao_precompiled_letters_still_pending_virus_check(
+    sample_letter_template,
+    sample_email_template,
+    notify_db_session,
+):
+    sample_letter_template.hidden = True
+
+    # only these letters in the correct time period are returned
+    letter_1 = create_notification(
+        created_at=datetime(2026, 7, 1, 12, 00), template=sample_letter_template, status="pending-virus-check"
+    )
+    letter_2 = create_notification(
+        created_at=datetime(2026, 7, 1, 12, 1), template=sample_letter_template, status="pending-virus-check"
+    )
+    letter_3 = create_notification(
+        created_at=datetime(2026, 7, 1, 12, 44), template=sample_letter_template, status="pending-virus-check"
+    )
+    # letters just before or after the time period
+    create_notification(
+        created_at=datetime(2026, 7, 1, 11, 59), template=sample_letter_template, status="pending-virus-check"
+    )
+    create_notification(
+        created_at=datetime(2026, 7, 1, 12, 45), template=sample_letter_template, status="pending-virus-check"
+    )
+    # letters with the wrong status
+    create_notification(created_at=datetime(2026, 7, 1, 12, 30), template=sample_letter_template, status="delivered")
+    create_notification(created_at=datetime(2026, 7, 1, 12, 30), template=sample_letter_template, status="created")
+    # non-letter
+    create_notification(created_at=datetime(2026, 7, 1, 12, 30), template=sample_email_template, status="created")
+
+    notify_db_session.commit()
+
+    assert dao_precompiled_letters_still_pending_virus_check(
+        max_minutes_ago_to_check=60,
+        min_minutes_ago_to_check=15,
+    ) == [letter_1, letter_2, letter_3]
