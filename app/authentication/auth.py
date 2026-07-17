@@ -1,6 +1,9 @@
 import time
 import uuid
+from collections.abc import Callable
+from functools import wraps
 
+from cachetools.func import lfu_cache
 from flask import current_app, g, request
 from gds_metrics import Histogram
 from notifications_python_client.authentication import (
@@ -16,6 +19,8 @@ from notifications_python_client.errors import (
 )
 from sqlalchemy.orm.exc import NoResultFound
 
+from app import memo_resetters
+from app.hashing import check_hash
 from app.serialised_models import SerialisedService
 
 GENERAL_TOKEN_ERROR_MESSAGE = "Invalid token: make sure your API token matches the example at https://docs.notifications.service.gov.uk/rest-api.html#authorisation-header"
@@ -191,3 +196,73 @@ def _get_token_issuer(auth_token):
     except TokenDecodeError as e:
         raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403) from e
     return issuer
+
+
+# caching check_hash isn't ideal from a security POV as it does mean we'll be holding the plaintext
+# password in-memory once it is used, but performing a bcrypt operation on every request may be quite
+# punishing and/or open us up to some DoS attacks. using an LFU cache (rather than LRU) should at
+# least stop a DoS attack being able to push our real requests' passwords out of the cache too easily.
+_cached_check_hash = lfu_cache(maxsize=64, typed=True)(check_hash)
+
+
+memo_resetters.append(lambda: _cached_check_hash.cache_clear())
+
+
+def requires_basic_auth(
+    credentials_config_key: str, check_hash_callable: Callable[[str, str], bool] = _cached_check_hash
+) -> None:
+    """
+    `credentials_config_key` is expected to be a key in the flask app config containing a mapping
+    of usernames to bcrypt hashes of their basic auth passwords. a very low bcrypt difficulty can
+    be used in the hashes if performance is a concern.
+
+    For use as a `before_request` function, apply `credentials_config_key` with `functools.partial`.
+    """
+    auth = request.authorization
+    creds_dict = current_app.config.get(credentials_config_key) or {}
+
+    if (not auth) or auth.type != "basic":
+        current_app.logger.warning(
+            "Request expecting basic auth from %s received no authorization header",
+            credentials_config_key,
+            extra={"credentials_config_key": credentials_config_key},
+        )
+        raise AuthError("Unauthorized: basic authorization must be provided", 401)
+
+    if auth.username not in creds_dict:
+        current_app.logger.warning(
+            "Request's basic auth username %s not found in %s",
+            auth.username,
+            credentials_config_key,
+            extra={"credentials_config_key": credentials_config_key, "username": auth.username},
+        )
+        raise AuthError("Unauthorized: basic authorisation failed", 403)
+
+    if not check_hash_callable(auth.password or "", creds_dict[auth.username]):
+        current_app.logger.warning(
+            "Request's basic auth password for username %s does not match that found in %s",
+            auth.username,
+            credentials_config_key,
+            extra={"credentials_config_key": credentials_config_key, "username": auth.username},
+        )
+        raise AuthError("Unauthorized: basic authorisation failed", 403)
+
+
+def view_requires_basic_auth[**A, R](
+    credentials_config_key: str, check_hash_callable: Callable[[str, str], bool] = _cached_check_hash
+) -> Callable[[Callable[A, R]], Callable[A, R]]:
+    """
+    Returns a decorator function that will run `requires_basic_auth` before its wrapped function.
+
+    For use applying `requires_basic_auth` to single views.
+    """
+
+    def basic_auth_decorator(inner: Callable[A, R]) -> Callable[A, R]:
+        @wraps(inner)
+        def view_wrapper(*args, **kwargs):
+            requires_basic_auth(credentials_config_key, check_hash_callable)
+            return inner(*args, **kwargs)
+
+        return view_wrapper
+
+    return basic_auth_decorator
