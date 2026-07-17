@@ -1,11 +1,13 @@
 import time
 import uuid
+from contextlib import suppress
 
 import jwt
 import pytest
 from flask import g, request
 from jwt.exceptions import InvalidIssuerError, MissingRequiredClaimError
 from notifications_python_client.authentication import create_jwt_token
+from werkzeug.datastructures import Authorization
 
 from app import db
 from app.authentication.auth import (
@@ -15,6 +17,7 @@ from app.authentication.auth import (
     _get_auth_token,
     _get_token_issuer,
     requires_auth,
+    requires_basic_auth,
     requires_internal_auth,
 )
 from app.dao.api_key_dao import (
@@ -23,6 +26,7 @@ from app.dao.api_key_dao import (
     get_unsigned_secrets,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.hashing import hashpw
 from tests import (
     create_admin_authorization_header,
     create_service_authorization_header,
@@ -356,3 +360,74 @@ def test_requires_internal_auth_sets_global_variables(
     request.headers = {"Authorization": f"Bearer {internal_jwt_token}"}
     requires_my_internal_app_auth()
     assert g.service_id == "my-internal-app"
+
+
+def test_requires_basic_auth_missing_auth_empty_dict(notify_api, client):
+    notify_api.config["FOO_BAR_BAZ"] = {}
+
+    with pytest.raises(AuthError, check=lambda e: e.code == 401):
+        requires_basic_auth("FOO_BAR_BAZ")
+
+
+def test_requires_basic_auth_missing_auth_config(notify_api, client):
+    with suppress(KeyError):
+        del notify_api.config["FOO_BAR_BAZ"]
+
+    with pytest.raises(AuthError, check=lambda e: e.code == 401):
+        requires_basic_auth("FOO_BAR_BAZ")
+
+
+def test_requires_basic_auth_non_basic_auth(notify_api, client):
+    notify_api.config["FOO_BAR_BAZ"] = {}
+    request.headers = {"Authorization": Authorization("bearer", token="1234").to_header()}
+
+    with pytest.raises(AuthError, check=lambda e: e.code == 401):
+        requires_basic_auth("FOO_BAR_BAZ")
+
+
+def test_requires_basic_auth_unknown_username(notify_api, client):
+    notify_api.config["FOO_BAR_BAZ"] = {
+        "foo123": hashpw("bar123"),
+    }
+    request.headers = {
+        "Authorization": Authorization("basic", data={"username": "blah", "password": "fooblah"}).to_header()
+    }
+
+    with pytest.raises(AuthError, check=lambda e: e.code == 403):
+        requires_basic_auth("FOO_BAR_BAZ")
+
+
+def test_requires_basic_auth_incorrect_password(notify_api, client):
+    notify_api.config["FOO_BAR_BAZ"] = {
+        "foo123": hashpw("bar123"),
+    }
+    request.headers = {
+        "Authorization": Authorization("basic", data={"username": "foo123", "password": "Bar321"}).to_header()
+    }
+
+    with pytest.raises(AuthError, check=lambda e: e.code == 403):
+        requires_basic_auth("FOO_BAR_BAZ")
+
+
+def test_requires_basic_auth_mismatched_password(notify_api, client):
+    notify_api.config["FOO_BAR_BAZ"] = {
+        "foo123": hashpw("bar123"),
+        "foo456": hashpw("bar456"),
+    }
+    request.headers = {
+        "Authorization": Authorization("basic", data={"username": "foo123", "password": "bar456"}).to_header()
+    }
+
+    with pytest.raises(AuthError, check=lambda e: e.code == 403):
+        requires_basic_auth("FOO_BAR_BAZ")
+
+
+def test_requires_basic_auth_correct_password(notify_api, client):
+    notify_api.config["FOO_BAR_BAZ"] = {
+        "foo123": hashpw("bar123"),
+    }
+    request.headers = {
+        "Authorization": Authorization("basic", data={"username": "foo123", "password": "bar123"}).to_header()
+    }
+
+    assert requires_basic_auth("FOO_BAR_BAZ") is None
