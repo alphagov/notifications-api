@@ -5,7 +5,7 @@ import uuid
 from flask import current_app, url_for
 from jsonschema import ValidationError, validate
 from notifications_utils.insensitive_dict import InsensitiveDict
-from notifications_utils.letter_timings import LetterTimings
+from notifications_utils.letter_timings import get_letter_timings
 from notifications_utils.recipient_validation.email_address import validate_email_address
 from notifications_utils.recipient_validation.errors import InvalidRecipientError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
@@ -1824,7 +1824,7 @@ class Notification(db.Model):
                 serialized["postcode"],
             ) = (personalisation.get(line) for line in address_lines_1_to_6_and_postcode_keys)
 
-            serialized["estimated_delivery"] = LetterTimings(
+            serialized["estimated_delivery"] = get_letter_timings(
                 serialized["created_at"], postage=self.postage
             ).latest_delivery.strftime(DATETIME_FORMAT)
 
