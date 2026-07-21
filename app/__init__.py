@@ -9,6 +9,7 @@ from time import monotonic
 
 from celery import current_task
 from flask import (
+    Flask,
     current_app,
     g,
     has_request_context,
@@ -27,6 +28,7 @@ from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.signing.signing_client import Signing
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.eventlet import EventletTimeout
+from notifications_utils.json import FlaskRelaxedContainerJSONProvider
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.logging import flask as utils_logging
 from sqlalchemy import event
@@ -159,8 +161,10 @@ memo_resetters.append(lambda: get_zendesk_client.clear())
 zendesk_client = LocalProxy(get_zendesk_client)
 
 
-def create_app(application):
+def create_app(application: Flask) -> Flask:
     from app.config import Config, configs
+
+    application.json_provider_class = FlaskRelaxedContainerJSONProvider
 
     notify_environment = os.environ["NOTIFY_ENVIRONMENT"]
 
