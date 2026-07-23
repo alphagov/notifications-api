@@ -1,10 +1,10 @@
 import itertools
-import json
 import uuid
 from datetime import datetime
 from uuid import UUID
 
 from flask import Blueprint, current_app, jsonify, request
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 from notifications_utils.letter_timings import (
     letter_can_be_cancelled,
     too_late_to_cancel_letter,
@@ -1594,7 +1594,7 @@ def create_report_request_by_type(service_id):
         extra = {
             "user_id": existing_request.user_id,
             "service_id": existing_request.service_id,
-            "report_request_parameter": json.dumps(existing_request.parameter, separators=(",", ":")),
+            "report_request_parameter": RCJSONEncoder(separators=(",", ":")).encode(existing_request.parameter),
             "report_request_id": existing_request.id,
         }
         current_app.logger.info(
@@ -1613,7 +1613,7 @@ def create_report_request_by_type(service_id):
         "report_request_id": created_request.id,
         "user_id": created_request.user_id,
         "service_id": created_request.service_id,
-        "report_request_parameter": json.dumps(created_request.parameter, separators=(",", ":")),
+        "report_request_parameter": RCJSONEncoder(separators=(",", ":")).encode(created_request.parameter),
     }
     current_app.logger.info(
         "Report request %(report_request_id)s for user %(user_id)s (service %(service_id)s) "
