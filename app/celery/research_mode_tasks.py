@@ -182,7 +182,7 @@ def mmg_callback(notification_id, to):
     else:
         status = "3"
 
-    return json.dumps(
+    return RCJSONEncoder().encode(
         {
             "reference": "mmg_reference",
             "CID": str(notification_id),
