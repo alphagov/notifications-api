@@ -1,5 +1,4 @@
 import io
-import json
 import math
 from datetime import datetime, timedelta
 from enum import Enum
@@ -7,6 +6,7 @@ from enum import Enum
 import boto3
 from flask import current_app
 from notifications_utils.clients.redis import daily_limit_cache_key
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.pdf import pdf_page_count
 from notifications_utils.s3 import s3upload
@@ -156,7 +156,7 @@ def move_scan_to_invalid_pdf_bucket(source_filename, message=None, invalid_pages
     if message:
         metadata["message"] = message
     if invalid_pages:
-        metadata["invalid_pages"] = json.dumps(invalid_pages)
+        metadata["invalid_pages"] = RCJSONEncoder().encode(invalid_pages)
     if page_count:
         metadata["page_count"] = str(page_count)
 
