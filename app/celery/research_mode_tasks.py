@@ -1,4 +1,3 @@
-import json
 import uuid
 from contextvars import ContextVar
 from datetime import datetime
@@ -271,7 +270,7 @@ def ses_notification_callback(reference):
         "MessageId": "8e83c020-1234-1234-1234-92a8ee9baa0a",
         "TopicArn": "arn:aws:sns:eu-west-1:12341234:ses_notifications",
         "Subject": None,
-        "Message": json.dumps(ses_message_body),
+        "Message": RCJSONEncoder().encode(ses_message_body),
         "Timestamp": uniform_timestamp,
         "SignatureVersion": "1",
         "Signature": "[REDACTED]",
@@ -340,7 +339,7 @@ def _ses_bounce_callback(reference, bounce_type):
         "MessageId": "36e67c28-1234-1234-1234-2ea0172aa4a7",
         "TopicArn": "arn:aws:sns:eu-west-1:12341234:ses_notifications",
         "Subject": None,
-        "Message": json.dumps(ses_message_body),
+        "Message": RCJSONEncoder().encode(ses_message_body),
         "Timestamp": uniform_timestamp,
         "SignatureVersion": "1",
         "Signature": "[REDACTED]",
