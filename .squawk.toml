@@ -1,0 +1,6 @@
+
+excluded_rules = [
+  # both of these timeouts *are* set in the migration harness but that's invisible to squawk
+  "require-statement-timeout",
+  "require-lock-timeout",
+]
