@@ -5,6 +5,7 @@ from datetime import datetime
 
 import requests
 from flask import current_app, jsonify
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.timezones import local_timezone
 from werkzeug.local import LocalProxy
@@ -80,7 +81,9 @@ def send_letter_response(notification_id: uuid.UUID, billable_units: int, postag
     data = _create_fake_letter_callback_data(notification_id, billable_units, postage)
 
     try:
-        response = requests_session.request("POST", api_call, headers=headers, data=json.dumps(data), timeout=30)  # type: ignore[attr-defined]
+        response = requests_session.request(  # type: ignore[attr-defined]
+            "POST", api_call, headers=headers, data=RCJSONEncoder().encode(data), timeout=30
+        )
         response.raise_for_status()
     except requests.HTTPError as e:
         current_app.logger.error(
