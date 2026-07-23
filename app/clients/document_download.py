@@ -1,6 +1,7 @@
 import requests
 from flask import current_app, request
 from flask.ctx import has_request_context
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 
 
 class DocumentDownloadError(Exception):
@@ -61,14 +62,17 @@ class DocumentDownloadClient:
             if filename:
                 data["filename"] = filename
 
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            headers = {
+                "Authorization": f"Bearer {self.auth_token}",
+                "Content-Type": "application/json",
+            }
             if has_request_context() and hasattr(request, "get_onwards_request_headers"):
                 headers.update(request.get_onwards_request_headers())
 
             response = self.requests_session.post(
                 self._get_upload_url(service_id),
                 headers=headers,
-                json=data,
+                data=RCJSONEncoder().encode(data),
             )
 
             response.raise_for_status()
