@@ -1,9 +1,9 @@
-import json
 import re
 from datetime import datetime, timedelta
 from uuid import UUID
 
 from jsonschema import Draft7Validator, FormatChecker, ValidationError
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 from notifications_utils.recipient_validation.email_address import validate_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import PhoneNumber
@@ -144,7 +144,7 @@ def build_error_message(errors):
         fields.append({"error": "ValidationError", "message": field})
     message = {"status_code": 400, "errors": unique_errors(fields)}
 
-    return json.dumps(message)
+    return RCJSONEncoder().encode(message)
 
 
 def unique_errors(dups):
