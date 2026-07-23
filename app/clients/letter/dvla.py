@@ -10,6 +10,7 @@ import boto3
 import jwt
 import requests
 from flask import current_app
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 from notifications_utils.recipient_validation.postal_address import PostalAddress
 from requests.adapters import HTTPAdapter
 from urllib3.util.ssl_ import create_urllib3_context
@@ -153,10 +154,13 @@ class DVLAClient:
         with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_401):
             response = self.session.post(
                 f"{self.base_url}/thirdparty-access/v1/authenticate",
-                json={
-                    "userName": self.dvla_username.get(),
-                    "password": self.dvla_password.get(),
-                },
+                headers={"Content-Type": "application/json"},
+                data=RCJSONEncoder().encode(
+                    {
+                        "userName": self.dvla_username.get(),
+                        "password": self.dvla_password.get(),
+                    }
+                ),
             )
             response.raise_for_status()
 
@@ -212,11 +216,14 @@ class DVLAClient:
             with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_401):
                 response = self.session.post(
                     f"{self.base_url}/thirdparty-access/v1/password",
-                    json={
-                        "userName": self.dvla_username.get(),
-                        "password": self.dvla_password.get(),
-                        "newPassword": new_password,
-                    },
+                    headers={"Content-Type": "application/json"},
+                    data=RCJSONEncoder().encode(
+                        {
+                            "userName": self.dvla_username.get(),
+                            "password": self.dvla_password.get(),
+                            "newPassword": new_password,
+                        }
+                    ),
                 )
                 response.raise_for_status()
 
@@ -283,16 +290,21 @@ class DVLAClient:
         with _handle_common_dvla_errors(custom_httperror_exc_handler=_handle_http_errors):
             response = self.session.post(
                 f"{self.base_url}/print-request/v1/print/jobs",
-                headers=self._get_auth_headers(),
-                json=self._format_create_print_job_json(
-                    notification_id=notification_id,
-                    reference=reference,
-                    address=address,
-                    postage=postage,
-                    service_id=service_id,
-                    organisation_id=organisation_id,
-                    pdf_file=pdf_file,
-                    callback_url=callback_url,
+                headers={
+                    "Content-Type": "application/json",
+                    **self._get_auth_headers(),
+                },
+                data=RCJSONEncoder().encode(
+                    self._format_create_print_job_json(
+                        notification_id=notification_id,
+                        reference=reference,
+                        address=address,
+                        postage=postage,
+                        service_id=service_id,
+                        organisation_id=organisation_id,
+                        pdf_file=pdf_file,
+                        callback_url=callback_url,
+                    )
                 ),
             )
             response.raise_for_status()
