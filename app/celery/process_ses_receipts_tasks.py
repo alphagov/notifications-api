@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from celery import Task
 from celery.exceptions import Retry
 from flask import current_app, json
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
@@ -98,7 +99,7 @@ def process_ses_results(  # noqa: C901
                 notification.id,
                 extra={
                     "notification_id": notification.id,
-                    "bounce_message": json.dumps(bounce_message),
+                    "bounce_message": RCJSONEncoder().encode(bounce_message),
                     "bounced_at": delivery_dt,
                     "bounced_ago": (uniform_now - delivery_dt).total_seconds() if delivery_dt is not None else None,
                     "bounce_message_type": bounce_message_bounce.get("bounceType"),
