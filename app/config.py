@@ -552,6 +552,13 @@ class Config:
     FIRETEXT_URL = os.environ.get("FIRETEXT_URL", "https://www.firetext.co.uk/api/sendsms/json")
     SES_STUB_URL = os.environ.get("SES_STUB_URL")
 
+    RESEARCH_MODE_SELF_CALLBACK_MMG_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("RESEARCH_MODE_SELF_CALLBACK_MMG_BASIC_AUTH_CREDENTIALS") or "null"
+    )
+    RESEARCH_MODE_SELF_CALLBACK_FIRETEXT_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("RESEARCH_MODE_SELF_CALLBACK_FIRETEXT_BASIC_AUTH_CREDENTIALS") or "null"
+    )
+
     DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://uat.driver-vehicle-licensing.api.gov.uk")
     DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS")
 

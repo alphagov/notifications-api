@@ -1,4 +1,5 @@
 import uuid
+from base64 import b64encode
 from unittest.mock import ANY
 
 import pytest
@@ -18,19 +19,39 @@ from app.celery.research_mode_tasks import (
     ses_notification_callback,
 )
 from app.config import QueueNames
+from tests.conftest import set_config_values
 
 
+@pytest.mark.parametrize(
+    "basic_auth_creds, expected_url_auth_part, expected_auth_header",
+    (
+        (None, "", None),
+        (["user123", "pass321"], "user123:pass321@", f"Basic {b64encode(b'user123:pass321').decode('ascii')}"),
+    ),
+)
 @freeze_time("2017-07-17T12:14:03.646")
-def test_make_mmg_callback(notify_api, rmock):
-    endpoint = "http://localhost:6011/notifications/sms/mmg"
+def test_make_mmg_callback(notify_api, rmock, basic_auth_creds, expected_url_auth_part, expected_auth_header):
+    endpoint = f"http://{expected_url_auth_part}localhost:6011/notifications/sms/mmg"
     rmock.request("POST", endpoint, json={"status": "success"}, status_code=200)
-    send_sms_response("mmg", "1234", "07700900001")
 
-    assert rmock.called
+    with set_config_values(
+        notify_api,
+        {
+            "RESEARCH_MODE_SELF_CALLBACK_FIRETEXT_BASIC_AUTH_CREDENTIALS": ["dont", "use"],
+            "RESEARCH_MODE_SELF_CALLBACK_MMG_BASIC_AUTH_CREDENTIALS": basic_auth_creds,
+        },
+    ):
+        send_sms_response("mmg", "1234", "07700900001")
+
+    assert len(rmock.request_history) == 1
     assert rmock.request_history[0].url == endpoint
     payload = json.loads(rmock.request_history[0].text)
     assert payload["MSISDN"] == "07700900001"
     assert payload["deliverytime"] == "2017-07-17 13:14:03"
+
+    assert [req.headers.get("Authorization") for req in rmock.request_history] == [
+        expected_auth_header for _ in rmock.request_history
+    ]
 
 
 def test_callback_logs_on_api_call_failure(notify_api, rmock, caplog):
@@ -46,28 +67,56 @@ def test_callback_logs_on_api_call_failure(notify_api, rmock, caplog):
 
 
 @pytest.mark.parametrize(
-    "phone_number, number_of_calls, statuses, detailed_status_code",
+    "basic_auth_creds, expected_url_auth_part, expected_auth_header",
+    (
+        (None, "", None),
+        (["user123", "pass321"], "user123:pass321@", f"Basic {b64encode(b'user123:pass321').decode('ascii')}"),
+    ),
+)
+@pytest.mark.parametrize(
+    "phone_number, expected_statuses, expected_detailed_status_code",
     [
-        ("07700900001", 1, ["0"], None),
-        ("07700900002", 1, ["1"], None),
-        ("07700900003", 2, ["2", "1"], "102"),
-        ("07700900236", 1, ["0"], None),
+        ("07700900001", ["0"], None),
+        ("07700900002", ["1"], None),
+        ("07700900003", ["2", "1"], "102"),
+        ("07700900236", ["0"], None),
     ],
 )
-def test_make_firetext_callback(notify_api, rmock, phone_number, number_of_calls, statuses, detailed_status_code):
-    endpoint = "http://localhost:6011/notifications/sms/firetext"
+def test_make_firetext_callback(
+    notify_api,
+    rmock,
+    phone_number,
+    basic_auth_creds,
+    expected_statuses,
+    expected_detailed_status_code,
+    expected_url_auth_part,
+    expected_auth_header,
+):
+    endpoint = f"http://{expected_url_auth_part}localhost:6011/notifications/sms/firetext"
     rmock.request("POST", endpoint, json="some data", status_code=200)
-    send_sms_response("firetext", "1234", phone_number)
+
+    with set_config_values(
+        notify_api,
+        {
+            "RESEARCH_MODE_SELF_CALLBACK_MMG_BASIC_AUTH_CREDENTIALS": ["dont", "use"],
+            "RESEARCH_MODE_SELF_CALLBACK_FIRETEXT_BASIC_AUTH_CREDENTIALS": basic_auth_creds,
+        },
+    ):
+        send_sms_response("firetext", "1234", phone_number)
 
     assert rmock.called
-    assert len(rmock.request_history) == number_of_calls
+    assert len(rmock.request_history) == len(expected_statuses)
     assert rmock.request_history[0].url == endpoint
     assert f"mobile={phone_number}" in rmock.request_history[0].text
-    for i, status in enumerate(statuses):
+    for i, status in enumerate(expected_statuses):
         assert f"status={status}" in rmock.request_history[i].text
 
-    if detailed_status_code:
-        assert f"detailed_status_code={detailed_status_code}" in rmock.request_history[1].text
+    if expected_detailed_status_code:
+        assert f"detailed_status_code={expected_detailed_status_code}" in rmock.request_history[1].text
+
+    assert [req.headers.get("Authorization") for req in rmock.request_history] == [
+        expected_auth_header for _ in rmock.request_history
+    ]
 
 
 @freeze_time("2017-11-17T12:14:03.646")
