@@ -291,7 +291,7 @@ def register_blueprint(application):
     application.register_blueprint(status_blueprint)
 
     # delivery receipts
-    sms_callback_blueprint.before_request(requires_no_auth)
+    sms_callback_blueprint.before_request(requires_no_auth)  # basic auth enforced at view level
     application.register_blueprint(sms_callback_blueprint)
 
     # inbound sms
