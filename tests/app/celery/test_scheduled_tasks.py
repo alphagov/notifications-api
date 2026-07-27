@@ -1213,16 +1213,20 @@ MockServicesWithHighFailureRate = namedtuple(
                 "Service 123 has had a high permanent-failure rate (0.3) for text messages in the last 24 hours",
                 "Service 456 has had a high permanent-failure rate (0.7) for text messages in the last 24 hours",
             ],
-            "2 service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n"
-            f"service: {Config.ADMIN_BASE_URL}/services/123 failure rate: 0.3,\n"
-            f"service: {Config.ADMIN_BASE_URL}/services/456 failure rate: 0.7,\n",
+            (
+                "2 service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n"
+                f"service: {Config.ADMIN_BASE_URL}/services/123 failure rate: 0.3,\n"
+                f"service: {Config.ADMIN_BASE_URL}/services/456 failure rate: 0.7,\n"
+            ),
         ],
         [
             [],
             [MockServicesSendingToTVNumbers("123", 567)],
             ["Service 123 has sent 567 text messages to tv numbers in the last 24 hours"],
-            "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
-            f"service: {Config.ADMIN_BASE_URL}/services/123 count of sms to tv numbers: 567,\n",
+            (
+                "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
+                f"service: {Config.ADMIN_BASE_URL}/services/123 count of sms to tv numbers: 567,\n"
+            ),
         ],
         [
             [MockServicesWithHighFailureRate("123", 0.3)],
@@ -1231,10 +1235,12 @@ MockServicesWithHighFailureRate = namedtuple(
                 "Service 123 has had a high permanent-failure rate (0.3) for text messages in the last 24 hours",
                 "Service 456 has sent 567 text messages to tv numbers in the last 24 hours",
             ],
-            "1 service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n"
-            f"service: {Config.ADMIN_BASE_URL}/services/123 failure rate: 0.3,\n"
-            "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
-            f"service: {Config.ADMIN_BASE_URL}/services/456 count of sms to tv numbers: 567,\n",
+            (
+                "1 service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n"
+                f"service: {Config.ADMIN_BASE_URL}/services/123 failure rate: 0.3,\n"
+                "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
+                f"service: {Config.ADMIN_BASE_URL}/services/456 count of sms to tv numbers: 567,\n"
+            ),
         ],
     ],
 )

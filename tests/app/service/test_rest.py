@@ -4356,14 +4356,16 @@ def test_get_service_join_request_by_id_when_request_is_not_found(admin_request,
             ["invalid_permission"],
             "approved",
             None,
-            "permissions invalid_permission is not one of "
-            "[manage_users, "
-            "manage_templates, "
-            "manage_settings, "
-            "send_texts, send_emails, "
-            "send_letters, "
-            "manage_api_keys, "
-            "view_activity]",
+            (
+                "permissions invalid_permission is not one of "
+                "[manage_users, "
+                "manage_templates, "
+                "manage_settings, "
+                "send_texts, send_emails, "
+                "send_letters, "
+                "manage_api_keys, "
+                "view_activity]"
+            ),
         ),
         (
             uuid.uuid4(),
