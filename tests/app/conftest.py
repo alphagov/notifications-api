@@ -16,7 +16,6 @@ from kombu.serialization import dumps
 from sqlalchemy.orm.session import make_transient
 
 from app import db
-from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
 from app.config import QueueNames
 from app.constants import (
@@ -640,35 +639,6 @@ def fake_uuid():
 @pytest.fixture(scope="function")
 def mmg_provider():
     return ProviderDetails.query.filter_by(identifier="mmg").one()
-
-
-def create_mock_firetext_config(mocker, additional_config=None):
-    config = {
-        "FIRETEXT_URL": "https://example.com/firetext",
-        "FIRETEXT_API_KEY": "foo",
-        "FIRETEXT_INTERNATIONAL_API_KEY": "international",
-        "FROM_NUMBER": "bar",
-    }
-    if additional_config:
-        config.update(additional_config)
-    return mocker.Mock(config=config)
-
-
-def create_mock_firetext_client(mock_config):
-    return FiretextClient(mock_config)
-
-
-@pytest.fixture(scope="function")
-def mock_firetext_client(mocker):
-    mock_config = create_mock_firetext_config(mocker)
-    return create_mock_firetext_client(mock_config)
-
-
-@pytest.fixture(scope="function")
-def mock_firetext_client_with_receipts(mocker):
-    additional_config = {"FIRETEXT_RECEIPT_URL": "https://www.example.com/notifications/sms/firetext"}
-    mock_config = create_mock_firetext_config(mocker, additional_config)
-    return create_mock_firetext_client(mock_config)
 
 
 @pytest.fixture(scope="function")

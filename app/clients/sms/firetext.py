@@ -5,6 +5,7 @@ import requests
 
 from app.clients.sms import SmsClient, SmsClientResponseException
 from app.otel_metrics.provider import record_request_duration
+from app.utils import add_authentication_to_url
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,11 @@ class FiretextClient(SmsClient):
         self.international_api_key = self.current_app.config.get("FIRETEXT_INTERNATIONAL_API_KEY")
         self.url = self.current_app.config.get("FIRETEXT_URL")
         self.receipt_url = self.current_app.config.get("FIRETEXT_RECEIPT_URL")
+        if self.receipt_url and self.current_app.config["FIRETEXT_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS"]:
+            self.receipt_url = add_authentication_to_url(
+                self.receipt_url,
+                *self.current_app.config["FIRETEXT_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS"],
+            )
 
     @record_request_duration(notification_type="sms", provider_name="firetext")
     def try_send_sms(self, to, content, reference, international, sender):

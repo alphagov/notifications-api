@@ -140,6 +140,9 @@ class Config:
     # Firetext Callback URL for delivery receipts
     # If this is not set, Firetext will send to the URL that is set in the Firetext dashboard
     FIRETEXT_RECEIPT_URL = os.getenv("FIRETEXT_RECEIPT_URL")
+    FIRETEXT_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("FIRETEXT_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS") or "null"
+    )
 
     # Prefix to identify queues in SQS
     NOTIFICATION_QUEUE_PREFIX = os.getenv("NOTIFICATION_QUEUE_PREFIX")
