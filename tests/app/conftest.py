@@ -16,7 +16,6 @@ from kombu.serialization import dumps
 from sqlalchemy.orm.session import make_transient
 
 from app import db
-from app.clients.sms.mmg import MMGClient
 from app.config import QueueNames
 from app.constants import (
     ALL_TYPE,
@@ -639,18 +638,6 @@ def fake_uuid():
 @pytest.fixture(scope="function")
 def mmg_provider():
     return ProviderDetails.query.filter_by(identifier="mmg").one()
-
-
-@pytest.fixture(scope="function")
-def mock_mmg_client_with_receipts(mocker):
-    current_app = mocker.Mock(
-        config={
-            "MMG_URL": "https://example.com/mmg",
-            "MMG_API_KEY": "foo",
-            "MMG_RECEIPT_URL": "https://www.example.com/notifications/sms/mmg",
-        }
-    )
-    return MMGClient(current_app)
 
 
 @pytest.fixture(scope="function")

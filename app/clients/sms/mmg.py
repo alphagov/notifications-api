@@ -5,6 +5,7 @@ from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncode
 
 from app.clients.sms import SmsClient, SmsClientResponseException
 from app.otel_metrics.provider import record_request_duration
+from app.utils import add_authentication_to_url
 
 # For some extra context, see google drive: GOV.UK Notify -> SMS suppliers -> Detailed failure statuses
 mmg_response_map = {
@@ -89,6 +90,11 @@ class MMGClient(SmsClient):
         self.api_key = self.current_app.config.get("MMG_API_KEY")
         self.mmg_url = self.current_app.config.get("MMG_URL")
         self.receipt_url = self.current_app.config.get("MMG_RECEIPT_URL")
+        if self.receipt_url and self.current_app.config["MMG_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS"]:
+            self.receipt_url = add_authentication_to_url(
+                self.receipt_url,
+                *self.current_app.config["MMG_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS"],
+            )
 
     @record_request_duration(notification_type="sms", provider_name="mmg")
     def try_send_sms(self, to, content, reference, international, sender):

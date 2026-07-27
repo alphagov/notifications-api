@@ -132,6 +132,9 @@ class Config:
     # MMG Callback URL for delivery receipts
     # If this is not set, MMG will send to the URL that they have set up in their system
     MMG_RECEIPT_URL = os.getenv("MMG_RECEIPT_URL")
+    MMG_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("MMG_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS") or "null"
+    )
 
     # Firetext API Key
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
