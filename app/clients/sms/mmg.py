@@ -1,6 +1,7 @@
 import json
 
 import requests
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 
 from app.clients.sms import SmsClient, SmsClientResponseException
 from app.otel_metrics.provider import record_request_duration
@@ -100,7 +101,7 @@ class MMGClient(SmsClient):
             response = self.requests_session.request(
                 "POST",
                 self.mmg_url,
-                data=json.dumps(data),
+                data=RCJSONEncoder().encode(data),
                 headers={"Content-Type": "application/json", "Authorization": f"Basic {self.api_key}"},
                 timeout=10,
             )

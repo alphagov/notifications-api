@@ -1,10 +1,10 @@
-import json
 import logging
 from contextvars import ContextVar
 from datetime import datetime
 
 import requests
 from flask import current_app
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 from notifications_utils.local_vars import LazyLocalGetter
 from werkzeug.local import LocalProxy
 
@@ -160,7 +160,7 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
         response = requests_session.request(
             method="POST",
             url=service_callback_url,
-            data=json.dumps(data),
+            data=RCJSONEncoder().encode(data),
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
             timeout=5,
         )

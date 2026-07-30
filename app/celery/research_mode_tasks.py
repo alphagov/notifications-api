@@ -1,10 +1,10 @@
-import json
 import uuid
 from contextvars import ContextVar
 from datetime import datetime
 
 import requests
 from flask import current_app, jsonify
+from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.timezones import local_timezone
 from werkzeug.local import LocalProxy
@@ -80,7 +80,9 @@ def send_letter_response(notification_id: uuid.UUID, billable_units: int, postag
     data = _create_fake_letter_callback_data(notification_id, billable_units, postage)
 
     try:
-        response = requests_session.request("POST", api_call, headers=headers, data=json.dumps(data), timeout=30)  # type: ignore[attr-defined]
+        response = requests_session.request(  # type: ignore[attr-defined]
+            "POST", api_call, headers=headers, data=RCJSONEncoder().encode(data), timeout=30
+        )
         response.raise_for_status()
     except requests.HTTPError as e:
         current_app.logger.error(
@@ -179,7 +181,7 @@ def mmg_callback(notification_id, to):
     else:
         status = "3"
 
-    return json.dumps(
+    return RCJSONEncoder().encode(
         {
             "reference": "mmg_reference",
             "CID": str(notification_id),
@@ -268,7 +270,7 @@ def ses_notification_callback(reference):
         "MessageId": "8e83c020-1234-1234-1234-92a8ee9baa0a",
         "TopicArn": "arn:aws:sns:eu-west-1:12341234:ses_notifications",
         "Subject": None,
-        "Message": json.dumps(ses_message_body),
+        "Message": RCJSONEncoder().encode(ses_message_body),
         "Timestamp": uniform_timestamp,
         "SignatureVersion": "1",
         "Signature": "[REDACTED]",
@@ -337,7 +339,7 @@ def _ses_bounce_callback(reference, bounce_type):
         "MessageId": "36e67c28-1234-1234-1234-2ea0172aa4a7",
         "TopicArn": "arn:aws:sns:eu-west-1:12341234:ses_notifications",
         "Subject": None,
-        "Message": json.dumps(ses_message_body),
+        "Message": RCJSONEncoder().encode(ses_message_body),
         "Timestamp": uniform_timestamp,
         "SignatureVersion": "1",
         "Signature": "[REDACTED]",
