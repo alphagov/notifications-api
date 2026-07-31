@@ -307,7 +307,7 @@ def test_post_create_organisation_existing_name_raises_400(admin_request, sample
             },
             (
                 "organisation_type foo is not one of "
-                "[central, local, nhs_central, nhs_local, nhs_gp, emergency_service, school_or_college, "
+                "[central, local, nhs_central, nhs_local, nhs_gp, nhs_notify, emergency_service, school_or_college, "
                 "other]"
             ),
         ),
