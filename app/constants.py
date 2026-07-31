@@ -199,6 +199,7 @@ ORG_TYPE_LOCAL = "local"
 ORG_TYPE_NHS_CENTRAL = "nhs_central"
 ORG_TYPE_NHS_LOCAL = "nhs_local"
 ORG_TYPE_NHS_GP = "nhs_gp"
+ORG_TYPE_NHS_NOTIFY = "nhs_notify"
 ORG_TYPE_EMERGENCY_SERVICE = "emergency_service"
 ORG_TYPE_SCHOOL_OR_COLLEGE = "school_or_college"
 ORG_TYPE_OTHER = "other"
@@ -208,13 +209,14 @@ ORGANISATION_TYPES = [
     ORG_TYPE_NHS_CENTRAL,
     ORG_TYPE_NHS_LOCAL,
     ORG_TYPE_NHS_GP,
+    ORG_TYPE_NHS_NOTIFY,
     ORG_TYPE_EMERGENCY_SERVICE,
     ORG_TYPE_SCHOOL_OR_COLLEGE,
     ORG_TYPE_OTHER,
 ]
 CROWN_ORGANISATION_TYPES = ["nhs_central"]
-NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "nhs_gp", "emergency_service", "school_or_college"]
-NHS_ORGANISATION_TYPES = ["nhs_central", "nhs_local", "nhs_gp"]
+NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "nhs_gp", "nhs_notify", "emergency_service", "school_or_college"]
+NHS_ORGANISATION_TYPES = ["nhs_central", "nhs_local", "nhs_gp", "nhs_notify"]
 
 
 # Service permissions
