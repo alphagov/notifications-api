@@ -18,17 +18,17 @@ def dao_process_replication_slot_changes(
     current_app.logger.info("[STARTED] Replication slot changes")
     current_app.logger.info("-----------------------------------------------------------")
 
-    lock_acquired = _try_advisory_lock(advisory_lock_id)
-
-    if not lock_acquired:
-        current_app.logger.info("[SKIPPED] Replication slot changes")
-        return {
-            "lock_acquired": lock_acquired,
-            "slot_name": slot_name,
-            "upto_nchanges": upto_nchanges,
-        }
-
     try:
+        lock_acquired = _try_advisory_lock(advisory_lock_id)
+
+        if not lock_acquired:
+            current_app.logger.info("[SKIPPED] Replication slot changes")
+            return {
+                "lock_acquired": lock_acquired,
+                "slot_name": slot_name,
+                "upto_nchanges": upto_nchanges,
+            }
+
         current_app.logger.info(f"[LOCK ACQUIRED] Replication slot changes (lock = {lock_acquired})")
     finally:
         current_app.logger.info(
