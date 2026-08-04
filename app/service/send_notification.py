@@ -58,6 +58,7 @@ def _get_reference_from_personalisation(personalisation):
 def send_one_off_notification(service_id, post_data):
     service = dao_fetch_service_by_id(service_id, with_users=False)
     template = dao_get_template_by_id_and_service_id(template_id=post_data["template_id"], service_id=service_id)
+    document_download_count = len(template.email_files) if len(template.email_files) > 0 else None
 
     personalisation = post_data.get("personalisation", None)
 
@@ -112,6 +113,7 @@ def send_one_off_notification(service_id, post_data):
         reference=create_one_off_reference(template.template_type),
         postage=postage,
         client_reference=client_reference,
+        document_download_count=document_download_count,
     )
 
     send_notification_to_queue(notification=notification)

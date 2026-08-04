@@ -416,6 +416,8 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         version=notification["template_version"],
     )
 
+    document_download_count = len(template.email_file_objects) if len(template.email_file_objects) > 0 else None
+
     personalisation = add_email_file_links_to_personalisation(
         template=template, personalisation=notification.get("personalisation", {}), recipient=notification["to"]
     )
@@ -424,7 +426,6 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         reply_to_text = dao_get_reply_to_by_id(reply_to_id=sender_id, service_id=service_id).email_address
     else:
         reply_to_text = template.reply_to_text
-
     if not service_allowed_to_send_to(notification["to"], service, KEY_TYPE_NORMAL):
         extra = {
             "notification_id": notification_id,
@@ -455,8 +456,8 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             notification_id=notification_id,
             reply_to_text=reply_to_text,
             client_reference=notification.get("client_reference", None),
+            document_download_count=document_download_count,
         )
-
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
             queue=QueueNames.SEND_EMAIL,

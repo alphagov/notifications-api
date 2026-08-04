@@ -252,6 +252,10 @@ def process_sms_or_email_notification(
     if document_download_count:
         # We changed personalisation which means we need to update the content
         template_with_content.values = personalisation
+        # the total count should be the number of files an api user has added + the number already in the template
+        document_download_count += len(template.email_file_objects)
+    else:
+        document_download_count = len(template.email_file_objects)
 
     # validate content length after url is replaced in personalisation.
     check_is_message_too_long(template_with_content)

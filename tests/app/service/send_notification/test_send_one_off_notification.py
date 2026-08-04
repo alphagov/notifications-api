@@ -92,6 +92,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(persist_mock,
         postage=None,
         client_reference=None,
         template_has_unsubscribe_link=False,
+        document_download_count=None,
     )
 
 
@@ -156,6 +157,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(persist_moc
         postage=None,
         client_reference=None,
         template_has_unsubscribe_link=True,
+        document_download_count=None,
     )
 
 
@@ -197,6 +199,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_email_with_email_
         postage=None,
         client_reference=None,
         template_has_unsubscribe_link=False,
+        document_download_count=2,
     )
 
 
@@ -245,6 +248,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         postage="first",
         client_reference=None,
         template_has_unsubscribe_link=False,
+        document_download_count=None,
     )
 
 
