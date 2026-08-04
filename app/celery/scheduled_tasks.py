@@ -944,3 +944,9 @@ def populate_annual_billing(year, missing_services_only):
 def run_populate_annual_billing():
     year = get_current_financial_year_start_year()
     populate_annual_billing(year=year, missing_services_only=True)
+
+@notify_celery.task(name="process-replication-slot-changes")
+def process_replication_slot_changes():
+    print('---------------------------------------------')
+    print("Processing replication slot changes..........")
+    print('---------------------------------------------')
