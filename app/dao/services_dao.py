@@ -16,6 +16,7 @@ from app.constants import (
     NHS_ORGANISATION_TYPES,
     NON_CROWN_ORGANISATION_TYPES,
     NOTIFICATION_PERMANENT_FAILURE,
+    ORG_TYPE_NHS_NOTIFY,
     SMS_TYPE,
 )
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
@@ -302,6 +303,9 @@ def dao_create_service(  # noqa: C901
     elif service.organisation_type in NHS_ORGANISATION_TYPES or email_address_is_nhs(user.email_address):
         service.email_branding = dao_get_email_branding_by_name("NHS")
         service.letter_branding = dao_get_letter_branding_by_name("NHS")
+
+    if service.organisation_type == ORG_TYPE_NHS_NOTIFY:
+        service.organisation_id = current_app.config["NHS_NOTIFY_ORG_ID"]
 
     if organisation:
         service.crown = organisation.crown
