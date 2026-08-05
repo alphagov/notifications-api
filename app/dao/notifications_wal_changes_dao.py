@@ -15,7 +15,7 @@ REPLICATION_ADVISORY_LOCK_ID = 4_009_881
 
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
-FullDimensions = tuple[date, UUID, UUID, UUID, str, str, str]
+FullDimensions = tuple[date, UUID, UUID, str, str]
 
 
 def dao_process_notifications_replication_slot_changes(
@@ -305,7 +305,6 @@ def _build_dimensions(
     service_id = _parse_uuid_value(row_data, "service_id") or _parse_uuid_value(fallback_data, "service_id")
     template_id = _parse_uuid_value(row_data, "template_id") or _parse_uuid_value(fallback_data, "template_id")
     notification_type = _get_str_value(row_data, "notification_type") or _get_str_value(fallback_data, "notification_type")
-    job_id = _parse_uuid_value(row_data, "job_id") or _parse_uuid_value(fallback_data, "job_id")
     key_type = _get_str_value(row_data, "key_type") or _get_str_value(fallback_data, "key_type")
     primary_status = row_data.get("notification_status")
     notification_status = primary_status or fallback_data.get("notification_status")
@@ -324,9 +323,7 @@ def _build_dimensions(
         convert_utc_to_bst(created_at).date(),
         template_id,
         service_id,
-        job_id,
         notification_type,
-        key_type,
         notification_status,
     )
 
