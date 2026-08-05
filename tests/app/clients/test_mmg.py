@@ -1,9 +1,22 @@
+from unittest.mock import Mock
+
 import pytest
 import requests_mock
 from requests.exceptions import ConnectTimeout, ReadTimeout
 
 from app import mmg_client
-from app.clients.sms.mmg import SmsClientResponseException, get_mmg_responses
+from app.clients.sms.mmg import MMGClient, SmsClientResponseException, get_mmg_responses
+
+
+@pytest.fixture(scope="function")
+def mock_mmg_configured_app_with_receipts():
+    return Mock(
+        config={
+            "MMG_URL": "https://example.com/mmg",
+            "MMG_API_KEY": "foo",
+            "MMG_RECEIPT_URL": "https://www.example.com:4321/notifications/sms/mmg",
+        }
+    )
 
 
 @pytest.mark.parametrize(
@@ -52,16 +65,32 @@ def test_try_send_sms_successful_returns_mmg_response(notify_api, mocker):
     assert response_json["Reference"] == 12345678
 
 
-def test_try_send_sms_successful_with_custom_receipts(notify_api, mock_mmg_client_with_receipts):
+@pytest.mark.parametrize("basic_auth_credentials", (None, ("user123", "pass321")))
+def test_try_send_sms_successful_with_custom_receipts(
+    notify_api, mock_mmg_configured_app_with_receipts, basic_auth_credentials
+):
+    mock_mmg_configured_app_with_receipts.config.update(
+        {
+            "MMG_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS": basic_auth_credentials,
+        }
+    )
+    mock_configured_mmg_client = MMGClient(mock_mmg_configured_app_with_receipts)
+
     to = content = reference = "foo"
     response_dict = {"Reference": 12345678}
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post("https://example.com/mmg", json=response_dict, status_code=200)
-        mock_mmg_client_with_receipts.try_send_sms(to, content, reference, False, "sender")
+        mock_configured_mmg_client.try_send_sms(to, content, reference, False, "sender")
 
     request_args = request_mock.request_history[0].json()
-    assert request_args["delurl"] == "https://www.example.com/notifications/sms/mmg"
+    if basic_auth_credentials is None:
+        assert request_args["delurl"] == "https://www.example.com:4321/notifications/sms/mmg"
+    else:
+        assert (
+            request_args["delurl"]
+            == f"https://{':'.join(basic_auth_credentials)}@www.example.com:4321/notifications/sms/mmg"
+        )
 
 
 def test_try_send_sms_calls_mmg_correctly(notify_api, mocker):

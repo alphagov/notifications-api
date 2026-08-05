@@ -6,7 +6,7 @@ from functools import wraps
 from inspect import signature
 from itertools import islice
 from typing import Any, overload
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from uuid import UUID
 
 from flask import current_app, url_for
@@ -87,6 +87,19 @@ def url_with_token(data, url: str, base_url: str | None = None) -> str:
     )
     base_url = (base_url or current_app.config["ADMIN_BASE_URL"]) + url
     return urljoin(base_url, token)
+
+
+def add_authentication_to_url(url: str, username: str, password: str) -> str:
+    original_parseresult = urlparse(url)
+    return original_parseresult._replace(
+        netloc="".join(
+            (
+                f"{username}:{password}@",
+                original_parseresult.hostname or "",
+                ("" if original_parseresult.port is None else f":{original_parseresult.port}"),
+            )
+        ),
+    ).geturl()
 
 
 def get_template_instance(template: dict[str, Any], values: dict[str, Any]) -> Template:
