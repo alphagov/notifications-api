@@ -27,23 +27,19 @@ def dao_process_notifications_replication_slot_changes(
     advisory_lock_id: int = REPLICATION_ADVISORY_LOCK_ID,
 ) -> dict[str, int | str | bool | None]:
     lock_acquired = False
-    current_app.logger.info("-----------------------------------------------------------")
-    current_app.logger.info("[STARTED] Replication slot changes")
-    current_app.logger.info("-----------------------------------------------------------")
 
     try:
         lock_acquired = _try_advisory_lock(advisory_lock_id)
 
         if not lock_acquired:
-            current_app.logger.info("[SKIPPED] Replication slot changes")
+            # Skip replication slot changes when lock not acquired
             return {
                 "lock_acquired": lock_acquired,
                 "slot_name": slot_name,
                 "upto_nchanges": upto_nchanges,
             }
 
-        current_app.logger.info(f"[LOCK ACQUIRED] Replication slot changes (lock = {lock_acquired})")
-
+        # lock acquired, proceed to fetch and process replication slot changes
         changes = _get_replication_changes(
             slot_name=slot_name,
             upto_nchanges=upto_nchanges,
@@ -52,10 +48,7 @@ def dao_process_notifications_replication_slot_changes(
         fetched_changes = len(changes)
 
         if fetched_changes == 0:
-            current_app.logger.info(
-                "[NO CHANGES] No replication slot changes found",
-                extra={"changes_count": 0, "dao_method": "dao_process_replication_slot_changes"},
-            )
+            # No changes to process, return early with lock acquired
             return {
                 "lock_acquired": True,
                 "changes_count": 0,
@@ -65,15 +58,13 @@ def dao_process_notifications_replication_slot_changes(
                 "last_nextlsn": None,
             }
 
+        # Process the fetched replication slot changes to update service statistics
         counter, processed_changes, ignored_changes, last_nextlsn = _build_counter_from_changes(changes)
+
+        # Aggregate the counter into service statistics change counts for each unique dimensions tuple
         service_stats_change_counts = _aggregate_service_stats_change_counts(counter)
 
-        current_app.logger.info(
-            f"[CHANGES PROCESSED] Replication slot changes "
-            f"(counter={counter}, processed_changes={processed_changes}, ignored_changes={ignored_changes}, "
-            f"last_nextlsn={last_nextlsn}, service_stats_change_counts={service_stats_change_counts})"
-        )
-
+        # Apply the aggregated service statistics change counts to the database
         for service_stats_key, change_count in service_stats_change_counts.items():
             if change_count == 0:
                 continue
@@ -88,25 +79,14 @@ def dao_process_notifications_replication_slot_changes(
             }
             apply_service_stats_change(dimensions, change_count)
 
+        # Commit the changes to the database after processing all replication slot changes
         db.session.commit()
 
-        current_app.logger.info(f"[PROCESSED] {fetched_changes} replication slot changes")
-
-
+        # Advance the replication slot to the last processed LSN to avoid reprocessing the same changes in future runs
         if last_nextlsn:
             _advance_replication_slot(last_nextlsn, slot_name=slot_name)
 
-        current_app.logger.info(
-            "[COMPLETED] Replication slot changes processed",
-            extra={
-                "changes_count": fetched_changes,
-                "processed_changes": processed_changes,
-                "ignored_changes": ignored_changes,
-                "service_stats_change_count_buckets": len(service_stats_change_counts),
-                "dao_method": "dao_process_replication_slot_changes",
-            },
-        )
-
+        # Return a summary of the replication slot processing results
         return {
             "lock_acquired": True,
             "changes_count": fetched_changes,
@@ -121,6 +101,7 @@ def dao_process_notifications_replication_slot_changes(
         current_app.logger.exception("[FAILED] Replication slot changes")
         raise
     finally:
+        # Release the advisory lock if it was acquired, and log any exceptions that occur during the release process.
         if lock_acquired:
             try:
                 _advisory_unlock(advisory_lock_id)
@@ -129,10 +110,6 @@ def dao_process_notifications_replication_slot_changes(
                     "Failed to release advisory lock",
                     extra={"dao_method": "dao_process_replication_slot_changes"},
                 )
-
-        current_app.logger.info("-----------------------------------------------------------")
-        current_app.logger.info(f"[FINISHED] Replication slot changes")
-        current_app.logger.info("-----------------------------------------------------------")
 
 
 def _try_advisory_lock(lock_id: int) -> bool:
@@ -161,8 +138,10 @@ def _try_advisory_lock(lock_id: int) -> bool:
     """)
     return bool(db.session.execute(sql, {"lock_id": lock_id}).scalar())
 
+
 def _advisory_unlock(lock_id: int) -> None:
     db.session.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": lock_id})
+
 
 def _get_replication_changes(
     *,
@@ -216,6 +195,7 @@ def _get_replication_changes(
 
     return parsed_rows
 
+
 def _parse_wal2json_payload(payload: dict[str, Any], *, table_name: str = REPLICATION_SLOT_TABLE_NAME) -> list[ParsedRow]:
     parsed_rows: list[ParsedRow] = []
 
@@ -240,6 +220,7 @@ def _parse_wal2json_payload(payload: dict[str, Any], *, table_name: str = REPLIC
         )
 
     return parsed_rows
+
 
 def _extract_row_data(change: dict[str, Any]) -> RowData:
     if "columnnames" in change and "columnvalues" in change:
@@ -271,17 +252,16 @@ def _extract_previous_row_data(change: dict[str, Any]) -> RowData:
 
     return {}
 
+
 def _zip_values(names: list[Any], values: list[Any]) -> RowData:
     return {str(name): value for name, value in zip(names, values)}
+
 
 def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullDimensions], int, int, str | None]:
     counter: Counter[FullDimensions] = Counter()
     processed_changes = 0
     ignored_changes = 0
     last_nextlsn: str | None = None
-
-    current_app.logger.info(f"[PROCESSING] {len(changes)} replication slot changes")
-    current_app.logger.info(f"[PROCESSING] {changes}")
 
     for change in changes:
         table_name = change["table"]
@@ -347,6 +327,7 @@ def _build_dimensions(
     notification_status = primary_status or fallback_data.get("notification_status")
     created_at = _parse_datetime_value(row_data, "created_at") or _parse_datetime_value(fallback_data, "created_at")
 
+    # If the key_type is "test", we ignore this change and return None to indicate that it should not be processed further.
     if key_type == "test":
         return None
 
@@ -364,6 +345,7 @@ def _build_dimensions(
         notification_status,
     )
 
+
 def _parse_uuid_value(row_data: RowData, key: str) -> UUID | None:
     raw_value = _get_str_value(row_data, key)
     if not raw_value:
@@ -374,6 +356,7 @@ def _parse_uuid_value(row_data: RowData, key: str) -> UUID | None:
     except ValueError:
         return None
 
+
 def _get_str_value(row_data: RowData | None, key: str) -> str | None:
     if not row_data:
         return None
@@ -383,6 +366,7 @@ def _get_str_value(row_data: RowData | None, key: str) -> str | None:
         return None
 
     return raw_value if isinstance(raw_value, str) else str(raw_value)
+
 
 def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
     raw_value = _get_str_value(row_data, key)
@@ -395,6 +379,7 @@ def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
     except ValueError:
         return None
 
+
 def _aggregate_service_stats_change_counts(counter: Counter[FullDimensions]) -> Counter[ServiceStatsDimensionsKey]:
     change_counts: Counter[ServiceStatsDimensionsKey] = Counter()
     for dimensions, change_count in counter.items():
@@ -402,6 +387,7 @@ def _aggregate_service_stats_change_counts(counter: Counter[FullDimensions]) -> 
         change_counts[(bst_date, service_id, template_id, notification_type, notification_status)] += change_count
 
     return change_counts
+
 
 def _advance_replication_slot(lsn: str, *, slot_name: str) -> None:
     db.session.execute(
