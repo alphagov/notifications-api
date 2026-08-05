@@ -12,7 +12,7 @@ REPLICATION_ADVISORY_LOCK_ID = 4_009_881
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
 
-def dao_process_replication_slot_changes(
+def dao_process_notifications_replication_slot_changes(
     *,
     slot_name: str = REPLICATION_SLOT_NAME,
     upto_nchanges: int = REPLICATION_SLOT_UPTO_NCHANGES,
