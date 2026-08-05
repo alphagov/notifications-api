@@ -107,7 +107,7 @@ from app.models import (
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.utils import get_london_midnight_in_utc
-from app.dao.replication_slot_changes_dao import dao_process_replication_slot_changes
+from app.dao.notifications_wal_changes_dao import dao_process_notifications_replication_slot_changes
 
 
 @notify_celery.task(name="run-scheduled-jobs")
@@ -988,4 +988,4 @@ def process_replication_slot_changes():
     print('---------------------------------------------')
     print("Processing replication slot changes..........")
     print('---------------------------------------------')
-    dao_process_replication_slot_changes()
+    dao_process_notifications_replication_slot_changes()
