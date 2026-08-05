@@ -948,7 +948,4 @@ def run_populate_annual_billing():
 
 @notify_celery.task(name="process-replication-slot-changes")
 def process_replication_slot_changes():
-    print('---------------------------------------------')
-    print("Processing replication slot changes..........")
-    print('---------------------------------------------')
     dao_process_notifications_replication_slot_changes()
