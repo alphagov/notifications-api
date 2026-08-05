@@ -7,6 +7,7 @@ from uuid import UUID
 from datetime import date, datetime
 from collections import Counter
 from notifications_utils.timezones import convert_utc_to_bst
+from app.dao.fact_service_stats_dao import ServiceStatsDimensions, apply_service_stats_change
 
 REPLICATION_SLOT_NAME = "notify_dashboard_replication_slot"
 REPLICATION_SLOT_TABLE_NAME = "public.notifications"
@@ -16,7 +17,7 @@ REPLICATION_ADVISORY_LOCK_ID = 4_009_881
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
 FullDimensions = tuple[date, UUID, UUID, str, str]
-ServiceStatsDimensionsKey = tuple[UUID, UUID, str, str]
+ServiceStatsDimensionsKey = tuple[date,UUID, UUID, str, str]
 
 
 def dao_process_notifications_replication_slot_changes(
@@ -72,6 +73,22 @@ def dao_process_notifications_replication_slot_changes(
             f"(counter={counter}, processed_changes={processed_changes}, ignored_changes={ignored_changes}, "
             f"last_nextlsn={last_nextlsn}, service_stats_change_counts={service_stats_change_counts})"
         )
+
+        for service_stats_key, change_count in service_stats_change_counts.items():
+            if change_count == 0:
+                continue
+
+            bst_date, service_id, template_id, notification_type, notification_status = service_stats_key
+            dimensions: ServiceStatsDimensions = {
+                "bst_date": bst_date,
+                "service_id": service_id,
+                "template_id": template_id,
+                "notification_type": notification_type,
+                "notification_status": notification_status,
+            }
+            apply_service_stats_change(dimensions, change_count)
+
+        db.session.commit()
 
         current_app.logger.info(f"[FETCHED] {fetched_changes} replication slot changes")
     except Exception:
@@ -359,7 +376,7 @@ def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
 def _aggregate_service_stats_change_counts(counter: Counter[FullDimensions]) -> Counter[ServiceStatsDimensionsKey]:
     change_counts: Counter[ServiceStatsDimensionsKey] = Counter()
     for dimensions, change_count in counter.items():
-        _, template_id, service_id, notification_type, notification_status = dimensions
-        change_counts[(service_id, template_id, notification_type, notification_status)] += change_count
+        bst_date, template_id, service_id, notification_type, notification_status = dimensions
+        change_counts[(bst_date, service_id, template_id, notification_type, notification_status)] += change_count
 
     return change_counts
