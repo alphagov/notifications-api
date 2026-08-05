@@ -43,6 +43,20 @@ def dao_process_notifications_replication_slot_changes(
         )
         fetched_changes = len(changes)
 
+        if fetched_changes == 0:
+            current_app.logger.info(
+                "[NO CHANGES] No replication slot changes found",
+                extra={"changes_count": 0, "dao_method": "dao_process_replication_slot_changes"},
+            )
+            return {
+                "lock_acquired": True,
+                "changes_count": 0,
+                "processed_changes": 0,
+                "ignored_changes": 0,
+                "service_stats_change_count_buckets": 0,
+                "last_nextlsn": None,
+            }
+
         current_app.logger.info(f"[FETCHED] {fetched_changes} replication slot changes")
     except Exception:
         # Ensure a failed statement does not poison the session for cleanup queries.
@@ -204,3 +218,4 @@ def _extract_previous_row_data(change: dict[str, Any]) -> RowData:
 
 def _zip_values(names: list[Any], values: list[Any]) -> RowData:
     return {str(name): value for name, value in zip(names, values)}
+
