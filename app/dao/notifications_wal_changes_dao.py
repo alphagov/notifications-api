@@ -3,14 +3,21 @@ from flask import current_app
 from sqlalchemy import text # type: ignore[reportMissingImports]
 from app import db
 import json
+from uuid import UUID
+from datetime import date, datetime
+from collections import Counter
+from notifications_utils.timezones import convert_utc_to_bst
 
 REPLICATION_SLOT_NAME = "notify_dashboard_replication_slot"
 REPLICATION_SLOT_TABLE_NAME = "public.notifications"
 REPLICATION_SLOT_UPTO_NCHANGES = 10_000
 REPLICATION_ADVISORY_LOCK_ID = 4_009_881
+NIL_UUID = UUID("00000000-0000-0000-0000-000000000000")
 
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
+FullDimensions = tuple[date, UUID, UUID, UUID, str, str, str]
+
 
 def dao_process_notifications_replication_slot_changes(
     *,
@@ -56,6 +63,18 @@ def dao_process_notifications_replication_slot_changes(
                 "service_stats_change_count_buckets": 0,
                 "last_nextlsn": None,
             }
+
+        counter, processed_changes, ignored_changes, last_nextlsn = _build_counter_from_changes(changes)
+
+        current_app.logger.info(
+            {
+                "counter": counter,
+                "processed_changes": processed_changes,
+                "ignored_changes": ignored_changes,
+                "last_nextlsn": last_nextlsn,
+            }
+        )
+
 
         current_app.logger.info(f"[FETCHED] {fetched_changes} replication slot changes")
     except Exception:
@@ -219,3 +238,126 @@ def _extract_previous_row_data(change: dict[str, Any]) -> RowData:
 def _zip_values(names: list[Any], values: list[Any]) -> RowData:
     return {str(name): value for name, value in zip(names, values)}
 
+def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullDimensions], int, int, str | None]:
+    counter: Counter[FullDimensions] = Counter()
+    processed_changes = 0
+    ignored_changes = 0
+    last_nextlsn: str | None = None
+
+    current_app.logger.info(f"[PROCESSING] {len(changes)} replication slot changes")
+    current_app.logger.info(f"[PROCESSING] {changes}")
+
+    for change in changes:
+        table_name = change["table"]
+        change_type = change["type"]
+        if change.get("nextlsn"):
+            last_nextlsn = change["nextlsn"]
+
+        if table_name != REPLICATION_SLOT_TABLE_NAME.split(".")[-1]:
+            ignored_changes += 1
+            continue
+
+        if change_type == "insert":
+            dimensions = _build_dimensions(change, use_previous_row=False)
+            if not dimensions:
+                ignored_changes += 1
+                continue
+
+            counter[dimensions] += 1
+            processed_changes += 1
+            continue
+
+        if change_type == "update":
+            updated = False
+            new_dimensions = _build_dimensions(change, use_previous_row=False)
+            if new_dimensions:
+                counter[new_dimensions] += 1
+                updated = True
+
+            old_dimensions = _build_dimensions(change, use_previous_row=True, require_status_from_primary_row=True)
+            if old_dimensions:
+                counter[old_dimensions] -= 1
+                updated = True
+
+            if not updated:
+                ignored_changes += 1
+                continue
+
+            processed_changes += 1
+            continue
+
+        ignored_changes += 1
+
+    return counter, processed_changes, ignored_changes, last_nextlsn
+
+def _build_dimensions(
+    change: ParsedRow,
+    *,
+    use_previous_row: bool,
+    require_status_from_primary_row: bool = False,
+) -> FullDimensions | None:
+    if use_previous_row:
+        row_data = change["previous_row_data"]
+        fallback_data = change["current_row_data"]
+    else:
+        row_data = change["current_row_data"]
+        fallback_data = change["previous_row_data"]
+
+    service_id = _parse_uuid_value(row_data, "service_id") or _parse_uuid_value(fallback_data, "service_id")
+    template_id = _parse_uuid_value(row_data, "template_id") or _parse_uuid_value(fallback_data, "template_id")
+    notification_type = _get_str_value(row_data, "notification_type") or _get_str_value(fallback_data, "notification_type")
+    job_id = _parse_uuid_value(row_data, "job_id") or _parse_uuid_value(fallback_data, "job_id") or NIL_UUID
+    key_type = _get_str_value(row_data, "key_type") or _get_str_value(fallback_data, "key_type")
+    primary_status = row_data.get("notification_status")
+    notification_status = primary_status or fallback_data.get("notification_status")
+    created_at = _parse_datetime_value(row_data, "created_at") or _parse_datetime_value(fallback_data, "created_at")
+
+    if key_type == "test":
+        return None
+
+    if require_status_from_primary_row and not notification_status:
+        return None
+
+    if not service_id or not template_id or not notification_type or not key_type or not notification_status or not created_at:
+        return None
+
+    return (
+        convert_utc_to_bst(created_at).date(),
+        template_id,
+        service_id,
+        job_id,
+        notification_type,
+        key_type,
+        notification_status,
+    )
+
+def _parse_uuid_value(row_data: RowData, key: str) -> UUID | None:
+    raw_value = _get_str_value(row_data, key)
+    if not raw_value:
+        return None
+
+    try:
+        return UUID(raw_value)
+    except ValueError:
+        return None
+
+def _get_str_value(row_data: RowData | None, key: str) -> str | None:
+    if not row_data:
+        return None
+
+    raw_value = row_data.get(key)
+    if raw_value is None:
+        return None
+
+    return raw_value if isinstance(raw_value, str) else str(raw_value)
+
+def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
+    raw_value = _get_str_value(row_data, key)
+    if not raw_value:
+        return None
+
+    normalized = raw_value.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
