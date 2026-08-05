@@ -16,6 +16,7 @@ REPLICATION_ADVISORY_LOCK_ID = 4_009_881
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
 FullDimensions = tuple[date, UUID, UUID, str, str]
+ServiceStatsDimensionsKey = tuple[UUID, UUID, str, str]
 
 
 def dao_process_notifications_replication_slot_changes(
@@ -64,16 +65,13 @@ def dao_process_notifications_replication_slot_changes(
             }
 
         counter, processed_changes, ignored_changes, last_nextlsn = _build_counter_from_changes(changes)
+        service_stats_change_counts = _aggregate_service_stats_change_counts(counter)
 
         current_app.logger.info(
-            {
-                "counter": counter,
-                "processed_changes": processed_changes,
-                "ignored_changes": ignored_changes,
-                "last_nextlsn": last_nextlsn,
-            }
+            f"[CHANGES PROCESSED] Replication slot changes "
+            f"(counter={counter}, processed_changes={processed_changes}, ignored_changes={ignored_changes}, "
+            f"last_nextlsn={last_nextlsn}, service_stats_change_counts={service_stats_change_counts})"
         )
-
 
         current_app.logger.info(f"[FETCHED] {fetched_changes} replication slot changes")
     except Exception:
@@ -357,3 +355,11 @@ def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
         return datetime.fromisoformat(normalized)
     except ValueError:
         return None
+
+def _aggregate_service_stats_change_counts(counter: Counter[FullDimensions]) -> Counter[ServiceStatsDimensionsKey]:
+    change_counts: Counter[ServiceStatsDimensionsKey] = Counter()
+    for dimensions, change_count in counter.items():
+        _, template_id, service_id, notification_type, notification_status = dimensions
+        change_counts[(service_id, template_id, notification_type, notification_status)] += change_count
+
+    return change_counts
