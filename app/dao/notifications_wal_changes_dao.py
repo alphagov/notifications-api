@@ -12,7 +12,6 @@ REPLICATION_SLOT_NAME = "notify_dashboard_replication_slot"
 REPLICATION_SLOT_TABLE_NAME = "public.notifications"
 REPLICATION_SLOT_UPTO_NCHANGES = 10_000
 REPLICATION_ADVISORY_LOCK_ID = 4_009_881
-NIL_UUID = UUID("00000000-0000-0000-0000-000000000000")
 
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
@@ -306,7 +305,7 @@ def _build_dimensions(
     service_id = _parse_uuid_value(row_data, "service_id") or _parse_uuid_value(fallback_data, "service_id")
     template_id = _parse_uuid_value(row_data, "template_id") or _parse_uuid_value(fallback_data, "template_id")
     notification_type = _get_str_value(row_data, "notification_type") or _get_str_value(fallback_data, "notification_type")
-    job_id = _parse_uuid_value(row_data, "job_id") or _parse_uuid_value(fallback_data, "job_id") or NIL_UUID
+    job_id = _parse_uuid_value(row_data, "job_id") or _parse_uuid_value(fallback_data, "job_id")
     key_type = _get_str_value(row_data, "key_type") or _get_str_value(fallback_data, "key_type")
     primary_status = row_data.get("notification_status")
     notification_status = primary_status or fallback_data.get("notification_status")
