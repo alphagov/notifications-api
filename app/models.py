@@ -2416,6 +2416,42 @@ class FactNotificationStatus(db.Model):
     )
 
 
+class FactServiceStats(db.Model):
+    __tablename__ = "ft_service_stats"
+
+    bst_date = db.Column(db.Date, index=True, primary_key=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), primary_key=True, nullable=False)
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), primary_key=True, nullable=False)
+    notification_type = db.Column(notification_types, primary_key=True, nullable=False)
+    notification_status = db.Column(
+        db.Text,
+        db.ForeignKey("notification_status_types.name"),
+        primary_key=True,
+        nullable=False,
+    )
+    notification_count = db.Column(db.BigInteger(), nullable=False, server_default=db.text("0"))
+
+    __table_args__ = (
+        Index(
+            "ix_ft_service_stats",
+            "bst_date",
+            "service_id",
+            "template_id",
+            "notification_type",
+            "notification_status",
+            unique=True,
+        ),
+        Index(
+            "ix_ft_service_template_stats",
+            "bst_date",
+            "template_id",
+            "notification_type",
+            "notification_status",
+            unique=True,
+        ),
+    )
+
+
 class FactProcessingTime(db.Model):
     __tablename__ = "ft_processing_time"
 
@@ -2888,3 +2924,4 @@ class ReportRequest(db.Model):
             created_at=self.created_at.strftime(DATETIME_FORMAT),
             updated_at=get_dt_string_or_none(self.updated_at),
         )
+
