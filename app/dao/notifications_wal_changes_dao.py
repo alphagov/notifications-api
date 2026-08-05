@@ -90,7 +90,31 @@ def dao_process_notifications_replication_slot_changes(
 
         db.session.commit()
 
-        current_app.logger.info(f"[FETCHED] {fetched_changes} replication slot changes")
+        current_app.logger.info(f"[PROCESSED] {fetched_changes} replication slot changes")
+
+
+        if last_nextlsn:
+            _advance_replication_slot(last_nextlsn, slot_name=slot_name)
+
+        current_app.logger.info(
+            "[COMPLETED] Replication slot changes processed",
+            extra={
+                "changes_count": fetched_changes,
+                "processed_changes": processed_changes,
+                "ignored_changes": ignored_changes,
+                "service_stats_change_count_buckets": len(service_stats_change_counts),
+                "dao_method": "dao_process_replication_slot_changes",
+            },
+        )
+
+        return {
+            "lock_acquired": True,
+            "changes_count": fetched_changes,
+            "processed_changes": processed_changes,
+            "ignored_changes": ignored_changes,
+            "service_stats_change_count_buckets": len(service_stats_change_counts),
+            "last_nextlsn": last_nextlsn,
+        }
     except Exception:
         # Ensure a failed statement does not poison the session for cleanup queries.
         db.session.rollback()
@@ -98,20 +122,18 @@ def dao_process_notifications_replication_slot_changes(
         raise
     finally:
         if lock_acquired:
-            current_app.logger.info(
-                f"[RELEASING LOCK] Replication slot changes (lock = {lock_acquired})",
-            )
-            _advisory_unlock(advisory_lock_id)
+            try:
+                _advisory_unlock(advisory_lock_id)
+            except Exception:
+                current_app.logger.exception(
+                    "Failed to release advisory lock",
+                    extra={"dao_method": "dao_process_replication_slot_changes"},
+                )
 
-    current_app.logger.info("-----------------------------------------------------------")
-    current_app.logger.info(f"[FINISHED] Replication slot changes")
-    current_app.logger.info("-----------------------------------------------------------")
+        current_app.logger.info("-----------------------------------------------------------")
+        current_app.logger.info(f"[FINISHED] Replication slot changes")
+        current_app.logger.info("-----------------------------------------------------------")
 
-    return {
-        "lock_acquired": lock_acquired,
-        "slot_name": slot_name,
-        "upto_nchanges": upto_nchanges,
-    }
 
 def _try_advisory_lock(lock_id: int) -> bool:
     # The celery beat scheduler runs multiple instances of the same task in parallel,
@@ -380,3 +402,9 @@ def _aggregate_service_stats_change_counts(counter: Counter[FullDimensions]) -> 
         change_counts[(bst_date, service_id, template_id, notification_type, notification_status)] += change_count
 
     return change_counts
+
+def _advance_replication_slot(lsn: str, *, slot_name: str) -> None:
+    db.session.execute(
+        text("SELECT pg_replication_slot_advance(:slot_name, :lsn)"),
+        {"slot_name": slot_name, "lsn": lsn},
+    )
