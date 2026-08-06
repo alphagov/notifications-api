@@ -1,6 +1,6 @@
+from datetime import date
 from typing import TypedDict
 from uuid import UUID
-from datetime import date
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
@@ -67,4 +67,3 @@ def _update_service_stats_count(dimensions: ServiceStatsDimensions, change_count
                 synchronize_session=False,
             )
         )
-
