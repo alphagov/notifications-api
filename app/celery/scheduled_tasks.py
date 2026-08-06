@@ -947,6 +947,6 @@ def run_populate_annual_billing():
     populate_annual_billing(year=year, missing_services_only=True)
 
 
-@notify_celery.task(name="process-replication-slot-changes")
+@notify_celery.task(name="process-notifications-replication-slot-changes")
 def process_replication_slot_changes():
     dao_process_notifications_replication_slot_changes()
