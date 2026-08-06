@@ -1,12 +1,14 @@
-from typing import Any
-from flask import current_app
-from sqlalchemy import text # type: ignore[reportMissingImports]
-from app import db
 import json
-from uuid import UUID
-from datetime import date, datetime
 from collections import Counter
+from datetime import date, datetime
+from typing import Any
+from uuid import UUID
+
+from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
+from sqlalchemy import text  # type: ignore[reportMissingImports]
+
+from app import db
 from app.dao.fact_service_stats_dao import ServiceStatsDimensions, apply_service_stats_change
 
 REPLICATION_SLOT_NAME = "notify_dashboard_replication_slot"
@@ -17,7 +19,7 @@ REPLICATION_ADVISORY_LOCK_ID = 4_009_881
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
 FullDimensions = tuple[date, UUID, UUID, str, str]
-ServiceStatsDimensionsKey = tuple[date,UUID, UUID, str, str]
+ServiceStatsDimensionsKey = tuple[date, UUID, UUID, str, str]
 
 
 def dao_process_notifications_replication_slot_changes(
@@ -41,9 +43,7 @@ def dao_process_notifications_replication_slot_changes(
 
         # lock acquired, proceed to fetch and process replication slot changes
         changes = _get_replication_changes(
-            slot_name=slot_name,
-            upto_nchanges=upto_nchanges,
-            table_name=REPLICATION_SLOT_TABLE_NAME
+            slot_name=slot_name, upto_nchanges=upto_nchanges, table_name=REPLICATION_SLOT_TABLE_NAME
         )
         fetched_changes = len(changes)
 
@@ -150,7 +150,7 @@ def _get_replication_changes(
     table_name: str = REPLICATION_SLOT_TABLE_NAME,
 ) -> list[ParsedRow]:
     stmt = text(
-        f"""
+        """
         SELECT data
         FROM pg_logical_slot_peek_changes (
             :slot_name,
@@ -175,10 +175,10 @@ def _get_replication_changes(
             "slot_name": slot_name,
             "upto_nchanges": upto_nchanges,
             "table_name": table_name,
-            "include_lsn": 'true',
-            "format_version": '1',
-            "include_types": 'false',
-            "include_typmod": 'false',
+            "include_lsn": "true",
+            "format_version": "1",
+            "include_types": "false",
+            "include_typmod": "false",
         },
     ).mappings()
 
@@ -196,7 +196,9 @@ def _get_replication_changes(
     return parsed_rows
 
 
-def _parse_wal2json_payload(payload: dict[str, Any], *, table_name: str = REPLICATION_SLOT_TABLE_NAME) -> list[ParsedRow]:
+def _parse_wal2json_payload(
+    payload: dict[str, Any], *, table_name: str = REPLICATION_SLOT_TABLE_NAME
+) -> list[ParsedRow]:
     parsed_rows: list[ParsedRow] = []
 
     for change in payload.get("change", []):
@@ -254,7 +256,7 @@ def _extract_previous_row_data(change: dict[str, Any]) -> RowData:
 
 
 def _zip_values(names: list[Any], values: list[Any]) -> RowData:
-    return {str(name): value for name, value in zip(names, values)}
+    return {str(name): value for name, value in zip(names, values, strict=True) if name is not None}
 
 
 def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullDimensions], int, int, str | None]:
@@ -306,6 +308,7 @@ def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullD
 
     return counter, processed_changes, ignored_changes, last_nextlsn
 
+
 def _build_dimensions(
     change: ParsedRow,
     *,
@@ -321,20 +324,30 @@ def _build_dimensions(
 
     service_id = _parse_uuid_value(row_data, "service_id") or _parse_uuid_value(fallback_data, "service_id")
     template_id = _parse_uuid_value(row_data, "template_id") or _parse_uuid_value(fallback_data, "template_id")
-    notification_type = _get_str_value(row_data, "notification_type") or _get_str_value(fallback_data, "notification_type")
+    notification_type = _get_str_value(row_data, "notification_type") or _get_str_value(
+        fallback_data, "notification_type"
+    )
     key_type = _get_str_value(row_data, "key_type") or _get_str_value(fallback_data, "key_type")
     primary_status = row_data.get("notification_status")
     notification_status = primary_status or fallback_data.get("notification_status")
     created_at = _parse_datetime_value(row_data, "created_at") or _parse_datetime_value(fallback_data, "created_at")
 
-    # If the key_type is "test", we ignore this change and return None to indicate that it should not be processed further.
+    # If the key_type is "test", we ignore this change and return None to indicate
+    # that it should not be processed further.
     if key_type == "test":
         return None
 
     if require_status_from_primary_row and not notification_status:
         return None
 
-    if not service_id or not template_id or not notification_type or not key_type or not notification_status or not created_at:
+    if (
+        not service_id
+        or not template_id
+        or not notification_type
+        or not key_type
+        or not notification_status
+        or not created_at
+    ):
         return None
 
     return (
