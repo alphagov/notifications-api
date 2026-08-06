@@ -518,8 +518,8 @@ class Config:
                 "options": {"queue": QueueNames.PERIODIC},
             },
             # check every 10 seconds for changes to the replication slot, and process them if there are any
-            "process-replication-slot-changes": {
-                "task": "process-replication-slot-changes",
+            "process-notifications-replication-slot-changes": {
+                "task": "process-notifications-replication-slot-changes",
                 "schedule": timedelta(seconds=10),
                 "options": {"queue": QueueNames.PERIODIC},
             },
