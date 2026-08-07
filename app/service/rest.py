@@ -439,8 +439,6 @@ def get_service_history(service_id):
     data = {
         "service_history": service_data,
         "api_key_history": api_keys_data,
-        "template_history": [],
-        "events": [],
     }
 
     return jsonify(data=data)
