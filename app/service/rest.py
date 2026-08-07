@@ -425,11 +425,10 @@ def remove_user_from_service(service_id, user_id):
 # tables. This is so product owner can pass stories as done
 @service_blueprint.route("/<uuid:service_id>/history", methods=["GET"])
 def get_service_history(service_id):
-    from app.models import ApiKey, Service, TemplateHistory
+    from app.models import ApiKey, Service
     from app.schemas import (
         api_key_history_schema,
         service_history_schema,
-        template_history_schema,
     )
 
     service_history = Service.get_history_model().query.filter_by(id=service_id).all()
@@ -437,13 +436,10 @@ def get_service_history(service_id):
     api_key_history = ApiKey.get_history_model().query.filter_by(service_id=service_id).all()
     api_keys_data = api_key_history_schema.dump(api_key_history, many=True)
 
-    template_history = TemplateHistory.query.filter_by(service_id=service_id).all()
-    template_data = template_history_schema.dump(template_history, many=True)
-
     data = {
         "service_history": service_data,
         "api_key_history": api_keys_data,
-        "template_history": template_data,
+        "template_history": [],
         "events": [],
     }
 
