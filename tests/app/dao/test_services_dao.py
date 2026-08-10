@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from unittest import mock
 
 import pytest
+from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
@@ -192,6 +193,31 @@ def test_create_nhs_service_get_default_branding_based_on_email_address(
     else:
         assert service_db.letter_branding is None
         assert service_db.email_branding is None
+
+
+def test_create_nhs_notify_service(
+    notify_db_session,
+    nhs_email_branding,
+    nhs_letter_branding,
+):
+    user = create_user(email="test@nhs.net")
+
+    organisation = create_organisation(
+        organisation_type="nhs_notify", organisation_id=current_app.config["NHS_NOTIFY_ORG_ID"]
+    )
+
+    service = Service(
+        name="service_name",
+        restricted=False,
+        organisation_type="nhs_notify",
+        created_by=user,
+    )
+    dao_create_service(service, user)
+    service_db = Service.query.one()
+
+    assert service_db.letter_branding.id == nhs_letter_branding.id
+    assert service_db.email_branding.id == nhs_email_branding.id
+    assert service_db.organisation_id == organisation.id
 
 
 def test_cannot_create_two_services_with_same_name(notify_db_session):
