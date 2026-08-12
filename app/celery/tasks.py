@@ -115,7 +115,7 @@ def process_job(self, job_id, sender_id=None, shatter_batch_size=DEFAULT_SHATTER
         extra={"job_id": job_id, "notification_count": job.notification_count},
     )
 
-    for shatter_batch in batched(recipient_csv.get_rows(), n=shatter_batch_size):
+    for shatter_batch in batched(recipient_csv, n=shatter_batch_size):
         batch_args_kwargs = [
             get_id_task_args_kwargs_for_job_row(row, template, job, service, sender_id=sender_id)[1]
             for row in shatter_batch
@@ -608,7 +608,7 @@ def process_incomplete_job(job_id, shatter_batch_size=DEFAULT_SHATTER_JOB_ROWS_B
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
     for shatter_batch in batched(
-        (row for row in recipient_csv.get_rows() if row.index > resume_from_row),
+        (row for row in recipient_csv if row.index > resume_from_row),
         n=shatter_batch_size,
     ):
         batch_args_kwargs = [
