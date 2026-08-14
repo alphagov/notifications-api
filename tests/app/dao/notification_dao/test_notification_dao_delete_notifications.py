@@ -33,9 +33,9 @@ def test_every_column_in_notification_history_is_filled_with_data_from_notificat
 @mock_aws
 @freeze_time("2019-09-01 04:30")
 def test_move_notifications_deletes_letters_from_s3(sample_letter_template):
-    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3 = boto3.client("s3", region_name="eu-west-2")
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
     create_notification(
@@ -59,9 +59,9 @@ def test_move_notifications_deletes_letters_from_s3(sample_letter_template):
 @mock_aws
 @freeze_time("2019-09-01 04:30")
 def test_move_notifications_deletes_same_letter_from_s3_as_notifications(sample_letter_template):
-    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3 = boto3.client("s3", region_name="eu-west-2")
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     noti_a_timestamp = datetime.utcnow() - timedelta(days=8)
     noti_b_timestamp = datetime.utcnow() - timedelta(days=8, seconds=1)
@@ -103,10 +103,10 @@ def test_move_notifications_deletes_same_letter_from_s3_as_notifications(sample_
 @mock_aws
 @freeze_time("2019-09-01 04:30")
 def test_move_notifications_copes_if_letter_not_in_s3(sample_letter_template):
-    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3 = boto3.client("s3", region_name="eu-west-2")
     s3.create_bucket(
         Bucket=current_app.config["S3_BUCKET_LETTERS_PDF"],
-        CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+        CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
     )
 
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
@@ -165,8 +165,8 @@ def test_move_notifications_deletes_letters_sent_and_in_final_state_from_table_a
     sample_service, notification_status
 ):
     bucket_name = current_app.config["S3_BUCKET_LETTERS_PDF"]
-    s3 = boto3.client("s3", region_name="eu-west-1")
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3 = boto3.client("s3", region_name="eu-west-2")
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     letter_template = create_template(service=sample_service, template_type="letter")
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
@@ -198,8 +198,8 @@ def test_move_notifications_deletes_letters_sent_and_in_final_state_from_table_a
 @freeze_time("2020-12-24 04:30")
 def test_move_notifications_deletes_letters_that_failed_validation_from_table_and_s3_invalid_bucket(sample_service):
     bucket_name = current_app.config["S3_BUCKET_INVALID_PDF"]
-    s3 = boto3.client("s3", region_name="eu-west-1")
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3 = boto3.client("s3", region_name="eu-west-2")
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     letter_template = create_template(service=sample_service, template_type="letter")
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
@@ -350,9 +350,9 @@ def test_delete_test_notifications(sample_template, sample_email_template):
 @mock_aws
 @freeze_time("2024-09-01 04:30")
 def test_delete_test_notifications_deletes_letters_from_s3(sample_letter_template):
-    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3 = boto3.client("s3", region_name="eu-west-2")
     bucket_name = current_app.config["S3_BUCKET_TEST_LETTERS"]
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
     create_notification(
@@ -376,9 +376,9 @@ def test_delete_test_notifications_deletes_letters_from_s3(sample_letter_templat
 @mock_aws
 @freeze_time("2019-09-01 04:30")
 def test_delete_test_notifications_deletes_same_letter_from_s3_as_notifications(sample_letter_template):
-    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3 = boto3.client("s3", region_name="eu-west-2")
     bucket_name = current_app.config["S3_BUCKET_TEST_LETTERS"]
-    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     noti_a_timestamp = datetime.utcnow() - timedelta(days=8)
     noti_b_timestamp = datetime.utcnow() - timedelta(days=8, seconds=1)
@@ -422,10 +422,10 @@ def test_delete_test_notifications_deletes_same_letter_from_s3_as_notifications(
 @mock_aws
 @freeze_time("2019-09-01 04:30")
 def test_delete_test_notifications_copes_if_letter_not_in_s3(sample_letter_template, caplog):
-    s3 = boto3.client("s3", region_name="eu-west-1")
+    s3 = boto3.client("s3", region_name="eu-west-2")
     s3.create_bucket(
         Bucket=current_app.config["S3_BUCKET_TEST_LETTERS"],
-        CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+        CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
     )
 
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
