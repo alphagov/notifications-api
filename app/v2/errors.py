@@ -10,6 +10,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from app.authentication.auth import AuthError
 from app.clients.document_download import DocumentDownloadError
 from app.errors import InvalidRequest
+from app.load_shedding import ServiceUnavailableError
 
 
 class TooManyRequestsError(InvalidRequest):
@@ -84,7 +85,23 @@ class QrCodeTooLongError(ValidationError):
         }
 
 
-def register_errors(blueprint):
+def _register_rate_limit_errors(blueprint):
+    @blueprint.errorhandler(ServiceUnavailableError)
+    def service_unavailable_error(error: ServiceUnavailableError):
+        current_app.logger.info(error)
+        response = jsonify(error.to_dict_v2())
+        response.status_code = 429
+        response.headers["Retry-After"] = str(error.retry_after)
+        return response
+
+    @blueprint.errorhandler(InvalidRequest)
+    def invalid_data(error):
+        current_app.logger.info(error)
+        response = jsonify(error.to_dict_v2()), error.status_code
+        return response
+
+
+def _register_validation_errors(blueprint):
     @blueprint.errorhandler(InvalidRecipientError)
     def invalid_format(error):
         current_app.logger.info(error)
@@ -109,12 +126,28 @@ def register_errors(blueprint):
             400,
         )
 
-    @blueprint.errorhandler(InvalidRequest)
-    def invalid_data(error):
+    @blueprint.errorhandler(JsonSchemaValidationError)
+    def validation_error(error):
         current_app.logger.info(error)
-        response = jsonify(error.to_dict_v2()), error.status_code
-        return response
+        return jsonify(json.loads(error.message)), 400
 
+
+def _register_data_errors(blueprint):
+    @blueprint.errorhandler(NoResultFound)
+    @blueprint.errorhandler(DataError)
+    def no_result_found(e):
+        current_app.logger.info(e, exc_info=True)
+        return jsonify(status_code=404, errors=[{"error": e.__class__.__name__, "message": "No result found"}]), 404
+
+
+def _register_auth_errors(blueprint):
+    @blueprint.errorhandler(AuthError)
+    def auth_error(error):
+        current_app.logger.info("API AuthError, client: %s error: %s", request.headers.get("User-Agent"), error)
+        return jsonify(error.to_dict_v2()), error.code
+
+
+def _register_misc_errors(blueprint):
     @blueprint.errorhandler(DocumentDownloadError)
     def document_download_error(error: DocumentDownloadError):
         current_app.logger.info(error)
@@ -122,22 +155,6 @@ def register_errors(blueprint):
         bad_request_exc = BadRequestError(message=error.message)
         response = jsonify(bad_request_exc.to_dict_v2()), error.status_code
         return response
-
-    @blueprint.errorhandler(JsonSchemaValidationError)
-    def validation_error(error):
-        current_app.logger.info(error)
-        return jsonify(json.loads(error.message)), 400
-
-    @blueprint.errorhandler(NoResultFound)
-    @blueprint.errorhandler(DataError)
-    def no_result_found(e):
-        current_app.logger.info(e, exc_info=True)
-        return jsonify(status_code=404, errors=[{"error": e.__class__.__name__, "message": "No result found"}]), 404
-
-    @blueprint.errorhandler(AuthError)
-    def auth_error(error):
-        current_app.logger.info("API AuthError, client: %s error: %s", request.headers.get("User-Agent"), error)
-        return jsonify(error.to_dict_v2()), error.code
 
     @blueprint.errorhandler(EventletTimeout)
     def eventlet_timeout(error):
@@ -156,3 +173,11 @@ def register_errors(blueprint):
             jsonify(status_code=500, errors=[{"error": error.__class__.__name__, "message": "Internal server error"}]),
             500,
         )
+
+
+def register_errors(blueprint):
+    _register_rate_limit_errors(blueprint)
+    _register_validation_errors(blueprint)
+    _register_data_errors(blueprint)
+    _register_auth_errors(blueprint)
+    _register_misc_errors(blueprint)
