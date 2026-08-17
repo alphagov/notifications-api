@@ -60,9 +60,9 @@ def send_sms_to_provider(notification: Notification) -> None:
             show_prefix=service.prefix_sms,
         )
 
-        if non_gsm_characters := SanitiseSMS.get_non_gsm_characters(template.unsanitised_content):
+        if non_gsm_characters := template.non_gsm_characters:
             current_app.logger.warning(
-                "%s character(s) replaced with ? in SMS content for service %s and notification %s",
+                "%s character(s) caused UTF-16 encoding in SMS content for service %s and notification %s",
                 len(non_gsm_characters),
                 service.id,
                 notification.id,
