@@ -80,9 +80,6 @@ def dao_process_notifications_replication_slot_changes(
             }
             apply_service_stats_change(dimensions, change_count)
 
-        # Commit the changes to the database after processing all replication slot changes
-        db.session.commit()
-
         # Advance the replication slot to the last processed LSN to avoid reprocessing the same changes in future runs
         if last_nextlsn:
             current_app.logger.info(
@@ -97,6 +94,9 @@ def dao_process_notifications_replication_slot_changes(
                 replication slot %s will not be advanced",
                 slot_name,
             )
+
+        # Commit both stats updates and slot advancement in one transaction.
+        db.session.commit()
 
         # Log the result of the replication slot processing for monitoring and debugging purposes.
         current_app.logger.info(
