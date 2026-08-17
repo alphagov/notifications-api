@@ -125,6 +125,18 @@ def test_get_replication_changes_parses_rows_and_payload_formats(mocker):
     assert mock_parser.call_count == 2
 
 
+def test_get_replication_changes_keeps_sql_lsn(mocker):
+    mappings_rows = [{"lsn": "0/AB", "data": {"change": [{"schema": "public", "table": "notifications", "kind": "insert"}]}}]
+
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = mappings_rows
+    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    result = dao._get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+
+    assert result[0]["lsn"] == "0/AB"
+
+
 def test_parse_wal2json_payload_supports_format_2_rows():
     payload = {
         "action": "I",
