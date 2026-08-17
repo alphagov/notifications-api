@@ -125,6 +125,42 @@ def test_get_replication_changes_parses_rows_and_payload_formats(mocker):
     assert mock_parser.call_count == 2
 
 
+def test_parse_wal2json_payload_supports_format_2_rows():
+    payload = {
+        "action": "I",
+        "schema": "public",
+        "table": "notifications",
+        "columns": [
+            {"name": "service_id", "value": "550e8400-e29b-41d4-a716-446655440000"},
+            {"name": "template_id", "value": "550e8400-e29b-41d4-a716-446655440001"},
+            {"name": "notification_type", "value": "sms"},
+            {"name": "key_type", "value": "normal"},
+            {"name": "notification_status", "value": "created"},
+            {"name": "created_at", "value": "2026-08-12T10:00:00Z"},
+        ],
+    }
+
+    result = dao._parse_wal2json_payload(payload, table_name="public.notifications")
+
+    assert len(result) == 1
+    assert result[0]["table"] == "notifications"
+    assert result[0]["type"] == "insert"
+    assert result[0]["current_row_data"]["notification_type"] == "sms"
+    assert result[0]["current_row_data"]["notification_status"] == "created"
+
+
+def test_get_replication_changes_uses_format_version_2(mocker):
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = [{"data": {"change": []}}]
+    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+    mocker.patch("app.dao.notifications_wal_changes_dao._parse_wal2json_payload", return_value=[])
+
+    dao._get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+
+    assert mock_execute.call_count == 1
+    assert mock_execute.call_args.args[1]["format_version"] == "2"
+
+
 def test_parse_uuid_value():
     value = str(uuid4())
     assert dao._parse_uuid_value({"service_id": value}, "service_id") == UUID(value)
