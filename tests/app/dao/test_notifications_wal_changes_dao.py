@@ -366,6 +366,7 @@ def test_dao_process_notifications_replication_slot_changes_when_no_changes(mock
 
 def test_dao_process_notifications_replication_slot_changes_success(mocker):
     dimensions_key = (date(2026, 8, 6), uuid4(), uuid4(), "sms", "delivered")
+    call_order: list[str] = []
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=[{"x": 1}, {"x": 2}])
     mocker.patch(
@@ -376,9 +377,18 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
         "app.dao.notifications_wal_changes_dao._aggregate_service_stats_change_counts",
         return_value=Counter({dimensions_key: 3, (date(2026, 8, 6), uuid4(), uuid4(), "email", "failed"): 0}),
     )
-    mock_apply = mocker.patch("app.dao.notifications_wal_changes_dao.apply_service_stats_change")
-    mock_commit = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.commit")
-    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+    mock_apply = mocker.patch(
+        "app.dao.notifications_wal_changes_dao.apply_service_stats_change",
+        side_effect=lambda *_args, **_kwargs: call_order.append("apply"),
+    )
+    mock_commit = mocker.patch(
+        "app.dao.notifications_wal_changes_dao.db.session.commit",
+        side_effect=lambda: call_order.append("commit"),
+    )
+    mock_advance = mocker.patch(
+        "app.dao.notifications_wal_changes_dao._advance_replication_slot",
+        side_effect=lambda *_args, **_kwargs: call_order.append("advance"),
+    )
     mock_unlock = mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
 
     result = dao.dao_process_notifications_replication_slot_changes(slot_name="slot")
@@ -404,6 +414,7 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
     mock_commit.assert_called_once()
     mock_advance.assert_called_once_with("0/AB", slot_name="slot")
     mock_unlock.assert_called_once()
+    assert call_order.index("advance") < call_order.index("commit")
 
 
 def test_dao_process_notifications_replication_slot_changes_rollback_and_reraises(mocker):
