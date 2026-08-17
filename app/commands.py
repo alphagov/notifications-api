@@ -777,7 +777,7 @@ def process_row_from_job(job_id, job_row_number):
         s3.get_job_from_s3(str(job.service_id), str(job.id)),
         template_type=template.template_type,
         placeholders=template.placeholders,
-    ).get_rows():
+    ):
         if row.index == job_row_number:
             notification_id, task_args_kwargs = get_id_task_args_kwargs_for_job_row(row, template, job, job.service)
 
