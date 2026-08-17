@@ -1,3 +1,4 @@
+import datetime
 import functools
 from collections.abc import Callable
 from time import monotonic
@@ -23,6 +24,24 @@ _sms_legacy_not_delivered_within = _meter.create_gauge(
     "as it includes notifications sent too recently to be able to determine this for sensibly, "
     "however this is the measure currently used by the SMS provider balancer for better or "
     "worse.",
+)
+
+_priority = _meter.create_gauge(
+    "provider.priority",
+    unit="1",
+    description="Observed priority value of a Provider",
+)
+
+_updated_at = _meter.create_gauge(
+    "provider.updated_at",
+    unit="s",
+    description="Unix epoch timestamp of Provider's last update",
+)
+
+_info = _meter.create_gauge(
+    "provider.info",
+    unit="1",
+    description="Observed metadata values of a Provider",
 )
 
 
@@ -64,3 +83,38 @@ def record_sms_legacy_not_delivered_within(
         "time_window.delivery": delivery_window,
     }
     _sms_legacy_not_delivered_within.set(ratio, attributes)
+
+
+def record_priority(
+    priority: int,
+    provider_name: str,
+) -> None:
+    attributes: dict[str, AttributeValue] = {
+        "provider.name": provider_name,
+    }
+    _priority.set(priority, attributes)
+
+
+def record_updated_at(
+    updated_at: datetime.datetime,
+    provider_name: str,
+) -> None:
+    attributes: dict[str, AttributeValue] = {
+        "provider.name": provider_name,
+    }
+    _updated_at.set(updated_at.timestamp(), attributes)
+
+
+def record_info(
+    provider_name: str,
+    active: bool,
+    supports_international: bool,
+    notification_type: str,
+) -> None:
+    attributes: dict[str, AttributeValue] = {
+        "provider.name": provider_name,
+        "provider.active": active,
+        "provider.supports_international": supports_international,
+        "notification.type": notification_type,
+    }
+    _info.set(1, attributes)

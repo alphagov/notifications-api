@@ -70,6 +70,7 @@ from app.dao.notifications_dao import (
 from app.dao.provider_details_dao import (
     dao_adjust_provider_priority_back_to_resting_points,
     dao_reduce_sms_provider_priority,
+    get_provider_details_by_notification_type,
 )
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
@@ -91,7 +92,12 @@ from app.models import (
     User,
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
-from app.otel_metrics.provider import record_sms_legacy_not_delivered_within
+from app.otel_metrics.provider import (
+    record_info,
+    record_priority,
+    record_sms_legacy_not_delivered_within,
+    record_updated_at,
+)
 from app.utils import get_london_midnight_in_utc
 
 
@@ -266,6 +272,11 @@ def generate_sms_delivery_stats():
         # TODO: delete this when we have a way to raise these alerts from eg grafana, prometheus, something else.
         if delivery_interval == 5 and current_app.should_check_slow_text_message_delivery:
             _check_slow_text_message_delivery_reports_and_raise_error_if_needed(providers_slow_delivery_reports)
+
+    for provider in get_provider_details_by_notification_type(SMS_TYPE, False):
+        record_priority(provider.priority, provider.identifier)
+        record_updated_at(provider.updated_at, provider.identifier)
+        record_info(provider.identifier, provider.active, provider.supports_international, provider.notification_type)
 
 
 @notify_celery.task(name="tend-providers-back-to-middle")

@@ -15,6 +15,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicketStatus,
     NotifyTicketType,
 )
+from notifications_utils.testing.comparisons import RestrictedAny
 from redis.exceptions import LockError
 
 from app.celery import scheduled_tasks
@@ -68,7 +69,18 @@ from app.dao.notifications_dao import SlowProviderDeliveryReport
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.dao.template_email_files_dao import dao_get_template_email_file_by_id
 from app.models import Event, InboundNumber, Notification
-from app.otel_metrics.provider import _sms_legacy_not_delivered_within
+from app.otel_metrics.provider import (
+    _info as provider_info_metric,
+)
+from app.otel_metrics.provider import (
+    _priority as provider_priority_metric,
+)
+from app.otel_metrics.provider import (
+    _sms_legacy_not_delivered_within as provider_sms_legacy_not_delivered_within_metric,
+)
+from app.otel_metrics.provider import (
+    _updated_at as provider_updated_at_metric,
+)
 from tests.app import load_example_csv
 from tests.app.db import (
     create_email_branding,
@@ -229,12 +241,18 @@ def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
         ),
     ),
 )
-def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_slow_delivery, mocker, notify_api):
+def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_slow_delivery, notify_api, mocker):
+    sms_not_delivered_within_metric_set_mock = mocker.patch.object(
+        provider_sms_legacy_not_delivered_within_metric, "set"
+    )
+    priority_metric_mock = mocker.patch.object(provider_priority_metric, "set")
+    updated_at_metric_mock = mocker.patch.object(provider_updated_at_metric, "set")
+    info_metric_mock = mocker.patch.object(provider_info_metric, "set")
+
     slow_delivery_reports = [
         SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.4, slow_notifications=40, total_notifications=100),
         SlowProviderDeliveryReport(provider="firetext", slow_ratio=0.8, slow_notifications=80, total_notifications=100),
     ]
-    set_sms_not_delivered_within_mock = mocker.patch.object(_sms_legacy_not_delivered_within, "set")
     mocker.patch(
         "app.celery.scheduled_tasks.get_slow_text_message_delivery_reports_by_provider",
         return_value=slow_delivery_reports,
@@ -250,14 +268,61 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
         [mocker.call(slow_delivery_reports)] if expect_check_slow_delivery else []
     )
 
-    assert set_sms_not_delivered_within_mock.mock_calls == [
-        mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 60}),
-        mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 60}),
-        mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 300}),
-        mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 300}),
-        mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 600}),
-        mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 600}),
-    ]
+    # normalizing order of following calls by sorting by sorted attribute k/v pairs
+
+    assert sorted(
+        sms_not_delivered_within_metric_set_mock.mock_calls, key=lambda c: sorted(c.args[1].items())
+    ) == sorted(
+        (
+            mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 60}),
+            mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 60}),
+            mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 300}),
+            mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 300}),
+            mocker.call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 600}),
+            mocker.call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 600}),
+        ),
+        key=lambda c: sorted(c.args[1].items()),
+    )
+
+    assert sorted(priority_metric_mock.mock_calls, key=lambda c: sorted(c.args[1].items())) == sorted(
+        (
+            mocker.call(0, {"provider.name": "firetext"}),
+            mocker.call(100, {"provider.name": "mmg"}),
+        ),
+        key=lambda c: sorted(c.args[1].items()),
+    )
+
+    assert sorted(updated_at_metric_mock.mock_calls, key=lambda c: sorted(c.args[1].items())) == sorted(
+        (
+            mocker.call(RestrictedAny(lambda x: x < datetime.utcnow().timestamp()), {"provider.name": "firetext"}),
+            mocker.call(RestrictedAny(lambda x: x < datetime.utcnow().timestamp()), {"provider.name": "mmg"}),
+        ),
+        key=lambda c: sorted(c.args[1].items()),
+    )
+
+    assert sorted(info_metric_mock.mock_calls, key=lambda c: sorted(c.args[1].items())) == sorted(
+        (
+            mocker.call(
+                1,
+                {
+                    "provider.name": "firetext",
+                    "provider.active": True,
+                    "provider.supports_international": False,
+                    "notification.type": "sms",
+                },
+            ),
+            mocker.call(
+                1,
+                {
+                    "provider.name": "mmg",
+                    "provider.active": True,
+                    "provider.supports_international": True,
+                    "notification.type": "sms",
+                },
+            ),
+        ),
+        key=lambda c: sorted(c.args[1].items()),
+    )
 
 
 @pytest.mark.parametrize("consecutive_failures,should_log", ((1, False), (9, False), (10, True)))
