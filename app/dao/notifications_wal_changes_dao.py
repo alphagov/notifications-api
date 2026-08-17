@@ -29,6 +29,7 @@ def dao_process_notifications_replication_slot_changes(
     advisory_lock_id: int = REPLICATION_ADVISORY_LOCK_ID,
 ) -> dict[str, int | str | bool | None]:
     lock_acquired = False
+    start_time = datetime.utcnow()
 
     try:
         lock_acquired = _try_advisory_lock(advisory_lock_id)
@@ -86,6 +87,17 @@ def dao_process_notifications_replication_slot_changes(
         if last_nextlsn:
             _advance_replication_slot(last_nextlsn, slot_name=slot_name)
 
+        # Log the result of the replication slot processing for monitoring and debugging purposes.
+        current_app.logger.info(
+            "%s replication slot changes processed: %s processed, %s ignored, \
+            %s service stats change count buckets, last_nextlsn=%s",
+            fetched_changes,
+            processed_changes,
+            ignored_changes,
+            len(service_stats_change_counts),
+            last_nextlsn,
+        )
+
         # Return a summary of the replication slot processing results
         return {
             "lock_acquired": True,
@@ -110,6 +122,19 @@ def dao_process_notifications_replication_slot_changes(
                     "Failed to release advisory lock",
                     extra={"dao_method": "dao_process_replication_slot_changes"},
                 )
+
+        # Log the total time taken to process the replication slot changes for monitoring and debugging purposes.
+        end_time = datetime.utcnow()
+        current_app.logger.info(
+            "Replication slot changes processed in %s seconds",
+            (end_time - start_time).total_seconds(),
+            extra={
+                "dao_method": "dao_process_replication_slot_changes",
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration_seconds": (end_time - start_time).total_seconds(),
+            },
+        )
 
 
 def _try_advisory_lock(lock_id: int) -> bool:
@@ -240,12 +265,6 @@ def _parse_wal2json_payload(
                 "nextlsn": change.get("nextlsn") or payload.get("nextlsn"),
             }
         )
-
-    current_app.logger.info(
-        "Parsed replication slot changes")
-
-    current_app.logger.info(
-        f"Parsed {len(parsed_rows)} changes from replication slot '{table_name}' with payload: {payload}")
 
     return parsed_rows
 
