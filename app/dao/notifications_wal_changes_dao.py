@@ -85,7 +85,18 @@ def dao_process_notifications_replication_slot_changes(
 
         # Advance the replication slot to the last processed LSN to avoid reprocessing the same changes in future runs
         if last_nextlsn:
+            current_app.logger.info(
+                "Advancing replication slot %s to last_nextlsn=%s",
+                slot_name,
+                last_nextlsn,
+            )
             _advance_replication_slot(last_nextlsn, slot_name=slot_name)
+        else:
+            current_app.logger.warning(
+                "No last_nextlsn found after processing replication slot changes, \
+                replication slot %s will not be advanced",
+                slot_name,
+            )
 
         # Log the result of the replication slot processing for monitoring and debugging purposes.
         current_app.logger.info(
@@ -176,7 +187,7 @@ def _get_replication_changes(
 ) -> list[ParsedRow]:
     stmt = text(
         """
-        SELECT data
+        SELECT lsn, data
         FROM pg_logical_slot_peek_changes (
             :slot_name,
             NULL,
@@ -210,19 +221,20 @@ def _get_replication_changes(
     parsed_rows: list[ParsedRow] = []
     for row in rows:
         payload = row.get("data")
+        lsn = row.get("lsn")
         if not payload:
             continue
 
         if isinstance(payload, str):
             payload = json.loads(payload)
 
-        parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name))
+        parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name, default_nextlsn=lsn))
 
     return parsed_rows
 
 
 def _parse_wal2json_payload(
-    payload: dict[str, Any], *, table_name: str = REPLICATION_SLOT_TABLE_NAME
+    payload: dict[str, Any], *, table_name: str = REPLICATION_SLOT_TABLE_NAME, default_nextlsn: str | None = None
 ) -> list[ParsedRow]:
     parsed_rows: list[ParsedRow] = []
 
@@ -262,7 +274,7 @@ def _parse_wal2json_payload(
                 "type": change_type,
                 "current_row_data": _extract_row_data(change),
                 "previous_row_data": _extract_previous_row_data(change),
-                "nextlsn": change.get("nextlsn") or payload.get("nextlsn"),
+                "nextlsn": change.get("nextlsn") or payload.get("nextlsn") or default_nextlsn,
             }
         )
 
