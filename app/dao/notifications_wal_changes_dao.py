@@ -205,18 +205,20 @@ def _get_replication_changes(
         )
         """
     )
-    rows = db.session.execute(
-        stmt,
-        {
-            "slot_name": slot_name,
-            "upto_nchanges": upto_nchanges,
-            "table_name": table_name,
-            "include_lsn": "true",
-            "format_version": "2",
-            "include_types": "false",
-            "include_typmod": "false",
-        },
-    ).mappings()
+    rows = list(
+        db.session.execute(
+            stmt,
+            {
+                "slot_name": slot_name,
+                "upto_nchanges": upto_nchanges,
+                "table_name": table_name,
+                "include_lsn": "true",
+                "format_version": "2",
+                "include_types": "false",
+                "include_typmod": "false",
+            },
+        ).mappings()
+    )
 
     parsed_rows: list[ParsedRow] = []
     for row in rows:
@@ -229,6 +231,22 @@ def _get_replication_changes(
             payload = json.loads(payload)
 
         parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name, default_nextlsn=lsn))
+
+    # advance the replication slot to the last processed LSN
+    # if there are no changes for the notifications table
+    # but there are changes for other tables in the same replication slot
+    # This will help avoid reprocessing the same changes in future runs
+    if not parsed_rows and rows:
+        last_row = rows[-1]
+        last_lsn = last_row.get("lsn")
+        if last_lsn:
+            current_app.logger.info(
+                "No Parsed rows. Advancing replication slot %s to last_lsn=%s (no changes processed)",
+                slot_name,
+                last_lsn,
+            )
+            _advance_replication_slot(last_lsn, slot_name=slot_name)
+
 
     return parsed_rows
 
@@ -266,6 +284,8 @@ def _parse_wal2json_payload(
 
         qualified_table_name = f"{schema}.{table}" if schema else table
         if table_name and qualified_table_name != table_name:
+            # This might be an issue if we have no changes for the expected table,
+            # but we have changes for other tables in the same replication slot.
             continue
 
         parsed_rows.append(
