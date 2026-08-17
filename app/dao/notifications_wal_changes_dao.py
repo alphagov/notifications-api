@@ -176,7 +176,7 @@ def _get_replication_changes(
             "upto_nchanges": upto_nchanges,
             "table_name": table_name,
             "include_lsn": "true",
-            "format_version": "1",
+            "format_version": "2",
             "include_types": "false",
             "include_typmod": "false",
         },
@@ -201,7 +201,27 @@ def _parse_wal2json_payload(
 ) -> list[ParsedRow]:
     parsed_rows: list[ParsedRow] = []
 
-    for change in payload.get("change", []):
+    # The allows support for format version 1 as well as version 2 of wal2json.
+    # In version 1, the payload is a single change object, while in version 2, the payload is a list of change objects.
+    raw_changes = payload.get("change")
+    if raw_changes is None:
+        if payload.get("table") and payload.get("schema") and payload.get("action") in {"I", "U", "D"}:
+            raw_changes = [payload]
+        else:
+            return parsed_rows
+    elif not isinstance(raw_changes, list):
+        raw_changes = [raw_changes]
+
+    # Parse each change object in the raw_changes list and extract relevant information.
+    for change in raw_changes:
+        if not isinstance(change, dict):
+            continue
+
+        action = change.get("action") or change.get("kind") or change.get("type")
+        change_type = _normalise_change_type(action)
+        if change_type in {"begin", "commit", "message"}:
+            continue
+
         schema = change.get("schema")
         table = change.get("table")
         if not table:
@@ -214,14 +234,36 @@ def _parse_wal2json_payload(
         parsed_rows.append(
             {
                 "table": table,
-                "type": change.get("kind") or change.get("type"),
+                "type": change_type,
                 "current_row_data": _extract_row_data(change),
                 "previous_row_data": _extract_previous_row_data(change),
                 "nextlsn": change.get("nextlsn") or payload.get("nextlsn"),
             }
         )
 
+    current_app.logger.info(
+        "Parsed replication slot changes")
+
+    current_app.logger.info(
+        f"Parsed {len(parsed_rows)} changes from replication slot '{table_name}' with payload: {payload}")
+
     return parsed_rows
+
+
+def _normalise_change_type(action: Any) -> str:
+    if action is None:
+        return "unknown"
+
+    normalised = str(action).upper()
+    mapping = {
+        "I": "insert",
+        "U": "update",
+        "D": "delete",
+        "B": "begin",
+        "C": "commit",
+        "M": "message",
+    }
+    return mapping.get(normalised, str(action).lower())
 
 
 def _extract_row_data(change: dict[str, Any]) -> RowData:
@@ -229,12 +271,10 @@ def _extract_row_data(change: dict[str, Any]) -> RowData:
         return _zip_values(change["columnnames"], change["columnvalues"])
 
     if "columns" in change:
-        row_data: RowData = {}
-        for column in change["columns"]:
-            name = column.get("name")
-            if name:
-                row_data[name] = column.get("value")
-        return row_data
+        return _extract_name_value_rows(change["columns"])
+
+    if "identity" in change and change.get("action") in {"D", "U", "I"}:
+        return _extract_name_value_rows(change["identity"])
 
     return {}
 
@@ -245,14 +285,24 @@ def _extract_previous_row_data(change: dict[str, Any]) -> RowData:
         return _zip_values(oldkeys["keynames"], oldkeys["keyvalues"])
 
     if "keys" in oldkeys:
-        row_data: RowData = {}
-        for column in oldkeys["keys"]:
-            name = column.get("name")
-            if name:
-                row_data[name] = column.get("value")
-        return row_data
+        return _extract_name_value_rows(oldkeys["keys"])
+
+    if "identity" in change and change.get("action") in {"U", "D"}:
+        return _extract_name_value_rows(change["identity"])
 
     return {}
+
+
+def _extract_name_value_rows(rows: list[Any]) -> RowData:
+    row_data: RowData = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = row.get("name")
+        if name is None:
+            continue
+        row_data[str(name)] = row.get("value")
+    return row_data
 
 
 def _zip_values(names: list[Any], values: list[Any]) -> RowData:
