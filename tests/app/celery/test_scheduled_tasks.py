@@ -39,6 +39,7 @@ from app.celery.scheduled_tasks import (
     delete_verify_codes,
     generate_sms_delivery_stats,
     populate_annual_billing,
+    process_replication_slot_changes,
     replay_created_notifications,
     run_populate_annual_billing,
     run_scheduled_jobs,
@@ -1824,3 +1825,11 @@ def test_run_populate_annual_billing_uses_correct_year(mocker, notify_api):
     run_populate_annual_billing()
 
     populate_annual_billing.assert_called_once_with(year=2021, missing_services_only=True)
+
+
+def test_should_process_replication_slot_changes_task(notify_db_session, mocker):
+    mocker.patch("app.celery.scheduled_tasks.dao_process_notifications_replication_slot_changes")
+
+    process_replication_slot_changes()
+
+    scheduled_tasks.dao_process_notifications_replication_slot_changes.assert_called_once_with()

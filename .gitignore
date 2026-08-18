@@ -83,3 +83,4 @@ celerybeat-schedule
 docker-compose.yml
 .env
 application.log.json
+celerybeat-schedule-*
