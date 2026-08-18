@@ -97,6 +97,7 @@ def test_parse_wal2json_payload_filters_table_and_maps_fields(mocker):
             "current_row_data": {"a": 1},
             "previous_row_data": {"b": 2},
             "nextlsn": "0/AA",
+            "lsn": None,
         }
     ]
     assert mock_row.call_count == 1
@@ -105,9 +106,9 @@ def test_parse_wal2json_payload_filters_table_and_maps_fields(mocker):
 
 def test_get_replication_changes_parses_rows_and_payload_formats(mocker):
     mappings_rows = [
-        {"data": '{"change": [{"schema": "public", "table": "notifications", "kind": "insert"}]}'},
-        {"data": {"change": [{"schema": "public", "table": "notifications", "kind": "update"}]}},
-        {"data": None},
+        {"lsn": "0/AA", "data": '{"change": [{"schema": "public", "table": "notifications", "kind": "insert"}]}'},
+        {"lsn": "0/BB", "data": {"change": [{"schema": "public", "table": "notifications", "kind": "update"}]}},
+        {"lsn": "0/CC", "data": None},
     ]
 
     execute_result = mocker.Mock()
@@ -118,23 +119,31 @@ def test_get_replication_changes_parses_rows_and_payload_formats(mocker):
         side_effect=[[{"table": "notifications", "type": "insert"}], [{"table": "notifications", "type": "update"}]],
     )
 
-    result = dao._get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+    result, last_lsn = dao._get_replication_changes(
+        slot_name="slot", upto_nchanges=20, table_name="public.notifications"
+    )
 
     assert result == [{"table": "notifications", "type": "insert"}, {"table": "notifications", "type": "update"}]
+    assert last_lsn == "0/CC"
     assert mock_execute.call_count == 1
     assert mock_parser.call_count == 2
 
 
 def test_get_replication_changes_keeps_sql_lsn(mocker):
-    mappings_rows = [{"lsn": "0/AB", "data": {"change": [{"schema": "public", "table": "notifications", "kind": "insert"}]}}]
+    mappings_rows = [
+        {"lsn": "0/AB", "data": {"change": [{"schema": "public", "table": "notifications", "kind": "insert"}]}}
+    ]
 
     execute_result = mocker.Mock()
     execute_result.mappings.return_value = mappings_rows
     mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
 
-    result = dao._get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+    result, last_lsn = dao._get_replication_changes(
+        slot_name="slot", upto_nchanges=20, table_name="public.notifications"
+    )
 
     assert result[0]["lsn"] == "0/AB"
+    assert last_lsn == "0/AB"
 
 
 def test_get_replication_changes_handles_non_indexable_result_rows(mocker):
@@ -145,9 +154,12 @@ def test_get_replication_changes_handles_non_indexable_result_rows(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
     mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
 
-    result = dao._get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+    result, last_lsn = dao._get_replication_changes(
+        slot_name="slot", upto_nchanges=20, table_name="public.notifications"
+    )
 
     assert result == []
+    assert last_lsn == "0/AB"
     mock_advance.assert_called_once_with("0/AB", slot_name="slot")
 
 
@@ -279,22 +291,22 @@ def test_build_counter_from_changes():
     }
 
     changes = [
-        _build_change(
-            change_type="insert", current_row_data={**base, "notification_status": "created"}, nextlsn="0/01"
-        ),
+        _build_change(change_type="insert", current_row_data={**base, "notification_status": "created"}, nextlsn="0/01")
+        | {"lsn": "0/01"},
         _build_change(
             change_type="update",
             current_row_data={**base, "notification_status": "delivered"},
             previous_row_data={**base, "notification_status": "created"},
             nextlsn="0/02",
-        ),
-        _build_change(table="other", change_type="insert", current_row_data={**base, "notification_status": "created"}),
-        _build_change(
-            change_type="delete", current_row_data={**base, "notification_status": "created"}, nextlsn="0/03"
-        ),
+        )
+        | {"lsn": "0/02"},
+        _build_change(table="other", change_type="insert", current_row_data={**base, "notification_status": "created"})
+        | {"lsn": "0/03"},
+        _build_change(change_type="delete", current_row_data={**base, "notification_status": "created"}, nextlsn="0/04")
+        | {"lsn": "0/04"},
     ]
 
-    counter, processed_changes, ignored_changes, last_nextlsn = dao._build_counter_from_changes(changes)
+    counter, processed_changes, ignored_changes, last_lsn = dao._build_counter_from_changes(changes)
 
     created_key = dao._build_dimensions(changes[0], use_previous_row=False)
     delivered_key = dao._build_dimensions(changes[1], use_previous_row=False)
@@ -303,7 +315,29 @@ def test_build_counter_from_changes():
     assert counter[delivered_key] == 1
     assert processed_changes == 2
     assert ignored_changes == 2
-    assert last_nextlsn == "0/03"
+    assert last_lsn == "0/04"
+
+
+def test_build_counter_uses_sql_lsn_for_slot_advance_not_row_nextlsn():
+    change = {
+        "table": "notifications",
+        "type": "insert",
+        "current_row_data": {
+            "service_id": str(uuid4()),
+            "template_id": str(uuid4()),
+            "notification_type": "sms",
+            "key_type": "normal",
+            "notification_status": "created",
+            "created_at": "2026-08-06T10:00:00Z",
+        },
+        "previous_row_data": {},
+        "nextlsn": "0/row-next",
+        "lsn": "0/sql-reported",
+    }
+
+    _, _, _, last_lsn = dao._build_counter_from_changes([change])
+
+    assert last_lsn == "0/sql-reported"
 
 
 def test_aggregate_service_stats_change_counts_reorders_dimensions():
@@ -360,7 +394,7 @@ def test_dao_process_notifications_replication_slot_changes_when_lock_not_acquir
 
 def test_dao_process_notifications_replication_slot_changes_when_no_changes(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
-    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=[])
+    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=([], "0/AB"))
     mock_commit = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.commit")
     mock_unlock = mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
 
@@ -372,9 +406,9 @@ def test_dao_process_notifications_replication_slot_changes_when_no_changes(mock
         "processed_changes": 0,
         "ignored_changes": 0,
         "service_stats_change_count_buckets": 0,
-        "last_nextlsn": None,
+        "last_lsn": "0/AB",
     }
-    mock_commit.assert_not_called()
+    mock_commit.assert_called_once()
     mock_unlock.assert_called_once_with(11)
 
 
@@ -382,7 +416,9 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
     dimensions_key = (date(2026, 8, 6), uuid4(), uuid4(), "sms", "delivered")
     call_order: list[str] = []
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
-    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=[{"x": 1}, {"x": 2}])
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=([{"x": 1}, {"x": 2}], "0/AB")
+    )
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._build_counter_from_changes",
         return_value=(Counter(), 2, 0, "0/AB"),
@@ -413,7 +449,7 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
         "processed_changes": 2,
         "ignored_changes": 0,
         "service_stats_change_count_buckets": 2,
-        "last_nextlsn": "0/AB",
+        "last_lsn": "0/AB",
     }
     mock_apply.assert_called_once()
     apply_args = mock_apply.call_args.args
@@ -448,7 +484,7 @@ def test_dao_process_notifications_replication_slot_changes_rollback_and_reraise
 
 def test_dao_process_notifications_replication_slot_changes_logs_unlock_failure(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
-    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=[])
+    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=([], None))
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock", side_effect=RuntimeError("unlock failed"))
     mock_logger = mocker.patch("app.dao.notifications_wal_changes_dao.current_app.logger.exception")
 
