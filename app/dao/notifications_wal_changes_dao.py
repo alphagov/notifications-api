@@ -42,25 +42,31 @@ def dao_process_notifications_replication_slot_changes(
                 "upto_nchanges": upto_nchanges,
             }
 
-        # lock acquired, proceed to fetch and process replication slot changes
-        changes = _get_replication_changes(
+        # lock acquired, proceed to fetch and process replication slot changes.
+        # The batch-level SQL LSN is authoritative when deciding where to advance the replication slot,
+        # because we may receive trailing WAL rows for other tables in the same logical slot.
+        changes, batch_last_lsn = _get_replication_changes(
             slot_name=slot_name, upto_nchanges=upto_nchanges, table_name=REPLICATION_SLOT_TABLE_NAME
         )
         fetched_changes = len(changes)
 
         if fetched_changes == 0:
-            # No changes to process, return early with lock acquired
+            # Any slot advancement performed by _get_replication_changes() must be committed
+            # before returning, otherwise the replication slot stays stuck at the old LSN.
+            db.session.commit()
             return {
                 "lock_acquired": True,
                 "changes_count": 0,
                 "processed_changes": 0,
                 "ignored_changes": 0,
                 "service_stats_change_count_buckets": 0,
-                "last_nextlsn": None,
+                "last_lsn": batch_last_lsn,
             }
 
-        # Process the fetched replication slot changes to update service statistics
-        counter, processed_changes, ignored_changes, last_nextlsn = _build_counter_from_changes(changes)
+        # Process the fetched replication slot changes to update service statistics.
+        # The slot advance boundary must use the SQL-reported LSN, not the row-level wal2json nextlsn.
+        counter, processed_changes, ignored_changes, _ = _build_counter_from_changes(changes)
+        last_lsn = batch_last_lsn
 
         # Aggregate the counter into service statistics change counts for each unique dimensions tuple
         service_stats_change_counts = _aggregate_service_stats_change_counts(counter)
@@ -80,17 +86,18 @@ def dao_process_notifications_replication_slot_changes(
             }
             apply_service_stats_change(dimensions, change_count)
 
-        # Advance the replication slot to the last processed LSN to avoid reprocessing the same changes in future runs
-        if last_nextlsn:
+        # Advance the replication slot to the last processed SQL LSN
+        # to avoid reprocessing the same changes in future runs.
+        if last_lsn:
             current_app.logger.info(
-                "Advancing replication slot %s to last_nextlsn=%s",
+                "Advancing replication slot %s to last_lsn=%s",
                 slot_name,
-                last_nextlsn,
+                last_lsn,
             )
-            _advance_replication_slot(last_nextlsn, slot_name=slot_name)
+            _advance_replication_slot(last_lsn, slot_name=slot_name)
         else:
             current_app.logger.warning(
-                "No last_nextlsn found after processing replication slot changes, \
+                "No last_lsn found after processing replication slot changes, \
                 replication slot %s will not be advanced",
                 slot_name,
             )
@@ -101,12 +108,12 @@ def dao_process_notifications_replication_slot_changes(
         # Log the result of the replication slot processing for monitoring and debugging purposes.
         current_app.logger.info(
             "%s replication slot changes processed: %s processed, %s ignored, \
-            %s service stats change count buckets, last_nextlsn=%s",
+            %s service stats change count buckets, last_lsn=%s",
             fetched_changes,
             processed_changes,
             ignored_changes,
             len(service_stats_change_counts),
-            last_nextlsn,
+            last_lsn,
         )
 
         # Return a summary of the replication slot processing results
@@ -116,7 +123,7 @@ def dao_process_notifications_replication_slot_changes(
             "processed_changes": processed_changes,
             "ignored_changes": ignored_changes,
             "service_stats_change_count_buckets": len(service_stats_change_counts),
-            "last_nextlsn": last_nextlsn,
+            "last_lsn": last_lsn,
         }
     except Exception:
         # Ensure a failed statement does not poison the session for cleanup queries.
@@ -184,7 +191,7 @@ def _get_replication_changes(
     slot_name: str,
     upto_nchanges: int,
     table_name: str = REPLICATION_SLOT_TABLE_NAME,
-) -> list[ParsedRow]:
+) -> tuple[list[ParsedRow], str | None]:
     stmt = text(
         """
         SELECT lsn, data
@@ -221,9 +228,12 @@ def _get_replication_changes(
     )
 
     parsed_rows: list[ParsedRow] = []
+    last_sql_lsn: str | None = None
     for row in rows:
         payload = row.get("data")
         lsn = row.get("lsn")
+        if lsn:
+            last_sql_lsn = lsn
         if not payload:
             continue
 
@@ -232,23 +242,18 @@ def _get_replication_changes(
 
         parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name, default_nextlsn=lsn))
 
-    # advance the replication slot to the last processed LSN
-    # if there are no changes for the notifications table
-    # but there are changes for other tables in the same replication slot
-    # This will help avoid reprocessing the same changes in future runs
-    if not parsed_rows and rows:
-        last_row = rows[-1]
-        last_lsn = last_row.get("lsn")
-        if last_lsn:
-            current_app.logger.info(
-                "No Parsed rows. Advancing replication slot %s to last_lsn=%s (no changes processed)",
-                slot_name,
-                last_lsn,
-            )
-            _advance_replication_slot(last_lsn, slot_name=slot_name)
+    # advance the replication slot to the last SQL row LSN even when the terminal WAL rows are
+    # for a different table in the same logical slot; otherwise the slot can stop advancing on the
+    # last relevant notification change instead of the actual last row returned by PostgreSQL.
+    if not parsed_rows and rows and last_sql_lsn:
+        current_app.logger.info(
+            "Advancing replication slot %s to last_lsn=%s (batch boundary)",
+            slot_name,
+            last_sql_lsn,
+        )
+        _advance_replication_slot(last_sql_lsn, slot_name=slot_name)
 
-
-    return parsed_rows
+    return parsed_rows, last_sql_lsn
 
 
 def _parse_wal2json_payload(
@@ -295,6 +300,7 @@ def _parse_wal2json_payload(
                 "current_row_data": _extract_row_data(change),
                 "previous_row_data": _extract_previous_row_data(change),
                 "nextlsn": change.get("nextlsn") or payload.get("nextlsn") or default_nextlsn,
+                "lsn": default_nextlsn,
             }
         )
 
@@ -360,17 +366,22 @@ def _zip_values(names: list[Any], values: list[Any]) -> RowData:
     return {str(name): value for name, value in zip(names, values, strict=True) if name is not None}
 
 
+# Ignoring C901 (function is too complex) because this function is inherently complex due to the
+# nature of processing replication slot changes and building counters from them.
+# ruff: noqa: C901
 def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullDimensions], int, int, str | None]:
     counter: Counter[FullDimensions] = Counter()
     processed_changes = 0
     ignored_changes = 0
-    last_nextlsn: str | None = None
+    last_lsn: str | None = None
 
     for change in changes:
         table_name = change["table"]
         change_type = change["type"]
-        if change.get("nextlsn"):
-            last_nextlsn = change["nextlsn"]
+        if change.get("lsn"):
+            last_lsn = change["lsn"]
+        elif change.get("nextlsn"):
+            last_lsn = change["nextlsn"]
 
         if table_name != REPLICATION_SLOT_TABLE_NAME.split(".")[-1]:
             ignored_changes += 1
@@ -407,7 +418,7 @@ def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullD
 
         ignored_changes += 1
 
-    return counter, processed_changes, ignored_changes, last_nextlsn
+    return counter, processed_changes, ignored_changes, last_lsn
 
 
 def _build_dimensions(
