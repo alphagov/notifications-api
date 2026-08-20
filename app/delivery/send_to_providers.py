@@ -60,14 +60,14 @@ def send_sms_to_provider(notification: Notification) -> None:
             show_prefix=service.prefix_sms,
         )
 
-        if non_compatible_characters := SanitiseSMS.get_non_compatible_characters(template.unsanitised_content):
+        if non_gsm_characters := SanitiseSMS.get_non_gsm_characters(template.unsanitised_content):
             current_app.logger.warning(
                 "%s character(s) replaced with ? in SMS content for service %s and notification %s",
-                len(non_compatible_characters),
+                len(non_gsm_characters),
                 service.id,
                 notification.id,
                 extra={
-                    "non_compatible_character_count": len(non_compatible_characters),
+                    "non_compatible_character_count": len(non_gsm_characters),
                     "service_id": service.id,
                     "notification_id": notification.id,
                 },
