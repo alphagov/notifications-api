@@ -321,7 +321,7 @@ def test_remove_archived_template_email_files_from_s3_continues_after_delete_err
         call(notify_api.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"], f"{service_one.id}/{file_one.id}"),
         call(notify_api.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"], f"{service_one.id}/{file_two.id}"),
     ]
-    assert ("Failed to remove archived template email file from s3" in message for message in caplog.messages)
+    assert any("Failed to remove file from s3 bucket" in message for message in caplog.messages)
 
 
 # ======== Test delete archived letter attachments from S3 ========
@@ -470,7 +470,7 @@ def test_remove_archived_letter_attachments_from_s3_continues_after_delete_error
             f"service-{sample_letter_template.service_id}/{file_2.id}.pdf",
         ),
     ]
-    assert ("Failed to remove archived template email file from s3" in message for message in caplog.messages)
+    assert any("Failed to remove file from s3 bucket" in message for message in caplog.messages)
 
 
 @freeze_time("2026-04-28 16:00:00")
