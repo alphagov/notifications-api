@@ -88,8 +88,10 @@ def _remove_csv_files(job_types):
 @cronitor("remove-archived-template-email-files-from-s3")
 def remove_archived_template_email_files_from_s3(archived_after=None):
     archived_before, archived_after = _get_archived_before_and_after(archived_after)
+    bucket_name = current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"]
 
     older_than = None
+    scoped = deleted = failed = 0
 
     while True:
         archived_files_batch = dao_get_archived_template_email_files_older_than(
@@ -103,19 +105,26 @@ def remove_archived_template_email_files_from_s3(archived_after=None):
         if not archived_files_batch:
             break
 
-        older_than = _remove_batch_of_files_from_s3(
+        older_than, batch_scoped, batch_deleted, batch_failed = _remove_batch_of_files_from_s3(
             batch_of_files=archived_files_batch,
-            bucket_name=current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"],
+            bucket_name=bucket_name,
             location_prefix="",
         )
+        scoped += batch_scoped
+        deleted += batch_deleted
+        failed += batch_failed
+
+    _log_s3_cleanup_complete(bucket_name, scoped, deleted, failed)
 
 
 @notify_celery.task(name="remove-archived-letter-attachments-from-s3")
 @cronitor("remove-archived-letter-attachments-from-s3")
 def remove_archived_letter_attachments_from_s3(archived_after=None):
     archived_before, archived_after = _get_archived_before_and_after(archived_after)
+    bucket_name = current_app.config["S3_BUCKET_LETTER_ATTACHMENTS"]
 
     older_than = None
+    scoped = deleted = failed = 0
 
     while True:
         archived_attachments_batch = dao_get_archived_letter_attachments_older_than(
@@ -130,12 +139,17 @@ def remove_archived_letter_attachments_from_s3(archived_after=None):
         if not archived_attachments_batch:
             break
 
-        older_than = _remove_batch_of_files_from_s3(
+        older_than, batch_scoped, batch_deleted, batch_failed = _remove_batch_of_files_from_s3(
             batch_of_files=archived_attachments_batch,
-            bucket_name=current_app.config["S3_BUCKET_LETTER_ATTACHMENTS"],
+            bucket_name=bucket_name,
             location_prefix="service-",
             key_suffix=".pdf",
         )
+        scoped += batch_scoped
+        deleted += batch_deleted
+        failed += batch_failed
+
+    _log_s3_cleanup_complete(bucket_name, scoped, deleted, failed)
 
 
 def _get_archived_before_and_after(archived_after):
@@ -166,8 +180,7 @@ def _get_archived_before_and_after(archived_after):
 
 
 def _remove_batch_of_files_from_s3(batch_of_files, bucket_name, location_prefix, key_suffix=""):
-    scoped = deleted = failed = 0
-    scoped += len(batch_of_files)
+    deleted = failed = 0
     for file, service_id in batch_of_files:
         object_key = f"{location_prefix}{service_id}/{file.id}{key_suffix}"
 
@@ -184,6 +197,11 @@ def _remove_batch_of_files_from_s3(batch_of_files, bucket_name, location_prefix,
                 str(service_id),
             )
 
+    last_archived_file = batch_of_files[-1][0]
+    return last_archived_file.id, len(batch_of_files), deleted, failed
+
+
+def _log_s3_cleanup_complete(bucket_name, scoped, deleted, failed):
     current_app.logger.info(
         ("Cleanup for s3 bucket %s complete: scoped=%s deleted=%s failed=%s"),
         bucket_name,
@@ -191,8 +209,6 @@ def _remove_batch_of_files_from_s3(batch_of_files, bucket_name, location_prefix,
         deleted,
         failed,
     )
-    last_archived_file = batch_of_files[-1][0]
-    return last_archived_file.id
 
 
 @notify_celery.task(name="archive-unsubscribe-requests")
