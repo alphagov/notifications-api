@@ -651,6 +651,7 @@ class Development(Config):
     S3_BUCKET_INVALID_PDF = "development-letters-invalid-pdf"
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "development-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "development-letters-sanitise"
+    S3_BUCKET_LETTER_ATTACHMENTS = "development-letter-attachments"
 
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = "development-report-requests-download"
     S3_BUCKET_NOTIFICATION_DEEP_HISTORY = "development-notification-deep-history"
@@ -710,6 +711,7 @@ class Test(Development):
     S3_BUCKET_INVALID_PDF = "test-letters-invalid-pdf"
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "test-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "test-letters-sanitise"
+    S3_BUCKET_LETTER_ATTACHMENTS = "test-letter-attachments"
 
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = "test-report-requests-download"
     S3_BUCKET_NOTIFICATION_DEEP_HISTORY = "test-notification-deep-history"
