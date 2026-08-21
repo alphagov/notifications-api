@@ -153,9 +153,7 @@ def remove_archived_letter_attachments_from_s3(archived_after=None):
 
 
 def _get_archived_before_and_after(archived_after):
-    archived_before = (
-        (datetime.now(UTC) - timedelta(days=ARCHIVED_FILE_RETENTION_DAYS)).astimezone(UTC).replace(tzinfo=None)
-    )
+    archived_before = (datetime.now(UTC) - timedelta(days=ARCHIVED_FILE_RETENTION_DAYS)).replace(tzinfo=None)
 
     if archived_after is not None:
         try:
@@ -163,9 +161,7 @@ def _get_archived_before_and_after(archived_after):
         except ValueError as exc:
             raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
 
-        archived_after = (
-            datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC).astimezone(UTC).replace(tzinfo=None)
-        )
+        archived_after = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC).replace(tzinfo=None)
     else:
         archived_after = archived_before - timedelta(days=ARCHIVED_FILE_DELETION_WINDOW_DAYS)
 
