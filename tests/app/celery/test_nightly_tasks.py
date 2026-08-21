@@ -375,11 +375,11 @@ def test_remove_archived_letter_attachments_from_s3_removes_only_files_in_defaul
     assert mock_remove_s3_object.call_args_list == [
         call(
             notify_api.config["S3_BUCKET_LETTER_ATTACHMENTS"],
-            f"service-{sample_letter_template.service_id}/{within_deletion_window_one.id}",
+            f"service-{sample_letter_template.service_id}/{within_deletion_window_one.id}.pdf",
         ),
         call(
             notify_api.config["S3_BUCKET_LETTER_ATTACHMENTS"],
-            f"service-{sample_letter_template.service_id}/{within_deletion_window_two.id}",
+            f"service-{sample_letter_template.service_id}/{within_deletion_window_two.id}.pdf",
         ),
     ]
 
@@ -463,11 +463,11 @@ def test_remove_archived_letter_attachments_from_s3_continues_after_delete_error
     assert mock_remove_s3_object.call_args_list == [
         call(
             notify_api.config["S3_BUCKET_LETTER_ATTACHMENTS"],
-            f"service-{sample_letter_template.service_id}/{file_1.id}",
+            f"service-{sample_letter_template.service_id}/{file_1.id}.pdf",
         ),
         call(
             notify_api.config["S3_BUCKET_LETTER_ATTACHMENTS"],
-            f"service-{sample_letter_template.service_id}/{file_2.id}",
+            f"service-{sample_letter_template.service_id}/{file_2.id}.pdf",
         ),
     ]
     assert ("Failed to remove archived template email file from s3" in message for message in caplog.messages)

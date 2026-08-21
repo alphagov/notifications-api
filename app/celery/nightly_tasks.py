@@ -134,6 +134,7 @@ def remove_archived_letter_attachments_from_s3(archived_after=None):
             batch_of_files=archived_attachments_batch,
             bucket_name=current_app.config["S3_BUCKET_LETTER_ATTACHMENTS"],
             location_prefix="service-",
+            key_suffix=".pdf",
         )
 
 
@@ -164,11 +165,11 @@ def _get_archived_before_and_after(archived_after):
     return archived_before, archived_after
 
 
-def _remove_batch_of_files_from_s3(batch_of_files, bucket_name, location_prefix):
+def _remove_batch_of_files_from_s3(batch_of_files, bucket_name, location_prefix, key_suffix=""):
     scoped = deleted = failed = 0
     scoped += len(batch_of_files)
     for file, service_id in batch_of_files:
-        object_key = f"{location_prefix}{service_id}/{file.id}"
+        object_key = f"{location_prefix}{service_id}/{file.id}{key_suffix}"
 
         try:
             s3.remove_s3_object(bucket_name, object_key)
