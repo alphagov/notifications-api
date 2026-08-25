@@ -37,7 +37,7 @@ def mmg_post(client, data):
     )
 
 
-def test_firetext_callback_needs_auth(client, mocker):
+def test_firetext_callback_needs_auth(client, mocker, caplog):
     mocker.patch("app.notifications.notifications_sms_callback.process_sms_client_response")
     data = "mobile=441234123123&status=0&reference=notification_id&time=2016-03-10 14:17:00"
 
@@ -48,7 +48,8 @@ def test_firetext_callback_needs_auth(client, mocker):
             ("Content-Type", "application/x-www-form-urlencoded"),
         ],
     )
-    assert response.status_code == 401
+    assert response.status_code == 200
+    assert "Suppressing basic auth failure" in caplog.text
 
 
 def test_firetext_callback_should_return_400_if_empty_reference(client):
@@ -159,7 +160,7 @@ def test_firetext_callback_including_a_code_should_return_200_and_call_task_with
     )
 
 
-def test_mmg_callback_needs_auth(client, mocker, sample_notification):
+def test_mmg_callback_needs_auth(client, mocker, sample_notification, caplog):
     mocker.patch("app.notifications.notifications_sms_callback.process_sms_client_response")
     data = json.dumps(
         {
@@ -178,7 +179,8 @@ def test_mmg_callback_needs_auth(client, mocker, sample_notification):
             ("Content-Type", "application/json"),
         ],
     )
-    assert response.status_code == 401
+    assert response.status_code == 200
+    assert "Suppressing basic auth failure" in caplog.text
 
 
 def test_process_mmg_response_returns_400_for_malformed_data(client):
