@@ -1,6 +1,7 @@
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager, nullcontext
 from functools import wraps
 
 from cachetools.func import lfu_cache
@@ -208,8 +209,19 @@ _cached_check_hash = lfu_cache(maxsize=64, typed=True)(check_hash)
 memo_resetters.append(lambda: _cached_check_hash.cache_clear())
 
 
+@contextmanager
+def _suppress_and_log_autherror() -> Generator:
+    try:
+        yield
+    except AuthError as e:
+        current_app.logger.warning("Suppressing basic auth failure: %s", str(e), extra={"exception": str(e)})
+
+
 def requires_basic_auth(
-    credentials_config_key: str, check_hash_callable: Callable[[str, str], bool] = _cached_check_hash
+    credentials_config_key: str,
+    check_hash_callable: Callable[[str, str], bool] = _cached_check_hash,
+    *,
+    log_only: bool = False,
 ) -> None:
     """
     `credentials_config_key` is expected to be a key in the flask app config containing a mapping
@@ -221,35 +233,39 @@ def requires_basic_auth(
     auth = request.authorization
     creds_dict = current_app.config.get(credentials_config_key) or {}
 
-    if (not auth) or auth.type != "basic":
-        current_app.logger.warning(
-            "Request expecting basic auth from %s received no authorization header",
-            credentials_config_key,
-            extra={"credentials_config_key": credentials_config_key},
-        )
-        raise AuthError("Unauthorized: basic authorization must be provided", 401)
+    with _suppress_and_log_autherror() if log_only else nullcontext():
+        if (not auth) or auth.type != "basic":
+            current_app.logger.warning(
+                "Request expecting basic auth from %s received no authorization header",
+                credentials_config_key,
+                extra={"credentials_config_key": credentials_config_key},
+            )
+            raise AuthError("Unauthorized: basic authorization must be provided", 401)
 
-    if auth.username not in creds_dict:
-        current_app.logger.warning(
-            "Request's basic auth username %s not found in %s",
-            auth.username,
-            credentials_config_key,
-            extra={"credentials_config_key": credentials_config_key, "username": auth.username},
-        )
-        raise AuthError("Unauthorized: basic authorisation failed", 403)
+        if auth.username not in creds_dict:
+            current_app.logger.warning(
+                "Request's basic auth username %s not found in %s",
+                auth.username,
+                credentials_config_key,
+                extra={"credentials_config_key": credentials_config_key, "username": auth.username},
+            )
+            raise AuthError("Unauthorized: basic authorisation failed", 403)
 
-    if not check_hash_callable(auth.password or "", creds_dict[auth.username]):
-        current_app.logger.warning(
-            "Request's basic auth password for username %s does not match that found in %s",
-            auth.username,
-            credentials_config_key,
-            extra={"credentials_config_key": credentials_config_key, "username": auth.username},
-        )
-        raise AuthError("Unauthorized: basic authorisation failed", 403)
+        if not check_hash_callable(auth.password or "", creds_dict[auth.username]):
+            current_app.logger.warning(
+                "Request's basic auth password for username %s does not match that found in %s",
+                auth.username,
+                credentials_config_key,
+                extra={"credentials_config_key": credentials_config_key, "username": auth.username},
+            )
+            raise AuthError("Unauthorized: basic authorisation failed", 403)
 
 
 def view_requires_basic_auth[**A, R](
-    credentials_config_key: str, check_hash_callable: Callable[[str, str], bool] = _cached_check_hash
+    credentials_config_key: str,
+    check_hash_callable: Callable[[str, str], bool] = _cached_check_hash,
+    *,
+    log_only: bool = False,
 ) -> Callable[[Callable[A, R]], Callable[A, R]]:
     """
     Returns a decorator function that will run `requires_basic_auth` before its wrapped function.
@@ -260,7 +276,7 @@ def view_requires_basic_auth[**A, R](
     def basic_auth_decorator(inner: Callable[A, R]) -> Callable[A, R]:
         @wraps(inner)
         def view_wrapper(*args, **kwargs):
-            requires_basic_auth(credentials_config_key, check_hash_callable)
+            requires_basic_auth(credentials_config_key, check_hash_callable, log_only=log_only)
             return inner(*args, **kwargs)
 
         return view_wrapper

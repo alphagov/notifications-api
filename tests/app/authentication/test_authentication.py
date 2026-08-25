@@ -1,6 +1,6 @@
 import time
 import uuid
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 
 import jwt
 import pytest
@@ -362,30 +362,40 @@ def test_requires_internal_auth_sets_global_variables(
     assert g.service_id == "my-internal-app"
 
 
-def test_requires_basic_auth_missing_auth_empty_dict(notify_api, client):
+@pytest.mark.parametrize("log_only", (False, True))
+def test_requires_basic_auth_missing_auth_empty_dict(notify_api, client, caplog, log_only):
     notify_api.config["FOO_BAR_BAZ"] = {}
 
-    with pytest.raises(AuthError, check=lambda e: e.code == 401):
-        requires_basic_auth("FOO_BAR_BAZ")
+    with nullcontext() if log_only else pytest.raises(AuthError, check=lambda e: e.code == 401):
+        assert requires_basic_auth("FOO_BAR_BAZ", log_only=log_only) is None
+
+    assert ("Suppressing basic auth failure" in caplog.text) is log_only
 
 
-def test_requires_basic_auth_missing_auth_config(notify_api, client):
+@pytest.mark.parametrize("log_only", (False, True))
+def test_requires_basic_auth_missing_auth_config(notify_api, client, caplog, log_only):
     with suppress(KeyError):
         del notify_api.config["FOO_BAR_BAZ"]
 
-    with pytest.raises(AuthError, check=lambda e: e.code == 401):
-        requires_basic_auth("FOO_BAR_BAZ")
+    with nullcontext() if log_only else pytest.raises(AuthError, check=lambda e: e.code == 401):
+        assert requires_basic_auth("FOO_BAR_BAZ", log_only=log_only) is None
+
+    assert ("Suppressing basic auth failure" in caplog.text) is log_only
 
 
-def test_requires_basic_auth_non_basic_auth(notify_api, client):
+@pytest.mark.parametrize("log_only", (False, True))
+def test_requires_basic_auth_non_basic_auth(notify_api, client, caplog, log_only):
     notify_api.config["FOO_BAR_BAZ"] = {}
     request.headers = {"Authorization": Authorization("bearer", token="1234").to_header()}
 
-    with pytest.raises(AuthError, check=lambda e: e.code == 401):
-        requires_basic_auth("FOO_BAR_BAZ")
+    with nullcontext() if log_only else pytest.raises(AuthError, check=lambda e: e.code == 401):
+        assert requires_basic_auth("FOO_BAR_BAZ", log_only=log_only) is None
+
+    assert ("Suppressing basic auth failure" in caplog.text) is log_only
 
 
-def test_requires_basic_auth_unknown_username(notify_api, client):
+@pytest.mark.parametrize("log_only", (False, True))
+def test_requires_basic_auth_unknown_username(notify_api, client, caplog, log_only):
     notify_api.config["FOO_BAR_BAZ"] = {
         "foo123": hashpw("bar123"),
     }
@@ -393,11 +403,14 @@ def test_requires_basic_auth_unknown_username(notify_api, client):
         "Authorization": Authorization("basic", data={"username": "blah", "password": "fooblah"}).to_header()
     }
 
-    with pytest.raises(AuthError, check=lambda e: e.code == 403):
-        requires_basic_auth("FOO_BAR_BAZ")
+    with nullcontext() if log_only else pytest.raises(AuthError, check=lambda e: e.code == 403):
+        assert requires_basic_auth("FOO_BAR_BAZ", log_only=log_only) is None
+
+    assert ("Suppressing basic auth failure" in caplog.text) is log_only
 
 
-def test_requires_basic_auth_incorrect_password(notify_api, client):
+@pytest.mark.parametrize("log_only", (False, True))
+def test_requires_basic_auth_incorrect_password(notify_api, client, caplog, log_only):
     notify_api.config["FOO_BAR_BAZ"] = {
         "foo123": hashpw("bar123"),
     }
@@ -405,11 +418,14 @@ def test_requires_basic_auth_incorrect_password(notify_api, client):
         "Authorization": Authorization("basic", data={"username": "foo123", "password": "Bar321"}).to_header()
     }
 
-    with pytest.raises(AuthError, check=lambda e: e.code == 403):
-        requires_basic_auth("FOO_BAR_BAZ")
+    with nullcontext() if log_only else pytest.raises(AuthError, check=lambda e: e.code == 403):
+        assert requires_basic_auth("FOO_BAR_BAZ", log_only=log_only) is None
+
+    assert ("Suppressing basic auth failure" in caplog.text) is log_only
 
 
-def test_requires_basic_auth_mismatched_password(notify_api, client):
+@pytest.mark.parametrize("log_only", (False, True))
+def test_requires_basic_auth_mismatched_password(notify_api, client, caplog, log_only):
     notify_api.config["FOO_BAR_BAZ"] = {
         "foo123": hashpw("bar123"),
         "foo456": hashpw("bar456"),
@@ -418,11 +434,14 @@ def test_requires_basic_auth_mismatched_password(notify_api, client):
         "Authorization": Authorization("basic", data={"username": "foo123", "password": "bar456"}).to_header()
     }
 
-    with pytest.raises(AuthError, check=lambda e: e.code == 403):
-        requires_basic_auth("FOO_BAR_BAZ")
+    with nullcontext() if log_only else pytest.raises(AuthError, check=lambda e: e.code == 403):
+        assert requires_basic_auth("FOO_BAR_BAZ", log_only=log_only) is None
+
+    assert ("Suppressing basic auth failure" in caplog.text) is log_only
 
 
-def test_requires_basic_auth_correct_password(notify_api, client):
+@pytest.mark.parametrize("log_only", (False, True))
+def test_requires_basic_auth_correct_password(notify_api, client, caplog, log_only):
     notify_api.config["FOO_BAR_BAZ"] = {
         "foo123": hashpw("bar123"),
     }
@@ -430,4 +449,6 @@ def test_requires_basic_auth_correct_password(notify_api, client):
         "Authorization": Authorization("basic", data={"username": "foo123", "password": "bar123"}).to_header()
     }
 
-    assert requires_basic_auth("FOO_BAR_BAZ") is None
+    assert requires_basic_auth("FOO_BAR_BAZ", log_only=log_only) is None
+
+    assert "Suppressing basic auth failure" not in caplog.text
