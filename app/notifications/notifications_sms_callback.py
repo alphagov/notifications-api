@@ -15,7 +15,7 @@ register_errors(sms_callback_blueprint)
 
 
 @sms_callback_blueprint.route("/mmg", methods=["POST"])
-@view_requires_basic_auth("MMG_DELIVERY_STATUS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", log_only=True)
+@view_requires_basic_auth("MMG_DELIVERY_STATUS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS")
 def process_mmg_response():
     uniform_now = datetime.utcnow()
     client_name = "MMG"
@@ -56,7 +56,7 @@ def process_mmg_response():
 
 
 @sms_callback_blueprint.route("/firetext", methods=["POST"])
-@view_requires_basic_auth("FIRETEXT_DELIVERY_STATUS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", log_only=True)
+@view_requires_basic_auth("FIRETEXT_DELIVERY_STATUS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS")
 def process_firetext_response():
     uniform_now = datetime.utcnow()
     client_name = "Firetext"
