@@ -135,6 +135,10 @@ class Config:
     MMG_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS = json.loads(
         os.environ.get("MMG_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS") or "null"
     )
+    # expected to be a dict of usernames -> bcrypt hash of password
+    MMG_DELIVERY_STATUS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("MMG_DELIVERY_STATUS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS") or "{}"
+    )
 
     # Firetext API Key
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
@@ -145,6 +149,10 @@ class Config:
     FIRETEXT_RECEIPT_URL = os.getenv("FIRETEXT_RECEIPT_URL")
     FIRETEXT_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS = json.loads(
         os.environ.get("FIRETEXT_DELIVERY_STATUS_CALLBACK_BASIC_AUTH_CREDENTIALS") or "null"
+    )
+    # expected to be a dict of usernames -> bcrypt hash of password
+    FIRETEXT_DELIVERY_STATUS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("FIRETEXT_DELIVERY_STATUS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS") or "{}"
     )
 
     # Prefix to identify queues in SQS

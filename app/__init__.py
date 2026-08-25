@@ -36,6 +36,10 @@ from sqlalchemy.orm import declarative_base
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
+# things up here must be declared before rest of app is imported to satisfy circular import
+# ruff: noqa: E402
+memo_resetters: list[Callable] = []
+
 from app.clients import NotificationProviderClients
 from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
@@ -65,8 +69,6 @@ CONCURRENT_REQUESTS = Gauge(
     "concurrent_web_request_count",
     "How many concurrent requests are currently being served",
 )
-
-memo_resetters: list[Callable] = []
 
 #
 # "clients" that need thread-local copies
@@ -289,7 +291,7 @@ def register_blueprint(application):
     application.register_blueprint(status_blueprint)
 
     # delivery receipts
-    sms_callback_blueprint.before_request(requires_no_auth)
+    sms_callback_blueprint.before_request(requires_no_auth)  # basic auth enforced at view level
     application.register_blueprint(sms_callback_blueprint)
 
     # inbound sms
