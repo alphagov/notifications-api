@@ -416,7 +416,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
         version=notification["template_version"],
     )
 
-    document_download_count = len(template.email_file_objects) if len(template.email_file_objects) > 0 else None
+    document_download_count = len(template.email_file_objects) or None
 
     personalisation = add_email_file_links_to_personalisation(
         template=template, personalisation=notification.get("personalisation", {}), recipient=notification["to"]

@@ -168,7 +168,7 @@ def persist_notification(
         reply_to_text=reply_to_text,
         unsubscribe_link=unsubscribe_link,
         billable_units=billable_units,
-        document_download_count=document_download_count,
+        document_download_count=document_download_count or None,
         updated_at=updated_at,
     )
     if notification_type == SMS_TYPE:

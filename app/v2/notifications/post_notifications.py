@@ -252,10 +252,9 @@ def process_sms_or_email_notification(
     if document_download_count:
         # We changed personalisation which means we need to update the content
         template_with_content.values = personalisation
-        # the total count should be the number of files an api user has added + the number already in the template
-        document_download_count += len(template.email_file_objects)
-    else:
-        document_download_count = len(template.email_file_objects) or None
+
+    # the total count should be the number of files an api user has added + the number already in the template
+    document_download_count += len(template.email_file_objects)
 
     # validate content length after url is replaced in personalisation.
     check_is_message_too_long(template_with_content)
@@ -313,7 +312,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
     """
     file_keys = [k for k, v in (personalisation_data or {}).items() if isinstance(v, dict) and "file" in v]
     if not file_keys:
-        return personalisation_data, None
+        return personalisation_data, 0
 
     # Make sure that all data for file uploads matches our expected schema.
     # We can't (feasibly) do this at the start of the request because the JSON Schema required would throw error
