@@ -54,6 +54,7 @@ from app.constants import (
     SMS_TYPE,
 )
 from app.dao import jobs_dao, report_requests_dao, service_email_reply_to_dao, service_sms_sender_dao
+from app.dao.notifications_dao import get_notification_by_id
 from app.models import Job, Notification, NotificationHistory, ReturnedLetter
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.v2.errors import TooManyRequestsError
@@ -1456,6 +1457,29 @@ def test_save_sms_should_save_default_smm_sender_notification_reply_to_text_on(n
 
     persisted_notification = Notification.query.one()
     assert persisted_notification.reply_to_text == "12345"
+
+
+@pytest.mark.parametrize("number_of_files, expected_document_download_count", [(0, None), (1, 1), (4, 4)])
+def test_save_email_with_template_email_files_increments_document_download_count_correctly(
+    mock_celery_task,
+    sample_email_template,
+    mock_utils_s3_download,
+    mock_document_download_client_upload,
+    number_of_files,
+    expected_document_download_count,
+):
+    mock_deliver_email = mock_celery_task(provider_tasks.deliver_email)
+    for _ in range(number_of_files):
+        create_template_email_file(
+            template_id=sample_email_template.id, created_by_id=sample_email_template.created_by_id, pending=False
+        )
+    notification_id = uuid.uuid4()
+    notification = _notification_json(sample_email_template, "example@gov.uk")
+    with _with_message_group_id(save_email, str(sample_email_template.service_id)):
+        save_email(sample_email_template.service_id, notification_id, signing.encode(notification))
+    notification = get_notification_by_id(notification_id)
+    assert notification.document_download_count == expected_document_download_count
+    assert mock_deliver_email.called is True
 
 
 def test_should_not_save_sms_if_restricted_service_and_invalid_number(notify_db_session, mock_celery_task):

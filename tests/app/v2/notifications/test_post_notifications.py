@@ -1,3 +1,4 @@
+import base64
 import uuid
 from unittest.mock import call
 
@@ -30,6 +31,7 @@ from tests.app.db import (
     create_service_sms_sender,
     create_service_with_inbound_number,
     create_template,
+    create_template_email_file,
 )
 
 
@@ -57,7 +59,7 @@ def test_post_sms_notification_returns_201(api_client_request, sample_template_w
     assert notifications[0].status == NOTIFICATION_CREATED
     notification_id = notifications[0].id
     assert notifications[0].postage is None
-    assert notifications[0].document_download_count is None
+    assert notifications[0].document_download_count == 0
     assert resp_json["id"] == str(notification_id)
     assert resp_json["reference"] == reference
     assert resp_json["content"]["body"] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
@@ -516,7 +518,7 @@ def test_post_email_notification_returns_201(
     assert resp_json["reference"] == reference
     assert notification.reference is None
     assert notification.reply_to_text is None
-    assert notification.document_download_count is None
+    assert notification.document_download_count == 0
     assert resp_json["content"]["body"] == sample_email_template_with_placeholders.content.replace("((name))", "Bob")
     assert resp_json["content"]["subject"] == sample_email_template_with_placeholders.subject.replace("((name))", "Bob")
     assert resp_json["content"]["from_email"] == "{}@{}".format(
@@ -1400,6 +1402,7 @@ def test_post_email_notification_with_unsubscribe_link_returns_201(api_client_re
     assert mocked.called
 
 
+@pytest.mark.parametrize("has_template_email_files", [True, False])
 @pytest.mark.parametrize(
     "extra, expect_email_confirmation, expect_retention_period",
     (
@@ -1415,18 +1418,37 @@ def test_post_email_notification_with_unsubscribe_link_returns_201(api_client_re
     ),
 )
 def test_post_notification_with_document_upload(
-    api_client_request, notify_db_session, mocker, extra, expect_email_confirmation, expect_retention_period
+    api_client_request,
+    notify_db_session,
+    mocker,
+    extra,
+    expect_email_confirmation,
+    expect_retention_period,
+    has_template_email_files,
+    mock_utils_s3_download,
 ):
     service = create_service(service_permissions=[EMAIL_TYPE])
     service.contact_link = "contact.me@gov.uk"
-    template = create_template(
-        service=service, template_type="email", content="Document 1: ((first_link)). Document 2: ((second_link))"
-    )
+    if has_template_email_files:
+        template = create_template(
+            service=service,
+            template_type="email",
+            content="Document 1: ((first_link)). Document 2: ((second_link)). Hard coded file: ((test.pdf))",
+        )
+        create_template_email_file(template_id=template.id, filename="test.pdf", created_by_id=template.created_by_id)
+    else:
+        template = create_template(
+            service=service, template_type="email", content="Document 1: ((first_link)). Document 2: ((second_link))"
+        )
 
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+
+    def document_download_link(service_id, content, is_csv=None, **kwargs):
+        return f"{content}-link"
+
     document_download_upload_document_mock = mocker.patch(
         "app.document_download_client.upload_document",
-        side_effect=lambda service_id, content, is_csv, **kwargs: f"{content}-link",
+        side_effect=document_download_link,
     )
 
     data = {
@@ -1446,31 +1468,76 @@ def test_post_notification_with_document_upload(
 
     confirmation_email = data["email_address"] if expect_email_confirmation else None
 
-    assert document_download_upload_document_mock.call_args_list == [
-        call(
-            str(service.id),
-            "abababab",
-            extra.get("is_csv"),
-            confirmation_email=confirmation_email,
-            retention_period=expect_retention_period,
-            filename=None,
-        ),
-        call(
-            str(service.id),
-            "cdcdcdcd",
-            extra.get("is_csv"),
-            confirmation_email=confirmation_email,
-            retention_period=expect_retention_period,
-            filename=None,
-        ),
-    ]
+    if has_template_email_files:
+        assert document_download_upload_document_mock.call_args_list == [
+            call(
+                str(service.id),
+                str(base64.b64encode(bytes("downloaded-from-s3-test.pdf", "utf-8")).decode("utf-8")),
+                confirmation_email=data["email_address"],
+                retention_period="90 weeks",
+                filename="test.pdf",
+            ),
+            call(
+                str(service.id),
+                "abababab",
+                extra.get("is_csv"),
+                confirmation_email=confirmation_email,
+                retention_period=expect_retention_period,
+                filename=None,
+            ),
+            call(
+                str(service.id),
+                "cdcdcdcd",
+                extra.get("is_csv"),
+                confirmation_email=confirmation_email,
+                retention_period=expect_retention_period,
+                filename=None,
+            ),
+        ]
+    else:
+        assert document_download_upload_document_mock.call_args_list == [
+            call(
+                str(service.id),
+                "abababab",
+                extra.get("is_csv"),
+                confirmation_email=confirmation_email,
+                retention_period=expect_retention_period,
+                filename=None,
+            ),
+            call(
+                str(service.id),
+                "cdcdcdcd",
+                extra.get("is_csv"),
+                confirmation_email=confirmation_email,
+                retention_period=expect_retention_period,
+                filename=None,
+            ),
+        ]
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_CREATED
-    assert notification.personalisation == {"first_link": "abababab-link", "second_link": "cdcdcdcd-link"}
-    assert notification.document_download_count == 2
+    assert (
+        notification.personalisation
+        == {
+            "first_link": "abababab-link",
+            "second_link": "cdcdcdcd-link",
+            "test.pdf": "[follow this link]("
+            + str(base64.b64encode(bytes("downloaded-from-s3-test.pdf", "utf-8")).decode("utf-8"))
+            + "-link)",
+        }
+        if has_template_email_files
+        else {"first_link": "abababab-link", "second_link": "cdcdcdcd-link"}
+    )
+    assert notification.document_download_count == 3 if has_template_email_files else 2
 
-    assert resp_json["content"]["body"] == "Document 1: abababab-link. Document 2: cdcdcdcd-link"
+    assert (
+        resp_json["content"]["body"] == "Document 1: abababab-link. Document 2: cdcdcdcd-link. Hard coded file: "
+        "[follow this link]("
+        + str(base64.b64encode(bytes("downloaded-from-s3-test.pdf", "utf-8")).decode("utf-8"))
+        + "-link)"
+        if has_template_email_files
+        else "Document 1: abababab-link. Document 2: cdcdcdcd-link"
+    )
 
 
 def test_post_notification_with_document_upload_simulated(api_client_request, notify_db_session, mocker):
