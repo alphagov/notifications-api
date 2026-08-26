@@ -840,8 +840,6 @@ def functional_test_fixtures():
     It expects the following config to be set:
 
         NOTIFY_ENVIRONMENT
-        MMG_INBOUND_SMS_USERNAME
-        MMG_INBOUND_SMS_AUTH
         MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS
         SQLALCHEMY_DATABASE_URI
         REDIS_URL

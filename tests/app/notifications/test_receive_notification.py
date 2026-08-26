@@ -6,6 +6,7 @@ from flask import json
 from freezegun import freeze_time
 
 from app.constants import EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE
+from app.hashing import hashpw
 from app.models import InboundSms
 from app.notifications.receive_notifications import (
     create_inbound_sms_object,
@@ -22,25 +23,25 @@ from tests.app.db import (
 from tests.conftest import set_config
 
 
-def firetext_post(client, data, auth=True, password="testkey"):
+def firetext_post(client, data, auth=True, username="notify", password="testkey"):
     headers = [
         ("Content-Type", "application/x-www-form-urlencoded"),
     ]
 
     if auth:
-        auth_value = base64.b64encode(f"notify:{password}".encode()).decode("utf-8")
+        auth_value = base64.b64encode(f"{username}:{password}".encode()).decode("utf-8")
         headers.append(("Authorization", "Basic " + auth_value))
 
     return client.post(path="/notifications/sms/receive/firetext", data=data, headers=headers)
 
 
-def mmg_post(client, data, auth=True, password="testkey"):
+def mmg_post(client, data, auth=True, username="username", password="testkey"):
     headers = [
         ("Content-Type", "application/json"),
     ]
 
     if auth:
-        auth_value = base64.b64encode(f"username:{password}".encode()).decode("utf-8")
+        auth_value = base64.b64encode(f"{username}:{password}".encode()).decode("utf-8")
         headers.append(("Authorization", "Basic " + auth_value))
 
     return client.post(path="/notifications/sms/receive/mmg", data=json.dumps(data), headers=headers)
@@ -423,20 +424,17 @@ def test_strip_leading_country_code(number, expected):
 
 
 @pytest.mark.parametrize(
-    "auth, keys, status_code",
+    "username, password, expected_status_code, expected_side_effect",
     [
-        ["testkey", ["testkey"], 200],
-        ["", ["testkey"], 401],
-        ["wrong", ["testkey"], 403],
-        ["testkey1", ["testkey1", "testkey2"], 200],
-        ["testkey2", ["testkey1", "testkey2"], 200],
-        ["wrong", ["testkey1", "testkey2"], 403],
-        ["", [], 401],
-        ["testkey", [], 403],
+        (None, None, 401, False),
+        ("foo123", "bah000", 403, False),
+        ("foo123", "blah321", 200, True),
     ],
 )
-def test_firetext_inbound_sms_auth(notify_db_session, notify_api, client, mocker, auth, keys, status_code):
-    mocker.patch(
+def test_firetext_inbound_sms_auth(
+    notify_db_session, notify_api, client, mocker, username, password, expected_status_code, expected_side_effect
+):
+    mocked_apply_async = mocker.patch(
         "app.notifications.receive_notifications.service_callback_tasks.send_inbound_sms_to_service.apply_async"
     )
 
@@ -449,26 +447,32 @@ def test_firetext_inbound_sms_auth(notify_db_session, notify_api, client, mocker
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
-    with set_config(notify_api, "FIRETEXT_INBOUND_SMS_AUTH", keys):
-        response = firetext_post(client, data, auth=bool(auth), password=auth)
-        assert response.status_code == status_code
+    with set_config(
+        notify_api,
+        "FIRETEXT_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS",
+        {
+            "foo123": hashpw("blah321"),
+            "456bar": hashpw("BAZ012"),
+        },
+    ):
+        response = firetext_post(client, data, auth=username is not None, username=username, password=password)
+        assert response.status_code == expected_status_code
+        assert mocked_apply_async.called is expected_side_effect
+        assert bool(InboundSms.query.all()) is expected_side_effect
 
 
 @pytest.mark.parametrize(
-    "auth, keys, status_code",
+    "username, password, expected_status_code, expected_side_effect",
     [
-        ["testkey", ["testkey"], 200],
-        ["", ["testkey"], 401],
-        ["wrong", ["testkey"], 403],
-        ["testkey1", ["testkey1", "testkey2"], 200],
-        ["testkey2", ["testkey1", "testkey2"], 200],
-        ["wrong", ["testkey1", "testkey2"], 403],
-        ["", [], 401],
-        ["testkey", [], 403],
+        (None, None, 401, False),
+        ("foo123", "bah000", 403, False),
+        ("foo123", "blah321", 200, True),
     ],
 )
-def test_mmg_inbound_sms_auth(notify_db_session, notify_api, client, mocker, auth, keys, status_code):
-    mocker.patch(
+def test_mmg_inbound_sms_auth(
+    notify_db_session, notify_api, client, mocker, username, password, expected_status_code, expected_side_effect
+):
+    mocked_apply_async = mocker.patch(
         "app.notifications.receive_notifications.service_callback_tasks.send_inbound_sms_to_service.apply_async"
     )
 
@@ -489,9 +493,18 @@ def test_mmg_inbound_sms_auth(notify_db_session, notify_api, client, mocker, aut
         "DateRecieved": "2012-06-27 12:33:00",
     }
 
-    with set_config(notify_api, "MMG_INBOUND_SMS_AUTH", keys):
-        response = mmg_post(client, data, auth=bool(auth), password=auth)
-        assert response.status_code == status_code
+    with set_config(
+        notify_api,
+        "MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS",
+        {
+            "foo123": hashpw("blah321"),
+            "456bar": hashpw("BAZ012"),
+        },
+    ):
+        response = mmg_post(client, data, auth=username is not None, username=username, password=password)
+        assert response.status_code == expected_status_code
+        assert mocked_apply_async.called is expected_side_effect
+        assert bool(InboundSms.query.all()) is expected_side_effect
 
 
 def test_create_inbound_sms_object_works_with_alphanumeric_sender(sample_service_full_permissions):

@@ -42,8 +42,7 @@ def test_create_db_objects_sets_db_up(notify_api, notify_service):
         with set_config_values(
             notify_api,
             {
-                "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
-                "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+                "MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS": ["test_mmg_username", "test_mmg_password"],
                 "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
                 "ADMIN_BASE_URL": "http://localhost:6012",
                 "API_HOST_NAME": "http://localhost:6011",
@@ -147,8 +146,7 @@ def test_create_db_objects_creates_dedicated_performance_service_with_limits_and
     with set_config_values(
         notify_api,
         {
-            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
-            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS": ["test_mmg_username", "test_mmg_password"],
             "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
             "ADMIN_BASE_URL": "http://localhost:6012",
             "API_HOST_NAME": "http://localhost:6011",
@@ -199,8 +197,7 @@ def test_create_db_objects_renames_sanitised_org_and_recreates_canonical_org(not
     with set_config_values(
         notify_api,
         {
-            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
-            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS": ["test_mmg_username", "test_mmg_password"],
             "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
             "ADMIN_BASE_URL": "http://localhost:6012",
             "API_HOST_NAME": "http://localhost:6011",
@@ -253,8 +250,7 @@ def test_create_db_objects_renames_sanitised_services_and_reclaims_inbound_numbe
     with set_config_values(
         notify_api,
         {
-            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
-            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS": ["test_mmg_username", "test_mmg_password"],
             "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
             "ADMIN_BASE_URL": "http://localhost:6012",
             "API_HOST_NAME": "http://localhost:6011",
@@ -293,8 +289,7 @@ def test_create_db_objects_clears_caches_after_sanitised_fixture_renames(notify_
     with set_config_values(
         notify_api,
         {
-            "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
-            "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
+            "MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS": ["test_mmg_username", "test_mmg_password"],
             "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
             "ADMIN_BASE_URL": "http://localhost:6012",
             "API_HOST_NAME": "http://localhost:6011",

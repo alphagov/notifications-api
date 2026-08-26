@@ -550,9 +550,6 @@ class Config:
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
     SMS_INBOUND_WHITELIST = json.loads(os.environ.get("SMS_INBOUND_WHITELIST", "[]"))
-    FIRETEXT_INBOUND_SMS_AUTH = json.loads(os.environ.get("FIRETEXT_INBOUND_SMS_AUTH", "[]"))
-    MMG_INBOUND_SMS_AUTH = json.loads(os.environ.get("MMG_INBOUND_SMS_AUTH", "[]"))
-    MMG_INBOUND_SMS_USERNAME = json.loads(os.environ.get("MMG_INBOUND_SMS_USERNAME", "[]"))
     # both expected to be a dict of usernames -> bcrypt hash of password
     MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS = json.loads(
         os.environ.get("MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", "{}")
@@ -689,8 +686,6 @@ class Development(Config):
     TOKEN_SECRET_KEY = "5YNWU0e_pN5ZyaSZvBd5uZb_sZlrVDFeOjiea6dq4zQ="
     DANGEROUS_SALT = "dev-notify-salt"
 
-    MMG_INBOUND_SMS_AUTH = ["testkey"]
-    MMG_INBOUND_SMS_USERNAME = ["username"]
     MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS = {
         "username": "$2b$04$JqCB477L3RTbIiENavb2EOPyv9dkWdL0XjSSCftcw7wynETJa/HgO",  # "testkey"
     }
@@ -768,7 +763,6 @@ class Test(Development):
     API_HOST_NAME_INTERNAL = "http://localhost:6011"
 
     SMS_INBOUND_WHITELIST = ["203.0.113.195"]
-    FIRETEXT_INBOUND_SMS_AUTH = ["testkey"]
     TEMPLATE_PREVIEW_API_HOST = "http://localhost:9999"
 
     MMG_URL = "https://example.com/mmg"
