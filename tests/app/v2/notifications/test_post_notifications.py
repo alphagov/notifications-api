@@ -59,7 +59,7 @@ def test_post_sms_notification_returns_201(api_client_request, sample_template_w
     assert notifications[0].status == NOTIFICATION_CREATED
     notification_id = notifications[0].id
     assert notifications[0].postage is None
-    assert notifications[0].document_download_count == 0
+    assert notifications[0].document_download_count is None
     assert resp_json["id"] == str(notification_id)
     assert resp_json["reference"] == reference
     assert resp_json["content"]["body"] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
@@ -518,7 +518,7 @@ def test_post_email_notification_returns_201(
     assert resp_json["reference"] == reference
     assert notification.reference is None
     assert notification.reply_to_text is None
-    assert notification.document_download_count == 0
+    assert notification.document_download_count is None
     assert resp_json["content"]["body"] == sample_email_template_with_placeholders.content.replace("((name))", "Bob")
     assert resp_json["content"]["subject"] == sample_email_template_with_placeholders.subject.replace("((name))", "Bob")
     assert resp_json["content"]["from_email"] == "{}@{}".format(
