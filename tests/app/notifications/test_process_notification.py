@@ -621,6 +621,59 @@ def test_persist_notification_increments_cache_for_international_sms_if_the_cach
 
 
 @pytest.mark.parametrize(
+    "unformatted_recipient, normalised_recipient, prefix, should_log",
+    [
+        ("+447111111111", "447111111111", "71111", True),
+        ("+447988957616", "447988957616", "", False),
+        ("+48697894064", "48697894064", "", False),
+    ],
+)
+def test_persist_notification_logs_when_sms_sent_to_uk_number_without_carrier(
+    notify_api,
+    notify_db_session,
+    mocker,
+    sample_template,
+    sample_api_key,
+    sample_job,
+    caplog,
+    unformatted_recipient,
+    normalised_recipient,
+    prefix,
+    should_log,
+):
+    caplog.set_level("INFO")
+    mocker.patch("app.notifications.process_notifications.redis_store.get", return_value=None)
+    with set_config(notify_api, "REDIS_ENABLED", True):
+        persist_notification(
+            template_id=sample_template.id,
+            template_version=sample_template.version,
+            recipient={
+                "unformatted_recipient": unformatted_recipient,
+                "normalised_to": normalised_recipient,
+                "international": False,
+                "phone_prefix": "44",
+                "rate_multiplier": 1,
+            },
+            service=sample_template.service,
+            personalisation={},
+            notification_type=SMS_TYPE,
+            api_key_id=sample_api_key.id,
+            key_type=sample_api_key.key_type,
+            job_id=sample_job.id,
+            job_row_number=100,
+            reference="ref",
+            reply_to_text=sample_template.service.get_default_sms_sender(),
+        )
+    if should_log:
+        assert (
+            caplog.records[0].message
+            == f"Service {sample_template.service.id} tried to send to UK mobile number in reserved range. Prefix without leading zero: {prefix}"  # noqa: E501
+        )
+    else:
+        assert caplog.records == []
+
+
+@pytest.mark.parametrize(
     ("requested_queue, notification_type, key_type, expected_queue, expected_task"),
     [
         (None, SMS_TYPE, "normal", "send-sms-tasks", "provider_tasks.deliver_sms"),
