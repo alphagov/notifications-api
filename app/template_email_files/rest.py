@@ -63,7 +63,7 @@ def get_template_email_files(service_id, template_id):
 
 @template_email_files_blueprint.route("/<uuid:template_email_file_id>")
 def get_template_email_file_by_id(service_id, template_id, template_email_file_id):
-    file = dao_get_template_email_file_by_id(template_email_file_id)
+    file = dao_get_template_email_file_by_id(service_id, template_id, template_email_file_id)
     return jsonify(data=template_email_files_schema.dump(file)), 200
 
 

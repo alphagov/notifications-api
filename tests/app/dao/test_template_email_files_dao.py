@@ -16,7 +16,12 @@ from app.dao.template_email_files_dao import (
 )
 from app.dao.templates_dao import dao_update_template
 from app.models import Template, TemplateEmailFile
-from tests.app.db import create_archived_template_email_file, create_template, create_template_email_file
+from tests.app.db import (
+    create_archived_template_email_file,
+    create_service,
+    create_template,
+    create_template_email_file,
+)
 from tests.utils import QueryRecorder
 
 
@@ -56,7 +61,11 @@ def test_dao_get_template_email_file_by_id(sample_template_email_file_not_pendin
         filename="file_two.pdf",
         link_text="click this other link",
     )
-    template_email_file_fetched = dao_get_template_email_file_by_id(str(sample_template_email_file_not_pending.id))
+    template_email_file_fetched = dao_get_template_email_file_by_id(
+        str(sample_service.id),
+        str(sample_template_email_file_not_pending.template_id),
+        str(sample_template_email_file_not_pending.id),
+    )
     assert template_email_file_fetched.id == sample_template_email_file_not_pending.id
     assert template_email_file_fetched.filename == sample_template_email_file_not_pending.filename
     assert template_email_file_fetched.link_text == sample_template_email_file_not_pending.link_text
@@ -69,9 +78,48 @@ def test_dao_get_template_email_file_by_id(sample_template_email_file_not_pendin
     assert not template_email_file_fetched.pending
 
 
-def test_dao_get_template_email_file_by_id_returns_none_when_not_found():
+def test_dao_get_template_email_file_by_id_returns_none_when_not_found(sample_service, sample_email_template):
     with pytest.raises(NoResultFound):
-        dao_get_template_email_file_by_id("2117b6ab-0219-4bfa-aaa4-a3248dafa1a0")
+        dao_get_template_email_file_by_id(
+            str(sample_service.id), str(sample_email_template.id), "2117b6ab-0219-4bfa-aaa4-a3248dafa1a0"
+        )
+
+
+def test_dao_get_template_email_file_by_id_filtered_by_template_id(
+    sample_template_email_file_not_pending, sample_email_template, sample_service
+):
+    template_email_file_fetched = dao_get_template_email_file_by_id(
+        str(sample_service.id),
+        str(sample_email_template.id),
+        str(sample_template_email_file_not_pending.id),
+    )
+    assert template_email_file_fetched.id == sample_template_email_file_not_pending.id
+
+
+def test_dao_get_template_email_file_by_id_raises_when_file_belongs_to_another_template(
+    sample_template_email_file_not_pending, sample_service
+):
+    other_template = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="template_two")
+
+    with pytest.raises(NoResultFound):
+        dao_get_template_email_file_by_id(
+            str(sample_service.id),
+            str(other_template.id),
+            str(sample_template_email_file_not_pending.id),
+        )
+
+
+def test_dao_get_template_email_file_by_id_raises_when_file_belongs_to_another_service(
+    sample_template_email_file_not_pending, sample_email_template
+):
+    other_service = create_service(service_name="another service")
+
+    with pytest.raises(NoResultFound):
+        dao_get_template_email_file_by_id(
+            str(other_service.id),
+            str(sample_email_template.id),
+            str(sample_template_email_file_not_pending.id),
+        )
 
 
 def test_dao_get_template_email_files_by_template_id(
