@@ -16,7 +16,6 @@ from app.notifications.receive_notifications import (
     unescape_string,
 )
 from tests.app.db import (
-    create_inbound_number,
     create_service,
     create_service_with_inbound_number,
 )
@@ -79,92 +78,76 @@ def test_receive_notification_returns_received_to_mmg(client, mocker, sample_ser
 
 
 @pytest.mark.parametrize(
-    "permissions",
-    [
-        [SMS_TYPE],
-        [INBOUND_SMS_TYPE],
-    ],
+    "has_number,number_active,expected_log_fragment",
+    (
+        (False, False, "not associated with a service"),
+        (True, False, "not associated with a service"),
+        (True, True, "does not allow inbound SMS"),
+    ),
 )
-def test_receive_notification_from_mmg_without_permissions_does_not_persist(
-    client, mocker, notify_db_session, permissions
+def test_receive_notification_from_mmg_does_not_persist_various_circumstances(
+    client, notify_db_session, caplog, has_number, number_active, expected_log_fragment, mocker
 ):
-    mocked = mocker.patch(
+    if has_number:
+        create_service_with_inbound_number(
+            inbound_number="07111111111", service_permissions=[SMS_TYPE], number_active=number_active
+        )
+
+    mocked_send_inbound_sms = mocker.patch(
         "app.notifications.receive_notifications.service_callback_tasks.send_inbound_sms_to_service.apply_async"
     )
-    create_service_with_inbound_number(inbound_number="07111111111", service_permissions=permissions)
+
     data = {
         "ID": "1234",
-        "MSISDN": "07111111111",
+        "MSISDN": "07222222222",
         "Message": "Some message to notify",
         "Trigger": "Trigger?",
-        "Number": "testing",
+        "Number": "07111111111",
         "Channel": "SMS",
         "DateRecieved": "2012-06-27 12:33:00",
     }
     response = mmg_post(client, data)
 
     assert response.status_code == 200
+
     assert response.get_data(as_text=True) == "RECEIVED"
+
     assert InboundSms.query.count() == 0
-    assert mocked.called is False
+    assert mocked_send_inbound_sms.called is False
+    assert expected_log_fragment in caplog.text
 
 
 @pytest.mark.parametrize(
-    "permissions",
-    [
-        [SMS_TYPE],
-        [INBOUND_SMS_TYPE],
-    ],
+    "has_number,number_active,expected_log_fragment",
+    (
+        (False, False, "not associated with a service"),
+        (True, False, "not associated with a service"),
+        (True, True, "does not allow inbound SMS"),
+    ),
 )
-def test_receive_notification_from_firetext_without_permissions_does_not_persist(
-    client, mocker, notify_db_session, permissions
+def test_receive_notification_from_firetext_does_not_persist_various_circumstances(
+    client, notify_db_session, caplog, has_number, number_active, expected_log_fragment, mocker
 ):
-    service = create_service_with_inbound_number(inbound_number="07111111111", service_permissions=permissions)
-    mocker.patch("app.notifications.receive_notifications.dao_fetch_service_by_inbound_number", return_value=service)
+    if has_number:
+        create_service_with_inbound_number(
+            inbound_number="07111111111", service_permissions=[SMS_TYPE], number_active=number_active
+        )
+
     mocked_send_inbound_sms = mocker.patch(
         "app.notifications.receive_notifications.service_callback_tasks.send_inbound_sms_to_service.apply_async"
     )
-    mocker.patch("app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
     response = firetext_post(client, data)
 
     assert response.status_code == 200
+
     result = json.loads(response.get_data(as_text=True))
-
     assert result["status"] == "ok"
+
     assert InboundSms.query.count() == 0
-    assert not mocked_send_inbound_sms.called
-
-
-def test_receive_notification_without_permissions_does_not_create_inbound_even_with_inbound_number_set(
-    client, mocker, sample_service
-):
-    inbound_number = create_inbound_number("1", service_id=sample_service.id, active=True)
-
-    mocked_send_inbound_sms = mocker.patch(
-        "app.notifications.receive_notifications.service_callback_tasks.send_inbound_sms_to_service.apply_async"
-    )
-    mocked_has_permissions = mocker.patch(
-        "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False
-    )
-
-    data = {
-        "ID": "1234",
-        "MSISDN": "447700900855",
-        "Message": "Some message to notify",
-        "Trigger": "Trigger?",
-        "Number": inbound_number.number,
-        "Channel": "SMS",
-        "DateRecieved": "2012-06-27 12:33:00",
-    }
-
-    response = mmg_post(client, data)
-
-    assert response.status_code == 200
-    assert len(InboundSms.query.all()) == 0
-    assert mocked_has_permissions.called
-    mocked_send_inbound_sms.assert_not_called()
+    assert mocked_send_inbound_sms.called is False
+    assert expected_log_fragment in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -458,7 +441,10 @@ def test_firetext_inbound_sms_auth(notify_db_session, notify_api, client, mocker
     )
 
     create_service_with_inbound_number(
-        service_name="b", inbound_number="07111111111", service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
+        service_name="b",
+        inbound_number="07111111111",
+        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE],
+        provider="firetext",
     )
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
@@ -487,15 +473,18 @@ def test_mmg_inbound_sms_auth(notify_db_session, notify_api, client, mocker, aut
     )
 
     create_service_with_inbound_number(
-        service_name="b", inbound_number="07111111111", service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
+        service_name="b",
+        inbound_number="07111111111",
+        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE],
+        provider="mmg",
     )
 
     data = {
         "ID": "1234",
-        "MSISDN": "07111111111",
+        "MSISDN": "07222222222",
         "Message": "Some message to notify",
         "Trigger": "Trigger?",
-        "Number": "testing",
+        "Number": "07111111111",
         "Channel": "SMS",
         "DateRecieved": "2012-06-27 12:33:00",
     }

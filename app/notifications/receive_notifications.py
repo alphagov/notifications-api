@@ -4,6 +4,7 @@ from urllib.parse import unquote
 from flask import Blueprint, abort, current_app, jsonify, request
 from gds_metrics.metrics import Counter
 
+from app.authentication.auth import view_requires_basic_auth
 from app.celery import service_callback_tasks
 from app.config import QueueNames
 from app.constants import INBOUND_SMS_TYPE
@@ -21,6 +22,7 @@ INBOUND_SMS_COUNTER = Counter("inbound_sms", "Total number of inbound SMS receiv
 
 
 @receive_notifications_blueprint.route("/notifications/sms/receive/mmg", methods=["POST"])
+@view_requires_basic_auth("MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", log_only=True)
 def receive_mmg_sms():
     """
     {
@@ -84,6 +86,7 @@ def receive_mmg_sms():
 
 
 @receive_notifications_blueprint.route("/notifications/sms/receive/firetext", methods=["POST"])
+@view_requires_basic_auth("FIRETEXT_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", log_only=True)
 def receive_firetext_sms():
     post_data = request.form
 

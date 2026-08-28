@@ -173,11 +173,13 @@ def create_service(
     return service
 
 
-def create_service_with_inbound_number(inbound_number="1234567", *args, **kwargs):
+def create_service_with_inbound_number(inbound_number="1234567", provider="mmg", number_active=True, *args, **kwargs):
     service = create_service(*args, **kwargs)
 
     sms_sender = ServiceSmsSender.query.filter_by(service_id=service.id).first()
-    inbound = create_inbound_number(number=inbound_number, service_id=service.id)
+    inbound = create_inbound_number(
+        number=inbound_number, service_id=service.id, provider=provider, active=number_active
+    )
     update_existing_sms_sender_with_inbound_number(
         service_sms_sender=sms_sender, sms_sender=inbound_number, inbound_number_id=inbound.id
     )

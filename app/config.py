@@ -548,7 +548,23 @@ class Config:
     FIRETEXT_INBOUND_SMS_AUTH = json.loads(os.environ.get("FIRETEXT_INBOUND_SMS_AUTH", "[]"))
     MMG_INBOUND_SMS_AUTH = json.loads(os.environ.get("MMG_INBOUND_SMS_AUTH", "[]"))
     MMG_INBOUND_SMS_USERNAME = json.loads(os.environ.get("MMG_INBOUND_SMS_USERNAME", "[]"))
+    # both expected to be a dict of usernames -> bcrypt hash of password
+    MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", "{}")
+    )
+    FIRETEXT_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("FIRETEXT_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", "{}")
+    )
     LOW_INBOUND_SMS_NUMBER_THRESHOLD = 50
+
+    # not normally needed as we're generally only *checking* these credentials,
+    # for which the hashes from the _ALLOWED_ settings are enough
+    MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS", "null")
+    )
+    FIRETEXT_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS = json.loads(
+        os.environ.get("FIRETEXT_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS", "null")
+    )
 
     TEMPLATE_PREVIEW_API_HOST = os.environ.get("TEMPLATE_PREVIEW_API_HOST", "http://localhost:6013")
     TEMPLATE_PREVIEW_API_KEY = os.environ.get("TEMPLATE_PREVIEW_API_KEY", "my-secret-key")
@@ -668,6 +684,12 @@ class Development(Config):
 
     MMG_INBOUND_SMS_AUTH = ["testkey"]
     MMG_INBOUND_SMS_USERNAME = ["username"]
+    MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS = {
+        "username": "$2b$04$JqCB477L3RTbIiENavb2EOPyv9dkWdL0XjSSCftcw7wynETJa/HgO",  # "testkey"
+    }
+    FIRETEXT_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS = {
+        "notify": "$2b$04$JqCB477L3RTbIiENavb2EOPyv9dkWdL0XjSSCftcw7wynETJa/HgO",  # "testkey"
+    }
 
     NOTIFY_ENVIRONMENT = "development"
     NOTIFY_EMAIL_DOMAIN = "notify.tools"
