@@ -44,6 +44,8 @@ def add_reply_to_email_address_for_service(service_id, email_address, is_default
 
 @autocommit
 def update_reply_to_email_address(service_id, reply_to_id, email_address, is_default):
+    reply_to_update = dao_get_reply_to_by_id(reply_to_id=reply_to_id, service_id=service_id)
+
     old_default = _get_existing_default(service_id)
     if is_default:
         _reset_old_default_to_false(old_default)
@@ -51,7 +53,6 @@ def update_reply_to_email_address(service_id, reply_to_id, email_address, is_def
         if old_default.id == reply_to_id:
             raise InvalidRequest("You must have at least one reply to email address as the default.", 400)
 
-    reply_to_update = ServiceEmailReplyTo.query.get(reply_to_id)
     reply_to_update.email_address = email_address
     reply_to_update.is_default = is_default
     db.session.add(reply_to_update)

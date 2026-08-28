@@ -179,6 +179,39 @@ def test_update_reply_to_email_address_raises_exception_if_single_reply_to_and_s
         )
 
 
+def test_update_reply_to_email_address_raises_sqlalchemy_error_when_reply_to_belongs_to_another_service(
+    sample_service,
+):
+    another_service = create_service(service_name="another service")
+    create_reply_to_email(service=sample_service, email_address="default@example.com")
+    other_service_reply_to = create_reply_to_email(service=another_service, email_address="other-service@example.com")
+
+    with pytest.raises(SQLAlchemyError):
+        update_reply_to_email_address(
+            service_id=sample_service.id,
+            reply_to_id=other_service_reply_to.id,
+            email_address="changed@example.com",
+            is_default=True,
+        )
+
+    assert other_service_reply_to.email_address == "other-service@example.com"
+
+
+def test_update_reply_to_email_address_raises_sqlalchemy_error_when_reply_to_is_archived(sample_service):
+    create_reply_to_email(service=sample_service, email_address="default@example.com")
+    archived_reply_to = create_reply_to_email(
+        service=sample_service, email_address="archived@example.com", is_default=False, archived=True
+    )
+
+    with pytest.raises(SQLAlchemyError):
+        update_reply_to_email_address(
+            service_id=sample_service.id,
+            reply_to_id=archived_reply_to.id,
+            email_address="changed@example.com",
+            is_default=False,
+        )
+
+
 def test_dao_get_reply_to_by_id(sample_service):
     reply_to = create_reply_to_email(service=sample_service, email_address="email@address.com")
     result = dao_get_reply_to_by_id(reply_to_id=reply_to.id, service_id=sample_service.id)
