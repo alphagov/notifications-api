@@ -1120,7 +1120,7 @@ def test_deep_archive_notification_history_hour_starting_happy_path(
         set_config(notify_api, "NOTIFICATION_DEEP_HISTORY_DELETE_ARCHIVED", delete_archived),
     ):
         s3 = boto3.client("s3")
-        s3.create_bucket(Bucket="deep-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+        s3.create_bucket(Bucket="deep-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
         _populate_notification_history(sample_template, sample_job)
 
@@ -1336,7 +1336,7 @@ def test_deep_archive_notification_history_hour_starting_delete_fails(
         db.engine.connect() as alt_conn,
     ):
         s3 = boto3.client("s3")
-        s3.create_bucket(Bucket="deep-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+        s3.create_bucket(Bucket="deep-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
         _populate_notification_history(sample_template, sample_job)
 
