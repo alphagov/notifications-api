@@ -525,6 +525,12 @@ class Config:
                 "schedule": crontab(hour=9, minute=0, day_of_week="wed", day_of_month="2-8"),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            # check every 10 seconds for changes to the replication slot, and process them if there are any
+            "process-notifications-replication-slot-changes": {
+                "task": "process-notifications-replication-slot-changes",
+                "schedule": timedelta(seconds=10),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
         },
     }
 

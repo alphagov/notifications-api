@@ -67,6 +67,7 @@ from app.dao.notifications_dao import (
     letters_missing_from_sending_bucket,
     notifications_not_yet_sent,
 )
+from app.dao.notifications_wal_changes_dao import dao_process_notifications_replication_slot_changes
 from app.dao.provider_details_dao import (
     dao_adjust_provider_priority_back_to_resting_points,
     dao_reduce_sms_provider_priority,
@@ -944,3 +945,8 @@ def populate_annual_billing(year, missing_services_only):
 def run_populate_annual_billing():
     year = get_current_financial_year_start_year()
     populate_annual_billing(year=year, missing_services_only=True)
+
+
+@notify_celery.task(name="process-notifications-replication-slot-changes")
+def process_replication_slot_changes():
+    dao_process_notifications_replication_slot_changes()
