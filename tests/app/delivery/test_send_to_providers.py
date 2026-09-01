@@ -365,7 +365,7 @@ def test_should_log_sms_sent_with_downgraded_content(mocker, caplog):
 
     assert (
         "test",
-        30,
+        20,
         (
             f"5 character(s) caused UTF-16 encoding in SMS content for service {db_notification.service_id} "
             f"and notification {db_notification.id}"

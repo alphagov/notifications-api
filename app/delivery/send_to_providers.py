@@ -60,7 +60,7 @@ def send_sms_to_provider(notification: Notification) -> None:
         )
 
         if non_gsm_characters := template.non_gsm_characters:
-            current_app.logger.warning(
+            current_app.logger.info(
                 "%s character(s) caused UTF-16 encoding in SMS content for service %s and notification %s",
                 len(non_gsm_characters),
                 service.id,
