@@ -2,7 +2,7 @@ import pytest
 from flask import current_app
 
 from app.constants import EMAIL_TYPE, SMS_TYPE
-from app.dao.services_dao import dao_add_user_to_service
+from app.dao.services_dao import dao_add_user_to_service, dao_fetch_active_users_for_service
 from app.models import Notification
 from app.service.sender import send_notification_to_service_users
 from tests.app.db import create_service, create_template, create_user
@@ -16,7 +16,8 @@ def test_send_notification_to_service_users_persists_notifications_correctly(
 
     user = sample_service.users[0]
     template = create_template(sample_service, template_type=notification_type)
-    send_notification_to_service_users(service_id=sample_service.id, template_id=template.id)
+    active_users = dao_fetch_active_users_for_service(sample_service.id)
+    send_notification_to_service_users(template_id=template.id, user_list=active_users)
     to = user.email_address if notification_type == EMAIL_TYPE else user.mobile_number
 
     notification = Notification.query.one()
@@ -34,7 +35,8 @@ def test_send_notification_to_service_users_sends_to_queue(notify_service, sampl
     send_mock = mocker.patch("app.service.sender.send_notification_to_queue")
 
     template = create_template(sample_service, template_type=EMAIL_TYPE)
-    send_notification_to_service_users(service_id=sample_service.id, template_id=template.id)
+    active_users = dao_fetch_active_users_for_service(sample_service.id)
+    send_notification_to_service_users(template_id=template.id, user_list=active_users)
 
     assert send_mock.called
     assert send_mock.call_count == 1
@@ -49,8 +51,9 @@ def test_send_notification_to_service_users_includes_user_fields_in_personalisat
     user = sample_service.users[0]
 
     template = create_template(sample_service, template_type=EMAIL_TYPE)
+    active_users = dao_fetch_active_users_for_service(sample_service.id)
     send_notification_to_service_users(
-        service_id=sample_service.id, template_id=template.id, include_user_fields=["name", "email_address", "state"]
+        template_id=template.id, user_list=active_users, include_user_fields=["name", "email_address", "state"]
     )
 
     persist_call = persist_mock.call_args_list[0][1]
@@ -63,7 +66,7 @@ def test_send_notification_to_service_users_includes_user_fields_in_personalisat
     }
 
 
-def test_send_notification_to_service_users_sends_to_active_users_only(notify_service, mocker):
+def test_send_notification_to_service_users_sends_to_specified_user_list_only(notify_service, mocker):
     mocker.patch("app.service.sender.send_notification_to_queue")
 
     first_active_user = create_user(email="foo@bar.com", state="active")
@@ -73,8 +76,12 @@ def test_send_notification_to_service_users_sends_to_active_users_only(notify_se
     dao_add_user_to_service(service, second_active_user)
     dao_add_user_to_service(service, pending_user)
     template = create_template(service, template_type=EMAIL_TYPE)
+    active_users = dao_fetch_active_users_for_service(service.id)
 
-    send_notification_to_service_users(service_id=service.id, template_id=template.id)
+    send_notification_to_service_users(
+        template_id=template.id,
+        user_list=active_users,
+    )
     notifications = Notification.query.all()
     notifications_recipients = [notification.to for notification in notifications]
 
