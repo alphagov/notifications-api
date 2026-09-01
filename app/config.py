@@ -430,6 +430,11 @@ class Config:
                 # since we mark jobs as archived
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "remove-archived-letter-attachments-from-s3": {
+                "task": "remove-archived-letter-attachments-from-s3",
+                "schedule": crontab(hour=4, minute=30),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             "remove-archived-template-email-files-from-s3": {
                 "task": "remove-archived-template-email-files-from-s3",
                 "schedule": crontab(hour=4, minute=40),
@@ -609,6 +614,7 @@ class Config:
     S3_BUCKET_INVALID_PDF = os.environ.get("S3_BUCKET_INVALID_PDF")
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = os.environ.get("S3_BUCKET_TRANSIENT_UPLOADED_LETTERS")
     S3_BUCKET_LETTER_SANITISE = os.environ.get("S3_BUCKET_LETTER_SANITISE")
+    S3_BUCKET_LETTER_ATTACHMENTS = os.environ.get("S3_BUCKET_LETTER_ATTACHMENTS", "local-letter-attachments")
 
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = os.environ.get("S3_BUCKET_REPORT_REQUESTS_DOWNLOAD")
 
@@ -669,6 +675,7 @@ class Development(Config):
     S3_BUCKET_INVALID_PDF = "development-letters-invalid-pdf"
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "development-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "development-letters-sanitise"
+    S3_BUCKET_LETTER_ATTACHMENTS = "development-letter-attachments"
 
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = "development-report-requests-download"
     S3_BUCKET_NOTIFICATION_DEEP_HISTORY = "development-notification-deep-history"
@@ -734,6 +741,7 @@ class Test(Development):
     S3_BUCKET_INVALID_PDF = "test-letters-invalid-pdf"
     S3_BUCKET_TRANSIENT_UPLOADED_LETTERS = "test-transient-uploaded-letters"
     S3_BUCKET_LETTER_SANITISE = "test-letters-sanitise"
+    S3_BUCKET_LETTER_ATTACHMENTS = "test-letter-attachments"
 
     S3_BUCKET_REPORT_REQUESTS_DOWNLOAD = "test-report-requests-download"
     S3_BUCKET_NOTIFICATION_DEEP_HISTORY = "test-notification-deep-history"

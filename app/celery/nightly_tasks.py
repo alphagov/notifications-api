@@ -24,13 +24,13 @@ from app import db, notify_celery, zendesk_client
 from app.aws import s3
 from app.config import QueueNames
 from app.constants import (
+    ARCHIVED_FILE_DELETION_WINDOW_DAYS,
+    ARCHIVED_FILE_RETENTION_DAYS,
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_SENDING,
     SMS_TYPE,
-    TEMPLATE_EMAIL_FILE_ARCHIVE_RETENTION_DAYS,
-    TEMPLATE_EMAIL_FILE_S3_CLEANUP_CATCH_UP_WINDOW_DAYS,
 )
 from app.cronitor import cronitor
 from app.dao.fact_processing_time_dao import insert_update_processing_time
@@ -39,6 +39,7 @@ from app.dao.jobs_dao import (
     dao_archive_job,
     dao_get_jobs_older_than_data_retention,
 )
+from app.dao.letter_attachment_dao import dao_get_archived_letter_attachments_older_than
 from app.dao.notifications_dao import (
     dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
@@ -86,25 +87,7 @@ def _remove_csv_files(job_types):
 @notify_celery.task(name="remove-archived-template-email-files-from-s3")
 @cronitor("remove-archived-template-email-files-from-s3")
 def remove_archived_template_email_files_from_s3(archived_after=None):
-    archived_before = datetime.now(UTC) - timedelta(days=TEMPLATE_EMAIL_FILE_ARCHIVE_RETENTION_DAYS)
-
-    if archived_after is not None:
-        try:
-            parsed_date = datetime.strptime(archived_after, "%Y-%m-%d").date()
-        except ValueError as exc:
-            raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
-
-        archived_after_dt = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC)
-    else:
-        archived_after_dt = archived_before - timedelta(days=TEMPLATE_EMAIL_FILE_S3_CLEANUP_CATCH_UP_WINDOW_DAYS)
-
-    if archived_after_dt > archived_before:
-        raise ValueError(
-            "Invalid archived_after for archived template email file s3 cleanup: "
-            f"archived_after ({archived_after_dt.isoformat()}) "
-            f"must be on or before archived_before ({archived_before.isoformat()})"
-        )
-
+    archived_before, archived_after = _get_archived_before_and_after(archived_after)
     bucket_name = current_app.config["S3_BUCKET_TEMPLATE_EMAIL_FILES"]
 
     older_than = None
@@ -114,7 +97,7 @@ def remove_archived_template_email_files_from_s3(archived_after=None):
         archived_files_batch = dao_get_archived_template_email_files_older_than(
             session=db.session_bulk,
             retry_attempts=2,  # type: ignore
-            archived_after=archived_after_dt,
+            archived_after=archived_after,
             archived_before=archived_before,
             page_size=current_app.config.get("API_PAGE_SIZE"),
             older_than=older_than,
@@ -122,28 +105,102 @@ def remove_archived_template_email_files_from_s3(archived_after=None):
         if not archived_files_batch:
             break
 
-        scoped += len(archived_files_batch)
+        older_than, batch_scoped, batch_deleted, batch_failed = _remove_batch_of_files_from_s3(
+            batch_of_files=archived_files_batch,
+            bucket_name=bucket_name,
+            location_prefix="",
+        )
+        scoped += batch_scoped
+        deleted += batch_deleted
+        failed += batch_failed
 
-        for template_email_file, service_id in archived_files_batch:
-            object_key = f"{service_id}/{template_email_file.id}"
+    _log_s3_cleanup_complete(bucket_name, scoped, deleted, failed)
 
-            try:
-                s3.remove_s3_object(bucket_name, object_key)
-                deleted += 1
-            except Exception:
-                failed += 1
 
-                current_app.logger.exception(
-                    ("Failed to remove archived template email file from s3: template_email_file_id=%s service_id=%s"),
-                    str(template_email_file.id),
-                    str(service_id),
-                )
+@notify_celery.task(name="remove-archived-letter-attachments-from-s3")
+@cronitor("remove-archived-letter-attachments-from-s3")
+def remove_archived_letter_attachments_from_s3(archived_after=None):
+    archived_before, archived_after = _get_archived_before_and_after(archived_after)
+    bucket_name = current_app.config["S3_BUCKET_LETTER_ATTACHMENTS"]
 
-        last_archived_file = archived_files_batch[-1][0]
-        older_than = last_archived_file.id
+    older_than = None
+    scoped = deleted = failed = 0
 
+    while True:
+        archived_attachments_batch = dao_get_archived_letter_attachments_older_than(
+            session=db.session_bulk,
+            retry_attempts=2,  # type: ignore
+            archived_after=archived_after,
+            archived_before=archived_before,
+            page_size=current_app.config.get("API_PAGE_SIZE"),
+            older_than=older_than,
+        )
+
+        if not archived_attachments_batch:
+            break
+
+        older_than, batch_scoped, batch_deleted, batch_failed = _remove_batch_of_files_from_s3(
+            batch_of_files=archived_attachments_batch,
+            bucket_name=bucket_name,
+            location_prefix="service-",
+            key_suffix=".pdf",
+        )
+        scoped += batch_scoped
+        deleted += batch_deleted
+        failed += batch_failed
+
+    _log_s3_cleanup_complete(bucket_name, scoped, deleted, failed)
+
+
+def _get_archived_before_and_after(archived_after):
+    archived_before = (datetime.now(UTC) - timedelta(days=ARCHIVED_FILE_RETENTION_DAYS)).replace(tzinfo=None)
+
+    if archived_after is not None:
+        try:
+            parsed_date = datetime.strptime(archived_after, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValueError('archived_after must be in "YYYY-MM-DD" format') from exc
+
+        archived_after = datetime.combine(parsed_date, datetime.min.time(), tzinfo=UTC).replace(tzinfo=None)
+    else:
+        archived_after = archived_before - timedelta(days=ARCHIVED_FILE_DELETION_WINDOW_DAYS)
+
+    if archived_after > archived_before:
+        raise ValueError(
+            f"Invalid archived_after for s3 cleanup of archived files: "
+            f"archived_after ({archived_after.isoformat()}) "
+            f"must be on or before archived_before ({archived_before.isoformat()})"
+        )
+
+    return archived_before, archived_after
+
+
+def _remove_batch_of_files_from_s3(batch_of_files, bucket_name, location_prefix, key_suffix=""):
+    deleted = failed = 0
+    for file, service_id in batch_of_files:
+        object_key = f"{location_prefix}{service_id}/{file.id}{key_suffix}"
+
+        try:
+            s3.remove_s3_object(bucket_name, object_key)
+            deleted += 1
+        except Exception:
+            failed += 1
+
+            current_app.logger.exception(
+                ("Failed to remove file from s3 bucket %s: file_id=%s service_id=%s"),
+                bucket_name,
+                str(file.id),
+                str(service_id),
+            )
+
+    last_archived_file = batch_of_files[-1][0]
+    return last_archived_file.id, len(batch_of_files), deleted, failed
+
+
+def _log_s3_cleanup_complete(bucket_name, scoped, deleted, failed):
     current_app.logger.info(
-        ("Archived template email file s3 cleanup complete: scoped=%s deleted=%s failed=%s"),
+        ("Cleanup for s3 bucket %s complete: scoped=%s deleted=%s failed=%s"),
+        bucket_name,
         scoped,
         deleted,
         failed,
