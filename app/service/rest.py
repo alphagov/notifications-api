@@ -109,6 +109,7 @@ from app.dao.services_dao import (
     dao_archive_service,
     dao_create_service,
     dao_fetch_active_users_for_service,
+    dao_fetch_active_users_with_manage_settings_for_service,
     dao_fetch_all_services,
     dao_fetch_all_services_by_user,
     dao_fetch_live_services_data,
@@ -332,10 +333,19 @@ def update_service(service_id):
 
     if service_going_live:
         active_team_members = dao_fetch_active_users_for_service(service.id)
-
         send_notification_to_service_users(
             template_id=current_app.config["SERVICE_NOW_LIVE_TEMPLATE_ID"],
             user_list=active_team_members,
+            personalisation={
+                "service_name": current_data["name"],
+            },
+            include_user_fields=["name"],
+        )
+
+        active_team_members_with_manage_settings = dao_fetch_active_users_with_manage_settings_for_service(service.id)
+        send_notification_to_service_users(
+            template_id=current_app.config["MANAGING_YOUR_SERVICE_TEMPLATE_ID"],
+            user_list=active_team_members_with_manage_settings,
             personalisation={
                 "service_name": current_data["name"],
             },
