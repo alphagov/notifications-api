@@ -13,6 +13,7 @@ from app.constants import (
     INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    MANAGE_SETTINGS,
     NHS_ORGANISATION_TYPES,
     NON_CROWN_ORGANISATION_TYPES,
     NOTIFICATION_PERMANENT_FAILURE,
@@ -499,6 +500,18 @@ def dao_fetch_active_users_for_service(service_id):
     query = User.query.filter(User.services.any(id=service_id), User.state == "active")
 
     return query.all()
+
+
+def dao_fetch_active_users_with_manage_settings_for_service(service_id):
+    return (
+        User.query.join(Permission, Permission.user_id == User.id)
+        .filter(
+            User.state == "active",
+            Permission.service_id == service_id,
+            Permission.permission == MANAGE_SETTINGS,
+        )
+        .all()
+    )
 
 
 @retryable_query()

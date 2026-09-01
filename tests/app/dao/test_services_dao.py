@@ -37,6 +37,7 @@ from app.dao.services_dao import (
     dao_add_user_to_service,
     dao_create_service,
     dao_fetch_active_users_for_service,
+    dao_fetch_active_users_with_manage_settings_for_service,
     dao_fetch_all_services,
     dao_fetch_all_services_by_user,
     dao_fetch_live_services_data,
@@ -1140,6 +1141,36 @@ def test_dao_fetch_active_users_for_service_returns_active_only(notify_db_sessio
     users = dao_fetch_active_users_for_service(service.id)
 
     assert len(users) == 1
+    assert users[0].id == active_user.id
+
+
+def test_dao_fetch_active_users_with_manage_settings_for_service(notify_db_session):
+    active_user = create_user(email="active@foo.com", state="active")
+    active_user_2 = create_user(email="active_2@foo.com", state="active")
+    active_user_3 = create_user(email="active_2@foo.com", state="active")
+    pending_user = create_user(email="pending@foo.com", state="pending")
+    active_user_service_2 = create_user(email="active_service_2@foo.com", state="active")
+
+    service = create_service(user=active_user)
+    service_2 = create_service(service_name="Service 2", user=active_user)
+
+    dao_add_user_to_service(
+        service,
+        active_user_2,
+        permissions=[Permission(permission="manage_settings"), Permission(permission="manage_api_keys")],
+    )
+    dao_add_user_to_service(service, active_user_3, [Permission(permission="manage_templates")])
+    dao_add_user_to_service(service, pending_user, [Permission(permission="manage_settings")])
+    dao_add_user_to_service(
+        service_2,
+        active_user_service_2,
+        [Permission(permission="manage_settings"), Permission(permission="view_activity")],
+    )
+
+    users = dao_fetch_active_users_with_manage_settings_for_service(service.id)
+
+    assert len(users) == 2
+    assert {user.id for user in users} == {active_user.id, active_user_2.id}
 
 
 def test_dao_fetch_service_by_inbound_number_with_inbound_number(notify_db_session):
