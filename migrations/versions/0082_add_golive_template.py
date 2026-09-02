@@ -29,77 +29,37 @@ def upgrade():
         VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}')
     """
 
-    template_content = """Dear ((name)),
+    template_content = """Hi ((name))
 
-The following GOV.​UK Notify service is now live:
+# Your GOV.UK Notify service is live
 
-^((service name))
+^ Service name: ((service name))
 
-This email includes important information about:
+[Sign in to Notify](https://www.notifications.service.gov.uk/sign-in) to start sending messages.
 
-* things you need to do now
-* what to do if you have a problem
+## If you use our API
 
+Create a live API key so you can send messages to anyone.
 
----
+[See our API documentation for instructions](https://www.notifications.service.gov.uk/using-notify/api-documentation)
 
-#Things you need to do now
+# Help and support
 
-##If you send text messages or letters
+## If your sign-in details change
 
-You must send us a purchase order before you spend any money on text messages or letters.
+Ask a member of your service with the ‘manage settings, team and usage’ permission to update your email address or phone number.
 
-[Find out how to raise a purchase order](https://www.notifications.service.gov.uk/pricing/how-to-pay)
+## If you get stuck
 
-##If you send emails
+Read our [guidance pages](https://www.notifications.service.gov.uk/using-notify).
 
-Check if you need to add unsubscribe links to your email templates.
+If you cannot find the answer there, [contact support](https://www.notifications.service.gov.uk/support).
 
-[See our guidance for more information](https://www.notifications.service.gov.uk/using-notify/unsubscribe-links)
+## If you see an error message
 
-##If you use our API
+First, check the [status page](https://status.notifications.service.gov.uk/).
 
-You can now send messages to anyone by creating a live API key.
-
-[See our API documentation for instructions](https://www.notifications.service.gov.uk/documentation)
-
----
-
-#If you have a problem
-
-##Before you contact the team
-
-Subscribe to our status page to get email updates: https://status.notifications.service.gov.uk
-
-If the status page shows a problem, we’re already working on a solution – you do not need to contact us.
-
-##How to contact the team
-
-[Use the support page to report a problem or ask a question](https://www.notifications.service.gov.uk/support).
-
-If it’s an emergency we’ll reply within 30 minutes.
-
-For everything else, we’ll reply by the end of the next working day.
-
-Our working days are Monday to Friday, 9:30am to 5:30pm, excluding bank holidays.
-
-##What counts as an emergency?
-
-It’s only an emergency if you get:
-
-* a ‘technical difficulties’ error when you try to send a message
-* a 500 response code when you try to send messages using the API
-
-##If you have an out-of-hours emergency
-
-You should still [use the support page](https://www.notifications.service.gov.uk/support).
-
-If you cannot use the support page, email:
-ooh-gov-uk-notify-support@digital.cabinet-office.gov.uk
-
-You must only use this email address for out-of-hours emergencies.
-
-Do not share this email address with people outside your team.
+If your problem is not listed there, [contact support](https://www.notifications.service.gov.uk/support).
 
 ---
 
@@ -110,7 +70,7 @@ https://www.gov.uk/notify
 """
 
     template_name = "Automated \"You''re now live\" message"
-    template_subject = "((service name)) is now live on GOV.UK Notify"
+    template_subject = "Your GOV.UK Notify service is live"
 
     op.execute(
         template_history_insert.format(
