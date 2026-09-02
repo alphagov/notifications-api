@@ -133,7 +133,7 @@ def test_fetch_notification_status_for_service_for_day(notify_db_session):
     # wrong service
     create_notification(service_2.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0))
 
-    # tomorrow (somehow)
+    # tomorrow, somehow
     create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 23, 0, 0))
 
     results = sorted(

@@ -323,7 +323,7 @@ def test_send_one_off_notification_raises_if_message_too_long(persist_mock, noti
     assert (
         e.value.message == f"Your message is too long. "
         f"Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. "
-        f"Your message is {1029} characters long."
+        f"Your message is {2029} characters long."
     )
 
 

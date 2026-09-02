@@ -35,10 +35,10 @@ def notify_api():
     app.register_blueprint(test_admin_auth_blueprint, url_prefix="/admin-test")
 
     # deattach server-error error handlers - error_handler_spec looks like:
-    #   {'blueprint_name': {
-    #       status_code: [error_handlers],
-    #       None: { ExceptionClass: error_handler }
-    # }}
+    # >  {'blueprint_name': {
+    # >      status_code: [error_handlers],
+    # >      None: { ExceptionClass: error_handler }
+    # >  }}
     for error_handlers in app.error_handler_spec.values():
         error_handlers.pop(500, None)
         if None in error_handlers:

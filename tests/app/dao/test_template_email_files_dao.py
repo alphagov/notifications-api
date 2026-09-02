@@ -140,8 +140,6 @@ def test_dao_get_template_email_files_by_template_id_historical(
 ):
     sample_email_template.updated_at = datetime.datetime.utcnow()
     dao_update_template(sample_email_template)
-    # sample_email_template.updated_at = datetime.datetime.utcnow()
-    # dao_update_template(sample_email_template)
     sample_template_email_file_not_pending.retention_period = 20
     dao_update_template_email_file(sample_template_email_file_not_pending)
     assert sample_email_template.version == 3
