@@ -164,7 +164,7 @@ RUN \
 # add WAL configuration to postgresql.conf to enable logical replication
 RUN printf '%s\n' \
     "wal_level = logical" \
-    "output_plugin_libraries = 'wal2json'" \
+    "output_plugin_libraries = 'pgoutput, test_decoding, wal2json'" \
     "max_replication_slots = 10" \
     "max_wal_senders = 10" \
     "max_slot_wal_keep_size = 1GB" \
