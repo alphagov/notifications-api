@@ -3,6 +3,7 @@ import datetime
 from flask import Blueprint, jsonify, request
 from notifications_utils.insensitive_dict import InsensitiveSet
 
+from app import db
 from app.constants import EMAIL_TYPE
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_email_files_dao import (
@@ -63,7 +64,13 @@ def get_template_email_files(service_id, template_id):
 
 @template_email_files_blueprint.route("/<uuid:template_email_file_id>")
 def get_template_email_file_by_id(service_id, template_id, template_email_file_id):
-    file = dao_get_template_email_file_by_id(service_id, template_id, template_email_file_id)
+    file = dao_get_template_email_file_by_id(
+        session=db.session_bulk,
+        retry_attempts=2,
+        service_id=service_id,
+        template_id=template_id,
+        template_email_file_id=template_email_file_id,
+    )
     return jsonify(data=template_email_files_schema.dump(file)), 200
 
 

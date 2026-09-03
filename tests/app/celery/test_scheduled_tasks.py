@@ -151,11 +151,21 @@ def test_archive_pending_files_only_scopes_stale_files(sample_email_template, pe
         archive_pending_files()
     service_id = str(sample_email_template.service_id)
     template_id = str(sample_email_template.id)
-    expected_archived_file = dao_get_template_email_file_by_id(service_id, template_id, str(pending_file.id))
-    expected_pending_file_already_archived = dao_get_template_email_file_by_id(
-        service_id, template_id, str(pending_file_already_archived.id)
+    expected_archived_file = dao_get_template_email_file_by_id(
+        service_id=service_id,
+        template_id=template_id,
+        template_email_file_id=str(pending_file.id),
     )
-    expected_live_file = dao_get_template_email_file_by_id(service_id, template_id, str(live_file.id))
+    expected_pending_file_already_archived = dao_get_template_email_file_by_id(
+        service_id=service_id,
+        template_id=template_id,
+        template_email_file_id=str(pending_file_already_archived.id),
+    )
+    expected_live_file = dao_get_template_email_file_by_id(
+        service_id=service_id,
+        template_id=template_id,
+        template_email_file_id=str(live_file.id),
+    )
     assert not expected_live_file.archived_at
     assert expected_pending_file_already_archived.archived_at == datetime.fromisoformat("2016-01-01 03:30:00.000000")
     assert len(caplog.messages) == 1
