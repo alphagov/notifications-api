@@ -2768,6 +2768,26 @@ def test_update_service_reply_to_email_address_404s_when_invalid_service_id(admi
     assert response["message"] == "No result found"
 
 
+def test_update_service_reply_to_email_address_404s_when_reply_to_belongs_to_another_service(
+    admin_request, sample_service
+):
+    another_service = create_service(service_name="another service")
+    create_reply_to_email(service=sample_service, email_address="default@example.com")
+    other_service_reply_to = create_reply_to_email(service=another_service, email_address="other-service@example.com")
+
+    response = admin_request.post(
+        "service.update_service_reply_to_email_address",
+        service_id=sample_service.id,
+        reply_to_email_id=other_service_reply_to.id,
+        _data={"email_address": "changed@example.com", "is_default": True},
+        _expected_status=404,
+    )
+
+    assert response["result"] == "error"
+    assert response["message"] == "No result found"
+    assert other_service_reply_to.email_address == "other-service@example.com"
+
+
 def test_delete_service_reply_to_email_address_archives_an_email_reply_to(
     sample_service, admin_request, notify_db_session
 ):
