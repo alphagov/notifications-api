@@ -2255,63 +2255,81 @@ def test_search_for_notification_by_to_field_for_letter(
     assert notifications[0]["id"] == str(letter_notification.id)
 
 
-def test_update_service_calls_send_notification_as_service_becomes_live(notify_db_session, client, mocker):
+def test_update_service_calls_send_notification_as_service_becomes_live(notify_db_session, admin_request, mocker):
     send_notification_mock = mocker.patch("app.service.rest.send_notification_to_service_users")
 
     restricted_service = create_service(restricted=True)
+    non_admin_user = create_user(email="non-admin@gov.uk", state="active")
+    dao_add_user_to_service(
+        restricted_service,
+        non_admin_user,
+        permissions=[Permission(permission="view_activity")],
+    )
 
     data = {"restricted": False}
 
-    auth_header = create_admin_authorization_header()
-    resp = client.post(
-        f"service/{restricted_service.id}",
-        data=json.dumps(data),
-        headers=[auth_header],
-        content_type="application/json",
-    )
-
-    assert resp.status_code == 200
-    send_notification_mock.assert_called_once_with(
+    admin_request.post(
+        "service.update_service",
         service_id=restricted_service.id,
-        template_id="618185c6-3636-49cd-b7d2-6f6f5eb3bdde",
-        personalisation={
-            "service_name": restricted_service.name,
-        },
-        include_user_fields=["name"],
+        _data=data,
+        _expected_status=200,
     )
 
+    assert send_notification_mock.call_args_list == [
+        mocker.call(
+            template_id=current_app.config["SERVICE_NOW_LIVE_TEMPLATE_ID"],
+            user_list=mocker.ANY,
+            personalisation={
+                "service_name": restricted_service.name,
+            },
+            include_user_fields=["name"],
+        ),
+        mocker.call(
+            template_id=current_app.config["MANAGING_YOUR_SERVICE_TEMPLATE_ID"],
+            user_list=[restricted_service.users[0]],
+            personalisation={
+                "service_name": restricted_service.name,
+            },
+            include_user_fields=["name"],
+        ),
+    ]
+    assert {user.id for user in send_notification_mock.call_args_list[0].kwargs["user_list"]} == {
+        non_admin_user.id,
+        restricted_service.users[0].id,
+    }
 
-def test_update_service_does_not_call_send_notification_for_live_service(sample_service, client, mocker):
+
+def test_update_service_does_not_call_send_notification_for_live_service(sample_service, admin_request, mocker):
     send_notification_mock = mocker.patch("app.service.rest.send_notification_to_service_users")
 
     data = {"restricted": True}
 
-    auth_header = create_admin_authorization_header()
-    resp = client.post(
-        f"service/{sample_service.id}",
-        data=json.dumps(data),
-        headers=[auth_header],
-        content_type="application/json",
+    admin_request.post(
+        "service.update_service",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=200,
     )
 
-    assert resp.status_code == 200
     assert not send_notification_mock.called
 
 
-def test_update_service_does_not_call_send_notification_when_restricted_not_changed(sample_service, client, mocker):
+def test_update_service_does_not_call_send_notification_when_restricted_not_changed(
+    sample_service,
+    admin_request,
+    mocker,
+):
     send_notification_mock = mocker.patch("app.service.rest.send_notification_to_service_users")
 
     data = {"name": "Name of service"}
 
-    auth_header = create_admin_authorization_header()
-    resp = client.post(
-        f"service/{sample_service.id}",
-        data=json.dumps(data),
-        headers=[auth_header],
-        content_type="application/json",
+    admin_request.post(
+        "service.update_service",
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=200,
     )
 
-    assert resp.status_code == 200
     assert not send_notification_mock.called
 
 
