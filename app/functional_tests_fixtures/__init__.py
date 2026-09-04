@@ -555,8 +555,8 @@ def _create_db_objects(
         "FUNCTIONAL_TEST_LETTER_TEMPLATE_ID": letter_template.id,
         "FUNCTIONAL_TEST_SMS_NO_PLACEHOLDER_TEMPLATE_ID": sms_no_placeholder_template.id,
         "FUNCTIONAL_TEST_EMAIL_NO_PLACEHOLDER_TEMPLATE_ID": email_no_placeholder_template.id,
-        "MMG_INBOUND_SMS_USERNAME": current_app.config["MMG_INBOUND_SMS_USERNAME"][0],
-        "MMG_INBOUND_SMS_AUTH": current_app.config["MMG_INBOUND_SMS_AUTH"][0],
+        "MMG_INBOUND_SMS_USERNAME": current_app.config["MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS"][0],
+        "MMG_INBOUND_SMS_AUTH": current_app.config["MMG_INBOUND_SMS_CALLBACK_BASIC_AUTH_CREDENTIALS"][1],
         "REQUEST_BIN_API_TOKEN": request_bin_api_token,
         # API client integration test environment variables
         "SERVICE_ID": service.id,
