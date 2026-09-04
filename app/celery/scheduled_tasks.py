@@ -2,6 +2,7 @@ import csv
 import io
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from itertools import pairwise
 
 import jinja2
 import sentry_sdk
@@ -62,6 +63,7 @@ from app.dao.notifications_dao import (
     dao_letters_in_technical_failure,
     dao_old_letters_with_created_status,
     dao_precompiled_letters_still_pending_virus_check,
+    get_banded_slow_text_message_delivery_reports_by_provider,
     get_slow_text_message_delivery_reports_by_provider,
     is_delivery_slow_for_providers,
     letters_missing_from_sending_bucket,
@@ -95,6 +97,7 @@ from app.notifications.process_notifications import persist_notification, send_n
 from app.otel_metrics.provider import (
     record_info,
     record_priority,
+    record_sms_banded_not_delivered_within,
     record_sms_legacy_not_delivered_within,
     record_updated_at,
 )
@@ -258,6 +261,9 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
         redis_store.set(CacheKeys.NUMBER_OF_TIMES_OVER_SLOW_SMS_DELIVERY_THRESHOLD, 0)
 
 
+_sms_slow_delivery_bands = tuple(pairwise(timedelta(seconds=30) * 2**i for i in range(6)))
+
+
 @notify_celery.task(name="generate-sms-delivery-stats")
 def generate_sms_delivery_stats():
     for delivery_interval in (1, 5, 10):
@@ -272,6 +278,20 @@ def generate_sms_delivery_stats():
         # TODO: delete this when we have a way to raise these alerts from eg grafana, prometheus, something else.
         if delivery_interval == 5 and current_app.should_check_slow_text_message_delivery:
             _check_slow_text_message_delivery_reports_and_raise_error_if_needed(providers_slow_delivery_reports)
+
+    for provider_name, reports in get_banded_slow_text_message_delivery_reports_by_provider(
+        _sms_slow_delivery_bands,
+        session=db.session_bulk,
+    ).items():
+        for report in reports:
+            record_sms_banded_not_delivered_within(
+                report.slow_ratio,
+                report.slow_notifications,
+                report.total_notifications,
+                provider_name,
+                report.delivered_within.total_seconds(),
+                report.sent_after_ago.total_seconds(),
+            )
 
     for provider in get_provider_details_by_notification_type(SMS_TYPE, False):
         record_priority(provider.priority, provider.identifier)

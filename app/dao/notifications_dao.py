@@ -1,8 +1,8 @@
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from itertools import groupby
+from itertools import chain, groupby
 from operator import attrgetter
 
 from botocore.exceptions import ClientError
@@ -686,6 +686,102 @@ def get_slow_text_message_delivery_reports_by_provider(
         )
 
     return providers_slow_delivery_reports
+
+
+@dataclass
+class BandedSlowProviderDeliveryReport:
+    provider: str
+    slow_ratio: float
+    slow_notifications: int
+    total_notifications: int
+    sent_after_ago: timedelta
+    delivered_within: timedelta
+
+
+@retryable_query()
+def get_banded_slow_text_message_delivery_reports_by_provider(
+    bands: Sequence[tuple[timedelta, timedelta]],
+    *,
+    created_sent_difference_allowance: timedelta = timedelta(minutes=15),
+    session: Session | scoped_session = db.session,
+) -> Mapping[str, Sequence[BandedSlowProviderDeliveryReport]]:
+    for delivered_within, sent_after_ago in bands:
+        if sent_after_ago <= delivered_within:
+            raise ValueError("sent_after_ago must be greater than delivered_within")
+
+    uniform_now = datetime.utcnow()
+
+    created_after = uniform_now - (
+        max(sent_after_ago for delivered_within, sent_after_ago in bands) + created_sent_difference_allowance
+    )
+
+    # created_at can't be after sent_at so no allowance needed here
+    created_before = uniform_now - min(delivered_within for delivered_within, sent_after_ago in bands)
+
+    band_terms = tuple(
+        chain.from_iterable(
+            (
+                func.count()
+                .filter(
+                    and_(
+                        Notification.sent_at >= uniform_now - sent_after_ago,
+                        Notification.sent_at < uniform_now - delivered_within,
+                        or_(
+                            Notification.status != NOTIFICATION_DELIVERED,
+                            Notification.updated_at - Notification.sent_at >= delivered_within,
+                        ),
+                    )
+                )
+                .label(f"count_slow_band_{i}"),
+                func.count()
+                .filter(
+                    and_(
+                        Notification.sent_at >= uniform_now - sent_after_ago,
+                        Notification.sent_at < uniform_now - delivered_within,
+                    )
+                )
+                .label(f"count_total_band_{i}"),
+            )
+            for i, (delivered_within, sent_after_ago) in enumerate(bands)
+        )
+    )
+
+    slow_notification_counts = (
+        session.query(
+            ProviderDetails.identifier.label("provider_identifier"),
+            *band_terms,
+        )
+        .select_from(ProviderDetails)
+        .outerjoin(
+            Notification,
+            and_(
+                Notification.notification_type == SMS_TYPE,
+                Notification.sent_by == ProviderDetails.identifier,
+                # filtering by created_at has the additional benefit of being able to use created_at's index
+                Notification.created_at >= created_after,
+                Notification.created_at < created_before,
+                Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
+                Notification.key_type != KEY_TYPE_TEST,
+            ),
+        )
+        .filter(ProviderDetails.notification_type == "sms", ProviderDetails.active)
+        .group_by(ProviderDetails.identifier)
+    )
+
+    return {
+        row.provider_identifier: tuple(
+            BandedSlowProviderDeliveryReport(
+                provider=row.provider_identifier,
+                slow_ratio=getattr(row, f"count_slow_band_{i}") / (getattr(row, f"count_total_band_{i}") or 1),
+                slow_notifications=getattr(row, f"count_slow_band_{i}"),
+                total_notifications=getattr(row, f"count_total_band_{i}"),
+                sent_after_ago=sent_after_ago,
+                delivered_within=delivered_within,
+            )
+            for i, (delivered_within, sent_after_ago) in enumerate(bands)
+        )
+        for row in slow_notification_counts
+    }
 
 
 @autocommit
