@@ -51,9 +51,24 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
     ).all()
 
 
-@autocommit
-def dao_get_template_email_file_by_id(template_email_file_id):
-    return TemplateEmailFile.query.filter(TemplateEmailFile.id == template_email_file_id).one()
+@retryable_query()
+def dao_get_template_email_file_by_id(
+    session: Session | scoped_session = db.session,
+    *,
+    service_id,
+    template_id,
+    template_email_file_id,
+):
+    return (
+        session.query(TemplateEmailFile)
+        .join(Template, Template.id == TemplateEmailFile.template_id)
+        .filter(
+            TemplateEmailFile.id == template_email_file_id,
+            Template.service_id == service_id,
+            TemplateEmailFile.template_id == template_id,
+        )
+        .one()
+    )
 
 
 @retryable_query()
