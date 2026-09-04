@@ -13,7 +13,7 @@ from app.v2.template.template_schemas import (
     post_template_preview_response,
 )
 
-valid_json_get_response = {
+valid_json_get_response: dict[str, object] = {
     "id": str(uuid.uuid4()),
     "type": SMS_TYPE,
     "created_at": "2017-01-10T18:25:43.511Z",
@@ -22,9 +22,10 @@ valid_json_get_response = {
     "created_by": "someone@test.com",
     "body": "some body",
     "name": "some name",
+    "personalisation": {},
 }
 
-valid_json_get_response_with_optionals = {
+valid_json_get_response_with_optionals: dict[str, object] = {
     "id": str(uuid.uuid4()),
     "type": EMAIL_TYPE,
     "created_at": "2017-01-10T18:25:43.511Z",
@@ -35,6 +36,7 @@ valid_json_get_response_with_optionals = {
     "subject": "some subject",
     "name": "some name",
     "postage": "first",
+    "personalisation": {"name": {"required": True}},
 }
 
 valid_request_args = [{"id": str(uuid.uuid4()), "version": 1}, {"id": str(uuid.uuid4())}]
