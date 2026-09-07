@@ -1585,6 +1585,8 @@ class Notification(db.Model):
 
     unsubscribe_link = db.Column(db.String, nullable=True)
 
+    document_download_filepath = db.Column(JSONB(none_as_null=True), nullable=True)
+
     __table_args__ = (
         db.ForeignKeyConstraint(
             ["template_id", "template_version"],
