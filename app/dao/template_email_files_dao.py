@@ -53,11 +53,10 @@ def dao_get_template_email_files_by_template_id(template_id, template_version=No
 
 @retryable_query()
 def dao_get_template_email_file_by_id(
-    session: Session | scoped_session = db.session,
-    *,
     service_id,
     template_id,
     template_email_file_id,
+    session: Session | scoped_session = db.session,
 ):
     return (
         session.query(TemplateEmailFile)

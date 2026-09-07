@@ -77,10 +77,10 @@ def test_dao_get_template_email_file_by_id(
 
     with QueryRecorder() as query_recorder:
         template_email_file_fetched = dao_get_template_email_file_by_id(
-            session=session,
             service_id=service_id,
             template_id=template_id,
             template_email_file_id=template_email_file_id,
+            session=session,
         )
 
     assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
@@ -121,10 +121,10 @@ def test_dao_get_template_email_file_by_id_filtered_by_template_id(
 
     with QueryRecorder() as query_recorder:
         template_email_file_fetched = dao_get_template_email_file_by_id(
-            session=session,
             service_id=service_id,
             template_id=template_id,
             template_email_file_id=template_email_file_id,
+            session=session,
         )
 
     assert {query_info.bind_key for query_info in query_recorder.queries} == {expected_bind_key}
