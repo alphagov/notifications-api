@@ -167,7 +167,11 @@ def update_template(service_id, template_id):  # noqa: C901
         file_ids_to_archive = data.get("archive_email_file_ids")
     if file_ids_to_archive:
         for file_id in file_ids_to_archive:
-            file_to_archive = dao_get_template_email_file_by_id(file_id)
+            file_to_archive = dao_get_template_email_file_by_id(
+                service_id=service_id,
+                template_id=template_id,
+                template_email_file_id=file_id,
+            )
             dao_archive_template_email_file(
                 file_to_archive=file_to_archive,
                 archived_by_id=data.get("created_by"),

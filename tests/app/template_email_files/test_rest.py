@@ -4,9 +4,10 @@ import uuid
 import freezegun
 import pytest
 
+from app.constants import EMAIL_TYPE
 from app.dao.templates_dao import dao_update_template
 from app.models import TemplateEmailFile, TemplateEmailFileHistory
-from tests.app.db import create_template_email_file
+from tests.app.db import create_service, create_template, create_template_email_file
 
 
 @freezegun.freeze_time("2025-07-01 11:09:00.000000")
@@ -317,6 +318,40 @@ def test_get_template_email_file_by_id_when_file_does_not_exist_returns_404(
         service_id=sample_service.id,
         _expected_status=404,
     )
+
+
+def test_get_template_email_file_by_id_when_file_belongs_to_another_template_returns_404(
+    sample_template_email_file_not_pending, sample_service, admin_request
+):
+    other_template = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="other template")
+
+    response = admin_request.get(
+        "template_email_files.get_template_email_file_by_id",
+        template_id=other_template.id,
+        template_email_file_id=sample_template_email_file_not_pending.id,
+        service_id=sample_service.id,
+        _expected_status=404,
+    )
+
+    assert response["result"] == "error"
+    assert response["message"] == "No result found"
+
+
+def test_get_template_email_file_by_id_when_file_belongs_to_another_service_returns_404(
+    sample_template_email_file_not_pending, sample_email_template, admin_request
+):
+    other_service = create_service(service_name="another service")
+
+    response = admin_request.get(
+        "template_email_files.get_template_email_file_by_id",
+        template_id=sample_email_template.id,
+        template_email_file_id=sample_template_email_file_not_pending.id,
+        service_id=other_service.id,
+        _expected_status=404,
+    )
+
+    assert response["result"] == "error"
+    assert response["message"] == "No result found"
 
 
 def test_update_template_email_file(

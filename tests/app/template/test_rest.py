@@ -1080,6 +1080,31 @@ def test_update_template_content_and_archive_just_one_of_two_email_files(
     assert remaining_file.template_version == 1
 
 
+def test_update_template_does_not_archive_email_file_from_another_template(
+    client, sample_email_template_with_template_email_files, sample_user, sample_service
+):
+    template = sample_email_template_with_template_email_files
+    other_template = create_template(service=sample_service, template_type=EMAIL_TYPE, template_name="other template")
+    other_file = create_template_email_file(
+        other_template.id, created_by_id=sample_user.id, filename="other.pdf", pending=False
+    )
+
+    auth_header = create_admin_authorization_header()
+    data = {
+        "content": "New content",
+        "created_by": str(sample_user.id),
+        "archive_email_file_ids": [str(other_file.id)],
+    }
+    response = client.post(
+        f"/service/{template.service_id}/template/{template.id}",
+        data=json.dumps(data),
+        headers=[("Content-Type", "application/json"), auth_header],
+    )
+
+    assert response.status_code == 404
+    assert other_file.archived_at is None
+
+
 def test_update_template_reply_to(client, sample_letter_template):
     auth_header = create_admin_authorization_header()
     letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
