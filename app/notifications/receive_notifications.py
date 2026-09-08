@@ -1,7 +1,7 @@
 from datetime import datetime
 from urllib.parse import unquote
 
-from flask import Blueprint, abort, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from gds_metrics.metrics import Counter
 
 from app.authentication.auth import view_requires_basic_auth
@@ -22,7 +22,7 @@ INBOUND_SMS_COUNTER = Counter("inbound_sms", "Total number of inbound SMS receiv
 
 
 @receive_notifications_blueprint.route("/notifications/sms/receive/mmg", methods=["POST"])
-@view_requires_basic_auth("MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", log_only=True)
+@view_requires_basic_auth("MMG_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS")
 def receive_mmg_sms():
     """
     {
@@ -34,22 +34,6 @@ def receive_mmg_sms():
     }
     """
     post_data = request.get_json()
-
-    auth = request.authorization
-
-    if not auth:
-        current_app.logger.warning("Inbound sms (MMG) no auth header")
-        abort(401)
-    elif (
-        auth.username not in current_app.config["MMG_INBOUND_SMS_USERNAME"]
-        or auth.password not in current_app.config["MMG_INBOUND_SMS_AUTH"]
-    ):
-        current_app.logger.warning(
-            "Inbound sms (MMG) incorrect username (%s) or password",
-            auth.username,
-            extra={"username": auth.username},
-        )
-        abort(403)
 
     inbound_number = strip_leading_forty_four(post_data["Number"])
 
@@ -86,21 +70,9 @@ def receive_mmg_sms():
 
 
 @receive_notifications_blueprint.route("/notifications/sms/receive/firetext", methods=["POST"])
-@view_requires_basic_auth("FIRETEXT_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS", log_only=True)
+@view_requires_basic_auth("FIRETEXT_INBOUND_SMS_CALLBACK_ALLOWED_BASIC_AUTH_CREDENTIALS")
 def receive_firetext_sms():
     post_data = request.form
-
-    auth = request.authorization
-    if not auth:
-        current_app.logger.warning("Inbound sms (Firetext) no auth header")
-        abort(401)
-    elif auth.username != "notify" or auth.password not in current_app.config["FIRETEXT_INBOUND_SMS_AUTH"]:
-        current_app.logger.warning(
-            "Inbound sms (Firetext) incorrect username (%s) or password",
-            auth.username,
-            extra={"username": auth.username},
-        )
-        abort(403)
 
     inbound_number = strip_leading_forty_four(post_data["destination"])
 
