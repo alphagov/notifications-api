@@ -267,6 +267,29 @@ def test_build_dimensions_uses_fallback_row_when_primary_missing(mocker):
     assert result == (date(2026, 8, 7), UUID(service_id), UUID(template_id), "email", "failed")
 
 
+def test_build_dimensions_requires_status_from_primary_row(mocker):
+    service_id = str(uuid4())
+    template_id = str(uuid4())
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 7, 0, 0, tzinfo=UTC),
+    )
+    change = _build_change(
+        current_row_data={"notification_status": "delivered"},
+        previous_row_data={
+            "service_id": service_id,
+            "template_id": template_id,
+            "notification_type": "email",
+            "key_type": "normal",
+            "created_at": "2026-08-07T00:00:00Z",
+        },
+    )
+
+    result = dao._build_dimensions(change, use_previous_row=True, require_status_from_primary_row=True)
+
+    assert result is None
+
+
 def test_build_dimensions_returns_none_for_test_key_type():
     change = _build_change(current_row_data={"key_type": "test"})
 
@@ -316,6 +339,31 @@ def test_build_counter_from_changes():
     assert processed_changes == 2
     assert ignored_changes == 2
     assert last_lsn == "0/04"
+
+
+def test_build_counter_does_not_subtract_new_status_when_previous_status_is_missing():
+    service_id = str(uuid4())
+    template_id = str(uuid4())
+    base = {
+        "service_id": service_id,
+        "template_id": template_id,
+        "notification_type": "sms",
+        "key_type": "normal",
+        "created_at": "2026-08-06T10:00:00Z",
+    }
+    change = _build_change(
+        change_type="update",
+        current_row_data={**base, "notification_status": "delivered"},
+        previous_row_data=base,
+    )
+
+    counter, processed_changes, ignored_changes, _ = dao._build_counter_from_changes([change])
+
+    delivered_key = dao._build_dimensions(change, use_previous_row=False)
+
+    assert counter[delivered_key] == 1
+    assert processed_changes == 1
+    assert ignored_changes == 0
 
 
 def test_build_counter_uses_sql_lsn_for_slot_advance_not_row_nextlsn():
