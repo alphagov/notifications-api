@@ -239,7 +239,7 @@ def test_build_dimensions_returns_tuple(mocker):
 
     result = dao._build_dimensions(change, use_previous_row=False)
 
-    assert result == (date(2026, 8, 6), UUID(template_id), UUID(service_id), "sms", "delivered")
+    assert result == (date(2026, 8, 6), UUID(service_id), UUID(template_id), "sms", "delivered")
     mock_convert.assert_called_once_with(created_at)
 
 
@@ -264,7 +264,7 @@ def test_build_dimensions_uses_fallback_row_when_primary_missing(mocker):
 
     result = dao._build_dimensions(change, use_previous_row=False)
 
-    assert result == (date(2026, 8, 7), UUID(template_id), UUID(service_id), "email", "failed")
+    assert result == (date(2026, 8, 7), UUID(service_id), UUID(template_id), "email", "failed")
 
 
 def test_build_dimensions_returns_none_for_test_key_type():
@@ -343,7 +343,7 @@ def test_build_counter_uses_sql_lsn_for_slot_advance_not_row_nextlsn():
 def test_aggregate_service_stats_change_counts_reorders_dimensions():
     service_id = uuid4()
     template_id = uuid4()
-    full_dimensions = (date(2026, 8, 6), template_id, service_id, "sms", "delivered")
+    full_dimensions = (date(2026, 8, 6), service_id, template_id, "sms", "delivered")
 
     result = dao._aggregate_service_stats_change_counts(Counter({full_dimensions: 4}))
 
