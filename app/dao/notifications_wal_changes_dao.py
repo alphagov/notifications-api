@@ -464,8 +464,8 @@ def _build_dimensions(
 
     return (
         convert_utc_to_bst(created_at).date(),
-        template_id,
         service_id,
+        template_id,
         notification_type,
         notification_status,
     )
@@ -508,7 +508,7 @@ def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
 def _aggregate_service_stats_change_counts(counter: Counter[FullDimensions]) -> Counter[ServiceStatsDimensionsKey]:
     change_counts: Counter[ServiceStatsDimensionsKey] = Counter()
     for dimensions, change_count in counter.items():
-        bst_date, template_id, service_id, notification_type, notification_status = dimensions
+        bst_date, service_id, template_id, notification_type, notification_status = dimensions
         change_counts[(bst_date, service_id, template_id, notification_type, notification_status)] += change_count
 
     return change_counts
