@@ -449,7 +449,10 @@ def _build_dimensions(
     if key_type == "test":
         return None
 
-    if require_status_from_primary_row and not notification_status:
+    # WAL update payloads may omit unchanged columns, but the old dimensions must use the previous
+    # row's status. Falling back to the current status here would subtract the new bucket instead
+    # of the old bucket and leave the service statistics counts incorrect.
+    if require_status_from_primary_row and not primary_status:
         return None
 
     if (
