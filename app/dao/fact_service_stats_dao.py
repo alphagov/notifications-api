@@ -36,14 +36,6 @@ def _update_service_stats_count(dimensions: ServiceStatsDimensions, change_count
         "notification_type": dimensions["notification_type"],
         "notification_status": dimensions["notification_status"],
     }
-    filters = (
-        FactServiceStats.bst_date == dimension_values["bst_date"],
-        FactServiceStats.service_id == dimension_values["service_id"],
-        FactServiceStats.template_id == dimension_values["template_id"],
-        FactServiceStats.notification_type == dimension_values["notification_type"],
-        FactServiceStats.notification_status == dimension_values["notification_status"],
-    )
-
     if change_count > 0:
         stmt = insert(FactServiceStats).values(
             **dimension_values,
@@ -57,6 +49,13 @@ def _update_service_stats_count(dimensions: ServiceStatsDimensions, change_count
         )
         db.session.execute(stmt)
     else:
+        filters = (
+            FactServiceStats.bst_date == dimension_values["bst_date"],
+            FactServiceStats.service_id == dimension_values["service_id"],
+            FactServiceStats.template_id == dimension_values["template_id"],
+            FactServiceStats.notification_type == dimension_values["notification_type"],
+            FactServiceStats.notification_status == dimension_values["notification_status"],
+        )
         (
             db.session.query(FactServiceStats)
             .filter(*filters)
