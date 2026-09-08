@@ -4,7 +4,10 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from app.constants import EMAIL_TYPE, NOTIFICATION_CREATED, NOTIFICATION_DELIVERED, SMS_TYPE
 from app.dao import notifications_wal_changes_dao as dao
+from app.models import FactServiceStats
+from tests.app.db import create_service, create_template
 
 
 def _build_change(
@@ -542,3 +545,126 @@ def test_dao_process_notifications_replication_slot_changes_logs_unlock_failure(
     logger_args = mock_logger.call_args
     assert logger_args.args[0] == "Failed to release advisory lock"
     assert logger_args.kwargs == {"extra": {"dao_method": "dao_process_replication_slot_changes"}}
+
+
+def _row_data(*, service_id: UUID, template_id: UUID, notification_type: str, notification_status: str) -> dict:
+    return {
+        "service_id": str(service_id),
+        "template_id": str(template_id),
+        "notification_type": notification_type,
+        "key_type": "normal",
+        "notification_status": notification_status,
+        "created_at": "2026-08-06T12:00:00+00:00",
+    }
+
+
+def test_dao_process_notifications_replication_slot_changes_bulk_inserts_and_updates(mocker, notify_db_session):
+    # Simulate 1000 WAL changes (mostly inserts, some status-transition updates) spread across
+    # multiple services/templates/notification types/statuses, and verify the resulting
+    # FactServiceStats counts are exactly correct for every dimension bucket.
+    services = [create_service(service_name=f"WAL bulk service {i}") for i in range(3)]
+    row_groups = [
+        (service.id, create_template(service, template_type=notification_type).id, notification_type)
+        for service in services
+        for notification_type in (SMS_TYPE, EMAIL_TYPE)
+    ]
+    statuses = (NOTIFICATION_CREATED, NOTIFICATION_DELIVERED)
+    bst_date = date(2026, 8, 6)
+
+    expected: Counter[tuple[date, UUID, UUID, str, str]] = Counter()
+    changes: list[dict] = []
+
+    # 900 inserts spread evenly across the 24 (group, status) buckets, giving every bucket
+    # enough headroom that later update-driven decrements can never push it negative.
+    insert_count = 900
+    for i in range(insert_count):
+        service_id, template_id, notification_type = row_groups[i % len(row_groups)]
+        # Status index must not be derived from the same modulus as the group index, otherwise
+        # each group always lands on the same status (6 is a multiple of 2).
+        notification_status = statuses[(i // len(row_groups)) % len(statuses)]
+        changes.append(
+            _build_change(
+                current_row_data=_row_data(
+                    service_id=service_id,
+                    template_id=template_id,
+                    notification_type=notification_type,
+                    notification_status=notification_status,
+                )
+            )
+        )
+        expected[(bst_date, service_id, template_id, notification_type, notification_status)] += 1
+
+    # 100 status-transition updates: each moves one count from one status to the other status
+    # within the same service/template/notification_type bucket.
+    update_count = 100
+    for i in range(update_count):
+        service_id, template_id, notification_type = row_groups[i % len(row_groups)]
+        new_status = statuses[(i // len(row_groups)) % len(statuses)]
+        old_status = statuses[(i // len(row_groups) + 1) % len(statuses)]
+        changes.append(
+            _build_change(
+                change_type="update",
+                current_row_data=_row_data(
+                    service_id=service_id,
+                    template_id=template_id,
+                    notification_type=notification_type,
+                    notification_status=new_status,
+                ),
+                previous_row_data=_row_data(
+                    service_id=service_id,
+                    template_id=template_id,
+                    notification_type=notification_type,
+                    notification_status=old_status,
+                ),
+            )
+        )
+        expected[(bst_date, service_id, template_id, notification_type, new_status)] += 1
+        expected[(bst_date, service_id, template_id, notification_type, old_status)] -= 1
+
+    assert len(changes) == 1000
+    assert all(count > 0 for count in expected.values())
+
+    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=(changes, "0/1000"))
+    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+
+    result = dao.dao_process_notifications_replication_slot_changes(slot_name="test-slot")
+
+    assert result == {
+        "lock_acquired": True,
+        "changes_count": 1000,
+        "processed_changes": 1000,
+        "ignored_changes": 0,
+        "service_stats_change_count_buckets": len(expected),
+        "last_lsn": "0/1000",
+    }
+    mock_advance.assert_called_once_with("0/1000", slot_name="test-slot")
+
+    template_ids = [template_id for _, template_id, _ in row_groups]
+    stats_rows = FactServiceStats.query.filter(FactServiceStats.template_id.in_(template_ids)).all()
+    actual = {
+        (
+            row.bst_date,
+            row.service_id,
+            row.template_id,
+            row.notification_type,
+            row.notification_status,
+        ): row.notification_count
+        for row in stats_rows
+    }
+
+    # Check every dimension bucket's count individually so a mismatch points straight at the
+    # offending (service, template, notification_type, notification_status) combination.
+    for key, expected_count in expected.items():
+        bst_date_key, service_id, template_id, notification_type, notification_status = key
+        assert key in actual, (
+            f"missing FactServiceStats row for service={service_id} template={template_id} "
+            f"notification_type={notification_type} status={notification_status}"
+        )
+        assert actual[key] == expected_count, (
+            f"count mismatch for service={service_id} template={template_id} "
+            f"notification_type={notification_type} status={notification_status}: "
+            f"expected {expected_count}, got {actual[key]}"
+        )
+
+    assert actual.keys() == expected.keys()
+    assert sum(actual.values()) == sum(expected.values())
