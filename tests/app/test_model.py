@@ -266,6 +266,12 @@ def test_sms_notification_serializes_without_subject(client, sample_template):
 def test_email_notification_serializes_with_subject(client, sample_email_template):
     res = sample_email_template.serialize_for_v2()
     assert res["subject"] == "Email Subject"
+    assert res["personalisation"] == {}
+
+
+def test_template_serializes_personalisation_placeholders(client, sample_email_template_with_placeholders):
+    res = sample_email_template_with_placeholders.serialize_for_v2()
+    assert res["personalisation"] == {"name": {"required": True}}
 
 
 def test_letter_notification_serializes_with_subject(client, sample_letter_template):

@@ -76,6 +76,17 @@ def test_get_template_by_id_returns_200(
                 "content": {"required": True},
             },
         ),
+        (
+            {
+                "template_type": EMAIL_TYPE,
+                "subject": "Hello ((name))",
+                "content": "Hello ((name)) again. Your ref is ((reference)).",
+            },
+            {
+                "name": {"required": True},
+                "reference": {"required": True},
+            },
+        ),
     ],
 )
 @pytest.mark.parametrize("version_kwargs", valid_version_kwargs)
