@@ -111,4 +111,4 @@ def test_celery_config_contains_process_notifications_replication_slot_changes_t
     task_config = Config.CELERY["beat_schedule"]["process-notifications-replication-slot-changes"]
     assert task_config["task"] == "process-notifications-replication-slot-changes"
     assert task_config["options"]["queue"] == QueueNames.PERIODIC
-    assert task_config["schedule"] == timedelta(seconds=10)
+    assert task_config["schedule"] == timedelta(seconds=5)
