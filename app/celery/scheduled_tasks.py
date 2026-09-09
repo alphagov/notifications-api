@@ -265,7 +265,7 @@ _sms_slow_delivery_bands = tuple(pairwise(timedelta(seconds=30) * 2**i for i in 
 
 
 @notify_celery.task(name="generate-sms-delivery-stats")
-def generate_sms_delivery_stats():
+def generate_sms_delivery_stats() -> None:
     for delivery_interval in (1, 5, 10):
         providers_slow_delivery_reports = get_slow_text_message_delivery_reports_by_provider(
             created_within_minutes=15, delivered_within_minutes=delivery_interval
@@ -276,21 +276,21 @@ def generate_sms_delivery_stats():
 
         # For the 5-minute delivery interval, let's check the percentage of all text messages sent that were slow.
         # TODO: delete this when we have a way to raise these alerts from eg grafana, prometheus, something else.
-        if delivery_interval == 5 and current_app.should_check_slow_text_message_delivery:
+        if delivery_interval == 5 and current_app.should_check_slow_text_message_delivery:  # type: ignore[attr-defined]
             _check_slow_text_message_delivery_reports_and_raise_error_if_needed(providers_slow_delivery_reports)
 
     for provider_name, reports in get_banded_slow_text_message_delivery_reports_by_provider(
         _sms_slow_delivery_bands,
         session=db.session_bulk,
     ).items():
-        for report in reports:
+        for banded_report in reports:
             record_sms_banded_not_delivered_within(
-                report.slow_ratio,
-                report.slow_notifications,
-                report.total_notifications,
+                banded_report.slow_ratio,
+                banded_report.slow_notifications,
+                banded_report.total_notifications,
                 provider_name,
-                report.delivered_within.total_seconds(),
-                report.sent_after_ago.total_seconds(),
+                banded_report.delivered_within.total_seconds(),
+                banded_report.sent_after_ago.total_seconds(),
             )
 
     for provider in get_provider_details_by_notification_type(SMS_TYPE, False):
