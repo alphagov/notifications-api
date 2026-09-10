@@ -2889,3 +2889,11 @@ class ReportRequest(db.Model):
             created_at=self.created_at.strftime(DATETIME_FORMAT),
             updated_at=get_dt_string_or_none(self.updated_at),
         )
+
+
+class SentFiles(db.Model):
+    __tablename__ = "sent_files"
+    file_id = db.Column(UUID(as_uuid=True), primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
+    notification_id = db.Column(UUID(as_uuid=True), index=True, nullable=False)  # we can't have a strict foreign key relationship here
