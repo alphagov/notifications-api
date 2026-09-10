@@ -862,7 +862,7 @@ mistune==0.8.4 \
 notifications-python-client==12.1.0 \
     --hash=sha256:bc44987acbb72de4cded700447d0d246c020dcd0f0311ff2ca884ce1c4001b76
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@0293b8f06dc3ff7c7a62995a42609b2c673ba92c
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a1c07910c5a3460e7e8f64688bf0f52c6d1b1096
     # via -r requirements.in
 opentelemetry-api==1.44.0 \
     --hash=sha256:67647e5e9566edcf421166fdf022b3537f818635daa852b289e34604dc6fb33a \

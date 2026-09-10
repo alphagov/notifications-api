@@ -623,9 +623,11 @@ def test_persist_notification_increments_cache_for_international_sms_if_the_cach
 @pytest.mark.parametrize(
     "unformatted_recipient, normalised_recipient, prefix, should_log",
     [
-        ("+447111111111", "447111111111", "71111", True),
-        ("+447988957616", "447988957616", "", False),
-        ("+48697894064", "48697894064", "", False),
+        ("+447111111111", "447111111111", "71111", True),  # protected block number
+        ("+447700900001", "447700900001", "", False),  # normal tv number
+        ("+447700900111", "447700900111", "", False),  # smoke test number
+        ("+447988957616", "447988957616", "", False),  # non-protected uk number
+        ("+48697894064", "48697894064", "", False),  # international number
     ],
 )
 def test_persist_notification_logs_when_sms_sent_to_uk_number_in_ofcom_protected_range(
