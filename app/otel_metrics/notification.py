@@ -78,6 +78,30 @@ _deliver_duration = _meter.create_histogram(
     explicit_bucket_boundaries_advisory=DELIVER_DURATION_HISTOGRAM_BUCKETS,
 )
 
+# Buckets ranging from 1 second to 15 minutes
+UNDELIVERED_NOTIFICATION_AGE_HISTOGRAM_BUCKETS = [
+    1,
+    2,
+    5,
+    10,
+    30,
+    60 * 1,
+    60 * 2,
+    60 * 5,
+    60 * 10,
+    60 * 15,
+]
+
+_undelivered_notification_age = _meter.create_histogram(
+    "notification.undelivered.age",
+    unit="s",
+    description=(
+        "Amount of time since a notification that is awaiting delivery was sent, up to a maximum of "
+        "time_window.evaluation seconds ago."
+    ),
+    explicit_bucket_boundaries_advisory=UNDELIVERED_NOTIFICATION_AGE_HISTOGRAM_BUCKETS,
+)
+
 
 def record_international_sms(amount: int, notification_status: str, sms_country_code: str) -> None:
     """
@@ -142,3 +166,20 @@ def record_deliver_duration(
         _callback_duration.record(callback_duration, attrs)
     if deliver_duration is not None:
         _deliver_duration.record(deliver_duration, attrs)
+
+
+def record_undelivered_notification_age(
+    sent_ago: int,
+    notification_type: str,
+    provider_name: str,
+    key_type: str,
+    sent_after_ago: int,
+) -> None:
+    attrs: dict[str, AttributeValue] = {
+        "key.type": key_type,
+        "notification.type": notification_type,
+        "provider.name": provider_name,
+        "time_window.evaluation": sent_after_ago,
+    }
+
+    _undelivered_notification_age.record(sent_ago, attrs)

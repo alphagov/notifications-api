@@ -64,6 +64,7 @@ from app.dao.notifications_dao import (
     dao_old_letters_with_created_status,
     dao_precompiled_letters_still_pending_virus_check,
     get_banded_slow_text_message_delivery_reports_by_provider,
+    get_recent_undelivered_notification_sent_timestamps,
     get_slow_text_message_delivery_reports_by_provider,
     is_delivery_slow_for_providers,
     letters_missing_from_sending_bucket,
@@ -94,6 +95,7 @@ from app.models import (
     User,
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
+from app.otel_metrics.notification import record_undelivered_notification_age
 from app.otel_metrics.provider import (
     record_info,
     record_priority,
@@ -297,6 +299,16 @@ def generate_sms_delivery_stats():
         record_priority(provider.priority, provider.identifier)
         record_updated_at(provider.updated_at, provider.identifier)
         record_info(provider.identifier, provider.active, provider.supports_international, provider.notification_type)
+
+    undelivered_notification_age_lookback = timedelta(minutes=15)
+    for row in get_recent_undelivered_notification_sent_timestamps(undelivered_notification_age_lookback):
+        record_undelivered_notification_age(
+            row.age.total_seconds(),
+            row.notification_type,
+            row.sent_by,
+            row.key_type,
+            undelivered_notification_age_lookback.total_seconds(),
+        )
 
 
 @notify_celery.task(name="tend-providers-back-to-middle")

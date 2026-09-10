@@ -790,27 +790,32 @@ def get_banded_slow_text_message_delivery_reports_by_provider(
 
 
 @retryable_query()
-def get_recent_undelivered_notification_timestamps(
+def get_recent_undelivered_notification_ages(
     sent_after_ago: timedelta,
     *,
     created_sent_difference_allowance: timedelta = timedelta(minutes=15),
     session: Session | scoped_session = db.session,
-):
+) -> Sequence[Row]:
     uniform_now = datetime.utcnow()
     sent_after = uniform_now - sent_after_ago
     created_after = sent_after - created_sent_difference_allowance
 
-    return session.query(
-        Notification.sent_at,
-        Notification.sent_by,
-        Notification.notification_type,
-    ).filter(
-        Notification.created_at >= created_after,
-        Notification.sent_at >= sent_after,
-        Notification.sent_at < uniform_now,
-        Notification.status.in_([NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
-        Notification.key_type != KEY_TYPE_TEST,
-    ).all()
+    return (
+        session.query(
+            uniform_now - Notification.sent_at,
+            Notification.notification_type,
+            Notification.sent_by,
+            Notification.key_type,
+        )
+        .filter(
+            # filtering against created_at allows us to use its index
+            Notification.created_at >= created_after,
+            Notification.sent_at >= sent_after,
+            Notification.sent_at < uniform_now,
+            Notification.status.in_([NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
+        )
+        .all()
+    )
 
 
 @autocommit
