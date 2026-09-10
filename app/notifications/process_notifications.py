@@ -180,7 +180,7 @@ def persist_notification(
         try:
             number = PhoneNumber(strip_and_remove_obscure_whitespace(notification.to))
             five_digit_prefix = str(number.number.national_number)[:5]
-            if number.is_number_in_S7_protected_range():
+            if number.is_number_in_S7_protected_range() and not number.is_tv_number(number.number):
                 current_app.logger.info(
                     "Service %s tried to send to UK mobile number in ofcom protected range. Prefix without leading zero: %s",  # noqa: E501
                     service.id,
