@@ -802,7 +802,7 @@ def get_recent_undelivered_notification_ages(
 
     return (
         session.query(
-            uniform_now - Notification.sent_at,
+            (uniform_now - Notification.sent_at).label("age"),
             Notification.notification_type,
             Notification.sent_by,
             Notification.key_type,
