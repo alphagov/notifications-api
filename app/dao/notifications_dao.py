@@ -789,6 +789,35 @@ def get_banded_slow_text_message_delivery_reports_by_provider(
     }
 
 
+@retryable_query()
+def get_recent_undelivered_notification_ages(
+    sent_after_ago: timedelta,
+    *,
+    created_sent_difference_allowance: timedelta = timedelta(minutes=15),
+    session: Session | scoped_session = db.session,
+) -> Sequence[Row]:
+    uniform_now = datetime.utcnow()
+    sent_after = uniform_now - sent_after_ago
+    created_after = sent_after - created_sent_difference_allowance
+
+    return (
+        session.query(
+            (uniform_now - Notification.sent_at).label("age"),
+            Notification.notification_type,
+            Notification.sent_by,
+            Notification.key_type,
+        )
+        .filter(
+            # filtering against created_at allows us to use its index
+            Notification.created_at >= created_after,
+            Notification.sent_at >= sent_after,
+            Notification.sent_at < uniform_now,
+            Notification.status.in_([NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
+        )
+        .all()
+    )
+
+
 @autocommit
 def dao_update_notifications_by_reference(references, update_dict):
     updated_count = Notification.query.filter(Notification.reference.in_(references)).update(
