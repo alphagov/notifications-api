@@ -64,7 +64,7 @@ from app.dao.notifications_dao import (
     dao_old_letters_with_created_status,
     dao_precompiled_letters_still_pending_virus_check,
     get_banded_slow_text_message_delivery_reports_by_provider,
-    get_recent_undelivered_notification_sent_timestamps,
+    get_recent_undelivered_notification_ages,
     get_slow_text_message_delivery_reports_by_provider,
     is_delivery_slow_for_providers,
     letters_missing_from_sending_bucket,
@@ -301,7 +301,7 @@ def generate_sms_delivery_stats():
         record_info(provider.identifier, provider.active, provider.supports_international, provider.notification_type)
 
     undelivered_notification_age_lookback = timedelta(minutes=15)
-    for row in get_recent_undelivered_notification_sent_timestamps(undelivered_notification_age_lookback):
+    for row in get_recent_undelivered_notification_ages(undelivered_notification_age_lookback):
         record_undelivered_notification_age(
             row.age.total_seconds(),
             row.notification_type,

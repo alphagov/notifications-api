@@ -78,17 +78,17 @@ _deliver_duration = _meter.create_histogram(
     explicit_bucket_boundaries_advisory=DELIVER_DURATION_HISTOGRAM_BUCKETS,
 )
 
-# Buckets ranging from 1 second to 15 minutes
+# Buckets ranging from 5 seconds to 15 minutes
 UNDELIVERED_NOTIFICATION_AGE_HISTOGRAM_BUCKETS = [
-    1,
-    2,
     5,
     10,
-    30,
+    20,
+    40,
     60 * 1,
     60 * 2,
     60 * 5,
-    60 * 10,
+    60 * 8,
+    60 * 12,
     60 * 15,
 ]
 
