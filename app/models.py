@@ -24,7 +24,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     and_,
-    func,
+    func, PrimaryKeyConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -962,6 +962,20 @@ class ApiKey(db.Model, Versioned):
     def secret(self, secret):
         if secret:
             self._secret = signing.encode(str(secret))
+
+
+class ApiKeyUsage(db.Model):
+    __tablename__ = "api_key_usage"
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey("api_keys.id"), nullable=False)
+    usage_hour = db.Column(db.DateTime(timezone=True), nullable=False)
+    endpoint = db.Column(db.String, nullable=False)
+
+    __table_args__ = (
+        PrimaryKeyConstraint("service_id", "api_key_id", "usage_hour", "endpoint"),
+        CheckConstraint("date_trunc('hour', usage_hour) = usage_hour", name="ck_api_key_usage_usage_hour")
+    )
 
 
 class KeyTypes(db.Model):
