@@ -173,7 +173,6 @@ def record_undelivered_notification_ages(
     notification_type: str,
     provider_name: str,
     key_type: str,
-    sent_after_ago: int,
 ) -> None:
     attrs: dict[str, AttributeValue] = {
         "key.type": key_type,

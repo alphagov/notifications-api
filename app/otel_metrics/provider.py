@@ -113,8 +113,8 @@ def record_sms_banded_not_delivered_within(
     slow_notifications: int,
     total_notifications: int,
     provider_name: str,
-    delivered_within: int,
-    sent_after_ago: int,
+    delivered_within: float,
+    sent_after_ago: float,
 ) -> None:
     attributes: dict[str, AttributeValue] = {
         "provider.name": provider_name,
