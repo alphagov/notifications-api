@@ -21,10 +21,11 @@ from notifications_utils.template import (
 from sqlalchemy import (
     CheckConstraint,
     Index,
+    PrimaryKeyConstraint,
     String,
     UniqueConstraint,
     and_,
-    func, PrimaryKeyConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -974,7 +975,7 @@ class ApiKeyUsage(db.Model):
 
     __table_args__ = (
         PrimaryKeyConstraint("service_id", "api_key_id", "usage_hour", "endpoint"),
-        CheckConstraint("date_trunc('hour', usage_hour) = usage_hour", name="ck_api_key_usage_usage_hour")
+        CheckConstraint("date_trunc('hour', usage_hour) = usage_hour", name="ck_api_key_usage_usage_hour"),
     )
 
 
