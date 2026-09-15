@@ -170,8 +170,8 @@ def record_deliver_duration(
 
 def record_undelivered_notification_ages(
     counts: Sequence[tuple[timedelta, int]],
-    notification_type: str,
     provider_name: str,
+    notification_type: str,
     key_type: str,
 ) -> None:
     attrs: dict[str, AttributeValue] = {
