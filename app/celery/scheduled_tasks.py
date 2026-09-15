@@ -305,7 +305,8 @@ def generate_sms_delivery_stats() -> None:
 
     timedelta_buckets = tuple(timedelta(seconds=s) for s in UNDELIVERED_NOTIFICATION_AGE_HISTOGRAM_BUCKETS)
     for (provider, notification_type, key_type), counts in get_recent_undelivered_notification_ages(
-        timedelta_buckets
+        timedelta_buckets,
+        session=db.session_bulk,
     ).items():
         record_undelivered_notification_ages(
             tuple(zip(timedelta_buckets, counts, strict=True)),
