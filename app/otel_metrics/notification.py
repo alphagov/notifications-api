@@ -1,4 +1,6 @@
 import json
+from collections.abc import Sequence
+from datetime import timedelta
 
 from notifications_utils.semconv import set_error_type
 from opentelemetry.metrics import get_meter
@@ -78,6 +80,28 @@ _deliver_duration = _meter.create_histogram(
     explicit_bucket_boundaries_advisory=DELIVER_DURATION_HISTOGRAM_BUCKETS,
 )
 
+# Buckets ranging from 5 seconds to 15 minutes
+UNDELIVERED_NOTIFICATION_AGE_HISTOGRAM_BUCKETS = [
+    5,
+    10,
+    20,
+    40,
+    60 * 1,
+    60 * 2,
+    60 * 5,
+    60 * 8,
+    60 * 12,
+    60 * 15,
+]
+
+_undelivered_notification_age = _meter.create_gauge(
+    "notification.undelivered.age",
+    unit="{notification}",
+    description=(
+        "Number of notifications sent less than `lt` seconds ago for which we're still awaiting a delivery receipt."
+    ),
+)
+
 
 def record_international_sms(amount: int, notification_status: str, sms_country_code: str) -> None:
     """
@@ -142,3 +166,26 @@ def record_deliver_duration(
         _callback_duration.record(callback_duration, attrs)
     if deliver_duration is not None:
         _deliver_duration.record(deliver_duration, attrs)
+
+
+def record_undelivered_notification_ages(
+    counts: Sequence[tuple[timedelta, int]],
+    provider_name: str,
+    notification_type: str,
+    key_type: str,
+) -> None:
+    attrs: dict[str, AttributeValue] = {
+        "key.type": key_type,
+        "notification.type": notification_type,
+        "provider.name": provider_name,
+        "time_window.evaluation": max(td for td, _ in counts).total_seconds(),
+    }
+
+    for lt_timedelta, count in counts:
+        _undelivered_notification_age.set(
+            count,
+            {
+                **attrs,
+                "lt": lt_timedelta.total_seconds(),
+            },
+        )
