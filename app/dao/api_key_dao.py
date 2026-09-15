@@ -54,15 +54,15 @@ def get_unsigned_secret(key_id):
 
 
 @autocommit
-def create_api_key_hourly_usage_record_dao(
-        service_id,
-        api_key_id,
-        endpoint,
-        usage_hour
-):
-    statement = insert(ApiKeyUsage).values(service_id=service_id,
-                                           api_key_id=api_key_id,
-                                           endpoint=endpoint,
-                                           usage_hour=usage_hour,).on_conflict_do_nothing(
-        index_elements=["service_id", "api_key_id", "endpoint", "usage_hour"])
+def create_api_key_hourly_usage_record_dao(service_id, api_key_id, endpoint, usage_hour):
+    statement = (
+        insert(ApiKeyUsage)
+        .values(
+            service_id=service_id,
+            api_key_id=api_key_id,
+            endpoint=endpoint,
+            usage_hour=usage_hour,
+        )
+        .on_conflict_do_nothing(index_elements=["service_id", "api_key_id", "endpoint", "usage_hour"])
+    )
     db.session.execute(statement)
