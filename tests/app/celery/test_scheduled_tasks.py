@@ -69,6 +69,9 @@ from app.dao.notifications_dao import BandedSlowProviderDeliveryReport, SlowProv
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.dao.template_email_files_dao import dao_get_template_email_file_by_id
 from app.models import Event, InboundNumber, Notification
+from app.otel_metrics.notification import (
+    _undelivered_notification_age as notification_undelivered_notification_age_metric,
+)
 from app.otel_metrics.provider import (
     _info as provider_info_metric,
 )
@@ -265,6 +268,9 @@ def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
     ),
 )
 def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_slow_delivery, notify_api, mocker):
+    undelivered_notification_age_metric_set_mock = mocker.patch.object(
+        notification_undelivered_notification_age_metric, "set"
+    )
     sms_not_delivered_within_metric_set_mock = mocker.patch.object(
         provider_sms_legacy_not_delivered_within_metric, "set"
     )
@@ -280,6 +286,21 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
     priority_metric_mock = mocker.patch.object(provider_priority_metric, "set")
     updated_at_metric_mock = mocker.patch.object(provider_updated_at_metric, "set")
     info_metric_mock = mocker.patch.object(provider_info_metric, "set")
+
+    mock_get_recent_undelivered_notification_ages = mocker.patch(
+        "app.celery.scheduled_tasks.get_recent_undelivered_notification_ages",
+        return_value={
+            ("mmg", "sms", "normal"): tuple(range(3)),
+            ("mmg", "sms", "test"): tuple(range(6, 3, -1)),
+            ("firetext", "sms", "normal"): tuple(range(10, 13)),
+            ("ses", "email", "normal"): tuple(range(20, 23)),
+        },
+    )
+    # reduce the volume of args/output we need to mock
+    mocker.patch(
+        "app.celery.scheduled_tasks.UNDELIVERED_NOTIFICATION_AGE_HISTOGRAM_BUCKETS",
+        [20, 30, 40],
+    )
 
     slow_delivery_reports = [
         SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.4, slow_notifications=40, total_notifications=100),
@@ -340,6 +361,10 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
     with set_config(notify_api, "CHECK_SLOW_TEXT_MESSAGE_DELIVERY", slow_delivery_config_option):
         generate_sms_delivery_stats()
 
+    assert mock_get_recent_undelivered_notification_ages.call_args_list == [
+        call((timedelta(seconds=20), timedelta(seconds=30), timedelta(seconds=40)), session=mock.ANY)
+    ]
+
     assert mock_get_slow_text_message_delivery_reports_by_provider.call_args_list == [
         call(created_within_minutes=15, delivered_within_minutes=1),
         call(created_within_minutes=15, delivered_within_minutes=5),
@@ -364,6 +389,134 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
     )
 
     # normalizing order of following calls by sorting by sorted attribute k/v pairs
+
+    assert sorted(
+        undelivered_notification_age_metric_set_mock.mock_calls, key=lambda c: sorted(c.args[1].items())
+    ) == sorted(
+        (
+            call(
+                20,
+                {
+                    "key.type": "normal",
+                    "notification.type": "email",
+                    "provider.name": "ses",
+                    "time_window.evaluation": 40.0,
+                    "le": 20.0,
+                },
+            ),
+            call(
+                10,
+                {
+                    "key.type": "normal",
+                    "notification.type": "sms",
+                    "provider.name": "firetext",
+                    "time_window.evaluation": 40.0,
+                    "le": 20.0,
+                },
+            ),
+            call(
+                0,
+                {
+                    "key.type": "normal",
+                    "notification.type": "sms",
+                    "provider.name": "mmg",
+                    "time_window.evaluation": 40.0,
+                    "le": 20.0,
+                },
+            ),
+            call(
+                21,
+                {
+                    "key.type": "normal",
+                    "notification.type": "email",
+                    "provider.name": "ses",
+                    "time_window.evaluation": 40.0,
+                    "le": 30.0,
+                },
+            ),
+            call(
+                11,
+                {
+                    "key.type": "normal",
+                    "notification.type": "sms",
+                    "provider.name": "firetext",
+                    "time_window.evaluation": 40.0,
+                    "le": 30.0,
+                },
+            ),
+            call(
+                1,
+                {
+                    "key.type": "normal",
+                    "notification.type": "sms",
+                    "provider.name": "mmg",
+                    "time_window.evaluation": 40.0,
+                    "le": 30.0,
+                },
+            ),
+            call(
+                22,
+                {
+                    "key.type": "normal",
+                    "notification.type": "email",
+                    "provider.name": "ses",
+                    "time_window.evaluation": 40.0,
+                    "le": 40.0,
+                },
+            ),
+            call(
+                12,
+                {
+                    "key.type": "normal",
+                    "notification.type": "sms",
+                    "provider.name": "firetext",
+                    "time_window.evaluation": 40.0,
+                    "le": 40.0,
+                },
+            ),
+            call(
+                2,
+                {
+                    "key.type": "normal",
+                    "notification.type": "sms",
+                    "provider.name": "mmg",
+                    "time_window.evaluation": 40.0,
+                    "le": 40.0,
+                },
+            ),
+            call(
+                6,
+                {
+                    "key.type": "test",
+                    "notification.type": "sms",
+                    "provider.name": "mmg",
+                    "time_window.evaluation": 40.0,
+                    "le": 20.0,
+                },
+            ),
+            call(
+                5,
+                {
+                    "key.type": "test",
+                    "notification.type": "sms",
+                    "provider.name": "mmg",
+                    "time_window.evaluation": 40.0,
+                    "le": 30.0,
+                },
+            ),
+            call(
+                4,
+                {
+                    "key.type": "test",
+                    "notification.type": "sms",
+                    "provider.name": "mmg",
+                    "time_window.evaluation": 40.0,
+                    "le": 40.0,
+                },
+            ),
+        ),
+        key=lambda c: sorted(c.args[1].items()),
+    )
 
     assert sorted(
         sms_not_delivered_within_metric_set_mock.mock_calls, key=lambda c: sorted(c.args[1].items())
