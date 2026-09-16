@@ -285,7 +285,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
         SlowProviderDeliveryReport(provider="mmg", slow_ratio=0.4, slow_notifications=40, total_notifications=100),
         SlowProviderDeliveryReport(provider="firetext", slow_ratio=0.8, slow_notifications=80, total_notifications=100),
     ]
-    mocker.patch(
+    mock_get_slow_text_message_delivery_reports_by_provider = mocker.patch(
         "app.celery.scheduled_tasks.get_slow_text_message_delivery_reports_by_provider",
         return_value=slow_delivery_reports,
     )
@@ -328,7 +328,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
             ),
         ),
     }
-    mocker.patch(
+    mock_get_banded_slow_text_message_delivery_reports_by_provider = mocker.patch(
         "app.celery.scheduled_tasks.get_banded_slow_text_message_delivery_reports_by_provider",
         return_value=banded_slow_delivery_reports,
     )
@@ -339,6 +339,25 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
 
     with set_config(notify_api, "CHECK_SLOW_TEXT_MESSAGE_DELIVERY", slow_delivery_config_option):
         generate_sms_delivery_stats()
+
+    assert mock_get_slow_text_message_delivery_reports_by_provider.call_args_list == [
+        call(created_within_minutes=15, delivered_within_minutes=1),
+        call(created_within_minutes=15, delivered_within_minutes=5),
+        call(created_within_minutes=15, delivered_within_minutes=10),
+    ]
+
+    assert mock_get_banded_slow_text_message_delivery_reports_by_provider.call_args_list == [
+        call(
+            (
+                (timedelta(seconds=30), timedelta(seconds=60)),
+                (timedelta(seconds=60), timedelta(seconds=120)),
+                (timedelta(seconds=120), timedelta(seconds=240)),
+                (timedelta(seconds=240), timedelta(seconds=480)),
+                (timedelta(seconds=480), timedelta(seconds=960)),
+            ),
+            session=mock.ANY,
+        )
+    ]
 
     assert mock_check_slow_delivery.call_args_list == (
         [call(slow_delivery_reports)] if expect_check_slow_delivery else []
