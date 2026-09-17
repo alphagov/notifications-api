@@ -11,6 +11,4 @@ def test_all_routes_have_authentication(client):
     # The static route is always available by default for a Flask app to serve anything in the static folder.
     routes_blueprint_names.remove("static")
 
-    # The metrics route is not protected by auth as it's available to be scraped by Prometheus
-    routes_blueprint_names.remove("metrics")
     assert sorted(blueprint_names) == sorted(routes_blueprint_names)

@@ -1,7 +1,6 @@
 from math import ceil
 
 from flask import current_app
-from gds_metrics.metrics import Histogram
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.clients.redis import daily_limit_cache_key
 from notifications_utils.recipient_validation.email_address import validate_and_format_email_address
@@ -40,12 +39,6 @@ from app.v2.errors import (
     ValidationError,
 )
 
-REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS = Histogram(
-    "redis_exceeded_rate_limit_duration_seconds",
-    "Time taken to check rate limit",
-    ["algorithm"],
-)
-
 
 def check_service_over_api_rate_limit(service, key_type):
     if not current_app.config["API_RATE_LIMIT_ENABLED"]:
@@ -58,19 +51,18 @@ def check_service_over_api_rate_limit(service, key_type):
 
 
 def token_bucket_rate_limit_exceeded(service, key_type):
-    with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.labels(algorithm="token_bucket").time():
-        remaining = redis_store.get_remaining_bucket_tokens(
-            key=f"{service.id}-tokens-{key_type}",
-            replenish_per_sec=service.rate_limit / SECONDS_IN_1_MINUTE,
-            bucket_max=min(ceil(service.rate_limit / 3) + 1, TOKEN_BUCKET_MAX),
-            bucket_min=TOKEN_BUCKET_MIN,
-        )
+    remaining = redis_store.get_remaining_bucket_tokens(
+        key=f"{service.id}-tokens-{key_type}",
+        replenish_per_sec=service.rate_limit / SECONDS_IN_1_MINUTE,
+        bucket_max=min(ceil(service.rate_limit / 3) + 1, TOKEN_BUCKET_MAX),
+        bucket_min=TOKEN_BUCKET_MIN,
+    )
 
-        if remaining is None:
-            # we have troubles reaching redis and should allow this
-            return False
+    if remaining is None:
+        # we have troubles reaching redis and should allow this
+        return False
 
-        return remaining < 1
+    return remaining < 1
 
 
 def get_daily_rate_limit_value(service, key_type, notification_type):

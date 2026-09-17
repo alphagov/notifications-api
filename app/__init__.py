@@ -20,8 +20,6 @@ from flask import (
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from gds_metrics import GDSMetrics
-from gds_metrics.metrics import Gauge, Histogram
 from notifications_utils import request_helper
 from notifications_utils.celery import NotifyCelery
 from notifications_utils.clients.redis.redis_client import RedisClient
@@ -31,6 +29,7 @@ from notifications_utils.eventlet import EventletTimeout
 from notifications_utils.json import FlaskRelaxedContainerJSONProvider
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.logging import flask as utils_logging
+from opentelemetry import metrics
 from sqlalchemy import event
 from sqlalchemy.orm import declarative_base
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
@@ -60,15 +59,10 @@ ma = Marshmallow()
 notify_celery = NotifyCelery()
 signing = Signing()
 redis_store = RedisClient()
-metrics = GDSMetrics()
+meter = metrics.get_meter(__name__)
 
 api_user = LocalProxy(lambda: g.api_user)
 authenticated_service = LocalProxy(lambda: g.authenticated_service)
-
-CONCURRENT_REQUESTS = Gauge(
-    "concurrent_web_request_count",
-    "How many concurrent requests are currently being served",
-)
 
 #
 # "clients" that need thread-local copies
@@ -179,7 +173,6 @@ def create_app(application: Flask) -> Flask:
     init_app(application)
 
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
-    metrics.init_app(application)
     request_helper.init_app(application)
     db.init_app(application)
     migrate.init_app(application, db=db)
@@ -412,14 +405,11 @@ def register_v2_blueprints(application):
 def init_app(app):
     @app.before_request
     def record_request_details():
-        CONCURRENT_REQUESTS.inc()
-
         g.start = monotonic()
         g.endpoint = request.endpoint
 
     @app.after_request
     def after_request(response):
-        CONCURRENT_REQUESTS.dec()
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
@@ -468,22 +458,23 @@ def create_random_identifier():
 def setup_sqlalchemy_events(app):  # noqa: C901
     # need this or db.engines isn't accessible
     with app.app_context():
-        TOTAL_DB_CONNECTIONS = Gauge(
+        TOTAL_DB_CONNECTIONS = meter.create_up_down_counter(
             "db_connection_total_connected",
-            "How many db connections are currently held (potentially idle) by the server",
-            ["bind", "inet_server_addr"],
+            unit="{connection}",
+            description="How many db connections are currently held (potentially idle) by the server",
         )
 
-        TOTAL_CHECKED_OUT_DB_CONNECTIONS = Gauge(
+        TOTAL_CHECKED_OUT_DB_CONNECTIONS = meter.create_up_down_counter(
             "db_connection_total_checked_out",
-            "How many db connections are currently checked out by web requests",
-            ["bind", "inet_server_addr"],
+            unit="{connection}",
+            description="How many db connections are currently checked out by web requests",
         )
 
-        DB_CONNECTION_OPEN_DURATION_SECONDS = Histogram(
+        DB_CONNECTION_OPEN_DURATION_SECONDS = meter.create_histogram(
             "db_connection_open_duration_seconds",
-            "How long db connections are held open for in seconds",
-            ["method", "host", "path", "bind", "inet_server_addr"],
+            unit="s",
+            description="How long db connections are held open for in seconds",
+            # TODO: buckets
         )
 
         # do not be tempted to reference _bind_key & _engine from inside a closure - the for-loop
@@ -542,13 +533,17 @@ def setup_sqlalchemy_events(app):  # noqa: C901
 
                 dbapi_connection.autocommit = False
 
-                TOTAL_DB_CONNECTIONS.labels(str(bind_key), str(connection_record.info["inet_server_addr"])).inc()
+                TOTAL_DB_CONNECTIONS.add(
+                    1, {"bind": str(bind_key), "inet_server_addr": str(connection_record.info["inet_server_addr"])}
+                )
                 connection_record.info["counted_in_TOTAL_DB_CONNECTIONS"] = True
 
             @event.listens_for(_engine, "close")
             def close(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
                 if connection_record.info.get("counted_in_TOTAL_DB_CONNECTIONS"):
-                    TOTAL_DB_CONNECTIONS.labels(str(bind_key), str(connection_record.info["inet_server_addr"])).dec()
+                    TOTAL_DB_CONNECTIONS.add(
+                        -1, {"bind": str(bind_key), "inet_server_addr": str(connection_record.info["inet_server_addr"])}
+                    )
 
                 # otherwise we presumably had some failure before we got a chance to increment
                 # TOTAL_DB_CONNECTIONS for this connection so shouldn't decrement it accordingly
@@ -557,9 +552,9 @@ def setup_sqlalchemy_events(app):  # noqa: C901
             def checkout(dbapi_connection, connection_record, connection_proxy, bind_key=_bind_key, engine=_engine):
                 try:
                     # connection given to a web worker
-                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(
-                        str(bind_key), str(connection_record.info["inet_server_addr"])
-                    ).inc()
+                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.add(
+                        1, {"bind": str(bind_key), "inet_server_addr": str(connection_record.info["inet_server_addr"])}
+                    )
 
                     # this will overwrite any previous checkout_at timestamp
                     connection_record.info["checkout_at"] = time.monotonic()
@@ -602,19 +597,22 @@ def setup_sqlalchemy_events(app):  # noqa: C901
 
                 try:
                     # connection returned by a web worker
-                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.labels(
-                        str(bind_key), str(connection_record.info["inet_server_addr"])
-                    ).dec()
+                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.add(
+                        -1, {"bind": str(bind_key), "inet_server_addr": str(connection_record.info["inet_server_addr"])}
+                    )
 
                     # duration that connection was held by a single web request
                     duration = time.monotonic() - connection_record.info["checkout_at"]
 
-                    DB_CONNECTION_OPEN_DURATION_SECONDS.labels(
-                        connection_record.info["request_data"]["method"],
-                        connection_record.info["request_data"]["host"],
-                        connection_record.info["request_data"]["url_rule"],
-                        str(bind_key),
-                        str(connection_record.info["inet_server_addr"]),
-                    ).observe(duration)
+                    DB_CONNECTION_OPEN_DURATION_SECONDS.record(
+                        duration,
+                        {
+                            "method": connection_record.info["request_data"]["method"],
+                            "host": connection_record.info["request_data"]["host"],
+                            "path": connection_record.info["request_data"]["url_rule"],
+                            "bind": str(bind_key),
+                            "inet_server_addr": str(connection_record.info["inet_server_addr"]),
+                        },
+                    )
                 except Exception:
                     current_app.logger.exception("Exception caught for checkin event.")

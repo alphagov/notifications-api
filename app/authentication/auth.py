@@ -6,7 +6,6 @@ from functools import wraps
 
 from cachetools.func import lfu_cache
 from flask import current_app, g, request
-from gds_metrics import Histogram
 from notifications_python_client.authentication import (
     decode_jwt_token,
     get_token_issuer,
@@ -18,6 +17,7 @@ from notifications_python_client.errors import (
     TokenExpiredError,
     TokenIssuerError,
 )
+from opentelemetry import metrics
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import memo_resetters
@@ -26,9 +26,11 @@ from app.serialised_models import SerialisedService
 
 GENERAL_TOKEN_ERROR_MESSAGE = "Invalid token: make sure your API token matches the example at https://docs.notifications.service.gov.uk/rest-api.html#authorisation-header"
 
-AUTH_DB_CONNECTION_DURATION_SECONDS = Histogram(
+AUTH_DB_CONNECTION_DURATION_SECONDS = metrics.get_meter(__name__).create_histogram(
     "auth_db_connection_duration_seconds",
-    "Time taken to get DB connection and fetch service from database",
+    unit="s",
+    description="Time taken to get DB connection and fetch service from database",
+    # TODO: bucket boundaries
 )
 
 
@@ -99,8 +101,9 @@ def requires_auth():
         raise AuthError("Invalid token: service id is not the right data type", 403) from e
 
     try:
-        with AUTH_DB_CONNECTION_DURATION_SECONDS.time():
-            service = SerialisedService.from_id(service_id)
+        start = time.monotonic()
+        service = SerialisedService.from_id(service_id)
+        AUTH_DB_CONNECTION_DURATION_SECONDS.record(time.monotonic() - start)
     except NoResultFound as e:
         raise AuthError("Invalid token: service not found", 403) from e
 
