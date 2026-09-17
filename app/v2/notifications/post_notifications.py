@@ -184,6 +184,8 @@ def _prepare_personalisation_for_post_notification(personalisation, sanitise_con
 
 
 def sanitise_personalisation_item(value):
+    if not isinstance(value, str):
+        return value
     value = _find_and_sanitise_urls(value)
     sanitised_value = _escape_markdown_characters(value)
 
