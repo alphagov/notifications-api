@@ -5,16 +5,6 @@ from notifications_utils.gunicorn.defaults import set_gunicorn_defaults
 set_gunicorn_defaults(globals())
 
 
-# importing child_exit from gds_metrics.gunicorn has the side effect of eagerly importing
-# prometheus_client, flask, werkzeug and more, which is a bad idea to do before eventlet
-# has done its monkeypatching. use a nested import for the rare cases child_exit is actually
-# called instead.
-def child_exit(server, worker):
-    from prometheus_client import multiprocess
-
-    multiprocess.mark_process_dead(worker.pid)
-
-
 workers = int(os.getenv("GUNICORN_WORKERS", "4"))
 worker_class = "eventlet"
 worker_connections = int(os.getenv("GUNICORN_WORKER_CONNECTIONS", "8"))
