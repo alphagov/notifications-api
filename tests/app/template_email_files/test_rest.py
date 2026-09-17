@@ -14,6 +14,7 @@ from tests.app.db import create_service, create_template, create_template_email_
 @pytest.mark.parametrize("extra_data", ({}, {"pending": True}, {"pending": False}))  # pending is ignored
 def test_create_template_email_file_happy_path(sample_service, sample_email_template, admin_request, extra_data):
     data = {
+        "id": str(uuid.uuid4()),
         "filename": "example.pdf",
         "link_text": "click this link!",
         "retention_period": 90,
@@ -55,6 +56,7 @@ def test_create_template_email_file_fails_if_template_not_email_type(
     sample_service, sample_sms_template, admin_request
 ):
     data = {
+        "id": str(uuid.uuid4()),
         "filename": "example.pdf",
         "link_text": "click this link!",
         "retention_period": 90,
@@ -75,6 +77,7 @@ def test_create_template_email_file_fails_if_template_not_email_type(
 def test_create_template_email_file_fails_if_template_does_not_exist(sample_service, admin_request):
     non_existent_template_id = uuid.uuid4()
     data = {
+        "id": str(uuid.uuid4()),
         "filename": "example.pdf",
         "link_text": "click this link!",
         "retention_period": 90,
@@ -97,6 +100,7 @@ def test_create_template_email_file_fails_if_template_already_has_file_with_same
     sample_service, admin_request, sample_email_template, sample_template_email_file_not_pending, filename
 ):
     data = {
+        "id": str(uuid.uuid4()),
         "filename": filename,
         "link_text": "click this link!",
         "retention_period": 90,
@@ -128,6 +132,7 @@ def test_create_template_email_file_creates_file_with_latest_template_version(
 
     # create second email file
     file_two_data = {
+        "id": str(uuid.uuid4()),
         "filename": "example_two.pdf",
         "link_text": "here's a pdf",
         "retention_period": 30,
@@ -362,6 +367,7 @@ def test_update_template_email_file(
         "link_text": "click this new link!",
         "retention_period": 30,
         "validate_users_email": False,
+        "pending": False,
     }
 
     assert sample_template_email_file_not_pending.template_version == 1
@@ -448,7 +454,9 @@ def test_archive_template_email_file(client, sample_service, sample_email_templa
     assert len(file_history) == 2
 
 
-def test_multiple_pending_files_with_the_same_name_create(sample_service, sample_email_template, admin_request):
+def test_create_template_email_file_succeeds_even_if_file_with_the_same_name_exists(
+    sample_service, sample_email_template, admin_request
+):
     data = {
         "filename": "example.pdf",
         "retention_period": 78,
@@ -457,6 +465,7 @@ def test_multiple_pending_files_with_the_same_name_create(sample_service, sample
         "pending": True,
     }
     for _ in range(3):
+        data["id"] = str(uuid.uuid4())
         admin_request.post(
             "template_email_files.create_template_email_file",
             service_id=sample_service.id,
@@ -472,11 +481,12 @@ def test_multiple_pending_files_with_the_same_name_create(sample_service, sample
 
 
 @pytest.mark.parametrize("filename", ("example.pdf", "EXAMPLE.PDF", "Exam Ple.pdf"))
-def test_make_live_fails_if_live_file_with_same_filename_exists(
+def test_update_template_email_file_cant_make_file_live_if_another_live_file_with_same_filename_exists(
     sample_service, sample_email_template, admin_request, sample_template_email_file_pending, filename
 ):
     # create a file with the same name as sample_template_email_file that is also called example.pdf
     data = {
+        "id": str(uuid.uuid4()),
         "filename": filename,
         "retention_period": 78,
         "validate_users_email": True,
@@ -491,7 +501,12 @@ def test_make_live_fails_if_live_file_with_same_filename_exists(
         _expected_status=201,
     )
     # make sample_template_email_file_live
-    update_data = {"pending": False}
+    update_data = {
+        "link_text": "",
+        "retention_period": 78,
+        "validate_users_email": True,
+        "pending": False,
+    }
     admin_request.post(
         "template_email_files.update_template_email_file",
         service_id=sample_service.id,
@@ -520,6 +535,7 @@ def test_make_live_fails_if_live_file_with_same_filename_exists(
 
 def test_create_and_make_live_file(sample_service, sample_email_template, admin_request):
     data = {
+        "id": str(uuid.uuid4()),
         "filename": "example.pdf",
         "retention_period": 78,
         "validate_users_email": True,
@@ -547,7 +563,12 @@ def test_create_and_make_live_file(sample_service, sample_email_template, admin_
     assert str(template_email_file.created_at) == "2025-01-01 11:09:00"
 
     # update the files link text, without making it live
-    update_data = {"link_text": "this is a file!"}
+    update_data = {
+        "link_text": "this is a file!",
+        "retention_period": 78,
+        "validate_users_email": True,
+        "pending": True,
+    }
     response = admin_request.post(
         "template_email_files.update_template_email_file",
         service_id=sample_service.id,
@@ -575,7 +596,12 @@ def test_create_and_make_live_file(sample_service, sample_email_template, admin_
     sample_email_template.updated_at = datetime.datetime.utcnow()
     dao_update_template(sample_email_template)
 
-    update_data = {"pending": False}
+    update_data = {
+        "link_text": "this is a file!",
+        "retention_period": 78,
+        "validate_users_email": True,
+        "pending": False,
+    }
     response = admin_request.post(
         "template_email_files.update_template_email_file",
         service_id=sample_service.id,

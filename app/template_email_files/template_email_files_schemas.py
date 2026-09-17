@@ -14,11 +14,13 @@ post_create_template_email_files_schema = {
         "validate_users_email": {"type": "boolean"},
         "created_by_id": uuid,
     },
+    # all of these are always sent by the create endpoint in admin app, so we should always have data for them
+    "required": ["id", "filename", "created_by_id", "retention_period", "validate_users_email"],
 }
 
-update_template_email_files_schema = {
+post_update_template_email_files_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "description": "POST create new email linked file",
+    "description": "POST update email linked file",
     "type": "object",
     "title": "payload for POST /service/<uuid:service_id>/template/<uuid:template_id>/template_email_files/<uuid:template_email_file_id>",  # noqa: E501
     "properties": {
@@ -26,11 +28,15 @@ update_template_email_files_schema = {
         "filename": {"type": "string"},
         "link_text": {"type": "string"},
         "service": uuid,
+        "template": uuid,
         "retention_period": {"type": "integer"},
         "validate_users_email": {"type": "boolean"},
         "template_version": {"type": "integer"},
         "archived_by_id": uuid,
+        "pending": {"type": "boolean"},
     },
+    # all of these are always sent by the update endpoint in admin app, so we should always have data for them
+    "required": ["link_text", "retention_period", "validate_users_email", "pending"],
 }
 
 post_archive_template_email_files_schema = {
