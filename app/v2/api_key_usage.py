@@ -2,13 +2,13 @@ from datetime import UTC, datetime
 
 from notifications_utils.clients.redis import RequestCache
 
-from app import redis_store
+from app import api_user, authenticated_service, redis_store
 from app.dao.api_key_dao import create_api_key_hourly_usage_record_dao
 
 redis_cache = RequestCache(redis_store)
 
 
-def record_service_api_key_hourly_usage_at_endpoint(api_key_id, service_id, endpoint):
+def record_service_api_key_hourly_usage_at_endpoint(endpoint):
     """
     This function records api key usage at an endpoint.
     Only one entry will be made in the api_key_usage for an api key at an endpoint each hour.
@@ -16,7 +16,10 @@ def record_service_api_key_hourly_usage_at_endpoint(api_key_id, service_id, endp
     that entry. The existence of the marker prevents recording any further uses of the api key at that
     endpoint for that hour ie from 10:00:00 to 10:59:59.
     """
+    service_id = authenticated_service.id
+    api_key_id = api_user.id
     usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    endpoint = endpoint
     # hourly_bucket is of the format "%Y%m%d%T%H", ie the hourly_bucket for 10:00:00 to 10:59:59 UTC on 08/09/2026
     # would be 20260908T10
     hourly_bucket = usage_hour.strftime("%Y%m%d%H")
