@@ -2,7 +2,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from itertools import chain, groupby
+from itertools import chain, groupby, product
 from operator import attrgetter
 
 from botocore.exceptions import ClientError
@@ -49,6 +49,7 @@ from app.dao.dao_utils import autocommit
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 from app.models import (
     FactNotificationStatus,
+    KeyTypes,
     LetterCostThreshold,
     Notification,
     NotificationHistory,
@@ -787,6 +788,63 @@ def get_banded_slow_text_message_delivery_reports_by_provider(
         )
         for row in slow_notification_counts
     }
+
+
+@retryable_query()
+def get_recent_undelivered_notification_ages(
+    age_le_buckets: Sequence[timedelta],
+    *,
+    created_sent_difference_allowance: timedelta = timedelta(minutes=15),
+    session: Session | scoped_session = db.session,
+) -> Mapping[tuple[str, str, str], Sequence[int]]:
+    uniform_now = datetime.utcnow()
+    sent_after = uniform_now - max(age_le_buckets)
+    created_after = sent_after - created_sent_difference_allowance
+
+    # can't just rely on whatever rows are present in the aggregation because we need
+    # to fill in holes with zeros so the gauge doesn't just propagate a bin's value
+    # from a previous time period when it did have a value
+    providers = session.query(ProviderDetails).all()
+    key_types = session.query(KeyTypes).all()
+
+    # start with zero-values for all valid series
+    series_map: dict[tuple[str, str, str], Sequence[int]] = {
+        (provider.identifier, provider.notification_type, key_type.name): (0,) * len(age_le_buckets)
+        for provider, key_type in product(providers, key_types)
+    }
+
+    # all buckets collected in a single query using multiple count() aggregations each with
+    # different FILTER clauses corresponding to their limits. this is because a lot of the
+    # retrieved notifications will overlap due to the significant
+    # created_sent_difference_allowance and this way we can calculate all buckets in a single
+    # pass.
+    for provider, notification_type, key_type, *counts in (
+        session.query(
+            Notification.sent_by,
+            Notification.notification_type,
+            Notification.key_type,
+            *(
+                func.count().filter(uniform_now - Notification.sent_at <= age_le).label(f"age_le_count_{i}")
+                for i, age_le in enumerate(age_le_buckets)
+            ),
+        )
+        .filter(
+            Notification.sent_at >= sent_after,
+            Notification.sent_at < uniform_now,
+            # filtering against created_at allows us to use its index
+            Notification.created_at >= created_after,
+            Notification.status.in_([NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
+        )
+        .group_by(
+            Notification.notification_type,
+            Notification.sent_by,
+            Notification.key_type,
+        )
+        .all()
+    ):
+        series_map[(provider, notification_type, key_type)] = tuple(counts)
+
+    return series_map
 
 
 @autocommit
