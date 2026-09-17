@@ -5,7 +5,6 @@ import uuid
 from datetime import datetime
 
 from flask import abort, current_app, jsonify, request
-from gds_metrics import Histogram
 from notifications_utils.formatters import url
 from notifications_utils.insensitive_dict import InsensitiveSet
 
@@ -73,11 +72,6 @@ from app.v2.notifications.notification_schemas import (
 )
 from app.v2.utils import get_valid_json
 
-POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
-    "post_notification_json_parse_duration_seconds",
-    "Time taken to parse and validate post request json",
-)
-
 
 @v2_notification_blueprint.route(f"/{LETTER_TYPE}", methods=["POST"])
 def post_precompiled_letter_notification():
@@ -114,17 +108,16 @@ def post_precompiled_letter_notification():
 def post_notification(notification_type):
     check_rate_limiting(authenticated_service, api_user, notification_type=notification_type)
 
-    with POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS.time():
-        request_json = get_valid_json()
+    request_json = get_valid_json()
 
-        if notification_type == EMAIL_TYPE:
-            form = validate(request_json, post_email_request)
-        elif notification_type == SMS_TYPE:
-            form = validate(request_json, post_sms_request)
-        elif notification_type == LETTER_TYPE:
-            form = validate(request_json, post_letter_request)
-        else:
-            abort(404)
+    if notification_type == EMAIL_TYPE:
+        form = validate(request_json, post_email_request)
+    elif notification_type == SMS_TYPE:
+        form = validate(request_json, post_sms_request)
+    elif notification_type == LETTER_TYPE:
+        form = validate(request_json, post_letter_request)
+    else:
+        abort(404)
 
     check_service_has_permission(authenticated_service, notification_type)
 
