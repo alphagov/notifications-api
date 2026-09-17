@@ -56,6 +56,7 @@ from app.dao.services_dao import (
 from app.dao.users_dao import create_user_code, save_model_user
 from app.models import (
     ApiKey,
+    ApiKeyUsage,
     InvitedUser,
     Job,
     Notification,
@@ -74,6 +75,7 @@ from app.models import (
 from tests.app.db import (
     create_annual_billing,
     create_api_key,
+    create_api_key_usage_record,
     create_email_branding,
     create_ft_billing,
     create_inbound_number,
@@ -761,6 +763,7 @@ def test_delete_service_and_associated_objects(notify_db_session):
     template = create_template(service=service)
     api_key = create_api_key(service=service)
     create_notification(template=template, api_key=api_key)
+    create_api_key_usage_record(service_id=service.id, api_key_id=api_key.id)
     create_invited_user(service=service)
     user.organisations = [organisation]
 
@@ -770,6 +773,7 @@ def test_delete_service_and_associated_objects(notify_db_session):
 
     delete_service_and_all_associated_db_objects(service)
     assert VerifyCode.query.count() == 0
+    assert ApiKeyUsage.query.count() == 0
     assert ApiKey.query.count() == 0
     assert ApiKey.get_history_model().query.count() == 0
     assert Template.query.count() == 0
