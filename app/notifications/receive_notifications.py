@@ -2,7 +2,7 @@ from datetime import datetime
 from urllib.parse import unquote
 
 from flask import Blueprint, current_app, jsonify, request
-from gds_metrics.metrics import Counter
+from opentelemetry import metrics
 
 from app.authentication.auth import view_requires_basic_auth
 from app.celery import service_callback_tasks
@@ -18,7 +18,9 @@ receive_notifications_blueprint = Blueprint("receive_notifications", __name__)
 register_errors(receive_notifications_blueprint)
 
 
-INBOUND_SMS_COUNTER = Counter("inbound_sms", "Total number of inbound SMS received", ["provider"])
+INBOUND_SMS_COUNTER = metrics.get_meter(__name__).create_counter(
+    "inbound_sms", unit="{notification}", description="Total number of inbound SMS received"
+)
 
 
 @receive_notifications_blueprint.route("/notifications/sms/receive/mmg", methods=["POST"])
@@ -43,7 +45,7 @@ def receive_mmg_sms():
         # we should still tell MMG that we received it successfully
         return "RECEIVED", 200
 
-    INBOUND_SMS_COUNTER.labels("mmg").inc()
+    INBOUND_SMS_COUNTER.add(1, {"provider": "mmg"})
 
     inbound = create_inbound_sms_object(
         service,
@@ -89,7 +91,7 @@ def receive_firetext_sms():
         provider_name="firetext",
     )
 
-    INBOUND_SMS_COUNTER.labels("firetext").inc()
+    INBOUND_SMS_COUNTER.add(1, {"provider": "firetext"})
 
     service_callback_tasks.send_inbound_sms_to_service.apply_async(
         [str(inbound.id), str(service.id)],
