@@ -8,10 +8,19 @@ from opentelemetry.instrumentation import auto_instrumentation
 set_gunicorn_defaults(globals())
 
 
+print("Hello from gunicorn_config.py")
 def post_fork(server, worker):
+    print("Hello from post_fork")
     if os.environ.get("OTEL_SERVICE_NAME") is not None:
+        print("OTel is enabled")
         set_service_instance_id()
         auto_instrumentation.initialize()
+        from opentelemetry import metrics
+        mp = metrics.get_meter_provider()
+        print(f"pid={os.getpid()} type(mp)={type(mp)}")
+        metrics.get_meter("debug").create_counter("post_fork_test").add(1)
+        print(vars(mp))
+        print(f"force_flush returned {mp.force_flush()}")
     default_post_fork(server, worker)
 
 
