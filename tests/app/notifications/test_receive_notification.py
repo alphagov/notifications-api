@@ -51,7 +51,7 @@ def test_receive_notification_returns_received_to_mmg(client, mocker, sample_ser
     mocked = mocker.patch(
         "app.notifications.receive_notifications.service_callback_tasks.send_inbound_sms_to_service.apply_async"
     )
-    prom_counter_labels_mock = mocker.patch("app.notifications.receive_notifications.INBOUND_SMS_COUNTER.labels")
+    counter_add_mock = mocker.patch("app.notifications.receive_notifications.INBOUND_SMS_COUNTER.add")
     data = {
         "ID": "1234",
         "MSISDN": "447700900855",
@@ -67,8 +67,7 @@ def test_receive_notification_returns_received_to_mmg(client, mocker, sample_ser
     result = json.loads(response.get_data(as_text=True))
     assert result["status"] == "ok"
 
-    prom_counter_labels_mock.assert_called_once_with("mmg")
-    prom_counter_labels_mock.return_value.inc.assert_called_once_with()
+    counter_add_mock.assert_called_once_with(1, {"provider.name": "mmg"})
 
     inbound_sms_id = InboundSms.query.all()[0].id
     mocked.assert_called_once_with(
@@ -308,7 +307,7 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
     mocked = mocker.patch(
         "app.notifications.receive_notifications.service_callback_tasks.send_inbound_sms_to_service.apply_async"
     )
-    prom_counter_labels_mock = mocker.patch("app.notifications.receive_notifications.INBOUND_SMS_COUNTER.labels")
+    counter_add_mock = mocker.patch("app.notifications.receive_notifications.INBOUND_SMS_COUNTER.add")
 
     service = create_service_with_inbound_number(
         service_name="b", inbound_number="07111111111", service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
@@ -321,8 +320,7 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
 
-    prom_counter_labels_mock.assert_called_once_with("firetext")
-    prom_counter_labels_mock.return_value.inc.assert_called_once_with()
+    counter_add_mock.assert_called_once_with(1, {"provider.name": "firetext"})
 
     assert result["status"] == "ok"
     inbound_sms_id = InboundSms.query.all()[0].id
