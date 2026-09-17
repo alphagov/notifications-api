@@ -1,8 +1,18 @@
 import os
 
+from notifications_utils.gunicorn.defaults import post_fork as default_post_fork
 from notifications_utils.gunicorn.defaults import set_gunicorn_defaults
+from notifications_utils.semconv import set_service_instance_id
+from opentelemetry.instrumentation import auto_instrumentation
 
 set_gunicorn_defaults(globals())
+
+
+def post_fork(server, worker):
+    if os.environ.get("OTEL_SERVICE_NAME") is not None:
+        set_service_instance_id()
+        auto_instrumentation.initialize()
+    default_post_fork(server, worker)
 
 
 workers = int(os.getenv("GUNICORN_WORKERS", "4"))
