@@ -65,11 +65,6 @@ metrics = GDSMetrics()
 api_user = LocalProxy(lambda: g.api_user)
 authenticated_service = LocalProxy(lambda: g.authenticated_service)
 
-CONCURRENT_REQUESTS = Gauge(
-    "concurrent_web_request_count",
-    "How many concurrent requests are currently being served",
-)
-
 #
 # "clients" that need thread-local copies
 #
@@ -412,14 +407,11 @@ def register_v2_blueprints(application):
 def init_app(app):
     @app.before_request
     def record_request_details():
-        CONCURRENT_REQUESTS.inc()
-
         g.start = monotonic()
         g.endpoint = request.endpoint
 
     @app.after_request
     def after_request(response):
-        CONCURRENT_REQUESTS.dec()
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
