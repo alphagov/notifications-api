@@ -21,6 +21,7 @@ from notifications_utils.template import (
 from sqlalchemy import (
     CheckConstraint,
     Index,
+    PrimaryKeyConstraint,
     String,
     UniqueConstraint,
     and_,
@@ -962,6 +963,25 @@ class ApiKey(db.Model, Versioned):
     def secret(self, secret):
         if secret:
             self._secret = signing.encode(str(secret))
+
+
+class ApiKeyUsage(db.Model):
+    __tablename__ = "api_key_usage"
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
+    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey("api_keys.id"), nullable=False)
+    usage_hour = db.Column(db.DateTime(timezone=True), nullable=False)
+    endpoint = db.Column(db.String, nullable=False)
+
+    __table_args__ = (
+        PrimaryKeyConstraint("service_id", "api_key_id", "usage_hour", "endpoint"),
+        CheckConstraint("date_trunc('hour', usage_hour) = usage_hour", name="ck_api_key_usage_usage_hour"),
+    )
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_api_key_usage_service_id_api_key_id", ("service_id", "api_key_id"), ("dependencies",)),
+    )
 
 
 class KeyTypes(db.Model):

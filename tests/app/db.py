@@ -1,6 +1,6 @@
 import random
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from app import db
 from app.constants import (
@@ -11,6 +11,7 @@ from app.constants import (
     SMS_TYPE,
 )
 from app.dao import fact_processing_time_dao
+from app.dao.api_key_dao import create_api_key_hourly_usage_record_dao
 from app.dao.email_branding_dao import dao_create_email_branding
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.invited_org_user_dao import save_invited_org_user
@@ -1351,3 +1352,10 @@ def create_report_request(
     )
 
     return dao_create_report_request(report_request)
+
+
+def create_api_key_usage_record(service_id, api_key_id, usage_hour=None, endpoint="v2_notifications.post_notification"):
+    usage_hour = datetime(2026, 9, 1, 10, 0, 0, tzinfo=UTC) if not usage_hour else usage_hour
+    return create_api_key_hourly_usage_record_dao(
+        service_id=service_id, api_key_id=api_key_id, endpoint=endpoint, usage_hour=usage_hour
+    )
