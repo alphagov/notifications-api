@@ -978,6 +978,11 @@ class ApiKeyUsage(db.Model):
         CheckConstraint("date_trunc('hour', usage_hour) = usage_hour", name="ck_api_key_usage_usage_hour"),
     )
 
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_api_key_usage_service_id_api_key_id", ("service_id", "api_key_id"), ("dependencies",)),
+    )
+
 
 class KeyTypes(db.Model):
     __tablename__ = "key_types"
