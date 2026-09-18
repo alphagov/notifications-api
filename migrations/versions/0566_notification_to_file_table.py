@@ -12,11 +12,11 @@ down_revision = "0565_add_api_key_usage_table"
 
 def upgrade():
     op.create_table("sent_files",
-        sa.Column("file_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("document_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("filename", sa.Text(), nullable=False),
         sa.Column("notification_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("service_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.PrimaryKeyConstraint("file_id"),
+        sa.PrimaryKeyConstraint("document_id"),
         sa.ForeignKeyConstraint(
                     ["service_id"],
                     ["services.id"],
