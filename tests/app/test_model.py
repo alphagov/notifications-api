@@ -29,6 +29,7 @@ from app.dao.services_dao import dao_add_user_to_service
 from app.models import (
     AnnualBilling,
     ApiKey,
+    ApiKeyUsage,
     Complaint,
     EmailBranding,
     FactBilling,
@@ -466,6 +467,7 @@ def test_notification_references_template_history(client, sample_template):
     "model",
     (
         ApiKey,
+        ApiKeyUsage,
         FactBilling,
         FactNotificationStatus,
         InboundSms,
