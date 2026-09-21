@@ -9,7 +9,7 @@ from app.dao.api_key_dao import create_api_key_hourly_usage_record_dao
 redis_cache = RequestCache(redis_store)
 
 
-def record_service_api_key_hourly_usage_at_endpoint():
+def record_api_key_hourly_usage():
     """
     This function records api key usage at an endpoint.
     Only one entry will be made in the api_key_usage for an api key at an endpoint each hour.
