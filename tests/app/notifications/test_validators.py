@@ -11,6 +11,7 @@ from notifications_utils.recipient_validation.errors import InvalidPhoneError
 
 import app
 from app.constants import (
+    BLOCK_OFCOM_PROTECTED_BLOCK,
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
@@ -602,6 +603,28 @@ def test_check_rate_limiting_validates_api_rate_limit_and_daily_limit(notify_db_
     assert mock_daily_limit.call_args_list == [
         mocker.call(service, api_key.key_type, notification_type=notification_type),
     ]
+
+
+@pytest.mark.parametrize("key_type", ["test", "normal"])
+def test_validate_and_format_recipient_fails_when_block_ofcom_block_protected_block(
+    key_type,
+    notify_db_session,
+):
+    service = create_service(service_permissions=[SMS_TYPE, BLOCK_OFCOM_PROTECTED_BLOCK])
+    service_model = SerialisedService.from_id(service.id)
+    with pytest.raises(InvalidPhoneError):
+        validate_and_format_recipient("07034700000", key_type, service_model, SMS_TYPE)
+
+
+@pytest.mark.parametrize("key_type", ["test", "normal"])
+def test_validate_and_format_recipient_succeeds_when_not_ofcom_block_protected_block(
+    key_type,
+    notify_db_session,
+):
+    service = create_service(service_permissions=[SMS_TYPE, BLOCK_OFCOM_PROTECTED_BLOCK])
+    service_model = SerialisedService.from_id(service.id)
+    with pytest.raises(InvalidPhoneError):
+        validate_and_format_recipient("07034700000", key_type, service_model, SMS_TYPE)
 
 
 @pytest.mark.parametrize("key_type", ["test", "normal"])
