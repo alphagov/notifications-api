@@ -200,6 +200,7 @@ class Config:
     NOTIFY_APP_NAME = "api"
 
     SQLALCHEMY_ENGINE_OPTIONS: dict[str, Any] = {
+        "pool_logging_name": "None",
         "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 5)),
         "pool_timeout": 30,
         "pool_recycle": 300,
@@ -215,6 +216,7 @@ class Config:
     SQLALCHEMY_BINDS["bulk"] = {
         **SQLALCHEMY_ENGINE_OPTIONS,
         **SQLALCHEMY_BINDS["bulk"],
+        "pool_logging_name": "bulk",
     }
 
     # allow different settings for connections that end up on the replica or primary
