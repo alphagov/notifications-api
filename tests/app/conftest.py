@@ -1487,5 +1487,5 @@ def mock_document_download_client_upload(mocker):
 
 
 @pytest.fixture(scope="function")
-def mock_record_service_api_key_hourly_usage_at_endpoint(mocker):
-    return mocker.patch("app.v2.notifications.post_notifications.record_service_api_key_hourly_usage_at_endpoint")
+def mock__record_api_key_hourly_usage(mocker):
+    return mocker.patch("app.v2.api_key_usage._record_api_key_hourly_usage")
