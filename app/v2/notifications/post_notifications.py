@@ -56,7 +56,6 @@ from app.notifications.validators import (
 )
 from app.schema_validation import validate
 from app.utils import try_parse_and_format_phone_number
-from app.v2.api_key_usage import record_service_api_key_hourly_usage_at_endpoint
 from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.create_response import (
@@ -76,7 +75,6 @@ from app.v2.utils import get_valid_json
 
 @v2_notification_blueprint.route(f"/{LETTER_TYPE}", methods=["POST"])
 def post_precompiled_letter_notification():
-    record_service_api_key_hourly_usage_at_endpoint()
     check_rate_limiting(authenticated_service, api_user, notification_type=LETTER_TYPE)
 
     request_json = get_valid_json()
@@ -108,7 +106,6 @@ def post_precompiled_letter_notification():
 
 @v2_notification_blueprint.route("/<notification_type>", methods=["POST"])
 def post_notification(notification_type):
-    record_service_api_key_hourly_usage_at_endpoint()
     check_rate_limiting(authenticated_service, api_user, notification_type=notification_type)
 
     request_json = get_valid_json()
