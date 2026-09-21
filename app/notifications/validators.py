@@ -12,6 +12,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app import redis_store
 from app.constants import (
+    BLOCK_OFCOM_PROTECTED_BLOCK,
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
@@ -183,6 +184,7 @@ def validate_and_return_extended_phone_number_info(service, send_to, key_type, c
         phone_number.validate(
             allow_international_number=service.has_permission(INTERNATIONAL_SMS_TYPE),
             allow_uk_landline=service.has_permission(SMS_TO_UK_LANDLINES),
+            block_ofcom_protected_blocks=service.has_permission(BLOCK_OFCOM_PROTECTED_BLOCK),
         )
 
         recipient_data = _get_extended_phone_number_info(phone_number, send_to)
