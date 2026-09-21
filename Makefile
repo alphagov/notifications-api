@@ -98,6 +98,7 @@ lint: ## Run static type checks
 	ruff check .
 	ruff format --check .
 	mypy
+	grep '^\*\*/\.git/config$$' ./.dockerignore > /dev/null
 
 .PHONY: refreeze-requirements
 refreeze-requirements: ## Upgrade unpinned requirements
