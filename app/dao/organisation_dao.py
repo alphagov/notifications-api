@@ -1,3 +1,7 @@
+from collections.abc import Iterable, Sequence
+from typing import Any
+from uuid import UUID
+
 from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
@@ -13,6 +17,7 @@ from app.dao.organisation_user_permissions_dao import organisation_user_permissi
 from app.models import (
     Domain,
     EmailBranding,
+    LetterBranding,
     Organisation,
     OrganisationPermission,
     OrganisationUserPermissions,
@@ -22,15 +27,15 @@ from app.models import (
 from app.utils import escape_special_characters, get_archived_db_column_value, retryable_query
 
 
-def dao_get_organisations():
+def dao_get_organisations() -> Sequence[Organisation]:
     return Organisation.query.order_by(Organisation.active.desc(), Organisation.name.asc()).all()
 
 
-def dao_get_organisation_domains():
+def dao_get_organisation_domains() -> Sequence[str]:
     return db.session.scalars(select(Domain.domain)).all()
 
 
-def dao_count_organisations_with_live_services():
+def dao_count_organisations_with_live_services() -> int:
     return (
         db.session.query(Organisation.id)
         .join(Organisation.services)
@@ -44,16 +49,18 @@ def dao_count_organisations_with_live_services():
     )
 
 
-def dao_get_organisation_services(organisation_id):
+def dao_get_organisation_services(organisation_id: str | UUID) -> Sequence[Service]:
     return Organisation.query.filter_by(id=organisation_id).one().services
 
 
-def dao_get_organisation_by_id(organisation_id):
+def dao_get_organisation_by_id(organisation_id: str | UUID) -> Organisation:
     return Organisation.query.filter_by(id=organisation_id).one()
 
 
 @retryable_query()
-def dao_get_organisation_by_email_address(email_address: str, session: Session | scoped_session = db.session):
+def dao_get_organisation_by_email_address(
+    email_address: str, session: Session | scoped_session = db.session
+) -> Organisation | None:
     email_address = email_address.lower().replace(".gsi.gov.uk", ".gov.uk")
 
     for domain in session.query(Domain).order_by(func.char_length(Domain.domain).desc()).all():
@@ -63,19 +70,19 @@ def dao_get_organisation_by_email_address(email_address: str, session: Session |
     return None
 
 
-def dao_get_organisations_by_partial_name(organisation_name):
+def dao_get_organisations_by_partial_name(organisation_name: str) -> Sequence[Organisation]:
     organisation_name = escape_special_characters(organisation_name)
     return (
         Organisation.query.filter(Organisation.name.ilike(f"%{organisation_name}%")).order_by(Organisation.name).all()
     )
 
 
-def dao_get_organisation_by_service_id(service_id):
+def dao_get_organisation_by_service_id(service_id: str | UUID) -> Service:
     return Organisation.query.join(Organisation.services).filter_by(id=service_id).first()
 
 
 @autocommit
-def dao_create_organisation(organisation):
+def dao_create_organisation(organisation: Organisation) -> None:
     if organisation.organisation_type in NHS_ORGANISATION_TYPES:
         organisation.email_branding_id = current_app.config["NHS_EMAIL_BRANDING_ID"]
         organisation.letter_branding_id = current_app.config["NHS_LETTER_BRANDING_ID"]
@@ -94,7 +101,7 @@ def dao_create_organisation(organisation):
 
 
 @autocommit
-def dao_update_organisation(organisation_id, **kwargs):
+def dao_update_organisation(organisation_id: str | UUID, **kwargs) -> int:
     domains = kwargs.pop("domains", None)
 
     num_updated = Organisation.query.filter_by(id=organisation_id).update(kwargs)
@@ -126,7 +133,7 @@ def dao_update_organisation(organisation_id, **kwargs):
     return num_updated
 
 
-def _add_branding_to_branding_pool(organisation_id, kwargs):
+def _add_branding_to_branding_pool(organisation_id: str | UUID, kwargs: dict[str, Any]) -> None:
     if kwargs.get("organisation_type") in NHS_ORGANISATION_TYPES:
         # If we're setting the organisation_type to one of the NHS types we always want to add the NHS branding to the
         # pool. This should happen regardless of whether we're changing the branding for the org.
@@ -145,24 +152,24 @@ def _add_branding_to_branding_pool(organisation_id, kwargs):
 @version_class(
     VersionOptions(Service, must_write_history=False),
 )
-def _update_organisation_services(organisation, attribute, only_where_none=True):
+def _update_organisation_services(organisation: Organisation, attribute: str, only_where_none: bool = True) -> None:
     for service in organisation.services:
         if getattr(service, attribute) is None or not only_where_none:
             setattr(service, attribute, getattr(organisation, attribute))
         db.session.add(service)
 
 
-def _update_organisation_services_free_allowance(organisation):
+def _update_organisation_services_free_allowance(organisation: Organisation) -> None:
     for service in organisation.services:
         set_default_free_allowance_for_service(service, year_start=None)
 
 
 @autocommit
-def dao_archive_organisation(organisation_id):
+def dao_archive_organisation(organisation_id: str | UUID) -> None:
     organisation = dao_get_organisation_by_id(organisation_id)
 
-    organisation.email_branding = None
-    organisation.letter_branding = None
+    organisation.email_branding_id = None
+    organisation.letter_branding_id = None
 
     Domain.query.filter_by(organisation_id=organisation_id).delete()
 
@@ -174,7 +181,7 @@ def dao_archive_organisation(organisation_id):
 
 @autocommit
 @version_class(Service)
-def dao_add_service_to_organisation(service, organisation_id):
+def dao_add_service_to_organisation(service: Service, organisation_id: str | UUID) -> None:
     organisation = Organisation.query.filter_by(id=organisation_id).one()
 
     service.organisation_id = organisation_id
@@ -184,7 +191,7 @@ def dao_add_service_to_organisation(service, organisation_id):
     db.session.add(service)
 
 
-def dao_get_users_for_organisation(organisation_id):
+def dao_get_users_for_organisation(organisation_id: str | UUID) -> Sequence[User]:
     return (
         db.session.query(User)
         .join(User.organisations)
@@ -195,7 +202,7 @@ def dao_get_users_for_organisation(organisation_id):
 
 
 @autocommit
-def dao_add_user_to_organisation(organisation_id, user_id, permissions: list[str]):
+def dao_add_user_to_organisation(organisation_id: str | UUID, user_id: str | UUID, permissions: Iterable[str]) -> User:
     organisation = dao_get_organisation_by_id(organisation_id)
     user = User.query.filter_by(id=user_id).one()
     user.organisations.append(organisation)
@@ -215,13 +222,15 @@ def dao_add_user_to_organisation(organisation_id, user_id, permissions: list[str
 
 
 @autocommit
-def dao_remove_user_from_organisation(organisation, user):
+def dao_remove_user_from_organisation(organisation: Organisation, user: User) -> None:
     organisation.users.remove(user)
     organisation_user_permissions_dao.remove_user_organisation_permissions(user, organisation)
 
 
 @autocommit
-def dao_add_email_branding_to_organisation_pool(organisation_id, email_branding_id):
+def dao_add_email_branding_to_organisation_pool(
+    organisation_id: str | UUID, email_branding_id: str | UUID
+) -> EmailBranding:
     organisation = dao_get_organisation_by_id(organisation_id)
     email_branding = EmailBranding.query.filter_by(id=email_branding_id).one()
 
@@ -233,14 +242,16 @@ def dao_add_email_branding_to_organisation_pool(organisation_id, email_branding_
 
 
 @autocommit
-def dao_add_email_branding_list_to_organisation_pool(organisation_id, email_branding_ids):
+def dao_add_email_branding_list_to_organisation_pool(
+    organisation_id: str | UUID, email_branding_ids: Sequence[str | UUID]
+) -> None:
     organisation = dao_get_organisation_by_id(organisation_id)
     email_brandings = [dao_get_email_branding_by_id(branding_id) for branding_id in email_branding_ids]
 
     organisation.email_branding_pool.extend(email_brandings)
 
 
-def dao_get_email_branding_pool_for_organisation(organisation_id):
+def dao_get_email_branding_pool_for_organisation(organisation_id: str | UUID) -> Sequence[EmailBranding]:
     return (
         db.session.query(EmailBranding)
         .join(EmailBranding.organisations)
@@ -252,7 +263,9 @@ def dao_get_email_branding_pool_for_organisation(organisation_id):
     )
 
 
-def dao_get_all_organisations_with_specific_email_branding_in_their_pool(email_branding_id):
+def dao_get_all_organisations_with_specific_email_branding_in_their_pool(
+    email_branding_id: str | UUID,
+) -> Sequence[Organisation]:
     return (
         db.session.query(Organisation)
         .join(Organisation.email_branding_pool)
@@ -264,7 +277,9 @@ def dao_get_all_organisations_with_specific_email_branding_in_their_pool(email_b
 
 
 @autocommit
-def dao_remove_email_branding_from_organisation_pool(organisation_id, email_branding_id):
+def dao_remove_email_branding_from_organisation_pool(
+    organisation_id: str | UUID, email_branding_id: str | UUID
+) -> EmailBranding:
     organisation = dao_get_organisation_by_id(organisation_id)
     email_branding = EmailBranding.query.filter_by(id=email_branding_id).one()
 
@@ -278,14 +293,16 @@ def dao_remove_email_branding_from_organisation_pool(organisation_id, email_bran
     return email_branding
 
 
-def dao_get_letter_branding_pool_for_organisation(organisation_id):
+def dao_get_letter_branding_pool_for_organisation(organisation_id: str | UUID) -> Sequence[LetterBranding]:
     organisation = dao_get_organisation_by_id(organisation_id)
 
     return sorted(organisation.letter_branding_pool, key=lambda x: x.name)
 
 
 @autocommit
-def dao_add_letter_branding_list_to_organisation_pool(organisation_id, letter_branding_ids):
+def dao_add_letter_branding_list_to_organisation_pool(
+    organisation_id: str | UUID, letter_branding_ids: Sequence[str | UUID]
+) -> None:
     organisation = dao_get_organisation_by_id(organisation_id)
     existing_branding_ids = {b.id for b in organisation.letter_branding_pool}
 
@@ -297,7 +314,9 @@ def dao_add_letter_branding_list_to_organisation_pool(organisation_id, letter_br
 
 
 @autocommit
-def dao_remove_letter_branding_from_organisation_pool(organisation_id, letter_branding_id):
+def dao_remove_letter_branding_from_organisation_pool(
+    organisation_id: str | UUID, letter_branding_id: str | UUID
+) -> LetterBranding:
     organisation = dao_get_organisation_by_id(organisation_id)
     letter_branding = dao_get_letter_branding_by_id(letter_branding_id)
 
