@@ -30,6 +30,7 @@ from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from app import db, redis_store, signing
@@ -162,8 +163,8 @@ class User(db.Model):
     # either email auth or a mobile number must be provided
     __table_args__ = (CheckConstraint("auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null"),)
 
-    services = db.relationship("Service", secondary="user_to_service", backref="users")
-    organisations = db.relationship("Organisation", secondary="user_to_organisation", backref="users")
+    services: Mapped[list["Service"]] = relationship(secondary="user_to_service", backref="users")
+    organisations: Mapped[list["Organisation"]] = relationship(secondary="user_to_organisation", backref="users")
 
     @property
     def password(self):
@@ -392,7 +393,7 @@ class OrganisationPermission(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    organisation = db.relationship("Organisation", backref="permissions")
+    organisation: Mapped["Organisation"] = relationship(backref="permissions")
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
     permission = db.Column(
         db.Enum(*ORGANISATION_PERMISSION_TYPES, name="organisation_permission_types"),
@@ -409,10 +410,10 @@ class OrganisationUserPermissions(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True)
-    organisation = db.relationship("Organisation")
+    organisation: Mapped["Organisation"] = relationship()
 
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    user = db.relationship("User")
+    user: Mapped["User"] = relationship()
 
     permission = db.Column(
         db.Enum(OrganisationUserPermissionTypes, name="organisation_user_permission_types"), index=True
@@ -437,7 +438,7 @@ class Organisation(db.Model):
         db.ForeignKey("users.id"),
         nullable=True,
     )
-    agreement_signed_by = db.relationship("User")
+    agreement_signed_by: Mapped["User"] = relationship()
     agreement_signed_on_behalf_of_name = db.Column(db.String(255), nullable=True)
     agreement_signed_on_behalf_of_email_address = db.Column(db.String(255), nullable=True)
     agreement_signed_version = db.Column(db.Float, nullable=True)
@@ -451,32 +452,29 @@ class Organisation(db.Model):
     request_to_go_live_notes = db.Column(db.Text)
     can_approve_own_go_live_requests = db.Column(db.Boolean, default=False, nullable=False)
 
-    domains = db.relationship(
-        "Domain",
-    )
+    domains: Mapped[list["Domain"]] = relationship()
 
     # this is default email branding for organisation, not to be confused with email branding pool
-    email_branding = db.relationship("EmailBranding")
+    email_branding: Mapped["EmailBranding"] = relationship()
     email_branding_id = db.Column(
         UUID(as_uuid=True),
         db.ForeignKey("email_branding.id"),
         nullable=True,
     )
 
-    email_branding_pool = db.relationship(
-        "EmailBranding", secondary="email_branding_to_organisation", backref="organisations"
+    email_branding_pool: Mapped[list["EmailBranding"]] = relationship(
+        secondary="email_branding_to_organisation", backref="organisations"
     )
 
     # this is default letter branding for organisation
-    letter_branding = db.relationship("LetterBranding")
+    letter_branding: Mapped["LetterBranding"] = relationship()
     letter_branding_id = db.Column(
         UUID(as_uuid=True),
         db.ForeignKey("letter_branding.id"),
         nullable=True,
     )
 
-    letter_branding_pool = db.relationship(
-        "LetterBranding",
+    letter_branding_pool: Mapped[list["LetterBranding"]] = relationship(
         secondary="letter_branding_to_organisation",
         backref="organisations",
     )
@@ -577,7 +575,7 @@ class Service(db.Model, Versioned):
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    created_by = db.relationship("User", foreign_keys=[created_by_id])
+    created_by: Mapped["User"] = relationship(foreign_keys=[created_by_id])
     prefix_sms = db.Column(db.Boolean, nullable=False, default=False)
     organisation_type = db.Column(
         db.String(255),
@@ -604,14 +602,14 @@ class Service(db.Model, Versioned):
 
     count_as_live = db.Column(db.Boolean, nullable=False, default=True)
     go_live_user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
-    go_live_user = db.relationship("User", foreign_keys=[go_live_user_id])
+    go_live_user: Mapped["User"] = relationship(foreign_keys=[go_live_user_id])
     go_live_at = db.Column(db.DateTime, nullable=True)
     has_active_go_live_request = db.Column(db.Boolean, default=False, nullable=False)
     confirmed_service_name = db.Column(db.Boolean, default=False, nullable=False)
     confirmed_unique = db.Column(db.Boolean, default=False, nullable=False)
 
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True, nullable=True)
-    organisation = db.relationship("Organisation", backref="services")
+    organisation: Mapped["Organisation"] = relationship(backref="services")
 
     notes = db.Column(db.Text, nullable=True)
     purchase_order_number = db.Column(db.String(255), nullable=True)
@@ -619,13 +617,12 @@ class Service(db.Model, Versioned):
     billing_contact_email_addresses = db.Column(db.Text, nullable=True)
     billing_reference = db.Column(db.String(255), nullable=True)
 
-    email_branding = db.relationship(
-        "EmailBranding", secondary=service_email_branding, uselist=False, backref=db.backref("services", lazy="dynamic")
+    email_branding: Mapped["EmailBranding"] = relationship(
+        secondary=service_email_branding,
+        backref=db.backref("services", lazy="dynamic"),
     )
-    letter_branding = db.relationship(
-        "LetterBranding",
+    letter_branding: Mapped["LetterBranding"] = relationship(
         secondary=service_letter_branding,
-        uselist=False,
         backref=db.backref("services", lazy="dynamic"),
     )
 
@@ -749,7 +746,7 @@ class AnnualBilling(db.Model):
     high_volume_service_last_year = db.Column(db.Boolean, unique=False, default=False, nullable=False)
     has_custom_allowance = db.Column(db.Boolean, unique=False, default=False, nullable=False)
     UniqueConstraint("financial_year_start", "service_id", name="ix_annual_billing_service_id")
-    service = db.relationship(Service, backref=db.backref("annual_billing", uselist=True))
+    service: Mapped[Service] = relationship(backref=db.backref("annual_billing", uselist=True))
 
     __table_args__ = (
         UniqueConstraint("service_id", "financial_year_start", name="uix_service_id_financial_year_start"),
@@ -783,7 +780,7 @@ class InboundNumber(db.Model):
     number = db.Column(db.String(11), unique=True, nullable=False)
     provider = db.Column(db.String(), nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=True, index=True, nullable=True)
-    service = db.relationship(Service, backref=db.backref("inbound_number", uselist=False))
+    service: Mapped[Service] = relationship(backref=db.backref("inbound_number", uselist=False))
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -809,13 +806,13 @@ class ServiceSmsSender(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sms_sender = db.Column(db.String(11), nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False, unique=False)
-    service = db.relationship(Service, backref=db.backref("service_sms_senders", uselist=True))
+    service: Mapped[Service] = relationship(backref=db.backref("service_sms_senders", uselist=True))
     is_default = db.Column(db.Boolean, nullable=False, default=True)
     archived = db.Column(db.Boolean, nullable=False, default=False)
     inbound_number_id = db.Column(
         UUID(as_uuid=True), db.ForeignKey("inbound_numbers.id"), unique=True, index=True, nullable=True
     )
-    inbound_number = db.relationship(InboundNumber, backref=db.backref("service_sms_sender", uselist=False))
+    inbound_number: Mapped[InboundNumber] = relationship(backref=db.backref("service_sms_sender", uselist=False))
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
@@ -846,7 +843,9 @@ class ServicePermission(db.Model):
     )
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
 
-    service = db.relationship(Service, backref=db.backref("permissions", cascade="all, delete-orphan"))
+    service: Mapped[Service] = relationship(
+        backref=db.backref("permissions", cascade="all, delete-orphan")
+    )
 
     def __repr__(self):
         return f"<{self.service_id} has service permission: {self.permission}>"
@@ -857,7 +856,7 @@ class ServiceGuestList(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
-    service = db.relationship("Service", backref="guest_list")
+    service: Mapped[Service] = relationship(backref="guest_list")
     recipient_type = db.Column(guest_list_recipient_types, nullable=False)
     recipient = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
@@ -889,13 +888,13 @@ class ServiceCallbackApi(db.Model, Versioned):
     __tablename__ = "service_callback_api"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
-    service = db.relationship("Service", backref="service_callback_api")
+    service: Mapped["Service"] = relationship(backref="service_callback_api")
     url = db.Column(db.String(), nullable=False)
     callback_type = db.Column(db.String(), db.ForeignKey("service_callback_type.name"), nullable=True)
     _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True)
-    updated_by = db.relationship("User")
+    updated_by: Mapped["User"] = relationship()
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
     __table_args__ = (UniqueConstraint("service_id", "callback_type", name="uix_service_callback_type"),)
@@ -935,12 +934,12 @@ class ApiKey(db.Model, Versioned):
     name = db.Column(db.String(255), nullable=False)
     _secret = db.Column("secret", db.String(255), unique=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
-    service = db.relationship("Service", backref="api_keys")
+    service: Mapped["Service"] = relationship(backref="api_keys")
     key_type = db.Column(db.String(255), db.ForeignKey("key_types.name"), nullable=False)
     expiry_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
-    created_by = db.relationship("User")
+    created_by: Mapped["User"] = relationship()
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
     __table_args__ = (
@@ -978,11 +977,9 @@ class TemplateFolder(db.Model):
     name = db.Column(db.String, nullable=False)
     parent_id = db.Column(UUID(as_uuid=True), db.ForeignKey("template_folder.id"), nullable=True)
 
-    service = db.relationship("Service", backref="all_template_folders")
-    parent = db.relationship("TemplateFolder", remote_side=[id], backref="subfolders")
-    users = db.relationship(
-        "ServiceUser",
-        uselist=True,
+    service: Mapped["Service"] = relationship(backref="all_template_folders")
+    parent: Mapped["TemplateFolder"] = relationship(remote_side=[id], backref="subfolders")
+    users: Mapped[list["ServiceUser"]] = relationship(
         backref=db.backref("folders", foreign_keys="user_folder_permissions.c.template_folder_id"),
         secondary="user_folder_permissions",
         primaryjoin="TemplateFolder.id == user_folder_permissions.c.template_folder_id",
@@ -1075,8 +1072,8 @@ class TemplateBase(db.Model):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
     @declared_attr
-    def created_by(cls):
-        return db.relationship("User")
+    def created_by(cls) -> Mapped["User"]:
+        return relationship()
 
     redact_personalisation = association_proxy("template_redacted", "redact_personalisation")
 
@@ -1085,8 +1082,8 @@ class TemplateBase(db.Model):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("service_letter_contacts.id"), nullable=True)
 
     @declared_attr
-    def service_letter_contact(cls):
-        return db.relationship("ServiceLetterContact", viewonly=True)
+    def service_letter_contact(cls) -> Mapped["ServiceLetterContact"]:
+        return relationship(viewonly=True)
 
     @declared_attr
     def letter_attachment_id(cls):
@@ -1218,21 +1215,17 @@ class TemplateBase(db.Model):
 class Template(TemplateBase):
     __tablename__ = "templates"
 
-    service = db.relationship("Service", backref="templates")
+    service: Mapped["Service"] = relationship(backref="templates")
     version = db.Column(db.Integer, default=0, nullable=False)
 
-    folder = db.relationship(
-        "TemplateFolder",
+    folder: Mapped["TemplateFolder"] = relationship(
         secondary=template_folder_map,
-        uselist=False,
         # eagerly load the folder whenever the template object is fetched
         lazy="joined",
         backref=db.backref("templates"),
     )
 
-    letter_attachment = db.relationship(
-        "LetterAttachment", uselist=False, backref=db.backref("template", uselist=False)
-    )
+    letter_attachment: Mapped["LetterAttachment"] = relationship(backref=db.backref("template", uselist=False))
 
     def get_link(self):
         # TODO: use "/v2/" route once available
@@ -1273,24 +1266,24 @@ class TemplateRedacted(db.Model):
     redact_personalisation = db.Column(db.Boolean, nullable=False, default=False)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True)
-    updated_by = db.relationship("User")
+    updated_by: Mapped["User"] = relationship()
 
     # uselist=False as this is a one-to-one relationship
-    template = db.relationship("Template", uselist=False, backref=db.backref("template_redacted", uselist=False))
+    template: Mapped["Template"] = relationship(backref=db.backref("template_redacted", uselist=False))
 
 
 class TemplateHistory(TemplateBase):
     __tablename__ = "templates_history"
 
-    service = db.relationship("Service")
+    service: Mapped["Service"] = relationship()
     version = db.Column(db.Integer, primary_key=True, nullable=False)
 
     # multiple template history versions can have the same attachment
-    letter_attachment = db.relationship("LetterAttachment", uselist=False, backref=db.backref("template_versions"))
+    letter_attachment: Mapped["LetterAttachment"] = relationship(backref=db.backref("template_versions"))
 
     @declared_attr
-    def template_redacted(cls):
-        return db.relationship(
+    def template_redacted(cls) -> Mapped["TemplateRedacted"]:
+        return relationship(
             "TemplateRedacted", foreign_keys=[cls.id], primaryjoin="TemplateRedacted.template_id == TemplateHistory.id"
         )
 
@@ -1337,23 +1330,23 @@ class TemplateEmailFileBase(db.Model):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
     @declared_attr
-    def created_by(cls):
-        return db.relationship("User", foreign_keys=[cls.created_by_id])
+    def created_by(cls) -> Mapped["User"]:
+        return relationship(foreign_keys=[cls.created_by_id])
 
     @declared_attr
     def archived_by_id(cls):
         return db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
 
     @declared_attr
-    def archived_by(cls):
-        return db.relationship("User", foreign_keys=[cls.archived_by_id])
+    def archived_by(cls) -> Mapped["User"]:
+        return relationship(foreign_keys=[cls.archived_by_id])
 
 
 class TemplateEmailFile(TemplateEmailFileBase):
     __tablename__ = "template_email_files"
 
     version = db.Column(db.Integer, default=0, nullable=False)
-    template = db.relationship("Template", backref="email_files")
+    template: Mapped["Template"] = relationship(backref="email_files")
 
     @classmethod
     def from_json(cls, data):
@@ -1386,7 +1379,7 @@ class ProviderDetails(db.Model):
     version = db.Column(db.Integer, default=1, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
-    created_by = db.relationship("User")
+    created_by: Mapped["User"] = relationship()
     reason = db.Column(db.String, nullable=True)
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -1410,7 +1403,7 @@ class ProviderDetailsHistory(db.Model):
     version = db.Column(db.Integer, primary_key=True, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
-    created_by = db.relationship("User")
+    created_by: Mapped["User"] = relationship()
     reason = db.Column(db.String, nullable=True)
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -1436,9 +1429,9 @@ class Job(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     original_file_name = db.Column(db.String, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False, nullable=False)
-    service = db.relationship("Service", backref=db.backref("jobs", lazy="dynamic"))
+    service: Mapped["Service"] = relationship(backref=db.backref("jobs", lazy="dynamic"))
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), index=True, unique=False)
-    template = db.relationship("Template", backref=db.backref("jobs", lazy="dynamic"))
+    template: Mapped["Template"] = relationship(backref=db.backref("jobs", lazy="dynamic"))
     template_version = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -1449,7 +1442,7 @@ class Job(db.Model):
 
     processing_started = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     processing_finished = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-    created_by = db.relationship("User")
+    created_by: Mapped["User"] = relationship()
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     scheduled_for = db.Column(db.DateTime, index=True, unique=False, nullable=True)
     job_status = db.Column(
@@ -1471,7 +1464,7 @@ class VerifyCode(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    user = db.relationship("User", backref=db.backref("verify_codes", lazy="dynamic"))
+    user: Mapped["User"] = relationship(backref=db.backref("verify_codes", lazy="dynamic"))
     _code = db.Column(db.String, nullable=False)
     code_type = db.Column(
         db.Enum(*VERIFY_CODE_TYPES, name="verify_code_types"), index=False, unique=False, nullable=False
@@ -1543,15 +1536,15 @@ class Notification(db.Model):
     to = db.Column(db.String, nullable=False)
     normalised_to = db.Column(db.String, nullable=True)
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey("jobs.id"), index=True, unique=False)
-    job = db.relationship("Job", backref=db.backref("notifications", lazy="dynamic"))
+    job: Mapped["Job"] = relationship(backref=db.backref("notifications", lazy="dynamic"))
     job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False)
-    service = db.relationship("Service")
+    service: Mapped["Service"] = relationship()
     template_id = db.Column(UUID(as_uuid=True), index=True, unique=False)
     template_version = db.Column(db.Integer, nullable=False)
-    template = db.relationship("TemplateHistory")
+    template: Mapped["TemplateHistory"] = relationship()
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey("api_keys.id"), unique=False)
-    api_key = db.relationship("ApiKey")
+    api_key: Mapped["ApiKey"] = relationship()
     key_type = db.Column(db.String, db.ForeignKey("key_types.name"), unique=False, nullable=False)
     billable_units = db.Column(db.Integer, nullable=False, default=0)
     notification_type = db.Column(notification_types, nullable=False)
@@ -1575,7 +1568,7 @@ class Notification(db.Model):
     phone_prefix = db.Column(db.String, nullable=True)
     rate_multiplier = db.Column(db.Numeric(asdecimal=False), nullable=True)
 
-    created_by = db.relationship("User")
+    created_by: Mapped["User"] = relationship()
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
     reply_to_text = db.Column(db.String, nullable=True)
@@ -1972,14 +1965,14 @@ class NotificationHistory(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True)
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey("jobs.id"), index=True, unique=False)
-    job = db.relationship("Job")
+    job: Mapped["Job"] = relationship()
     job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False)
-    service = db.relationship("Service")
+    service: Mapped["Service"] = relationship()
     template_id = db.Column(UUID(as_uuid=True), unique=False)
     template_version = db.Column(db.Integer, nullable=False)
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey("api_keys.id"), unique=False)
-    api_key = db.relationship("ApiKey")
+    api_key: Mapped["ApiKey"] = relationship()
     key_type = db.Column(db.String, db.ForeignKey("key_types.name"), unique=False, nullable=False)
     billable_units = db.Column(db.Integer, nullable=False, default=0)
     notification_type = db.Column(notification_types, nullable=False)
@@ -2070,8 +2063,7 @@ class NotificationLetterDespatch(db.Model):
     # Ignoring a strict foreign key relationship here for now. Notifications are archived to the NotificationHistory
     # table by a nightly job and I haven't investigated whether that might break a strict FK yet or if it would
     # work smoothly. We can still have a relationship using an explicit join condition.
-    notification = db.relationship(
-        "NotificationAllTimeView",
+    notification: Mapped["NotificationAllTimeView"] = relationship(
         primaryjoin="NotificationLetterDespatch.notification_id == foreign(NotificationAllTimeView.id)",
         uselist=False,
         viewonly=True,
@@ -2090,9 +2082,9 @@ class InvitedUser(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email_address = db.Column(db.String(255), nullable=False)
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    from_user = db.relationship("User")
+    from_user: Mapped["User"] = relationship()
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False)
-    service = db.relationship("Service")
+    service: Mapped["Service"] = relationship()
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name="invited_users_status_types"), nullable=False, default=INVITE_PENDING
@@ -2118,9 +2110,9 @@ class InvitedOrganisationUser(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email_address = db.Column(db.String(255), nullable=False)
     invited_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
-    invited_by = db.relationship("User")
+    invited_by: Mapped["User"] = relationship()
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), nullable=False)
-    organisation = db.relationship("Organisation")
+    organisation: Mapped["Organisation"] = relationship()
 
     permissions = db.Column(db.String, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
@@ -2150,9 +2142,9 @@ class Permission(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # Service id is optional, if the service is omitted we will assume the permission is not service specific.
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False, nullable=True)
-    service = db.relationship("Service")
+    service: Mapped["Service"] = relationship()
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
-    user = db.relationship("User")
+    user: Mapped["User"] = relationship()
     permission = db.Column(
         db.Enum(*PERMISSION_LIST, name="permission_types"), index=False, unique=False, nullable=False
     )
@@ -2199,7 +2191,7 @@ class InboundSms(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, nullable=False)
-    service = db.relationship("Service", backref="inbound_sms")
+    service: Mapped["Service"] = relationship(backref="inbound_sms")
 
     notify_number = db.Column(db.String, nullable=False)  # the service's number, that the msg was sent to
     user_number = db.Column(db.String, nullable=False, index=True)  # the end user's number, that the msg was sent from
@@ -2237,7 +2229,7 @@ class InboundSmsHistory(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True)
     created_at = db.Column(db.DateTime, unique=False, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False)
-    service = db.relationship("Service")
+    service: Mapped["Service"] = relationship()
     notify_number = db.Column(db.String, nullable=False)
     provider_date = db.Column(db.DateTime)
     provider_reference = db.Column(db.String)
@@ -2279,7 +2271,7 @@ class ServiceEmailReplyTo(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
-    service = db.relationship(Service, backref=db.backref("reply_to_email_addresses"))
+    service: Mapped[Service] = relationship(backref=db.backref("reply_to_email_addresses"))
 
     email_address = db.Column(db.Text, nullable=False, index=False, unique=False)
     is_default = db.Column(db.Boolean, nullable=False, default=True)
@@ -2305,7 +2297,7 @@ class ServiceLetterContact(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
-    service = db.relationship(Service, backref=db.backref("letter_contacts"))
+    service: Mapped[Service] = relationship(backref=db.backref("letter_contacts"))
 
     contact_block = db.Column(db.Text, nullable=False, index=False, unique=False)
     is_default = db.Column(db.Boolean, nullable=False, default=True)
@@ -2433,7 +2425,7 @@ class Complaint(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     notification_id = db.Column(UUID(as_uuid=True), index=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
-    service = db.relationship(Service, backref=db.backref("complaints"))
+    service: Mapped[Service] = relationship(backref=db.backref("complaints"))
     ses_feedback_id = db.Column(db.Text, nullable=True)
     complaint_type = db.Column(db.Text, nullable=True)
     complaint_date = db.Column(db.DateTime, nullable=True)
@@ -2457,8 +2449,8 @@ class ServiceDataRetention(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
-    service = db.relationship(
-        Service, backref=db.backref("data_retention", collection_class=attribute_mapped_collection("notification_type"))
+    service: Mapped[Service] = relationship(
+        backref=db.backref("data_retention", collection_class=attribute_mapped_collection("notification_type"))
     )
     notification_type = db.Column(notification_types, nullable=False)
     days_of_retention = db.Column(db.Integer, nullable=False)
@@ -2485,7 +2477,7 @@ class ReturnedLetter(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     reported_at = db.Column(db.Date, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
-    service = db.relationship(Service, backref=db.backref("returned_letters"))
+    service: Mapped[Service] = relationship(backref=db.backref("returned_letters"))
     notification_id = db.Column(UUID(as_uuid=True), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -2499,8 +2491,8 @@ class ServiceContactList(db.Model):
     row_count = db.Column(db.Integer, nullable=False)
     template_type = db.Column(template_types, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), unique=False, index=True, nullable=False)
-    service = db.relationship(Service, backref=db.backref("contact_list"))
-    created_by = db.relationship("User")
+    service: Mapped[Service] = relationship(backref=db.backref("contact_list"))
+    created_by: Mapped["User"] = relationship()
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -2557,7 +2549,7 @@ class WebauthnCredential(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
 
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
-    user = db.relationship(User, backref=db.backref("webauthn_credentials"))
+    user: Mapped[User] = relationship(backref=db.backref("webauthn_credentials"))
 
     name = db.Column(db.String, nullable=False)
 
@@ -2614,7 +2606,7 @@ class UnsubscribeRequestReport(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True)
 
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
-    service = db.relationship(Service, backref=db.backref("unsubscribe_request_reports"))
+    service: Mapped[Service] = relationship(backref=db.backref("unsubscribe_request_reports"))
 
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
     earliest_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
@@ -2667,8 +2659,7 @@ class UnsubscribeRequest(db.Model):
     # table by a nightly job and I haven't investigated whether that might break a strict FK yet or if it would
     # work smoothly. We can still have a relationship using an explicit join condition.
     notification_id = db.Column(UUID(as_uuid=True), index=True, nullable=False)
-    notification = db.relationship(
-        "NotificationAllTimeView",
+    notification: Mapped["NotificationAllTimeView"] = relationship(
         primaryjoin="UnsubscribeRequest.notification_id == foreign(NotificationAllTimeView.id)",
         uselist=False,
         viewonly=True,
@@ -2676,14 +2667,13 @@ class UnsubscribeRequest(db.Model):
 
     # this is denormalised but might still be useful to have as a separate column?
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
-    service = db.relationship(Service, backref=db.backref("unsubscribe_requests"))
+    service: Mapped[Service] = relationship(backref=db.backref("unsubscribe_requests"))
 
     template_id = db.Column(UUID(as_uuid=True), nullable=False)
     template_version = db.Column(db.Integer, nullable=False)
 
-    template_history = db.relationship(TemplateHistory, backref=db.backref("unsubscribe_requests"))
-    template = db.relationship(
-        Template,
+    template_history: Mapped[TemplateHistory] = relationship(backref=db.backref("unsubscribe_requests"))
+    template: Mapped[Template] = relationship(
         foreign_keys=[template_id],
         primaryjoin="Template.id == UnsubscribeRequest.template_id",
         backref=db.backref("unsubscribe_requests"),
@@ -2697,7 +2687,9 @@ class UnsubscribeRequest(db.Model):
     unsubscribe_request_report_id = db.Column(
         UUID(as_uuid=True), db.ForeignKey("unsubscribe_request_report.id"), index=True, nullable=True
     )
-    unsubscribe_request_report = db.relationship(UnsubscribeRequestReport, backref=db.backref("unsubscribe_requests"))
+    unsubscribe_request_report: Mapped[UnsubscribeRequestReport] = relationship(
+        backref=db.backref("unsubscribe_requests")
+    )
 
     __table_args__ = (
         db.ForeignKeyConstraint(
@@ -2791,13 +2783,13 @@ class ServiceJoinRequest(db.Model):
     status_changed_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
     reason = db.Column(db.Text, nullable=True)
 
-    requester = db.relationship("User", foreign_keys=[requester_id])
-    status_changed_by = db.relationship("User", foreign_keys=[status_changed_by_id])
+    requester: Mapped["User"] = relationship(foreign_keys=[requester_id])
+    status_changed_by: Mapped["User"] = relationship(foreign_keys=[status_changed_by_id])
 
     # Use lazy="joined" to load the contacted_service_users relationship with a SQL JOIN
     # This is a nice option as we expect to load this relationship frequently when querying ServiceJoinRequest
-    contacted_service_users = db.relationship(
-        "User", secondary=contacted_users, backref="service_join_requests", lazy="joined"
+    contacted_service_users: Mapped[list["User"]] = relationship(
+        secondary=contacted_users, backref="service_join_requests", lazy="joined"
     )
 
     def serialize(self) -> SerializedServiceJoinRequest:
