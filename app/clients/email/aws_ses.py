@@ -10,7 +10,7 @@ from app.clients.email import (
     EmailClientException,
     EmailClientNonRetryableException,
 )
-from app.otel_metrics.provider import record_request_duration
+from app.metrics.provider import record_request_duration
 
 ses_response_map = {
     "Permanent": {

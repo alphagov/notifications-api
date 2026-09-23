@@ -4,7 +4,7 @@ import pytest
 from freezegun import freeze_time
 from pytest_mock import MockerFixture
 
-from app.otel_metrics.provider import _request_duration, record_request_duration
+from app.metrics.provider import _request_duration, record_request_duration
 
 
 def test_record_request_duration(mocker: MockerFixture) -> None:

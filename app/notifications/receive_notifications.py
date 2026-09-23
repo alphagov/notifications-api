@@ -2,7 +2,7 @@ from datetime import datetime
 from urllib.parse import unquote
 
 from flask import Blueprint, current_app, jsonify, request
-from opentelemetry import metrics
+from opentelemetry.metrics import get_meter
 
 from app.authentication.auth import view_requires_basic_auth
 from app.celery import service_callback_tasks
@@ -18,7 +18,7 @@ receive_notifications_blueprint = Blueprint("receive_notifications", __name__)
 register_errors(receive_notifications_blueprint)
 
 
-INBOUND_SMS_COUNTER = metrics.get_meter(__name__).create_counter(
+INBOUND_SMS_COUNTER = get_meter(__name__).create_counter(
     "inbound_sms", unit="{notification}", description="Total number of inbound SMS received"
 )
 
