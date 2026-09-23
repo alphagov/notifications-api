@@ -26,8 +26,8 @@ from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.delivery import send_to_providers
 from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
+from app.metrics.notification import _international_sms
 from app.models import EmailBranding, Notification
-from app.otel_metrics.notification import _international_sms
 from app.serialised_models import (
     SerialisedProvider,
     SerialisedProviders,

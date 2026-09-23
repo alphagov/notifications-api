@@ -33,8 +33,8 @@ from app.dao.provider_details_dao import (
     dao_reduce_sms_provider_priority,
 )
 from app.exceptions import NotificationTechnicalFailureException
+from app.metrics.notification import record_international_sms, record_send_duration
 from app.models import Notification
-from app.otel_metrics.notification import record_international_sms, record_send_duration
 from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
 
 

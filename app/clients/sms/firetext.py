@@ -4,7 +4,7 @@ import logging
 import requests
 
 from app.clients.sms import SmsClient, SmsClientResponseException
-from app.otel_metrics.provider import record_request_duration
+from app.metrics.provider import record_request_duration
 from app.utils import add_authentication_to_url
 
 logger = logging.getLogger(__name__)

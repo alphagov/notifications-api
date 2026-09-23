@@ -83,6 +83,13 @@ from app.dao.template_email_files_dao import dao_archive_pending_files, dao_get_
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago, get_users_for_research
 from app.letters.utils import generate_letter_pdf_filename
+from app.metrics.provider import (
+    record_info,
+    record_priority,
+    record_sms_banded_not_delivered_within,
+    record_sms_legacy_not_delivered_within,
+    record_updated_at,
+)
 from app.models import (
     AnnualBilling,
     EmailBranding,
@@ -94,13 +101,6 @@ from app.models import (
     User,
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
-from app.otel_metrics.provider import (
-    record_info,
-    record_priority,
-    record_sms_banded_not_delivered_within,
-    record_sms_legacy_not_delivered_within,
-    record_updated_at,
-)
 from app.utils import get_london_midnight_in_utc
 
 

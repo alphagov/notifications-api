@@ -14,10 +14,10 @@ from app.config import QueueNames
 from app.constants import NOTIFICATION_PENDING
 from app.dao import notifications_dao
 from app.dao.templates_dao import dao_get_template_by_id
+from app.metrics.notification import record_deliver_duration, record_international_sms
 from app.notifications.notifications_ses_callback import (
     check_and_queue_callback_task,
 )
-from app.otel_metrics.notification import record_deliver_duration, record_international_sms
 
 sms_response_mapper = {
     "MMG": get_mmg_responses,

@@ -29,7 +29,7 @@ from notifications_utils.eventlet import EventletTimeout
 from notifications_utils.json import FlaskRelaxedContainerJSONProvider
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.logging import flask as utils_logging
-from opentelemetry import metrics
+from opentelemetry.metrics import get_meter
 from sqlalchemy import event
 from sqlalchemy.orm import declarative_base
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
@@ -59,7 +59,7 @@ ma = Marshmallow()
 notify_celery = NotifyCelery()
 signing = Signing()
 redis_store = RedisClient()
-meter = metrics.get_meter(__name__)
+meter = get_meter(__name__)
 
 api_user = LocalProxy(lambda: g.api_user)
 authenticated_service = LocalProxy(lambda: g.authenticated_service)
