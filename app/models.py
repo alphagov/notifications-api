@@ -815,7 +815,7 @@ class ServiceSmsSender(db.Model):
     inbound_number_id = db.Column(
         UUID(as_uuid=True), db.ForeignKey("inbound_numbers.id"), unique=True, index=True, nullable=True
     )
-    inbound_number = db.relationship(InboundNumber, backref=db.backref("inbound_number", uselist=False))
+    inbound_number = db.relationship(InboundNumber, backref=db.backref("service_sms_sender", uselist=False))
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
