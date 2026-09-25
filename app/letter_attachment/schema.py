@@ -2,7 +2,7 @@ from app.schema_validation.definitions import uuid
 
 post_create_letter_attachment_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "description": "POST schema for getting letter_attachment",
+    "description": "POST schema for creating a letter_attachment",
     "type": "object",
     "properties": {
         "upload_id": uuid,
