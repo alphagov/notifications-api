@@ -199,104 +199,47 @@ def test_create_template_email_file_raises_exception_for_invalid_data(
     assert response["errors"] == expected_errors
 
 
-@pytest.mark.parametrize("get_pending", [True, False, None])
-@pytest.mark.parametrize(
-    "files",
-    [
-        (
-            {
-                "filename": "example.pdf",
-                "link_text": "example.pdf",
-                "retention_period": 90,
-                "validate_users_email": True,
-                "pending": False,
-            },
-        ),
-        (
-            {
-                "filename": "example.pdf",
-                "link_text": "example.pdf",
-                "retention_period": 90,
-                "validate_users_email": True,
-                "pending": True,
-            },
-        ),
-        (
-            {
-                "filename": "example.pdf",
-                "link_text": "example.pdf",
-                "retention_period": 90,
-                "validate_users_email": True,
-                "pending": False,
-            },
-            {
-                "filename": "another example.pdf",
-                "link_text": "click for an exciting pdf!",
-                "retention_period": 30,
-                "validate_users_email": False,
-                "pending": False,
-            },
-        ),
-        (
-            {
-                "filename": "example.pdf",
-                "link_text": "example.pdf",
-                "retention_period": 90,
-                "validate_users_email": True,
-                "pending": False,
-            },
-            {
-                "filename": "another example.pdf",
-                "link_text": "click for an exciting pdf!",
-                "retention_period": 30,
-                "validate_users_email": False,
-                "pending": True,
-            },
-        ),
-    ],
-)
-def test_get_template_email_files_returns_all_files(
-    sample_service, sample_email_template, files, admin_request, get_pending
+def test_get_template_email_files_by_template_id_returns_live_files_for_a_given_template(
+    admin_request, sample_service, sample_email_template
 ):
-    live_file_objects = []
-    for file in files:
-        if not get_pending and file.get("pending", False):
-            pass
-        else:
-            file["template_id"] = str(sample_email_template.id)
-            file["created_by_id"] = str(sample_service.users[0].id)
-            if not file["pending"]:
-                live_file_objects += [create_template_email_file(**file)]
-    if get_pending is not None:
-        response = admin_request.get(
-            "template_email_files.get_template_email_files",
-            service_id=sample_service.id,
-            template_id=sample_email_template.id,
-            _expected_status=200,
-            get_pending=get_pending,
-        )
-    else:
-        response = admin_request.get(
-            "template_email_files.get_template_email_files",
-            service_id=sample_service.id,
-            template_id=sample_email_template.id,
-            _expected_status=200,
-        )
+    # pending_file
+    create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="pending file",
+        pending=True
+    )
+    live_file_1 = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="live file 1",
+    )
+    live_file_2 = create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="live file 2",
+    )
 
-    assert {str(file.id) for file in live_file_objects} == {file["id"] for file in response["data"]}
-    assert {file.filename for file in live_file_objects} == {file["filename"] for file in response["data"]}
-    assert {file.retention_period for file in live_file_objects} == {
-        file["retention_period"] for file in response["data"]
-    }
-    assert {file.link_text for file in live_file_objects} == {file["link_text"] for file in response["data"]}
-    assert {file.validate_users_email for file in live_file_objects} == {
-        file["validate_users_email"] for file in response["data"]
-    }
-    assert {str(file.template_id) for file in live_file_objects} == {file["template_id"] for file in response["data"]}
-    assert {file.version for file in live_file_objects} == {file["version"] for file in response["data"]}
-    assert {str(file.created_by_id) for file in live_file_objects} == {
-        file["created_by_id"] for file in response["data"]
-    }
+    template_2 = create_template(service=sample_service, template_type=EMAIL_TYPE)
+    # email file for template_2
+    create_template_email_file(
+        template_id=template_2.id,
+        created_by_id=template_2.created_by_id,
+        filename="live file - template 2",
+    )
+
+    response = admin_request.get(
+        "template_email_files.get_template_email_files_by_template_id",
+        service_id=sample_service.id,
+        template_id=sample_email_template.id,
+        _expected_status=200,
+    )
+
+    assert len(response["data"]) == 2
+
+    for file in response["data"]:
+        assert file["template_id"] == str(sample_email_template.id)
+        assert file["id"] in (str(live_file_1.id), str(live_file_2.id))
 
 
 def test_get_template_email_file_by_id_returns_correct_file(

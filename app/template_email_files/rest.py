@@ -54,7 +54,7 @@ def create_template_email_file(service_id, template_id):
 
 
 @template_email_files_blueprint.route("", methods=["GET"])
-def get_template_email_files(service_id, template_id):
+def get_template_email_files_by_template_id(service_id, template_id):
     fetched_template_email_files = dao_get_template_email_files_by_template_id(template_id)
     template_email_files = template_email_files_schema.dump(fetched_template_email_files, many=True)
     return jsonify(data=template_email_files), 200
