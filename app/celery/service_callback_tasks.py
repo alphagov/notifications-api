@@ -14,7 +14,7 @@ from app.constants import ServiceCallbackTypes
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.returned_letters_dao import fetch_returned_letter_callback_data_dao
 from app.dao.service_callback_api_dao import get_service_callback_api_by_callback_type
-from app.otel_metrics.service_callback import record_service_callback_forward_duration
+from app.metrics.service_callback import record_service_callback_forward_duration
 from app.utils import DATETIME_FORMAT
 
 # thread-local copies of persistent requests.Session

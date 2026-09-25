@@ -25,9 +25,7 @@ psutil~=6.0
 notifications-python-client~=12.1
 
 # Run `make bump-utils` to update to the latest version
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@131.1.0
-
-git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@132.1.0
 
 sentry-sdk[flask,celery,sqlalchemy]~=1.45
 wheel>=0.46.2  # Can be removed after merge of https://github.com/click-contrib/click-datetime/pull/13

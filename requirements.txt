@@ -142,7 +142,6 @@ blinker==1.9.0 \
     --hash=sha256:ba0efaa9080b619ff2f3459d1d500c57bddea4a6b424b60a91141db6fd2f08bc
     # via
     #   flask
-    #   gds-metrics
     #   sentry-sdk
 boto3==1.43.70 \
     --hash=sha256:4f1e16b9eebbad3f312bb6fbf7685d40abdd52a691485cb9f09e7df60d912b41 \
@@ -545,7 +544,6 @@ flask==3.1.3 \
     #   flask-migrate
     #   flask-redis
     #   flask-sqlalchemy
-    #   gds-metrics
     #   notifications-utils
     #   sentry-sdk
 flask-bcrypt==1.0.1 \
@@ -574,8 +572,6 @@ fqdn==1.5.1 \
     --hash=sha256:105ed3677e767fb5ca086a0c1f4bb66ebc3c100be518f0e0d755d9eae164d89f \
     --hash=sha256:3a179af3761e4df6eb2e026ff9e1a3033d3587bf980a0b1b2e1e5d08d7358014
     # via jsonschema
-gds-metrics @ git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
-    # via -r requirements.in
 googleapis-common-protos==1.75.1 \
     --hash=sha256:28a1934bcd33b9c9da66ac301a0a4227e3367f095a17d0375cb98f0a09d93b79 \
     --hash=sha256:d3042c6c5a2d4e67113104d6b6818b59b6bd92a197f2a91508e801fe815cf071
@@ -862,7 +858,7 @@ mistune==0.8.4 \
 notifications-python-client==12.1.0 \
     --hash=sha256:bc44987acbb72de4cded700447d0d246c020dcd0f0311ff2ca884ce1c4001b76
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@a1c07910c5a3460e7e8f64688bf0f52c6d1b1096
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@cb6d09e8e54007057d3489536fe15f5ffed698aa
     # via -r requirements.in
 opentelemetry-api==1.44.0 \
     --hash=sha256:67647e5e9566edcf421166fdf022b3537f818635daa852b289e34604dc6fb33a \
@@ -922,6 +918,7 @@ opentelemetry-instrumentation==0.65b0 \
     --hash=sha256:071d9d9eced9bd6460444ec3b0c77229870ed05a881c22c84fdede58e4eed09b \
     --hash=sha256:ea967a72b9939b5fcfdad572753b4306c59dcb99e3f382d95dae04286805e137
     # via
+    #   notifications-utils
     #   opentelemetry-distro
     #   opentelemetry-instrumentation-asyncio
     #   opentelemetry-instrumentation-boto3sqs
@@ -1096,10 +1093,6 @@ phonenumbers==9.0.36 \
     --hash=sha256:60ca2a6870d2532d6e960105790e85e9d69270ede81746d10cf57f5e437b93ec \
     --hash=sha256:c16a5b95178345ec2df1954578a4ac09e937443b2ee992dd7b15a8e8c81f4acf
     # via notifications-utils
-prometheus-client==0.26.0 \
-    --hash=sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b \
-    --hash=sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6
-    # via gds-metrics
 prompt-toolkit==3.0.53 \
     --hash=sha256:01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2 \
     --hash=sha256:9ec8a0ad96d5c56148b3f914aa79c1564c3fde5d2e6b876e7bc327e353cf8fa6

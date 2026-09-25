@@ -68,28 +68,28 @@ from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import BandedSlowProviderDeliveryReport, SlowProviderDeliveryReport
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.dao.template_email_files_dao import dao_get_template_email_file_by_id
-from app.models import Event, InboundNumber, Notification
-from app.otel_metrics.provider import (
+from app.metrics.provider import (
     _info as provider_info_metric,
 )
-from app.otel_metrics.provider import (
+from app.metrics.provider import (
     _priority as provider_priority_metric,
 )
-from app.otel_metrics.provider import (
+from app.metrics.provider import (
     _sms_banded_not_delivered_within as provider_sms_banded_not_delivered_within_metric,
 )
-from app.otel_metrics.provider import (
+from app.metrics.provider import (
     _sms_banded_not_delivered_within_absolute as provider_sms_banded_not_delivered_within_absolute_metric,
 )
-from app.otel_metrics.provider import (
+from app.metrics.provider import (
     _sms_banded_not_delivered_within_total as provider_sms_banded_not_delivered_within_total_metric,
 )
-from app.otel_metrics.provider import (
+from app.metrics.provider import (
     _sms_legacy_not_delivered_within as provider_sms_legacy_not_delivered_within_metric,
 )
-from app.otel_metrics.provider import (
+from app.metrics.provider import (
     _updated_at as provider_updated_at_metric,
 )
+from app.models import Event, InboundNumber, Notification
 from tests.app import load_example_csv
 from tests.app.db import (
     create_email_branding,

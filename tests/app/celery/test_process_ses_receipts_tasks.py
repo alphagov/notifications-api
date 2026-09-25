@@ -12,12 +12,12 @@ from app.celery.research_mode_tasks import (
 )
 from app.celery.service_callback_tasks import send_complaint_to_service
 from app.dao.notifications_dao import get_notification_by_id
+from app.metrics.notification import _callback_duration, _deliver_duration
 from app.models import Complaint, Notification
 from app.notifications.notifications_ses_callback import (
     remove_emails_from_bounce,
     remove_emails_from_complaint,
 )
-from app.otel_metrics.notification import _callback_duration, _deliver_duration
 from tests.app.db import (
     create_notification,
     create_service_callback_api,

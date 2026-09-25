@@ -24,7 +24,7 @@ from app.constants import (
     NOTIFICATION_RETURNED_LETTER,
     ServiceCallbackTypes,
 )
-from app.otel_metrics.service_callback import _service_callback_forward_duration
+from app.metrics.service_callback import _service_callback_forward_duration
 from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_api_key,

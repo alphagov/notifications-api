@@ -4,7 +4,7 @@ import requests
 from notifications_utils.json import RelaxedContainerJSONEncoder as RCJSONEncoder
 
 from app.clients.sms import SmsClient, SmsClientResponseException
-from app.otel_metrics.provider import record_request_duration
+from app.metrics.provider import record_request_duration
 from app.utils import add_authentication_to_url
 
 # For some extra context, see google drive: GOV.UK Notify -> SMS suppliers -> Detailed failure statuses

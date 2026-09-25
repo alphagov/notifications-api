@@ -40,8 +40,8 @@ from app.constants import (
     NOTIFICATION_TECHNICAL_FAILURE,
 )
 from app.exceptions import NotificationTechnicalFailureException
+from app.metrics.notification import _send_duration
 from app.models import Template
-from app.otel_metrics.notification import _send_duration
 from tests.app.db import create_notification
 
 
