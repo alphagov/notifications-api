@@ -1484,3 +1484,8 @@ def mock_document_download_client_upload(mocker):
         "app.document_download_client.upload_document",
         side_effect=mock_link,
     )
+
+
+@pytest.fixture(scope="function")
+def mock__record_api_key_hourly_usage(mocker):
+    return mocker.patch("app.v2.api_key_usage._record_api_key_hourly_usage")
