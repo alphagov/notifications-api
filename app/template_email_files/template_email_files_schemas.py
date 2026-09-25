@@ -38,13 +38,3 @@ post_update_template_email_files_schema = {
     # all of these are always sent by the update endpoint in admin app, so we should always have data for them
     "required": ["link_text", "retention_period", "validate_users_email", "pending"],
 }
-
-post_archive_template_email_files_schema = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "description": "POST schema for archiving template_emails_file",
-    "type": "object",
-    "properties": {
-        "archived_by_id": uuid,
-    },
-    "required": ["archived_by_id"],
-}

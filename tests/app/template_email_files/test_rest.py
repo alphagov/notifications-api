@@ -421,39 +421,6 @@ def test_update_template_email_file(
     assert template_email_file_history_version_two.version == 2
 
 
-def test_archive_template_email_file(client, sample_service, sample_email_template, admin_request):
-    data = {
-        "filename": "example.pdf",
-        "link_text": "click this link!",
-        "retention_period": 90,
-        "validate_users_email": True,
-        "template_id": str(sample_email_template.id),
-        "created_by_id": str(sample_service.users[0].id),
-        "pending": False,
-    }
-    with freezegun.freeze_time("2025-01-01 11:09:00.000000"):
-        template_email_file = create_template_email_file(**data)
-    assert template_email_file.version == 1  # should be version 1 if not pending
-    data = {"archived_by_id": str(sample_service.users[0].id)}
-    with freezegun.freeze_time("2025-10-10 22:13:00.000000"):
-        response = admin_request.post(
-            "template_email_files.archive_template_email_file",
-            service_id=sample_service.id,
-            template_id=sample_email_template.id,
-            template_email_file_id=template_email_file.id,
-            _expected_status=200,
-            _data=data,
-        )
-    assert response["data"]["archived_at"] == "2025-10-10 22:13:00"
-    assert response["data"]["archived_by"] == str(sample_service.users[0].id)
-    archived_file = TemplateEmailFile.query.get(template_email_file.id)
-    assert str(archived_file.archived_at) == "2025-10-10 22:13:00"
-    assert archived_file.archived_by.id == sample_service.users[0].id
-    assert archived_file.version == 2
-    file_history = TemplateEmailFileHistory.query.filter(TemplateEmailFileHistory.id == template_email_file.id).all()
-    assert len(file_history) == 2
-
-
 def test_create_template_email_file_succeeds_even_if_file_with_the_same_name_exists(
     sample_service, sample_email_template, admin_request
 ):
