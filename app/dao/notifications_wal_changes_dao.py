@@ -140,6 +140,10 @@ def _try_advisory_lock(lock_id: int) -> bool:
     # so we need to use an advisory lock to ensure that only one instance of the task is running at a time.
     # Additional check is added to see if the lock is already held by the current process,
     # in which case we don't want to try to acquire it again as there would already be one in progress.
+    # In pg_locks, pid identifies this backend and granted excludes queued locks. A bigint advisory key
+    # is split across classid (upper 32 bits) and objid (lower 32 bits). The 4294967295 mask is
+    # 2^32 - 1 (32 one-bits), so it selects objid's lower bits; objsubid = 1 identifies the bigint
+    # key form, while objsubid = 2 identifies the two-integer key form.
     sql = text("""
         WITH already_held AS (
             SELECT EXISTS (
