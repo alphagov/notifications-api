@@ -64,40 +64,20 @@ def dao_process_notifications_replication_slot_changes(
             }
 
         # Process the fetched replication slot changes to update service statistics.
-        # The slot advance boundary must use the SQL-reported LSN, not the row-level wal2json nextlsn.
-        counter, processed_changes, ignored_changes, _ = _build_counter_from_changes(changes)
-        last_lsn = batch_last_lsn
-
-        # Aggregate the counter into service statistics change counts for each unique dimensions tuple
-        service_stats_change_counts = _aggregate_service_stats_change_counts(counter)
-
-        # Apply the aggregated service statistics change counts to the database
-        for service_stats_key, change_count in service_stats_change_counts.items():
-            if change_count == 0:
-                continue
-
-            bst_date, service_id, template_id, notification_type, notification_status = service_stats_key
-            dimensions: ServiceStatsDimensions = {
-                "bst_date": bst_date,
-                "service_id": service_id,
-                "template_id": template_id,
-                "notification_type": notification_type,
-                "notification_status": notification_status,
-            }
-            apply_service_stats_change(dimensions, change_count)
+        processed_changes, ignored_changes, service_stats_change_counts = _process_changes(changes)
 
         # Advance the replication slot to the last processed SQL LSN
         # to avoid reprocessing the same changes in future runs.
-        if last_lsn:
+        if batch_last_lsn:
             current_app.logger.info(
                 "Advancing replication slot %s to last_lsn=%s",
                 slot_name,
-                last_lsn,
+                batch_last_lsn,
             )
-            _advance_replication_slot(last_lsn, slot_name=slot_name)
+            _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
         else:
             current_app.logger.warning(
-                "No last_lsn found after processing replication slot changes, \
+                "[notifications_wal_changes_dao] No last_lsn found after processing replication slot changes, \
                 replication slot %s will not be advanced",
                 slot_name,
             )
@@ -107,13 +87,13 @@ def dao_process_notifications_replication_slot_changes(
 
         # Log the result of the replication slot processing for monitoring and debugging purposes.
         current_app.logger.info(
-            "%s replication slot changes processed: %s processed, %s ignored, \
+            "[notifications_wal_changes_dao] %s replication slot changes processed: %s processed, %s ignored, \
             %s service stats change count buckets, last_lsn=%s",
             fetched_changes,
             processed_changes,
             ignored_changes,
             len(service_stats_change_counts),
-            last_lsn,
+            batch_last_lsn,
         )
 
         # Return a summary of the replication slot processing results
@@ -123,12 +103,12 @@ def dao_process_notifications_replication_slot_changes(
             "processed_changes": processed_changes,
             "ignored_changes": ignored_changes,
             "service_stats_change_count_buckets": len(service_stats_change_counts),
-            "last_lsn": last_lsn,
+            "last_lsn": batch_last_lsn,
         }
     except Exception:
         # Ensure a failed statement does not poison the session for cleanup queries.
         db.session.rollback()
-        current_app.logger.exception("[FAILED] Replication slot changes")
+        current_app.logger.exception("[notifications_wal_changes_dao] FAILED: Replication slot changes")
         raise
     finally:
         # Release the advisory lock if it was acquired, and log any exceptions that occur during the release process.
@@ -137,14 +117,14 @@ def dao_process_notifications_replication_slot_changes(
                 _advisory_unlock(advisory_lock_id)
             except Exception:
                 current_app.logger.exception(
-                    "Failed to release advisory lock",
+                    "[notifications_wal_changes_dao] Failed to release advisory lock",
                     extra={"dao_method": "dao_process_replication_slot_changes"},
                 )
 
         # Log the total time taken to process the replication slot changes for monitoring and debugging purposes.
         end_time = datetime.utcnow()
         current_app.logger.info(
-            "Replication slot changes processed in %s seconds",
+            "[notifications_wal_changes_dao] Replication slot changes processed in %s seconds",
             (end_time - start_time).total_seconds(),
             extra={
                 "dao_method": "dao_process_replication_slot_changes",
@@ -254,6 +234,32 @@ def _get_replication_changes(
         _advance_replication_slot(last_sql_lsn, slot_name=slot_name)
 
     return parsed_rows, last_sql_lsn
+
+
+def _process_changes(changes):
+    # Process the fetched replication slot changes to update service statistics.
+    # The slot advance boundary must use the SQL-reported LSN, not the row-level wal2json nextlsn.
+    counter, processed_changes, ignored_changes, _ = _build_counter_from_changes(changes)
+
+    # Aggregate the counter into service statistics change counts for each unique dimensions tuple
+    service_stats_change_counts = _aggregate_service_stats_change_counts(counter)
+
+    # Apply the aggregated service statistics change counts to the database
+    for service_stats_key, change_count in service_stats_change_counts.items():
+        if change_count == 0:
+            continue
+
+        bst_date, service_id, template_id, notification_type, notification_status = service_stats_key
+        dimensions: ServiceStatsDimensions = {
+            "bst_date": bst_date,
+            "service_id": service_id,
+            "template_id": template_id,
+            "notification_type": notification_type,
+            "notification_status": notification_status,
+        }
+        apply_service_stats_change(dimensions, change_count)
+
+    return processed_changes, ignored_changes, service_stats_change_counts
 
 
 def _parse_wal2json_payload(
