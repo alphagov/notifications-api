@@ -29,7 +29,7 @@ def dao_process_notifications_replication_slot_changes(
     advisory_lock_id: int = REPLICATION_ADVISORY_LOCK_ID,
 ) -> dict[str, int | str | bool | None]:
     lock_acquired = False
-    start_time = datetime.utcnow()
+    start_time = datetime.now()
 
     try:
         lock_acquired = _try_advisory_lock(advisory_lock_id)
@@ -122,7 +122,7 @@ def dao_process_notifications_replication_slot_changes(
                 )
 
         # Log the total time taken to process the replication slot changes for monitoring and debugging purposes.
-        end_time = datetime.utcnow()
+        end_time = datetime.now()
         current_app.logger.info(
             "[notifications_wal_changes_dao] Replication slot changes processed in %s seconds",
             (end_time - start_time).total_seconds(),
