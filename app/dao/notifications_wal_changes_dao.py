@@ -267,16 +267,9 @@ def _parse_wal2json_payload(
 ) -> list[ParsedRow]:
     parsed_rows: list[ParsedRow] = []
 
-    # The allows support for format version 1 as well as version 2 of wal2json.
-    # In version 1, the payload is a single change object, while in version 2, the payload is a list of change objects.
     raw_changes = payload.get("change")
-    if raw_changes is None:
-        if payload.get("table") and payload.get("schema") and payload.get("action") in {"I", "U", "D"}:
-            raw_changes = [payload]
-        else:
-            return parsed_rows
-    elif not isinstance(raw_changes, list):
-        raw_changes = [raw_changes]
+    if not isinstance(raw_changes, list):
+        return parsed_rows
 
     # Parse each change object in the raw_changes list and extract relevant information.
     for change in raw_changes:
@@ -330,28 +323,12 @@ def _normalise_change_type(action: Any) -> str:
 
 
 def _extract_row_data(change: dict[str, Any]) -> RowData:
-    if "columnnames" in change and "columnvalues" in change:
-        return _zip_values(change["columnnames"], change["columnvalues"])
-
-    if "columns" in change:
-        return _extract_name_value_rows(change["columns"])
-
-    if "identity" in change and change.get("action") in {"D", "U", "I"}:
-        return _extract_name_value_rows(change["identity"])
-
-    return {}
+    return _extract_name_value_rows(change.get("columns", []))
 
 
 def _extract_previous_row_data(change: dict[str, Any]) -> RowData:
-    oldkeys = change.get("oldkeys") or {}
-    if "keynames" in oldkeys and "keyvalues" in oldkeys:
-        return _zip_values(oldkeys["keynames"], oldkeys["keyvalues"])
-
-    if "keys" in oldkeys:
-        return _extract_name_value_rows(oldkeys["keys"])
-
-    if "identity" in change and change.get("action") in {"U", "D"}:
-        return _extract_name_value_rows(change["identity"])
+    if change.get("action") in {"U", "D"}:
+        return _extract_name_value_rows(change.get("identity", []))
 
     return {}
 
@@ -366,10 +343,6 @@ def _extract_name_value_rows(rows: list[Any]) -> RowData:
             continue
         row_data[str(name)] = row.get("value")
     return row_data
-
-
-def _zip_values(names: list[Any], values: list[Any]) -> RowData:
-    return {str(name): value for name, value in zip(names, values, strict=True) if name is not None}
 
 
 # Ignoring C901 (function is too complex) because this function is inherently complex due to the
