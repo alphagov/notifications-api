@@ -519,7 +519,7 @@ def test_dao_process_notifications_replication_slot_changes_logs_unlock_failure(
     assert mock_logger.call_count == 1
     logger_args = mock_logger.call_args
     assert logger_args.args[0] == "[notifications_wal_changes_dao] Failed to release advisory lock"
-    assert logger_args.kwargs == {"extra": {"dao_method": "dao_process_replication_slot_changes"}}
+    assert logger_args.kwargs == {"extra": {"dao_method": "dao_process_notifications_replication_slot_changes"}}
 
 
 def _row_data(*, service_id: UUID, template_id: UUID, notification_type: str, notification_status: str) -> dict:
