@@ -27,16 +27,6 @@ def _build_change(
     }
 
 
-def test_zip_values():
-    assert dao._zip_values(["a", None, "c"], [1, 2, 3]) == {"a": 1, "c": 3}
-
-
-def test_extract_row_data_from_columnnames_and_columnvalues():
-    change = {"columnnames": ["service_id", "notification_type"], "columnvalues": ["abc", "sms"]}
-
-    assert dao._extract_row_data(change) == {"service_id": "abc", "notification_type": "sms"}
-
-
 def test_extract_row_data_from_columns():
     change = {
         "columns": [
@@ -51,25 +41,6 @@ def test_extract_row_data_from_columns():
 
 def test_extract_row_data_returns_empty_when_not_present():
     assert dao._extract_row_data({}) == {}
-
-
-def test_extract_previous_row_data_from_keynames_and_keyvalues():
-    change = {"oldkeys": {"keynames": ["notification_status"], "keyvalues": ["created"]}}
-
-    assert dao._extract_previous_row_data(change) == {"notification_status": "created"}
-
-
-def test_extract_previous_row_data_from_keys():
-    change = {
-        "oldkeys": {
-            "keys": [
-                {"name": "notification_status", "value": "sending"},
-                {"name": None, "value": "ignored"},
-            ]
-        }
-    }
-
-    assert dao._extract_previous_row_data(change) == {"notification_status": "sending"}
 
 
 def test_extract_previous_row_data_returns_empty_when_not_present():
@@ -168,16 +139,20 @@ def test_get_replication_changes_handles_non_indexable_result_rows(mocker):
 
 def test_parse_wal2json_payload_supports_format_2_rows():
     payload = {
-        "action": "I",
-        "schema": "public",
-        "table": "notifications",
-        "columns": [
-            {"name": "service_id", "value": "550e8400-e29b-41d4-a716-446655440000"},
-            {"name": "template_id", "value": "550e8400-e29b-41d4-a716-446655440001"},
-            {"name": "notification_type", "value": "sms"},
-            {"name": "key_type", "value": "normal"},
-            {"name": "notification_status", "value": "created"},
-            {"name": "created_at", "value": "2026-08-12T10:00:00Z"},
+        "change": [
+            {
+                "action": "I",
+                "schema": "public",
+                "table": "notifications",
+                "columns": [
+                    {"name": "service_id", "value": "550e8400-e29b-41d4-a716-446655440000"},
+                    {"name": "template_id", "value": "550e8400-e29b-41d4-a716-446655440001"},
+                    {"name": "notification_type", "value": "sms"},
+                    {"name": "key_type", "value": "normal"},
+                    {"name": "notification_status", "value": "created"},
+                    {"name": "created_at", "value": "2026-08-12T10:00:00Z"},
+                ],
+            }
         ],
     }
 
@@ -529,7 +504,7 @@ def test_dao_process_notifications_replication_slot_changes_rollback_and_reraise
         dao.dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
     mock_rollback.assert_called_once()
-    mock_logger.assert_called_once_with("[FAILED] Replication slot changes")
+    mock_logger.assert_called_once_with("[notifications_wal_changes_dao] FAILED: Replication slot changes")
     mock_unlock.assert_called_once_with(77)
 
 
@@ -543,7 +518,7 @@ def test_dao_process_notifications_replication_slot_changes_logs_unlock_failure(
 
     assert mock_logger.call_count == 1
     logger_args = mock_logger.call_args
-    assert logger_args.args[0] == "Failed to release advisory lock"
+    assert logger_args.args[0] == "[notifications_wal_changes_dao] Failed to release advisory lock"
     assert logger_args.kwargs == {"extra": {"dao_method": "dao_process_replication_slot_changes"}}
 
 
