@@ -152,7 +152,7 @@ get_document_download_client: LazyLocalGetter[DocumentDownloadClient] = LazyLoca
     lambda: DocumentDownloadClient(current_app),
 )
 memo_resetters.append(lambda: get_document_download_client.clear())
-document_download_client = LocalProxy(get_document_download_client)
+document_download_client: DocumentDownloadClient = LocalProxy(get_document_download_client)  # type: ignore[assignment]
 
 _zendesk_client_context_var: ContextVar[ZendeskClient] = ContextVar("zendesk_client")
 get_zendesk_client: LazyLocalGetter[ZendeskClient] = LazyLocalGetter(
