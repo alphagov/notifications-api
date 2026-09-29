@@ -408,7 +408,7 @@ class OrganisationUserPermissions(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
-    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True)
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True, nullable=False)
     organisation = db.relationship("Organisation")
 
     user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
