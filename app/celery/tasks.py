@@ -48,7 +48,7 @@ from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.notifications.process_notifications import add_email_file_links_to_personalisation, persist_notification
+from app.notifications.process_notifications import email_file_links_as_personalisation, persist_notification
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
@@ -418,8 +418,8 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
 
     document_download_count = len(template.email_file_objects) or None
 
-    personalisation = add_email_file_links_to_personalisation(
-        template=template, personalisation=notification.get("personalisation", {}), recipient=notification["to"]
+    personalisation = notification.get("personalisation", {}) | dict(
+        email_file_links_as_personalisation(template, notification["to"])
     )
 
     if sender_id:

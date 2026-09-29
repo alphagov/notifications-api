@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Generator
 from datetime import datetime
 
 from flask import current_app
@@ -34,6 +35,7 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_by_id,
 )
 from app.models import Notification
+from app.serialised_models import SerialisedTemplate
 from app.utils import (
     parse_and_format_phone_number,
     try_download_template_email_file_from_s3,
@@ -48,14 +50,13 @@ REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
 
 def create_content_for_notification(template, personalisation, recipient):
     if template.template_type == EMAIL_TYPE:
-        personalisation = add_email_file_links_to_personalisation(template, personalisation, recipient)
         template_object = PlainTextEmailTemplate(
             {
                 "content": template.content,
                 "subject": template.subject,
                 "template_type": template.template_type,
             },
-            personalisation,
+            (personalisation or {}) | dict(email_file_links_as_personalisation(template, recipient)),
         )
     if template.template_type == SMS_TYPE:
         template_object = SMSMessageTemplate(
@@ -96,7 +97,7 @@ def check_placeholders(template_object):
         raise BadRequestError(fields=[{"template": message}], message=message)
 
 
-def add_email_file_links_to_personalisation(template, personalisation, recipient):
+def email_file_links_as_personalisation(template: SerialisedTemplate, recipient: str) -> Generator[tuple[str, str]]:
     for email_file in template.email_file_objects:
         template_email_file_from_s3 = try_download_template_email_file_from_s3(template.service, email_file.id)
         doc_download_link = document_download_client.upload_document(
@@ -109,11 +110,9 @@ def add_email_file_links_to_personalisation(template, personalisation, recipient
             filename=email_file.filename,
         )
         if email_file.link_text:
-            personalisation[email_file.filename] = f"[{email_file.link_text}]({doc_download_link})"
+            yield (email_file.filename, f"[{email_file.link_text}]({doc_download_link})")
         else:
-            personalisation[email_file.filename] = doc_download_link
-
-    return personalisation
+            yield (email_file.filename, doc_download_link)
 
 
 def persist_notification(

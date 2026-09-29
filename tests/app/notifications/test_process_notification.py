@@ -20,8 +20,8 @@ from app.constants import (
 )
 from app.models import Notification, NotificationHistory
 from app.notifications.process_notifications import (
-    add_email_file_links_to_personalisation,
     create_content_for_notification,
+    email_file_links_as_personalisation,
     persist_notification,
     send_notification_to_queue,
     simulated_recipient,
@@ -143,7 +143,6 @@ def test_create_content_for_notification_should_raise_if_email_files_not_found(
                 {"filename": "form.pdf", "validate_users_email": True, "retention_period": 26, "link_text": ""},
             ],
             {
-                "name": "Anne",
                 "invitation.pdf": "documents.gov.uk/invitation.pdf",
                 "form.pdf": "documents.gov.uk/form.pdf",
             },
@@ -164,7 +163,6 @@ def test_create_content_for_notification_should_raise_if_email_files_not_found(
                 },
             ],
             {
-                "name": "Anne",
                 "invitation.pdf": "[click this first link](documents.gov.uk/invitation.pdf)",
                 "form.pdf": "[click this second link](documents.gov.uk/form.pdf)",
             },
@@ -192,7 +190,7 @@ def test_add_email_file_links_to_personalisation(
         template_id=sample_email_template_with_email_file_placeholders.id, service_id=sample_service.id
     )
 
-    personalisation = add_email_file_links_to_personalisation(template, {"name": "Anne"}, recipient="anne@example.com")
+    personalisation = dict(email_file_links_as_personalisation(template, "anne@example.com"))
 
     assert personalisation == expected_personalisation
     assert len(mock_document_download_client_upload.mock_calls) == 2
