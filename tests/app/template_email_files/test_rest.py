@@ -243,8 +243,15 @@ def test_get_template_email_files_by_template_id_returns_live_files_for_a_given_
 
 
 def test_get_template_email_file_by_id_returns_correct_file(
-    sample_template_email_file_not_pending, sample_service, admin_request
+    sample_email_template, sample_template_email_file_not_pending, sample_service, admin_request
 ):
+    # control file
+    create_template_email_file(
+        template_id=sample_email_template.id,
+        created_by_id=sample_email_template.created_by_id,
+        filename="another live email file",
+    )
+
     response = admin_request.get(
         "template_email_files.get_template_email_file_by_id",
         template_id=sample_template_email_file_not_pending.template_id,
