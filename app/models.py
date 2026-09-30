@@ -1437,7 +1437,7 @@ class Job(db.Model):
     original_file_name = db.Column(db.String, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), index=True, unique=False, nullable=False)
     service = db.relationship("Service", backref=db.backref("jobs", lazy="dynamic"))
-    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), index=True, unique=False)
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), index=True, unique=False, nullable=False)
     template = db.relationship("Template", backref=db.backref("jobs", lazy="dynamic"))
     template_version = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
