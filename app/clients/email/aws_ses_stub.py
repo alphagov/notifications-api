@@ -5,7 +5,7 @@ import requests
 from flask import current_app
 
 from app.clients.email import EmailClient, EmailClientException
-from app.otel_metrics.provider import record_request_duration
+from app.metrics.provider import record_request_duration
 
 
 class AwsSesStubClientException(EmailClientException):

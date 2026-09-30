@@ -9,7 +9,7 @@ from app.celery.process_sms_client_response_tasks import (
 )
 from app.clients import ClientException
 from app.constants import NOTIFICATION_TECHNICAL_FAILURE
-from app.otel_metrics.notification import _callback_duration, _deliver_duration, _international_sms
+from app.metrics.notification import _callback_duration, _deliver_duration, _international_sms
 
 
 def test_process_sms_client_response_raises_error_if_reference_is_not_a_valid_uuid(client):

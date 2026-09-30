@@ -11,11 +11,6 @@ from app.performance import init_performance_monitoring
 
 init_performance_monitoring()
 
-# import prometheus before any other code. If gds_metrics is imported first it will write a prometheus file to disk
-# that will never be read from (since we don't have prometheus celery stats). If prometheus is imported first,
-# prometheus will simply store the metrics in memory
-import prometheus_client  # noqa
-
 # We have lots of issues related to using pycurl locally on (M1?) macs.
 # We have specific installation instructions for pycurl here:
 #   https://github.com/alphagov/notifications-manuals/wiki/Getting-started#pycurl

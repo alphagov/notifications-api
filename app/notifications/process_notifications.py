@@ -2,7 +2,6 @@ import uuid
 from datetime import datetime
 
 from flask import current_app
-from gds_metrics import Histogram
 from notifications_utils.clients import redis
 from notifications_utils.formatters import strip_and_remove_obscure_whitespace
 from notifications_utils.recipient_validation.email_address import (
@@ -39,11 +38,6 @@ from app.utils import (
     try_download_template_email_file_from_s3,
 )
 from app.v2.errors import BadRequestError, QrCodeTooLongError
-
-REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
-    "redis_get_and_incr_daily_limit_duration_seconds",
-    "Time taken to get and possibly incremement the daily limit cache key",
-)
 
 
 def create_content_for_notification(template, personalisation, recipient):
