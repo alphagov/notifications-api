@@ -16,18 +16,14 @@ def _run_script(csv_text: str) -> str:
     return result.stdout
 
 
-def test_skips_public_bodies_and_ingests_commercial_ids():
+def test_ingests_commercial_and_public_body_ids():
     output = _run_script(
         "Sender ID,MEF Approved,Date Approved,Merchant\n"
         "MonzoAlert,approved,2026-01-01,Monzo\n"
-        "GOVuk,approved,2026-01-01,Cabinet Office\n"
         "HMRCC,approved,2026-01-01,HMRC\n"
-        "NHS app,approved,2026-01-01,NHS\n"
     )
 
-    assert "INSERT INTO protected_sender_ids VALUES ('monzoalert') ON CONFLICT DO NOTHING;" in output
-    assert "govuk" not in output
-    assert "hmrcc" not in output
+    assert "INSERT INTO protected_sender_ids VALUES ('monzoalert'),('hmrcc') ON CONFLICT DO NOTHING;" in output
 
 
 def test_lowercases_and_strips_whitespace():
