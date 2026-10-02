@@ -617,14 +617,15 @@ def test_validate_and_format_recipient_fails_when_block_ofcom_block_protected_bl
 
 
 @pytest.mark.parametrize("key_type", ["test", "normal"])
-def test_validate_and_format_recipient_succeeds_when_not_ofcom_block_protected_block(
+@pytest.mark.parametrize("key_type", ["test", "normal"])
+def test_validate_and_format_recipient_succeeds_when_not_block_ofcom_protected_block(
     key_type,
     notify_db_session,
 ):
-    service = create_service(service_permissions=[SMS_TYPE, BLOCK_OFCOM_PROTECTED_BLOCK])
+    service = create_service(service_permissions=[SMS_TYPE])
     service_model = SerialisedService.from_id(service.id)
-    with pytest.raises(InvalidPhoneError):
-        validate_and_format_recipient("07034700000", key_type, service_model, SMS_TYPE)
+    result = validate_and_format_recipient("07034700000", key_type, service_model, SMS_TYPE)
+    assert result["normalised_to"] == "447034700000"
 
 
 @pytest.mark.parametrize("key_type", ["test", "normal"])
