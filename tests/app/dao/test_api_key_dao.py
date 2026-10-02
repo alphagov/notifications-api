@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -6,14 +6,15 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app.constants import KEY_TYPE_NORMAL
 from app.dao.api_key_dao import (
+    create_api_key_hourly_usage_record_dao,
     expire_api_key,
     get_model_api_keys,
     get_unsigned_secret,
     get_unsigned_secrets,
     save_model_api_key,
 )
-from app.models import ApiKey
-from tests.app.db import create_user
+from app.models import ApiKey, ApiKeyUsage
+from tests.app.db import create_api_key, create_user
 
 
 def test_save_api_key_should_create_new_api_key_and_history(sample_service):
@@ -149,3 +150,57 @@ def test_should_not_return_revoked_api_keys_older_than_7_days(sample_service, da
     all_api_keys = get_model_api_keys(service_id=sample_service.id)
 
     assert len(all_api_keys) == expected_length
+
+
+def test_create_api_key_hourly_usage_record_dao_creates_new_record(sample_service):
+    service_id = sample_service.id
+    api_key = create_api_key(service=sample_service)
+    endpoint = "v2_notifications.post_notification"
+    usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+
+    create_api_key_hourly_usage_record_dao(
+        service_id=service_id, api_key_id=api_key.id, endpoint=endpoint, usage_hour=usage_hour
+    )
+
+    result = ApiKeyUsage.query.one_or_none()
+
+    assert result.service_id == service_id
+    assert result.api_key_id == api_key.id
+    assert result.usage_hour == usage_hour
+    assert result.endpoint == endpoint
+
+
+def test_create_api_key_hourly_usage_record_dao_does_not_create_duplicate_records(sample_service):
+    service_id = sample_service.id
+    api_key = create_api_key(service=sample_service)
+    endpoint = "v2_notifications.post_notification"
+    usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+
+    create_api_key_hourly_usage_record_dao(
+        service_id=service_id, api_key_id=api_key.id, endpoint=endpoint, usage_hour=usage_hour
+    )
+
+    # Repeat attempt to enter same record into the database
+    create_api_key_hourly_usage_record_dao(
+        service_id=service_id, api_key_id=api_key.id, endpoint=endpoint, usage_hour=usage_hour
+    )
+
+    result = ApiKeyUsage.query.all()
+
+    assert len(result) == 1
+
+
+def test_create_api_key_hourly_usage_record_dao_hourly_usage_constraint(sample_service):
+    service_id = sample_service.id
+    api_key = create_api_key(service=sample_service)
+    endpoint = "v2_notifications.post_notification"
+    usage_hour = datetime(2026, 9, 1, 10, 10, 20, tzinfo=UTC)
+
+    with pytest.raises(IntegrityError) as e:
+        create_api_key_hourly_usage_record_dao(
+            service_id=service_id, api_key_id=api_key.id, endpoint=endpoint, usage_hour=usage_hour
+        )
+
+    assert 'new row for relation "api_key_usage" violates check constraint "ck_api_key_usage_usage_hour"' in str(
+        e.value
+    )
