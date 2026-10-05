@@ -1,6 +1,6 @@
 import random
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from app import db
 from app.constants import (
@@ -1355,7 +1355,7 @@ def create_report_request(
 
 
 def create_api_key_usage_record(service_id, api_key_id, usage_hour=None, endpoint="v2_notifications.post_notification"):
-    usage_hour = datetime(2026, 9, 1, 10, 0, 0, tzinfo=UTC) if not usage_hour else usage_hour
+    usage_hour = datetime(2026, 9, 1, 10, 0, 0) if not usage_hour else usage_hour
     return create_api_key_hourly_usage_record_dao(
         service_id=service_id, api_key_id=api_key_id, endpoint=endpoint, usage_hour=usage_hour
     )

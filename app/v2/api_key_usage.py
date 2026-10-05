@@ -19,10 +19,10 @@ def record_api_key_hourly_usage():
     """
     service_id = authenticated_service.id
     api_key_id = api_user.id
-    usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0, tzinfo=None)
     endpoint = request.endpoint
-    # hourly_bucket is of the format "%Y%m%d%T%H", ie the hourly_bucket for 10:00:00 to 10:59:59 UTC on 08/09/2026
-    # would be 20260908T10
+    # hourly_bucket is of the format "%Y-%m-%d%T%H", ie the hourly_bucket for 10:00:00 to 10:59:59 UTC on 08/09/2026
+    # would be 2026-09-08T10
     hourly_bucket = usage_hour.strftime("%Y-%m-%dT%H")
 
     _record_service_api_key_hourly_usage(api_key_id, service_id, hourly_bucket, endpoint, usage_hour)

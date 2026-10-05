@@ -156,7 +156,7 @@ def test_create_api_key_hourly_usage_record_dao_creates_new_record(sample_servic
     service_id = sample_service.id
     api_key = create_api_key(service=sample_service)
     endpoint = "v2_notifications.post_notification"
-    usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0, tzinfo=None)
 
     create_api_key_hourly_usage_record_dao(
         service_id=service_id, api_key_id=api_key.id, endpoint=endpoint, usage_hour=usage_hour
@@ -174,7 +174,7 @@ def test_create_api_key_hourly_usage_record_dao_does_not_create_duplicate_record
     service_id = sample_service.id
     api_key = create_api_key(service=sample_service)
     endpoint = "v2_notifications.post_notification"
-    usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    usage_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0, tzinfo=None)
 
     create_api_key_hourly_usage_record_dao(
         service_id=service_id, api_key_id=api_key.id, endpoint=endpoint, usage_hour=usage_hour
@@ -194,7 +194,7 @@ def test_create_api_key_hourly_usage_record_dao_hourly_usage_constraint(sample_s
     service_id = sample_service.id
     api_key = create_api_key(service=sample_service)
     endpoint = "v2_notifications.post_notification"
-    usage_hour = datetime(2026, 9, 1, 10, 10, 20, tzinfo=UTC)
+    usage_hour = datetime(2026, 9, 1, 10, 10, 20)
 
     with pytest.raises(IntegrityError) as e:
         create_api_key_hourly_usage_record_dao(

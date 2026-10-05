@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from unittest.mock import call
 
 import freezegun
@@ -9,10 +9,7 @@ from tests import create_service_authorization_header
 
 
 def test_record_api_key_usage_makes_one_record_per_hour_per_endpoint(
-    sample_service,
     sample_letter_notification,
-    sample_template,
-    sample_api_key,
     api_client_request,
     client,
     mocker,
@@ -66,12 +63,12 @@ def test_record_api_key_usage_makes_one_record_per_hour_per_endpoint(
 
     assert result[0].service_id == service_id
     assert result[0].api_key_id == api_key_id
-    assert result[0].usage_hour == datetime(2026, 9, 15, 10, 0, 0, tzinfo=UTC)
+    assert result[0].usage_hour == datetime(2026, 9, 15, 10, 0, 0)
     assert result[0].endpoint == endpoint_1
 
     assert result[1].service_id == service_id
     assert result[1].api_key_id == api_key_id
-    assert result[1].usage_hour == datetime(2026, 9, 15, 10, 0, 0, tzinfo=UTC)
+    assert result[1].usage_hour == datetime(2026, 9, 15, 10, 0, 0)
     assert result[1].endpoint == endpoint_2
 
     mock_api_usage_get_call_list = [
@@ -154,12 +151,12 @@ def test_record_api_key_usage_across_different_times_in_the_day_at_the_same_endp
     result = ApiKeyUsage.query.order_by(ApiKeyUsage.usage_hour.asc()).all()
     assert len(result) == 6
 
-    assert result[0].usage_hour == datetime(2026, 9, 15, 6, 0, 0, tzinfo=UTC)
-    assert result[1].usage_hour == datetime(2026, 9, 15, 10, 0, 0, tzinfo=UTC)
-    assert result[2].usage_hour == datetime(2026, 9, 15, 13, 0, 0, tzinfo=UTC)
-    assert result[3].usage_hour == datetime(2026, 9, 15, 16, 0, 0, tzinfo=UTC)
-    assert result[4].usage_hour == datetime(2026, 9, 15, 20, 0, 0, tzinfo=UTC)
-    assert result[5].usage_hour == datetime(2026, 9, 15, 23, 0, 0, tzinfo=UTC)
+    assert result[0].usage_hour == datetime(2026, 9, 15, 6, 0, 0)
+    assert result[1].usage_hour == datetime(2026, 9, 15, 10, 0, 0)
+    assert result[2].usage_hour == datetime(2026, 9, 15, 13, 0, 0)
+    assert result[3].usage_hour == datetime(2026, 9, 15, 16, 0, 0)
+    assert result[4].usage_hour == datetime(2026, 9, 15, 20, 0, 0)
+    assert result[5].usage_hour == datetime(2026, 9, 15, 23, 0, 0)
 
     mock_api_usage_get_call_list = [
         redis_call

@@ -970,7 +970,7 @@ class ApiKeyUsage(db.Model):
 
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), nullable=False)
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey("api_keys.id"), nullable=False)
-    usage_hour = db.Column(db.DateTime(timezone=True), nullable=False)
+    usage_hour = db.Column(db.DateTime, nullable=False)
     endpoint = db.Column(db.String, nullable=False)
 
     __table_args__ = (
