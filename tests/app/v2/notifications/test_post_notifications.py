@@ -674,10 +674,11 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
     expected_retention,
     expected_filename,
 ):
+    document_id = str(uuid.uuid4())
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     document_download_upload_document_mock = mocker.patch(
         "app.document_download_client.upload_document",
-        side_effect=lambda service_id, content, is_csv, confirmation_email, **kwargs: f"{content}-link",
+        side_effect=lambda service_id, content, is_csv, confirmation_email, **kwargs: [f"{content}-link", document_id],
     )
 
     service = create_service(
