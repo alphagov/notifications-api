@@ -17,14 +17,10 @@ class ServiceStatsDimensions(TypedDict):
     notification_status: str
 
 
-# 1. Public write API used by callers to apply a single aggregated count change into
-# service statistics for a specific dimensions tuple.
 def apply_service_stats_change(dimensions: ServiceStatsDimensions, change_count: int) -> None:
     _update_service_stats_count(dimensions, change_count)
 
 
-# 2. Internal persistence routine that applies the count change with UPSERT behavior for
-# positive changes and bounded decrement behavior for negative changes.
 def _update_service_stats_count(dimensions: ServiceStatsDimensions, change_count: int) -> None:
     if change_count == 0:
         return
