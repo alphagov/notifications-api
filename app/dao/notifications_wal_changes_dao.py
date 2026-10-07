@@ -52,7 +52,7 @@ def dao_process_notifications_replication_slot_changes(
 
         if fetched_changes == 0:
             return {
-                "lock_acquired": True,
+                "lock_acquired": lock_acquired,
                 "changes_count": 0,
                 "processed_changes": 0,
                 "ignored_changes": 0,
@@ -92,7 +92,7 @@ def dao_process_notifications_replication_slot_changes(
 
         # Return a summary of the replication slot processing results
         return {
-            "lock_acquired": True,
+            "lock_acquired": lock_acquired,
             "changes_count": fetched_changes,
             "processed_changes": processed_changes,
             "ignored_changes": ignored_changes,
