@@ -65,6 +65,7 @@ def test_apply_service_stats_change_for_negative_change(mocker):
     }
     mock_execute = mocker.patch("app.dao.fact_service_stats_dao.db.session.execute")
     mock_query = mocker.patch("app.dao.fact_service_stats_dao.db.session.query")
+    mock_commit = mocker.patch("app.dao.fact_service_stats_dao.db.session.commit")
 
     apply_service_stats_change(dimensions, -3)
 
@@ -72,6 +73,7 @@ def test_apply_service_stats_change_for_negative_change(mocker):
     mock_execute.assert_not_called()
     mock_query.assert_called_once()
     mock_query.assert_called_with(FactServiceStats)
+    mock_commit.assert_called_once()
 
     # check filters passed to the query match the dimensions
     filter_args = mock_query.return_value.filter.call_args.args
