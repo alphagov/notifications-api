@@ -51,9 +51,6 @@ def dao_process_notifications_replication_slot_changes(
         fetched_changes = len(changes)
 
         if fetched_changes == 0:
-            # Any slot advancement performed by _get_replication_changes() must be committed
-            # before returning, otherwise the replication slot stays stuck at the old LSN.
-            db.session.commit()
             return {
                 "lock_acquired": True,
                 "changes_count": 0,
@@ -81,9 +78,6 @@ def dao_process_notifications_replication_slot_changes(
                 replication slot %s will not be advanced",
                 slot_name,
             )
-
-        # Commit both stats updates and slot advancement in one transaction.
-        db.session.commit()
 
         # Log the result of the replication slot processing for monitoring and debugging purposes.
         current_app.logger.info(

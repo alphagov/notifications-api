@@ -421,7 +421,6 @@ def test_dao_process_notifications_replication_slot_changes_when_lock_not_acquir
 def test_dao_process_notifications_replication_slot_changes_when_no_changes(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=([], "0/AB"))
-    mock_commit = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.commit")
     mock_unlock = mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
 
     result = dao.dao_process_notifications_replication_slot_changes(advisory_lock_id=11)
@@ -434,7 +433,6 @@ def test_dao_process_notifications_replication_slot_changes_when_no_changes(mock
         "service_stats_change_count_buckets": 0,
         "last_lsn": "0/AB",
     }
-    mock_commit.assert_called_once()
     mock_unlock.assert_called_once_with(11)
 
 
@@ -456,10 +454,6 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
     mock_apply = mocker.patch(
         "app.dao.notifications_wal_changes_dao.apply_service_stats_change",
         side_effect=lambda *_args, **_kwargs: call_order.append("apply"),
-    )
-    mock_commit = mocker.patch(
-        "app.dao.notifications_wal_changes_dao.db.session.commit",
-        side_effect=lambda: call_order.append("commit"),
     )
     mock_advance = mocker.patch(
         "app.dao.notifications_wal_changes_dao._advance_replication_slot",
@@ -487,10 +481,9 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
         "notification_type": dimensions_key[3],
         "notification_status": dimensions_key[4],
     }
-    mock_commit.assert_called_once()
+
     mock_advance.assert_called_once_with("0/AB", slot_name="slot")
     mock_unlock.assert_called_once()
-    assert call_order.index("advance") < call_order.index("commit")
 
 
 def test_dao_process_notifications_replication_slot_changes_rollback_and_reraises(mocker):
