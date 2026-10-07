@@ -366,16 +366,6 @@ def test_build_counter_uses_sql_lsn_for_slot_advance_not_row_nextlsn():
     assert last_lsn == "0/sql-reported"
 
 
-def test_aggregate_service_stats_change_counts_reorders_dimensions():
-    service_id = uuid4()
-    template_id = uuid4()
-    full_dimensions = (date(2026, 8, 6), service_id, template_id, "sms", "delivered")
-
-    result = dao._aggregate_service_stats_change_counts(Counter({full_dimensions: 4}))
-
-    assert result[(date(2026, 8, 6), service_id, template_id, "sms", "delivered")] == 4
-
-
 def test_try_advisory_lock(mocker):
     execute_result = mocker.Mock()
     execute_result.scalar.return_value = True
@@ -445,11 +435,12 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
     )
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._build_counter_from_changes",
-        return_value=(Counter(), 2, 0, "0/AB"),
-    )
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao._aggregate_service_stats_change_counts",
-        return_value=Counter({dimensions_key: 3, (date(2026, 8, 6), uuid4(), uuid4(), "email", "failed"): 0}),
+        return_value=(
+            Counter({dimensions_key: 3, (date(2026, 8, 6), uuid4(), uuid4(), "email", "failed"): 0}),
+            2,
+            0,
+            "0/AB",
+        ),
     )
     mock_apply = mocker.patch(
         "app.dao.notifications_wal_changes_dao.apply_service_stats_change",
@@ -507,7 +498,8 @@ def test_dao_process_notifications_replication_slot_changes_logs_unlock_failure(
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock", side_effect=RuntimeError("unlock failed"))
     mock_logger = mocker.patch("app.dao.notifications_wal_changes_dao.current_app.logger.exception")
 
-    dao.dao_process_notifications_replication_slot_changes(advisory_lock_id=88)
+    with pytest.raises(RuntimeError, match="unlock failed"):
+        dao.dao_process_notifications_replication_slot_changes(advisory_lock_id=88)
 
     assert mock_logger.call_count == 1
     logger_args = mock_logger.call_args

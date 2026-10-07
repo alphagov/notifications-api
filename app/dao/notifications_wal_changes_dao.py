@@ -19,7 +19,6 @@ REPLICATION_ADVISORY_LOCK_ID = 4_009_881
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
 FullDimensions = tuple[date, UUID, UUID, str, str]
-ServiceStatsDimensionsKey = tuple[date, UUID, UUID, str, str]
 
 
 def dao_process_notifications_replication_slot_changes(
@@ -242,11 +241,8 @@ def _process_changes(changes):
     # The slot advance boundary must use the SQL-reported LSN, not the row-level wal2json nextlsn.
     counter, processed_changes, ignored_changes, _ = _build_counter_from_changes(changes)
 
-    # Aggregate the counter into service statistics change counts for each unique dimensions tuple
-    service_stats_change_counts = _aggregate_service_stats_change_counts(counter)
-
-    # Apply the aggregated service statistics change counts to the database
-    for service_stats_key, change_count in service_stats_change_counts.items():
+    # Apply the change counts to the database
+    for service_stats_key, change_count in counter.items():
         if change_count == 0:
             continue
 
@@ -260,7 +256,7 @@ def _process_changes(changes):
         }
         apply_service_stats_change(dimensions, change_count)
 
-    return processed_changes, ignored_changes, service_stats_change_counts
+    return processed_changes, ignored_changes, counter
 
 
 def _parse_wal2json_payload(
@@ -486,15 +482,6 @@ def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
         return datetime.fromisoformat(normalized)
     except ValueError:
         return None
-
-
-def _aggregate_service_stats_change_counts(counter: Counter[FullDimensions]) -> Counter[ServiceStatsDimensionsKey]:
-    change_counts: Counter[ServiceStatsDimensionsKey] = Counter()
-    for dimensions, change_count in counter.items():
-        bst_date, service_id, template_id, notification_type, notification_status = dimensions
-        change_counts[(bst_date, service_id, template_id, notification_type, notification_status)] += change_count
-
-    return change_counts
 
 
 def _advance_replication_slot(lsn: str, *, slot_name: str) -> None:
