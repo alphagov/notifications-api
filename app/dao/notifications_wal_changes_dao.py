@@ -114,6 +114,7 @@ def dao_process_notifications_replication_slot_changes(
                     "[notifications_wal_changes_dao] Failed to release advisory lock",
                     extra={"dao_method": "dao_process_notifications_replication_slot_changes"},
                 )
+                raise
 
         # Log the total time taken to process the replication slot changes for monitoring and debugging purposes.
         end_time = datetime.now()
