@@ -1245,7 +1245,9 @@ pycurl==7.47.0 \
 pyjwt==2.13.0 \
     --hash=sha256:41571c89ca91598c79e8ef18a2d07367d4810fbbd6f637794879baf1b7703423 \
     --hash=sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728
-    # via notifications-python-client
+    # via
+    #   -r requirements.in
+    #   notifications-python-client
 pyorc==0.11.0 \
     --hash=sha256:030899aeb5000fce787959736f7c96119ebeba346d99e0b6dd336f32ec2fb445 \
     --hash=sha256:04f73cac37cd4118bcd53daef02e3e8e46f11b2e6d72b935e647409d112ea888 \
