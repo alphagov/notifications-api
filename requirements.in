@@ -26,6 +26,9 @@ notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@13
 
 sentry-sdk[flask,celery,sqlalchemy]~=1.45
 wheel>=0.46.2  # Can be removed after merge of https://github.com/click-contrib/click-datetime/pull/13
+# Pin pyjwt because the attempted upgrades to versions 2.15.0 and 2.15.1 had to be reverted due to an increase in
+# auth errors from the REST api when trying to decode the JWT token
+pyjwt==2.13.0
 
 opentelemetry-distro[otlp]
 opentelemetry-instrumentation-asyncio
