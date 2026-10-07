@@ -63,21 +63,23 @@ def dao_process_notifications_replication_slot_changes(
         # Process the fetched replication slot changes to update service statistics.
         processed_changes, ignored_changes, service_stats_change_counts = _process_changes(changes)
 
+        # This should never happen in normal circumstances as we already have a 0 changes gate above
+        if not batch_last_lsn:
+            current_app.logger.exception(
+                "[notifications_wal_changes_dao] No last_lsn found after processing replication slot changes, \
+                replication slot %s will not be advanced. This should not happen under normal circumstances.",
+                slot_name,
+            )
+            raise
+
         # Advance the replication slot to the last processed SQL LSN
         # to avoid reprocessing the same changes in future runs.
-        if batch_last_lsn:
-            current_app.logger.info(
-                "Advancing replication slot %s to last_lsn=%s",
-                slot_name,
-                batch_last_lsn,
-            )
-            _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
-        else:
-            current_app.logger.warning(
-                "[notifications_wal_changes_dao] No last_lsn found after processing replication slot changes, \
-                replication slot %s will not be advanced",
-                slot_name,
-            )
+        current_app.logger.info(
+            "Advancing replication slot %s to last_lsn=%s",
+            slot_name,
+            batch_last_lsn,
+        )
+        _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
 
         # Log the result of the replication slot processing for monitoring and debugging purposes.
         current_app.logger.info(
