@@ -32,6 +32,7 @@ def _update_service_stats_count(dimensions: ServiceStatsDimensions, change_count
         "notification_type": dimensions["notification_type"],
         "notification_status": dimensions["notification_status"],
     }
+
     if change_count > 0:
         stmt = insert(FactServiceStats).values(
             **dimension_values,
@@ -43,6 +44,7 @@ def _update_service_stats_count(dimensions: ServiceStatsDimensions, change_count
                 "notification_count": FactServiceStats.notification_count + change_count,
             },
         )
+
         db.session.execute(stmt)
     else:
         filters = (
@@ -62,3 +64,5 @@ def _update_service_stats_count(dimensions: ServiceStatsDimensions, change_count
                 synchronize_session=False,
             )
         )
+
+    db.session.commit()
