@@ -958,6 +958,21 @@ def test_sanitise_personalisation_item(
 
 
 @pytest.mark.parametrize(
+    "value",
+    [
+        42,
+        3.14,
+        True,
+        None,
+        {"file": "some-file-id", "filename": "document.pdf"},
+        ["a", "list"],
+    ],
+)
+def test_sanitise_personalisation_item_with_non_string_value_returns_it_unchanged(value):
+    assert sanitise_personalisation_item(value) is value
+
+
+@pytest.mark.parametrize(
     "recipient, notification_type",
     [
         ("simulate-delivered@notifications.service.gov.uk", EMAIL_TYPE),
