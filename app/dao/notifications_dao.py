@@ -1161,7 +1161,7 @@ def letters_missing_from_sending_bucket(
 
 def dao_precompiled_letters_still_pending_virus_check(
     max_minutes_ago_to_check: int,
-    min_minutes_ago_to_check: int = 10,
+    min_minutes_ago_to_check: int = 15,
 ):
     earliest_timestamp_to_check = datetime.utcnow() - timedelta(minutes=max_minutes_ago_to_check)
     latest_timestamp_to_check = datetime.utcnow() - timedelta(minutes=min_minutes_ago_to_check)

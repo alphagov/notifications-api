@@ -991,13 +991,13 @@ def test_check_if_letters_still_pending_virus_check_restarts_scan_for_stuck_lett
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(minutes=10, seconds=1),
+        created_at=datetime.utcnow() - timedelta(minutes=15, seconds=1),
         reference="one",
     )
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(minutes=9, seconds=59),
+        created_at=datetime.utcnow() - timedelta(minutes=14, seconds=59),
         reference="still has time to send",
     )
     create_notification(
@@ -1006,7 +1006,7 @@ def test_check_if_letters_still_pending_virus_check_restarts_scan_for_stuck_lett
         created_at=datetime.utcnow() - timedelta(minutes=30, seconds=1),
         reference="too old for us to bother with",
     )
-    expected_filename = "NOTIFY.ONE.D.2.C.20190530134959.PDF"
+    expected_filename = "NOTIFY.ONE.D.2.C.20190530134459.PDF"
 
     check_if_letters_still_pending_virus_check()
 
@@ -1049,7 +1049,7 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
     notification_1 = create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=601),
+        created_at=datetime.utcnow() - timedelta(seconds=901),
         reference="one",
     )
     notification_2 = create_notification(
@@ -1064,7 +1064,7 @@ def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant
     assert mock_file_exists.call_count == 2
     mock_file_exists.assert_has_calls(
         [
-            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20190530134959.PDF"),
+            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20190530134459.PDF"),
             call("test-letters-scan", "NOTIFY.TWO.D.2.C.20190530134320.PDF"),
         ],
         any_order=True,
@@ -1103,7 +1103,7 @@ def test_check_if_letters_still_pending_virus_check_with_letters_both_missing_fr
     notification_1 = create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=601),
+        created_at=datetime.utcnow() - timedelta(seconds=901),
         reference="one",
     )
     notification_2 = create_notification(
@@ -1118,7 +1118,7 @@ def test_check_if_letters_still_pending_virus_check_with_letters_both_missing_fr
     assert mock_file_exists.call_count == 2
     mock_file_exists.assert_has_calls(
         [
-            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20260530134959.PDF"),
+            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20260530134459.PDF"),
             call("test-letters-scan", "NOTIFY.TWO.D.2.C.20260530134320.PDF"),
         ],
         any_order=True,
@@ -1126,7 +1126,7 @@ def test_check_if_letters_still_pending_virus_check_with_letters_both_missing_fr
 
     mock_celery.assert_called_once_with(
         name=TaskNames.SCAN_FILE,
-        kwargs={"filename": "NOTIFY.ONE.D.2.C.20260530134959.PDF"},
+        kwargs={"filename": "NOTIFY.ONE.D.2.C.20260530134459.PDF"},
         queue=QueueNames.ANTIVIRUS,
         MessageGroupId=str(sample_letter_template.service_id),
     )
@@ -1169,16 +1169,16 @@ def test_check_if_letters_still_pending_virus_check_nightly_when_all_letters_can
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(minutes=10, seconds=1),
+        created_at=datetime.utcnow() - timedelta(minutes=15, seconds=1),
         reference="one",
     )
     create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(minutes=9, seconds=59),
+        created_at=datetime.utcnow() - timedelta(minutes=14, seconds=59),
         reference="still has time to send",
     )
-    expected_filename = "NOTIFY.ONE.D.2.C.20260530134959.PDF"
+    expected_filename = "NOTIFY.ONE.D.2.C.20260530134459.PDF"
 
     check_if_letters_still_pending_virus_check_nightly()
 
@@ -1262,7 +1262,7 @@ def test_check_if_letters_still_pending_virus_check_nightly_warns_about_letters_
     notification_1 = create_notification(
         template=sample_letter_template,
         status=NOTIFICATION_PENDING_VIRUS_CHECK,
-        created_at=datetime.utcnow() - timedelta(seconds=601),
+        created_at=datetime.utcnow() - timedelta(seconds=901),
         reference="one",
     )
     # notification_2 is returned first from dao function, so is the file not found
@@ -1278,7 +1278,7 @@ def test_check_if_letters_still_pending_virus_check_nightly_warns_about_letters_
     assert mock_file_exists.call_count == 2
     mock_file_exists.assert_has_calls(
         [
-            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20260530134959.PDF"),
+            call("test-letters-scan", "NOTIFY.ONE.D.2.C.20260530134459.PDF"),
             call("test-letters-scan", "NOTIFY.TWO.D.2.C.20260530134320.PDF"),
         ],
         any_order=True,
@@ -1286,7 +1286,7 @@ def test_check_if_letters_still_pending_virus_check_nightly_warns_about_letters_
 
     mock_celery.assert_called_once_with(
         name=TaskNames.SCAN_FILE,
-        kwargs={"filename": "NOTIFY.ONE.D.2.C.20260530134959.PDF"},
+        kwargs={"filename": "NOTIFY.ONE.D.2.C.20260530134459.PDF"},
         queue=QueueNames.ANTIVIRUS,
         MessageGroupId=str(sample_letter_template.service_id),
     )
