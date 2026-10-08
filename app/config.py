@@ -453,10 +453,10 @@ class Config:
                 "schedule": crontab(hour=7, minute=0),
                 "options": {"queue": QueueNames.PERIODIC},
             },
-            "check-if-letters-still-pending-virus-check-ten-minutely": {
+            "check-if-letters-still-pending-virus-check-fifteen-minutely": {
                 "task": "check-if-letters-still-pending-virus-check",
-                "schedule": crontab(minute="*/10"),
-                # check last two hours, every ten minutes
+                "schedule": crontab(minute="*/15"),
+                # check last two hours, every fifteen minutes
                 "kwargs": {"max_minutes_ago_to_check": 120},
                 "options": {"queue": QueueNames.PERIODIC},
             },
