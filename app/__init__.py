@@ -25,7 +25,7 @@ from notifications_utils.celery import NotifyCelery
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.signing.signing_client import Signing
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
-from notifications_utils.eventlet import EventletTimeout
+from notifications_utils.greenlet import RequestHandlingTimeout
 from notifications_utils.json import FlaskRelaxedContainerJSONProvider
 from notifications_utils.local_vars import LazyLocalGetter
 from notifications_utils.logging import flask as utils_logging
@@ -431,8 +431,8 @@ def init_app(app):
         code = getattr(error, "code", 500)
         return jsonify(result="error", message=msg), code
 
-    @app.errorhandler(EventletTimeout)
-    def eventlet_timeout(error):
+    @app.errorhandler(RequestHandlingTimeout)
+    def request_handling_timeout(error):
         app.logger.exception(error)
         return jsonify(result="error", message="Timeout serving request"), 504
 
