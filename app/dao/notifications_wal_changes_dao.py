@@ -296,46 +296,32 @@ def _process_changes(changes):
 def _parse_wal2json_payload(
     payload: dict[str, JsonValue], *, table_name: str = REPLICATION_SLOT_TABLE_NAME, default_nextlsn: str | None = None
 ) -> list[ParsedRow]:
-    parsed_rows: list[ParsedRow] = []
+    # wal2json format-version 2 emits one change object per slot row.
+    action = payload.get("action")
+    change_type = _normalise_change_type(action)
+    if change_type in {"begin", "commit", "message", "unknown"}:
+        return []
 
-    raw_changes = payload.get("change")
-    if not isinstance(raw_changes, list):
-        return parsed_rows
+    schema = payload.get("schema")
+    table = payload.get("table")
+    if not table or not isinstance(table, str):
+        return []
 
-    # Parse each change object in the raw_changes list and extract relevant information.
-    for change in raw_changes:
-        if not isinstance(change, dict):
-            continue
+    qualified_table_name = f"{schema}.{table}" if schema else table
+    if table_name and qualified_table_name != table_name:
+        return []
 
-        action = change.get("action") or change.get("kind") or change.get("type")
-        change_type = _normalise_change_type(action)
-        if change_type in {"begin", "commit", "message"}:
-            continue
-
-        schema = change.get("schema")
-        table = change.get("table")
-        if not table or not isinstance(table, str):
-            continue
-
-        qualified_table_name = f"{schema}.{table}" if schema else table
-        if table_name and qualified_table_name != table_name:
-            # This might be an issue if we have no changes for the expected table,
-            # but we have changes for other tables in the same replication slot.
-            continue
-
-        nextlsn = change.get("nextlsn") or payload.get("nextlsn") or default_nextlsn
-        parsed_rows.append(
-            {
-                "table": table,
-                "type": change_type,
-                "current_row_data": _extract_row_data(change),
-                "previous_row_data": _extract_previous_row_data(change),
-                "nextlsn": nextlsn if isinstance(nextlsn, str) else None,
-                "lsn": default_nextlsn,
-            }
-        )
-
-    return parsed_rows
+    nextlsn = payload.get("nextlsn") or default_nextlsn
+    return [
+        {
+            "table": table,
+            "type": change_type,
+            "current_row_data": _extract_row_data(payload),
+            "previous_row_data": _extract_previous_row_data(payload),
+            "nextlsn": nextlsn if isinstance(nextlsn, str) else None,
+            "lsn": default_nextlsn,
+        }
+    ]
 
 
 def _normalise_change_type(action: JsonValue) -> str:
