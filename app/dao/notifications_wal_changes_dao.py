@@ -33,6 +33,8 @@ class ParsedRow(TypedDict):
     lsn: str | None
 
 
+# This must remain a hashable tuple for use as a Counter key.
+# ServiceStatsDimensions (from app.dao.fact_service_stats_dao) is a TypedDict - therefore cannot be used.
 class FullDimensions(NamedTuple):
     bst_date: date
     service_id: UUID
