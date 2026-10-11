@@ -47,22 +47,14 @@ def test_extract_previous_row_data_returns_empty_when_not_present():
     assert dao._extract_previous_row_data({}) == {}
 
 
-def test_parse_wal2json_payload_filters_table_and_maps_fields(mocker):
+def test_parse_wal2json_payload_maps_fields(mocker):
     mock_row = mocker.patch("app.dao.notifications_wal_changes_dao._extract_row_data", return_value={"a": 1})
     mock_previous = mocker.patch(
         "app.dao.notifications_wal_changes_dao._extract_previous_row_data", return_value={"b": 2}
     )
-    payload = {
-        "nextlsn": "0/AA",
-        "change": [
-            {"schema": "public", "table": "notifications", "kind": "insert"},
-            {"schema": "public", "table": "other", "kind": "insert"},
-            {"table": "notifications", "type": "update", "nextlsn": "0/BB"},
-            {"schema": "public"},
-        ],
-    }
+    payload = {"action": "I", "schema": "public", "table": "notifications"}
 
-    result = dao._parse_wal2json_payload(payload, table_name="public.notifications")
+    result = dao._parse_wal2json_payload(payload, table_name="public.notifications", default_nextlsn="0/AA")
 
     assert result == [
         {
@@ -71,17 +63,32 @@ def test_parse_wal2json_payload_filters_table_and_maps_fields(mocker):
             "current_row_data": {"a": 1},
             "previous_row_data": {"b": 2},
             "nextlsn": "0/AA",
-            "lsn": None,
+            "lsn": "0/AA",
         }
     ]
     assert mock_row.call_count == 1
     assert mock_previous.call_count == 1
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"action": "I", "schema": "public", "table": "other"},
+        {"action": "B"},
+        {"action": "C"},
+        {"schema": "public", "table": "notifications"},
+        {"action": "U", "schema": "public"},
+        {"change": [{"action": "I", "schema": "public", "table": "notifications"}]},
+    ],
+)
+def test_parse_wal2json_payload_ignores_irrelevant_payloads(payload):
+    assert dao._parse_wal2json_payload(payload, table_name="public.notifications") == []
+
+
 def test_get_replication_changes_parses_rows_and_payload_formats(mocker):
     mappings_rows = [
-        {"lsn": "0/AA", "data": '{"change": [{"schema": "public", "table": "notifications", "kind": "insert"}]}'},
-        {"lsn": "0/BB", "data": {"change": [{"schema": "public", "table": "notifications", "kind": "update"}]}},
+        {"lsn": "0/AA", "data": '{"action": "I", "schema": "public", "table": "notifications"}'},
+        {"lsn": "0/BB", "data": {"action": "U", "schema": "public", "table": "notifications"}},
         {"lsn": "0/CC", "data": None},
     ]
 
@@ -104,9 +111,7 @@ def test_get_replication_changes_parses_rows_and_payload_formats(mocker):
 
 
 def test_get_replication_changes_keeps_sql_lsn(mocker):
-    mappings_rows = [
-        {"lsn": "0/AB", "data": {"change": [{"schema": "public", "table": "notifications", "kind": "insert"}]}}
-    ]
+    mappings_rows = [{"lsn": "0/AB", "data": {"action": "I", "schema": "public", "table": "notifications"}}]
 
     execute_result = mocker.Mock()
     execute_result.mappings.return_value = mappings_rows
@@ -121,7 +126,7 @@ def test_get_replication_changes_keeps_sql_lsn(mocker):
 
 
 def test_get_replication_changes_handles_non_indexable_result_rows(mocker):
-    mappings_rows = [{"lsn": "0/AB", "data": {"change": [{"schema": "public", "table": "other", "kind": "insert"}]}}]
+    mappings_rows = [{"lsn": "0/AB", "data": {"action": "I", "schema": "public", "table": "other"}}]
 
     execute_result = mocker.Mock()
     execute_result.mappings.return_value = iter(mappings_rows)
@@ -139,20 +144,16 @@ def test_get_replication_changes_handles_non_indexable_result_rows(mocker):
 
 def test_parse_wal2json_payload_supports_format_2_rows():
     payload = {
-        "change": [
-            {
-                "action": "I",
-                "schema": "public",
-                "table": "notifications",
-                "columns": [
-                    {"name": "service_id", "value": "550e8400-e29b-41d4-a716-446655440000"},
-                    {"name": "template_id", "value": "550e8400-e29b-41d4-a716-446655440001"},
-                    {"name": "notification_type", "value": "sms"},
-                    {"name": "key_type", "value": "normal"},
-                    {"name": "notification_status", "value": "created"},
-                    {"name": "created_at", "value": "2026-08-12T10:00:00Z"},
-                ],
-            }
+        "action": "I",
+        "schema": "public",
+        "table": "notifications",
+        "columns": [
+            {"name": "service_id", "value": "550e8400-e29b-41d4-a716-446655440000"},
+            {"name": "template_id", "value": "550e8400-e29b-41d4-a716-446655440001"},
+            {"name": "notification_type", "value": "sms"},
+            {"name": "key_type", "value": "normal"},
+            {"name": "notification_status", "value": "created"},
+            {"name": "created_at", "value": "2026-08-12T10:00:00Z"},
         ],
     }
 
@@ -167,7 +168,7 @@ def test_parse_wal2json_payload_supports_format_2_rows():
 
 def test_get_replication_changes_uses_format_version_2(mocker):
     execute_result = mocker.Mock()
-    execute_result.mappings.return_value = [{"lsn": "0/16B3748", "data": {"change": []}}]
+    execute_result.mappings.return_value = [{"lsn": "0/16B3748", "data": {"action": "B"}}]
     mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
     mocker.patch("app.dao.notifications_wal_changes_dao._parse_wal2json_payload", return_value=[])
     mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
@@ -180,7 +181,7 @@ def test_get_replication_changes_uses_format_version_2(mocker):
 
 def test_get_replication_changes_raises_if_no_lsn_returned(mocker):
     execute_result = mocker.Mock()
-    execute_result.mappings.return_value = [{"data": {"change": []}}]
+    execute_result.mappings.return_value = [{"data": {"action": "B"}}]
     mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
     mocker.patch("app.dao.notifications_wal_changes_dao._parse_wal2json_payload", return_value=[mocker.Mock()])
     mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
