@@ -11,7 +11,7 @@ from sqlalchemy import text  # type: ignore[reportMissingImports]
 from app import db
 from app.dao.fact_service_stats_dao import ServiceStatsDimensions, apply_service_stats_change
 
-REPLICATION_SLOT_NAME = "notify_dashboard_replication_slot"
+REPLICATION_SLOT_NAME = "notify_wal2json_slot"
 REPLICATION_SLOT_TABLE_NAME = "public.notifications"
 REPLICATION_SLOT_UPTO_NCHANGES = 10_000
 REPLICATION_ADVISORY_LOCK_ID = 4_009_881
