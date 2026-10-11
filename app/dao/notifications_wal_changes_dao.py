@@ -1,8 +1,8 @@
 import json
+import struct
 from collections import Counter
 from datetime import date, datetime
-import struct
-from typing import Any
+from typing import NamedTuple, Required, TypedDict
 from uuid import UUID
 
 from flask import current_app
@@ -20,9 +20,37 @@ REPLICATION_SLOT_UPTO_NCHANGES = 10_000
 # This is inline with the way we build lock IDs for advisory locks for database migrations.
 REPLICATION_ADVISORY_LOCK_ID = struct.unpack(">q", struct.pack("8s", REPLICATION_SLOT_NAME.encode()))[0]
 
-ParsedRow = dict[str, Any]
-RowData = dict[str, Any]
-FullDimensions = tuple[date, UUID, UUID, str, str]
+JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
+RowData = dict[str, JsonValue]
+
+
+class ParsedRow(TypedDict):
+    table: str
+    type: str
+    current_row_data: RowData
+    previous_row_data: RowData
+    nextlsn: str | None
+    lsn: str | None
+
+
+class FullDimensions(NamedTuple):
+    bst_date: date
+    service_id: UUID
+    template_id: UUID
+    notification_type: str
+    notification_status: str
+
+
+# total=False to make all keys optional by default, except those marked as Required
+class ReplicationSlotChangesResult(TypedDict, total=False):
+    lock_acquired: Required[bool]
+    slot_name: str
+    upto_nchanges: int
+    changes_count: int
+    processed_changes: int
+    ignored_changes: int
+    service_stats_change_count_buckets: int
+    last_lsn: str | None
 
 
 def dao_process_notifications_replication_slot_changes(
@@ -30,7 +58,7 @@ def dao_process_notifications_replication_slot_changes(
     slot_name: str = REPLICATION_SLOT_NAME,
     upto_nchanges: int = REPLICATION_SLOT_UPTO_NCHANGES,
     advisory_lock_id: int = REPLICATION_ADVISORY_LOCK_ID,
-) -> dict[str, int | str | bool | None]:
+) -> ReplicationSlotChangesResult:
     lock_acquired = False
     start_time = datetime.now()
 
@@ -264,7 +292,7 @@ def _process_changes(changes):
 
 
 def _parse_wal2json_payload(
-    payload: dict[str, Any], *, table_name: str = REPLICATION_SLOT_TABLE_NAME, default_nextlsn: str | None = None
+    payload: dict[str, JsonValue], *, table_name: str = REPLICATION_SLOT_TABLE_NAME, default_nextlsn: str | None = None
 ) -> list[ParsedRow]:
     parsed_rows: list[ParsedRow] = []
 
@@ -284,7 +312,7 @@ def _parse_wal2json_payload(
 
         schema = change.get("schema")
         table = change.get("table")
-        if not table:
+        if not table or not isinstance(table, str):
             continue
 
         qualified_table_name = f"{schema}.{table}" if schema else table
@@ -293,13 +321,14 @@ def _parse_wal2json_payload(
             # but we have changes for other tables in the same replication slot.
             continue
 
+        nextlsn = change.get("nextlsn") or payload.get("nextlsn") or default_nextlsn
         parsed_rows.append(
             {
                 "table": table,
                 "type": change_type,
                 "current_row_data": _extract_row_data(change),
                 "previous_row_data": _extract_previous_row_data(change),
-                "nextlsn": change.get("nextlsn") or payload.get("nextlsn") or default_nextlsn,
+                "nextlsn": nextlsn if isinstance(nextlsn, str) else None,
                 "lsn": default_nextlsn,
             }
         )
@@ -307,7 +336,7 @@ def _parse_wal2json_payload(
     return parsed_rows
 
 
-def _normalise_change_type(action: Any) -> str:
+def _normalise_change_type(action: JsonValue) -> str:
     if action is None:
         return "unknown"
 
@@ -323,19 +352,21 @@ def _normalise_change_type(action: Any) -> str:
     return mapping.get(normalised, str(action).lower())
 
 
-def _extract_row_data(change: dict[str, Any]) -> RowData:
+def _extract_row_data(change: dict[str, JsonValue]) -> RowData:
     return _extract_name_value_rows(change.get("columns", []))
 
 
-def _extract_previous_row_data(change: dict[str, Any]) -> RowData:
+def _extract_previous_row_data(change: dict[str, JsonValue]) -> RowData:
     if change.get("action") in {"U", "D"}:
         return _extract_name_value_rows(change.get("identity", []))
 
     return {}
 
 
-def _extract_name_value_rows(rows: list[Any]) -> RowData:
+def _extract_name_value_rows(rows: JsonValue) -> RowData:
     row_data: RowData = {}
+    if not isinstance(rows, list):
+        return row_data
     for row in rows:
         if not isinstance(row, dict):
             continue
@@ -420,8 +451,8 @@ def _build_dimensions(
         fallback_data, "notification_type"
     )
     key_type = _get_str_value(row_data, "key_type") or _get_str_value(fallback_data, "key_type")
-    primary_status = row_data.get("notification_status")
-    notification_status = primary_status or fallback_data.get("notification_status")
+    primary_status = _get_str_value(row_data, "notification_status")
+    notification_status = primary_status or _get_str_value(fallback_data, "notification_status")
     created_at = _parse_datetime_value(row_data, "created_at") or _parse_datetime_value(fallback_data, "created_at")
 
     # If the key_type is "test", we ignore this change and return None to indicate
@@ -445,12 +476,12 @@ def _build_dimensions(
     ):
         return None
 
-    return (
-        convert_utc_to_bst(created_at).date(),
-        service_id,
-        template_id,
-        notification_type,
-        notification_status,
+    return FullDimensions(
+        bst_date=convert_utc_to_bst(created_at).date(),
+        service_id=service_id,
+        template_id=template_id,
+        notification_type=notification_type,
+        notification_status=notification_status,
     )
 
 
