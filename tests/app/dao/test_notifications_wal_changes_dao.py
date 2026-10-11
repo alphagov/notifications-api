@@ -180,14 +180,17 @@ def test_get_replication_changes_uses_format_version_2(mocker):
 
 
 def test_get_replication_changes_raises_if_no_lsn_returned(mocker):
-    execute_result = mocker.Mock()
-    execute_result.mappings.return_value = [{"data": {"action": "B"}}]
-    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
-    mocker.patch("app.dao.notifications_wal_changes_dao._parse_wal2json_payload", return_value=[mocker.Mock()])
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.rollback")
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._get_replication_changes",
+        return_value=([mocker.Mock()], None),
+    )
     mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
 
     with pytest.raises(RuntimeError, match=r"No last_lsn found .* replication slot notify-slot will not be advanced"):
-        dao._get_replication_changes(slot_name="notify-slot", upto_nchanges=20, table_name="public.notifications")
+        dao.dao_process_notifications_replication_slot_changes(advisory_lock_id=77, slot_name="notify-slot")
 
     mock_advance.assert_not_called()
 
