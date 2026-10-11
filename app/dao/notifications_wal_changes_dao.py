@@ -15,6 +15,7 @@ from app.dao.fact_service_stats_dao import ServiceStatsDimensions, apply_service
 REPLICATION_SLOT_NAME = "notify_wal2json_slot"
 REPLICATION_SLOT_TABLE_NAME = "public.notifications"
 REPLICATION_SLOT_UPTO_NCHANGES = 10_000
+LOG_KEY = "[notifications_wal_changes_dao]" # Prefix for all log messages in this module
 
 # Use the first eight bytes of the slot name as a deterministic signed 64-bit advisory lock ID.
 # This is inline with the way we build lock IDs for advisory locks for database migrations.
@@ -99,7 +100,7 @@ def dao_process_notifications_replication_slot_changes(
         # Advance the replication slot to the last processed SQL LSN
         # to avoid reprocessing the same changes in future runs.
         current_app.logger.info(
-            "Advancing replication slot %s to last_lsn=%s",
+            f"{LOG_KEY} Advancing replication slot %s to last_lsn=%s",
             slot_name,
             batch_last_lsn,
         )
@@ -107,7 +108,7 @@ def dao_process_notifications_replication_slot_changes(
 
         # Log the result of the replication slot processing for monitoring and debugging purposes.
         current_app.logger.info(
-            "[notifications_wal_changes_dao] %s replication slot changes processed: %s processed, %s ignored, \
+            f"{LOG_KEY} %s replication slot changes processed: %s processed, %s ignored, \
             %s service stats change count buckets, last_lsn=%s",
             fetched_changes,
             processed_changes,
@@ -128,7 +129,7 @@ def dao_process_notifications_replication_slot_changes(
     except Exception:
         # Ensure a failed statement does not poison the session for cleanup queries.
         db.session.rollback()
-        current_app.logger.exception("[notifications_wal_changes_dao] FAILED: Replication slot changes")
+        current_app.logger.exception(f"{LOG_KEY} FAILED: Replication slot changes")
         raise
     finally:
         # Release the advisory lock if it was acquired, and log any exceptions that occur during the release process.
@@ -137,7 +138,7 @@ def dao_process_notifications_replication_slot_changes(
                 _advisory_unlock(advisory_lock_id)
             except Exception:
                 current_app.logger.exception(
-                    "[notifications_wal_changes_dao] Failed to release advisory lock",
+                    f"{LOG_KEY} Failed to release advisory lock",
                     extra={"dao_method": "dao_process_notifications_replication_slot_changes"},
                 )
                 raise
@@ -145,7 +146,7 @@ def dao_process_notifications_replication_slot_changes(
         # Log the total time taken to process the replication slot changes for monitoring and debugging purposes.
         end_time = datetime.now()
         current_app.logger.info(
-            "[notifications_wal_changes_dao] Replication slot changes processed in %s seconds",
+            f"{LOG_KEY} Replication slot changes processed in %s seconds.",
             (end_time - start_time).total_seconds(),
             extra={
                 "dao_method": "dao_process_notifications_replication_slot_changes",
@@ -251,7 +252,7 @@ def _get_replication_changes(
     # If we have parsed rows but no last SQL LSN, something went wrong and we should raise an error.
     if parsed_rows and not last_sql_lsn:
         raise RuntimeError(
-            f"[notifications_wal_changes_dao] No last_lsn found after processing replication slot changes, \
+            f"{LOG_KEY} No last_lsn found after processing replication slot changes, \
             replication slot {slot_name} will not be advanced. This should not happen under normal circumstances."
         )
 
@@ -260,7 +261,7 @@ def _get_replication_changes(
     # last relevant notification change instead of the actual last row returned by PostgreSQL.
     if not parsed_rows and rows and last_sql_lsn:
         current_app.logger.info(
-            "Advancing replication slot %s to last_lsn=%s (batch boundary)",
+            f"{LOG_KEY} Advancing replication slot %s to last_lsn=%s (batch boundary)",
             slot_name,
             last_sql_lsn,
         )
