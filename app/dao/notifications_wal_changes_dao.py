@@ -1,6 +1,7 @@
 import json
 from collections import Counter
 from datetime import date, datetime
+import struct
 from typing import Any
 from uuid import UUID
 
@@ -14,7 +15,10 @@ from app.dao.fact_service_stats_dao import ServiceStatsDimensions, apply_service
 REPLICATION_SLOT_NAME = "notify_wal2json_slot"
 REPLICATION_SLOT_TABLE_NAME = "public.notifications"
 REPLICATION_SLOT_UPTO_NCHANGES = 10_000
-REPLICATION_ADVISORY_LOCK_ID = 4_009_881
+
+# Use the first eight bytes of the slot name as a deterministic signed 64-bit advisory lock ID.
+# This is inline with the way we build lock IDs for advisory locks for database migrations.
+REPLICATION_ADVISORY_LOCK_ID = struct.unpack(">q", struct.pack("8s", REPLICATION_SLOT_NAME.encode()))[0]
 
 ParsedRow = dict[str, Any]
 RowData = dict[str, Any]
