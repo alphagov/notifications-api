@@ -2,7 +2,6 @@ from datetime import date
 from typing import TypedDict
 from uuid import UUID
 
-from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 
 from app import db
@@ -33,36 +32,17 @@ def _update_service_stats_count(dimensions: ServiceStatsDimensions, change_count
         "notification_status": dimensions["notification_status"],
     }
 
-    if change_count > 0:
-        stmt = insert(FactServiceStats).values(
-            **dimension_values,
-            notification_count=change_count,
-        )
-        stmt = stmt.on_conflict_do_update(
-            constraint="ft_service_stats_pkey",
-            set_={
-                "notification_count": FactServiceStats.notification_count + change_count,
-            },
-        )
+    stmt = insert(FactServiceStats).values(
+        **dimension_values,
+        notification_count=change_count,
+    )
+    stmt = stmt.on_conflict_do_update(
+        constraint="ft_service_stats_pkey",
+        set_={
+            "notification_count": FactServiceStats.notification_count + change_count,
+        },
+    )
 
-        db.session.execute(stmt)
-    else:
-        filters = (
-            FactServiceStats.bst_date == dimension_values["bst_date"],
-            FactServiceStats.service_id == dimension_values["service_id"],
-            FactServiceStats.template_id == dimension_values["template_id"],
-            FactServiceStats.notification_type == dimension_values["notification_type"],
-            FactServiceStats.notification_status == dimension_values["notification_status"],
-        )
-        (
-            db.session.query(FactServiceStats)
-            .filter(*filters)
-            .update(
-                {
-                    "notification_count": func.greatest(FactServiceStats.notification_count + change_count, 0),
-                },
-                synchronize_session=False,
-            )
-        )
+    db.session.execute(stmt)
 
     db.session.commit()

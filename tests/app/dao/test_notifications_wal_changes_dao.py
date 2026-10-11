@@ -548,8 +548,7 @@ def test_dao_process_notifications_replication_slot_changes_bulk_inserts_and_upd
     expected: Counter[tuple[date, UUID, UUID, str, str]] = Counter()
     changes: list[dict] = []
 
-    # 900 inserts spread evenly across the 24 (group, status) buckets, giving every bucket
-    # enough headroom that later update-driven decrements can never push it negative.
+    # 900 inserts spread evenly across the 24 (group, status) buckets.
     insert_count = 900
     for i in range(insert_count):
         service_id, template_id, notification_type = row_groups[i % len(row_groups)]
@@ -595,23 +594,47 @@ def test_dao_process_notifications_replication_slot_changes_bulk_inserts_and_upd
         expected[(bst_date, service_id, template_id, notification_type, new_status)] += 1
         expected[(bst_date, service_id, template_id, notification_type, old_status)] -= 1
 
-    assert len(changes) == 1000
-    assert all(count > 0 for count in expected.values())
+    # Deliberately subtract more than the available created count for one bucket. The
+    # resulting negative count should be retained for debugging rather than clamped away.
+    service_id, template_id, notification_type = row_groups[0]
+    for _ in range(100):
+        changes.append(
+            _build_change(
+                change_type="update",
+                current_row_data=_row_data(
+                    service_id=service_id,
+                    template_id=template_id,
+                    notification_type=notification_type,
+                    notification_status=NOTIFICATION_DELIVERED,
+                ),
+                previous_row_data=_row_data(
+                    service_id=service_id,
+                    template_id=template_id,
+                    notification_type=notification_type,
+                    notification_status=NOTIFICATION_CREATED,
+                ),
+            )
+        )
+        expected[(bst_date, service_id, template_id, notification_type, NOTIFICATION_DELIVERED)] += 1
+        expected[(bst_date, service_id, template_id, notification_type, NOTIFICATION_CREATED)] -= 1
 
-    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=(changes, "0/1000"))
+    assert len(changes) == 1100
+    assert any(count < 0 for count in expected.values())
+
+    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=(changes, "0/1100"))
     mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
 
     result = dao.dao_process_notifications_replication_slot_changes(slot_name="test-slot")
 
     assert result == {
         "lock_acquired": True,
-        "changes_count": 1000,
-        "processed_changes": 1000,
+        "changes_count": 1100,
+        "processed_changes": 1100,
         "ignored_changes": 0,
         "service_stats_change_count_buckets": len(expected),
-        "last_lsn": "0/1000",
+        "last_lsn": "0/1100",
     }
-    mock_advance.assert_called_once_with("0/1000", slot_name="test-slot")
+    mock_advance.assert_called_once_with("0/1100", slot_name="test-slot")
 
     template_ids = [template_id for _, template_id, _ in row_groups]
     stats_rows = FactServiceStats.query.filter(FactServiceStats.template_id.in_(template_ids)).all()
