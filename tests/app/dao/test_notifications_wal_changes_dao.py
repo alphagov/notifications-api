@@ -167,14 +167,28 @@ def test_parse_wal2json_payload_supports_format_2_rows():
 
 def test_get_replication_changes_uses_format_version_2(mocker):
     execute_result = mocker.Mock()
-    execute_result.mappings.return_value = [{"data": {"change": []}}]
+    execute_result.mappings.return_value = [{"lsn": "0/16B3748", "data": {"change": []}}]
     mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
     mocker.patch("app.dao.notifications_wal_changes_dao._parse_wal2json_payload", return_value=[])
+    mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
 
     dao._get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
 
     assert mock_execute.call_count == 1
     assert mock_execute.call_args.args[1]["format_version"] == "2"
+
+
+def test_get_replication_changes_raises_if_no_lsn_returned(mocker):
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = [{"data": {"change": []}}]
+    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+    mocker.patch("app.dao.notifications_wal_changes_dao._parse_wal2json_payload", return_value=[mocker.Mock()])
+    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+
+    with pytest.raises(RuntimeError, match=r"No last_lsn found .* replication slot notify-slot will not be advanced"):
+        dao._get_replication_changes(slot_name="notify-slot", upto_nchanges=20, table_name="public.notifications")
+
+    mock_advance.assert_not_called()
 
 
 def test_parse_uuid_value():
