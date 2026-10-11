@@ -503,7 +503,7 @@ def test_dao_process_notifications_replication_slot_changes_rollback_and_reraise
         dao.dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
     mock_rollback.assert_called_once()
-    mock_logger.assert_called_once_with("[notifications_wal_changes_dao] FAILED: Replication slot changes")
+    mock_logger.assert_called_once_with("%s FAILED: Replication slot changes", "[notifications_wal_changes_dao]")
     mock_unlock.assert_called_once_with(77)
 
 
@@ -518,7 +518,7 @@ def test_dao_process_notifications_replication_slot_changes_logs_unlock_failure(
 
     assert mock_logger.call_count == 1
     logger_args = mock_logger.call_args
-    assert logger_args.args[0] == "[notifications_wal_changes_dao] Failed to release advisory lock"
+    assert logger_args.args[:2] == ("%s Failed to release advisory lock", "[notifications_wal_changes_dao]")
     assert logger_args.kwargs == {"extra": {"dao_method": "dao_process_notifications_replication_slot_changes"}}
 
 
