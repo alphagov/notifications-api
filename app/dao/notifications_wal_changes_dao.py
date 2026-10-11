@@ -84,7 +84,7 @@ def dao_process_notifications_replication_slot_changes(
         )
         fetched_changes = len(changes)
 
-        if fetched_changes == 0:
+        if not changes or fetched_changes == 0:
             return {
                 "lock_acquired": lock_acquired,
                 "changes_count": 0,
@@ -93,6 +93,14 @@ def dao_process_notifications_replication_slot_changes(
                 "service_stats_change_count_buckets": 0,
                 "last_lsn": batch_last_lsn,
             }
+
+        # This should never happen in normal circumstances as we already have a 0 changes gate above
+        # If we have changes but no last SQL LSN, something went wrong and we should raise an error.
+        if not batch_last_lsn:
+            raise RuntimeError(
+                f"{LOG_KEY} No last_lsn found after processing replication slot changes, \
+                replication slot {slot_name} will not be advanced. This should not happen under normal circumstances."
+            )
 
         # Process the fetched replication slot changes to update service statistics.
         processed_changes, ignored_changes, service_stats_change_counts = _process_changes(changes)
@@ -201,7 +209,7 @@ def _get_replication_changes(
     slot_name: str,
     upto_nchanges: int,
     table_name: str = REPLICATION_SLOT_TABLE_NAME,
-) -> tuple[list[ParsedRow], str]:
+) -> tuple[list[ParsedRow], str | None]:
     stmt = text(
         """
         SELECT lsn, data
@@ -251,14 +259,6 @@ def _get_replication_changes(
             payload = json.loads(payload)
 
         parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name, default_nextlsn=lsn))
-
-    # This should never happen in normal circumstances as we already have a 0 changes gate above
-    # If we have parsed rows but no last SQL LSN, something went wrong and we should raise an error.
-    if parsed_rows and not last_sql_lsn:
-        raise RuntimeError(
-            f"{LOG_KEY} No last_lsn found after processing replication slot changes, \
-            replication slot {slot_name} will not be advanced. This should not happen under normal circumstances."
-        )
 
     # advance the replication slot to the last SQL row LSN even when the terminal WAL rows are
     # for a different table in the same logical slot; otherwise the slot can stop advancing on the
