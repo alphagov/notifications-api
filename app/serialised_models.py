@@ -50,9 +50,9 @@ class SerialisedTemplate(SerialisedModel):
     content: str
     id: Any
     service: Any
-    postage: str
-    reply_to_text: str
-    subject: str
+    postage: str | None
+    reply_to_text: str | None
+    subject: str | None
     template_type: str
     version: int
     has_unsubscribe_link: bool
@@ -99,8 +99,8 @@ class SerialisedTemplate(SerialisedModel):
 class SerialisedTemplateEmailFile(SerialisedModel):
     id: Any
     filename: str
-    link_text: str
-    retention_period: int
+    link_text: str | None
+    retention_period: int | None
     validate_users_email: bool
 
 
@@ -112,14 +112,14 @@ class SerialisedService(SerialisedModel):
     id: Any
     name: str
     active: bool
-    contact_link: str
-    custom_email_sender_name: str
+    contact_link: str | None
+    custom_email_sender_name: str | None
     email_sender_local_part: str
-    email_message_limit: int
-    letter_message_limit: int
-    sms_message_limit: int
+    email_message_limit: int | None
+    letter_message_limit: int | None
+    sms_message_limit: int | None
     international_sms_message_limit: int
-    permissions: Any
+    permissions: list
     rate_limit: int
     restricted: bool
     prefix_sms: bool
@@ -151,7 +151,7 @@ class SerialisedService(SerialisedModel):
 class SerialisedAPIKey(SerialisedModel):
     id: Any
     secret: str
-    expiry_date: datetime
+    expiry_date: datetime | None
     key_type: str
 
 
