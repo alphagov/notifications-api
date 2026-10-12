@@ -2447,26 +2447,6 @@ class FactServiceStats(db.Model):
     )
     notification_count = db.Column(db.BigInteger(), nullable=False, server_default=db.text("0"))
 
-    __table_args__ = (
-        Index(
-            "ix_ft_service_stats",
-            "bst_date",
-            "service_id",
-            "template_id",
-            "notification_type",
-            "notification_status",
-            unique=True,
-        ),
-        Index(
-            "ix_ft_service_template_stats",
-            "bst_date",
-            "template_id",
-            "notification_type",
-            "notification_status",
-            unique=True,
-        ),
-    )
-
 
 class FactProcessingTime(db.Model):
     __tablename__ = "ft_processing_time"
