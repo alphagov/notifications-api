@@ -2,10 +2,11 @@ import uuid
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, or_
+from sqlalchemy.dialects.postgresql import insert
 
 from app import db
 from app.dao.dao_utils import autocommit, version_class
-from app.models import ApiKey
+from app.models import ApiKey, ApiKeyUsage
 
 
 @autocommit
@@ -50,3 +51,18 @@ def get_unsigned_secret(key_id):
     """
     api_key = ApiKey.query.filter_by(id=key_id, expiry_date=None).one()
     return api_key.secret
+
+
+@autocommit
+def create_api_key_hourly_usage_record_dao(service_id, api_key_id, endpoint, usage_hour):
+    statement = (
+        insert(ApiKeyUsage)
+        .values(
+            service_id=service_id,
+            api_key_id=api_key_id,
+            endpoint=endpoint,
+            usage_hour=usage_hour,
+        )
+        .on_conflict_do_nothing(index_elements=["service_id", "api_key_id", "endpoint", "usage_hour"])
+    )
+    db.session.execute(statement)

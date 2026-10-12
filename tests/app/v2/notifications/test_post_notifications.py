@@ -258,7 +258,11 @@ def test_should_cache_template_lookups_in_memory(mocker, api_client_request, sam
     assert Notification.query.count() == 5
 
 
-def test_should_cache_template_and_service_in_redis(mocker, api_client_request, sample_template):
+def test_should_cache_template_and_service_in_redis(
+    mocker,
+    api_client_request,
+    sample_template,
+):
     from app.schemas import service_schema, template_schema
 
     mock_redis_get = mocker.patch(

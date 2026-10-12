@@ -31,6 +31,7 @@ from app.dao.template_folder_dao import dao_get_valid_template_folders_by_id
 from app.models import (
     AnnualBilling,
     ApiKey,
+    ApiKeyUsage,
     FactBilling,
     InboundNumber,
     InboundSms,
@@ -414,6 +415,7 @@ def delete_service_and_all_associated_db_objects(service):
 
     _delete(ServiceLetterContact.query.filter_by(service=service))
     _delete(ServicePermission.query.filter_by(service_id=service.id))
+    _delete(ApiKeyUsage.query.filter_by(service_id=service.id))
     _delete(ApiKey.query.filter_by(service=service))
     _delete(ApiKey.get_history_model().query.filter_by(service_id=service.id))
     _delete(AnnualBilling.query.filter_by(service_id=service.id))

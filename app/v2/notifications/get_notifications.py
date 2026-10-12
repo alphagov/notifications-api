@@ -12,6 +12,7 @@ from app.constants import (
 from app.dao import notifications_dao
 from app.letters.utils import get_letter_pdf_and_metadata
 from app.schema_validation import validate
+from app.v2.api_key_usage import record_api_key_hourly_usage
 from app.v2.errors import BadRequestError, PDFNotReadyError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
@@ -40,6 +41,7 @@ def get_notification_by_id(notification_id):
 
 @v2_notification_blueprint.route("/<notification_id>/pdf", methods=["GET"])
 def get_pdf_for_notification(notification_id):
+    record_api_key_hourly_usage()
     _data = {"notification_id": notification_id}
     validate(_data, notification_by_id)
     notification = notifications_dao.get_notification_by_id(notification_id, authenticated_service.id, _raise=True)

@@ -3,6 +3,7 @@ from flask import jsonify, request
 from app import authenticated_service
 from app.dao import templates_dao
 from app.schema_validation import validate
+from app.v2.api_key_usage import record_api_key_hourly_usage
 from app.v2.errors import BadRequestError
 from app.v2.template import v2_template_blueprint
 from app.v2.template.template_schemas import (
@@ -14,6 +15,7 @@ from app.v2.utils import get_valid_json
 
 @v2_template_blueprint.route("/<template_id>/preview", methods=["POST"])
 def post_template_preview(template_id):
+    record_api_key_hourly_usage()
     # The payload is empty when there are no place holders in the template.
     _data = request.get_data(as_text=True)
     if not _data:
