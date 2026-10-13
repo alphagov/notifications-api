@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+import cachetools
 from flask import request
 from notifications_utils.clients.redis import RequestCache
 
@@ -28,6 +29,7 @@ def record_api_key_hourly_usage():
     _record_service_api_key_hourly_usage(api_key_id, service_id, hourly_bucket, endpoint, usage_hour)
 
 
+@cachetools.cached(cache=cachetools.TTLCache(maxsize=8_192, ttl=10_800))
 @redis_cache.set("api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint}", ttl_in_seconds=10800)
 def _record_service_api_key_hourly_usage(api_key_id, service_id, hourly_bucket, endpoint, usage_hour):
     # create record in the database

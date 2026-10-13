@@ -79,10 +79,6 @@ def test_record_api_key_usage_makes_one_record_per_hour_per_endpoint(
 
     assert mock_api_usage_get_call_list == [
         call(f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_1}", skippable=True),
-        call(f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_1}", skippable=True),
-        call(f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_1}", skippable=True),
-        call(f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_2}", skippable=True),
-        call(f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_2}", skippable=True),
         call(f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_2}", skippable=True),
     ]
 
@@ -168,5 +164,45 @@ def test_record_api_key_usage_across_different_times_in_the_day_at_the_same_endp
         for redis_call in mock_redis_set.call_args_list
         if redis_call.args[0].startswith("api-key-usage-marker")
     ]
-    assert len(mock_api_usage_get_call_list) == 11
+    assert len(mock_api_usage_get_call_list) == 6
     assert len(mock_api_usage_set_call_list) == 6
+
+
+def test_record_api_key_doesnt_hit_redis_for_multiple_calls_from_same_instance(
+    sample_letter_notification,
+    api_client_request,
+    client,
+    mocker,
+):
+    redis_data = {}
+    mock_redis_get = mocker.patch(
+        "app.v2.api_key_usage.redis_store.get", side_effect=lambda key, skippable=False: redis_data.get(key)
+    )
+    mocker.patch(
+        "app.v2.api_key_usage.redis_store.set",
+        side_effect=lambda key, value, ex=None, skippable=False: redis_data.__setitem__(key, value.encode("utf-8")),
+    )
+
+    with freezegun.freeze_time("2026-09-15 10:10:20"):
+        for _ in range(10):
+            api_client_request.post(
+                sample_letter_notification.service_id,
+                "v2_template.post_template_preview",
+                template_id=sample_letter_notification.template_id,
+                _data=None,
+                _expected_status=200,
+            )
+
+    assert mock_redis_get.call_args_list == [
+        call(f"service-{sample_letter_notification.service_id}", skippable=True),
+        call(
+            (
+                f"api-key-usage-marker"
+                f":{sample_letter_notification.service_id}"
+                f":{sample_letter_notification.api_key_id}"
+                f":2026-09-15T10"
+                f":v2_template.post_template_preview"
+            ),
+            skippable=True,
+        ),
+    ]
