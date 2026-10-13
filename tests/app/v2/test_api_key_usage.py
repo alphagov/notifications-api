@@ -2,6 +2,7 @@ from datetime import datetime
 from unittest.mock import call
 
 import freezegun
+import pytest
 from flask import url_for
 
 from app.models import ApiKeyUsage
@@ -206,3 +207,31 @@ def test_record_api_key_doesnt_hit_redis_for_multiple_calls_from_same_instance(
             skippable=True,
         ),
     ]
+
+
+@freezegun.freeze_time("2026-09-15 10:10:20")
+def test_record_api_key_doesnt_cache_if_database_write_raises_exception(
+    sample_letter_notification,
+    api_client_request,
+    client,
+    mocker,
+):
+    class UnexpectedError(Exception):
+        pass
+
+    mock_create_api_key_hourly_usage_record_dao = mocker.patch(
+        "app.v2.api_key_usage.create_api_key_hourly_usage_record_dao",
+        side_effect=UnexpectedError,
+    )
+
+    for _ in range(5):
+        with pytest.raises(UnexpectedError):
+            api_client_request.post(
+                sample_letter_notification.service_id,
+                "v2_template.post_template_preview",
+                template_id=sample_letter_notification.template_id,
+                _data=None,
+                _expected_status=200,
+            )
+
+    assert len(mock_create_api_key_hourly_usage_record_dao.call_args_list) == 5
