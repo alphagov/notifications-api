@@ -30,6 +30,11 @@ wheel>=0.46.2  # Can be removed after merge of https://github.com/click-contrib/
 # auth errors from the REST api when trying to decode the JWT token
 pyjwt==2.13.0
 
+### IMPORTANT ###
+# pinned because the fix for a bug introduced in opentelemetry-api 1.45.0 is too recent to get 
+# picked up by `make refreeze-requirements` until after 2026-10-18
+opentelemetry-api~=1.44.0
+
 opentelemetry-distro[otlp]
 opentelemetry-instrumentation-asyncio
 opentelemetry-instrumentation-dbapi
