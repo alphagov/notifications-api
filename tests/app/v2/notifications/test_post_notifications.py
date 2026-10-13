@@ -259,9 +259,7 @@ def test_should_cache_template_lookups_in_memory(mocker, api_client_request, sam
 
 
 def test_should_cache_template_and_service_in_redis(
-    mocker,
-    api_client_request,
-    sample_template,
+    mocker, api_client_request, sample_template, sample_api_key, mock__record_service_api_key_usage
 ):
     from app.schemas import service_schema, template_schema
 
@@ -310,8 +308,13 @@ def test_should_cache_template_and_service_in_redis(
     assert json.loads(templates_call[0][1]) == {"data": template_dict}
     assert templates_call[1]["ex"] == 2_419_200
 
+    # API key logging is also cached but mocked out in this particular test
+    assert mock__record_service_api_key_usage.called is True
 
-def test_should_return_template_if_found_in_redis(mocker, api_client_request, sample_template):
+
+def test_should_return_template_if_found_in_redis(
+    mocker, api_client_request, sample_template, mock__record_service_api_key_usage
+):
     from app.schemas import service_schema, template_schema
 
     service_dict = service_schema.dump(sample_template.service)
@@ -343,6 +346,7 @@ def test_should_return_template_if_found_in_redis(mocker, api_client_request, sa
 
     assert mock_get_template.called is False
     assert mock_get_service.called is False
+    assert mock__record_service_api_key_usage.called is True
 
 
 @pytest.mark.parametrize(

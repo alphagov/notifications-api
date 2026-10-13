@@ -3,21 +3,21 @@ from unittest.mock import call
 
 import freezegun
 import pytest
-from flask import url_for
 
 from app.models import ApiKeyUsage
-from tests import create_service_authorization_header
 
 
 def test_record_api_key_usage_makes_one_record_per_hour_per_endpoint(
     sample_letter_notification,
     api_client_request,
-    client,
     mocker,
+    sample_email_template,
+    sample_service,
+    sample_api_key,
 ):
 
     hourly_bucket = "2026-09-15T10"
-    endpoint_1 = "v2_notifications.get_pdf_for_notification"
+    endpoint_1 = "v2_notifications.post_notification"
     endpoint_2 = "v2_template.post_template_preview"
     redis_data = {}
     mock_redis_get = mocker.patch(
@@ -28,31 +28,31 @@ def test_record_api_key_usage_makes_one_record_per_hour_per_endpoint(
         side_effect=lambda key, value, ex=None, skippable=False: redis_data.__setitem__(key, value.encode("utf-8")),
     )
 
-    service_id = sample_letter_notification.service_id
-    api_key_id = sample_letter_notification.api_key_id
-
     # endpoint_1 simulation
+    service_id_1 = sample_api_key.service_id
+    api_key_id_1 = sample_api_key.id
     for test_date in ["2026-09-15 10:05:20", "2026-09-15 10:30:35", "2026-09-15 10:45:55"]:
         with freezegun.freeze_time(test_date):
-            mocker.patch(
-                "app.v2.notifications.get_notifications.get_letter_pdf_and_metadata",
-                return_value=(b"foo", {"message": "", "invalid_pages": "", "page_count": "1"}),
-            )
-            sample_letter_notification.status = "created"
-
-            auth_header = create_service_authorization_header(service_id=service_id)
-            client.get(
-                path=url_for(
-                    "v2_notifications.get_pdf_for_notification", notification_id=sample_letter_notification.id
-                ),
-                headers=[("Content-Type", "application/json"), auth_header],
+            mock_provider_task = mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
+            data_1 = {
+                "email_address": "nobody@no-one.com",
+                "template_id": sample_email_template.id,
+                "personalisation": {"name": "Bob"},
+            }
+            api_client_request.post(
+                sample_service.id,
+                "v2_notifications.post_notification",
+                notification_type="email",
+                _data=data_1,
             )
 
     # endpoint_2 simulation
+    service_id_2 = sample_letter_notification.service_id
+    api_key_id_2 = sample_letter_notification.api_key_id
     for time in ["2026-09-15 10:10:20", "2026-09-15 10:20:35", "2026-09-15 10:55:55"]:
         with freezegun.freeze_time(time):
             api_client_request.post(
-                service_id,
+                service_id_2,
                 "v2_template.post_template_preview",
                 template_id=sample_letter_notification.template_id,
                 _data=None,
@@ -62,15 +62,17 @@ def test_record_api_key_usage_makes_one_record_per_hour_per_endpoint(
     result = ApiKeyUsage.query.order_by(ApiKeyUsage.endpoint).all()
     assert len(result) == 2
 
-    assert result[0].service_id == service_id
-    assert result[0].api_key_id == api_key_id
+    assert result[0].service_id == service_id_1
+    assert result[0].api_key_id == api_key_id_1
     assert result[0].usage_hour == datetime(2026, 9, 15, 10, 0, 0)
     assert result[0].endpoint == endpoint_1
 
-    assert result[1].service_id == service_id
-    assert result[1].api_key_id == api_key_id
+    assert result[1].service_id == service_id_2
+    assert result[1].api_key_id == api_key_id_2
     assert result[1].usage_hour == datetime(2026, 9, 15, 10, 0, 0)
     assert result[1].endpoint == endpoint_2
+
+    assert mock_provider_task.called is True
 
     mock_api_usage_get_call_list = [
         redis_call
@@ -79,8 +81,8 @@ def test_record_api_key_usage_makes_one_record_per_hour_per_endpoint(
     ]
 
     assert mock_api_usage_get_call_list == [
-        call(f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_1}", skippable=True),
-        call(f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_2}", skippable=True),
+        call(f"api-key-usage-marker:{service_id_1}:{api_key_id_1}:{hourly_bucket}:{endpoint_1}", skippable=True),
+        call(f"api-key-usage-marker:{service_id_2}:{api_key_id_2}:{hourly_bucket}:{endpoint_2}", skippable=True),
     ]
 
     mock_api_usage_set_call_list = [
@@ -90,13 +92,13 @@ def test_record_api_key_usage_makes_one_record_per_hour_per_endpoint(
     ]
     assert mock_api_usage_set_call_list == [
         call(
-            f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_1}",
+            f"api-key-usage-marker:{service_id_1}:{api_key_id_1}:{hourly_bucket}:{endpoint_1}",
             "1",
             ex=10800,
             skippable=True,
         ),
         call(
-            f"api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint_2}",
+            f"api-key-usage-marker:{service_id_2}:{api_key_id_2}:{hourly_bucket}:{endpoint_2}",
             "1",
             ex=10800,
             skippable=True,
