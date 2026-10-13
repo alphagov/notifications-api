@@ -127,8 +127,8 @@ def mock_service(
         )
 
     report_bucket = current_app.config.get("S3_BUCKET_REPORT_REQUESTS_DOWNLOAD")
-    s3 = boto3.client("s3", region_name="eu-west-1")
-    s3.create_bucket(Bucket=report_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3 = boto3.client("s3", region_name="eu-west-2")
+    s3.create_bucket(Bucket=report_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     return service
 
@@ -460,8 +460,8 @@ def test_process_report_request_should_return_correct_rows(
     }
 
     report_bucket = current_app.config.get("S3_BUCKET_REPORT_REQUESTS_DOWNLOAD")
-    s3 = boto3.client("s3", region_name="eu-west-1")
-    s3.create_bucket(Bucket=report_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3 = boto3.client("s3", region_name="eu-west-2")
+    s3.create_bucket(Bucket=report_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     report_request = ReportRequest(
         user_id=sample_user.id,
@@ -571,8 +571,8 @@ def test_process_report_request_should_contain_job_notification(
     }
 
     report_bucket = current_app.config.get("S3_BUCKET_REPORT_REQUESTS_DOWNLOAD")
-    s3 = boto3.client("s3", region_name="eu-west-1")
-    s3.create_bucket(Bucket=report_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-1"})
+    s3 = boto3.client("s3", region_name="eu-west-2")
+    s3.create_bucket(Bucket=report_bucket, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
 
     report_request = ReportRequest(
         user_id=sample_user.id,
