@@ -405,7 +405,7 @@ def replay_created_notifications() -> None:
 
 @notify_celery.task(name="check-if-letters-still-pending-virus-check")
 def check_if_letters_still_pending_virus_check(max_minutes_ago_to_check: int = 30) -> None:
-    # this task runs every ten minutes, so allowing a couple of runs
+    # this task runs every fifteen minutes, so allowing a couple of runs
     # if this task doesn't run for some reason, we may need to manually trigger it with a longer max_minutes_ago value
     letters_missing_from_scan_bucket = _attempt_to_rescan_letters_pending_virus_check(max_minutes_ago_to_check)
 
@@ -532,7 +532,7 @@ def _message_about_letters_pending_virus_check(
 
         msg += f"""
             {len(letters_missing_from_scan_bucket)} precompiled letters have been pending-virus-check for over
-            10 minutes. We couldn't find them in the scan bucket. We'll need to find out if the files were slow to
+            15 minutes. We couldn't find them in the scan bucket. We'll need to find out if the files were slow to
             process and are now in the expected state. If not we'll need to find out where the files are and kick
             them off again or move them to technical failure.
 
