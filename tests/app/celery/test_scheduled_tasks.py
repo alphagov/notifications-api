@@ -1356,7 +1356,7 @@ def test_check_if_letters_still_pending_virus_check_nightly_with_both_types_of_z
         notify_task_type="notify_task_letters_pending_scan",
     )
     normalized_ticket_message = " ".join(mock_create_ticket.call_args.kwargs["message"].split())
-    assert "1 precompiled letters have been pending-virus-check for over 10 minutes" in normalized_ticket_message
+    assert "1 precompiled letters have been pending-virus-check for over 15 minutes" in normalized_ticket_message
     assert "1 precompiled letters have been pending-virus-check for over 3 days" in normalized_ticket_message
     assert f"{(str(notification_1.id), notification_1.reference)}" in normalized_ticket_message
     assert f"{(str(notification_2.id), notification_2.reference)}" in normalized_ticket_message
