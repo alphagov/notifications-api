@@ -176,10 +176,11 @@ def persist_notification(
             five_digit_prefix = str(number.number.national_number)[:5]
             if number.is_number_in_S7_protected_range() and not number.is_tv_number(number.number):
                 current_app.logger.info(
-                    "Service %s tried to send to UK mobile number in ofcom protected range. Prefix without leading zero: %s",  # noqa: E501
+                    "Service %s tried to send to UK mobile number in ofcom protected range. Prefix without leading zero: %s. API key type: %s",  # noqa: E501
                     service.id,
                     five_digit_prefix,
-                    extra={"service_id": service.id, "five_digit_prefix": five_digit_prefix},
+                    key_type,
+                    extra={"service_id": service.id, "five_digit_prefix": five_digit_prefix, "key_type": key_type},
                 )
         except InvalidPhoneError:
             current_app.logger.info("Could not parse number")
