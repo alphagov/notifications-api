@@ -668,7 +668,7 @@ def test_persist_notification_logs_when_sms_sent_to_uk_number_in_ofcom_protected
     if should_log:
         assert (
             caplog.records[0].message
-            == f"Service {sample_template.service.id} tried to send to UK mobile number in ofcom protected range. Prefix without leading zero: {prefix}"  # noqa: E501
+            == f"Service {sample_template.service.id} tried to send to UK mobile number in ofcom protected range. Prefix without leading zero: {prefix}. API key type: {sample_api_key.key_type}"  # noqa: E501
         )
     else:
         assert caplog.records == []
