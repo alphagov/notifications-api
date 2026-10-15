@@ -10,7 +10,7 @@ from app.dao.api_key_dao import create_api_key_hourly_usage_record_dao
 redis_cache = RequestCache(redis_store)
 
 
-def record_api_key_hourly_usage():
+def record_api_key_usage():
     """
     This function records api key usage at an endpoint.
     Only one entry will be made in the api_key_usage for an api key at an endpoint each hour.
@@ -26,12 +26,12 @@ def record_api_key_hourly_usage():
     # would be 2026-09-08T10
     hourly_bucket = usage_hour.strftime("%Y-%m-%dT%H")
 
-    _record_service_api_key_hourly_usage(api_key_id, service_id, hourly_bucket, endpoint, usage_hour)
+    _record_service_api_key_usage(api_key_id, service_id, hourly_bucket, endpoint, usage_hour)
 
 
 @cachetools.cached(cache=cachetools.TTLCache(maxsize=8_192, ttl=10_800))
 @redis_cache.set("api-key-usage-marker:{service_id}:{api_key_id}:{hourly_bucket}:{endpoint}", ttl_in_seconds=10800)
-def _record_service_api_key_hourly_usage(api_key_id, service_id, hourly_bucket, endpoint, usage_hour):
+def _record_service_api_key_usage(api_key_id, service_id, hourly_bucket, endpoint, usage_hour):
     # create record in the database
     create_api_key_hourly_usage_record_dao(
         service_id=service_id, api_key_id=api_key_id, endpoint=endpoint, usage_hour=usage_hour
