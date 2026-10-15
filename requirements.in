@@ -18,6 +18,7 @@ marshmallow~=4.2
 psycopg2-binary~=2.9
 SQLAlchemy~=2.0
 pyorc~=0.10
+psycogreen~=1.0
 
 notifications-python-client~=12.1
 
