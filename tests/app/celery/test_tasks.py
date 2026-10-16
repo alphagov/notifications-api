@@ -1923,7 +1923,7 @@ def test_save_sms_should_go_to_retry_queue_if_database_errors(sample_template, m
                 signing.encode(notification),
             )
     assert provider_tasks.deliver_sms.apply_async.called is False
-    tasks.save_sms.retry.assert_called_with(exc=expected_exception, queue="retry-tasks", MessageGroupId=None)
+    tasks.save_sms.retry.assert_called_with(exc=expected_exception, queue="retry-tasks")
 
     assert Notification.query.count() == 0
 
@@ -1950,7 +1950,7 @@ def test_save_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
                 signing.encode(notification),
             )
     assert not provider_tasks.deliver_email.apply_async.called
-    tasks.save_email.retry.assert_called_with(exc=expected_exception, queue="retry-tasks", MessageGroupId=None)
+    tasks.save_email.retry.assert_called_with(exc=expected_exception, queue="retry-tasks")
 
     assert Notification.query.count() == 0
 
