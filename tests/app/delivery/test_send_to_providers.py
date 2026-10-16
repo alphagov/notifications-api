@@ -666,7 +666,7 @@ def test_should_set_notification_billable_units_and_reduce_provider_priority_if_
         send_to_providers.send_sms_to_provider(sample_notification)
 
     assert sample_notification.billable_units == 1
-    mock_reduce.assert_called_once_with("mmg", time_threshold=timedelta(minutes=1))
+    mock_reduce.assert_called_once_with("mmg", time_threshold=timedelta(seconds=SMS_PROVIDER_ERROR_INTERVAL))
     mock_redis.assert_called_once_with("mmg-error-rate", SMS_PROVIDER_ERROR_THRESHOLD, SMS_PROVIDER_ERROR_INTERVAL)
 
 
