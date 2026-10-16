@@ -944,6 +944,8 @@ class ApiKey(db.Model, Versioned):
     created_by = db.relationship("User")
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True, nullable=False)
 
+    api_key_usage = db.relationship("ApiKeyUsage", uselist=False, backref=db.backref("api_key", uselist=False))
+
     __table_args__ = (
         Index("uix_service_to_key_name", "service_id", "name", unique=True, postgresql_where=expiry_date.is_(None)),
     )
