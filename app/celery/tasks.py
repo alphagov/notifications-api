@@ -563,7 +563,6 @@ def handle_exception(task, notification, notification_id, exc):
             retry_kwargs = {
                 "queue": QueueNames.RETRY,
                 "exc": exc,
-                "MessageGroupId": task.message_group_id,
             }
             task.retry(**retry_kwargs)
         except task.MaxRetriesExceededError:
