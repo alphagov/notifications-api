@@ -18,6 +18,9 @@ from app.dao.fact_notification_status_live_dao import (
 REPLICATION_SLOT_NAME = "notify_wal2json_slot"
 REPLICATION_SLOT_TABLE_NAME = "public.notifications"
 REPLICATION_SLOT_UPTO_NCHANGES = 10_000
+# Notifications without a job (e.g. sent via the API) are bucketed under a zero UUID, as job_id is part of the
+# primary key of ft_notification_status_live (same convention as ft_notification_status).
+NO_JOB_ID = UUID("00000000-0000-0000-0000-000000000000")
 LOG_KEY = "[notifications_wal_changes_dao]"  # Prefix for all log messages in this module
 
 # Use the first eight bytes of the slot name as a deterministic signed 64-bit advisory lock ID.
@@ -447,7 +450,7 @@ def _build_dimensions(
 
     service_id = _parse_uuid_value(row_data, "service_id") or _parse_uuid_value(fallback_data, "service_id")
     template_id = _parse_uuid_value(row_data, "template_id") or _parse_uuid_value(fallback_data, "template_id")
-    job_id = _parse_uuid_value(row_data, "job_id") or _parse_uuid_value(fallback_data, "job_id")
+    job_id = _parse_uuid_value(row_data, "job_id") or _parse_uuid_value(fallback_data, "job_id") or NO_JOB_ID
     notification_type = _get_str_value(row_data, "notification_type") or _get_str_value(
         fallback_data, "notification_type"
     )
