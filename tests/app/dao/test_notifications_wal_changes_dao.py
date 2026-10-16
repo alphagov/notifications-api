@@ -306,7 +306,7 @@ def test_build_dimensions_returns_none_when_required_fields_missing():
     assert dao._build_dimensions(change, use_previous_row=False) is None
 
 
-def test_build_dimensions_requires_job_id(mocker):
+def test_build_dimensions_uses_zero_uuid_when_no_job_id(mocker):
     mocker.patch(
         "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
         return_value=datetime(2026, 8, 7, 0, 0, tzinfo=UTC),
@@ -322,7 +322,10 @@ def test_build_dimensions_requires_job_id(mocker):
         }
     )
 
-    assert dao._build_dimensions(change, use_previous_row=False) is None
+    result = dao._build_dimensions(change, use_previous_row=False)
+
+    assert result is not None
+    assert result.job_id == dao.NO_JOB_ID
 
 
 def test_build_counter_from_changes():
