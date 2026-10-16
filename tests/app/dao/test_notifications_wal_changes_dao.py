@@ -6,8 +6,8 @@ import pytest
 
 from app.constants import EMAIL_TYPE, NOTIFICATION_CREATED, NOTIFICATION_DELIVERED, SMS_TYPE
 from app.dao import notifications_wal_changes_dao as dao
-from app.models import FactServiceStats
-from tests.app.db import create_service, create_template
+from app.models import FactNotificationStatusLive
+from tests.app.db import create_job, create_service, create_template
 
 
 def _build_change(
@@ -150,6 +150,7 @@ def test_parse_wal2json_payload_supports_format_2_rows():
         "columns": [
             {"name": "service_id", "value": "550e8400-e29b-41d4-a716-446655440000"},
             {"name": "template_id", "value": "550e8400-e29b-41d4-a716-446655440001"},
+            {"name": "job_id", "value": "550e8400-e29b-41d4-a716-446655440002"},
             {"name": "notification_type", "value": "sms"},
             {"name": "key_type", "value": "normal"},
             {"name": "notification_status", "value": "created"},
@@ -163,6 +164,7 @@ def test_parse_wal2json_payload_supports_format_2_rows():
     assert result[0]["table"] == "notifications"
     assert result[0]["type"] == "insert"
     assert result[0]["current_row_data"]["notification_type"] == "sms"
+    assert result[0]["current_row_data"]["job_id"] == "550e8400-e29b-41d4-a716-446655440002"
     assert result[0]["current_row_data"]["notification_status"] == "created"
 
 
@@ -220,12 +222,14 @@ def test_parse_datetime_value():
 def test_build_dimensions_returns_tuple(mocker):
     service_id = str(uuid4())
     template_id = str(uuid4())
+    job_id = str(uuid4())
     created_at = datetime(2026, 8, 6, 10, 0, 0, tzinfo=UTC)
     mock_convert = mocker.patch("app.dao.notifications_wal_changes_dao.convert_utc_to_bst", return_value=created_at)
     change = _build_change(
         current_row_data={
             "service_id": service_id,
             "template_id": template_id,
+            "job_id": job_id,
             "notification_type": "sms",
             "key_type": "normal",
             "notification_status": "delivered",
@@ -235,13 +239,14 @@ def test_build_dimensions_returns_tuple(mocker):
 
     result = dao._build_dimensions(change, use_previous_row=False)
 
-    assert result == (date(2026, 8, 6), UUID(service_id), UUID(template_id), "sms", "delivered")
+    assert result == (date(2026, 8, 6), UUID(service_id), UUID(template_id), UUID(job_id), "sms", "normal", "delivered")
     mock_convert.assert_called_once_with(created_at)
 
 
 def test_build_dimensions_uses_fallback_row_when_primary_missing(mocker):
     service_id = str(uuid4())
     template_id = str(uuid4())
+    job_id = str(uuid4())
     mocker.patch(
         "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
         return_value=datetime(2026, 8, 7, 0, 0, tzinfo=UTC),
@@ -251,6 +256,7 @@ def test_build_dimensions_uses_fallback_row_when_primary_missing(mocker):
         previous_row_data={
             "service_id": service_id,
             "template_id": template_id,
+            "job_id": job_id,
             "notification_type": "email",
             "key_type": "normal",
             "notification_status": "failed",
@@ -260,12 +266,13 @@ def test_build_dimensions_uses_fallback_row_when_primary_missing(mocker):
 
     result = dao._build_dimensions(change, use_previous_row=False)
 
-    assert result == (date(2026, 8, 7), UUID(service_id), UUID(template_id), "email", "failed")
+    assert result == (date(2026, 8, 7), UUID(service_id), UUID(template_id), UUID(job_id), "email", "normal", "failed")
 
 
 def test_build_dimensions_requires_status_from_primary_row(mocker):
     service_id = str(uuid4())
     template_id = str(uuid4())
+    job_id = str(uuid4())
     mocker.patch(
         "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
         return_value=datetime(2026, 8, 7, 0, 0, tzinfo=UTC),
@@ -275,6 +282,7 @@ def test_build_dimensions_requires_status_from_primary_row(mocker):
         previous_row_data={
             "service_id": service_id,
             "template_id": template_id,
+            "job_id": job_id,
             "notification_type": "email",
             "key_type": "normal",
             "created_at": "2026-08-07T00:00:00Z",
@@ -298,12 +306,33 @@ def test_build_dimensions_returns_none_when_required_fields_missing():
     assert dao._build_dimensions(change, use_previous_row=False) is None
 
 
+def test_build_dimensions_requires_job_id(mocker):
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 7, 0, 0, tzinfo=UTC),
+    )
+    change = _build_change(
+        current_row_data={
+            "service_id": str(uuid4()),
+            "template_id": str(uuid4()),
+            "notification_type": "email",
+            "key_type": "normal",
+            "notification_status": "delivered",
+            "created_at": "2026-08-07T00:00:00Z",
+        }
+    )
+
+    assert dao._build_dimensions(change, use_previous_row=False) is None
+
+
 def test_build_counter_from_changes():
     service_id = str(uuid4())
     template_id = str(uuid4())
+    job_id = str(uuid4())
     base = {
         "service_id": service_id,
         "template_id": template_id,
+        "job_id": job_id,
         "notification_type": "sms",
         "key_type": "normal",
         "created_at": "2026-08-06T10:00:00Z",
@@ -340,9 +369,11 @@ def test_build_counter_from_changes():
 def test_build_counter_does_not_subtract_new_status_when_previous_status_is_missing():
     service_id = str(uuid4())
     template_id = str(uuid4())
+    job_id = str(uuid4())
     base = {
         "service_id": service_id,
         "template_id": template_id,
+        "job_id": job_id,
         "notification_type": "sms",
         "key_type": "normal",
         "created_at": "2026-08-06T10:00:00Z",
@@ -369,6 +400,7 @@ def test_build_counter_uses_sql_lsn_for_slot_advance_not_row_nextlsn():
         "current_row_data": {
             "service_id": str(uuid4()),
             "template_id": str(uuid4()),
+            "job_id": str(uuid4()),
             "notification_type": "sms",
             "key_type": "normal",
             "notification_status": "created",
@@ -445,7 +477,8 @@ def test_dao_process_notifications_replication_slot_changes_when_no_changes(mock
 
 
 def test_dao_process_notifications_replication_slot_changes_success(mocker):
-    dimensions_key = (date(2026, 8, 6), uuid4(), uuid4(), "sms", "delivered")
+    dimensions_key = (date(2026, 8, 6), uuid4(), uuid4(), uuid4(), "sms", "normal", "delivered")
+    zero_dimensions_key = (date(2026, 8, 6), uuid4(), uuid4(), uuid4(), "email", "normal", "failed")
     call_order: list[str] = []
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch(
@@ -454,14 +487,14 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._build_counter_from_changes",
         return_value=(
-            Counter({dimensions_key: 3, (date(2026, 8, 6), uuid4(), uuid4(), "email", "failed"): 0}),
+            Counter({dimensions_key: 3, zero_dimensions_key: 0}),
             2,
             0,
             "0/AB",
         ),
     )
     mock_apply = mocker.patch(
-        "app.dao.notifications_wal_changes_dao.apply_service_stats_change",
+        "app.dao.notifications_wal_changes_dao.apply_notification_status_live_change",
         side_effect=lambda *_args, **_kwargs: call_order.append("apply"),
     )
     mock_advance = mocker.patch(
@@ -487,8 +520,10 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
         "bst_date": dimensions_key[0],
         "service_id": dimensions_key[1],
         "template_id": dimensions_key[2],
-        "notification_type": dimensions_key[3],
-        "notification_status": dimensions_key[4],
+        "job_id": dimensions_key[3],
+        "notification_type": dimensions_key[4],
+        "key_type": dimensions_key[5],
+        "notification_status": dimensions_key[6],
     }
 
     mock_advance.assert_called_once_with("0/AB", slot_name="slot")
@@ -525,10 +560,13 @@ def test_dao_process_notifications_replication_slot_changes_logs_unlock_failure(
     assert logger_args.kwargs == {"extra": {"dao_method": "dao_process_notifications_replication_slot_changes"}}
 
 
-def _row_data(*, service_id: UUID, template_id: UUID, notification_type: str, notification_status: str) -> dict:
+def _row_data(
+    *, service_id: UUID, template_id: UUID, job_id: UUID, notification_type: str, notification_status: str
+) -> dict:
     return {
         "service_id": str(service_id),
         "template_id": str(template_id),
+        "job_id": str(job_id),
         "notification_type": notification_type,
         "key_type": "normal",
         "notification_status": notification_status,
@@ -539,23 +577,28 @@ def _row_data(*, service_id: UUID, template_id: UUID, notification_type: str, no
 def test_dao_process_notifications_replication_slot_changes_bulk_inserts_and_updates(mocker, notify_db_session):
     # Simulate 1000 WAL changes (mostly inserts, some status-transition updates) spread across
     # multiple services/templates/notification types/statuses, and verify the resulting
-    # FactServiceStats counts are exactly correct for every dimension bucket.
+    # FactNotificationStatusLive counts are exactly correct for every dimension bucket.
     services = [create_service(service_name=f"WAL bulk service {i}") for i in range(3)]
     row_groups = [
-        (service.id, create_template(service, template_type=notification_type).id, notification_type)
+        (
+            service.id,
+            (template := create_template(service, template_type=notification_type)).id,
+            create_job(template).id,
+            notification_type,
+        )
         for service in services
         for notification_type in (SMS_TYPE, EMAIL_TYPE)
     ]
     statuses = (NOTIFICATION_CREATED, NOTIFICATION_DELIVERED)
     bst_date = date(2026, 8, 6)
 
-    expected: Counter[tuple[date, UUID, UUID, str, str]] = Counter()
+    expected: Counter[tuple[date, UUID, UUID, UUID, str, str, str]] = Counter()
     changes: list[dict] = []
 
     # 900 inserts spread evenly across the 24 (group, status) buckets.
     insert_count = 900
     for i in range(insert_count):
-        service_id, template_id, notification_type = row_groups[i % len(row_groups)]
+        service_id, template_id, job_id, notification_type = row_groups[i % len(row_groups)]
         # Status index must not be derived from the same modulus as the group index, otherwise
         # each group always lands on the same status (6 is a multiple of 2).
         notification_status = statuses[(i // len(row_groups)) % len(statuses)]
@@ -564,18 +607,19 @@ def test_dao_process_notifications_replication_slot_changes_bulk_inserts_and_upd
                 current_row_data=_row_data(
                     service_id=service_id,
                     template_id=template_id,
+                    job_id=job_id,
                     notification_type=notification_type,
                     notification_status=notification_status,
                 )
             )
         )
-        expected[(bst_date, service_id, template_id, notification_type, notification_status)] += 1
+        expected[(bst_date, service_id, template_id, job_id, notification_type, "normal", notification_status)] += 1
 
     # 100 status-transition updates: each moves one count from one status to the other status
     # within the same service/template/notification_type bucket.
     update_count = 100
     for i in range(update_count):
-        service_id, template_id, notification_type = row_groups[i % len(row_groups)]
+        service_id, template_id, job_id, notification_type = row_groups[i % len(row_groups)]
         new_status = statuses[(i // len(row_groups)) % len(statuses)]
         old_status = statuses[(i // len(row_groups) + 1) % len(statuses)]
         changes.append(
@@ -584,23 +628,25 @@ def test_dao_process_notifications_replication_slot_changes_bulk_inserts_and_upd
                 current_row_data=_row_data(
                     service_id=service_id,
                     template_id=template_id,
+                    job_id=job_id,
                     notification_type=notification_type,
                     notification_status=new_status,
                 ),
                 previous_row_data=_row_data(
                     service_id=service_id,
                     template_id=template_id,
+                    job_id=job_id,
                     notification_type=notification_type,
                     notification_status=old_status,
                 ),
             )
         )
-        expected[(bst_date, service_id, template_id, notification_type, new_status)] += 1
-        expected[(bst_date, service_id, template_id, notification_type, old_status)] -= 1
+        expected[(bst_date, service_id, template_id, job_id, notification_type, "normal", new_status)] += 1
+        expected[(bst_date, service_id, template_id, job_id, notification_type, "normal", old_status)] -= 1
 
     # Deliberately subtract more than the available created count for one bucket. The
     # resulting negative count should be retained for debugging rather than clamped away.
-    service_id, template_id, notification_type = row_groups[0]
+    service_id, template_id, job_id, notification_type = row_groups[0]
     for _ in range(100):
         changes.append(
             _build_change(
@@ -608,19 +654,21 @@ def test_dao_process_notifications_replication_slot_changes_bulk_inserts_and_upd
                 current_row_data=_row_data(
                     service_id=service_id,
                     template_id=template_id,
+                    job_id=job_id,
                     notification_type=notification_type,
                     notification_status=NOTIFICATION_DELIVERED,
                 ),
                 previous_row_data=_row_data(
                     service_id=service_id,
                     template_id=template_id,
+                    job_id=job_id,
                     notification_type=notification_type,
                     notification_status=NOTIFICATION_CREATED,
                 ),
             )
         )
-        expected[(bst_date, service_id, template_id, notification_type, NOTIFICATION_DELIVERED)] += 1
-        expected[(bst_date, service_id, template_id, notification_type, NOTIFICATION_CREATED)] -= 1
+        expected[(bst_date, service_id, template_id, job_id, notification_type, "normal", NOTIFICATION_DELIVERED)] += 1
+        expected[(bst_date, service_id, template_id, job_id, notification_type, "normal", NOTIFICATION_CREATED)] -= 1
 
     assert len(changes) == 1100
     assert any(count < 0 for count in expected.values())
@@ -640,30 +688,32 @@ def test_dao_process_notifications_replication_slot_changes_bulk_inserts_and_upd
     }
     mock_advance.assert_called_once_with("0/1100", slot_name="test-slot")
 
-    template_ids = [template_id for _, template_id, _ in row_groups]
-    stats_rows = FactServiceStats.query.filter(FactServiceStats.template_id.in_(template_ids)).all()
+    template_ids = [template_id for _, template_id, _, _ in row_groups]
+    stats_rows = FactNotificationStatusLive.query.filter(FactNotificationStatusLive.template_id.in_(template_ids)).all()
     actual = {
         (
             row.bst_date,
             row.service_id,
             row.template_id,
+            row.job_id,
             row.notification_type,
+            row.key_type,
             row.notification_status,
         ): row.notification_count
         for row in stats_rows
     }
 
     # Check every dimension bucket's count individually so a mismatch points straight at the
-    # offending (service, template, notification_type, notification_status) combination.
+    # offending (service, template, job, notification_type, key_type, notification_status) combination.
     for key, expected_count in expected.items():
-        bst_date_key, service_id, template_id, notification_type, notification_status = key
+        bst_date_key, service_id, template_id, job_id, notification_type, key_type, notification_status = key
         assert key in actual, (
-            f"missing FactServiceStats row for service={service_id} template={template_id} "
-            f"notification_type={notification_type} status={notification_status}"
+            f"missing FactNotificationStatusLive row for service={service_id} template={template_id} "
+            f"job={job_id} notification_type={notification_type} key_type={key_type} status={notification_status}"
         )
         assert actual[key] == expected_count, (
-            f"count mismatch for service={service_id} template={template_id} "
-            f"notification_type={notification_type} status={notification_status}: "
+            f"count mismatch for service={service_id} template={template_id} job={job_id} "
+            f"notification_type={notification_type} key_type={key_type} status={notification_status}: "
             f"expected {expected_count}, got {actual[key]}"
         )
 

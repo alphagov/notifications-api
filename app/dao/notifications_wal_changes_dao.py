@@ -10,7 +10,10 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import text  # type: ignore[reportMissingImports]
 
 from app import db
-from app.dao.fact_service_stats_dao import ServiceStatsDimensions, apply_service_stats_change
+from app.dao.fact_notification_status_live_dao import (
+    NotificationStatusLiveDimensions,
+    apply_notification_status_live_change,
+)
 
 REPLICATION_SLOT_NAME = "notify_wal2json_slot"
 REPLICATION_SLOT_TABLE_NAME = "public.notifications"
@@ -35,12 +38,14 @@ class ParsedRow(TypedDict):
 
 
 # This must remain a hashable tuple for use as a Counter key.
-# ServiceStatsDimensions (from app.dao.fact_service_stats_dao) is a TypedDict - therefore cannot be used.
+# NotificationStatusLiveDimensions is a TypedDict, so use a tuple as the Counter key.
 class FullDimensions(NamedTuple):
     bst_date: date
     service_id: UUID
     template_id: UUID
+    job_id: UUID
     notification_type: str
+    key_type: str
     notification_status: str
 
 
@@ -276,24 +281,26 @@ def _get_replication_changes(
 
 
 def _process_changes(changes):
-    # Process the fetched replication slot changes to update service statistics.
+    # Process the fetched replication slot changes to update live notification status counts.
     # The slot advance boundary must use the SQL-reported LSN, not the row-level wal2json nextlsn.
     counter, processed_changes, ignored_changes, _ = _build_counter_from_changes(changes)
 
     # Apply the change counts to the database
-    for service_stats_key, change_count in counter.items():
+    for dimensions_key, change_count in counter.items():
         if change_count == 0:
             continue
 
-        bst_date, service_id, template_id, notification_type, notification_status = service_stats_key
-        dimensions: ServiceStatsDimensions = {
+        bst_date, service_id, template_id, job_id, notification_type, key_type, notification_status = dimensions_key
+        dimensions: NotificationStatusLiveDimensions = {
             "bst_date": bst_date,
             "service_id": service_id,
             "template_id": template_id,
+            "job_id": job_id,
             "notification_type": notification_type,
+            "key_type": key_type,
             "notification_status": notification_status,
         }
-        apply_service_stats_change(dimensions, change_count)
+        apply_notification_status_live_change(dimensions, change_count)
 
     return processed_changes, ignored_changes, counter
 
@@ -440,6 +447,7 @@ def _build_dimensions(
 
     service_id = _parse_uuid_value(row_data, "service_id") or _parse_uuid_value(fallback_data, "service_id")
     template_id = _parse_uuid_value(row_data, "template_id") or _parse_uuid_value(fallback_data, "template_id")
+    job_id = _parse_uuid_value(row_data, "job_id") or _parse_uuid_value(fallback_data, "job_id")
     notification_type = _get_str_value(row_data, "notification_type") or _get_str_value(
         fallback_data, "notification_type"
     )
@@ -462,6 +470,7 @@ def _build_dimensions(
     if (
         not service_id
         or not template_id
+        or not job_id
         or not notification_type
         or not key_type
         or not notification_status
@@ -473,7 +482,9 @@ def _build_dimensions(
         bst_date=convert_utc_to_bst(created_at).date(),
         service_id=service_id,
         template_id=template_id,
+        job_id=job_id,
         notification_type=notification_type,
+        key_type=key_type,
         notification_status=notification_status,
     )
 
