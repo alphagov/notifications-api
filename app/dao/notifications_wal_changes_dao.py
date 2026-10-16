@@ -456,11 +456,6 @@ def _build_dimensions(
     notification_status = primary_status or _get_str_value(fallback_data, "notification_status")
     created_at = _parse_datetime_value(row_data, "created_at") or _parse_datetime_value(fallback_data, "created_at")
 
-    # If the key_type is "test", we ignore this change and return None to indicate
-    # that it should not be processed further.
-    if key_type == "test":
-        return None
-
     # WAL update payloads may omit unchanged columns, but the old dimensions must use the previous
     # row's status. Falling back to the current status here would subtract the new bucket instead
     # of the old bucket and leave the service statistics counts incorrect.
