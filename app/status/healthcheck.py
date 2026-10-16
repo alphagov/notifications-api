@@ -46,7 +46,7 @@ def live_service_and_organisation_counts():
 
 def be_slow_db():
     query = "SELECT pg_sleep(1.23)"
-    return db.session.execute(query).fetchone()
+    return db.session.execute(text(query)).fetchone()
 
 
 def get_db_version(session=db.session, raise_db_exception=True):
