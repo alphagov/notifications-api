@@ -21,12 +21,14 @@ def get_current_db_version():
 
     try:
         response = requests.get(api_status_url)
+    except requests.exceptions.RequestException:
+        print(f"Could not make web request to {api_status_url}", file=sys.stderr)
+        return ""
+
+    try:
         response.raise_for_status()
         current_db_version = response.json()["db_version"]
         return current_db_version
-    except requests.exceptions.ConnectionError:
-        print(f"Could not make web request to {api_status_url}", file=sys.stderr)
-        return ""
     except Exception:  # we expect these to be either either a http status code error, or a json decoding error
         print(
             f'Could not read status endpoint!\n\ncode {response.status_code}\nresponse "{response.text}"',
