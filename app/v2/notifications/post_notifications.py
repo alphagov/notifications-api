@@ -39,7 +39,6 @@ from app.notifications.process_letter_notifications import (
     create_letter_notification,
 )
 from app.notifications.process_notifications import (
-    add_email_file_links_to_personalisation,
     persist_notification,
     send_notification_to_queue_detached,
     simulated_recipient,
@@ -56,7 +55,6 @@ from app.notifications.validators import (
     validate_template,
 )
 from app.schema_validation import validate
-from app.serialised_models import SerialisedTemplate
 from app.utils import try_parse_and_format_phone_number
 from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
@@ -126,7 +124,7 @@ def post_notification(notification_type):
     unsanitised_personalisation = form.get("personalisation", {})
     personalisation = (
         _prepare_personalisation_for_post_notification(
-            personalisation=unsanitised_personalisation, sanitise_content_for=form.get("sanitise_content_for", []), 
+            personalisation=unsanitised_personalisation, sanitise_content_for=form.get("sanitise_content_for", [])
         )
         if notification_type == "email"
         else unsanitised_personalisation
@@ -135,9 +133,6 @@ def post_notification(notification_type):
     sanitised_content = (
         _get_sanitised_content(unsanitised_personalisation, personalisation) if notification_type == "email" else {}
     )
-    breakpoint()
-    if personalisation is not None:
-        personalisation = add_email_file_links_to_personalisation(SerialisedTemplate.from_id_and_service_id(form["template_id"], authenticated_service.id), personalisation.copy(), form.get("email_address"))
 
     template, template_with_content = validate_template(
         template_id=form["template_id"],
@@ -174,8 +169,8 @@ def post_notification(notification_type):
     return jsonify(notification | sanitised_content), 201
 
 
-def _prepare_personalisation_for_post_notification(personalisation, sanitise_content_for, template=None):
-    personalisation = {
+def _prepare_personalisation_for_post_notification(personalisation, sanitise_content_for):
+    return {
         key: sanitise_personalisation_item(value) if key in InsensitiveSet(sanitise_content_for) else value
         for key, value in personalisation.items()
     }
