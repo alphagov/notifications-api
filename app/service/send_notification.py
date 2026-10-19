@@ -23,7 +23,6 @@ from app.letters.utils import (
     move_uploaded_pdf_to_letters_bucket,
 )
 from app.notifications.process_notifications import (
-    add_email_file_links_to_personalisation,
     persist_notification,
     send_notification_to_queue,
 )
@@ -34,7 +33,6 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
-from app.serialised_models import SerialisedTemplate
 from app.v2.errors import BadRequestError
 
 
@@ -73,17 +71,13 @@ def send_one_off_notification(service_id, post_data):
         notification_type=template.template_type,
         allow_guest_list_recipients=False,
     )
-    recipient = recipient_data or post_data["to"]
-    personalisation = add_email_file_links_to_personalisation(
-        SerialisedTemplate.from_id_and_service_id(template.id, service.id), personalisation, recipient
-    )
 
     validate_template(
         template_id=template.id,
-        personalisation=personalisation.copy() if personalisation else None,
+        personalisation=personalisation,
         service=service,
         notification_type=template.template_type,
-        recipient=recipient,
+        recipient=recipient_data or post_data["to"],
     )
 
     postage = None
