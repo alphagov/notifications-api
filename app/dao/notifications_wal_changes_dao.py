@@ -21,8 +21,6 @@ REPLICATION_SLOT_UPTO_NCHANGES = 10_000
 # Notifications without a job (e.g. sent via the API) are bucketed under a zero UUID, as job_id is part of the
 # primary key of ft_notification_status_live (same convention as ft_notification_status).
 NO_JOB_ID = UUID("00000000-0000-0000-0000-000000000000")
-LOG_KEY = "[notifications_wal_changes_dao]"  # Prefix for all log messages in this module
-
 # Use the first eight bytes of the slot name as a deterministic signed 64-bit advisory lock ID.
 # This is inline with the way we build lock IDs for advisory locks for database migrations.
 REPLICATION_ADVISORY_LOCK_ID = struct.unpack(">q", struct.pack("8s", REPLICATION_SLOT_NAME.encode()))[0]
@@ -106,7 +104,7 @@ def dao_process_notifications_replication_slot_changes(
         # If we have changes but no last SQL LSN, something went wrong and we should raise an error.
         if not batch_last_lsn:
             raise RuntimeError(
-                f"{LOG_KEY} No last_lsn found after processing replication slot changes, \
+                f"No last_lsn found after processing replication slot changes, \
                 replication slot {slot_name} will not be advanced. This should not happen under normal circumstances."
             )
 
@@ -116,8 +114,7 @@ def dao_process_notifications_replication_slot_changes(
         # Advance the replication slot to the last processed SQL LSN
         # to avoid reprocessing the same changes in future runs.
         current_app.logger.info(
-            "%s Advancing replication slot %s to last_lsn=%s",
-            LOG_KEY,
+            "Advancing replication slot %s to last_lsn=%s",
             slot_name,
             batch_last_lsn,
         )
@@ -125,9 +122,8 @@ def dao_process_notifications_replication_slot_changes(
 
         # Log the result of the replication slot processing for monitoring and debugging purposes.
         current_app.logger.info(
-            "%s %s replication slot changes processed: %s processed, %s ignored, "
+            "%s replication slot changes processed: %s processed, %s ignored, "
             "%s service stats change count buckets, last_lsn=%s",
-            LOG_KEY,
             fetched_changes,
             processed_changes,
             ignored_changes,
@@ -147,7 +143,7 @@ def dao_process_notifications_replication_slot_changes(
     except Exception:
         # Ensure a failed statement does not poison the session for cleanup queries.
         db.session.rollback()
-        current_app.logger.exception("%s FAILED: Replication slot changes", LOG_KEY)
+        current_app.logger.exception("FAILED: Replication slot changes")
         raise
     finally:
         # Release the advisory lock if it was acquired, and log any exceptions that occur during the release process.
@@ -156,8 +152,7 @@ def dao_process_notifications_replication_slot_changes(
                 _advisory_unlock(advisory_lock_id)
             except Exception:
                 current_app.logger.exception(
-                    "%s Failed to release advisory lock",
-                    LOG_KEY,
+                    "Failed to release advisory lock",
                     extra={"dao_method": "dao_process_notifications_replication_slot_changes"},
                 )
                 raise
@@ -165,8 +160,7 @@ def dao_process_notifications_replication_slot_changes(
         # Log the total time taken to process the replication slot changes for monitoring and debugging purposes.
         end_time = datetime.now()
         current_app.logger.info(
-            "%s Replication slot changes processed in %s seconds.",
-            LOG_KEY,
+            "Replication slot changes processed in %s seconds.",
             (end_time - start_time).total_seconds(),
             extra={
                 "dao_method": "dao_process_notifications_replication_slot_changes",
@@ -273,8 +267,7 @@ def _get_replication_changes(
     # last relevant notification change instead of the actual last row returned by PostgreSQL.
     if not parsed_rows and rows and last_sql_lsn:
         current_app.logger.info(
-            "%s Advancing replication slot %s to last_lsn=%s (batch boundary)",
-            LOG_KEY,
+            "Advancing replication slot %s to last_lsn=%s (batch boundary)",
             slot_name,
             last_sql_lsn,
         )
