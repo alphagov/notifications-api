@@ -467,6 +467,7 @@ class ApiKeySchema(BaseSchema):
     expiry_date = FlexibleDateTime()
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
+    last_used = FlexibleDateTime()
 
     class Meta(BaseSchema.Meta):
         model = models.ApiKey
