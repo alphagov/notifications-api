@@ -1,6 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import uuid4
 
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql.dml import Insert
 
 from app.dao.fact_notification_status_live_dao import apply_notification_status_live_change
@@ -24,6 +25,7 @@ def test_apply_notification_status_live_change_for_non_zero_change(mocker):
     mock_execute.assert_called_once()
     statement = mock_execute.call_args.args[0]
     params = statement.compile().params
+    compiled_statement = statement.compile(dialect=postgresql.dialect())
 
     assert isinstance(statement, Insert)
     assert statement.table == FactNotificationStatusLive.__table__
@@ -35,6 +37,8 @@ def test_apply_notification_status_live_change_for_non_zero_change(mocker):
     assert params["notification_type"] == dimensions["notification_type"]
     assert params["notification_status"] == dimensions["notification_status"]
     assert params["notification_count"] == 4
+    assert "updated_at =" in compiled_statement.string
+    assert isinstance(compiled_statement.params["param_1"], datetime)
 
     assert any(key.startswith("notification_count_") and value == 4 for key, value in params.items())
 

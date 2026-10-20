@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import TypedDict
 from uuid import UUID
 
@@ -44,6 +44,7 @@ def _update_notification_status_live_count(dimensions: NotificationStatusLiveDim
         constraint="ft_notification_status_live_pkey",
         set_={
             "notification_count": FactNotificationStatusLive.notification_count + change_count,
+            "updated_at": datetime.utcnow(),
         },
     )
 
