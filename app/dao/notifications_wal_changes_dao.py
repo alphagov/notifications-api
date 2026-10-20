@@ -117,6 +117,7 @@ def dao_process_notifications_replication_slot_changes(
             "Advancing replication slot %s to last_lsn=%s",
             slot_name,
             batch_last_lsn,
+            extra={"slot_name": slot_name, "last_lsn": batch_last_lsn},
         )
         _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
 
@@ -129,6 +130,13 @@ def dao_process_notifications_replication_slot_changes(
             ignored_changes,
             len(service_stats_change_counts),
             batch_last_lsn,
+            extra={
+                "changes_count": fetched_changes,
+                "processed_changes": processed_changes,
+                "ignored_changes": ignored_changes,
+                "service_stats_change_count_buckets": len(service_stats_change_counts),
+                "last_lsn": batch_last_lsn,
+            },
         )
 
         # Return a summary of the replication slot processing results
@@ -270,6 +278,7 @@ def _get_replication_changes(
             "Advancing replication slot %s to last_lsn=%s (batch boundary)",
             slot_name,
             last_sql_lsn,
+            extra={"slot_name": slot_name, "last_lsn": last_sql_lsn},
         )
         _advance_replication_slot(last_sql_lsn, slot_name=slot_name)
 
