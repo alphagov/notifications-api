@@ -22,6 +22,7 @@ from app.celery import scheduled_tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.provider_tasks import deliver_email, deliver_sms
 from app.celery.scheduled_tasks import (
+    SMS_SLOW_DELIVERY_BANDS,
     _check_slow_text_message_delivery_reports_and_raise_error_if_needed,
     archive_pending_files,
     change_dvla_api_key,
@@ -66,7 +67,6 @@ from app.constants import (
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import BandedSlowProviderDeliveryReport, SlowProviderDeliveryReport
-from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.dao.template_email_files_dao import dao_get_template_email_file_by_id
 from app.metrics.notification import (
     _undelivered_notification_age as notification_undelivered_notification_age_metric,
@@ -85,6 +85,9 @@ from app.metrics.provider import (
 )
 from app.metrics.provider import (
     _sms_banded_not_delivered_within_total as provider_sms_banded_not_delivered_within_total_metric,
+)
+from app.metrics.provider import (
+    _sms_banded_not_delivered_within_weighted as provider_sms_banded_not_delivered_within_weighted_metric,
 )
 from app.metrics.provider import (
     _sms_legacy_not_delivered_within as provider_sms_legacy_not_delivered_within_metric,
@@ -216,42 +219,289 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock
     )
 
 
-@freeze_time("2017-05-01 14:00:00")
-def test_switch_current_sms_provider_on_slow_delivery_switches_when_one_provider_is_slow(
-    mocker,
-    restore_provider_details,
-):
-    is_slow_dict = {"mmg": False, "firetext": True}
-    mock_is_slow = mocker.patch("app.celery.scheduled_tasks.is_delivery_slow_for_providers", return_value=is_slow_dict)
-    mock_reduce = mocker.patch("app.celery.scheduled_tasks.dao_reduce_sms_provider_priority")
-    # updated_at times are older than the 10 minute window
-    get_provider_details_by_identifier("mmg").updated_at = datetime(2017, 5, 1, 13, 49)
-    get_provider_details_by_identifier("firetext").updated_at = None
-
-    switch_current_sms_provider_on_slow_delivery()
-
-    mock_is_slow.assert_called_once_with(created_within_minutes=15, delivered_within_minutes=5, threshold=0.15)
-    mock_reduce.assert_called_once_with("firetext", time_threshold=timedelta(minutes=5))
+def _expand_get_banded_result(provider_name, sr_sn_tn_seq):
+    return tuple(
+        BandedSlowProviderDeliveryReport(
+            provider=provider_name,
+            slow_ratio=slow_ratio,
+            slow_notifications=slow_notifications,
+            total_notifications=total_notifications,
+            sent_after_ago=sent_after_ago,
+            delivered_within=delivered_within,
+        )
+        for (slow_ratio, slow_notifications, total_notifications), (delivered_within, sent_after_ago) in zip(
+            sr_sn_tn_seq, sorted(SMS_SLOW_DELIVERY_BANDS.keys()), strict=True
+        )
+    )
 
 
-@freeze_time("2017-05-01 14:00:00")
-@pytest.mark.parametrize(
-    "is_slow_dict",
-    [
-        {"mmg": False, "firetext": False},
-        {"mmg": True, "firetext": True},
-    ],
+_slow_provider_bands_a = (
+    (0.6, 6, 10),
+    (0.06, 6, 100),
+    (0.8, 16, 20),
+    (0.0, 0, 0),
+    (0.5, 30, 60),
 )
-def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
-    mocker, restore_provider_details, is_slow_dict
+_slow_provider_bands_b = (
+    (0.1, 2, 20),
+    (0.4, 10, 25),
+    (0.1, 600, 6_000),
+    (1.0, 1, 1),
+    (0.95, 9_500, 10_000),
+)
+_non_slow_provider_bands_a = (
+    (0.1, 2, 20),
+    (0.2, 5, 25),
+    (0.05, 300, 6_000),
+    (0.25, 1, 10),
+    (0.0, 0, 10_000),
+)
+_non_slow_provider_bands_b = (
+    (0.05, 6, 120),
+    (0.06, 6, 100),
+    (0.1, 16, 160),
+    (0.0, 0, 0),
+    (0.05, 3, 60),
+)
+_non_slow_provider_bands_c = (
+    (0.1, 2, 20),
+    (0.04, 1, 25),
+    (0.1, 600, 6_000),
+    (0.0, 0, 1_000),
+    (0.15, 1_500, 10_000),
+)
+
+
+@pytest.mark.parametrize(
+    "reports_dict,expected_metric_set_calls,expected_reduce_priority_calls",
+    (
+        # this might be produced by e.g. an empty database
+        (
+            {},
+            [],
+            [],
+        ),
+        # one provider slow reduces its priority
+        (
+            {
+                "firetext": _expand_get_banded_result(
+                    "firetext",
+                    _slow_provider_bands_a,
+                ),
+                "mmg": _expand_get_banded_result(
+                    "mmg",
+                    _non_slow_provider_bands_a,
+                ),
+            },
+            [
+                call(pytest.approx(0.392), {"provider.name": "firetext"}),
+                call(pytest.approx(0.12), {"provider.name": "mmg"}),
+            ],
+            [call("firetext", time_threshold=timedelta(seconds=300))],
+        ),
+        # one provider slow reduces its priority (prove not reports-order sensitive)
+        (
+            {
+                "firetext": reversed(
+                    _expand_get_banded_result(
+                        "firetext",
+                        _slow_provider_bands_a,
+                    )
+                ),
+                "mmg": _expand_get_banded_result(
+                    "mmg",
+                    _non_slow_provider_bands_a,
+                ),
+            },
+            [
+                call(pytest.approx(0.392), {"provider.name": "firetext"}),
+                call(pytest.approx(0.12), {"provider.name": "mmg"}),
+            ],
+            [call("firetext", time_threshold=timedelta(seconds=300))],
+        ),
+        # both providers slow reduce nothing
+        (
+            {
+                "firetext": _expand_get_banded_result(
+                    "firetext",
+                    _slow_provider_bands_a,
+                ),
+                "mmg": _expand_get_banded_result(
+                    "mmg",
+                    _slow_provider_bands_b,
+                ),
+            },
+            [
+                call(pytest.approx(0.392), {"provider.name": "firetext"}),
+                call(pytest.approx(0.51), {"provider.name": "mmg"}),
+            ],
+            [],
+        ),
+        # neither provider slow reduce nothing
+        (
+            {
+                "firetext": _expand_get_banded_result(
+                    "firetext",
+                    _non_slow_provider_bands_b,
+                ),
+                "mmg": _expand_get_banded_result(
+                    "mmg",
+                    _non_slow_provider_bands_c,
+                ),
+            },
+            [
+                call(pytest.approx(0.052), {"provider.name": "firetext"}),
+                call(pytest.approx(0.078), {"provider.name": "mmg"}),
+            ],
+            [],
+        ),
+        # one of three providers slow reduces its priority
+        (
+            {
+                "firetext": _expand_get_banded_result(
+                    "firetext",
+                    _non_slow_provider_bands_b,
+                ),
+                "mmg": _expand_get_banded_result(
+                    "mmg",
+                    _non_slow_provider_bands_c,
+                ),
+                "foo": _expand_get_banded_result(
+                    "foo",
+                    _slow_provider_bands_a,
+                ),
+            },
+            [
+                call(pytest.approx(0.052), {"provider.name": "firetext"}),
+                call(pytest.approx(0.078), {"provider.name": "mmg"}),
+                call(pytest.approx(0.392), {"provider.name": "foo"}),
+            ],
+            [call("foo", time_threshold=timedelta(seconds=300))],
+        ),
+        # two of three providers slow reduces both
+        (
+            {
+                "firetext": _expand_get_banded_result(
+                    "firetext",
+                    _slow_provider_bands_b,
+                ),
+                "mmg": _expand_get_banded_result(
+                    "mmg",
+                    _non_slow_provider_bands_c,
+                ),
+                "foo": _expand_get_banded_result(
+                    "foo",
+                    _slow_provider_bands_a,
+                ),
+            },
+            [
+                call(pytest.approx(0.51), {"provider.name": "firetext"}),
+                call(pytest.approx(0.078), {"provider.name": "mmg"}),
+                call(pytest.approx(0.392), {"provider.name": "foo"}),
+            ],
+            [
+                call("firetext", time_threshold=timedelta(seconds=300)),
+                call("foo", time_threshold=timedelta(seconds=300)),
+            ],
+        ),
+    ),
+)
+def test_switch_current_sms_provider_on_slow_delivery(
+    reports_dict, expected_metric_set_calls, expected_reduce_priority_calls, mocker
 ):
-    mocker.patch("app.celery.scheduled_tasks.is_delivery_slow_for_providers", return_value=is_slow_dict)
-    mock_reduce = mocker.patch("app.celery.scheduled_tasks.dao_reduce_sms_provider_priority")
-    get_provider_details_by_identifier("mmg").updated_at = datetime(2017, 5, 1, 13, 51)
+    mock_get_banded = mocker.patch(
+        "app.celery.scheduled_tasks.get_banded_slow_text_message_delivery_reports_by_provider",
+        return_value=reports_dict,
+    )
+    mock_banded_not_delivered_within_weighted_metric_set = mocker.patch.object(
+        provider_sms_banded_not_delivered_within_weighted_metric, "set"
+    )
+    mock_reduce_priority = mocker.patch("app.celery.scheduled_tasks.dao_reduce_sms_provider_priority")
 
-    switch_current_sms_provider_on_slow_delivery()
+    assert switch_current_sms_provider_on_slow_delivery() is None
 
-    assert mock_reduce.called is False
+    assert mock_get_banded.mock_calls
+
+    assert mock_banded_not_delivered_within_weighted_metric_set.mock_calls == expected_metric_set_calls
+
+    assert mock_reduce_priority.mock_calls == expected_reduce_priority_calls
+
+
+def test_switch_current_sms_provider_on_slow_delivery_altered_weights(mocker):
+    mock_get_banded = mocker.patch(
+        "app.celery.scheduled_tasks.get_banded_slow_text_message_delivery_reports_by_provider",
+        return_value={
+            "firetext": _expand_get_banded_result(
+                "firetext",
+                _slow_provider_bands_a,
+            ),
+            "mmg": _expand_get_banded_result(
+                "mmg",
+                _non_slow_provider_bands_a,
+            ),
+        },
+    )
+    mock_banded_not_delivered_within_weighted_metric_set = mocker.patch.object(
+        provider_sms_banded_not_delivered_within_weighted_metric, "set"
+    )
+    mock_reduce_priority = mocker.patch("app.celery.scheduled_tasks.dao_reduce_sms_provider_priority")
+
+    new_weights = SMS_SLOW_DELIVERY_BANDS.copy()
+    new_weights[(timedelta(seconds=120), timedelta(seconds=240))] = 0.01
+    new_weights[(timedelta(seconds=240), timedelta(seconds=480))] = 100.0
+    mocker.patch("app.celery.scheduled_tasks.SMS_SLOW_DELIVERY_BANDS", new=new_weights)
+
+    assert switch_current_sms_provider_on_slow_delivery() is None
+
+    assert mock_get_banded.mock_calls
+
+    assert mock_banded_not_delivered_within_weighted_metric_set.mock_calls == [
+        call(pytest.approx(0.0113387), {"provider.name": "firetext"}),
+        call(pytest.approx(0.2456121), {"provider.name": "mmg"}),
+    ]
+
+    # surprise! opposite from what we would have got without altering the weights
+    assert mock_reduce_priority.mock_calls == [
+        call("mmg", time_threshold=timedelta(seconds=300)),
+    ]
+
+
+@pytest.mark.parametrize("scale_weights", (False, True))
+def test_switch_current_sms_provider_on_slow_delivery_scaled_weights(scale_weights, mocker):
+    mock_get_banded = mocker.patch(
+        "app.celery.scheduled_tasks.get_banded_slow_text_message_delivery_reports_by_provider",
+        return_value={
+            "firetext": _expand_get_banded_result(
+                "firetext",
+                _slow_provider_bands_a,
+            ),
+            "mmg": _expand_get_banded_result(
+                "mmg",
+                _non_slow_provider_bands_a,
+            ),
+        },
+    )
+    mock_banded_not_delivered_within_weighted_metric_set = mocker.patch.object(
+        provider_sms_banded_not_delivered_within_weighted_metric, "set"
+    )
+    mock_reduce_priority = mocker.patch("app.celery.scheduled_tasks.dao_reduce_sms_provider_priority")
+
+    if scale_weights:
+        new_weights = {k: v * 10 for k, v in SMS_SLOW_DELIVERY_BANDS.items()}
+        mocker.patch("app.celery.scheduled_tasks.SMS_SLOW_DELIVERY_BANDS", new=new_weights)
+
+    assert switch_current_sms_provider_on_slow_delivery() is None
+
+    assert mock_get_banded.mock_calls
+
+    # same results whether we alter the weights or not because all were identically scaled
+    assert mock_banded_not_delivered_within_weighted_metric_set.mock_calls == [
+        call(pytest.approx(0.392), {"provider.name": "firetext"}),
+        call(pytest.approx(0.12), {"provider.name": "mmg"}),
+    ]
+    assert mock_reduce_priority.mock_calls == [
+        call("firetext", time_threshold=timedelta(seconds=300)),
+    ]
 
 
 @pytest.mark.parametrize(

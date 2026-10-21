@@ -603,33 +603,6 @@ def dao_timeout_notifications(cutoff_time, limit=100000):
     return notifications
 
 
-def is_delivery_slow_for_providers(
-    created_within_minutes,
-    delivered_within_minutes,
-    threshold,
-):
-    """
-    Returns a dict of providers and whether they are currently slow or not. eg:
-    {
-        'mmg': True,
-        'firetext': False
-    }
-
-    A provider is considered slow if more than the `threshold` of their messages
-    sent in the last `created_within_minutes` minutes took over
-    `delivered_within_minutes` minutes to be delivered
-    """
-    providers_slow_delivery_reports = get_slow_text_message_delivery_reports_by_provider(
-        created_within_minutes, delivered_within_minutes
-    )
-
-    slow_providers = {}
-    for report in providers_slow_delivery_reports:
-        slow_providers[report.provider] = report.slow_ratio >= threshold
-
-    return slow_providers
-
-
 @dataclass
 class SlowProviderDeliveryReport:
     provider: str
