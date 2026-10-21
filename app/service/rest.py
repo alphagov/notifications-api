@@ -375,8 +375,6 @@ def revoke_api_key(service_id, api_key_id):
 
 @service_blueprint.route("/<uuid:service_id>/api-keys", methods=["GET"])
 def get_api_keys(service_id):
-    dao_fetch_service_by_id(service_id=service_id)
-
     try:
         api_keys = get_model_api_keys(service_id=service_id)
     except NoResultFound as e:
