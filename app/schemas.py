@@ -467,7 +467,10 @@ class ApiKeySchema(BaseSchema):
     expiry_date = FlexibleDateTime()
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
-    last_used = FlexibleDateTime()
+    last_used = fields.Method("get_last_used", allow_none=True)
+
+    def get_last_used(self, api_key):
+        return api_key.last_used()
 
     class Meta(BaseSchema.Meta):
         model = models.ApiKey

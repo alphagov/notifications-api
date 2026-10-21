@@ -964,7 +964,6 @@ class ApiKey(db.Model, Versioned):
         if secret:
             self._secret = signing.encode(str(secret))
 
-    @property
     def last_used(self):
         last_usage_for_key = (
             ApiKeyUsage.query.filter(ApiKeyUsage.api_key_id == self.id).order_by(ApiKeyUsage.usage_hour.desc())

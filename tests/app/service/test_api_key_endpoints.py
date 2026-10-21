@@ -198,12 +198,12 @@ def test_get_api_keys_returns_list_of_keys_with_last_used_info(notify_api, sampl
             response_for_key_used_once = next(
                 (api_key for api_key in json_response["apiKeys"] if api_key["id"] == str(sample_api_key.id)), None
             )
-            assert response_for_key_used_once["last_used"] == "2026-10-20T13:00:00.000000Z"
+            assert response_for_key_used_once["last_used"] == "Tue, 20 Oct 2026 13:00:00 GMT"
 
             response_for_key_used_twice = next(
                 (api_key for api_key in json_response["apiKeys"] if api_key["id"] == str(key_used_twice.id)), None
             )
-            assert response_for_key_used_twice["last_used"] == "2026-10-20T10:00:00.000000Z"
+            assert response_for_key_used_twice["last_used"] == "Tue, 20 Oct 2026 10:00:00 GMT"
 
             response_for_expired_key = next(
                 (api_key for api_key in json_response["apiKeys"] if api_key["id"] == str(expired_key.id)), None
