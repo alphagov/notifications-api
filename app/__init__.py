@@ -612,28 +612,36 @@ def setup_sqlalchemy_events(app):  # noqa: C901
 
             @event.listens_for(_engine, "checkin")
             def checkin(dbapi_connection, connection_record, bind_key=_bind_key, engine=_engine):
-                if "checkout_at" not in connection_record.info or "request_data" not in connection_record.info:
-                    # we can get in this inconsistent state if the database is shutting down
-                    return
-
                 try:
-                    # connection returned by a web worker
-                    TOTAL_CHECKED_OUT_DB_CONNECTIONS.add(
-                        -1, {"bind": str(bind_key), "inet_server_addr": str(connection_record.info["inet_server_addr"])}
-                    )
+                    # reasons for failing this condition include being in an inconsistent state from e.g. the
+                    # database shutting down
+                    if "checkout_at" in connection_record.info and "request_data" in connection_record.info:
+                        # connection returned by a web worker
+                        TOTAL_CHECKED_OUT_DB_CONNECTIONS.add(
+                            -1,
+                            {
+                                "bind": str(bind_key),
+                                "inet_server_addr": str(connection_record.info["inet_server_addr"]),
+                            },
+                        )
 
-                    # duration that connection was held by a single web request
-                    duration = time.monotonic() - connection_record.info["checkout_at"]
+                        # duration that connection was held by a single web request
+                        duration = time.monotonic() - connection_record.info["checkout_at"]
 
-                    DB_CONNECTION_OPEN_DURATION_SECONDS.record(
-                        duration,
-                        {
-                            "method": connection_record.info["request_data"]["method"],
-                            "host": connection_record.info["request_data"]["host"],
-                            "path": connection_record.info["request_data"]["url_rule"],
-                            "bind": str(bind_key),
-                            "inet_server_addr": str(connection_record.info["inet_server_addr"]),
-                        },
-                    )
+                        DB_CONNECTION_OPEN_DURATION_SECONDS.record(
+                            duration,
+                            {
+                                "method": connection_record.info["request_data"]["method"],
+                                "host": connection_record.info["request_data"]["host"],
+                                "path": connection_record.info["request_data"]["url_rule"],
+                                "bind": str(bind_key),
+                                "inet_server_addr": str(connection_record.info["inet_server_addr"]),
+                            },
+                        )
+
+                    cursor = dbapi_connection.cursor()
+                    # if we're using any advisory locks, we won't be wanting to hold them across checkin/checkout
+                    # (doing this last in case it fails, our metric bookkeeping etc has still been done)
+                    cursor.execute("SELECT pg_advisory_unlock_all()")
                 except Exception:
                     current_app.logger.exception("Exception caught for checkin event.")
