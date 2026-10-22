@@ -244,18 +244,6 @@ def _get_replication_changes(
 
         parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name, default_nextlsn=lsn))
 
-    # advance the replication slot to the last SQL row LSN even when the terminal WAL rows are
-    # for a different table in the same logical slot; otherwise the slot can stop advancing on the
-    # last relevant notification change instead of the actual last row returned by PostgreSQL.
-    if not parsed_rows and rows and last_sql_lsn:
-        current_app.logger.info(
-            "Advancing replication slot %s to last_lsn=%s (batch boundary)",
-            slot_name,
-            last_sql_lsn,
-            extra={"slot_name": slot_name, "last_lsn": last_sql_lsn},
-        )
-        _advance_replication_slot(last_sql_lsn, slot_name=slot_name)
-
     return parsed_rows, last_sql_lsn
 
 

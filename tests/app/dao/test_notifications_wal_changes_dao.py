@@ -131,8 +131,6 @@ def test_get_replication_changes_handles_non_indexable_result_rows(mocker):
     execute_result = mocker.Mock()
     execute_result.mappings.return_value = iter(mappings_rows)
     mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
-    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
-    mock_logger = mocker.patch("app.dao.notifications_wal_changes_dao.current_app.logger.info")
 
     result, last_lsn = dao._get_replication_changes(
         slot_name="slot", upto_nchanges=20, table_name="public.notifications"
@@ -140,13 +138,6 @@ def test_get_replication_changes_handles_non_indexable_result_rows(mocker):
 
     assert result == []
     assert last_lsn == "0/AB"
-    mock_advance.assert_called_once_with("0/AB", slot_name="slot")
-    mock_logger.assert_called_once_with(
-        "Advancing replication slot %s to last_lsn=%s (batch boundary)",
-        "slot",
-        "0/AB",
-        extra={"slot_name": "slot", "last_lsn": "0/AB"},
-    )
 
 
 def test_parse_wal2json_payload_supports_format_2_rows():
