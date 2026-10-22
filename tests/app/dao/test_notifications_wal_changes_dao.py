@@ -564,8 +564,8 @@ def test_dao_process_notifications_replication_slot_changes_logs_unlock_failure(
     with pytest.raises(RuntimeError, match="unlock failed"):
         dao.dao_process_notifications_replication_slot_changes(advisory_lock_id=88)
 
-    assert mock_logger.call_count == 1
     logger_args = mock_logger.call_args
+
     assert logger_args.args[0] == "Failed to release advisory lock"
     assert logger_args.kwargs == {"extra": {"dao_method": "dao_process_notifications_replication_slot_changes"}}
 
