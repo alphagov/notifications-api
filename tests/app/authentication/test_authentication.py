@@ -81,6 +81,7 @@ def test_requires_admin_auth_should_allow_valid_token_for_request(client):
     response = client.get("/service", headers=[header])
     assert response.status_code == 200
 
+
 # this is to make sure new method on ApiKey doesn't affect performance
 def test_requires_auth_shouldnt_access_last_used_info_api_key(client, sample_api_key, mocker):
     mock_api_key_last_used = mocker.patch("app.models.ApiKey.last_used")
