@@ -80,6 +80,7 @@ from app.dao.services_dao import (
     dao_find_services_sending_to_tv_numbers,
     dao_find_services_with_high_failure_rates,
 )
+from app.dao.shared_lock_dao import process_shared_lock
 from app.dao.template_email_files_dao import dao_archive_pending_files, dao_get_template_email_files_by_template_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago, get_users_for_research
@@ -981,3 +982,8 @@ def populate_annual_billing(year, missing_services_only):
 def run_populate_annual_billing():
     year = get_current_financial_year_start_year()
     populate_annual_billing(year=year, missing_services_only=True)
+
+
+@notify_celery.task(name="shared-lock-poc")
+def shared_lock_poc():
+    process_shared_lock()

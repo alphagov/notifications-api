@@ -316,6 +316,11 @@ class Config:
         "task_queues": [Queue(queue, Exchange("default"), routing_key=queue) for queue in QueueNames.all_queues()],
         "beat_schedule": {
             # app/celery/scheduled_tasks.py
+            "shared-lock-poc": {
+                "task": "shared-lock-poc",
+                "schedule": 5.0,
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             "run-scheduled-jobs": {
                 "task": "run-scheduled-jobs",
                 "schedule": crontab(minute="0,15,30,45"),
