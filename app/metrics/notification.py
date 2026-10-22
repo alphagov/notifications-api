@@ -106,6 +106,46 @@ _undelivered_notification_age = _meter.create_gauge(
     ),
 )
 
+_notifications_by_service_id = _meter.create_counter(
+    "notifications.by_service_id",
+    unit="{notification}",
+    description=("Total number of notifications created across all notification types, labelled with service_id."),
+)
+
+_notifications = _meter.create_counter(
+    "notifications",
+    unit="{notification}",
+    description=(
+        "Total number of notifications created across all notification types, labelled with key.type "
+        "and notification.type."
+    ),
+)
+
+_notifications_by_job_id = _meter.create_counter(
+    "notifications.by_job_id",
+    unit="{notification}",
+    description=("Total number of notifications created across all notification types, labelled with job.id."),
+)
+
+
+def increment_notifications_created(job_id: str | None, key_type: str, notification_type: str, service_id: str) -> None:
+    """
+    Creates up to 3 metrics (to help manage cardinality) when a notification is created:
+    1. Increments counter metric `notifications_by_service_id` by 1 for each new notification,
+      labelled with the `service_id` only.
+    2. Increments counter metric `notifications` by 1 for each new notification,
+      labelled with the `key_type`, `notification_type`.
+    3. If `job_id` arg exists, increments counter metric `notifications_by_job_id`
+      by 1 for each new notification, labelled with the `job_id` only.
+    """
+
+    _notifications.add(1, {"key.type": key_type, "notification.type": notification_type})
+
+    _notifications_by_service_id.add(1, {"service.id": service_id})
+
+    if job_id is not None:
+        _notifications_by_job_id.add(1, {"job.id": job_id})
+
 
 def record_international_sms(amount: int, notification_status: str, sms_country_code: str) -> None:
     """
