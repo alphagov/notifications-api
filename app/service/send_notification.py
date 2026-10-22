@@ -74,7 +74,7 @@ def send_one_off_notification(service_id, post_data):
         allow_guest_list_recipients=False,
     )
     recipient = recipient_data or post_data["to"]
-    personalisation = add_email_file_links_to_personalisation(
+    personalisation, filename_to_id = add_email_file_links_to_personalisation(
         SerialisedTemplate.from_id_and_service_id(template.id, service.id), personalisation, recipient
     )
 

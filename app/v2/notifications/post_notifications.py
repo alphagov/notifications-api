@@ -335,7 +335,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
 
             filename = personalisation_data[key].get("filename")
 
-            personalisation_data[key] = document_download_client.upload_document(  # type: ignore[attr-defined]
+            personalisation_data[key], _ = document_download_client.upload_document(  # type: ignore[attr-defined]
                 service.id,
                 personalisation_data[key]["file"],
                 personalisation_data[key].get("is_csv"),

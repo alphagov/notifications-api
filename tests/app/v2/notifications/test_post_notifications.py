@@ -1453,7 +1453,7 @@ def test_post_notification_with_document_upload(
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
 
     def document_download_link(service_id, content, is_csv=None, **kwargs):
-        return f"{content}-link"
+        return [f"{content}-link", str(uuid.uuid4())]
 
     document_download_upload_document_mock = mocker.patch(
         "app.document_download_client.upload_document",

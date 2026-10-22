@@ -88,5 +88,4 @@ class DocumentDownloadClient:
                 raise error from e
             else:
                 raise Exception(f"Unhandled document download error: {e.response.text}") from e
-
         return response.json()["document"]["url"], response.json()["document"]["id"]
