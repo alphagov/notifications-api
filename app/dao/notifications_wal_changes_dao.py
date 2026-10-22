@@ -180,33 +180,7 @@ def dao_process_notifications_replication_slot_changes(
 
 
 def _try_advisory_lock(lock_id: int) -> bool:
-    # The celery beat scheduler runs multiple instances of the same task in parallel,
-    # so we need to use an advisory lock to ensure that only one instance of the task is running at a time.
-    # Additional check is added to see if the lock is already held by the current process,
-    # in which case we don't want to try to acquire it again as there would already be one in progress.
-    # In pg_locks, pid identifies this backend and granted excludes queued locks. A bigint advisory key
-    # is split across classid (upper 32 bits) and objid (lower 32 bits). The 4294967295 mask is
-    # 2^32 - 1 (32 one-bits), so it selects objid's lower bits; objsubid = 1 identifies the bigint
-    # key form, while objsubid = 2 identifies the two-integer key form.
-    sql = text("""
-        WITH already_held AS (
-            SELECT EXISTS (
-                SELECT 1
-                FROM pg_locks
-                WHERE locktype = 'advisory'
-                  AND pid = pg_backend_pid()
-                  AND granted
-                  AND classid = CAST((CAST(:lock_id AS bigint) >> 32) AS integer)
-                  AND objid   = CAST((CAST(:lock_id AS bigint) & 4294967295) AS integer)
-                  AND objsubid = 1
-            ) AS held
-        )
-        SELECT CASE
-                 WHEN held THEN FALSE
-                 ELSE pg_try_advisory_lock(:lock_id)
-               END
-        FROM already_held
-    """)
+    sql = text("SELECT pg_try_advisory_lock(:lock_id)")
     return bool(db.session.execute(sql, {"lock_id": lock_id}).scalar())
 
 
