@@ -1,5 +1,6 @@
 import itertools
 
+from flask import current_app
 from notifications_utils.recipients import allowed_to_send_to
 
 from app.constants import (
@@ -38,8 +39,13 @@ def service_allowed_to_send_to(recipient, service, key_type, allow_guest_list_re
     # aren’t in the serialised model
     service = dao_fetch_service_by_id(service.id)
 
-    team_members = itertools.chain.from_iterable([user.mobile_number, user.email_address] for user in service.users)
-    guest_list_members = [member.recipient for member in service.guest_list if allow_guest_list_recipients]
+    allowed_recipients = itertools.chain(
+        [user.email_address for user in service.users],
+        [user.mobile_number for user in service.users],
+        [member.recipient for member in service.guest_list if allow_guest_list_recipients],
+        current_app.config["SIMULATED_EMAIL_ADDRESSES"],
+        current_app.config["SIMULATED_SMS_NUMBERS"],
+    )
 
     if (key_type == KEY_TYPE_NORMAL and service.restricted) or (key_type == KEY_TYPE_TEAM):
-        return allowed_to_send_to(recipient, itertools.chain(team_members, guest_list_members))
+        return allowed_to_send_to(recipient, allowed_recipients)
