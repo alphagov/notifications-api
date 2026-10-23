@@ -103,7 +103,9 @@ def send_sms_to_provider(notification: Notification) -> None:
                     if redis_store.exceeded_rate_limit(
                         f"{provider.name}-error-rate", SMS_PROVIDER_ERROR_THRESHOLD, SMS_PROVIDER_ERROR_INTERVAL
                     ):
-                        dao_reduce_sms_provider_priority(provider.name, time_threshold=timedelta(minutes=1))
+                        dao_reduce_sms_provider_priority(
+                            provider.name, time_threshold=timedelta(seconds=SMS_PROVIDER_ERROR_INTERVAL)
+                        )
                         current_app.logger.warning(
                             "Error threshold exceeded for provider %s",
                             provider.name,
