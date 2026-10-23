@@ -6,7 +6,6 @@ from notifications_utils.recipients import allowed_to_send_to
 from app.constants import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
-    KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     MOBILE_TYPE,
 )
@@ -47,5 +46,4 @@ def service_allowed_to_send_to(recipient, service, key_type, allow_guest_list_re
         current_app.config["SIMULATED_SMS_NUMBERS"],
     )
 
-    if (key_type == KEY_TYPE_NORMAL and service.restricted) or (key_type == KEY_TYPE_TEAM):
-        return allowed_to_send_to(recipient, allowed_recipients)
+    return allowed_to_send_to(recipient, allowed_recipients)
