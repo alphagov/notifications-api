@@ -1,4 +1,5 @@
 from flask import current_app
+from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 from sqlalchemy.sql.expression import func
 
@@ -26,7 +27,7 @@ def dao_get_organisations():
 
 
 def dao_get_organisation_domains():
-    return db.session.scalars(db.session.query(Domain.domain)).all()
+    return db.session.scalars(select(Domain.domain)).all()
 
 
 def dao_count_organisations_with_live_services():
