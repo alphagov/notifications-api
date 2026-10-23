@@ -1165,6 +1165,48 @@ def test_post_sms_notification_returns_400_if_number_not_in_guest_list(
 
 
 @pytest.mark.parametrize(
+    "template_type, recipient_data",
+    (
+        ("email", {"email_address": "simulate-delivered@notifications.service.gov.uk"}),
+        ("email", {"email_address": "simulate-delivered-2@notifications.service.gov.uk"}),
+        ("email", {"email_address": "simulate-delivered-3@notifications.service.gov.uk"}),
+        pytest.param(
+            "email",
+            {"email_address": "simulate-delivered-4@notifications.service.gov.uk"},  # Email address not in guest list
+            marks=pytest.mark.xfail(raises=AssertionError),
+        ),
+        ("sms", {"phone_number": "+447700900000"}),
+        ("sms", {"phone_number": "+447700900111"}),
+        ("sms", {"phone_number": "+447700900222"}),
+        pytest.param(
+            "sms",
+            {"phone_number": "+447700900333"},  # Phone number not in guest list
+            marks=pytest.mark.xfail(raises=AssertionError),
+        ),
+    ),
+)
+@pytest.mark.parametrize("restricted", [True, False])
+def test_post_notification_allows_simulated_recipients_with_team_key(
+    notify_db_session,
+    api_client_request,
+    restricted,
+    template_type,
+    recipient_data,
+):
+    service = create_service(restricted=restricted, service_permissions=[SMS_TYPE, EMAIL_TYPE])
+    template = create_template(service=service, template_type=template_type)
+
+    api_client_request.post(
+        service.id,
+        "v2_notifications.post_notification",
+        notification_type=template_type,
+        _api_key_type="team",
+        _data=recipient_data | {"template_id": template.id},
+        _expected_status=201,
+    )
+
+
+@pytest.mark.parametrize(
     "permissions",
     [
         [SMS_TYPE, INTERNATIONAL_SMS_TYPE],
