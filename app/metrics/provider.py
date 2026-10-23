@@ -49,6 +49,14 @@ _sms_banded_not_delivered_within_total = _meter.create_gauge(
     "seconds (ending time_window.delay seconds before the time of measurement).",
 )
 
+_sms_banded_not_delivered_within_weighted = _meter.create_gauge(
+    "provider.sms.banded.not_delivered_within_weighted",
+    unit="1",
+    description="Weighted average of provider.sms.banded.not_delivered_within ratios using weights "
+    'from SMS_SLOW_DELIVERY_BANDS. A provider is considered "slow" if this value exceeds '
+    "SMS_SLOW_DELIVERY_THRESHOLD.",
+)
+
 _priority = _meter.create_gauge(
     "provider.priority",
     unit="1",
@@ -125,6 +133,16 @@ def record_sms_banded_not_delivered_within(
     _sms_banded_not_delivered_within.set(ratio, attributes)
     _sms_banded_not_delivered_within_absolute.set(slow_notifications, attributes)
     _sms_banded_not_delivered_within_total.set(total_notifications, attributes)
+
+
+def record_sms_banded_not_delivered_within_weighted(
+    weighted_ratio: float,
+    provider_name: str,
+) -> None:
+    attributes: dict[str, AttributeValue] = {
+        "provider.name": provider_name,
+    }
+    _sms_banded_not_delivered_within_weighted.set(weighted_ratio, attributes)
 
 
 def record_priority(
