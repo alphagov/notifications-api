@@ -42,7 +42,7 @@ from app.v2.errors import BadRequestError, QrCodeTooLongError
 
 def create_content_for_notification(template, personalisation, recipient):
     if template.template_type == EMAIL_TYPE:
-        personalisation = add_email_file_links_to_personalisation(template, personalisation, recipient)
+        personalisation, filename_to_id = add_email_file_links_to_personalisation(template, personalisation, recipient)
         template_object = PlainTextEmailTemplate(
             {
                 "content": template.content,
@@ -91,9 +91,10 @@ def check_placeholders(template_object):
 
 
 def add_email_file_links_to_personalisation(template, personalisation, recipient):
+    filename_to_id = {}
     for email_file in template.email_file_objects:
         template_email_file_from_s3 = try_download_template_email_file_from_s3(template.service, email_file.id)
-        doc_download_link = document_download_client.upload_document(
+        doc_download_link, id = document_download_client.upload_document(
             template.service,
             template_email_file_from_s3,
             confirmation_email=validate_and_format_email_address(recipient)
@@ -106,8 +107,9 @@ def add_email_file_links_to_personalisation(template, personalisation, recipient
             personalisation[email_file.filename] = f"[{email_file.link_text}]({doc_download_link})"
         else:
             personalisation[email_file.filename] = doc_download_link
+        filename_to_id[email_file.filename] = str(id)
 
-    return personalisation
+    return [personalisation, filename_to_id]
 
 
 def persist_notification(

@@ -192,7 +192,9 @@ def test_add_email_file_links_to_personalisation(
         template_id=sample_email_template_with_email_file_placeholders.id, service_id=sample_service.id
     )
 
-    personalisation = add_email_file_links_to_personalisation(template, {"name": "Anne"}, recipient="anne@example.com")
+    personalisation, filename_to_id = add_email_file_links_to_personalisation(
+        template, {"name": "Anne"}, recipient="anne@example.com"
+    )
 
     assert personalisation == expected_personalisation
     assert len(mock_document_download_client_upload.mock_calls) == 2
