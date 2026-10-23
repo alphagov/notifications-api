@@ -2432,6 +2432,45 @@ class FactNotificationStatus(db.Model):
     )
 
 
+class FactNotificationStatusLive(db.Model):
+    __tablename__ = "ft_notification_status_live"
+
+    bst_date = db.Column(db.Date, index=True, primary_key=True, nullable=False)
+    template_id = db.Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False)
+    service_id = db.Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+    job_id = db.Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False)
+    notification_type = db.Column(db.Text, primary_key=True, nullable=False)
+    key_type = db.Column(db.Text, primary_key=True, nullable=False)
+    notification_status = db.Column(db.Text, primary_key=True, nullable=False)
+    notification_count = db.Column(db.Integer(), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        Index(
+            "ix_ft_notification_status_live_template_id_bst_date",
+            "template_id",
+            "bst_date",
+        ),
+    )
+
+    __extended_statistics__ = (
+        # dependencies
+        ("st_dep_ft_notif_status_live_service_id_job_id", ("service_id", "job_id"), ("dependencies",)),
+        ("st_dep_ft_notif_status_live_service_id_template_id", ("service_id", "template_id"), ("dependencies",)),
+        (
+            "st_dep_ft_notif_status_live_job_id_template_id_ntfcn_type",
+            ("job_id", "template_id", "notification_type"),
+            ("dependencies",),
+        ),
+    )
+
+
 class FactProcessingTime(db.Model):
     __tablename__ = "ft_processing_time"
 
