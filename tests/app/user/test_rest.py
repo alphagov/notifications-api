@@ -7,6 +7,7 @@ from flask import current_app, url_for
 from freezegun import freeze_time
 
 from app import db
+from app.celery.provider_tasks import deliver_email
 from app.constants import (
     EMAIL_AUTH_TYPE,
     MANAGE_SETTINGS,
@@ -15,7 +16,7 @@ from app.constants import (
     OrganisationUserPermissionTypes,
 )
 from app.dao.organisation_user_permissions_dao import organisation_user_permissions_dao
-from app.dao.permissions_dao import default_service_permissions
+from app.dao.permissions_dao import default_service_permissions, permission_dao
 from app.dao.service_user_dao import (
     dao_get_service_user,
     dao_update_service_user,
@@ -465,6 +466,45 @@ def test_set_user_permissions_when_permissions_cannot_be_changed(admin_request, 
     # check the user still has the original permissions
     query = Permission.query.filter_by(user=sample_user)
     assert query.count() == 8
+
+
+def test_set_user_permissions_notifies_user_of_new_manage_settings_permission(
+    admin_request,
+    sample_user,
+    sample_service,
+    notify_service,
+    managing_your_service_template,
+    mock_celery_task,
+):
+    mock_deliver_email_task = mock_celery_task(deliver_email)
+
+    permission_dao.set_user_service_permission(
+        sample_user,
+        sample_service,
+        permissions=[Permission(permission="view_activity", user=sample_user, service=sample_service)],
+        _commit=True,
+        replace=True,
+    )
+
+    admin_request.post(
+        "user.set_permissions",
+        user_id=str(sample_user.id),
+        service_id=str(sample_service.id),
+        _data={"permissions": [{"permission": MANAGE_SETTINGS}]},
+        _expected_status=204,
+    )
+
+    notification = Notification.query.one()
+
+    mock_deliver_email_task.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify-internal-tasks",
+        MessageGroupId=str(notification.service_id),
+    )
+    assert notification.to == sample_user.email_address
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
+    assert notification.personalisation == {"service_name": sample_service.name, "name": sample_user.name}
+    assert str(notification.template_id) == current_app.config["MANAGING_YOUR_SERVICE_TEMPLATE_ID"]
 
 
 def test_set_user_folder_permissions(admin_request, sample_user, sample_service):
