@@ -165,7 +165,7 @@ from app.service.send_notification import (
     send_pdf_letter_notification,
 )
 from app.service.send_pdf_letter_schema import send_pdf_letter_request
-from app.service.sender import send_notification_to_service_users
+from app.service.sender import notify_user_if_manage_settings_permission_granted, send_notification_to_service_users
 from app.service.service_contact_list_schema import (
     create_service_contact_list_schema,
 )
@@ -414,6 +414,14 @@ def add_user_to_service(service_id, user_id):
     folder_permissions = data.get("folder_permissions", [])
 
     dao_add_user_to_service(service, user, permissions, folder_permissions)
+
+    notify_user_if_manage_settings_permission_granted(
+        service=service,
+        user=user,
+        old_permissions=[],
+        new_permissions=[p["permission"] for p in data["permissions"]],
+    )
+
     data = service_schema.dump(service)
     return jsonify(data=data), 201
 
@@ -1498,6 +1506,12 @@ def update_service_join_request_by_id(service_id: uuid.UUID, request_id: uuid.UU
             requester_email_address=requester_user.email_address,
             template=dao_get_template_by_id(current_app.config["SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID"]),
             personalisation=create_personalisation(requester_user.name, approver_user.name, service.name, service.id),
+        )
+        notify_user_if_manage_settings_permission_granted(
+            service=service,
+            user=requester_user,
+            old_permissions=[],
+            new_permissions=data.get("permissions"),
         )
 
         dao_cancel_pending_service_join_requests(requester_user.id, approver_user.id, service.id)

@@ -1120,89 +1120,83 @@ def test_default_permissions_are_added_for_user_service(notify_api, notify_db_se
 
 
 def test_add_existing_user_to_another_service_with_all_permissions(
-    notify_api, notify_db_session, sample_service, sample_user
+    notify_api,
+    notify_db_session,
+    sample_service,
+    managing_your_service_template,
+    notify_service,
+    admin_request,
+    mock_celery_task,
 ):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            # check which users part of service
-            user_already_in_service = sample_service.users[0]
-            auth_header = create_admin_authorization_header()
+    mock_celery_task(deliver_email)
 
-            resp = client.get(
-                f"/service/{sample_service.id}/users",
-                headers=[("Content-Type", "application/json"), auth_header],
-            )
+    # check which users part of service
+    user_already_in_service = sample_service.users[0]
 
-            assert resp.status_code == 200
-            result = resp.json
-            assert len(result["data"]) == 1
-            assert result["data"][0]["email_address"] == user_already_in_service.email_address
+    result = admin_request.get("service.get_users_for_service", service_id=str(sample_service.id))
 
-            # add new user to service
-            user_to_add = User(
-                name="Invited User",
-                email_address="invited@digital.cabinet-office.gov.uk",
-                password="password",
-                mobile_number="+4477123456",
-            )
-            # they must exist in db first
-            save_model_user(user_to_add, validated_email_access=True)
+    assert len(result["data"]) == 1
+    assert result["data"][0]["email_address"] == user_already_in_service.email_address
 
-            data = {
-                "permissions": [
-                    {"permission": "send_emails"},
-                    {"permission": "send_letters"},
-                    {"permission": "send_texts"},
-                    {"permission": "manage_users"},
-                    {"permission": "manage_settings"},
-                    {"permission": "manage_api_keys"},
-                    {"permission": "manage_templates"},
-                    {"permission": "view_activity"},
-                ],
-                "folder_permissions": [],
-            }
+    # add new user to service
+    user_to_add = User(
+        name="Invited User",
+        email_address="invited@digital.cabinet-office.gov.uk",
+        password="password",
+        mobile_number="+4477123456",
+    )
+    # they must exist in db first
+    save_model_user(user_to_add, validated_email_access=True)
 
-            auth_header = create_admin_authorization_header()
+    data = {
+        "permissions": [
+            {"permission": "send_emails"},
+            {"permission": "send_letters"},
+            {"permission": "send_texts"},
+            {"permission": "manage_users"},
+            {"permission": "manage_settings"},
+            {"permission": "manage_api_keys"},
+            {"permission": "manage_templates"},
+            {"permission": "view_activity"},
+        ],
+        "folder_permissions": [],
+    }
 
-            resp = client.post(
-                f"/service/{sample_service.id}/users/{user_to_add.id}",
-                headers=[("Content-Type", "application/json"), auth_header],
-                data=json.dumps(data),
-            )
+    admin_request.post(
+        "service.add_user_to_service",
+        service_id=str(sample_service.id),
+        user_id=str(user_to_add.id),
+        _data=data,
+        _expected_status=201,
+    )
 
-            assert resp.status_code == 201
+    # check new user added to service
+    resp = admin_request.get("service.get_service_by_id", service_id=str(sample_service.id))
 
-            # check new user added to service
-            auth_header = create_admin_authorization_header()
+    # check user has all permissions
+    resp = admin_request.get(
+        "user.get_user",
+        user_id=str(user_to_add.id),
+    )
 
-            resp = client.get(
-                f"/service/{sample_service.id}",
-                headers=[("Content-Type", "application/json"), auth_header],
-            )
-            assert resp.status_code == 200
-            json_resp = resp.json
+    permissions = resp["data"]["permissions"][str(sample_service.id)]
+    expected_permissions = [
+        "send_texts",
+        "send_emails",
+        "send_letters",
+        "manage_users",
+        "manage_settings",
+        "manage_templates",
+        "manage_api_keys",
+        "view_activity",
+    ]
+    assert sorted(expected_permissions) == sorted(permissions)
 
-            # check user has all permissions
-            auth_header = create_admin_authorization_header()
-            resp = client.get(
-                url_for("user.get_user", user_id=user_to_add.id),
-                headers=[("Content-Type", "application/json"), auth_header],
-            )
-
-            assert resp.status_code == 200
-            json_resp = resp.json
-            permissions = json_resp["data"]["permissions"][str(sample_service.id)]
-            expected_permissions = [
-                "send_texts",
-                "send_emails",
-                "send_letters",
-                "manage_users",
-                "manage_settings",
-                "manage_templates",
-                "manage_api_keys",
-                "view_activity",
-            ]
-            assert sorted(expected_permissions) == sorted(permissions)
+    manage_settings_email = Notification.query.one()
+    assert manage_settings_email.reply_to_text == notify_service.get_default_reply_to_email_address()
+    assert manage_settings_email.to == user_to_add.email_address
+    assert manage_settings_email.personalisation["name"] == user_to_add.name
+    assert manage_settings_email.personalisation["service_name"] == sample_service.name
 
 
 def test_add_existing_user_to_another_service_with_send_permissions(
@@ -1254,50 +1248,56 @@ def test_add_existing_user_to_another_service_with_send_permissions(
 
 
 def test_add_existing_user_to_another_service_with_manage_permissions(
-    notify_api, notify_db_session, sample_service, sample_user
+    notify_api,
+    notify_db_session,
+    sample_service,
+    managing_your_service_template,
+    notify_service,
+    admin_request,
+    mock_celery_task,
 ):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            # they must exist in db first
-            user_to_add = User(
-                name="Invited User",
-                email_address="invited@digital.cabinet-office.gov.uk",
-                password="password",
-                mobile_number="+4477123456",
-            )
-            save_model_user(user_to_add, validated_email_access=True)
+    mock_celery_task(deliver_email)
 
-            data = {
-                "permissions": [
-                    {"permission": "manage_users"},
-                    {"permission": "manage_settings"},
-                    {"permission": "manage_templates"},
-                ]
-            }
+    # they must exist in db first
+    user_to_add = User(
+        name="Invited User",
+        email_address="invited@digital.cabinet-office.gov.uk",
+        password="password",
+        mobile_number="+4477123456",
+    )
+    save_model_user(user_to_add, validated_email_access=True)
 
-            auth_header = create_admin_authorization_header()
+    data = {
+        "permissions": [
+            {"permission": "manage_users"},
+            {"permission": "manage_settings"},
+            {"permission": "manage_templates"},
+        ]
+    }
 
-            resp = client.post(
-                f"/service/{sample_service.id}/users/{user_to_add.id}",
-                headers=[("Content-Type", "application/json"), auth_header],
-                data=json.dumps(data),
-            )
+    resp = admin_request.post(
+        "service.add_user_to_service",
+        service_id=str(sample_service.id),
+        user_id=str(user_to_add.id),
+        _data=data,
+        _expected_status=201,
+    )
 
-            assert resp.status_code == 201
+    # check user has send permissions
+    resp = admin_request.get(
+        "user.get_user",
+        user_id=str(user_to_add.id),
+    )
 
-            # check user has send permissions
-            auth_header = create_admin_authorization_header()
-            resp = client.get(
-                url_for("user.get_user", user_id=user_to_add.id),
-                headers=[("Content-Type", "application/json"), auth_header],
-            )
+    permissions = resp["data"]["permissions"][str(sample_service.id)]
+    expected_permissions = ["manage_users", "manage_settings", "manage_templates"]
+    assert sorted(expected_permissions) == sorted(permissions)
 
-            assert resp.status_code == 200
-            json_resp = resp.json
-
-            permissions = json_resp["data"]["permissions"][str(sample_service.id)]
-            expected_permissions = ["manage_users", "manage_settings", "manage_templates"]
-            assert sorted(expected_permissions) == sorted(permissions)
+    manage_settings_email = Notification.query.one()
+    assert manage_settings_email.reply_to_text == notify_service.get_default_reply_to_email_address()
+    assert manage_settings_email.to == user_to_add.email_address
+    assert manage_settings_email.personalisation["name"] == user_to_add.name
+    assert manage_settings_email.personalisation["service_name"] == sample_service.name
 
 
 def test_add_existing_user_to_another_service_with_folder_permissions(
@@ -4688,6 +4688,59 @@ def test_update_service_join_request_by_id_notification_sent(
     assert notification.personalisation["approver_name"] == f"User Within Existing Service {approver_id}"
     assert notification.personalisation["service_name"] == f"Service Requester Wants To Join {service_id}"
     assert f"/services/{service_id}" in notification.personalisation["dashboard_url"]
+
+
+def test_update_service_join_request_by_id_send_extra_email_if_manage_settings_granted(
+    admin_request,
+    notify_service,
+    service_join_request_approved_template,
+    managing_your_service_template,
+    mock_celery_task,
+):
+    requester_id = uuid.uuid4()
+    service_id = uuid.uuid4()
+    approver_id = uuid.uuid4()
+
+    setup_service_join_request_test_data(service_id, requester_id, [approver_id])
+    mock_deliver_email_task = mock_celery_task(deliver_email)
+
+    request = dao_create_service_join_request(
+        requester_id=requester_id,
+        service_id=service_id,
+        contacted_user_ids=[approver_id],
+    )
+
+    admin_request.post(
+        "service.update_service_join_request_by_id",
+        request_id=str(request.id),
+        service_id=str(service_id),
+        _data={
+            "permissions": ["manage_settings"],
+            "status_changed_by_id": str(approver_id),
+            "status": "approved",
+            "auth_type": "email_auth",
+        },
+    )
+
+    assert len(mock_deliver_email_task.call_args_list) == 2
+    request_approved_email = Notification.query.filter(
+        Notification.template_id == current_app.config["SERVICE_JOIN_REQUEST_APPROVED_TEMPLATE_ID"]
+    ).one()
+    manage_settings_email = Notification.query.filter(
+        Notification.template_id == current_app.config["MANAGING_YOUR_SERVICE_TEMPLATE_ID"]
+    ).one()
+
+    assert request_approved_email.reply_to_text == notify_service.get_default_reply_to_email_address()
+    assert request_approved_email.to == f"{requester_id}@digital.cabinet-office.gov.uk"
+    assert request_approved_email.personalisation["requester_name"] == "Requester User"
+    assert request_approved_email.personalisation["approver_name"] == f"User Within Existing Service {approver_id}"
+    assert request_approved_email.personalisation["service_name"] == f"Service Requester Wants To Join {service_id}"
+    assert f"/services/{service_id}" in request_approved_email.personalisation["dashboard_url"]
+
+    assert manage_settings_email.reply_to_text == notify_service.get_default_reply_to_email_address()
+    assert manage_settings_email.to == f"{requester_id}@digital.cabinet-office.gov.uk"
+    assert manage_settings_email.personalisation["name"] == "Requester User"
+    assert manage_settings_email.personalisation["service_name"] == f"Service Requester Wants To Join {service_id}"
 
 
 def test_update_service_join_request_get_template(
