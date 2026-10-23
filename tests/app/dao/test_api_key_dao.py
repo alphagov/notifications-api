@@ -2,7 +2,6 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import NoResultFound
 
 from app.constants import KEY_TYPE_NORMAL
 from app.dao.api_key_dao import (
@@ -68,16 +67,6 @@ def test_expire_api_key_records_revoker_in_created_by_id(sample_api_key):
 
     api_key = ApiKey.query.get(sample_api_key.id)
     assert api_key.created_by_id == revoker.id
-
-
-def test_get_api_key_should_raise_exception_when_api_key_does_not_exist(sample_service, fake_uuid):
-    with pytest.raises(NoResultFound):
-        get_model_api_keys(sample_service.id, id=fake_uuid)
-
-
-def test_should_return_api_key_for_service(notify_api, notify_db_session, sample_api_key):
-    api_key = get_model_api_keys(service_id=sample_api_key.service_id, id=sample_api_key.id)
-    assert api_key == sample_api_key
 
 
 def test_should_return_unsigned_api_keys_for_service_id(sample_api_key):

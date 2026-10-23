@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 from flask import url_for
 
@@ -6,7 +7,7 @@ from app.constants import KEY_TYPE_NORMAL
 from app.dao.api_key_dao import expire_api_key
 from app.models import ApiKey
 from tests import create_admin_authorization_header
-from tests.app.db import create_api_key, create_service, create_user
+from tests.app.db import create_api_key, create_api_key_usage_record, create_service, create_user
 
 
 def test_api_key_should_create_new_api_key_for_service(notify_api, sample_service):
@@ -145,14 +146,66 @@ def test_get_api_keys_should_return_all_keys_for_service(notify_api, sample_api_
             assert len(json_resp["apiKeys"]) == 3
 
 
-def test_get_api_keys_should_return_one_key_for_service(notify_api, sample_api_key):
+def test_get_api_keys_returns_list_of_keys_with_last_used_info(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            # usage for sample key
+            create_api_key_usage_record(
+                service_id=sample_api_key.service_id,
+                api_key_id=sample_api_key.id,
+                usage_hour=datetime(2026, 10, 20, 13, 0, 0),
+            )
+
+            key_used_twice = create_api_key(sample_api_key.service)
+            # the latest record of the two should be used
+            create_api_key_usage_record(
+                service_id=key_used_twice.service_id,
+                api_key_id=key_used_twice.id,
+                usage_hour=datetime(2026, 10, 19, 10, 0, 0),
+            )
+            create_api_key_usage_record(
+                service_id=key_used_twice.service_id,
+                api_key_id=key_used_twice.id,
+                usage_hour=datetime(2026, 10, 20, 10, 0, 0),
+            )
+            expired_key = create_api_key(sample_api_key.service)
+            expire_api_key(service_id=expired_key.service_id, api_key_id=expired_key.id)
+
+            # DATA THAT SHOULD BE FILTERED OUT
+            another_user = create_user(email="another@it.gov.uk")
+
+            another_service = create_service(user=another_user, service_name="Another service")
+            # key for another service
+            control_key = create_api_key(another_service)
+            # usage record for another key should be ignored
+            create_api_key_usage_record(
+                service_id=control_key.service_id,
+                api_key_id=control_key.id,
+                usage_hour=datetime(2026, 10, 20, 12, 0, 0),
+            )
+
+            assert ApiKey.query.count() == 4
+
             auth_header = create_admin_authorization_header()
             response = client.get(
-                url_for("service.get_api_keys", service_id=sample_api_key.service_id, key_id=sample_api_key.id),
+                url_for("service.get_api_keys", service_id=sample_api_key.service_id),
                 headers=[("Content-Type", "application/json"), auth_header],
             )
             assert response.status_code == 200
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert len(json_resp["apiKeys"]) == 1
+            json_response = json.loads(response.get_data(as_text=True))
+            assert len(json_response["apiKeys"]) == 3
+
+            response_for_key_used_once = next(
+                (api_key for api_key in json_response["apiKeys"] if api_key["id"] == str(sample_api_key.id)), None
+            )
+            assert response_for_key_used_once["last_used"] == "2026-10-20 13:00:00.000000"
+
+            response_for_key_used_twice = next(
+                (api_key for api_key in json_response["apiKeys"] if api_key["id"] == str(key_used_twice.id)), None
+            )
+            assert response_for_key_used_twice["last_used"] == "2026-10-20 10:00:00.000000"
+
+            response_for_expired_key = next(
+                (api_key for api_key in json_response["apiKeys"] if api_key["id"] == str(expired_key.id)), None
+            )
+            assert response_for_expired_key["last_used"] is None
