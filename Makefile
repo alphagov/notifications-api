@@ -123,10 +123,3 @@ bump-utils:  # Bump notifications-utils package to latest version
 .PHONY: clean
 clean:
 	rm -rf node_modules cache target venv .coverage build tests/.cache ${CF_MANIFEST_PATH}
-
-
-## DEPLOYMENT
-
-.PHONY: check-if-migrations-to-run
-check-if-migrations-to-run:
-	@echo $(shell python3 scripts/check_if_new_migration.py)
