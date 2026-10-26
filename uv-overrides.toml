@@ -1,0 +1,1 @@
+exclude-newer-package = { certifi = false }
