@@ -1,11 +1,8 @@
-# This file was automatically copied from notifications-utils@134.0.0
+# This file was automatically copied from notifications-utils@134.1.1
 
 exclude-newer = "7 days"
 
 [pip]
 generate-hashes = true
 
-
-# This section was automatically copied from uv-overrides.toml
-
-exclude-newer-package = { certifi = false }
+exclude-newer-package = { certifi = "1d" }
