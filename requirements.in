@@ -15,6 +15,7 @@ eventlet~=0.41.0
 jsonschema[format]~=4.23
 marshmallow-sqlalchemy~=1.4
 marshmallow~=4.2
+psycogreen~=1.0
 psycopg2-binary~=2.9
 SQLAlchemy~=2.0
 pyorc~=0.10

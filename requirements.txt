@@ -1180,6 +1180,9 @@ psutil==6.1.1 \
     --hash=sha256:f35cfccb065fff93529d2afb4a2e89e363fe63ca1e4a5da22b603a85833c2649 \
     --hash=sha256:fc0ed7fe2231a444fc219b9c42d0376e0a9a1a72f16c5cfa0f68d19f1a0663e8
     # via opentelemetry-instrumentation-system-metrics
+psycogreen==1.0.2 \
+    --hash=sha256:c429845a8a49cf2f76b71265008760bcd7c7c77d80b806db4dc81116dbcd130d
+    # via -r requirements.in
 psycopg2-binary==2.9.12 \
     --hash=sha256:00814e40fa23c2b37ef0a1e3c749d89982c73a9cb5046137f0752a22d432e82f \
     --hash=sha256:049366c6d884bdcd65d66e6ca1fdbebe670b56c6c9ba46f164e6667e90881964 \
