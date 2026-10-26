@@ -4,3 +4,8 @@ exclude-newer = "7 days"
 
 [pip]
 generate-hashes = true
+
+
+# This section was automatically copied from uv-overrides.toml
+
+exclude-newer-package = { certifi = false }
