@@ -1,4 +1,1 @@
-exclude-newer-package = { 
-    certifi = false,
-    pypdf = "1 day" # can be removed after 03.11.2026
-}
+exclude-newer-package = { certifi = false }

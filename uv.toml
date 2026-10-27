@@ -8,7 +8,4 @@ generate-hashes = true
 
 # This section was automatically copied from uv-overrides.toml
 
-exclude-newer-package = { 
-    certifi = false,
-    pypdf = "1 day"
-}
+exclude-newer-package = { certifi = false }
