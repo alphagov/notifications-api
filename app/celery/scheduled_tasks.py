@@ -1,8 +1,9 @@
 import csv
 import io
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta
-from itertools import pairwise
+from typing import Final
 
 import jinja2
 import sentry_sdk
@@ -66,7 +67,6 @@ from app.dao.notifications_dao import (
     get_banded_slow_text_message_delivery_reports_by_provider,
     get_recent_undelivered_notification_ages,
     get_slow_text_message_delivery_reports_by_provider,
-    is_delivery_slow_for_providers,
     letters_missing_from_sending_bucket,
     notifications_not_yet_sent,
 )
@@ -92,6 +92,7 @@ from app.metrics.provider import (
     record_info,
     record_priority,
     record_sms_banded_not_delivered_within,
+    record_sms_banded_not_delivered_within_weighted,
     record_sms_legacy_not_delivered_within,
     record_updated_at,
 )
@@ -187,30 +188,59 @@ def delete_invitations():
         raise
 
 
+# mapping of (delivered_within timedelta, sent_after_ago timedelta) -> relative weighting float
+SMS_SLOW_DELIVERY_BANDS: Final[Mapping[tuple[timedelta, timedelta], float]] = {
+    (timedelta(seconds=30), timedelta(seconds=60)): 1.0,
+    (timedelta(seconds=60), timedelta(seconds=120)): 1.0,
+    (timedelta(seconds=120), timedelta(seconds=240)): 1.0,
+    (timedelta(seconds=240), timedelta(seconds=480)): 1.0,
+    (timedelta(seconds=480), timedelta(seconds=960)): 1.0,
+    # yes, they're all 1.0 (for now)
+}
+# the weighted average of bands' slow-delivery proportions will be compared against this
+# threshold to determine the combined "slow delivery"
+SMS_SLOW_DELIVERY_THRESHOLD: Final[float] = 0.2
+
+
 @notify_celery.task(name="switch-current-sms-provider-on-slow-delivery")
-def switch_current_sms_provider_on_slow_delivery():
+def switch_current_sms_provider_on_slow_delivery() -> None:
     """
-    Reduce provider's priority if at least 15% of notifications took more than 5 minutes to be delivered
-    in the last 15 minutes. If both providers are slow, don't do anything. If we changed the providers in the
+    Reduce provider's priority if its delivery is deemed to be "slow". It is deemed to be "slow"
+    if the weighted-average of proportions of notifications sent in each band of SMS_SLOW_DELIVERY_BANDS
+    that took longer than the band's delivered_within timedelta exceeds SMS_SLOW_DELIVERY_THRESHOLD.
+
+    If both providers are slow, don't do anything. If we changed the providers in the
     last 5 minutes, then don't update them again either.
     """
-    slow_delivery_notifications = is_delivery_slow_for_providers(
-        created_within_minutes=15,
-        delivered_within_minutes=5,
-        threshold=0.15,
+    banded_delivery_reports = get_banded_slow_text_message_delivery_reports_by_provider(
+        tuple(SMS_SLOW_DELIVERY_BANDS.keys()),
+        session=db.session_bulk,
     )
+    weight_sum = sum(SMS_SLOW_DELIVERY_BANDS.values())
+    weighted_ratios = {
+        provider_name: sum(
+            SMS_SLOW_DELIVERY_BANDS[(report.delivered_within, report.sent_after_ago)] * report.slow_ratio
+            for report in reports
+        )
+        / weight_sum
+        for provider_name, reports in banded_delivery_reports.items()
+    }
 
-    # only adjust if some values are true and some are false - ie, don't adjust if all providers are fast or
+    for provider_name, weigted_ratio in weighted_ratios.items():
+        record_sms_banded_not_delivered_within_weighted(weigted_ratio, provider_name)
+
+    slow_provider_names = tuple(k for k, v in weighted_ratios.items() if v >= SMS_SLOW_DELIVERY_THRESHOLD)
+
+    # only adjust if some providers are slow and some are not - ie, don't adjust if all providers are fast or
     # all providers are slow
-    if len(set(slow_delivery_notifications.values())) != 1:
-        for provider_name, is_slow in slow_delivery_notifications.items():
-            if is_slow:
-                current_app.logger.warning(
-                    "Slow delivery notifications detected for provider %s",
-                    provider_name,
-                    extra={"provider_name": provider_name},
-                )
-                dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=5))
+    if slow_provider_names and len(slow_provider_names) != len(weighted_ratios):
+        for provider_name in slow_provider_names:
+            current_app.logger.warning(
+                "Slow delivery notifications detected for provider %s",
+                provider_name,
+                extra={"provider_name": provider_name},
+            )
+            dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=5))
 
 
 def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports: list[SlowProviderDeliveryReport]):
@@ -266,9 +296,6 @@ def _check_slow_text_message_delivery_reports_and_raise_error_if_needed(reports:
         redis_store.set(CacheKeys.NUMBER_OF_TIMES_OVER_SLOW_SMS_DELIVERY_THRESHOLD, 0)
 
 
-_sms_slow_delivery_bands = tuple(pairwise(timedelta(seconds=30) * 2**i for i in range(6)))
-
-
 @notify_celery.task(name="generate-sms-delivery-stats")
 def generate_sms_delivery_stats() -> None:
     for delivery_interval in (1, 5, 10):
@@ -285,7 +312,7 @@ def generate_sms_delivery_stats() -> None:
             _check_slow_text_message_delivery_reports_and_raise_error_if_needed(providers_slow_delivery_reports)
 
     for provider_name, reports in get_banded_slow_text_message_delivery_reports_by_provider(
-        _sms_slow_delivery_bands,
+        tuple(SMS_SLOW_DELIVERY_BANDS.keys()),
         session=db.session_bulk,
     ).items():
         for banded_report in reports:
