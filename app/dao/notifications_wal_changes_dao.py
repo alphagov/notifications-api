@@ -231,17 +231,16 @@ def _get_replication_changes(
 
     parsed_rows: list[ParsedRow] = []
     last_sql_lsn: str | None = None
+
     for row in rows:
         payload = row.get("data")
         lsn = row.get("lsn")
-        if lsn:
-            last_sql_lsn = lsn
-        if not payload:
+
+        if not lsn or not payload or not isinstance(payload, str):
             continue
 
-        if isinstance(payload, str):
-            payload = json.loads(payload)
-
+        last_sql_lsn = lsn
+        payload = json.loads(payload)
         parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name, default_nextlsn=lsn))
 
     return parsed_rows, last_sql_lsn

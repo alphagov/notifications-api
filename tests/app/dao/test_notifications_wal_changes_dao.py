@@ -88,7 +88,7 @@ def test_parse_wal2json_payload_ignores_irrelevant_payloads(payload):
 def test_get_replication_changes_parses_rows_and_payload_formats(mocker):
     mappings_rows = [
         {"lsn": "0/AA", "data": '{"action": "I", "schema": "public", "table": "notifications"}'},
-        {"lsn": "0/BB", "data": {"action": "U", "schema": "public", "table": "notifications"}},
+        {"lsn": "0/BB", "data": '{"action": "U", "schema": "public", "table": "notifications"}'},
         {"lsn": "0/CC", "data": None},
     ]
 
@@ -105,13 +105,13 @@ def test_get_replication_changes_parses_rows_and_payload_formats(mocker):
     )
 
     assert result == [{"table": "notifications", "type": "insert"}, {"table": "notifications", "type": "update"}]
-    assert last_lsn == "0/CC"
+    assert last_lsn == "0/BB"
     assert mock_execute.call_count == 1
     assert mock_parser.call_count == 2
 
 
 def test_get_replication_changes_keeps_sql_lsn(mocker):
-    mappings_rows = [{"lsn": "0/AB", "data": {"action": "I", "schema": "public", "table": "notifications"}}]
+    mappings_rows = [{"lsn": "0/AB", "data": '{"action": "I", "schema": "public", "table": "notifications"}'}]
 
     execute_result = mocker.Mock()
     execute_result.mappings.return_value = mappings_rows
@@ -126,7 +126,7 @@ def test_get_replication_changes_keeps_sql_lsn(mocker):
 
 
 def test_get_replication_changes_handles_non_indexable_result_rows(mocker):
-    mappings_rows = [{"lsn": "0/AB", "data": {"action": "I", "schema": "public", "table": "other"}}]
+    mappings_rows = [{"lsn": "0/AB", "data": '{"action": "I", "schema": "public", "table": "other"}'}]
 
     execute_result = mocker.Mock()
     execute_result.mappings.return_value = iter(mappings_rows)
