@@ -113,6 +113,7 @@ def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_tem
 # get_last_used_datetime_for_template
 
 
+@freeze_time("2016-01-01 11:09:00.000000")
 def test_get_last_used_datetime_for_template(admin_request, sample_template):
     date_from_notification = datetime.utcnow() - timedelta(hours=2)
     create_notification(template=sample_template, created_at=date_from_notification)
