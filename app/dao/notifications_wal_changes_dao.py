@@ -12,7 +12,7 @@ from sqlalchemy import text  # type: ignore[reportMissingImports]
 from app import db
 from app.dao.fact_notification_status_live_dao import (
     NotificationStatusLiveDimensions,
-    apply_notification_status_live_change,
+    update_notification_status_live_count,
 )
 
 REPLICATION_SLOT_NAME = "notify_wal2json_slot"
@@ -267,7 +267,7 @@ def _process_changes(changes):
             "key_type": key_type,
             "notification_status": notification_status,
         }
-        apply_notification_status_live_change(dimensions, change_count)
+        update_notification_status_live_count(dimensions, change_count)
 
     return processed_changes, ignored_changes, counter
 

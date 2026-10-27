@@ -494,9 +494,9 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
             "0/AB",
         ),
     )
-    mock_apply = mocker.patch(
-        "app.dao.notifications_wal_changes_dao.apply_notification_status_live_change",
-        side_effect=lambda *_args, **_kwargs: call_order.append("apply"),
+    mock_update = mocker.patch(
+        "app.dao.notifications_wal_changes_dao.update_notification_status_live_count",
+        side_effect=lambda *_args, **_kwargs: call_order.append("update"),
     )
     mock_advance = mocker.patch(
         "app.dao.notifications_wal_changes_dao._advance_replication_slot",
@@ -515,10 +515,10 @@ def test_dao_process_notifications_replication_slot_changes_success(mocker):
         "service_stats_change_count_buckets": 2,
         "last_lsn": "0/AB",
     }
-    mock_apply.assert_called_once()
-    apply_args = mock_apply.call_args.args
-    assert apply_args[1] == 3
-    assert apply_args[0] == {
+    mock_update.assert_called_once()
+    update_args = mock_update.call_args.args
+    assert update_args[1] == 3
+    assert update_args[0] == {
         "bst_date": dimensions_key[0],
         "service_id": dimensions_key[1],
         "template_id": dimensions_key[2],

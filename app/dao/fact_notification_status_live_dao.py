@@ -18,11 +18,7 @@ class NotificationStatusLiveDimensions(TypedDict):
     notification_status: str
 
 
-def apply_notification_status_live_change(dimensions: NotificationStatusLiveDimensions, change_count: int) -> None:
-    _update_notification_status_live_count(dimensions, change_count)
-
-
-def _update_notification_status_live_count(dimensions: NotificationStatusLiveDimensions, change_count: int) -> None:
+def update_notification_status_live_count(dimensions: NotificationStatusLiveDimensions, change_count: int) -> None:
     if change_count == 0:
         return
 

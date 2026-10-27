@@ -4,11 +4,11 @@ from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql.dml import Insert
 
-from app.dao.fact_notification_status_live_dao import apply_notification_status_live_change
+from app.dao.fact_notification_status_live_dao import update_notification_status_live_count
 from app.models import FactNotificationStatusLive
 
 
-def test_apply_notification_status_live_change_for_non_zero_change(mocker):
+def test_update_notification_status_live_count_for_non_zero_change(mocker):
     dimensions = {
         "bst_date": date(2026, 8, 6),
         "service_id": uuid4(),
@@ -20,7 +20,7 @@ def test_apply_notification_status_live_change_for_non_zero_change(mocker):
     }
     mock_execute = mocker.patch("app.dao.fact_notification_status_live_dao.db.session.execute")
 
-    apply_notification_status_live_change(dimensions, 4)
+    update_notification_status_live_count(dimensions, 4)
 
     mock_execute.assert_called_once()
     statement = mock_execute.call_args.args[0]
@@ -43,7 +43,7 @@ def test_apply_notification_status_live_change_for_non_zero_change(mocker):
     assert any(key.startswith("notification_count_") and value == 4 for key, value in params.items())
 
 
-def test_apply_notification_status_live_change_for_zero_change(mocker):
+def test_update_notification_status_live_count_for_zero_change(mocker):
     dimensions = {
         "bst_date": date(2026, 8, 6),
         "service_id": uuid4(),
@@ -56,13 +56,13 @@ def test_apply_notification_status_live_change_for_zero_change(mocker):
     mock_execute = mocker.patch("app.dao.fact_notification_status_live_dao.db.session.execute")
     mock_commit = mocker.patch("app.dao.fact_notification_status_live_dao.db.session.commit")
 
-    apply_notification_status_live_change(dimensions, 0)
+    update_notification_status_live_count(dimensions, 0)
 
     mock_execute.assert_not_called()
     mock_commit.assert_not_called()
 
 
-def test_apply_notification_status_live_change_for_negative_change(mocker):
+def test_update_notification_status_live_count_for_negative_change(mocker):
     dimensions = {
         "bst_date": date(2026, 8, 6),
         "service_id": uuid4(),
@@ -75,7 +75,7 @@ def test_apply_notification_status_live_change_for_negative_change(mocker):
     mock_execute = mocker.patch("app.dao.fact_notification_status_live_dao.db.session.execute")
     mock_commit = mocker.patch("app.dao.fact_notification_status_live_dao.db.session.commit")
 
-    apply_notification_status_live_change(dimensions, -3)
+    update_notification_status_live_count(dimensions, -3)
 
     mock_execute.assert_called_once()
     mock_commit.assert_called_once()
