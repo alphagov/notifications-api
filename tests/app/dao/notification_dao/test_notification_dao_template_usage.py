@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from freezegun import freeze_time
 
 from app import db
 from app.dao.notifications_dao import dao_get_last_date_template_was_used
@@ -39,6 +40,7 @@ def test_dao_get_last_date_template_was_used_only_searches_within_one_year(sampl
     assert last_used_date is None
 
 
+@freeze_time("2016-01-01 11:09:00.000000")
 def test_dao_get_last_date_template_was_used_returns_created_at_from_notifications(sample_template):
     last_notification_date = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=2)
     create_notification(template=sample_template, created_at=last_notification_date)
