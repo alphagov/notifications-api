@@ -964,6 +964,16 @@ class ApiKey(db.Model, Versioned):
         if secret:
             self._secret = signing.encode(str(secret))
 
+    def last_used(self):
+        last_usage_for_key = (
+            ApiKeyUsage.query.filter(ApiKeyUsage.api_key_id == self.id).order_by(ApiKeyUsage.usage_hour.desc())
+        ).first()
+
+        if not last_usage_for_key:
+            return None
+
+        return last_usage_for_key.usage_hour
+
 
 class ApiKeyUsage(db.Model):
     __tablename__ = "api_key_usage"
