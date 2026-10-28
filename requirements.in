@@ -17,7 +17,7 @@ marshmallow-sqlalchemy~=1.4
 marshmallow~=4.2
 psycogreen~=1.0
 psycopg2-binary~=2.9
-SQLAlchemy~=2.0
+SQLAlchemy==2.0.52  # Pinned until we’ve incorporated https://docs.sqlalchemy.org/en/21/changelog/migration_21.html#default-postgresql-driver-changed-to-psycopg-psycopg-3
 pyorc~=0.10
 
 notifications-python-client~=12.1
