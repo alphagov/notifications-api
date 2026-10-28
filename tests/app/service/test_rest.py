@@ -2260,6 +2260,8 @@ def test_update_service_calls_send_notification_as_service_becomes_live(notify_d
     send_notification_mock = mocker.patch("app.service.rest.send_notification_to_service_users")
 
     restricted_service = create_service(restricted=True)
+    admin_user = restricted_service.users[0]
+
     non_admin_user = create_user(email="non-admin@gov.uk", state="active")
     dao_add_user_to_service(
         restricted_service,
@@ -2287,7 +2289,7 @@ def test_update_service_calls_send_notification_as_service_becomes_live(notify_d
         ),
         mocker.call(
             template_id=current_app.config["MANAGING_YOUR_SERVICE_TEMPLATE_ID"],
-            user_list=[restricted_service.users[0]],
+            user_list=[admin_user],
             personalisation={
                 "service_name": restricted_service.name,
             },
@@ -2296,7 +2298,7 @@ def test_update_service_calls_send_notification_as_service_becomes_live(notify_d
     ]
     assert {user.id for user in send_notification_mock.call_args_list[0].kwargs["user_list"]} == {
         non_admin_user.id,
-        restricted_service.users[0].id,
+        admin_user.id,
     }
 
 
