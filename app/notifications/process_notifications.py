@@ -42,7 +42,6 @@ from app.v2.errors import BadRequestError, QrCodeTooLongError
 
 def create_content_for_notification(template, personalisation, recipient):
     if template.template_type == EMAIL_TYPE:
-        personalisation = add_email_file_links_to_personalisation(template, personalisation, recipient)
         template_object = PlainTextEmailTemplate(
             {
                 "content": template.content,
@@ -91,9 +90,10 @@ def check_placeholders(template_object):
 
 
 def add_email_file_links_to_personalisation(template, personalisation, recipient):
+    filename_to_id = {}
     for email_file in template.email_file_objects:
         template_email_file_from_s3 = try_download_template_email_file_from_s3(template.service, email_file.id)
-        doc_download_link = document_download_client.upload_document(
+        doc_download_link, id = document_download_client.upload_document(
             template.service,
             template_email_file_from_s3,
             confirmation_email=validate_and_format_email_address(recipient)
@@ -106,8 +106,9 @@ def add_email_file_links_to_personalisation(template, personalisation, recipient
             personalisation[email_file.filename] = f"[{email_file.link_text}]({doc_download_link})"
         else:
             personalisation[email_file.filename] = doc_download_link
+        filename_to_id[email_file.filename] = str(id)
 
-    return personalisation
+    return [personalisation, filename_to_id]
 
 
 def persist_notification(
@@ -136,6 +137,7 @@ def persist_notification(
     postage=None,
     document_download_count=None,
     updated_at=None,
+    filename_to_id=None,
     _autocommit=True,
 ):
     notification_created_at = created_at or datetime.utcnow()
@@ -197,6 +199,13 @@ def persist_notification(
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification=notification, _autocommit=_autocommit)
+        if filename_to_id:
+            from app.dao.sent_files import dao_create_sent_files
+
+            for filename, id in filename_to_id.items():
+                dao_create_sent_files(
+                    document_id=id, filename=filename, notification_id=notification.id, service_id=service.id
+                )
         # Not sure how we can rollback
         increment_daily_limit_caches(service, notification, key_type)
 

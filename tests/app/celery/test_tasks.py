@@ -55,7 +55,7 @@ from app.constants import (
 )
 from app.dao import jobs_dao, report_requests_dao, service_email_reply_to_dao, service_sms_sender_dao
 from app.dao.notifications_dao import get_notification_by_id
-from app.models import Job, Notification, NotificationHistory, ReturnedLetter
+from app.models import Job, Notification, NotificationHistory, ReturnedLetter, SentFiles
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.v2.errors import TooManyRequestsError
 from tests.app import load_example_csv
@@ -1830,6 +1830,13 @@ def test_send_email_with_template_email_files(
     assert persisted_notification.status == "created"
     assert persisted_notification.personalisation == expected_personalisation
     assert signing.decode(persisted_notification._personalisation) == expected_personalisation
+
+    sent_files = SentFiles.query.filter(SentFiles.notification_id == persisted_notification.id).all()
+    assert len(sent_files) == 2
+    assert {persisted_notification.service_id} == {file.service_id for file in sent_files}
+    assert {file["filename"] for file in template_email_files} == {file.filename for file in sent_files}
+    for file in [file for file in sent_files]:
+        assert isinstance(file.document_id, uuid.UUID)
 
 
 def test_send_email_with_template_email_files_from_old_template_version(
