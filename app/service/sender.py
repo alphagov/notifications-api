@@ -3,10 +3,15 @@ from uuid import UUID
 from flask import current_app
 
 from app.config import QueueNames
-from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL, SMS_TYPE
+from app.constants import (
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    MANAGE_SETTINGS,
+    SMS_TYPE,
+)
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import User
+from app.models import Service, User
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -54,3 +59,30 @@ def _add_user_fields(user, personalisation, fields):
     for field in fields:
         personalisation[field] = getattr(user, field)
     return personalisation
+
+
+def notify_user_if_manage_settings_permission_granted(
+    service: Service,
+    user: User,
+    old_permissions: list[str],
+    new_permissions: list[str],
+) -> None:
+    """
+    We only want to send the email about having manage settings permission if
+    - the service is live and active
+    - the user is being given the manage_settings permission and didn't already have it
+    - the user belongs to the service
+    """
+    if service.restricted or not service.active:
+        return
+
+    if user not in service.users:
+        return
+
+    if MANAGE_SETTINGS in new_permissions and MANAGE_SETTINGS not in old_permissions:
+        send_notification_to_service_users(
+            template_id=current_app.config["MANAGING_YOUR_SERVICE_TEMPLATE_ID"],
+            user_list=[user],
+            personalisation={"service_name": service.name},
+            include_user_fields=["name"],
+        )
