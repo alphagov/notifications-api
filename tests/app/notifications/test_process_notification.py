@@ -18,7 +18,7 @@ from app.constants import (
     LETTER_TYPE,
     SMS_TYPE,
 )
-from app.models import Notification, NotificationHistory, SentFiles, Template
+from app.models import Notification, NotificationHistory, SentFiles
 from app.notifications.process_notifications import (
     add_email_file_links_to_personalisation,
     create_content_for_notification,
@@ -198,8 +198,16 @@ def test_add_email_file_links_to_personalisation(
     )
 
 
-def test_persist_notification_with_template_email_file_creates_and_save_to_db(sample_template_email_file_not_pending, sample_api_key, sample_service, mock_document_download_client_upload, mock_utils_s3_download):
-    template = SerialisedTemplate.from_id_and_service_id(sample_template_email_file_not_pending.template_id, sample_service.id)
+def test_persist_notification_with_template_email_file_creates_and_save_to_db(
+    sample_template_email_file_not_pending,
+    sample_api_key,
+    sample_service,
+    mock_document_download_client_upload,
+    mock_utils_s3_download,
+):
+    template = SerialisedTemplate.from_id_and_service_id(
+        sample_template_email_file_not_pending.template_id, sample_service.id
+    )
     personalisation, filename_to_id = add_email_file_links_to_personalisation(template, {}, "user@example.com")
     notification = persist_notification(
         template_id=template.id,
@@ -208,8 +216,8 @@ def test_persist_notification_with_template_email_file_creates_and_save_to_db(sa
         service=sample_service,
         personalisation=personalisation,
         notification_type=EMAIL_TYPE,
-        api_key_id = sample_api_key.id,
-        key_type = sample_api_key.key_type,
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
         document_download_count=1,
         filename_to_id=filename_to_id,
     )

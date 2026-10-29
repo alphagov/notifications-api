@@ -15,7 +15,7 @@ from app.constants import (
 from app.dao.service_guest_list_dao import (
     dao_add_and_commit_guest_list_contacts,
 )
-from app.models import Notification, SentFiles, ServiceGuestList
+from app.models import Notification, ServiceGuestList
 from app.service.send_notification import send_one_off_notification
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from tests.app.db import (

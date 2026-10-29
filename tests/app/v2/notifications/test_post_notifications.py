@@ -1515,7 +1515,6 @@ def test_post_notification_with_document_upload(
         _data=data,
     )
 
-
     assert validate(resp_json, post_email_response) == resp_json
 
     confirmation_email = data["email_address"] if expect_email_confirmation else None
