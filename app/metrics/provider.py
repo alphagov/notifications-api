@@ -4,6 +4,7 @@ from collections.abc import Callable, Iterable, MutableMapping
 from time import monotonic
 from typing import Any
 
+import flask
 from notifications_utils.semconv import HTTP_DURATION_HISTOGRAM_BUCKETS, set_error_type
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from opentelemetry.util.types import AttributeValue
@@ -14,9 +15,10 @@ def _oneshot_gauge_next_observation_consumer(
 ) -> Callable[[CallbackOptions], Iterable[Observation]]:
     def _consumer(opts: CallbackOptions) -> Iterable[Observation]:
         next_observations_name = base_name + "_next_observations"
-        observables: tuple[Observation, ...] = container[next_observations_name]
+        observations: tuple[Observation, ...] = container[next_observations_name]
         container[next_observations_name] = ()
-        return observables
+        flask.current_app.logger.info("Observing %s observations: %s", len(observations), ",".join(str(obs.value) for obs in observations))
+        return observations
 
     return _consumer
 
