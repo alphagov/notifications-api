@@ -10,6 +10,7 @@ from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from opentelemetry.util.types import AttributeValue
 
 
+_strong_refs = []
 def _oneshot_gauge_next_observation_consumer(
     container: MutableMapping[str, Any], base_name: str
 ) -> Callable[[CallbackOptions], Iterable[Observation]]:
@@ -17,8 +18,12 @@ def _oneshot_gauge_next_observation_consumer(
         next_observations_name = base_name + "_next_observations"
         observations: tuple[Observation, ...] = container[next_observations_name]
         container[next_observations_name] = ()
-        flask.current_app.logger.info("Observing %s observations: %s", len(observations), ",".join(str(obs.value) for obs in observations))
+        flask.current_app.logger.info(
+            "Observing %s observations: %s", len(observations), ",".join(str(obs.value) for obs in observations)
+        )
         return observations
+
+    _strong_refs.append(_consumer)
 
     return _consumer
 
