@@ -1478,7 +1478,7 @@ def mock_utils_s3_download(mocker):
 def mock_document_download_client_upload(mocker):
     def mock_link(*args, **kwargs):
         filename = kwargs["filename"]
-        return f"documents.gov.uk/{filename}"
+        return [f"documents.gov.uk/{filename}", uuid.uuid4()]
 
     return mocker.patch(
         "app.document_download_client.upload_document",

@@ -7,6 +7,7 @@ from datetime import datetime
 from flask import abort, current_app, jsonify, request
 from notifications_utils.formatters import url
 from notifications_utils.insensitive_dict import InsensitiveSet
+from sqlalchemy.exc import NoResultFound
 
 from app import (
     api_user,
@@ -39,6 +40,7 @@ from app.notifications.process_letter_notifications import (
     create_letter_notification,
 )
 from app.notifications.process_notifications import (
+    add_email_file_links_to_personalisation,
     persist_notification,
     send_notification_to_queue_detached,
     simulated_recipient,
@@ -55,6 +57,7 @@ from app.notifications.validators import (
     validate_template,
 )
 from app.schema_validation import validate
+from app.serialised_models import SerialisedTemplate
 from app.utils import try_parse_and_format_phone_number
 from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
@@ -133,10 +136,22 @@ def post_notification(notification_type):
     sanitised_content = (
         _get_sanitised_content(unsanitised_personalisation, personalisation) if notification_type == "email" else {}
     )
+    filename_to_id = {}
+    if notification_type == EMAIL_TYPE:
+        try:
+            template = SerialisedTemplate.from_id_and_service_id(form["template_id"], authenticated_service.id)
+        except NoResultFound as e:
+            message = "Template not found"
+            raise BadRequestError(message=message, fields=[{"template": message}]) from e
+        personalisation, filename_to_id = add_email_file_links_to_personalisation(
+            template,
+            personalisation,
+            form.get("email_address"),
+        )
 
     template, template_with_content = validate_template(
         template_id=form["template_id"],
-        personalisation=personalisation,
+        personalisation=personalisation.copy(),
         service=authenticated_service,
         notification_type=notification_type,
         check_char_count=False,
@@ -164,6 +179,7 @@ def post_notification(notification_type):
             personalisation=personalisation,
             reply_to_text=reply_to,
             unsubscribe_link=form.get("one_click_unsubscribe_url", None),
+            filename_to_id=filename_to_id,
         )
 
     return jsonify(notification | sanitised_content), 201
@@ -223,6 +239,7 @@ def process_sms_or_email_notification(
     personalisation,
     reply_to_text=None,
     unsubscribe_link=None,
+    filename_to_id=None,
 ):
     notification_id = uuid.uuid4()
     form_send_to = form["email_address"] if notification_type == EMAIL_TYPE else form["phone_number"]
@@ -235,8 +252,7 @@ def process_sms_or_email_notification(
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
-
-    personalisation, document_download_count = process_document_uploads(
+    personalisation, document_download_count, filename_to_id_from_api = process_document_uploads(
         personalisation,
         service,
         send_to=send_to,
@@ -248,6 +264,10 @@ def process_sms_or_email_notification(
 
     # the total count should be the number of files an api user has added + the number already in the template
     document_download_count += len(template.email_file_objects)
+
+    if filename_to_id:
+        if filename_to_id_from_api:
+            filename_to_id.update(filename_to_id_from_api)
 
     # validate content length after url is replaced in personalisation.
     check_is_message_too_long(template_with_content)
@@ -279,6 +299,7 @@ def process_sms_or_email_notification(
         reply_to_text=reply_to_text,
         unsubscribe_link=unsubscribe_link,
         document_download_count=document_download_count,
+        filename_to_id=filename_to_id,
     )
 
     if not simulated:
@@ -305,7 +326,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
     """
     file_keys = [k for k, v in (personalisation_data or {}).items() if isinstance(v, dict) and "file" in v]
     if not file_keys:
-        return personalisation_data, 0
+        return personalisation_data, 0, {}
 
     # Make sure that all data for file uploads matches our expected schema.
     # We can't (feasibly) do this at the start of the request because the JSON Schema required would throw error
@@ -321,6 +342,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
         service_id=authenticated_service.id,  # type: ignore[attr-defined]
     )
 
+    filename_to_id = {}
     for key in file_keys:
         if simulated:
             personalisation_data[key] = (
@@ -335,7 +357,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
 
             filename = personalisation_data[key].get("filename")
 
-            personalisation_data[key] = document_download_client.upload_document(  # type: ignore[attr-defined]
+            personalisation_data[key], filename_to_id[key] = document_download_client.upload_document(  # type: ignore[attr-defined]
                 service.id,
                 personalisation_data[key]["file"],
                 personalisation_data[key].get("is_csv"),
@@ -343,8 +365,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
                 retention_period=retention_period,
                 filename=filename,
             )
-
-    return personalisation_data, len(file_keys)
+    return personalisation_data, len(file_keys), filename_to_id
 
 
 def process_letter_notification(

@@ -18,7 +18,7 @@ from app.constants import (
     LETTER_TYPE,
     SMS_TYPE,
 )
-from app.models import Notification, NotificationHistory
+from app.models import Notification, NotificationHistory, SentFiles
 from app.notifications.process_notifications import (
     add_email_file_links_to_personalisation,
     create_content_for_notification,
@@ -51,28 +51,6 @@ def test_create_content_for_notification_with_placeholders_passes(
     )
     assert content.content == template.content
     assert "Bobby" in str(content)
-
-
-def test_create_content_for_notification_with_email_file_placeholder_passes(
-    sample_service,
-    mocker,
-    mock_utils_s3_download,
-    mock_document_download_client_upload,
-    sample_email_template_with_template_email_files,
-):
-    template_id = sample_email_template_with_template_email_files.id
-    template = SerialisedTemplate.from_id_and_service_id(template_id=template_id, service_id=sample_service.id)
-
-    content = create_content_for_notification(
-        template=template,
-        personalisation={"name": "Bobby"},
-        recipient="amanda@example.com",
-    )
-    assert content.content == template.content
-    assert "Bobby" in str(content)
-    # assert secure links to files made it to notification content:
-    assert "documents.gov.uk/invitation.pdf" in str(content)
-    assert "documents.gov.uk/form.pdf" in str(content)
 
 
 def test_create_content_for_notification_fails_with_missing_personalisation(
@@ -192,7 +170,9 @@ def test_add_email_file_links_to_personalisation(
         template_id=sample_email_template_with_email_file_placeholders.id, service_id=sample_service.id
     )
 
-    personalisation = add_email_file_links_to_personalisation(template, {"name": "Anne"}, recipient="anne@example.com")
+    personalisation, filename_to_id = add_email_file_links_to_personalisation(
+        template, {"name": "Anne"}, recipient="anne@example.com"
+    )
 
     assert personalisation == expected_personalisation
     assert len(mock_document_download_client_upload.mock_calls) == 2
@@ -216,6 +196,38 @@ def test_add_email_file_links_to_personalisation(
         )
         in mock_document_download_client_upload.mock_calls
     )
+
+
+def test_persist_notification_with_template_email_file_creates_and_save_to_db(
+    sample_template_email_file_not_pending,
+    sample_api_key,
+    sample_service,
+    mock_document_download_client_upload,
+    mock_utils_s3_download,
+):
+    template = SerialisedTemplate.from_id_and_service_id(
+        sample_template_email_file_not_pending.template_id, sample_service.id
+    )
+    personalisation, filename_to_id = add_email_file_links_to_personalisation(template, {}, "user@example.com")
+    notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient="user@example.com",
+        service=sample_service,
+        personalisation=personalisation,
+        notification_type=EMAIL_TYPE,
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        document_download_count=1,
+        filename_to_id=filename_to_id,
+    )
+
+    sent_files = SentFiles.query.filter(SentFiles.service_id == sample_service.id).all()
+    assert len(sent_files) == 1
+    assert sent_files[0].service_id == sample_service.id
+    assert sent_files[0].placeholder == sample_template_email_file_not_pending.filename
+    assert isinstance(sent_files[0].document_id, uuid.UUID)
+    assert sent_files[0].notification_id == notification.id
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

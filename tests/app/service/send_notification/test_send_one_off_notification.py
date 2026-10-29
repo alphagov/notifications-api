@@ -1,5 +1,5 @@
 import uuid
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
@@ -93,6 +93,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(persist_mock,
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=None,
+        filename_to_id={},
     )
 
 
@@ -158,6 +159,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(persist_moc
         client_reference=None,
         template_has_unsubscribe_link=True,
         document_download_count=None,
+        filename_to_id={},
     )
 
 
@@ -200,6 +202,10 @@ def test_send_one_off_notification_calls_persist_correctly_for_email_with_email_
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=2,
+        filename_to_id={
+            "invitation.pdf": ANY,
+            "form.pdf": ANY,
+        },
     )
 
 
@@ -249,6 +255,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=None,
+        filename_to_id={},
     )
 
 
