@@ -202,9 +202,9 @@ def persist_notification(
         if filename_to_id:
             from app.dao.sent_files import dao_create_sent_files
 
-            for filename, id in filename_to_id.items():
+            for placeholder, id in filename_to_id.items():
                 dao_create_sent_files(
-                    document_id=id, filename=filename, notification_id=notification.id, service_id=service.id
+                    document_id=id, placeholder=placeholder, notification_id=notification.id, service_id=service.id
                 )
         # Not sure how we can rollback
         increment_daily_limit_caches(service, notification, key_type)

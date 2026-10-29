@@ -225,7 +225,7 @@ def test_persist_notification_with_template_email_file_creates_and_save_to_db(
     sent_files = SentFiles.query.filter(SentFiles.service_id == sample_service.id).all()
     assert len(sent_files) == 1
     assert sent_files[0].service_id == sample_service.id
-    assert sent_files[0].filename == sample_template_email_file_not_pending.filename
+    assert sent_files[0].placeholder == sample_template_email_file_not_pending.filename
     assert isinstance(sent_files[0].document_id, uuid.UUID)
     assert sent_files[0].notification_id == notification.id
 

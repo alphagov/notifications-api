@@ -1522,7 +1522,7 @@ def test_post_notification_with_document_upload(
     if has_template_email_files:
         sent_files = SentFiles.query.filter(SentFiles.service_id == service.id).all()
         assert len(sent_files) == 3
-        assert {"test.pdf", "first_link", "second_link"} == {file.filename for file in sent_files}
+        assert {"test.pdf", "first_link", "second_link"} == {file.placeholder for file in sent_files}
         assert {resp_json["id"]} == {str(file.notification_id) for file in sent_files}
         assert {service.id} == {file.service_id for file in sent_files}
         assert document_download_upload_document_mock.call_args_list == [

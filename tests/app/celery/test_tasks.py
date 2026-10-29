@@ -1834,7 +1834,7 @@ def test_send_email_with_template_email_files(
     sent_files = SentFiles.query.filter(SentFiles.notification_id == persisted_notification.id).all()
     assert len(sent_files) == 2
     assert {persisted_notification.service_id} == {file.service_id for file in sent_files}
-    assert {file["filename"] for file in template_email_files} == {file.filename for file in sent_files}
+    assert {file["filename"] for file in template_email_files} == {file.placeholder for file in sent_files}
     for file in sent_files:
         assert isinstance(file.document_id, uuid.UUID)
 

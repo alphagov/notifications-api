@@ -2919,6 +2919,6 @@ class ReportRequest(db.Model):
 class SentFiles(db.Model):
     __tablename__ = "sent_files"
     document_id = db.Column(UUID(as_uuid=True), primary_key=True)
-    filename = db.Column(db.String, nullable=False, unique=False)
+    placeholder = db.Column(db.String, nullable=False, unique=False)
     notification_id = db.Column(UUID(as_uuid=True), primary_key=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey("services.id"), primary_key=True)

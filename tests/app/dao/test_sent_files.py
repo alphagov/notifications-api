@@ -13,12 +13,12 @@ def test_dao_create_sent_files(sample_email_template, sample_service):
     dao_create_sent_files(document_id, "example.pdf", notification_id, sample_service.id)
     sent_file = SentFiles.query.filter(
         SentFiles.document_id == document_id,
-        SentFiles.filename == "example.pdf",
+        SentFiles.placeholder == "example.pdf",
         SentFiles.notification_id == notification_id,
         SentFiles.service_id == sample_service.id,
     ).all()[0]
     assert sent_file.document_id == document_id
-    assert sent_file.filename == "example.pdf"
+    assert sent_file.placeholder == "example.pdf"
     assert sent_file.notification_id == notification_id
     assert sent_file.service_id == sample_service.id
 
