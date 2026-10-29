@@ -418,7 +418,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
 
     document_download_count = len(template.email_file_objects) or None
 
-    personalisation = add_email_file_links_to_personalisation(
+    personalisation, id_to_placeholder_and_filename = add_email_file_links_to_personalisation(
         template=template, personalisation=notification.get("personalisation", {}), recipient=notification["to"]
     )
 
@@ -457,6 +457,7 @@ def save_email(self, service_id, notification_id, encoded_notification, sender_i
             reply_to_text=reply_to_text,
             client_reference=notification.get("client_reference", None),
             document_download_count=document_download_count,
+            id_to_placeholder_and_filename=id_to_placeholder_and_filename,
         )
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],

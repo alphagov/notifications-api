@@ -93,6 +93,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(persist_mock,
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=None,
+        id_to_placeholder_and_filename={},
     )
 
 
@@ -158,6 +159,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(persist_moc
         client_reference=None,
         template_has_unsubscribe_link=True,
         document_download_count=None,
+        id_to_placeholder_and_filename={},
     )
 
 
@@ -200,6 +202,10 @@ def test_send_one_off_notification_calls_persist_correctly_for_email_with_email_
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=2,
+        id_to_placeholder_and_filename={
+            "2c3d930c-d273-3dd1-ac49-f39a8b431f73": {"placeholder": "invitation.pdf", "filename": "invitation.pdf"},
+            "32989390-d703-34d0-aaa9-b438773b1571": {"placeholder": "form.pdf", "filename": "form.pdf"},
+        },
     )
 
 
@@ -249,6 +255,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=None,
+        id_to_placeholder_and_filename={},
     )
 
 

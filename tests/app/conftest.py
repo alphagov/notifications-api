@@ -1511,8 +1511,10 @@ def mock_utils_s3_download(mocker):
 @pytest.fixture(scope="function")
 def mock_document_download_client_upload(mocker):
     def mock_link(*args, **kwargs):
+        # this lets us generate a reproducable but unique id per filename
+        namespace = uuid.UUID("54ac5283-b001-36e8-b0a1-ab0db327b305")
         filename = kwargs["filename"]
-        return f"documents.gov.uk/{filename}"
+        return [f"documents.gov.uk/{filename}", uuid.uuid3(namespace, filename)]
 
     return mocker.patch(
         "app.document_download_client.upload_document",
