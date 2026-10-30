@@ -1,10 +1,31 @@
+from datetime import UTC, date, datetime
+from uuid import UUID
+
 import pytest
 from flask import Flask
 
+from app.dao import notifications_wal_changes_dao as dao
 from app.dao.notifications_wal_changes_dao import (
     _get_replication_changes,
     dao_process_notifications_replication_slot_changes,
 )
+
+
+def _build_change(
+    *,
+    table: str = "notifications",
+    change_type: str = "insert",
+    current_row_data: dict | None = None,
+    previous_row_data: dict | None = None,
+    lsn: str | None = None,
+) -> dict:
+    return {
+        "table": table,
+        "type": change_type,
+        "current_row_data": current_row_data or {},
+        "previous_row_data": previous_row_data or {},
+        "lsn": lsn,
+    }
 
 
 def test_acquires_and_releases_advisory_lock(mocker):
@@ -89,7 +110,6 @@ def test_get_replication_changes_parses_rows_and_skips_empty_payloads(mocker):
             "type": "insert",
             "current_row_data": {},
             "previous_row_data": {},
-            "nextlsn": "0/AA",
             "lsn": "0/AA",
         },
         {
@@ -97,7 +117,6 @@ def test_get_replication_changes_parses_rows_and_skips_empty_payloads(mocker):
             "type": "update",
             "current_row_data": {},
             "previous_row_data": {},
-            "nextlsn": "0/BB",
             "lsn": "0/BB",
         },
     ]
@@ -168,3 +187,187 @@ def test_does_not_raise_when_no_changes_returned(mocker):
     result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
     assert result == {"lock_acquired": True, "slot_name": "notify_wal2json_slot", "changes_count": 0}
+
+
+def test_parse_uuid_value():
+    value = UUID("550e8400-e29b-41d4-a716-446655440000")
+
+    assert dao._parse_uuid_value({"service_id": str(value)}, "service_id") == value
+    assert dao._parse_uuid_value({"service_id": "not-a-uuid"}, "service_id") is None
+    assert dao._parse_uuid_value({}, "service_id") is None
+
+
+def test_get_str_value():
+    assert dao._get_str_value({"value": "text"}, "value") == "text"
+    assert dao._get_str_value({"value": 42}, "value") == "42"
+    assert dao._get_str_value({"value": None}, "value") is None
+    assert dao._get_str_value(None, "value") is None
+
+
+def test_parse_datetime_value():
+    assert dao._parse_datetime_value({"created_at": "2026-08-06T10:00:00Z"}, "created_at") == datetime(
+        2026, 8, 6, 10, 0, 0, tzinfo=UTC
+    )
+    assert dao._parse_datetime_value({"created_at": "invalid"}, "created_at") is None
+    assert dao._parse_datetime_value({}, "created_at") is None
+
+
+def test_build_dimensions_returns_all_dimensions_and_converts_date(mocker):
+    service_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    template_id = UUID("550e8400-e29b-41d4-a716-446655440001")
+    job_id = UUID("550e8400-e29b-41d4-a716-446655440002")
+    created_at = datetime(2026, 8, 6, 10, 0, 0, tzinfo=UTC)
+    mock_convert = mocker.patch("app.dao.notifications_wal_changes_dao.convert_utc_to_bst", return_value=created_at)
+    change = _build_change(
+        current_row_data={
+            "service_id": str(service_id),
+            "template_id": str(template_id),
+            "job_id": str(job_id),
+            "notification_type": "sms",
+            "key_type": "normal",
+            "notification_status": "delivered",
+            "created_at": "2026-08-06T10:00:00Z",
+        }
+    )
+
+    result = dao._build_dimensions(change, use_previous_row=False)
+
+    assert result == (date(2026, 8, 6), service_id, template_id, job_id, "sms", "normal", "delivered")
+    mock_convert.assert_called_once_with(created_at)
+
+
+def test_build_dimensions_uses_fallback_row_when_primary_is_missing(mocker):
+    service_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    template_id = UUID("550e8400-e29b-41d4-a716-446655440001")
+    job_id = UUID("550e8400-e29b-41d4-a716-446655440002")
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 7, tzinfo=UTC),
+    )
+    change = _build_change(
+        previous_row_data={
+            "service_id": str(service_id),
+            "template_id": str(template_id),
+            "job_id": str(job_id),
+            "notification_type": "email",
+            "key_type": "normal",
+            "notification_status": "failed",
+            "created_at": "2026-08-07T00:00:00Z",
+        }
+    )
+
+    result = dao._build_dimensions(change, use_previous_row=False)
+
+    assert result == (date(2026, 8, 7), service_id, template_id, job_id, "email", "normal", "failed")
+
+
+def test_build_dimensions_requires_status_in_previous_row_when_requested(mocker):
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 7, tzinfo=UTC),
+    )
+    change = _build_change(
+        current_row_data={"notification_status": "delivered"},
+        previous_row_data={
+            "service_id": "550e8400-e29b-41d4-a716-446655440000",
+            "template_id": "550e8400-e29b-41d4-a716-446655440001",
+            "job_id": "550e8400-e29b-41d4-a716-446655440002",
+            "notification_type": "email",
+            "key_type": "normal",
+            "created_at": "2026-08-07T00:00:00Z",
+        },
+    )
+
+    result = dao._build_dimensions(change, use_previous_row=True, require_status_from_primary_row=True)
+
+    assert result is None
+
+
+def test_build_dimensions_returns_none_when_required_fields_are_missing():
+    change = _build_change(current_row_data={"key_type": "normal"})
+
+    assert dao._build_dimensions(change, use_previous_row=False) is None
+
+
+def test_build_dimensions_uses_zero_uuid_when_job_id_is_missing(mocker):
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 7, tzinfo=UTC),
+    )
+    change = _build_change(
+        current_row_data={
+            "service_id": "550e8400-e29b-41d4-a716-446655440000",
+            "template_id": "550e8400-e29b-41d4-a716-446655440001",
+            "notification_type": "email",
+            "key_type": "normal",
+            "notification_status": "delivered",
+            "created_at": "2026-08-07T00:00:00Z",
+        }
+    )
+
+    result = dao._build_dimensions(change, use_previous_row=False)
+
+    assert result is not None
+    assert result.job_id == dao.NO_JOB_ID
+
+
+def test_build_counter_from_changes_counts_inserts_and_status_transitions(mocker):
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 6, tzinfo=UTC),
+    )
+    base = {
+        "service_id": "550e8400-e29b-41d4-a716-446655440000",
+        "template_id": "550e8400-e29b-41d4-a716-446655440001",
+        "job_id": "550e8400-e29b-41d4-a716-446655440002",
+        "notification_type": "sms",
+        "key_type": "normal",
+        "created_at": "2026-08-06T10:00:00Z",
+    }
+    changes = [
+        _build_change(current_row_data={**base, "notification_status": "created"}, lsn="0/01"),
+        _build_change(
+            change_type="update",
+            current_row_data={**base, "notification_status": "delivered"},
+            previous_row_data={**base, "notification_status": "created"},
+            lsn="0/02",
+        ),
+        _build_change(table="other", current_row_data={**base, "notification_status": "created"}, lsn="0/03"),
+        _build_change(change_type="delete", current_row_data={**base, "notification_status": "created"}, lsn="0/04"),
+    ]
+
+    counter, processed_changes, ignored_changes = dao._build_counter_from_changes(changes)
+
+    created_dimensions = dao._build_dimensions(changes[0], use_previous_row=False)
+    delivered_dimensions = dao._build_dimensions(changes[1], use_previous_row=False)
+    assert counter[created_dimensions] == 0
+    assert counter[delivered_dimensions] == 1
+    assert processed_changes == 2
+    assert ignored_changes == 2
+
+
+def test_build_counter_does_not_subtract_new_status_when_previous_status_is_missing(mocker):
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 6, tzinfo=UTC),
+    )
+    base = {
+        "service_id": "550e8400-e29b-41d4-a716-446655440000",
+        "template_id": "550e8400-e29b-41d4-a716-446655440001",
+        "job_id": "550e8400-e29b-41d4-a716-446655440002",
+        "notification_type": "sms",
+        "key_type": "normal",
+        "created_at": "2026-08-06T10:00:00Z",
+    }
+    change = _build_change(
+        change_type="update",
+        current_row_data={**base, "notification_status": "delivered"},
+        previous_row_data=base,
+    )
+
+    counter, processed_changes, ignored_changes = dao._build_counter_from_changes([change])
+
+    delivered_dimensions = dao._build_dimensions(change, use_previous_row=False)
+    assert counter[delivered_dimensions] == 1
+    assert processed_changes == 1
+    assert ignored_changes == 0
