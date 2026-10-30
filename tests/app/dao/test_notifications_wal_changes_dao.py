@@ -1,7 +1,10 @@
 import pytest
 from flask import Flask
 
-from app.dao.notifications_wal_changes_dao import dao_process_notifications_replication_slot_changes
+from app.dao.notifications_wal_changes_dao import (
+    _get_replication_changes,
+    dao_process_notifications_replication_slot_changes,
+)
 
 
 def test_acquires_and_releases_advisory_lock(mocker):
@@ -66,3 +69,72 @@ def test_when_unlock_fails_logs(mocker, caplog):
         dao_process_notifications_replication_slot_changes()
 
     assert "Failed to release advisory lock" in caplog.messages
+
+
+def test_get_replication_changes_parses_rows_and_skips_empty_payloads(mocker):
+    mappings_rows = [
+        {"lsn": "0/AA", "data": '{"action": "I", "schema": "public", "table": "notifications"}'},
+        {"lsn": "0/BB", "data": '{"action": "U", "schema": "public", "table": "notifications"}'},
+        {"lsn": "0/CC", "data": None},
+    ]
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = mappings_rows
+    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    result, last_lsn = _get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+
+    assert result == [
+        {
+            "table": "notifications",
+            "type": "insert",
+            "current_row_data": {},
+            "previous_row_data": {},
+            "nextlsn": "0/AA",
+            "lsn": "0/AA",
+        },
+        {
+            "table": "notifications",
+            "type": "update",
+            "current_row_data": {},
+            "previous_row_data": {},
+            "nextlsn": "0/BB",
+            "lsn": "0/BB",
+        },
+    ]
+    assert last_lsn == "0/BB"
+    mock_execute.assert_called_once()
+
+
+def test_get_replication_changes_preserves_sql_lsn(mocker):
+    mappings_rows = [{"lsn": "0/AB", "data": '{"action": "I", "schema": "public", "table": "notifications"}'}]
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = mappings_rows
+    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    result, last_lsn = _get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+
+    assert result[0]["lsn"] == "0/AB"
+    assert last_lsn == "0/AB"
+
+
+def test_get_replication_changes_accepts_iterable_mappings(mocker):
+    mappings_rows = [{"lsn": "0/AB", "data": '{"action": "I", "schema": "public", "table": "other"}'}]
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = iter(mappings_rows)
+    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    result, last_lsn = _get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+
+    assert result == []
+    assert last_lsn == "0/AB"
+
+
+def test_get_replication_changes_uses_format_version_2(mocker):
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = []
+    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    _get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+
+    mock_execute.assert_called_once()
+    assert mock_execute.call_args.args[1]["format_version"] == "2"
