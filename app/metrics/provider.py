@@ -147,6 +147,7 @@ def record_sms_legacy_not_delivered_within(
         "time_window.evaluation": evaluation_window,
         "time_window.delivery": delivery_window,
     }
+    global _sms_legacy_not_delivered_within_next_observations
     _sms_legacy_not_delivered_within_next_observations = (Observation(ratio, attributes),)
 
 
@@ -164,6 +165,9 @@ def record_sms_banded_not_delivered_within(
         "time_window.delivery": delivered_within,
         "time_window.delay": delivered_within,
     }
+    global _sms_banded_not_delivered_within_next_observations
+    global _sms_banded_not_delivered_within_absolute_next_observations
+    global _sms_banded_not_delivered_within_total_next_observations
     _sms_banded_not_delivered_within_next_observations = (Observation(ratio, attributes),)
     _sms_banded_not_delivered_within_absolute_next_observations = (Observation(slow_notifications, attributes),)
     _sms_banded_not_delivered_within_total_next_observations = (Observation(total_notifications, attributes),)
@@ -176,6 +180,7 @@ def record_sms_banded_not_delivered_within_weighted(
     attributes: dict[str, AttributeValue] = {
         "provider.name": provider_name,
     }
+    global _sms_banded_not_delivered_within_weighted_next_observations
     _sms_banded_not_delivered_within_weighted_next_observations = (Observation(weighted_ratio, attributes),)
 
 
@@ -186,6 +191,7 @@ def record_priority(
     attributes: dict[str, AttributeValue] = {
         "provider.name": provider_name,
     }
+    global _priority_next_observations
     _priority_next_observations = (Observation(priority, attributes),)
 
 
@@ -196,6 +202,7 @@ def record_updated_at(
     attributes: dict[str, AttributeValue] = {
         "provider.name": provider_name,
     }
+    global _updated_at_next_observations
     _updated_at_next_observations = (Observation(updated_at.timestamp(), attributes),)
 
 
@@ -211,4 +218,5 @@ def record_info(
         "provider.supports_international": supports_international,
         "notification.type": notification_type,
     }
+    global _info_next_observations
     _info_next_observations = (Observation(1, attributes),)
