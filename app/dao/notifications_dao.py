@@ -47,6 +47,7 @@ from app.constants import (
 )
 from app.dao.dao_utils import autocommit
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
+from app.metrics.notification import increment_notifications_created
 from app.models import (
     FactNotificationStatus,
     KeyTypes,
@@ -146,6 +147,12 @@ def dao_create_notification(notification):
         notification.status = NOTIFICATION_CREATED
 
     db.session.add(notification)
+
+    increment_notifications_created(
+        key_type=notification.key_type,
+        notification_type=notification.notification_type,
+        service_id=notification.service_id,
+    )
 
 
 def _decide_permanent_temporary_failure(status, notification, detailed_status_code=None):
