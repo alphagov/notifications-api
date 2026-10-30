@@ -1,14 +1,13 @@
 import datetime
 import functools
 from collections.abc import Callable, Iterable, MutableMapping
+from os import getpid
 from time import monotonic
 from typing import Any
 
-import flask
 from notifications_utils.semconv import HTTP_DURATION_HISTOGRAM_BUCKETS, set_error_type
 from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from opentelemetry.util.types import AttributeValue
-
 
 _strong_refs = []
 def _oneshot_gauge_next_observation_consumer(
@@ -18,7 +17,7 @@ def _oneshot_gauge_next_observation_consumer(
         next_observations_name = base_name + "_next_observations"
         observations: tuple[Observation, ...] = container[next_observations_name]
         container[next_observations_name] = ()
-        print("observation callback running")
+        print(f"observation callback running: {getpid()=}, {base_name=}, {len(observations)=}")
         return observations
 
     _strong_refs.append(_consumer)
