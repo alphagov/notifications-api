@@ -1,6 +1,9 @@
 # total=False to make all keys optional by default, except those marked as Required
 import struct
 from typing import Required, TypedDict
+from flask import current_app
+from sqlalchemy import text  # type: ignore[reportMissingImports]
+from app import db
 
 REPLICATION_SLOT_NAME = "notify_wal2json_slot"
 REPLICATION_SLOT_UPTO_NCHANGES = 10_000
@@ -26,4 +29,35 @@ def dao_process_notifications_replication_slot_changes(
     upto_nchanges: int = REPLICATION_SLOT_UPTO_NCHANGES,
     advisory_lock_id: int = REPLICATION_ADVISORY_LOCK_ID,
 ) -> ReplicationSlotChangesResult:
-    pass
+    lock_acquired = False
+
+    try:
+        lock_acquired = _try_advisory_lock(advisory_lock_id)
+
+        if not lock_acquired:
+            return {
+                "lock_acquired": lock_acquired,
+                "slot_name": slot_name,
+                "upto_nchanges": upto_nchanges,
+            }
+
+    except Exception:
+        current_app.logger.exception("Failed to process replication slot changes")
+        raise
+
+    finally:
+        if lock_acquired:
+            try:
+                _advisory_unlock(advisory_lock_id)
+            except Exception:
+                current_app.logger.exception("Failed to release advisory lock")
+                raise
+
+
+def _try_advisory_lock(lock_id: int) -> bool:
+    sql = text("SELECT pg_try_advisory_lock(:lock_id)")
+    return bool(db.session.execute(sql, {"lock_id": lock_id}).scalar())
+
+
+def _advisory_unlock(lock_id: int) -> None:
+    db.session.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": lock_id})
