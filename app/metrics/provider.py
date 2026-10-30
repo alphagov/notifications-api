@@ -18,9 +18,7 @@ def _oneshot_gauge_next_observation_consumer(
         next_observations_name = base_name + "_next_observations"
         observations: tuple[Observation, ...] = container[next_observations_name]
         container[next_observations_name] = ()
-        flask.current_app.logger.info(
-            "Observing %s observations: %s", len(observations), ",".join(str(obs.value) for obs in observations)
-        )
+        print("observation callback running")
         return observations
 
     _strong_refs.append(_consumer)
