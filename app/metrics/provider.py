@@ -1,7 +1,6 @@
 import datetime
 import functools
 from collections.abc import Callable, Iterable, MutableMapping
-from os import getpid
 from time import monotonic
 from typing import Any
 
@@ -10,6 +9,8 @@ from opentelemetry.metrics import CallbackOptions, Observation, get_meter
 from opentelemetry.util.types import AttributeValue
 
 _strong_refs = []
+
+
 def _oneshot_gauge_next_observation_consumer(
     container: MutableMapping[str, Any], base_name: str
 ) -> Callable[[CallbackOptions], Iterable[Observation]]:
@@ -17,7 +18,6 @@ def _oneshot_gauge_next_observation_consumer(
         next_observations_name = base_name + "_next_observations"
         observations: tuple[Observation, ...] = container[next_observations_name]
         container[next_observations_name] = ()
-        print(f"observation callback running: {getpid()=}, {base_name=}, {len(observations)=}")
         return observations
 
     _strong_refs.append(_consumer)
@@ -44,7 +44,7 @@ _sms_legacy_not_delivered_within = _meter.create_observable_gauge(
     "however this is the measure currently used by the SMS provider balancer for better or "
     "worse.",
 )
-_sms_legacy_not_delivered_within_next_observations: tuple[Observation, ...] = ()
+_sms_legacy_not_delivered_within_next_observations_deque: deque[Observation] = deque()
 
 _sms_banded_not_delivered_within = _meter.create_observable_gauge(
     "provider.sms.banded.not_delivered_within",
@@ -54,7 +54,7 @@ _sms_banded_not_delivered_within = _meter.create_observable_gauge(
     "seconds (ending time_window.delay seconds before the time of measurement) which took more "
     "than time_window.delivery seconds to be delivered and for us to receive the receipt.",
 )
-_sms_banded_not_delivered_within_next_observations: tuple[Observation, ...] = ()
+_sms_banded_not_delivered_within_next_observations_deque: deque[Observation] = deque()
 
 _sms_banded_not_delivered_within_absolute = _meter.create_observable_gauge(
     "provider.sms.banded.not_delivered_within_absolute",
@@ -64,7 +64,7 @@ _sms_banded_not_delivered_within_absolute = _meter.create_observable_gauge(
     "seconds (ending time_window.delay seconds before the time of measurement) which took more "
     "than time_window.delivery seconds to be delivered and for us to receive the receipt.",
 )
-_sms_banded_not_delivered_within_absolute_next_observations: tuple[Observation, ...] = ()
+_sms_banded_not_delivered_within_absolute_next_observations_deque: deque[Observation] = deque()
 
 _sms_banded_not_delivered_within_total = _meter.create_observable_gauge(
     "provider.sms.banded.not_delivered_within_total",
@@ -73,7 +73,7 @@ _sms_banded_not_delivered_within_total = _meter.create_observable_gauge(
     description="Number of SMS messages sent in a time window of length time_window.evaluation "
     "seconds (ending time_window.delay seconds before the time of measurement).",
 )
-_sms_banded_not_delivered_within_total_next_observations: tuple[Observation, ...] = ()
+_sms_banded_not_delivered_within_total_next_observations_deque: deque[Observation] = deque()
 
 _sms_banded_not_delivered_within_weighted = _meter.create_observable_gauge(
     "provider.sms.banded.not_delivered_within_weighted",
@@ -83,7 +83,7 @@ _sms_banded_not_delivered_within_weighted = _meter.create_observable_gauge(
     'from SMS_SLOW_DELIVERY_BANDS. A provider is considered "slow" if this value exceeds '
     "SMS_SLOW_DELIVERY_THRESHOLD.",
 )
-_sms_banded_not_delivered_within_weighted_next_observations: tuple[Observation, ...] = ()
+_sms_banded_not_delivered_within_weighted_next_observations_deque: deque[Observation] = deque()
 
 _priority = _meter.create_observable_gauge(
     "provider.priority",
@@ -91,7 +91,7 @@ _priority = _meter.create_observable_gauge(
     unit="1",
     description="Observed priority value of a Provider",
 )
-_priority_next_observations: tuple[Observation, ...] = ()
+_priority_next_observations_deque: deque[Observation] = deque()
 
 _updated_at = _meter.create_observable_gauge(
     "provider.updated_at",
@@ -99,7 +99,7 @@ _updated_at = _meter.create_observable_gauge(
     unit="s",
     description="Unix epoch timestamp of Provider's last update",
 )
-_updated_at_next_observations: tuple[Observation, ...] = ()
+_updated_at_next_observations_deque: deque[Observation] = deque()
 
 _info = _meter.create_observable_gauge(
     "provider.info",
@@ -107,7 +107,7 @@ _info = _meter.create_observable_gauge(
     unit="1",
     description="Observed metadata values of a Provider",
 )
-_info_next_observations: tuple[Observation, ...] = ()
+_info_next_observations_deque: deque[Observation] = deque()
 
 
 def record_request_duration[**P, T](
@@ -165,9 +165,6 @@ def record_sms_banded_not_delivered_within(
         "time_window.delivery": delivered_within,
         "time_window.delay": delivered_within,
     }
-    global _sms_banded_not_delivered_within_next_observations
-    global _sms_banded_not_delivered_within_absolute_next_observations
-    global _sms_banded_not_delivered_within_total_next_observations
     _sms_banded_not_delivered_within_next_observations = (Observation(ratio, attributes),)
     _sms_banded_not_delivered_within_absolute_next_observations = (Observation(slow_notifications, attributes),)
     _sms_banded_not_delivered_within_total_next_observations = (Observation(total_notifications, attributes),)
@@ -180,7 +177,6 @@ def record_sms_banded_not_delivered_within_weighted(
     attributes: dict[str, AttributeValue] = {
         "provider.name": provider_name,
     }
-    global _sms_banded_not_delivered_within_weighted_next_observations
     _sms_banded_not_delivered_within_weighted_next_observations = (Observation(weighted_ratio, attributes),)
 
 
@@ -191,7 +187,6 @@ def record_priority(
     attributes: dict[str, AttributeValue] = {
         "provider.name": provider_name,
     }
-    global _priority_next_observations
     _priority_next_observations = (Observation(priority, attributes),)
 
 
@@ -202,7 +197,6 @@ def record_updated_at(
     attributes: dict[str, AttributeValue] = {
         "provider.name": provider_name,
     }
-    global _updated_at_next_observations
     _updated_at_next_observations = (Observation(updated_at.timestamp(), attributes),)
 
 
@@ -218,5 +212,4 @@ def record_info(
         "provider.supports_international": supports_international,
         "notification.type": notification_type,
     }
-    global _info_next_observations
     _info_next_observations = (Observation(1, attributes),)
