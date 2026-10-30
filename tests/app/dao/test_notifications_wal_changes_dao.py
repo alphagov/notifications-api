@@ -31,7 +31,7 @@ def test_when_lock_acquisition_fails_returns_without_processing(mocker):
     )
 
     result = dao_process_notifications_replication_slot_changes()
-    assert result == {"lock_acquired": False, "slot_name": "notify_wal2json_slot", "upto_nchanges": 10000}
+    assert result == {"lock_acquired": False, "slot_name": "notify_wal2json_slot"}
 
 
 def test_when_lock_acquisition_fails(mocker, caplog):
@@ -165,4 +165,6 @@ def test_does_not_raise_when_no_changes_returned(mocker):
         return_value=([], None),
     )
 
-    dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+    result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+
+    assert result == {"lock_acquired": True, "slot_name": "notify_wal2json_slot", "changes_count": 0}

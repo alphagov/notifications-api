@@ -50,11 +50,7 @@ def dao_process_notifications_replication_slot_changes(
         lock_acquired = _try_advisory_lock(advisory_lock_id)
 
         if not lock_acquired:
-            return {
-                "lock_acquired": lock_acquired,
-                "slot_name": slot_name,
-                "upto_nchanges": upto_nchanges,
-            }
+            return {"lock_acquired": lock_acquired, "slot_name": slot_name}
 
         # lock acquired, proceed to fetch and process replication slot changes.
         # The batch-level SQL LSN is authoritative when deciding where to advance the replication slot,
@@ -63,9 +59,13 @@ def dao_process_notifications_replication_slot_changes(
             slot_name=slot_name, upto_nchanges=upto_nchanges, table_name=REPLICATION_SLOT_TABLE_NAME
         )
 
+        fetched_changes = len(changes)
+        if not changes or fetched_changes == 0:
+            return {"lock_acquired": lock_acquired, "slot_name": slot_name, "changes_count": fetched_changes}
+
         # This should never happen in normal circumstances as we already have a 0 changes gate above
         # If we have changes but no last SQL LSN, something went wrong and we should raise an error.
-        if not batch_last_lsn and changes:
+        if not batch_last_lsn:
             raise RuntimeError(
                 f"No last_lsn found after processing replication slot changes, \
                 replication slot {slot_name} will not be advanced. This should not happen under normal circumstances."
