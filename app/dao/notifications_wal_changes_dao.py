@@ -63,6 +63,14 @@ def dao_process_notifications_replication_slot_changes(
             slot_name=slot_name, upto_nchanges=upto_nchanges, table_name=REPLICATION_SLOT_TABLE_NAME
         )
 
+        # This should never happen in normal circumstances as we already have a 0 changes gate above
+        # If we have changes but no last SQL LSN, something went wrong and we should raise an error.
+        if not batch_last_lsn and changes:
+            raise RuntimeError(
+                f"No last_lsn found after processing replication slot changes, \
+                replication slot {slot_name} will not be advanced. This should not happen under normal circumstances."
+            )
+
     except Exception:
         current_app.logger.exception("Failed to process replication slot changes")
         raise
