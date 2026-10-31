@@ -535,3 +535,20 @@ def test_returns_summary_of_processed_changes(mocker):
         "change_count_buckets": 2,
         "last_lsn": "0/FF",
     }
+
+
+def test_logs_processing_timestamps(mocker, caplog):
+    start_time = datetime(2025, 1, 1, 12, 0, 0)
+    end_time = datetime(2025, 1, 1, 12, 0, 1)
+    mocker.patch("app.dao.notifications_wal_changes_dao.datetime").now.side_effect = [start_time, end_time]
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=False)
+    caplog.set_level("INFO")
+
+    with Flask(__name__).app_context():
+        dao_process_notifications_replication_slot_changes()
+
+    record = next(record for record in caplog.records if "processed in" in record.message)
+
+    assert record.start_time == start_time.isoformat()
+    assert record.end_time == end_time.isoformat()
+    assert record.duration_seconds == (end_time - start_time).total_seconds()
