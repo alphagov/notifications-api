@@ -38,7 +38,7 @@ class ReplicationSlotChangesResult(TypedDict, total=False):
     changes_count: int
     processed_changes: int
     ignored_changes: int
-    service_stats_change_count_buckets: int
+    change_count_buckets: int
     last_lsn: str | None
 
 
@@ -85,7 +85,12 @@ def dao_process_notifications_replication_slot_changes(
 
         fetched_changes = len(changes)
         if not changes or fetched_changes == 0:
-            return {"lock_acquired": lock_acquired, "slot_name": slot_name, "changes_count": fetched_changes}
+            return {
+                "lock_acquired": lock_acquired,
+                "slot_name": slot_name,
+                "changes_count": fetched_changes,
+                "change_count_buckets": 0,
+            }
 
         # This should never happen in normal circumstances as we already have a 0 changes gate above
         # If we have changes but no last SQL LSN, something went wrong and we should raise an error.
@@ -111,6 +116,35 @@ def dao_process_notifications_replication_slot_changes(
         )
         _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
 
+        # Determine the number of distinct change count buckets based on the counter.
+        change_count_buckets = len(counter)
+
+        # Log the result of the replication slot processing for monitoring and debugging purposes.
+        current_app.logger.info(
+            "%s replication slot changes processed: %s processed, %s ignored, %s change count buckets, last_lsn=%s",
+            fetched_changes,
+            processed_changes,
+            ignored_changes,
+            change_count_buckets,
+            batch_last_lsn,
+            extra={
+                "changes_count": fetched_changes,
+                "processed_changes": processed_changes,
+                "ignored_changes": ignored_changes,
+                "change_count_buckets": change_count_buckets,
+                "last_lsn": batch_last_lsn,
+            },
+        )
+
+        # Return a summary of the replication slot processing results
+        return {
+            "lock_acquired": lock_acquired,
+            "changes_count": fetched_changes,
+            "processed_changes": processed_changes,
+            "ignored_changes": ignored_changes,
+            "change_count_buckets": change_count_buckets,
+            "last_lsn": batch_last_lsn,
+        }
     except Exception:
         # Ensure a failed statement does not poison the session for cleanup queries.
         db.session.rollback()

@@ -188,7 +188,12 @@ def test_does_not_raise_when_no_changes_returned(mocker):
 
     result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
-    assert result == {"lock_acquired": True, "slot_name": "notify_wal2json_slot", "changes_count": 0}
+    assert result == {
+        "lock_acquired": True,
+        "slot_name": "notify_wal2json_slot",
+        "changes_count": 0,
+        "change_count_buckets": 0,
+    }
 
 
 def test_parse_uuid_value():
@@ -503,3 +508,30 @@ def test_rolls_back_session_when_processing_fails(mocker):
         dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
     mock_rollback.assert_called_once_with()
+
+
+def test_returns_summary_of_processed_changes(mocker):
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._get_replication_changes",
+        return_value=([_build_change(lsn="0/01"), _build_change(lsn="0/02")], "0/FF"),
+    )
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._build_counter_from_changes",
+        return_value=({"a": 1, "b": -1}, 1, 1),
+    )
+    mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count")
+    mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+
+    with Flask(__name__).app_context():
+        result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+
+    assert result == {
+        "lock_acquired": True,
+        "changes_count": 2,
+        "processed_changes": 1,
+        "ignored_changes": 1,
+        "change_count_buckets": 2,
+        "last_lsn": "0/FF",
+    }
