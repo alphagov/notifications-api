@@ -371,3 +371,47 @@ def test_build_counter_does_not_subtract_new_status_when_previous_status_is_miss
     assert counter[delivered_dimensions] == 1
     assert processed_changes == 1
     assert ignored_changes == 0
+
+
+def test_upsert_notification_status_live_count_batches_non_zero_changes(mocker):
+    service_id = UUID("550e8400-e29b-41d4-a716-446655440000")
+    template_id = UUID("550e8400-e29b-41d4-a716-446655440001")
+    job_id = UUID("550e8400-e29b-41d4-a716-446655440002")
+    dimensions = (date(2026, 8, 6), service_id, template_id, job_id, "sms", "normal", "delivered")
+    failed_dimensions = (date(2026, 8, 6), service_id, template_id, job_id, "sms", "normal", "failed")
+    mock_upsert = mocker.patch("app.dao.notifications_wal_changes_dao.upsert_notification_status_live_counts")
+
+    dao._upsert_notification_status_live_count({dimensions: 2, failed_dimensions: -1, (*dimensions[:-1], "created"): 0})
+
+    mock_upsert.assert_called_once_with(
+        [
+            {
+                "bst_date": date(2026, 8, 6),
+                "service_id": service_id,
+                "template_id": template_id,
+                "job_id": job_id,
+                "notification_type": "sms",
+                "key_type": "normal",
+                "notification_status": "delivered",
+                "notification_count": 2,
+            },
+            {
+                "bst_date": date(2026, 8, 6),
+                "service_id": service_id,
+                "template_id": template_id,
+                "job_id": job_id,
+                "notification_type": "sms",
+                "key_type": "normal",
+                "notification_status": "failed",
+                "notification_count": -1,
+            },
+        ]
+    )
+
+
+def test_does_not_call_upsert_notification_status_live_count_when_no_changes(mocker):
+    mock_upsert = mocker.patch("app.dao.notifications_wal_changes_dao.upsert_notification_status_live_counts")
+
+    dao._upsert_notification_status_live_count({})
+
+    mock_upsert.assert_not_called()
