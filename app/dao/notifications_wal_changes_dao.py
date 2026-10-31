@@ -112,6 +112,8 @@ def dao_process_notifications_replication_slot_changes(
         _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
 
     except Exception:
+        # Ensure a failed statement does not poison the session for cleanup queries.
+        db.session.rollback()
         current_app.logger.exception("Failed to process replication slot changes")
         raise
 

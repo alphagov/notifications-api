@@ -162,7 +162,7 @@ def test_get_replication_changes_uses_format_version_2(mocker):
 def test_get_replication_changes_raises_if_no_lsn_returned(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
-    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.rollback")
+    mock_rollback = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.rollback")
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._get_replication_changes",
         return_value=([mocker.Mock()], None),
@@ -173,6 +173,8 @@ def test_get_replication_changes_raises_if_no_lsn_returned(mocker):
         match=r"No last_lsn found .* replication slot notify_wal2json_slot will not be advanced",
     ):
         dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+
+    mock_rollback.assert_called_once_with()
 
 
 def test_does_not_raise_when_no_changes_returned(mocker):
@@ -455,6 +457,7 @@ def test_advances_replication_slot_to_batch_last_lsn_after_upserting_counts(mock
 def test_does_not_advance_replication_slot_when_upsert_fails(mocker, caplog):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mock_unlock = mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mock_rollback = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.rollback")
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._get_replication_changes",
         return_value=([_build_change(lsn="0/01")], "0/01"),
@@ -471,6 +474,7 @@ def test_does_not_advance_replication_slot_when_upsert_fails(mocker, caplog):
 
     mock_advance.assert_not_called()
     mock_unlock.assert_called_once_with(77)
+    mock_rollback.assert_called_once_with()
     assert "Failed to process replication slot changes" in caplog.messages
 
 
@@ -484,3 +488,18 @@ def test_does_not_advance_replication_slot_when_no_changes(mocker):
         dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
     mock_advance.assert_not_called()
+
+
+def test_rolls_back_session_when_processing_fails(mocker):
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._get_replication_changes",
+        side_effect=RuntimeError("query failed"),
+    )
+    mock_rollback = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.rollback")
+
+    with Flask(__name__).app_context(), pytest.raises(RuntimeError, match="query failed"):
+        dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+
+    mock_rollback.assert_called_once_with()
