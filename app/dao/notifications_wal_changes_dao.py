@@ -11,6 +11,10 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import text  # type: ignore[reportMissingImports]
 
 from app import db
+from app.dao.fact_notification_status_live_dao import (
+    NotificationStatusLiveDimensions,
+    upsert_notification_status_live_counts,
+)
 
 REPLICATION_SLOT_NAME = "notify_wal2json_slot"
 REPLICATION_SLOT_UPTO_NCHANGES = 10_000
@@ -94,6 +98,9 @@ def dao_process_notifications_replication_slot_changes(
         # Build counter up
         counter, processed_changes, ignored_changes = _build_counter_from_changes(changes)
 
+        # Process the fetched replication slot changes to update service statistics.
+        _upsert_notification_status_live_count(counter)
+
     except Exception:
         current_app.logger.exception("Failed to process replication slot changes")
         raise
@@ -172,6 +179,32 @@ def _get_replication_changes(
         parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name, default_lsn=lsn))
 
     return parsed_rows, last_sql_lsn
+
+
+def _upsert_notification_status_live_count(counter) -> None:
+    count_changes: list[NotificationStatusLiveDimensions] = []
+
+    for dimensions_key, change_count in counter.items():
+        if change_count == 0:
+            continue
+
+        bst_date, service_id, template_id, job_id, notification_type, key_type, notification_status = dimensions_key
+
+        count_changes.append(
+            {
+                "bst_date": bst_date,
+                "service_id": service_id,
+                "template_id": template_id,
+                "job_id": job_id,
+                "notification_type": notification_type,
+                "key_type": key_type,
+                "notification_status": notification_status,
+                "notification_count": change_count,
+            }
+        )
+
+    if count_changes:
+        upsert_notification_status_live_counts(count_changes)
 
 
 ## Helper functions
