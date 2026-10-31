@@ -101,6 +101,16 @@ def dao_process_notifications_replication_slot_changes(
         # Process the fetched replication slot changes to update service statistics.
         _upsert_notification_status_live_count(counter)
 
+        # Advance the replication slot to the last processed SQL LSN
+        # to avoid reprocessing the same changes in future runs.
+        current_app.logger.info(
+            "Advancing replication slot %s to last_lsn=%s",
+            slot_name,
+            batch_last_lsn,
+            extra={"slot_name": slot_name, "last_lsn": batch_last_lsn},
+        )
+        _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
+
     except Exception:
         current_app.logger.exception("Failed to process replication slot changes")
         raise
@@ -205,6 +215,13 @@ def _upsert_notification_status_live_count(counter) -> None:
 
     if count_changes:
         upsert_notification_status_live_counts(count_changes)
+
+
+def _advance_replication_slot(lsn: str, *, slot_name: str) -> None:
+    db.session.execute(
+        text("SELECT pg_replication_slot_advance(:slot_name, :lsn)"),
+        {"slot_name": slot_name, "lsn": lsn},
+    )
 
 
 ## Helper functions
