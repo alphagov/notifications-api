@@ -68,6 +68,7 @@ def dao_process_notifications_replication_slot_changes(
     upto_nchanges: int = REPLICATION_SLOT_UPTO_NCHANGES,
     advisory_lock_id: int = REPLICATION_ADVISORY_LOCK_ID,
 ) -> ReplicationSlotChangesResult:
+    start_time = datetime.now()
     lock_acquired = False
 
     try:
@@ -158,6 +159,18 @@ def dao_process_notifications_replication_slot_changes(
             except Exception:
                 current_app.logger.exception("Failed to release advisory lock")
                 raise
+
+        # Log the total time taken to process the replication slot changes for monitoring and debugging purposes.
+        end_time = datetime.now()
+        current_app.logger.info(
+            "Replication slot changes processed in %s seconds.",
+            (end_time - start_time).total_seconds(),
+            extra={
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration_seconds": (end_time - start_time).total_seconds(),
+            },
+        )
 
 
 def _try_advisory_lock(lock_id: int) -> bool:
