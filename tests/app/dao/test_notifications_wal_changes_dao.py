@@ -415,3 +415,72 @@ def test_does_not_call_upsert_notification_status_live_count_when_no_changes(moc
     dao._upsert_notification_status_live_count({})
 
     mock_upsert.assert_not_called()
+
+
+def test_advance_replication_slot_executes_slot_advance_sql(mocker):
+    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute")
+
+    dao._advance_replication_slot("0/AB", slot_name="slot")
+
+    mock_execute.assert_called_once()
+    assert str(mock_execute.call_args.args[0]) == "SELECT pg_replication_slot_advance(:slot_name, :lsn)"
+    assert mock_execute.call_args.args[1] == {"slot_name": "slot", "lsn": "0/AB"}
+
+
+def test_advances_replication_slot_to_batch_last_lsn_after_upserting_counts(mocker):
+    manager = mocker.Mock()
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._get_replication_changes",
+        return_value=([_build_change(lsn="0/01"), _build_change(lsn="0/02")], "0/FF"),
+    )
+    counter = {"dimensions": 1}
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._build_counter_from_changes",
+        return_value=(counter, 2, 0),
+    )
+    manager.attach_mock(
+        mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count"), "upsert"
+    )
+    manager.attach_mock(mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot"), "advance")
+
+    with Flask(__name__).app_context():
+        dao_process_notifications_replication_slot_changes(slot_name="slot", advisory_lock_id=77)
+
+    # The slot must only advance once the counts have been written
+    assert manager.mock_calls == [mocker.call.upsert(counter), mocker.call.advance("0/FF", slot_name="slot")]
+
+
+def test_does_not_advance_replication_slot_when_upsert_fails(mocker, caplog):
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mock_unlock = mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._get_replication_changes",
+        return_value=([_build_change(lsn="0/01")], "0/01"),
+    )
+    mocker.patch("app.dao.notifications_wal_changes_dao._build_counter_from_changes", return_value=({}, 1, 0))
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count",
+        side_effect=RuntimeError("upsert failed"),
+    )
+    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+
+    with Flask(__name__).app_context(), pytest.raises(RuntimeError, match="upsert failed"):
+        dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+
+    mock_advance.assert_not_called()
+    mock_unlock.assert_called_once_with(77)
+    assert "Failed to process replication slot changes" in caplog.messages
+
+
+def test_does_not_advance_replication_slot_when_no_changes(mocker):
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=([], "0/01"))
+    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+
+    with Flask(__name__).app_context():
+        dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+
+    mock_advance.assert_not_called()
