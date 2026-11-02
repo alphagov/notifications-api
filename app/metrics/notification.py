@@ -106,6 +106,26 @@ _undelivered_notification_age = _meter.create_gauge(
     ),
 )
 
+_notifications_created = _meter.create_counter(
+    "notifications",
+    unit="{notification}",
+    description=(
+        "Total number of notifications created across all notification types, labelled with key.type "
+        "and notification.type."
+    ),
+)
+
+
+def increment_notifications_created(key_type: str, notification_type: str, service_id: str) -> None:
+    """
+    Increments counter metric `notifications` by 1 for each new notification,
+      labelled with the `key_type`, `notification_type`, `service_id`.
+    """
+
+    _notifications_created.add(
+        1, {"key.type": key_type, "notification.type": notification_type, "service.id": service_id}
+    )
+
 
 def record_international_sms(amount: int, notification_status: str, sms_country_code: str) -> None:
     """
