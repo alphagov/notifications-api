@@ -1053,6 +1053,40 @@ def service_join_request_approved_template(notify_service):
 
 
 @pytest.fixture
+def managing_your_service_template(notify_service):
+    content = """
+        Hi ((name))
+
+        This email contains important information about GOV.UK Notify:
+
+        * keep it somewhere you can find it
+        * do not share it outside your team
+
+        # Managing your GOV.UK Notify service
+
+        We sent you this email because you have the ‘manage settings, team and usage’ permission
+        for the following service:
+
+        ^((service name))
+
+        ---
+
+        Kind regards
+
+        GOV.​UK Notify
+        https://www.gov.uk/notify
+    """
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="MANAGING_YOUR_SERVICE_TEMPLATE_ID",
+        content=content,
+        subject="((approver_name)) has approved your request",
+        template_type="email",
+    )
+
+
+@pytest.fixture
 def notify_service(notify_db_session, sample_user):
     service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])
     if not service:

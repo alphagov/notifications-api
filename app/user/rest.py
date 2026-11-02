@@ -58,6 +58,7 @@ from app.schemas import (
     user_update_password_schema_load_json,
     user_update_schema_load_json,
 )
+from app.service.sender import notify_user_if_manage_settings_permission_granted
 from app.user.users_schema import (
     post_send_user_email_code_schema,
     post_send_user_sms_code_schema,
@@ -474,12 +475,14 @@ def set_permissions(user_id, service_id):
     data = request.get_json()
     validate(data, post_set_permissions_schema)
 
-    permissions = [p["permission"] for p in data["permissions"]]
+    original_permissions = user.get_permissions(service_id=service_id)
+
+    new_permissions = [p["permission"] for p in data["permissions"]]
     permission_list = [
         Permission(service_id=service_id, user_id=user_id, permission=p["permission"]) for p in data["permissions"]
     ]
 
-    if not users_permissions_can_be_changed(user, service, new_permissions=permissions):
+    if not users_permissions_can_be_changed(user, service, new_permissions=new_permissions):
         raise InvalidRequest(
             "Cannot change user permissions - service would have too few users with manage_settings",
             400,
@@ -495,6 +498,13 @@ def set_permissions(user_id, service_id):
 
         service_user.folders = folders
         dao_update_service_user(service_user)
+
+    notify_user_if_manage_settings_permission_granted(
+        service=service,
+        user=user,
+        old_permissions=original_permissions,
+        new_permissions=new_permissions,
+    )
 
     return jsonify({}), 204
 
