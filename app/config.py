@@ -540,6 +540,10 @@ class Config:
     if os.getenv("CELERYD_PREFETCH_MULTIPLIER"):
         CELERY["worker_prefetch_multiplier"] = os.getenv("CELERYD_PREFETCH_MULTIPLIER")
 
+    if os.getenv("CELERYD_WORKER_SOFT_SHUTDOWN_TIMEOUT"):
+        CELERY["worker_soft_shutdown_timeout"] = float(os.getenv("CELERYD_WORKER_SOFT_SHUTDOWN_TIMEOUT", ""))
+        CELERY["worker_enable_soft_shutdown_on_idle"] = True
+
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
 
     SIMULATED_EMAIL_ADDRESSES = (
