@@ -57,6 +57,24 @@ If you are running this app manually, you will need to manage Postgres yourself.
 
 When our unit tests are run in Concourse, Postgres is based into the container via the concourse_tests step of docker/Dockerfile.
 
+#### WAL2JSON
+
+If you are using [notifications-local](https://github.com/alphagov/notifications-local), you should not need to add any additional config. If you are using Postgres locally (outside of a container) you will need to update the Postgres config file (/Users/your_name/Library/Application Support/Postgres/var-15/postgresql.conf) to include:
+
+```
+#------------------------------------------------------------------------------
+# CUSTOMIZED OPTIONS
+#------------------------------------------------------------------------------
+
+# Add settings for extensions here
+
+wal_level = logical
+output_plugin_libraries = 'pgoutput, test_decoding, wal2json'
+max_replication_slots = 10
+max_wal_senders = 10
+max_slot_wal_keep_size = 1GB
+
+```
 ### Redis
 
 To switch redis on you'll need to install it locally. On a Mac you can do:
