@@ -16,7 +16,7 @@ from app.constants import (
 )
 from app.dao import templates_dao
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
-from app.models import Notification
+from app.models import Notification, SentFiles
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import (
@@ -682,10 +682,11 @@ def test_post_email_notification_validates_personalisation_send_a_file_values(
     expected_retention,
     expected_filename,
 ):
+    document_id = str(uuid.uuid4())
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
     document_download_upload_document_mock = mocker.patch(
         "app.document_download_client.upload_document",
-        side_effect=lambda service_id, content, is_csv, confirmation_email, **kwargs: f"{content}-link",
+        side_effect=lambda service_id, content, is_csv, confirmation_email, **kwargs: [f"{content}-link", document_id],
     )
 
     service = create_service(
@@ -1494,7 +1495,7 @@ def test_post_notification_with_document_upload(
     mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
 
     def document_download_link(service_id, content, is_csv=None, **kwargs):
-        return f"{content}-link"
+        return [f"{content}-link", str(uuid.uuid4())]
 
     document_download_upload_document_mock = mocker.patch(
         "app.document_download_client.upload_document",
@@ -1519,6 +1520,11 @@ def test_post_notification_with_document_upload(
     confirmation_email = data["email_address"] if expect_email_confirmation else None
 
     if has_template_email_files:
+        sent_files = SentFiles.query.filter(SentFiles.service_id == service.id).all()
+        assert len(sent_files) == 3
+        assert {"test.pdf", "first_link", "second_link"} == {file.placeholder for file in sent_files}
+        assert {resp_json["id"]} == {str(file.notification_id) for file in sent_files}
+        assert {service.id} == {file.service_id for file in sent_files}
         assert document_download_upload_document_mock.call_args_list == [
             call(
                 str(service.id),

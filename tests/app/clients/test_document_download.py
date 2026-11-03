@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 import requests
 import requests_mock
@@ -36,10 +38,16 @@ def test_get_upload_url_for_simulated_email(document_download):
 
 
 def test_upload_document(document_download, mock_onwards_request_headers):
+    document_id = uuid.uuid4()
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
-            json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
+            json={
+                "document": {
+                    "url": "https://document-download/services/service-id/documents/uploaded-url",
+                    "id": str(document_id),
+                }
+            },
             request_headers={
                 "Authorization": "Bearer test-key",
                 "some-onwards": "request-headers",
@@ -49,7 +57,7 @@ def test_upload_document(document_download, mock_onwards_request_headers):
 
         resp = document_download.upload_document("service-id", "abababab")
 
-    assert resp == "https://document-download/services/service-id/documents/uploaded-url"
+    assert resp == ("https://document-download/services/service-id/documents/uploaded-url", str(document_id))
 
 
 @pytest.mark.parametrize("confirmation_email", [None, "dev@test.notify"])
@@ -58,10 +66,16 @@ def test_upload_document_confirm_email(
     mock_onwards_request_headers,
     confirmation_email,
 ):
+    document_id = uuid.uuid4()
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
-            json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
+            json={
+                "document": {
+                    "url": "https://document-download/services/service-id/documents/uploaded-url",
+                    "id": str(document_id),
+                }
+            },
             request_headers={
                 "Authorization": "Bearer test-key",
                 "some-onwards": "request-headers",
@@ -71,7 +85,7 @@ def test_upload_document_confirm_email(
 
         resp = document_download.upload_document("service-id", "abababab", confirmation_email=confirmation_email)
 
-    assert resp == "https://document-download/services/service-id/documents/uploaded-url"
+    assert resp == ("https://document-download/services/service-id/documents/uploaded-url", str(document_id))
 
     request_json = request_mock.request_history[0].json()
     if confirmation_email:
@@ -88,9 +102,15 @@ def test_upload_document_retention_period(
     retention_period,
 ):
     with requests_mock.Mocker() as request_mock:
+        document_id = uuid.uuid4()
         request_mock.post(
             "https://document-download-internal/services/service-id/documents",
-            json={"document": {"url": "https://document-download/services/service-id/documents/uploaded-url"}},
+            json={
+                "document": {
+                    "url": "https://document-download/services/service-id/documents/uploaded-url",
+                    "id": str(document_id),
+                }
+            },
             request_headers={
                 "Authorization": "Bearer test-key",
                 "some-onwards": "request-headers",
@@ -100,7 +120,7 @@ def test_upload_document_retention_period(
 
         resp = document_download.upload_document("service-id", "abababab", retention_period=retention_period)
 
-    assert resp == "https://document-download/services/service-id/documents/uploaded-url"
+    assert resp == ("https://document-download/services/service-id/documents/uploaded-url", str(document_id))
 
     request_json = request_mock.request_history[0].json()
     if retention_period:
