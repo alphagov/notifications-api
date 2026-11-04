@@ -1,8 +1,6 @@
-# This file was automatically copied from notifications-utils@134.1.1
+# This file was automatically copied from notifications-utils@135.1.0
 
 exclude-newer = "7 days"
 
 [pip]
 generate-hashes = true
-
-exclude-newer-package = { certifi = "1d" }

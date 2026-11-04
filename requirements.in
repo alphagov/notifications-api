@@ -23,7 +23,7 @@ pyorc~=0.10
 notifications-python-client~=12.1
 
 # Run `make bump-utils` to update to the latest version
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@134.1.1
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@158d09bdd9a9ea97036ddc7a55a45d0e60f7fa82
 
 sentry-sdk[flask,celery,sqlalchemy]~=1.45
 wheel>=0.46.2  # Can be removed after merge of https://github.com/click-contrib/click-datetime/pull/13
@@ -31,7 +31,6 @@ wheel>=0.46.2  # Can be removed after merge of https://github.com/click-contrib/
 # auth errors from the REST api when trying to decode the JWT token
 pyjwt==2.13.0
 
-opentelemetry-api<1.45.0  # Pinned until we've adapted our weird global gauges to changes from https://github.com/open-telemetry/opentelemetry-python/pull/5637
 opentelemetry-distro[otlp]
 opentelemetry-instrumentation-asyncio
 opentelemetry-instrumentation-dbapi
