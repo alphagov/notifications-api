@@ -18,6 +18,7 @@ from app.constants import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    MAILBOX_TYPE,
     SECONDS_IN_1_MINUTE,
     SMS_TO_UK_LANDLINES,
     SMS_TYPE,
@@ -75,6 +76,7 @@ def get_daily_rate_limit_value(service, key_type, notification_type):
             SMS_TYPE: service.sms_message_limit,
             INTERNATIONAL_SMS_TYPE: service.international_sms_message_limit,
             LETTER_TYPE: service.letter_message_limit,
+            MAILBOX_TYPE: current_app.config["DEFAULT_LIVE_SERVICE_RATE_LIMITS"],
         }
 
     return rate_limits[notification_type]
