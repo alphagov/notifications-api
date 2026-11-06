@@ -10,3 +10,4 @@ worker_class = "notifications_utils.gunicorn.eventlet.OtelAwareEventletWorker"
 worker_connections = int(os.getenv("GUNICORN_WORKER_CONNECTIONS", "8"))
 keepalive = int(os.getenv("GUNICORN_KEEPALIVE", "0"))
 timeout = int(os.getenv("HTTP_SERVE_TIMEOUT_SECONDS", 30))  # though has little effect with eventlet worker_class
+
