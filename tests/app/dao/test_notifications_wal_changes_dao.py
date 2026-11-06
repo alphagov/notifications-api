@@ -102,7 +102,9 @@ def test_get_replication_changes_parses_rows_and_skips_empty_payloads(mocker):
     execute_result.mappings.return_value = mappings_rows
     mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
 
-    result, last_lsn = _get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+    result, last_lsn = _get_replication_changes(
+        slot_name="slot", upto_nchanges=20, table_names=["public.notifications"]
+    )
 
     assert result == [
         {
@@ -130,7 +132,9 @@ def test_get_replication_changes_preserves_sql_lsn(mocker):
     execute_result.mappings.return_value = mappings_rows
     mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
 
-    result, last_lsn = _get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+    result, last_lsn = _get_replication_changes(
+        slot_name="slot", upto_nchanges=20, table_names=["public.notifications"]
+    )
 
     assert result[0]["lsn"] == "0/AB"
     assert last_lsn == "0/AB"
@@ -142,7 +146,9 @@ def test_get_replication_changes_accepts_iterable_mappings(mocker):
     execute_result.mappings.return_value = iter(mappings_rows)
     mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
 
-    result, last_lsn = _get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+    result, last_lsn = _get_replication_changes(
+        slot_name="slot", upto_nchanges=20, table_names=["public.notifications"]
+    )
 
     assert result == []
     assert last_lsn == "0/AB"
@@ -153,10 +159,222 @@ def test_get_replication_changes_uses_format_version_2(mocker):
     execute_result.mappings.return_value = []
     mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
 
-    _get_replication_changes(slot_name="slot", upto_nchanges=20, table_name="public.notifications")
+    _get_replication_changes(slot_name="slot", upto_nchanges=20, table_names=["public.notifications"])
 
     mock_execute.assert_called_once()
     assert mock_execute.call_args.args[1]["format_version"] == "2"
+
+
+def test_get_replication_changes_with_multiple_tables(mocker):
+    mappings_rows = [
+        {"lsn": "0/AA", "data": '{"action": "I", "schema": "public", "table": "notifications"}'},
+        {"lsn": "0/BB", "data": '{"action": "U", "schema": "public", "table": "notification_history"}'},
+    ]
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = mappings_rows
+    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    result, last_lsn = _get_replication_changes(
+        slot_name="slot",
+        upto_nchanges=20,
+        table_names=["public.notifications", "public.notification_history"],
+    )
+
+    assert len(result) == 2
+    assert result[0]["table"] == "notifications"
+    assert result[1]["table"] == "notification_history"
+    assert last_lsn == "0/BB"
+
+
+def test_get_replication_changes_filters_tables_not_in_list(mocker):
+    mappings_rows = [
+        {"lsn": "0/AA", "data": '{"action": "I", "schema": "public", "table": "notifications"}'},
+        {"lsn": "0/BB", "data": '{"action": "U", "schema": "public", "table": "notification_history"}'},
+    ]
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = mappings_rows
+    mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    # Only subscribe to notifications table
+    result, last_lsn = _get_replication_changes(
+        slot_name="slot",
+        upto_nchanges=20,
+        table_names=["public.notifications"],
+    )
+
+    # notification_history change should be filtered out
+    assert len(result) == 1
+    assert result[0]["table"] == "notifications"
+    assert last_lsn == "0/BB"  # LSN still advances
+
+
+def test_get_replication_changes_uses_default_table_names_constant(mocker):
+    from app.dao.notifications_wal_changes_dao import REPLICATION_SLOT_TABLE_NAMES
+
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = []
+    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    # Call without table_names parameter to use the default
+    _get_replication_changes(slot_name="slot", upto_nchanges=20)
+
+    # Verify that both default tables are included in the parameters
+    call_args = mock_execute.call_args.args[1]
+    expected_table_names = ", ".join(REPLICATION_SLOT_TABLE_NAMES)
+    assert call_args["table_names"] == expected_table_names
+
+
+def test_get_replication_changes_sql_query_with_single_table(mocker):
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = []
+    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    _get_replication_changes(slot_name="slot", upto_nchanges=20, table_names=["public.notifications"])
+
+    sql_stmt = str(mock_execute.call_args.args[0])
+    expected_sql = """
+        SELECT lsn, data
+        FROM pg_logical_slot_peek_changes (
+            :slot_name,
+            NULL,
+            :upto_nchanges,
+            'include-lsn',
+            :include_lsn,
+            'format-version',
+            :format_version,
+            'include-types',
+            :include_types,
+            'include-typmod',
+            :include_typmod,
+            'add-tables', :table_names,
+        )
+        """
+    assert sql_stmt == expected_sql
+
+    # Verify parameters
+    call_params = mock_execute.call_args.args[1]
+    assert call_params == {
+        "slot_name": "slot",
+        "upto_nchanges": 20,
+        "include_lsn": "true",
+        "format_version": "2",
+        "include_types": "false",
+        "include_typmod": "false",
+        "table_names": "public.notifications",
+    }
+
+
+def test_get_replication_changes_sql_query_with_multiple_tables(mocker):
+    execute_result = mocker.Mock()
+    execute_result.mappings.return_value = []
+    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
+
+    _get_replication_changes(
+        slot_name="slot",
+        upto_nchanges=20,
+        table_names=["public.notifications", "public.notification_history"],
+    )
+
+    sql_stmt = str(mock_execute.call_args.args[0])
+    expected_sql = """
+        SELECT lsn, data
+        FROM pg_logical_slot_peek_changes (
+            :slot_name,
+            NULL,
+            :upto_nchanges,
+            'include-lsn',
+            :include_lsn,
+            'format-version',
+            :format_version,
+            'include-types',
+            :include_types,
+            'include-typmod',
+            :include_typmod,
+            'add-tables', :table_names,
+        )
+        """
+    assert sql_stmt == expected_sql
+
+    # Verify parameters
+    call_params = mock_execute.call_args.args[1]
+    assert call_params == {
+        "slot_name": "slot",
+        "upto_nchanges": 20,
+        "include_lsn": "true",
+        "format_version": "2",
+        "include_types": "false",
+        "include_typmod": "false",
+        "table_names": "public.notifications, public.notification_history",
+    }
+
+
+def test_parse_wal2json_payload_filters_by_table_name(mocker):
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 6, tzinfo=UTC),
+    )
+
+    # Payload for notification_history table
+    payload = {
+        "action": "I",
+        "schema": "public",
+        "table": "notification_history",
+        "current_row_data": {
+            "service_id": "550e8400-e29b-41d4-a716-446655440000",
+            "template_id": "550e8400-e29b-41d4-a716-446655440001",
+            "notification_type": "email",
+            "key_type": "normal",
+            "notification_status": "delivered",
+            "created_at": "2026-08-06T10:00:00Z",
+        },
+    }
+
+    # Should be included when in table_names
+    result = dao._parse_wal2json_payload(
+        payload,
+        table_names=["public.notifications", "public.notification_history"],
+    )
+    assert len(result) == 1
+    assert result[0]["table"] == "notification_history"
+
+    # Should be filtered out when not in table_names
+    result = dao._parse_wal2json_payload(
+        payload,
+        table_names=["public.notifications"],
+    )
+    assert len(result) == 0
+
+
+def test_parse_wal2json_payload_with_default_table_names(mocker):
+    from app.dao.notifications_wal_changes_dao import REPLICATION_SLOT_TABLE_NAMES
+
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 6, tzinfo=UTC),
+    )
+
+    # Test with notification_history which is in the default list
+    payload = {
+        "action": "I",
+        "schema": "public",
+        "table": "notification_history",
+        "current_row_data": {
+            "service_id": "550e8400-e29b-41d4-a716-446655440000",
+            "template_id": "550e8400-e29b-41d4-a716-446655440001",
+            "notification_type": "email",
+            "key_type": "normal",
+            "notification_status": "delivered",
+            "created_at": "2026-08-06T10:00:00Z",
+        },
+    }
+
+    # Using default REPLICATION_SLOT_TABLE_NAMES should include notification_history
+    result = dao._parse_wal2json_payload(payload)
+    assert len(result) == 1
+    assert result[0]["table"] == "notification_history"
+
+    # Verify it's actually using the default
+    assert "public.notification_history" in REPLICATION_SLOT_TABLE_NAMES
 
 
 def test_get_replication_changes_raises_if_no_lsn_returned(mocker):
