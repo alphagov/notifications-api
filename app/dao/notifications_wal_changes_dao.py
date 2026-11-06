@@ -16,9 +16,9 @@ from app.dao.fact_notification_status_live_dao import (
     upsert_notification_status_live_counts,
 )
 
-REPLICATION_SLOT_NAME = "notify_wal2json_slot"
-REPLICATION_SLOT_UPTO_NCHANGES = 10_000
-REPLICATION_SLOT_TABLE_NAME = "public.notifications"
+REPLICATION_SLOT_NAME: str = "notify_wal2json_slot"
+REPLICATION_SLOT_UPTO_NCHANGES: int = 10_000
+REPLICATION_SLOT_TABLE_NAMES: list[str] = ["public.notifications", "public.notification_history"]
 # Use the first eight bytes of the slot name as a deterministic signed 64-bit advisory lock ID.
 # This is inline with the way we build lock IDs for advisory locks for database migrations.
 REPLICATION_ADVISORY_LOCK_ID = struct.unpack(">q", struct.pack("8s", REPLICATION_SLOT_NAME.encode()))[0]
@@ -81,7 +81,7 @@ def dao_process_notifications_replication_slot_changes(
         # The batch-level SQL LSN is authoritative when deciding where to advance the replication slot,
         # because we may receive trailing WAL rows for other tables in the same logical slot.
         changes, batch_last_lsn = _get_replication_changes(
-            slot_name=slot_name, upto_nchanges=upto_nchanges, table_name=REPLICATION_SLOT_TABLE_NAME
+            slot_name=slot_name, upto_nchanges=upto_nchanges, table_names=REPLICATION_SLOT_TABLE_NAMES
         )
 
         fetched_changes = len(changes)
@@ -186,8 +186,18 @@ def _get_replication_changes(
     *,
     slot_name: str,
     upto_nchanges: int,
-    table_name: str = REPLICATION_SLOT_TABLE_NAME,
+    table_names: list[str] = REPLICATION_SLOT_TABLE_NAMES,
 ) -> tuple[list[ParsedRow], str | None]:
+    base_params = {
+        "slot_name": slot_name,
+        "upto_nchanges": upto_nchanges,
+        "include_lsn": "true",
+        "format_version": "2",
+        "include_types": "false",
+        "include_typmod": "false",
+        "table_names": ", ".join(table_names),
+    }
+
     stmt = text(
         """
         SELECT lsn, data
@@ -195,8 +205,6 @@ def _get_replication_changes(
             :slot_name,
             NULL,
             :upto_nchanges,
-            'add-tables',
-            :table_name,
             'include-lsn',
             :include_lsn,
             'format-version',
@@ -204,24 +212,13 @@ def _get_replication_changes(
             'include-types',
             :include_types,
             'include-typmod',
-            :include_typmod
+            :include_typmod,
+            'add-tables',
+            :table_names
         )
         """
     )
-    rows = list(
-        db.session.execute(
-            stmt,
-            {
-                "slot_name": slot_name,
-                "upto_nchanges": upto_nchanges,
-                "table_name": table_name,
-                "include_lsn": "true",
-                "format_version": "2",
-                "include_types": "false",
-                "include_typmod": "false",
-            },
-        ).mappings()
-    )
+    rows = list(db.session.execute(stmt, base_params).mappings())
 
     parsed_rows: list[ParsedRow] = []
     last_sql_lsn: str | None = None
@@ -235,7 +232,7 @@ def _get_replication_changes(
 
         last_sql_lsn = lsn
         payload = json.loads(payload)
-        parsed_rows.extend(_parse_wal2json_payload(payload, table_name=table_name, default_lsn=lsn))
+        parsed_rows.extend(_parse_wal2json_payload(payload, table_names=table_names, default_lsn=lsn))
 
     return parsed_rows, last_sql_lsn
 
@@ -277,7 +274,10 @@ def _advance_replication_slot(lsn: str, *, slot_name: str) -> None:
 
 
 def _parse_wal2json_payload(
-    payload: dict[str, JsonValue], *, table_name: str = REPLICATION_SLOT_TABLE_NAME, default_lsn: str | None = None
+    payload: dict[str, JsonValue],
+    *,
+    table_names: list[str] = REPLICATION_SLOT_TABLE_NAMES,
+    default_lsn: str | None = None,
 ) -> list[ParsedRow]:
     # wal2json format-version 2 emits one change object per slot row.
     action = payload.get("action")
@@ -291,7 +291,7 @@ def _parse_wal2json_payload(
         return []
 
     qualified_table_name = f"{schema}.{table}" if schema else table
-    if table_name and qualified_table_name != table_name:
+    if table_names and qualified_table_name not in table_names:
         return []
 
     return [
@@ -353,12 +353,13 @@ def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullD
     counter: Counter[FullDimensions] = Counter()
     processed_changes = 0
     ignored_changes = 0
+    allowed_table_names = [name.split(".")[-1] for name in REPLICATION_SLOT_TABLE_NAMES]
 
     for change in changes:
         table_name = change["table"]
         change_type = change["type"]
 
-        if table_name != REPLICATION_SLOT_TABLE_NAME.split(".")[-1]:
+        if table_name not in allowed_table_names:
             ignored_changes += 1
             continue
 
