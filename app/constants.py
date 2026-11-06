@@ -181,10 +181,11 @@ PRECOMPILED_TEMPLATE_NAME = "Pre-compiled PDF"
 SMS_TYPE = "sms"
 EMAIL_TYPE = "email"
 LETTER_TYPE = "letter"
+MAILBOX_TYPE = "mailbox"
 ALL_TYPE = "all"
 TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
-NOTIFICATION_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
-NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]  # duplicate that can probably be cleaned up
+NOTIFICATION_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, MAILBOX_TYPE]
+NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, MAILBOX_TYPE]  # duplicate that can probably be cleaned up
 
 
 # Language options supported for bilingual letter templates
