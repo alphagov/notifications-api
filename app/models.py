@@ -348,6 +348,7 @@ class LetterBranding(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
+    active = db.Column(db.Boolean, nullable=False, default=True)
 
     def serialize(self) -> SerializedLetterBranding:
         return SerializedLetterBranding(
