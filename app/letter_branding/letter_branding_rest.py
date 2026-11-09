@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.letter_branding_dao import (
+    dao_archive_letter_branding,
     dao_create_letter_branding,
     dao_get_all_letter_branding,
     dao_get_existing_alternate_letter_branding_for_name,
@@ -10,6 +11,10 @@ from app.dao.letter_branding_dao import (
     dao_get_letter_branding_by_name_case_insensitive,
     dao_get_orgs_and_services_associated_with_letter_branding,
     dao_update_letter_branding,
+)
+from app.dao.organisation_dao import (
+    dao_get_all_organisations_with_specific_letter_branding_in_their_pool,
+    dao_remove_letter_branding_from_organisation_pool,
 )
 from app.errors import register_errors
 from app.letter_branding.letter_branding_schema import (
@@ -105,3 +110,26 @@ def get_letter_branding_unique_name():
             raise ValueError(f"Couldnt assign a unique name for {name} - already too many options")
 
     return jsonify(name=chosen_name), 200
+
+
+@letter_branding_blueprint.route("/<uuid:letter_branding_id>/archive", methods=["POST"])
+def archive_letter_branding(letter_branding_id):
+    orgs_and_services = dao_get_orgs_and_services_associated_with_letter_branding(letter_branding_id)
+
+    # check branding not used
+    if len(orgs_and_services["services"]) > 0 or len(orgs_and_services["organisations"]) > 0:
+        return (
+            jsonify(result="error", message="Letter branding is in use and so it can't be archived."),
+            400,
+        )
+
+    # delete branding from branding pools if it's in any
+    orgs_with_pools_to_clean = dao_get_all_organisations_with_specific_letter_branding_in_their_pool(letter_branding_id)
+    for org in orgs_with_pools_to_clean:
+        dao_remove_letter_branding_from_organisation_pool(org.id, letter_branding_id)
+
+    # archive branding and rename it, NOTE: make sure it doesn't show up anywhere when archived
+    # - neither on list of brandings in platform admin view, nor in brandings that can be added to pools
+    dao_archive_letter_branding(letter_branding_id)
+
+    return "", 204
