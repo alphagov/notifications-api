@@ -30,7 +30,7 @@ def dao_get_letter_branding_by_name_case_insensitive(letter_branding_name):
 
 
 def dao_get_all_letter_branding():
-    return LetterBranding.query.order_by(LetterBranding.name).all()
+    return LetterBranding.query.filter_by(active=True).order_by(LetterBranding.name).all()
 
 
 @autocommit
