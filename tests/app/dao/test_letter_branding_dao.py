@@ -47,6 +47,26 @@ def test_dao_get_all_letter_branding(notify_db_session):
     assert len(results) == 2
 
 
+def test_dao_get_all_letter_branding_returns_only_active_brandings(notify_db_session):
+    hm_gov = create_letter_branding()
+    test_branding = create_letter_branding(
+        name="test branding",
+        filename="test-branding",
+    )
+
+    inactive_branding = create_letter_branding(
+        name="inactive branding",
+        filename="inactive-branding",
+    )
+    dao_archive_letter_branding(inactive_branding.id)
+
+    results = dao_get_all_letter_branding()
+
+    assert hm_gov in results
+    assert test_branding in results
+    assert len(results) == 2
+
+
 def test_dao_get_all_letter_branding_returns_empty_list_if_no_brands_exist(notify_db_session):
     assert dao_get_all_letter_branding() == []
 
