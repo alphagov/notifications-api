@@ -10,6 +10,7 @@ from app.constants import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    MAILBOX_TYPE,
     PRECOMPILED_TEMPLATE_NAME,
     SMS_TYPE,
 )
@@ -102,7 +103,7 @@ def test_get_service_notification_statistics(admin_request, sample_service, samp
             "service.get_service_notification_statistics", service_id=sample_template.service_id, today_only=today_only
         )
 
-    assert set(resp["data"].keys()) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE}
+    assert set(resp["data"].keys()) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, MAILBOX_TYPE}
     assert resp["data"][SMS_TYPE] == stats
 
 
@@ -113,6 +114,7 @@ def test_get_service_notification_statistics_with_unknown_service(admin_request)
         SMS_TYPE: {"requested": 0, "delivered": 0, "failed": 0},
         EMAIL_TYPE: {"requested": 0, "delivered": 0, "failed": 0},
         LETTER_TYPE: {"requested": 0, "delivered": 0, "failed": 0},
+        MAILBOX_TYPE: {"requested": 0, "delivered": 0, "failed": 0},
     }
 
 
@@ -159,7 +161,7 @@ def test_get_monthly_notification_stats_returns_empty_stats_with_correct_dates(a
     ]
     assert sorted(response["data"].keys()) == keys
     for val in response["data"].values():
-        assert val == {"sms": {}, "email": {}, "letter": {}}
+        assert val == {"sms": {}, "email": {}, "letter": {}, "mailbox": {}}
 
 
 def test_get_monthly_notification_stats_returns_stats(admin_request, sample_service):
@@ -185,6 +187,7 @@ def test_get_monthly_notification_stats_returns_stats(admin_request, sample_serv
         },
         "email": {},
         "letter": {},
+        "mailbox": {},
     }
     assert response["data"]["2016-07"] == {
         # it combines the two template types
@@ -194,6 +197,7 @@ def test_get_monthly_notification_stats_returns_stats(admin_request, sample_serv
         },
         "email": {"delivered": 1},
         "letter": {},
+        "mailbox": {},
     }
 
 
@@ -215,7 +219,7 @@ def test_get_monthly_notification_stats_combines_todays_data_and_historic_stats(
     )
 
     assert len(response["data"]) == 3  # apr, may, jun
-    assert response["data"]["2016-05"] == {"sms": {"delivered": 1}, "email": {}, "letter": {}}
+    assert response["data"]["2016-05"] == {"sms": {"delivered": 1}, "email": {}, "letter": {}, "mailbox": {}}
     assert response["data"]["2016-06"] == {
         "sms": {
             # combines the stats from the historic ft_notification_status and the current notifications
@@ -224,6 +228,7 @@ def test_get_monthly_notification_stats_combines_todays_data_and_historic_stats(
         },
         "email": {},
         "letter": {},
+        "mailbox": {},
     }
 
 
@@ -262,4 +267,4 @@ def test_get_monthly_notification_stats_only_gets_for_one_service(admin_request,
 
     response = admin_request.get("service.get_monthly_notification_stats", service_id=services[0].id, year=2016)
 
-    assert response["data"]["2016-06"] == {"sms": {"created": 1}, "email": {}, "letter": {}}
+    assert response["data"]["2016-06"] == {"sms": {"created": 1}, "email": {}, "letter": {}, "mailbox": {}}

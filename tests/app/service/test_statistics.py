@@ -83,6 +83,7 @@ def test_create_zeroed_stats_dicts():
         "sms": {"requested": 0, "delivered": 0, "failed": 0},
         "email": {"requested": 0, "delivered": 0, "failed": 0},
         "letter": {"requested": 0, "delivered": 0, "failed": 0},
+        "mailbox": {"requested": 0, "delivered": 0, "failed": 0},
     }
 
 
@@ -109,6 +110,16 @@ def test_create_stats_dict():
             },
         },
         "letter": {
+            "total": 0,
+            "test-key": 0,
+            "failures": {
+                "technical-failure": 0,
+                "permanent-failure": 0,
+                "temporary-failure": 0,
+                "virus-scan-failed": 0,
+            },
+        },
+        "mailbox": {
             "total": 0,
             "test-key": 0,
             "failures": {
@@ -193,7 +204,7 @@ def test_create_empty_monthly_notification_status_stats_dict(year, expected_year
     output = create_empty_monthly_notification_status_stats_dict(year)
     assert sorted(output.keys()) == expected_years
     for v in output.values():
-        assert v == {"sms": {}, "email": {}, "letter": {}}
+        assert v == {"sms": {}, "email": {}, "letter": {}, "mailbox": {}}
 
 
 @freeze_time("2018-05-31 23:59:59")
@@ -221,7 +232,7 @@ def test_add_monthly_notification_status_stats():
     add_monthly_notification_status_stats(data, rows)
 
     assert data == {
-        "2018-04": {"sms": {"sending": 1, "delivered": 2}, "email": {"sending": 4}, "letter": {}},
-        "2018-05": {"sms": {"sending": 24}, "email": {"sending": 32}, "letter": {}},
-        "2018-06": {"sms": {}, "email": {}, "letter": {}},
+        "2018-04": {"sms": {"sending": 1, "delivered": 2}, "email": {"sending": 4}, "letter": {}, "mailbox": {}},
+        "2018-05": {"sms": {"sending": 24}, "email": {"sending": 32}, "letter": {}, "mailbox": {}},
+        "2018-06": {"sms": {}, "email": {}, "letter": {}, "mailbox": {}},
     }
