@@ -15,6 +15,7 @@ from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
     dao_archive_organisation,
+    dao_get_all_organisations_with_specific_letter_branding_in_their_pool,
     dao_get_email_branding_pool_for_organisation,
     dao_get_letter_branding_pool_for_organisation,
     dao_get_organisation_by_email_address,
@@ -658,3 +659,21 @@ def test_dao_remove_letter_branding_from_organisation_pool(sample_organisation):
         dao_remove_letter_branding_from_organisation_pool(sample_organisation.id, branding_2.id)
 
     assert sample_organisation.letter_branding_pool == [branding_3]
+
+
+def test_dao_get_all_organisations_with_specific_letter_branding_in_their_pool():
+    branding_1 = create_letter_branding("branding_1", "filename_1")
+    branding_2 = create_letter_branding("branding_2", "filename_2")
+
+    first_org = create_organisation(name="first_org")
+    second_org = create_organisation(name="second_org")
+    third_org = create_organisation(name="third_org")
+
+    dao_add_letter_branding_list_to_organisation_pool(first_org.id, [branding_1.id])
+    dao_add_letter_branding_list_to_organisation_pool(second_org.id, [branding_1.id, branding_2.id])
+    dao_add_letter_branding_list_to_organisation_pool(third_org.id, [branding_2.id])
+
+    results = dao_get_all_organisations_with_specific_letter_branding_in_their_pool(branding_1.id)
+
+    assert {organisation.id for organisation in results} == {first_org.id, second_org.id}
+    assert dao_get_all_organisations_with_specific_letter_branding_in_their_pool(uuid.uuid4()) == []

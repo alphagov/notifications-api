@@ -13,6 +13,7 @@ from app.dao.organisation_user_permissions_dao import organisation_user_permissi
 from app.models import (
     Domain,
     EmailBranding,
+    LetterBranding,
     Organisation,
     OrganisationPermission,
     OrganisationUserPermissions,
@@ -304,3 +305,14 @@ def dao_remove_letter_branding_from_organisation_pool(organisation_id, letter_br
     organisation.letter_branding_pool.remove(letter_branding)
 
     return letter_branding
+
+
+def dao_get_all_organisations_with_specific_letter_branding_in_their_pool(letter_branding_id):
+    return (
+        db.session.query(Organisation)
+        .join(Organisation.letter_branding_pool)
+        .filter(
+            LetterBranding.id == letter_branding_id,
+        )
+        .all()
+    )
