@@ -345,7 +345,7 @@ def test_get_all_notifications_filter_by_template_type_invalid_template_type(api
 
     assert json_response["status_code"] == 400
     assert len(json_response["errors"]) == 1
-    assert json_response["errors"][0]["message"] == "template_type orange is not one of [sms, email, letter]"
+    assert json_response["errors"][0]["message"] == "template_type orange is not one of [sms, email, letter, mailbox]"
 
 
 def test_get_all_notifications_filter_by_single_status(api_client_request, sample_template, sms_rate):

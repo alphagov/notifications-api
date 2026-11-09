@@ -10,6 +10,7 @@ from app.constants import (
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     LETTER_TYPE,
+    MAILBOX_TYPE,
     SMS_TYPE,
 )
 
@@ -109,6 +110,7 @@ class Config:
         SMS_TYPE: 250_000,
         LETTER_TYPE: 20_000,
         INTERNATIONAL_SMS_TYPE: 100,
+        MAILBOX_TYPE: 250_000,
     }
 
     # encyption secret/salt

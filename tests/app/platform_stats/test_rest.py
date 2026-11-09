@@ -96,6 +96,16 @@ def test_get_platform_stats_with_real_query(admin_request, notify_db_session):
             "total": 11,
             "test-key": 1,
         },
+        "mailbox": {
+            "failures": {
+                "virus-scan-failed": 0,
+                "temporary-failure": 0,
+                "permanent-failure": 0,
+                "technical-failure": 0,
+            },
+            "total": 0,
+            "test-key": 0,
+        },
     }
 
 
