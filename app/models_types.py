@@ -95,6 +95,7 @@ class SerializedServiceOrgDashboard(TypedDict):
     name: str
     active: bool
     restricted: bool
+    count_as_live: bool
 
 
 class SerializedFreeSmsItems(TypedDict):
