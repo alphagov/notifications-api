@@ -707,6 +707,7 @@ class Service(db.Model, Versioned):
             name=self.name,
             active=self.active,
             restricted=self.restricted,
+            count_as_live=self.count_as_live,
         )
 
 
