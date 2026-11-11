@@ -1,5 +1,5 @@
 import uuid
-from collections import namedtuple
+from collections import deque, namedtuple
 from datetime import datetime, timedelta
 from unittest import mock
 from unittest.mock import ANY, call
@@ -16,6 +16,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
     NotifyTicketType,
 )
 from notifications_utils.testing.comparisons import RestrictedAny
+from opentelemetry.metrics import Observation
 from redis.exceptions import LockError
 
 from app.celery import scheduled_tasks
@@ -68,33 +69,6 @@ from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import BandedSlowProviderDeliveryReport, SlowProviderDeliveryReport
 from app.dao.template_email_files_dao import dao_get_template_email_file_by_id
-from app.metrics.notification import (
-    _undelivered_notification_age as notification_undelivered_notification_age_metric,
-)
-from app.metrics.provider import (
-    _info as provider_info_metric,
-)
-from app.metrics.provider import (
-    _priority as provider_priority_metric,
-)
-from app.metrics.provider import (
-    _sms_banded_not_delivered_within as provider_sms_banded_not_delivered_within_metric,
-)
-from app.metrics.provider import (
-    _sms_banded_not_delivered_within_absolute as provider_sms_banded_not_delivered_within_absolute_metric,
-)
-from app.metrics.provider import (
-    _sms_banded_not_delivered_within_total as provider_sms_banded_not_delivered_within_total_metric,
-)
-from app.metrics.provider import (
-    _sms_banded_not_delivered_within_weighted as provider_sms_banded_not_delivered_within_weighted_metric,
-)
-from app.metrics.provider import (
-    _sms_legacy_not_delivered_within as provider_sms_legacy_not_delivered_within_metric,
-)
-from app.metrics.provider import (
-    _updated_at as provider_updated_at_metric,
-)
 from app.models import Event, InboundNumber, Notification
 from tests.app import load_example_csv
 from tests.app.db import (
@@ -273,7 +247,7 @@ _non_slow_provider_bands_c = (
 
 
 @pytest.mark.parametrize(
-    "reports_dict,expected_metric_set_calls,expected_reduce_priority_calls",
+    "reports_dict,expected_metric_deque_contents,expected_reduce_priority_calls",
     (
         # this might be produced by e.g. an empty database
         (
@@ -294,8 +268,8 @@ _non_slow_provider_bands_c = (
                 ),
             },
             [
-                call(pytest.approx(0.392), {"provider.name": "firetext"}),
-                call(pytest.approx(0.12), {"provider.name": "mmg"}),
+                Observation(pytest.approx(0.392), {"provider.name": "firetext"}),  # type: ignore[arg-type]
+                Observation(pytest.approx(0.12), {"provider.name": "mmg"}),  # type: ignore[arg-type]
             ],
             [call("firetext", time_threshold=timedelta(seconds=300))],
         ),
@@ -314,8 +288,8 @@ _non_slow_provider_bands_c = (
                 ),
             },
             [
-                call(pytest.approx(0.392), {"provider.name": "firetext"}),
-                call(pytest.approx(0.12), {"provider.name": "mmg"}),
+                Observation(pytest.approx(0.392), {"provider.name": "firetext"}),  # type: ignore[arg-type]
+                Observation(pytest.approx(0.12), {"provider.name": "mmg"}),  # type: ignore[arg-type]
             ],
             [call("firetext", time_threshold=timedelta(seconds=300))],
         ),
@@ -332,8 +306,8 @@ _non_slow_provider_bands_c = (
                 ),
             },
             [
-                call(pytest.approx(0.392), {"provider.name": "firetext"}),
-                call(pytest.approx(0.51), {"provider.name": "mmg"}),
+                Observation(pytest.approx(0.392), {"provider.name": "firetext"}),  # type: ignore[arg-type]
+                Observation(pytest.approx(0.51), {"provider.name": "mmg"}),  # type: ignore[arg-type]
             ],
             [],
         ),
@@ -350,8 +324,8 @@ _non_slow_provider_bands_c = (
                 ),
             },
             [
-                call(pytest.approx(0.052), {"provider.name": "firetext"}),
-                call(pytest.approx(0.078), {"provider.name": "mmg"}),
+                Observation(pytest.approx(0.052), {"provider.name": "firetext"}),  # type: ignore[arg-type]
+                Observation(pytest.approx(0.078), {"provider.name": "mmg"}),  # type: ignore[arg-type]
             ],
             [],
         ),
@@ -372,9 +346,9 @@ _non_slow_provider_bands_c = (
                 ),
             },
             [
-                call(pytest.approx(0.052), {"provider.name": "firetext"}),
-                call(pytest.approx(0.078), {"provider.name": "mmg"}),
-                call(pytest.approx(0.392), {"provider.name": "foo"}),
+                Observation(pytest.approx(0.052), {"provider.name": "firetext"}),  # type: ignore[arg-type]
+                Observation(pytest.approx(0.078), {"provider.name": "mmg"}),  # type: ignore[arg-type]
+                Observation(pytest.approx(0.392), {"provider.name": "foo"}),  # type: ignore[arg-type]
             ],
             [call("foo", time_threshold=timedelta(seconds=300))],
         ),
@@ -395,9 +369,9 @@ _non_slow_provider_bands_c = (
                 ),
             },
             [
-                call(pytest.approx(0.51), {"provider.name": "firetext"}),
-                call(pytest.approx(0.078), {"provider.name": "mmg"}),
-                call(pytest.approx(0.392), {"provider.name": "foo"}),
+                Observation(pytest.approx(0.51), {"provider.name": "firetext"}),  # type: ignore[arg-type]
+                Observation(pytest.approx(0.078), {"provider.name": "mmg"}),  # type: ignore[arg-type]
+                Observation(pytest.approx(0.392), {"provider.name": "foo"}),  # type: ignore[arg-type]
             ],
             [
                 call("firetext", time_threshold=timedelta(seconds=300)),
@@ -407,22 +381,25 @@ _non_slow_provider_bands_c = (
     ),
 )
 def test_switch_current_sms_provider_on_slow_delivery(
-    reports_dict, expected_metric_set_calls, expected_reduce_priority_calls, mocker
+    reports_dict, expected_metric_deque_contents, expected_reduce_priority_calls, mocker
 ):
     mock_get_banded = mocker.patch(
         "app.celery.scheduled_tasks.get_banded_slow_text_message_delivery_reports_by_provider",
         return_value=reports_dict,
     )
-    mock_banded_not_delivered_within_weighted_metric_set = mocker.patch.object(
-        provider_sms_banded_not_delivered_within_weighted_metric, "set"
-    )
     mock_reduce_priority = mocker.patch("app.celery.scheduled_tasks.dao_reduce_sms_provider_priority")
+
+    mock_banded_not_delivered_within_weighted_metric_deque = deque()
+    mocker.patch(
+        "app.metrics.provider._sms_banded_not_delivered_within_weighted_next_observations_deque",
+        new=mock_banded_not_delivered_within_weighted_metric_deque,
+    )
 
     assert switch_current_sms_provider_on_slow_delivery() is None
 
     assert mock_get_banded.mock_calls
 
-    assert mock_banded_not_delivered_within_weighted_metric_set.mock_calls == expected_metric_set_calls
+    assert tuple(mock_banded_not_delivered_within_weighted_metric_deque) == tuple(expected_metric_deque_contents)
 
     assert mock_reduce_priority.mock_calls == expected_reduce_priority_calls
 
@@ -441,10 +418,13 @@ def test_switch_current_sms_provider_on_slow_delivery_altered_weights(mocker):
             ),
         },
     )
-    mock_banded_not_delivered_within_weighted_metric_set = mocker.patch.object(
-        provider_sms_banded_not_delivered_within_weighted_metric, "set"
-    )
     mock_reduce_priority = mocker.patch("app.celery.scheduled_tasks.dao_reduce_sms_provider_priority")
+
+    mock_banded_not_delivered_within_weighted_metric_deque = deque()
+    mocker.patch(
+        "app.metrics.provider._sms_banded_not_delivered_within_weighted_next_observations_deque",
+        new=mock_banded_not_delivered_within_weighted_metric_deque,
+    )
 
     new_weights = SMS_SLOW_DELIVERY_BANDS.copy()
     new_weights[(timedelta(seconds=120), timedelta(seconds=240))] = 0.01
@@ -455,10 +435,10 @@ def test_switch_current_sms_provider_on_slow_delivery_altered_weights(mocker):
 
     assert mock_get_banded.mock_calls
 
-    assert mock_banded_not_delivered_within_weighted_metric_set.mock_calls == [
-        call(pytest.approx(0.0113387), {"provider.name": "firetext"}),
-        call(pytest.approx(0.2456121), {"provider.name": "mmg"}),
-    ]
+    assert tuple(mock_banded_not_delivered_within_weighted_metric_deque) == (
+        Observation(pytest.approx(0.0113387), {"provider.name": "firetext"}),
+        Observation(pytest.approx(0.2456121), {"provider.name": "mmg"}),
+    )
 
     # surprise! opposite from what we would have got without altering the weights
     assert mock_reduce_priority.mock_calls == [
@@ -481,10 +461,13 @@ def test_switch_current_sms_provider_on_slow_delivery_scaled_weights(scale_weigh
             ),
         },
     )
-    mock_banded_not_delivered_within_weighted_metric_set = mocker.patch.object(
-        provider_sms_banded_not_delivered_within_weighted_metric, "set"
-    )
     mock_reduce_priority = mocker.patch("app.celery.scheduled_tasks.dao_reduce_sms_provider_priority")
+
+    mock_banded_not_delivered_within_weighted_metric_deque = deque()
+    mocker.patch(
+        "app.metrics.provider._sms_banded_not_delivered_within_weighted_next_observations_deque",
+        new=mock_banded_not_delivered_within_weighted_metric_deque,
+    )
 
     if scale_weights:
         new_weights = {k: v * 10 for k, v in SMS_SLOW_DELIVERY_BANDS.items()}
@@ -495,13 +478,17 @@ def test_switch_current_sms_provider_on_slow_delivery_scaled_weights(scale_weigh
     assert mock_get_banded.mock_calls
 
     # same results whether we alter the weights or not because all were identically scaled
-    assert mock_banded_not_delivered_within_weighted_metric_set.mock_calls == [
-        call(pytest.approx(0.392), {"provider.name": "firetext"}),
-        call(pytest.approx(0.12), {"provider.name": "mmg"}),
-    ]
+    assert tuple(mock_banded_not_delivered_within_weighted_metric_deque) == (
+        Observation(pytest.approx(0.392), {"provider.name": "firetext"}),
+        Observation(pytest.approx(0.12), {"provider.name": "mmg"}),
+    )
     assert mock_reduce_priority.mock_calls == [
         call("firetext", time_threshold=timedelta(seconds=300)),
     ]
+
+
+def _observation_key(obs):
+    return tuple(sorted(str(x) for x in obs.attributes.items())) if obs.attributes else ()
 
 
 @pytest.mark.parametrize(
@@ -518,24 +505,37 @@ def test_switch_current_sms_provider_on_slow_delivery_scaled_weights(scale_weigh
     ),
 )
 def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_slow_delivery, notify_api, mocker):
-    undelivered_notification_age_metric_set_mock = mocker.patch.object(
-        notification_undelivered_notification_age_metric, "set"
+    mock_undelivered_notification_age_metric_deque = deque()
+    mocker.patch(
+        "app.metrics.notification._undelivered_notification_age_next_observations_deque",
+        new=mock_undelivered_notification_age_metric_deque,
     )
-    sms_not_delivered_within_metric_set_mock = mocker.patch.object(
-        provider_sms_legacy_not_delivered_within_metric, "set"
+    mock_sms_not_delivered_within_metric_deque = deque()
+    mocker.patch(
+        "app.metrics.provider._sms_legacy_not_delivered_within_next_observations_deque",
+        new=mock_sms_not_delivered_within_metric_deque,
     )
-    sms_banded_not_delivered_within_metric_set_mock = mocker.patch.object(
-        provider_sms_banded_not_delivered_within_metric, "set"
+    mock_sms_banded_not_delivered_within_metric_deque = deque()
+    mocker.patch(
+        "app.metrics.provider._sms_banded_not_delivered_within_next_observations_deque",
+        new=mock_sms_banded_not_delivered_within_metric_deque,
     )
-    sms_banded_not_delivered_within_absolute_metric_set_mock = mocker.patch.object(
-        provider_sms_banded_not_delivered_within_absolute_metric, "set"
+    mock_sms_banded_not_delivered_within_absolute_metric_deque = deque()
+    mocker.patch(
+        "app.metrics.provider._sms_banded_not_delivered_within_absolute_next_observations_deque",
+        new=mock_sms_banded_not_delivered_within_absolute_metric_deque,
     )
-    sms_banded_not_delivered_within_total_metric_set_mock = mocker.patch.object(
-        provider_sms_banded_not_delivered_within_total_metric, "set"
+    mock_sms_banded_not_delivered_within_total_metric_deque = deque()
+    mocker.patch(
+        "app.metrics.provider._sms_banded_not_delivered_within_total_next_observations_deque",
+        new=mock_sms_banded_not_delivered_within_total_metric_deque,
     )
-    priority_metric_mock = mocker.patch.object(provider_priority_metric, "set")
-    updated_at_metric_mock = mocker.patch.object(provider_updated_at_metric, "set")
-    info_metric_mock = mocker.patch.object(provider_info_metric, "set")
+    mock_priority_metric_deque = deque()
+    mocker.patch("app.metrics.provider._priority_next_observations_deque", new=mock_priority_metric_deque)
+    mock_updated_at_metric_deque = deque()
+    mocker.patch("app.metrics.provider._updated_at_next_observations_deque", new=mock_updated_at_metric_deque)
+    mock_info_metric_deque = deque()
+    mocker.patch("app.metrics.provider._info_next_observations_deque", new=mock_info_metric_deque)
 
     mock_get_recent_undelivered_notification_ages = mocker.patch(
         "app.celery.scheduled_tasks.get_recent_undelivered_notification_ages",
@@ -638,13 +638,11 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
         [call(slow_delivery_reports)] if expect_check_slow_delivery else []
     )
 
-    # normalizing order of following calls by sorting by sorted attribute k/v pairs
+    # normalizing order of following Observations using _observation_key
 
-    assert sorted(
-        undelivered_notification_age_metric_set_mock.mock_calls, key=lambda c: sorted(c.args[1].items())
-    ) == sorted(
+    assert sorted(mock_undelivered_notification_age_metric_deque, key=_observation_key) == sorted(
         (
-            call(
+            Observation(
                 20,
                 {
                     "key.type": "normal",
@@ -654,7 +652,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 20.0,
                 },
             ),
-            call(
+            Observation(
                 10,
                 {
                     "key.type": "normal",
@@ -664,7 +662,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 20.0,
                 },
             ),
-            call(
+            Observation(
                 0,
                 {
                     "key.type": "normal",
@@ -674,7 +672,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 20.0,
                 },
             ),
-            call(
+            Observation(
                 21,
                 {
                     "key.type": "normal",
@@ -684,7 +682,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 30.0,
                 },
             ),
-            call(
+            Observation(
                 11,
                 {
                     "key.type": "normal",
@@ -694,7 +692,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 30.0,
                 },
             ),
-            call(
+            Observation(
                 1,
                 {
                     "key.type": "normal",
@@ -704,7 +702,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 30.0,
                 },
             ),
-            call(
+            Observation(
                 22,
                 {
                     "key.type": "normal",
@@ -714,7 +712,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 40.0,
                 },
             ),
-            call(
+            Observation(
                 12,
                 {
                     "key.type": "normal",
@@ -724,7 +722,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 40.0,
                 },
             ),
-            call(
+            Observation(
                 2,
                 {
                     "key.type": "normal",
@@ -734,7 +732,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 40.0,
                 },
             ),
-            call(
+            Observation(
                 6,
                 {
                     "key.type": "test",
@@ -744,7 +742,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 20.0,
                 },
             ),
-            call(
+            Observation(
                 5,
                 {
                     "key.type": "test",
@@ -754,7 +752,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "le": 30.0,
                 },
             ),
-            call(
+            Observation(
                 4,
                 {
                     "key.type": "test",
@@ -765,28 +763,24 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                 },
             ),
         ),
-        key=lambda c: sorted(c.args[1].items()),
+        key=_observation_key,
     )
 
-    assert sorted(
-        sms_not_delivered_within_metric_set_mock.mock_calls, key=lambda c: sorted(c.args[1].items())
-    ) == sorted(
+    assert sorted(mock_sms_not_delivered_within_metric_deque, key=_observation_key) == sorted(
         (
-            call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 60}),
-            call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 60}),
-            call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 300}),
-            call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 300}),
-            call(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 600}),
-            call(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 600}),
+            Observation(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 60}),
+            Observation(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 60}),
+            Observation(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 300}),
+            Observation(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 300}),
+            Observation(0.4, {"provider.name": "mmg", "time_window.evaluation": 900, "time_window.delivery": 600}),
+            Observation(0.8, {"provider.name": "firetext", "time_window.evaluation": 900, "time_window.delivery": 600}),
         ),
-        key=lambda c: sorted(c.args[1].items()),
+        key=_observation_key,
     )
 
-    assert sorted(
-        sms_banded_not_delivered_within_metric_set_mock.mock_calls, key=lambda c: sorted(c.args[1].items())
-    ) == sorted(
+    assert sorted(mock_sms_banded_not_delivered_within_metric_deque, key=_observation_key) == sorted(
         (
-            call(
+            Observation(
                 0.8,
                 {
                     "provider.name": "firetext",
@@ -795,7 +789,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 60.0,
                 },
             ),
-            call(
+            Observation(
                 0.85,
                 {
                     "provider.name": "firetext",
@@ -804,7 +798,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 120.0,
                 },
             ),
-            call(
+            Observation(
                 0.4,
                 {
                     "provider.name": "mmg",
@@ -813,7 +807,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 60.0,
                 },
             ),
-            call(
+            Observation(
                 0.45,
                 {
                     "provider.name": "mmg",
@@ -823,14 +817,12 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                 },
             ),
         ),
-        key=lambda c: sorted(c.args[1].items()),
+        key=_observation_key,
     )
 
-    assert sorted(
-        sms_banded_not_delivered_within_absolute_metric_set_mock.mock_calls, key=lambda c: sorted(c.args[1].items())
-    ) == sorted(
+    assert sorted(mock_sms_banded_not_delivered_within_absolute_metric_deque, key=_observation_key) == sorted(
         (
-            call(
+            Observation(
                 80,
                 {
                     "provider.name": "firetext",
@@ -839,7 +831,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 60.0,
                 },
             ),
-            call(
+            Observation(
                 85,
                 {
                     "provider.name": "firetext",
@@ -848,7 +840,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 120.0,
                 },
             ),
-            call(
+            Observation(
                 40,
                 {
                     "provider.name": "mmg",
@@ -857,7 +849,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 60.0,
                 },
             ),
-            call(
+            Observation(
                 45,
                 {
                     "provider.name": "mmg",
@@ -867,14 +859,12 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                 },
             ),
         ),
-        key=lambda c: sorted(c.args[1].items()),
+        key=_observation_key,
     )
 
-    assert sorted(
-        sms_banded_not_delivered_within_total_metric_set_mock.mock_calls, key=lambda c: sorted(c.args[1].items())
-    ) == sorted(
+    assert sorted(mock_sms_banded_not_delivered_within_total_metric_deque, key=_observation_key) == sorted(
         (
-            call(
+            Observation(
                 100,
                 {
                     "provider.name": "firetext",
@@ -883,7 +873,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 60.0,
                 },
             ),
-            call(
+            Observation(
                 100,
                 {
                     "provider.name": "firetext",
@@ -892,7 +882,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 120.0,
                 },
             ),
-            call(
+            Observation(
                 100,
                 {
                     "provider.name": "mmg",
@@ -901,7 +891,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "time_window.delay": 60.0,
                 },
             ),
-            call(
+            Observation(
                 100,
                 {
                     "provider.name": "mmg",
@@ -911,28 +901,28 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                 },
             ),
         ),
-        key=lambda c: sorted(c.args[1].items()),
+        key=_observation_key,
     )
 
-    assert sorted(priority_metric_mock.mock_calls, key=lambda c: sorted(c.args[1].items())) == sorted(
+    assert sorted(mock_priority_metric_deque, key=_observation_key) == sorted(
         (
-            call(0, {"provider.name": "firetext"}),
-            call(100, {"provider.name": "mmg"}),
+            Observation(0, {"provider.name": "firetext"}),
+            Observation(100, {"provider.name": "mmg"}),
         ),
-        key=lambda c: sorted(c.args[1].items()),
+        key=_observation_key,
     )
 
-    assert sorted(updated_at_metric_mock.mock_calls, key=lambda c: sorted(c.args[1].items())) == sorted(
+    assert sorted(mock_updated_at_metric_deque, key=_observation_key) == sorted(
         (
-            call(RestrictedAny(lambda x: x < datetime.utcnow().timestamp()), {"provider.name": "firetext"}),
-            call(RestrictedAny(lambda x: x < datetime.utcnow().timestamp()), {"provider.name": "mmg"}),
+            Observation(RestrictedAny(lambda x: x < datetime.utcnow().timestamp()), {"provider.name": "firetext"}),
+            Observation(RestrictedAny(lambda x: x < datetime.utcnow().timestamp()), {"provider.name": "mmg"}),
         ),
-        key=lambda c: sorted(c.args[1].items()),
+        key=_observation_key,
     )
 
-    assert sorted(info_metric_mock.mock_calls, key=lambda c: sorted(c.args[1].items())) == sorted(
+    assert sorted(mock_info_metric_deque, key=_observation_key) == sorted(
         (
-            call(
+            Observation(
                 1,
                 {
                     "provider.name": "firetext",
@@ -941,7 +931,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                     "notification.type": "sms",
                 },
             ),
-            call(
+            Observation(
                 1,
                 {
                     "provider.name": "mmg",
@@ -951,7 +941,7 @@ def test_generate_sms_delivery_stats(slow_delivery_config_option, expect_check_s
                 },
             ),
         ),
-        key=lambda c: sorted(c.args[1].items()),
+        key=_observation_key,
     )
 
 
