@@ -19,9 +19,16 @@ from app.dao.fact_notification_status_live_dao import (
 REPLICATION_SLOT_NAME: str = "notify_wal2json_slot"
 REPLICATION_SLOT_UPTO_NCHANGES: int = 10_000
 REPLICATION_SLOT_TABLE_NAMES: list[str] = ["public.notifications", "public.notification_history"]
+
+# We want to ignore delete changes on certain tables.
+# Deletes on notifications history happen frequently when we remove old records, however,
+# we do not want these to affect the live counts.
+IGNORE_DELETES_ON_TABLES: list[str] = ["public.notification_history"]
+
 # Use the first eight bytes of the slot name as a deterministic signed 64-bit advisory lock ID.
 # This is inline with the way we build lock IDs for advisory locks for database migrations.
 REPLICATION_ADVISORY_LOCK_ID = struct.unpack(">q", struct.pack("8s", REPLICATION_SLOT_NAME.encode()))[0]
+
 # Notifications without a job (e.g. sent via the API) are bucketed under a zero UUID, as job_id is part of the
 # primary key of ft_notification_status_live (same convention as ft_notification_status).
 NO_JOB_ID = UUID("00000000-0000-0000-0000-000000000000")
@@ -354,12 +361,15 @@ def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullD
     processed_changes = 0
     ignored_changes = 0
     allowed_table_names = [name.split(".")[-1] for name in REPLICATION_SLOT_TABLE_NAMES]
+    ignore_deletes_table_names = [name.split(".")[-1] for name in IGNORE_DELETES_ON_TABLES]
 
     for change in changes:
         table_name = change["table"]
         change_type = change["type"]
 
-        if table_name not in allowed_table_names:
+        if table_name not in allowed_table_names or (
+            change_type == "delete" and table_name in ignore_deletes_table_names
+        ):
             ignored_changes += 1
             continue
 
