@@ -974,6 +974,24 @@ class ApiKey(db.Model, Versioned):
 
         return last_usage_for_key.usage_hour
 
+    def originally_created_by(self):
+        first_history_entry = (
+            ApiKeyHistory.query.filter(
+                ApiKeyHistory.id == self.id,
+                ApiKeyHistory.version == 1,
+            )
+        ).first()
+
+        if first_history_entry:
+            return first_history_entry.created_by_id
+
+        return self.created_by_id
+
+
+class ApiKeyHistory(db.Model):
+    __tablename__ = "api_keys_history"
+    __table_args__ = {"extend_existing": True}
+
 
 class ApiKeyUsage(db.Model):
     __tablename__ = "api_key_usage"

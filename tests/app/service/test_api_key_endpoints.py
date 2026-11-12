@@ -63,6 +63,7 @@ def test_revoke_should_expire_api_key_for_service(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert ApiKey.query.count() == 1
+            creator = sample_api_key.created_by
             revoker = create_user(email="revoker@digital.cabinet-office.gov.uk")
             auth_header = create_admin_authorization_header()
             response = client.post(
@@ -71,9 +72,16 @@ def test_revoke_should_expire_api_key_for_service(notify_api, sample_api_key):
                 headers=[("Content-Type", "application/json"), auth_header],
             )
             assert response.status_code == 202
-            api_keys_for_service = ApiKey.query.get(sample_api_key.id)
-            assert api_keys_for_service.expiry_date is not None
-            assert api_keys_for_service.created_by_id == revoker.id
+
+            response = client.get(
+                url_for("service.get_api_keys", service_id=sample_api_key.service_id),
+                headers=[("Content-Type", "application/json"), auth_header],
+            )
+            json_response = response.json["apiKeys"]
+
+            assert json_response[0]["expiry_date"] is not None
+            assert json_response[0]["created_by"] == str(creator.id)
+            assert json_response[0]["created_by"] != str(revoker.id)
 
 
 def test_revoke_api_key_without_created_by_still_revokes(client, sample_api_key):
@@ -85,9 +93,15 @@ def test_revoke_api_key_without_created_by_still_revokes(client, sample_api_key)
         headers=[("Content-Type", "application/json"), auth_header],
     )
     assert response.status_code == 202
-    api_key = ApiKey.query.get(sample_api_key.id)
-    assert api_key.expiry_date is not None
-    assert api_key.created_by_id == original_creator_id
+
+    response = client.get(
+        url_for("service.get_api_keys", service_id=sample_api_key.service_id),
+        headers=[("Content-Type", "application/json"), auth_header],
+    )
+    json_response = response.json["apiKeys"]
+
+    assert json_response[0]["expiry_date"] is not None
+    assert json_response[0]["created_by"] == str(original_creator_id)
 
 
 def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, sample_service):
@@ -144,6 +158,17 @@ def test_get_api_keys_should_return_all_keys_for_service(notify_api, sample_api_
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
             assert len(json_resp["apiKeys"]) == 3
+            assert list(json_resp["apiKeys"][0].keys()) == [
+                "created_at",
+                "created_by",
+                "expiry_date",
+                "id",
+                "key_type",
+                "last_used",
+                "name",
+                "updated_at",
+                "version",
+            ]
 
 
 def test_get_api_keys_returns_list_of_keys_with_last_used_info(notify_api, sample_api_key):
