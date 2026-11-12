@@ -392,6 +392,13 @@ def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullD
             processed_changes += 1
             continue
 
+        if change_type == "delete":
+            old_dimensions = _build_dimensions(change, use_previous_row=True, require_status_from_primary_row=True)
+            if old_dimensions:
+                counter[old_dimensions] -= 1
+                processed_changes += 1
+                continue
+
         ignored_changes += 1
 
     return counter, processed_changes, ignored_changes

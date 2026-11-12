@@ -730,3 +730,74 @@ def test_logs_processing_timestamps(mocker, caplog):
     assert record.start_time == start_time.isoformat()
     assert record.end_time == end_time.isoformat()
     assert record.duration_seconds == (end_time - start_time).total_seconds()
+
+
+def test_build_counter_decrements_previous_status_bucket_for_delete(mocker):
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
+        return_value=datetime(2026, 8, 6, tzinfo=UTC),
+    )
+    base = {
+        "service_id": "550e8400-e29b-41d4-a716-446655440000",
+        "template_id": "550e8400-e29b-41d4-a716-446655440001",
+        "job_id": "550e8400-e29b-41d4-a716-446655440002",
+        "notification_type": "sms",
+        "key_type": "normal",
+        "created_at": "2026-08-06T10:00:00Z",
+    }
+    insert = _build_change(current_row_data={**base, "notification_status": "delivered"}, lsn="0/01")
+    delete = _build_change(
+        change_type="delete",
+        previous_row_data={**base, "notification_status": "delivered"},
+        lsn="0/02",
+    )
+
+    counter, processed_changes, ignored_changes = dao._build_counter_from_changes([insert, delete])
+
+    delivered_dimensions = dao._build_dimensions(insert, use_previous_row=False)
+    assert counter[delivered_dimensions] == 0
+    assert processed_changes == 2
+    assert ignored_changes == 0
+
+    counter, processed_changes, ignored_changes = dao._build_counter_from_changes([delete])
+
+    assert counter == {delivered_dimensions: -1}
+    assert processed_changes == 1
+    assert ignored_changes == 0
+
+
+def test_handles_delete_changes(mocker):
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst", return_value=datetime(2026, 8, 6, tzinfo=UTC)
+    )
+    row = {
+        "service_id": "550e8400-e29b-41d4-a716-446655440000",
+        "template_id": "550e8400-e29b-41d4-a716-446655440001",
+        "job_id": "550e8400-e29b-41d4-a716-446655440002",
+        "notification_type": "sms",
+        "key_type": "normal",
+        "created_at": "2026-08-06T10:00:00Z",
+        "notification_status": "delivered",
+    }
+    changes = [
+        _build_change(change_type="delete", previous_row_data=row, lsn="0/01"),
+        _build_change(change_type="delete", previous_row_data=row, lsn="0/02"),
+    ]
+    mocker.patch(
+        "app.dao.notifications_wal_changes_dao._get_replication_changes",
+        return_value=(changes, "0/FF"),
+    )
+    upsert = mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count")
+    advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+
+    with Flask(__name__).app_context():
+        result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+
+    expected_dimensions = dao._build_dimensions(changes[0], use_previous_row=True)
+
+    upsert.assert_called_once_with({expected_dimensions: -2})
+    advance.assert_called_once_with("0/FF", slot_name=dao.REPLICATION_SLOT_NAME)
+    assert result["processed_changes"] == 2
+    assert result["ignored_changes"] == 0
