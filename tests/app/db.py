@@ -49,6 +49,7 @@ from app.models import (
     EmailBranding,
     FactBilling,
     FactNotificationStatus,
+    FactNotificationStatusLive,
     FactProcessingTime,
     InboundNumber,
     InboundSms,
@@ -769,6 +770,41 @@ def create_ft_notification_status(
         template = create_template(service=service, template_type=notification_type)
 
     data = FactNotificationStatus(
+        bst_date=bst_date,
+        template_id=template.id,
+        service_id=service.id,
+        job_id=job.id if job else uuid.UUID(int=0),
+        notification_type=notification_type,
+        key_type=key_type,
+        notification_status=notification_status,
+        notification_count=count,
+    )
+    db.session.add(data)
+    db.session.commit()
+    return data
+
+
+def create_ft_notification_status_live(
+    bst_date,
+    notification_type="sms",
+    service=None,
+    template=None,
+    job=None,
+    key_type="normal",
+    notification_status="delivered",
+    count=1,
+):
+    if job:
+        template = job.template
+    if template:
+        service = template.service
+        notification_type = template.template_type
+    else:
+        if not service:
+            service = create_service()
+        template = create_template(service=service, template_type=notification_type)
+
+    data = FactNotificationStatusLive(
         bst_date=bst_date,
         template_id=template.id,
         service_id=service.id,

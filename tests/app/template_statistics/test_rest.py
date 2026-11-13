@@ -3,11 +3,12 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock
 
 import pytest
+from flask import url_for
 from freezegun import freeze_time
 
 from app import db
 from app.utils import DATETIME_FORMAT
-from tests.app.db import create_ft_notification_status, create_notification
+from tests.app.db import create_ft_notification_status, create_ft_notification_status_live, create_notification
 
 # get_template_statistics_for_service_by_day
 
@@ -153,3 +154,120 @@ def test_get_last_used_datetime_for_template_returns_404_if_template_does_not_ex
         template_id=uuid.uuid4(),
         _expected_status=404,
     )
+
+
+# get_template_statistics_for_service_by_day_live
+
+
+def test_get_template_statistics_for_service_by_day_live_url(notify_api):
+    with notify_api.test_request_context():
+        assert url_for("template_statistics.get_template_statistics_for_service_by_day_live", service_id="123") == (
+            "/service/123/template-statistics/live"
+        )
+
+
+@pytest.mark.parametrize(
+    "query_string",
+    [
+        {},
+        {"whole_days": -1},
+        {"whole_days": 8},
+        {"whole_days": 3.5},
+        {"whole_days": "blurk"},
+    ],
+)
+def test_get_template_statistics_for_service_by_day_live_with_bad_arg_returns_400(admin_request, query_string):
+    json_resp = admin_request.get(
+        "template_statistics.get_template_statistics_for_service_by_day_live",
+        service_id=uuid.uuid4(),
+        **query_string,
+        _expected_status=400,
+    )
+    assert json_resp["result"] == "error"
+    assert "whole_days" in json_resp["message"]
+
+
+@freeze_time("2018-01-02 12:00:00")
+def test_get_template_statistics_for_service_by_day_live_returns_template_info(admin_request, sample_template):
+    create_ft_notification_status_live(datetime.utcnow().date(), template=sample_template, count=3)
+
+    json_resp = admin_request.get(
+        "template_statistics.get_template_statistics_for_service_by_day_live",
+        service_id=sample_template.service_id,
+        whole_days=1,
+    )
+
+    assert json_resp["data"] == [
+        {
+            "count": 3,
+            "template_id": str(sample_template.id),
+            "template_name": "Template Name",
+            "template_type": "sms",
+            "status": "delivered",
+            "is_precompiled_letter": False,
+        }
+    ]
+
+
+@pytest.mark.parametrize("var_name", ["limit_days", "whole_days"])
+@freeze_time("2018-01-02 12:00:00")
+def test_get_template_statistics_for_service_by_day_live_accepts_old_query_string(
+    admin_request, sample_template, var_name
+):
+    create_ft_notification_status_live(datetime.utcnow().date(), template=sample_template)
+
+    json_resp = admin_request.get(
+        "template_statistics.get_template_statistics_for_service_by_day_live",
+        service_id=sample_template.service_id,
+        **{var_name: 1},
+    )
+
+    assert len(json_resp["data"]) == 1
+
+
+@freeze_time("2018-01-02 12:00:00")
+def test_get_template_statistics_for_service_by_day_live_goes_to_db(admin_request, mocker, sample_template):
+    mock_dao = mocker.patch(
+        "app.template_statistics.rest.fetch_notification_status_live_for_service_for_today_and_7_previous_days",
+        return_value=[
+            Mock(
+                template_id=sample_template.id,
+                count=3,
+                template_name=sample_template.name,
+                notification_type=sample_template.template_type,
+                status="created",
+                is_precompiled_letter=False,
+            )
+        ],
+    )
+    json_resp = admin_request.get(
+        "template_statistics.get_template_statistics_for_service_by_day_live",
+        service_id=sample_template.service_id,
+        whole_days=1,
+    )
+
+    assert json_resp["data"] == [
+        {
+            "template_id": str(sample_template.id),
+            "count": 3,
+            "template_name": sample_template.name,
+            "template_type": sample_template.template_type,
+            "status": "created",
+            "is_precompiled_letter": False,
+        }
+    ]
+    mock_dao.assert_called_once_with(
+        str(sample_template.service_id), limit_days=1, by_template=True, session=db.session_bulk
+    )
+
+
+def test_get_template_statistics_for_service_by_day_live_returns_empty_list_if_no_templates(
+    admin_request, sample_service
+):
+    json_resp = admin_request.get(
+        "template_statistics.get_template_statistics_for_service_by_day_live",
+        service_id=sample_service.id,
+        whole_days=7,
+    )
+
+    assert len(json_resp["data"]) == 0
