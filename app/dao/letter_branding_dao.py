@@ -1,6 +1,7 @@
 from app import db
 from app.dao.dao_utils import autocommit
 from app.models import LetterBranding, Organisation, Service
+from app.utils import get_archived_db_column_value
 
 
 def dao_get_existing_alternate_letter_branding_for_name(name):
@@ -29,7 +30,7 @@ def dao_get_letter_branding_by_name_case_insensitive(letter_branding_name):
 
 
 def dao_get_all_letter_branding():
-    return LetterBranding.query.order_by(LetterBranding.name).all()
+    return LetterBranding.query.filter_by(active=True).order_by(LetterBranding.name).all()
 
 
 @autocommit
@@ -76,3 +77,12 @@ def dao_get_orgs_and_services_associated_with_letter_branding(letter_branding_id
     )
 
     return {"services": [s._asdict() for s in services], "organisations": [o._asdict() for o in organisations]}
+
+
+@autocommit
+def dao_archive_letter_branding(letter_branding_id):
+    letter_branding = dao_get_letter_branding_by_id(letter_branding_id)
+
+    letter_branding.active = False
+    letter_branding.name = get_archived_db_column_value(letter_branding.name)
+    db.session.add(letter_branding)

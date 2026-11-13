@@ -1,7 +1,12 @@
 import pytest
+from freezegun import freeze_time
 
+from app.dao.organisation_dao import (
+    dao_add_letter_branding_list_to_organisation_pool,
+    dao_get_letter_branding_pool_for_organisation,
+)
 from app.models import LetterBranding
-from tests.app.db import create_letter_branding
+from tests.app.db import create_letter_branding, create_organisation
 
 
 def test_get_all_letter_brands(admin_request, notify_db_session):
@@ -186,3 +191,47 @@ def test_get_orgs_and_services_associated_with_letter_branding(admin_request, no
     )["data"]
 
     assert orgs_and_services == {"services": [], "organisations": []}
+
+
+def test_archive_letter_branding_returns_404_if_branding_does_not_exist(admin_request, notify_db_session, fake_uuid):
+    admin_request.post(
+        "letter_branding.archive_letter_branding",
+        letter_branding_id=fake_uuid,
+        _expected_status=404,
+    )
+
+
+def test_archive_letter_branding_removes_branding_from_org_pools(admin_request, notify_db_session):
+    letter_branding_1 = create_letter_branding(name="branding 1", filename="filename-1")
+    letter_branding_2 = create_letter_branding(name="branding 2", filename="filename-2")
+
+    org_1 = create_organisation(name="org 1")
+    org_2 = create_organisation(name="org 2")
+
+    dao_add_letter_branding_list_to_organisation_pool(org_1.id, [letter_branding_1.id])
+    dao_add_letter_branding_list_to_organisation_pool(org_2.id, [letter_branding_1.id, letter_branding_2.id])
+
+    admin_request.post(
+        "letter_branding.archive_letter_branding",
+        letter_branding_id=letter_branding_1.id,
+        _data=None,
+        _expected_status=204,
+    )
+
+    assert len(dao_get_letter_branding_pool_for_organisation(org_1.id)) == 0
+    assert len(dao_get_letter_branding_pool_for_organisation(org_2.id)) == 1
+
+
+@freeze_time("2023-01-13 11:09:16")
+def test_archive_letter_branding_archives_branding_and_changes_its_name(admin_request, notify_db_session):
+    letter_branding_1 = create_letter_branding(name="branding 1")
+
+    admin_request.post(
+        "letter_branding.archive_letter_branding",
+        letter_branding_id=letter_branding_1.id,
+        _data=None,
+        _expected_status=204,
+    )
+
+    assert letter_branding_1.active is False
+    assert letter_branding_1.name == "_archived_2023-01-13-11:09:16_branding 1"
