@@ -151,6 +151,7 @@ from app.one_click_unsubscribe.rest import create_unsubscribe_request_reports_su
 from app.schema_validation import validate
 from app.schemas import (
     api_key_schema,
+    create_api_key_schema,
     detailed_service_schema,
     email_data_request_schema,
     notification_with_template_schema,
@@ -358,7 +359,7 @@ def update_service(service_id):
 @service_blueprint.route("/<uuid:service_id>/api-key", methods=["POST"])
 def create_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    valid_api_key = api_key_schema.load(request.get_json())
+    valid_api_key = create_api_key_schema.load(request.get_json())
     valid_api_key.service = fetched_service
     save_model_api_key(valid_api_key)
     unsigned_api_key = get_unsigned_secret(valid_api_key.id)

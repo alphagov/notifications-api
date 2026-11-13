@@ -76,7 +76,7 @@ from app.models import (
     ServiceSmsSender,
     User,
 )
-from app.schemas import api_key_schema, template_schema
+from app.schemas import create_api_key_schema, template_schema
 from app.serialised_models import (
     SerialisedAPIKeyCollection,
     SerialisedProviders,
@@ -734,7 +734,7 @@ def _create_api_key(name, service_id, user_id, key_type="normal"):
     request = {"created_by": user_id, "key_type": key_type, "name": name}
 
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    valid_api_key = api_key_schema.load(request)
+    valid_api_key = create_api_key_schema.load(request)
     valid_api_key.service = fetched_service
     save_model_api_key(valid_api_key)
 

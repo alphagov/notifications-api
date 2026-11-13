@@ -461,7 +461,7 @@ class TemplateEmailFilesSchema(BaseSchema):
         model = models.TemplateEmailFile
 
 
-class ApiKeySchema(BaseSchema):
+class CreateApiKeySchema(BaseSchema):
     created_by = field_for(models.ApiKey, "created_by", required=True)
     key_type = field_for(models.ApiKey, "key_type", required=True)
     expiry_date = FlexibleDateTime()
@@ -478,6 +478,18 @@ class ApiKeySchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.ApiKey
         exclude = ("service", "_secret")
+
+
+class ApiKeySchema(CreateApiKeySchema):
+    # No idea why Marshmallow needs this one field redefining
+    key_type = field_for(models.ApiKey, "key_type", required=True)
+
+    # Override created_by when serialising keys in order to get the user
+    # who originally created the key, not the one who revoked it
+    created_by = fields.Method("get_originally_created_by", allow_none=False)
+
+    def get_originally_created_by(self, api_key):
+        return api_key.originally_created_by()
 
 
 class JobSchema(BaseSchema):
@@ -735,6 +747,7 @@ detailed_service_schema = DetailedServiceSchema()
 template_schema = TemplateSchema()
 template_email_files_schema = TemplateEmailFilesSchema()
 api_key_schema = ApiKeySchema()
+create_api_key_schema = CreateApiKeySchema()
 job_schema = JobSchema()
 notification_schema = NotificationModelSchema()
 notification_with_template_schema = NotificationWithTemplateSchema()
