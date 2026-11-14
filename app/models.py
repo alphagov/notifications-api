@@ -790,14 +790,11 @@ class InboundNumber(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
     def serialize(self) -> SerializedInboundNumber:
-        def serialize_service() -> SerializedService:
-            return {"id": str(self.service_id), "name": self.service.name}
-
         return SerializedInboundNumber(
             id=str(self.id),
             number=self.number,
             provider=self.provider,
-            service=serialize_service() if self.service else None,
+            service={"id": str(self.service_id), "name": self.service.name} if self.service else None,
             active=self.active,
             created_at=self.created_at.strftime(DATETIME_FORMAT),
             updated_at=get_dt_string_or_none(self.updated_at),
