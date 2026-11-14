@@ -2606,7 +2606,7 @@ class ServiceContactList(db.Model):
             has_jobs=self.has_jobs,
             template_type=self.template_type,
             service_id=str(self.service_id),
-            created_by=self.created_by.name,
+            created_by=self.created_by.name if self.created_by else None,
             created_at=self.created_at.strftime(DATETIME_FORMAT),
         )
 
