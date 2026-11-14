@@ -1,6 +1,7 @@
 import datetime
 import enum
 import uuid
+from typing import Self
 
 from flask import current_app, url_for
 from jsonschema import ValidationError, validate
@@ -174,11 +175,11 @@ class User(db.Model):
     )
 
     @property
-    def password(self):
+    def password(self) -> str:
         raise AttributeError("Password not readable")
 
     @property
-    def can_use_webauthn(self):
+    def can_use_webauthn(self) -> bool:
         if self.platform_admin:
             return True
 
@@ -188,7 +189,7 @@ class User(db.Model):
         return any(str(service.id) == current_app.config["NOTIFY_SERVICE_ID"] for service in self.services)
 
     @password.setter
-    def password(self, password):
+    def password(self, password: str) -> None:
         self._password = hashpw(password)
 
     def check_password(self, password):
@@ -686,11 +687,11 @@ class Service(db.Model, Versioned):
     unsubscribe_requests: Mapped[list["UnsubscribeRequest"]] = relationship(back_populates="service")
 
     @hybrid_property  # a hybrid_property enables us to still use it in queries
-    def name(self):
+    def name(self) -> str:
         return self._name
 
-    @name.setter
-    def name(self, value):
+    @name.inplace.setter
+    def _name_setter(self, value: str) -> None:
         self._name = value
         self._normalised_service_name = make_string_safe_for_email_local_part(value)
 
@@ -699,21 +700,21 @@ class Service(db.Model, Versioned):
             self._email_sender_local_part = self._normalised_service_name
 
     @hybrid_property  # a hybrid_property enables us to still use it in queries
-    def custom_email_sender_name(self):
+    def custom_email_sender_name(self) -> str | None:
         return self._custom_email_sender_name
 
-    @custom_email_sender_name.setter
-    def custom_email_sender_name(self, value):
+    @custom_email_sender_name.inplace.setter
+    def _custom_email_sender_name_setter(self, value: str | None) -> None:
         self._custom_email_sender_name = value
         # if value is None, then we're clearing custom sender name, so set the local part based on service name
         self._email_sender_local_part = make_string_safe_for_email_local_part(value or self.name)
 
     @hybrid_property
-    def email_sender_local_part(self):
+    def email_sender_local_part(self) -> str:
         return self._email_sender_local_part
 
-    @email_sender_local_part.setter
-    def email_sender_local_part(self, value):
+    @email_sender_local_part.inplace.setter
+    def _email_sender_local_part_setter(self, value: str) -> None:
         # we can't allow this to be set manually.
         # Imagine we've updated just `custom_email_sender_name` via a serialised json blob. When that is set, it will
         # also update the value of email_sender_local_part. We don't want to then undo that good work by setting to the
@@ -723,7 +724,7 @@ class Service(db.Model, Versioned):
         )
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: dict) -> Self:
         """
         Assumption: data has been validated appropriately.
 
@@ -1221,14 +1222,14 @@ class TemplateBase(db.Model):
         )
 
     @property
-    def reply_to(self):
+    def reply_to(self) -> UUID | None:
         if self.template_type == LETTER_TYPE:
             return self.service_letter_contact_id
         else:
             return None
 
     @reply_to.setter
-    def reply_to(self, value):
+    def reply_to(self, value: UUID | None) -> None:
         if self.template_type == LETTER_TYPE:
             self.service_letter_contact_id = value
         elif value is None:
