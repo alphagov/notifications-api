@@ -1,7 +1,10 @@
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timedelta
+from typing import Any
+from uuid import UUID
 
 from flask import current_app
-from sqlalchemy import Float, cast
+from sqlalchemy import Float, Row, cast
 from sqlalchemy.orm import Session, joinedload, scoped_session
 from sqlalchemy.sql.expression import and_, asc, case, func
 
@@ -78,7 +81,7 @@ DEFAULT_SERVICE_PERMISSIONS = [
 ]
 
 
-def dao_fetch_all_services(only_active=False):
+def dao_fetch_all_services(only_active: bool = False) -> Sequence[Service]:
     query = Service.query.order_by(asc(Service.created_at)).options(joinedload(Service.users))
 
     if only_active:
@@ -87,12 +90,12 @@ def dao_fetch_all_services(only_active=False):
     return query.all()
 
 
-def get_services_by_partial_name(service_name):
+def get_services_by_partial_name(service_name: str) -> Sequence[Service]:
     service_name = escape_special_characters(service_name)
     return Service.query.filter(Service.name.ilike(f"%{service_name}%")).all()
 
 
-def dao_count_live_services():
+def dao_count_live_services() -> int:
     return Service.query.filter_by(
         active=True,
         restricted=False,
@@ -101,7 +104,7 @@ def dao_count_live_services():
 
 
 @retryable_query()
-def dao_fetch_live_services_data(session: Session | scoped_session = db.session):
+def dao_fetch_live_services_data(session: Session | scoped_session = db.session) -> Sequence[Mapping[str, Any]]:
     year_start_date, year_end_date = get_current_financial_year()
 
     most_recent_annual_billing = (
@@ -176,8 +179,11 @@ def dao_fetch_live_services_data(session: Session | scoped_session = db.session)
 
 @retryable_query()
 def dao_fetch_service_by_id(
-    service_id, only_active=False, with_users=True, session: Session | scoped_session = db.session
-):
+    service_id: str | UUID,
+    only_active: bool = False,
+    with_users: bool = True,
+    session: Session | scoped_session = db.session,
+) -> Service:
     query = session.query(Service).filter_by(id=service_id)
 
     if with_users:
@@ -189,7 +195,7 @@ def dao_fetch_service_by_id(
     return query.one()
 
 
-def dao_fetch_service_by_inbound_number(number):
+def dao_fetch_service_by_inbound_number(number: str) -> Service | None:
     inbound_number = InboundNumber.query.filter(InboundNumber.number == number, InboundNumber.active).first()
 
     if not inbound_number:
@@ -198,7 +204,7 @@ def dao_fetch_service_by_inbound_number(number):
     return Service.query.filter(Service.id == inbound_number.service_id).first()
 
 
-def dao_fetch_service_by_id_with_api_keys(service_id, only_active=False):
+def dao_fetch_service_by_id_with_api_keys(service_id: str | UUID, only_active: bool = False) -> Service:
     query = Service.query.filter_by(id=service_id).options(joinedload(Service.api_keys))
 
     if only_active:
@@ -207,7 +213,7 @@ def dao_fetch_service_by_id_with_api_keys(service_id, only_active=False):
     return query.one()
 
 
-def dao_fetch_all_services_by_user(user_id, only_active=False):
+def dao_fetch_all_services_by_user(user_id: str | UUID, only_active: bool = False) -> Sequence[Service]:
     query = (
         Service.query.filter(Service.users.any(id=user_id))
         .order_by(asc(Service.created_at))
@@ -220,7 +226,7 @@ def dao_fetch_all_services_by_user(user_id, only_active=False):
     return query.all()
 
 
-def dao_fetch_all_services_created_by_user(user_id):
+def dao_fetch_all_services_created_by_user(user_id: str | UUID) -> Sequence[Service]:
     query = Service.query.filter_by(created_by_id=user_id).order_by(asc(Service.created_at))
 
     return query.all()
@@ -232,7 +238,7 @@ def dao_fetch_all_services_created_by_user(user_id):
     VersionOptions(Service),
     VersionOptions(Template, history_class=TemplateHistory, must_write_history=False),
 )
-def dao_archive_service(service_id):
+def dao_archive_service(service_id: str | UUID) -> None:
     # have to eager load templates and api keys so that we don't flush when we loop through them
     # to ensure that db.session still contains the models when it comes to creating history objects
     service = (
@@ -256,7 +262,7 @@ def dao_archive_service(service_id):
             api_key.expiry_date = datetime.utcnow()
 
 
-def dao_fetch_service_by_id_and_user(service_id, user_id):
+def dao_fetch_service_by_id_and_user(service_id: str | UUID, user_id: str | UUID) -> Service:
     return (
         Service.query.filter(Service.users.any(id=user_id), Service.id == service_id)
         .options(joinedload(Service.users))
@@ -267,10 +273,10 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 @autocommit
 @version_class(Service)
 def dao_create_service(  # noqa: C901
-    service,
-    user,
-    service_permissions=None,
-):
+    service: Service,
+    user: User | None,
+    service_permissions: Sequence[str] | None = None,
+) -> None:
     if not user:
         raise ValueError("Can't create a service without a user")
 
@@ -322,11 +328,16 @@ def dao_create_service(  # noqa: C901
 
 @autocommit
 @version_class(Service)
-def dao_update_service(service):
+def dao_update_service(service: Service) -> None:
     db.session.add(service)
 
 
-def dao_add_user_to_service(service, user, permissions=None, folder_permissions=None):
+def dao_add_user_to_service(
+    service: Service,
+    user: User,
+    permissions: Sequence[Permission] | None = None,
+    folder_permissions: Sequence[str] | None = None,
+) -> None:
     permissions = permissions or []
     folder_permissions = folder_permissions or []
 
@@ -351,7 +362,7 @@ def dao_add_user_to_service(service, user, permissions=None, folder_permissions=
         db.session.commit()
 
 
-def dao_remove_user_from_service(service, user):
+def dao_remove_user_from_service(service: Service, user: User) -> None:
     try:
         from app.dao.permissions_dao import permission_dao
 
@@ -366,7 +377,7 @@ def dao_remove_user_from_service(service, user):
         db.session.commit()
 
 
-def delete_service_and_all_associated_db_objects(service):
+def delete_service_and_all_associated_db_objects(service: Service) -> None:
     """
     To be used with functional test services only! This irrevocably deletes data, use with extreme caution!
     """
@@ -435,7 +446,7 @@ def delete_service_and_all_associated_db_objects(service):
     db.session.commit()
 
 
-def dao_fetch_todays_stats_for_service(service_id):
+def dao_fetch_todays_stats_for_service(service_id: str | UUID) -> Sequence[Row]:
     today = date.today()
     start_date = get_london_midnight_in_utc(today)
 
@@ -456,7 +467,9 @@ def dao_fetch_todays_stats_for_service(service_id):
     )
 
 
-def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_active=True):
+def dao_fetch_todays_stats_for_all_services(
+    include_from_test_key: bool = True, only_active: bool = True
+) -> Sequence[Row]:
     today = date.today()
     start_date = get_london_midnight_in_utc(today)
     end_date = get_london_midnight_in_utc(today + timedelta(days=1))
@@ -498,13 +511,13 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
     return query.all()
 
 
-def dao_fetch_active_users_for_service(service_id):
+def dao_fetch_active_users_for_service(service_id: str | UUID) -> Sequence[User]:
     query = User.query.filter(User.services.any(id=service_id), User.state == "active")
 
     return query.all()
 
 
-def dao_fetch_active_users_with_manage_settings_for_service(service_id):
+def dao_fetch_active_users_with_manage_settings_for_service(service_id: str | UUID) -> Sequence[User]:
     return (
         User.query.join(Permission, Permission.user_id == User.id)
         .filter(
@@ -519,7 +532,7 @@ def dao_fetch_active_users_with_manage_settings_for_service(service_id):
 @retryable_query()
 def dao_find_services_sending_to_tv_numbers(
     start_date: datetime, end_date: datetime, threshold: int = 500, session: Session | scoped_session = db.session
-):
+) -> Sequence[Row]:
     return (
         session.query(
             Notification.service_id.label("service_id"), func.count(Notification.id).label("notification_count")
@@ -545,7 +558,7 @@ def dao_find_services_sending_to_tv_numbers(
 @retryable_query()
 def dao_find_services_with_high_failure_rates(
     start_date: datetime, end_date: datetime, threshold: int = 10000, session: Session | scoped_session = db.session
-):
+) -> Sequence[Row]:
     subquery = (
         session.query(func.count(Notification.id).label("total_count"), Notification.service_id.label("service_id"))
         .filter(
@@ -592,7 +605,7 @@ def dao_find_services_with_high_failure_rates(
     return query.all()
 
 
-def get_live_services_with_organisation():
+def get_live_services_with_organisation() -> Sequence[Row]:
     query = (
         db.session.query(
             Service.id.label("service_id"),
@@ -609,7 +622,7 @@ def get_live_services_with_organisation():
 
 
 @retryable_query()
-def fetch_billing_details_for_all_services(session: Session | scoped_session = db.session):
+def fetch_billing_details_for_all_services(session: Session | scoped_session = db.session) -> Sequence[Row]:
     return (
         session.query(
             Service.id.label("service_id"),
