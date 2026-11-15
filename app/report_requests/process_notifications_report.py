@@ -1,4 +1,5 @@
 import csv
+from collections.abc import Sequence
 from io import StringIO
 from typing import Any
 from uuid import UUID
@@ -17,6 +18,7 @@ from app.constants import NOTIFICATION_REPORT_REQUEST_MAPPING
 from app.dao.notifications_dao import get_notifications_for_service
 from app.dao.report_requests_dao import dao_get_report_request_by_id
 from app.dao.service_data_retention_dao import fetch_service_data_retention_by_notification_type
+from app.models_types import SerializedNotificationForCSV
 
 
 class ReportRequestProcessor:
@@ -83,7 +85,9 @@ class ReportRequestProcessor:
         # Upload any remaining data
         self._upload_remaining_data()
 
-    def _fetch_serialized_notifications(self, limit_days: int, older_than: str | None) -> list[dict[str, Any]]:
+    def _fetch_serialized_notifications(
+        self, limit_days: int, older_than: str | UUID | None
+    ) -> Sequence[SerializedNotificationForCSV]:
         statuses = NOTIFICATION_REPORT_REQUEST_MAPPING[self.notification_status]
 
         notifications = get_notifications_for_service(  # type: ignore[call-arg]
@@ -108,7 +112,9 @@ class ReportRequestProcessor:
         serialized_notifications = [notification.serialize_for_csv() for notification in notifications]
         return serialized_notifications
 
-    def _convert_notifications_to_csv(self, serialized_notifications: list[dict[str, Any]]) -> list[tuple]:
+    def _convert_notifications_to_csv(
+        self, serialized_notifications: Sequence[SerializedNotificationForCSV]
+    ) -> list[tuple]:
         values = []
         for notification in serialized_notifications:
             values.append(
