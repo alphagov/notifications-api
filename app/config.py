@@ -128,6 +128,9 @@ class Config:
         },
     }
 
+    MAILBOX_API_KEY = os.getenv("MAILBOX_API_KEY")
+    MAILBOX_BASE_URL = os.getenv("MAILBOX_BASE_URL")
+
     # MMG API Key
     MMG_API_KEY = os.getenv("MMG_API_KEY")
 

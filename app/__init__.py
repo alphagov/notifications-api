@@ -44,6 +44,7 @@ from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.letter.dvla import DVLAClient
+from app.clients.mailbox import MailboxClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
 from app.session import BindForcingSession
@@ -131,6 +132,13 @@ get_notification_provider_clients: LazyLocalGetter[NotificationProviderClients] 
 memo_resetters.append(lambda: get_notification_provider_clients.clear())
 notification_provider_clients = LocalProxy(get_notification_provider_clients)
 
+_mailbox_client_context_var: ContextVar[MailboxClient] = ContextVar("mailbox_client")
+get_mailbox_client: LazyLocalGetter[MailboxClient] = LazyLocalGetter(
+    _mailbox_client_context_var,
+    lambda: MailboxClient(current_app),
+)
+memo_resetters.append(lambda: get_mailbox_client.clear())
+mailbox_client = LocalProxy(get_mailbox_client)
 
 _dvla_client_context_var: ContextVar[DVLAClient] = ContextVar("dvla_client")
 get_dvla_client: LazyLocalGetter[DVLAClient] = LazyLocalGetter(
