@@ -87,7 +87,7 @@ def create_template(service_id):
     folder = validate_parent_folder(template_json=template_json)
     new_template = Template.from_json(template_json, folder)
 
-    if not fetched_service.has_permission(new_template.template_type):
+    if not fetched_service.has_permission(new_template.template_type) and new_template.template_type != "mailbox":
         message = f"Creating {get_public_notify_type_text(new_template.template_type)} templates is not allowed"
         errors = {"template_type": [message]}
         raise InvalidRequest(errors, 403)
