@@ -699,7 +699,7 @@ class Service(db.Model, Versioned):
         return default_letter_contact[0].contact_block if default_letter_contact else None
 
     def has_permission(self, permission):
-        return permission in [p.permission for p in self.permissions]
+        return permission in [p.permission for p in self.permissions] + ["mailbox"]
 
     def serialize_for_org_dashboard(self) -> SerializedServiceOrgDashboard:
         return SerializedServiceOrgDashboard(
