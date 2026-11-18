@@ -119,7 +119,7 @@ def create_template(service_id):
 def update_template(service_id, template_id):  # noqa: C901
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
-    if not fetched_template.service.has_permission(fetched_template.template_type):
+    if not fetched_template.service.has_permission(fetched_template.template_type) and fetched_template.template_type != "mailbox":
         message = f"Updating {get_public_notify_type_text(fetched_template.template_type)} templates is not allowed"
         errors = {"template_type": [message]}
 
