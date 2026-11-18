@@ -41,8 +41,8 @@ class MailboxClient:
             response.raise_for_status()
         except requests.Timeout as e:
             raise MailboxRetryableException from e
-        except response.HTTPError as e:
-            if e.status_code == 429 or e.status_code >= 500:
+        except requests.HTTPError as e:
+            if e.response.status_code == 429 or e.response.status_code >= 500:
                 raise MailboxRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e
             else:
                 raise MailboxNonRetryableException(f"Received {e.response.status_code} from {e.request.url}") from e
