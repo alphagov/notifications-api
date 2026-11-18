@@ -9,7 +9,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
 )
 
-from app import create_uuid, db, notification_provider_clients, redis_store
+from app import create_uuid, db, mailbox_client, notification_provider_clients, redis_store
 from app.celery.research_mode_tasks import (
     send_email_response,
     send_sms_response,
@@ -36,6 +36,7 @@ from app.exceptions import NotificationTechnicalFailureException
 from app.metrics.notification import record_international_sms, record_send_duration
 from app.models import Notification
 from app.serialised_models import SerialisedProviders, SerialisedService, SerialisedTemplate
+from app.utils import MailboxTemplate
 
 
 def send_sms_to_provider(notification: Notification) -> None:
@@ -205,6 +206,44 @@ def send_email_to_provider(notification):
                 (datetime.utcnow() - created_at).total_seconds(),
                 key_type=key_type,
                 notification_type="email",
+                provider_name=provider.name,
+            )
+
+
+def send_mailbox_message_to_provider(notification):
+    service = SerialisedService.from_id(notification.service_id)
+
+    if not service.active:
+        technical_failure(notification=notification)
+        return
+
+    if notification.status == "created":
+        provider = mailbox_client
+
+        template = SerialisedTemplate.from_id_service_id_and_version(
+            template_id=notification.template_id, service_id=service.id, version=notification.template_version
+        )
+
+        mailbox_message = MailboxTemplate(
+            template.__dict__,
+            values=notification.personalisation,
+        )
+        created_at = notification.created_at
+        key_type = notification.key_type
+
+        try:
+            reference = provider.send_mailbox_message(
+                subject=mailbox_message.subject,
+                body=mailbox_message.content_with_placeholders_filled_in,
+                department_person_id="TEST-CITIZEN-001",
+            )
+            notification.reference = reference
+            update_notification_to_sending(notification, provider)
+        finally:
+            record_send_duration(
+                (datetime.utcnow() - created_at).total_seconds(),
+                key_type=key_type,
+                notification_type="mailbox",
                 provider_name=provider.name,
             )
 
