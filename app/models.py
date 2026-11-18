@@ -62,6 +62,8 @@ from app.constants import (
     ORGANISATION_PERMISSION_TYPES,
     PERMISSION_LIST,
     PRECOMPILED_TEMPLATE_NAME,
+    REMINDER_ALLOWED_OBJECT_TYPES,
+    REMINDER_TYPES,
     REPORT_REQUEST_PENDING,
     REPORT_REQUEST_REPORT_TYPES,
     REPORT_REQUEST_STATUS_TYPES,
@@ -2971,3 +2973,23 @@ class ReportRequest(db.Model):
             created_at=self.created_at.strftime(DATETIME_FORMAT),
             updated_at=get_dt_string_or_none(self.updated_at),
         )
+
+
+class Reminders(db.Model):
+    __tablename__ = "reminders"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    object_type = db.Column(
+        db.Enum(*REMINDER_ALLOWED_OBJECT_TYPES, name="reminder_allowed_object_type"), nullable=False
+    )
+    object_id = db.Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
+    sent_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), nullable=False)
+
+
+class TemplatesToReminderTypes(db.Model):
+    __tablename__ = "templates_to_reminder_types"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey("templates.id"), nullable=False)
+    reminder_type = db.Column(db.Enum(*REMINDER_TYPES, name="reminder_type"), nullable=False)
