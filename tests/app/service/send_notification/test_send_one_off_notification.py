@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
@@ -15,6 +16,7 @@ from app.constants import (
 from app.dao.service_guest_list_dao import (
     dao_add_and_commit_guest_list_contacts,
 )
+from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id, dao_update_template_email_file
 from app.models import Notification, ServiceGuestList
 from app.service.send_notification import send_one_off_notification
 from app.v2.errors import BadRequestError, TooManyRequestsError
@@ -200,6 +202,58 @@ def test_send_one_off_notification_calls_persist_correctly_for_email_with_email_
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=2,
+    )
+
+
+def test_send_one_off_notification_does_not_count_email_files_from_previous_template_versions(
+    persist_mock,
+    celery_mock,
+    notify_db_session,
+    sample_email_template_with_template_email_files,
+    mock_utils_s3_download,
+    mock_document_download_client_upload,
+):
+    template = sample_email_template_with_template_email_files
+
+    # Archive one file of the two files associated with the current template version
+    email_file_1 = [file for file in template.email_files if file.filename == "invitation.pdf"][0]
+    email_file_1.archived_at = datetime.utcnow()
+    email_file_1.archived_by_id = template.created_by_id
+    dao_update_template_email_file(email_file_1)
+
+    # Assert template has 2 files associated with the previous version, but 1 with the latest version
+    assert len(dao_get_template_email_files_by_template_id(template.id, template.version - 1)) == 2
+    assert len(dao_get_template_email_files_by_template_id(template.id, template.version)) == 1
+
+    post_data = {
+        "template_id": str(template.id),
+        "to": "test@example.com",
+        "personalisation": {"name": "foo", "invitation.pdf": "blah"},
+        "created_by": str(template.service.created_by_id),
+    }
+
+    send_one_off_notification(template.service.id, post_data)
+
+    persist_mock.assert_called_once_with(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=post_data["to"],
+        service=template.service,
+        personalisation={
+            "name": "foo",
+            "invitation.pdf": "blah",
+            "form.pdf": "[follow this link](documents.gov.uk/form.pdf)",
+        },
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        created_by_id=str(template.service.created_by_id),
+        reply_to_text=None,
+        reference=None,
+        postage=None,
+        client_reference=None,
+        template_has_unsubscribe_link=False,
+        document_download_count=1,
     )
 
 
