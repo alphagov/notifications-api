@@ -294,7 +294,7 @@ class SerializedServiceContactList(TypedDict):
     has_jobs: bool
     template_type: str
     service_id: str
-    created_by: str
+    created_by: str | None
     created_at: str
 
 
