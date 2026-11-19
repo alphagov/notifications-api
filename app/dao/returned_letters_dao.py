@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import desc, func, not_, select
 from sqlalchemy.dialects.postgresql import insert
 
-from app import db
+from app import db, redis_store
 from app.dao.dao_utils import autocommit
 from app.models import (
     Job,
@@ -47,6 +47,9 @@ def insert_returned_letters(references):
             .on_conflict_do_nothing(index_elements=[table.c.notification_id])
         )
         db.session.connection().execute(stmt)
+
+    # clear all service-{service_id}-returned-letter-summary caches
+    redis_store.delete_by_pattern("service-????????-????-????-????-????????????-returned-letter-summary")
 
 
 def fetch_recent_returned_letter_count(service_id):
