@@ -6,23 +6,17 @@ print("Processing header names")
 
 
 reader = csv.reader(sys.stdin)
-headers = next(reader)
-column_for_vertical = headers.index("Vertical:")
-column_for_sender_id = headers.index("SenderID:")
+headers = [header.replace("\ufeff", "") for header in next(reader)]
+column_for_sender_id = headers.index("Sender ID")
 
 sender_ids: list[str] = []
 
 for line in reader:
-    # We don't want to forbid people using government sender ids
-    if line[column_for_vertical] != "Government and Healthcare":
-        if len(line[column_for_sender_id].split(",")[0]) > 0:
-            # Sender_ids are comma seperated in the spreadsheet so split them
-            new_sender_ids = line[column_for_sender_id].lower().split(",")
-            # Do the split/join dance to remove whitespace
-            new_sender_ids_cleaned = ["".join(x.split()) for x in new_sender_ids]
-            # Sometimes there are trailing commas remove them
-            new_sender_ids_filtered = [x for x in new_sender_ids_cleaned if x != ""]
-            sender_ids = sender_ids + new_sender_ids_filtered
+    if len(line[column_for_sender_id]) > 0:
+        # Do the split/join dance to remove whitespace
+        sender_id = "".join(line[column_for_sender_id].lower().split())
+        if sender_id != "":
+            sender_ids.append(sender_id)
 
 
 joined_sender_ids = "'),('".join(sender_ids)
