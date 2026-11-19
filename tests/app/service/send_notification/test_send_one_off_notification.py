@@ -19,6 +19,7 @@ from app.dao.service_guest_list_dao import (
 from app.dao.template_email_files_dao import dao_get_template_email_files_by_template_id, dao_update_template_email_file
 from app.models import Notification, ServiceGuestList
 from app.service.send_notification import send_one_off_notification
+from app.utils import SentFileData
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from tests.app.db import (
     create_letter_contact,
@@ -95,6 +96,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(persist_mock,
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=None,
+        sent_files_data=[],
     )
 
 
@@ -160,6 +162,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(persist_moc
         client_reference=None,
         template_has_unsubscribe_link=True,
         document_download_count=None,
+        sent_files_data=[],
     )
 
 
@@ -202,6 +205,10 @@ def test_send_one_off_notification_calls_persist_correctly_for_email_with_email_
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=2,
+        sent_files_data=[
+            SentFileData(uuid.UUID("2c3d930c-d273-3dd1-ac49-f39a8b431f73"), "invitation.pdf", "invitation.pdf"),
+            SentFileData(uuid.UUID("32989390-d703-34d0-aaa9-b438773b1571"), "form.pdf", "form.pdf"),
+        ],
     )
 
 
@@ -254,6 +261,7 @@ def test_send_one_off_notification_does_not_count_email_files_from_previous_temp
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=1,
+        sent_files_data=[SentFileData(uuid.UUID("32989390-d703-34d0-aaa9-b438773b1571"), "form.pdf", "form.pdf")],
     )
 
 
@@ -303,6 +311,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         client_reference=None,
         template_has_unsubscribe_link=False,
         document_download_count=None,
+        sent_files_data=[],
     )
 
 
