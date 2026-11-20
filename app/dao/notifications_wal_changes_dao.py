@@ -91,40 +91,36 @@ def dao_process_notifications_replication_slot_changes(
             slot_name=slot_name, upto_nchanges=upto_nchanges, table_names=REPLICATION_SLOT_TABLE_NAMES
         )
 
-        fetched_changes = len(changes)
-        if not changes or fetched_changes == 0:
-            return {
-                "lock_acquired": lock_acquired,
-                "slot_name": slot_name,
-                "changes_count": fetched_changes,
-                "change_count_buckets": 0,
-            }
-
-        # This should never happen in normal circumstances as we already have a 0 changes gate above
-        # If we have changes but no last SQL LSN, something went wrong and we should raise an error.
-        if not batch_last_lsn:
-            raise RuntimeError(
-                f"No last_lsn found after processing replication slot changes, \
-                replication slot {slot_name} will not be advanced. This should not happen under normal circumstances."
-            )
-
         # Build counter up
         counter, processed_changes, ignored_changes = _build_counter_from_changes(changes)
 
-        # Process the fetched replication slot changes to update service statistics.
-        _upsert_notification_status_live_count(counter)
+        if counter:
+            # if we have changes but no last SQL LSN, something went wrong and we should raise an error
+            # instead of proceeding to upsert the database and then be unable to advance the slot to
+            # register these changes as applied.
+            if not batch_last_lsn:
+                raise RuntimeError(
+                    f"No last_lsn found after processing replication slot changes, \
+                    replication slot {slot_name} will not be advanced. This should not happen under normal \
+                    circumstances."
+                )
 
-        # Advance the replication slot to the last processed SQL LSN
-        # to avoid reprocessing the same changes in future runs.
-        current_app.logger.info(
-            "Advancing replication slot %s to last_lsn=%s",
-            slot_name,
-            batch_last_lsn,
-            extra={"slot_name": slot_name, "last_lsn": batch_last_lsn},
-        )
-        _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
+            # Process the fetched replication slot changes to update service statistics.
+            _upsert_notification_status_live_count(counter)
+
+        if batch_last_lsn:
+            # Advance the replication slot to the last processed SQL LSN
+            # to avoid reprocessing the same changes in future runs.
+            current_app.logger.info(
+                "Advancing replication slot %s to last_lsn=%s",
+                slot_name,
+                batch_last_lsn,
+                extra={"slot_name": slot_name, "last_lsn": batch_last_lsn},
+            )
+            _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
 
         # Determine the number of distinct change count buckets based on the counter.
+        fetched_changes = len(changes)
         change_count_buckets = len(counter)
 
         # Log the result of the replication slot processing for monitoring and debugging purposes.

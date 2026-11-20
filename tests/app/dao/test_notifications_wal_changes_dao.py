@@ -340,10 +340,27 @@ def test_parse_wal2json_payload_with_default_table_names(mocker):
 def test_get_replication_changes_raises_if_no_lsn_returned(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mock_upsert = mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count")
+    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
     mock_rollback = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.rollback")
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._get_replication_changes",
-        return_value=([mocker.Mock()], None),
+        return_value=(
+            [
+                _build_change(
+                    current_row_data={
+                        "service_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "template_id": "550e8400-e29b-41d4-a716-446655440001",
+                        "job_id": "550e8400-e29b-41d4-a716-446655440002",
+                        "notification_type": "sms",
+                        "key_type": "normal",
+                        "created_at": "2026-08-06T10:00:00Z",
+                        "notification_status": "created",
+                    }
+                )
+            ],
+            None,
+        ),
     )
 
     with pytest.raises(
@@ -352,7 +369,9 @@ def test_get_replication_changes_raises_if_no_lsn_returned(mocker):
     ):
         dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
-    mock_rollback.assert_called_once_with()
+    assert mock_rollback.mock_calls == [mocker.call()]
+    assert not mock_upsert.mock_calls
+    assert not mock_advance.mock_calls
 
 
 def test_does_not_raise_when_no_changes_returned(mocker):
@@ -368,9 +387,11 @@ def test_does_not_raise_when_no_changes_returned(mocker):
 
     assert result == {
         "lock_acquired": True,
-        "slot_name": "notify_wal2json_slot",
         "changes_count": 0,
         "change_count_buckets": 0,
+        "ignored_changes": 0,
+        "processed_changes": 0,
+        "last_lsn": None,
     }
 
 
@@ -643,9 +664,24 @@ def test_does_not_advance_replication_slot_when_upsert_fails(mocker, caplog):
     mock_rollback = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.rollback")
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._get_replication_changes",
-        return_value=([_build_change(lsn="0/01")], "0/01"),
+        return_value=(
+            [
+                _build_change(
+                    lsn="0/01",
+                    current_row_data={
+                        "service_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "template_id": "550e8400-e29b-41d4-a716-446655440001",
+                        "job_id": "550e8400-e29b-41d4-a716-446655440002",
+                        "notification_type": "sms",
+                        "key_type": "normal",
+                        "created_at": "2026-08-06T10:00:00Z",
+                        "notification_status": "created",
+                    },
+                )
+            ],
+            "0/01",
+        ),
     )
-    mocker.patch("app.dao.notifications_wal_changes_dao._build_counter_from_changes", return_value=({}, 1, 0))
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count",
         side_effect=RuntimeError("upsert failed"),
@@ -661,16 +697,28 @@ def test_does_not_advance_replication_slot_when_upsert_fails(mocker, caplog):
     assert "Failed to process replication slot changes" in caplog.messages
 
 
-def test_does_not_advance_replication_slot_when_no_changes(mocker):
+def test_advances_replication_slot_when_no_changes_but_with_lsn(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
     mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=([], "0/01"))
     mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
 
     with Flask(__name__).app_context():
-        dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
+        dao_process_notifications_replication_slot_changes(advisory_lock_id=77, slot_name="slotty")
 
-    mock_advance.assert_not_called()
+    assert mock_advance.mock_calls == [mocker.call("0/01", slot_name="slotty")]
+
+
+def test_does_not_advance_replication_slot_when_no_changes_no_lsn(mocker):
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
+    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=([], None))
+    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+
+    with Flask(__name__).app_context():
+        dao_process_notifications_replication_slot_changes(advisory_lock_id=77, slot_name="slotty")
+
+    assert not mock_advance.mock_calls
 
 
 def test_rolls_back_session_when_processing_fails(mocker):
@@ -832,7 +880,7 @@ def test_ignores_deletes_on_notification_history_table(mocker):
     with Flask(__name__).app_context():
         result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
-    upsert.assert_called_once_with({})
+    assert not upsert.mock_calls
     advance.assert_called_once_with("0/FF", slot_name=dao.REPLICATION_SLOT_NAME)
     assert result["processed_changes"] == 0
     assert result["ignored_changes"] == 2

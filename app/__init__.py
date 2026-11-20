@@ -601,7 +601,9 @@ def setup_sqlalchemy_events(app):  # noqa: C901
                         }
                     # anything else. migrations possibly, or flask cli commands.
                     else:
-                        current_app.logger.warning("Checked out sqlalchemy connection from outside of request/task")
+                        if current_app.config["ENABLE_DATABASE_CONNECTION_CHECKOUT_OUTSIDE_CONTEXT_WARNING"]:
+                            current_app.logger.warning("Checked out sqlalchemy connection from outside of request/task")
+
                         connection_record.info["request_data"] = {
                             "method": "unknown",
                             "host": "unknown",
