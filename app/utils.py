@@ -11,15 +11,20 @@ from uuid import UUID
 
 from flask import current_app, url_for
 from flask_sqlalchemy.pagination import Pagination
+from markupsafe import Markup
+from notifications_utils.field import Field
+from notifications_utils.formatters import normalise_whitespace
 from notifications_utils.recipient_validation.errors import InvalidPhoneError
 from notifications_utils.recipient_validation.phone_number import InternationalPhoneInfo, PhoneNumber
 from notifications_utils.s3 import S3ObjectNotFound
 from notifications_utils.s3 import s3download as utils_s3download
+from notifications_utils.take import Take
 from notifications_utils.template import (
     HTMLEmailTemplate,
     LetterPrintTemplate,
     SMSMessageTemplate,
     Template,
+    do_nice_typography,
 )
 from notifications_utils.timezones import convert_bst_to_utc, utc_string_to_aware_gmt_datetime
 from notifications_utils.url_safe_token import generate_token
@@ -36,6 +41,31 @@ from app.constants import (
 DATETIME_FORMAT_NO_TIMEZONE = "%Y-%m-%d %H:%M:%S.%f"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
+
+
+class MailboxTemplate(Template):
+    template_type = "mailbox"
+
+    def __init__(self, template, values=None, **kwargs):
+        self._subject = template["subject"]
+        super().__init__(template, values, **kwargs)
+
+    def __str__(self):
+        return self.content_with_placeholders_filled_in
+
+    @property
+    def subject(self) -> str:
+        return Markup(
+            Take(
+                Field(
+                    self._subject,
+                    self.values,
+                    html="escape",
+                    redact_missing_personalisation=self.redact_missing_personalisation,
+                )
+            ).then(do_nice_typography)
+            .then(normalise_whitespace)
+        )
 
 
 def pagination_links(pagination: Pagination, endpoint: str, **kwargs) -> dict[str, str]:

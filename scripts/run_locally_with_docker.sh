@@ -37,6 +37,8 @@ docker run -it --rm \
   -e FLASK_APP=$FLASK_APP \
   -e FLASK_DEBUG=$FLASK_DEBUG \
   -e WERKZEUG_DEBUG_PIN=$WERKZEUG_DEBUG_PIN \
+  -e MAILBOX_BASE_URL=$MAILBOX_BASE_URL \
+  -e MAILBOX_API_KEY=$MAILBOX_API_KEY \
   ${EXPOSED_PORTS} \
   -v $(pwd):/home/vcap/app \
   ${DOCKER_IMAGE_NAME} \

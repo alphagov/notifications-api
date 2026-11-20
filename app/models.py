@@ -42,6 +42,7 @@ from app.constants import (
     INVITE_PENDING,
     INVITED_USER_STATUS_TYPES,
     LETTER_TYPE,
+    MAILBOX_TYPE,
     MOBILE_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -116,6 +117,7 @@ from app.models_types import (
 from app.utils import (
     DATETIME_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
+    MailboxTemplate,
     dict_filter,
     get_dt_string_or_none,
     get_london_midnight_in_utc,
@@ -1210,6 +1212,8 @@ class TemplateBase(db.Model):
                 self.__dict__,
                 contact_block=self.get_reply_to_text(),
             )
+        if self.template_type == MAILBOX_TYPE:
+            return MailboxTemplate(self.__dict__)
 
     def _as_utils_template_with_personalisation(self, values):
         template = self._as_utils_template()

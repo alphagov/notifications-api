@@ -15,6 +15,7 @@ from app.clients.letter.dvla import (
     DvlaRetryableException,
     DvlaThrottlingException,
 )
+from app.clients.mailbox import MailboxNonRetryableException, MailboxRetryableException
 from app.clients.sms import SmsClientResponseException
 from app.config import QueueNames
 from app.constants import (
@@ -114,6 +115,43 @@ def deliver_email(self, notification_id):
             )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message) from e
+
+
+@notify_celery.task(bind=True, name="deliver_mailbox_message", max_retries=3, default_retry_delay=300)
+def deliver_mailbox_message(self, notification_id):
+    current_app.logger.info(
+        "Start sending mailbox message for notification id: %s",
+        notification_id,
+        extra={"notification_id": notification_id},
+    )
+    notification = notifications_dao.get_notification_by_id(notification_id, _raise=True)
+
+    try:
+        send_to_providers.send_mailbox_message_to_provider(notification)
+    except MailboxRetryableException:
+        current_app.logger.exception(
+            "RETRY: Mailbox message notification %s failed",
+            notification_id,
+            extra={"notification_id": notification_id},
+        )
+        try:
+            self.retry(queue=QueueNames.RETRY)
+        except self.MaxRetriesExceededError as e:
+            message = (
+                "RETRY FAILED: Max retries reached. "
+                f"The task send_mailbox_message_to_provider failed for notification {notification_id}. "
+                "Notification has been updated to technical-failure"
+            )
+            update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+            raise NotificationTechnicalFailureException(message) from e
+    except MailboxNonRetryableException as e:
+        current_app.logger.exception(
+            "Mailbox notification %s failed: %s", notification_id, e, extra={"notification_id": notification_id}
+        )
+        update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+    except Exception as e:
+        update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+        raise NotificationTechnicalFailureException(f"Error when sending mailbox message {notification_id}") from e
 
 
 @notify_celery.task(bind=True, name="deliver_letter", max_retries=55)
