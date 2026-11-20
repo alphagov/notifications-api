@@ -25,6 +25,7 @@ from app.constants import (
     INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    MAILBOX_TYPE,
     NOTIFICATION_CREATED,
     SMS_TYPE,
 )
@@ -34,6 +35,7 @@ from app.dao.notifications_dao import (
 )
 from app.models import Notification
 from app.utils import (
+    MailboxTemplate,
     parse_and_format_phone_number,
     try_download_template_email_file_from_s3,
 )
@@ -78,6 +80,15 @@ def create_content_for_notification(template, personalisation, recipient):
                 max_bytes=error.max_bytes,
                 data=error.data,
             )
+    if template.template_type == MAILBOX_TYPE:
+        template_object = MailboxTemplate(
+            {
+                "content": template.content,
+                "subject": template.subject,
+                "template_type": template.template_type,
+            },
+            personalisation,
+        )
 
     check_placeholders(template_object)
 
@@ -243,6 +254,10 @@ def send_notification_to_queue_detached(
         if not queue:
             queue = QueueNames.CREATE_LETTERS_PDF
         deliver_task = get_pdf_for_templated_letter
+    if notification_type == MAILBOX_TYPE:
+        if not queue:
+            queue = QueueNames.SEND_EMAIL
+        deliver_task = provider_tasks.deliver_mailbox_message
 
     try:
         deliver_task.apply_async([str(notification_id)], queue=queue, MessageGroupId=message_group_id)
