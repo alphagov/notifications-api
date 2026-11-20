@@ -2,6 +2,7 @@
 import json
 import struct
 from collections import Counter
+from collections.abc import Iterable
 from datetime import date, datetime
 from typing import NamedTuple, Required, TypedDict
 from uuid import UUID
@@ -88,7 +89,12 @@ def dao_process_notifications_replication_slot_changes(
         # The batch-level SQL LSN is authoritative when deciding where to advance the replication slot,
         # because we may receive trailing WAL rows for other tables in the same logical slot.
         changes, batch_last_lsn = _get_replication_changes(
-            slot_name=slot_name, upto_nchanges=upto_nchanges, table_names=REPLICATION_SLOT_TABLE_NAMES
+            _get_raw_replication_change_rows(
+                slot_name=slot_name,
+                upto_nchanges=upto_nchanges,
+                table_names=REPLICATION_SLOT_TABLE_NAMES,
+            ),
+            table_names=REPLICATION_SLOT_TABLE_NAMES,
         )
 
         # Build counter up
@@ -185,57 +191,71 @@ def _advisory_unlock(lock_id: int) -> None:
     db.session.execute(text("SELECT pg_advisory_unlock(:lock_id)"), {"lock_id": lock_id})
 
 
-def _get_replication_changes(
+def _get_raw_replication_change_rows(
     *,
     slot_name: str,
     upto_nchanges: int,
     table_names: list[str] = REPLICATION_SLOT_TABLE_NAMES,
+) -> Iterable[tuple[str | None, str | None]]:
+    return db.session.execute(
+        text(
+            """
+            SELECT lsn, data
+            FROM pg_logical_slot_peek_changes (
+                :slot_name,
+                NULL,
+                :upto_nchanges,
+                'include-lsn',
+                :include_lsn,
+                'format-version',
+                :format_version,
+                'include-types',
+                :include_types,
+                'include-typmod',
+                :include_typmod,
+                'add-tables',
+                :table_names
+            )
+            """
+        ),
+        {
+            "slot_name": slot_name,
+            "upto_nchanges": upto_nchanges,
+            "include_lsn": "true",
+            "format_version": "2",
+            "include_types": "false",
+            "include_typmod": "false",
+            "table_names": ", ".join(table_names),
+        },
+    ).tuples()
+
+
+def _get_replication_changes(
+    raw_change_rows: Iterable[tuple[str | None, str | None]],
+    *,
+    table_names: list[str] = REPLICATION_SLOT_TABLE_NAMES,
 ) -> tuple[list[ParsedRow], str | None]:
-    base_params = {
-        "slot_name": slot_name,
-        "upto_nchanges": upto_nchanges,
-        "include_lsn": "true",
-        "format_version": "2",
-        "include_types": "false",
-        "include_typmod": "false",
-        "table_names": ", ".join(table_names),
-    }
-
-    stmt = text(
-        """
-        SELECT lsn, data
-        FROM pg_logical_slot_peek_changes (
-            :slot_name,
-            NULL,
-            :upto_nchanges,
-            'include-lsn',
-            :include_lsn,
-            'format-version',
-            :format_version,
-            'include-types',
-            :include_types,
-            'include-typmod',
-            :include_typmod,
-            'add-tables',
-            :table_names
-        )
-        """
-    )
-    rows = list(db.session.execute(stmt, base_params).mappings())
-
+    logged_none_payload, logged_none_lsn = False, False
     parsed_rows: list[ParsedRow] = []
     last_sql_lsn: str | None = None
 
-    for row in rows:
-        payload = row.get("data")
-        lsn = row.get("lsn")
+    for lsn, payload in raw_change_rows:
+        if lsn is not None:
+            last_sql_lsn = lsn
+        elif not logged_none_lsn:
+            # if we never see this message, can we remove this check?
+            current_app.logger.warning("Encountered None replication lsn")
+            # avoid potentially spamming the logs
+            logged_none_lsn = True
 
-        if not lsn or not payload or not isinstance(payload, str):
-            continue
-
-        last_sql_lsn = lsn
-        payload = json.loads(payload)
-        parsed_rows.extend(_parse_wal2json_payload(payload, table_names=table_names, default_lsn=lsn))
+        if payload is None:
+            if not logged_none_payload:
+                # if we never see this message, can we remove this check?
+                current_app.logger.warning("Encountered None replication payload")
+                # avoid potentially spamming the logs
+                logged_none_payload = True
+        else:
+            parsed_rows.extend(_parse_wal2json_payload(json.loads(payload), table_names=table_names, default_lsn=lsn))
 
     return parsed_rows, last_sql_lsn
 
