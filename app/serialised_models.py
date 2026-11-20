@@ -145,6 +145,9 @@ class SerialisedService(SerialisedModel):
         return SerialisedAPIKeyCollection.from_service_id(self.id)
 
     def has_permission(self, permission):
+        if permission == "mailbox":
+            return True
+
         return permission in self.permissions
 
 

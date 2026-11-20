@@ -27,6 +27,7 @@ from app.constants import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    MAILBOX_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
@@ -66,6 +67,7 @@ from app.v2.notifications.create_response import (
 from app.v2.notifications.notification_schemas import (
     post_email_request,
     post_letter_request,
+    post_mailbox_request,
     post_precompiled_letter_request,
     post_sms_request,
     send_a_file_validation,
@@ -116,6 +118,8 @@ def post_notification(notification_type):
         form = validate(request_json, post_sms_request)
     elif notification_type == LETTER_TYPE:
         form = validate(request_json, post_letter_request)
+    elif notification_type == MAILBOX_TYPE:
+        form = validate(request_json, post_mailbox_request)
     else:
         abort(404)
 
@@ -153,6 +157,15 @@ def post_notification(notification_type):
             template=template,
             template_with_content=template_with_content,
             reply_to_text=reply_to,
+        )
+    elif notification_type == MAILBOX_TYPE:
+        notification = process_mailbox_notification(
+            form=form,
+            api_key=api_user,
+            template=template,
+            template_with_content=template_with_content,
+            service=authenticated_service,
+            personalisation=personalisation,
         )
     else:
         notification = process_sms_or_email_notification(
@@ -294,6 +307,60 @@ def process_sms_or_email_notification(
             notification_id,
             extra={"notification_id": notification_id},
         )
+
+    return response
+
+
+def process_mailbox_notification(
+    *,
+    form,
+    api_key,
+    template,
+    template_with_content,
+    service,
+    personalisation,
+):
+    if api_key.key_type in (KEY_TYPE_TEAM, KEY_TYPE_TEAM):
+        raise BadRequestError(message="Cannot send mailbox messages with a test or team api key", status_code=403)
+
+    notification_id = uuid.uuid4()
+
+    # Ignore the recipient that was provided, and use our test recipient
+    recipient = "TEST-CITIZEN-001"
+
+    response = create_response_for_post_notification(
+        notification_id=notification_id,
+        client_reference=form.get("reference", None),
+        template_id=template.id,
+        template_version=template.version,
+        service_id=service.id,
+        notification_type=MAILBOX_TYPE,
+        reply_to=None,
+        unsubscribe_link=None,
+        template_with_content=template_with_content,
+    )
+
+    persist_notification(
+        notification_id=notification_id,
+        template_id=template.id,
+        template_version=template.version,
+        recipient=recipient,
+        service=service,
+        personalisation=personalisation,
+        notification_type=MAILBOX_TYPE,
+        api_key_id=api_user.id,
+        key_type=api_user.key_type,
+        client_reference=form.get("reference", None),
+        simulated=False,
+        reply_to_text=None,
+    )
+
+    send_notification_to_queue_detached(
+        key_type=api_user.key_type,
+        notification_type=MAILBOX_TYPE,
+        notification_id=notification_id,
+        message_group_id=str(service.id),
+    )
 
     return response
 
@@ -510,7 +577,7 @@ def create_response_for_post_notification(
             email_from=f"{authenticated_service.email_sender_local_part}@{current_app.config['NOTIFY_EMAIL_DOMAIN']}",
             unsubscribe_link=unsubscribe_link,
         )
-    elif notification_type == LETTER_TYPE:
+    elif notification_type in (LETTER_TYPE, MAILBOX_TYPE):
         create_resp_partial = functools.partial(
             create_post_letter_response_from_notification,
             subject=template_with_content.subject,

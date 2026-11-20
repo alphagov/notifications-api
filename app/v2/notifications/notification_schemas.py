@@ -147,6 +147,21 @@ send_a_file_validation = {
     ],
 }
 
+post_mailbox_request = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST mailbox notification schema",
+    "type": "object",
+    "title": "POST v2/notifications/mailbox",
+    "properties": {
+        "reference": {"type": "string", "maxLength": 1_000},
+        "mailbox_id": {"type": "string"},
+        "template_id": uuid,
+        "personalisation": personalisation,
+    },
+    "required": ["mailbox_id", "template_id"],
+    "additionalProperties": False,
+}
+
 post_sms_request = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST sms notification schema",
