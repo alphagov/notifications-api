@@ -1077,6 +1077,7 @@ def test_service_serialization_for_dashboard_with_all_fields(notify_db_session):
         service_name="Test Service",
         active=True,
         restricted=True,
+        count_as_live=False,
     )
 
     serialized = service.serialize_for_org_dashboard()
@@ -1086,6 +1087,7 @@ def test_service_serialization_for_dashboard_with_all_fields(notify_db_session):
         "name": "Test Service",
         "active": True,
         "restricted": True,
+        "count_as_live": False,
     }
 
 
@@ -1099,6 +1101,7 @@ def test_service_serialization_for_dashboard_with_minimal_fields(notify_db_sessi
         "name": "Test Service",
         "active": True,
         "restricted": False,
+        "count_as_live": True,
     }
 
 
