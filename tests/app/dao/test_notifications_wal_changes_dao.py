@@ -266,7 +266,7 @@ def test_get_raw_replication_change_rows_sql_query_with_single_table(mocker):
     assert call_params == {
         "slot_name": "slot",
         "upto_nchanges": 20,
-        "include_lsn": "true",
+        "include_lsn": "false",
         "format_version": "2",
         "include_types": "false",
         "include_typmod": "false",
@@ -290,7 +290,7 @@ def test_get_raw_replication_change_rows_sql_query_with_multiple_tables(mocker):
     assert call_params == {
         "slot_name": "slot",
         "upto_nchanges": 20,
-        "include_lsn": "true",
+        "include_lsn": "false",
         "format_version": "2",
         "include_types": "false",
         "include_typmod": "false",

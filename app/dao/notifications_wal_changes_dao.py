@@ -226,7 +226,7 @@ def _get_raw_replication_change_rows(
         {
             "slot_name": slot_name,
             "upto_nchanges": upto_nchanges,
-            "include_lsn": "true",
+            "include_lsn": "false",
             "format_version": "2",
             "include_types": "false",
             "include_typmod": "false",
