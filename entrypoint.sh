@@ -73,6 +73,9 @@ case "$1" in
   celery-beat)
     exec celery --quiet -A run_celery.notify_celery beat
     ;;
+  db-streamer)
+    exec python /home/vcap/app/db_streamer.py
+    ;;
   *)
     echo -e "'\033[31m'FATAL: missing argument'\033[0m'" && exit 1
     exit 1
