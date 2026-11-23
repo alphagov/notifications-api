@@ -1,15 +1,20 @@
 import json
-from datetime import UTC, date, datetime
+from collections import Counter
+from datetime import date
 from typing import Any
-from uuid import UUID
 
 import pytest
 from flask import Flask
+from notifications_utils.testing.comparisons import AnySupersetOf
 
 from app.dao import notifications_wal_changes_dao as dao
 from app.dao.notifications_wal_changes_dao import (
-    _get_raw_replication_change_rows,
-    _get_replication_changes,
+    FullDimensions,
+    LockNotAcquired,
+    ProcessNotificationsReplicationSlotChangesResult,
+    TableName,
+    _build_change_counter,
+    _BuildChangeCounterResult,
     dao_process_notifications_replication_slot_changes,
 )
 
@@ -27,20 +32,10 @@ def _default_columns():
     }
 
 
-def _build_change(
-    *,
-    table: str = "notifications",
-    change_type: str = "insert",
-    current_row_data: dict | None = None,
-    previous_row_data: dict | None = None,
-    lsn: str | None = None,
-) -> dict[str, Any]:
+def _default_identity():
     return {
-        "table": table,
-        "type": change_type,
-        "current_row_data": current_row_data or {},
-        "previous_row_data": previous_row_data or {},
-        "lsn": lsn,
+        "notification_status": "pending",
+        "irrelevant_column": "321",
     }
 
 
@@ -51,33 +46,32 @@ def _build_raw_change(
     schema: str | None = "public",
     columns: dict | None = None,
     identity: dict | None = None,
+    transactional: bool | None = None,
 ) -> str:
     base: dict[str, Any] = {
         "action": action,
     }
 
-    if table is not None:
+    if table is not None and action in ("I", "U", "D", "T"):
         base["table"] = table
 
-    if schema is not None:
+    if schema is not None and action in ("I", "U", "D", "T"):
         base["schema"] = schema
 
-    if columns is None and action in (
-        "I",
-        "U",
-    ):
+    if columns is None and action in ("I", "U"):
         columns = _default_columns()
 
     if columns is not None:
         base["columns"] = [{"name": k, "value": v} for k, v in columns.items()]
 
     if identity is None and action in ("U", "D"):
-        identity = {
-            "status": "pending",
-        }
+        identity = _default_identity()
 
     if identity is not None:
         base["identity"] = [{"name": k, "value": v} for k, v in identity.items()]
+
+    if transactional is not None:
+        base["transactional"] = transactional
 
     return json.dumps(base)
 
@@ -100,272 +94,681 @@ def test_acquires_and_releases_advisory_lock(mocker):
 
 
 def test_when_lock_acquisition_fails_returns_without_processing(mocker):
-    mocker.patch(
+    mock_try_advisory_lock = mocker.patch(
         "app.dao.notifications_wal_changes_dao._try_advisory_lock",
         return_value=False,
     )
+    # mock the two things we really want to ensure aren't called
+    mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
+    mock_upsert = mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count")
 
-    result = dao_process_notifications_replication_slot_changes()
-    assert result == {"lock_acquired": False, "slot_name": "notify_wal2json_slot"}
+    with pytest.raises(LockNotAcquired):
+        dao_process_notifications_replication_slot_changes(advisory_lock_id=4455)
 
+    assert mock_try_advisory_lock.mock_calls == [mocker.call(4455)]
 
-def test_when_lock_acquisition_fails(mocker, caplog):
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao._try_advisory_lock",
-        side_effect=RuntimeError("lock failed"),
-    )
-
-    with Flask(__name__).app_context(), pytest.raises(RuntimeError, match="lock failed"):
-        dao_process_notifications_replication_slot_changes()
-
-    assert "Failed to process replication slot changes" in caplog.messages
+    assert not mock_advance.mock_calls
+    assert not mock_upsert.mock_calls
 
 
-def test_when_lock_acquisition_fails_logs(mocker, caplog):
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao._try_advisory_lock",
-        side_effect=RuntimeError("lock failed"),
-    )
-
-    with Flask(__name__).app_context(), pytest.raises(RuntimeError, match="lock failed"):
-        dao_process_notifications_replication_slot_changes()
-
-    assert "Failed to process replication slot changes" in caplog.messages
+_bccr = _BuildChangeCounterResult
 
 
-def test_when_unlock_fails_logs(mocker, caplog):
-    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao._advisory_unlock",
-        side_effect=RuntimeError("unlock failed"),
-    )
+@pytest.mark.parametrize(
+    "raw_change_rows,expected_result",
+    (
+        (
+            (
+                ("0/AA", _build_raw_change()),
+                ("0/BB", _build_raw_change(action="U")),
+                ("0/DD", _build_raw_change(action="C", table=None, schema=None)),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 2,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): -1,
+                    }
+                ),
+                advanceable_lsn="0/DD",
+                raw_change_rows=3,
+                counted_inserts=1,
+                counted_updates=1,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # works with single-use iterator
+            iter(
+                (
+                    ("0/AA", _build_raw_change(action="U")),
+                    ("0/BB", _build_raw_change(action="U")),
+                    ("0/BC", _build_raw_change()),
+                    ("0/D9", _build_raw_change(action="C", table=None, schema=None)),
+                )
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 3,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): -2,
+                    }
+                ),
+                advanceable_lsn="0/D9",
+                raw_change_rows=4,
+                counted_inserts=1,
+                counted_updates=2,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # missing any commit
+            (
+                ("0/AA", _build_raw_change()),
+                ("0/BB", _build_raw_change(action="U")),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 2,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): -1,
+                    }
+                ),
+                advanceable_lsn=None,
+                raw_change_rows=2,
+                counted_inserts=1,
+                counted_updates=1,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # missing trailing commit
+            (
+                ("0/AA", _build_raw_change()),
+                ("0/BB", _build_raw_change(action="C", table=None, schema=None)),
+                ("0/CC", _build_raw_change(action="U")),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 2,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): -1,
+                    }
+                ),
+                advanceable_lsn=None,
+                raw_change_rows=3,
+                counted_inserts=1,
+                counted_updates=1,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # only empty transactions
+            (
+                ("2/DD", _build_raw_change(action="B", table=None, schema=None)),
+                ("2/E0", _build_raw_change(action="C", table=None, schema=None)),
+                ("2/E1", _build_raw_change(action="B", table=None, schema=None)),
+                ("2/E3", _build_raw_change(action="C", table=None, schema=None)),
+                ("2/F0", _build_raw_change(action="B", table=None, schema=None)),
+                ("2/F1", _build_raw_change(action="C", table=None, schema=None)),
+            ),
+            _bccr(
+                change_counter=Counter(),
+                advanceable_lsn="2/F1",
+                raw_change_rows=6,
+                counted_inserts=0,
+                counted_updates=0,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # sensible behaviour given empty changes
+            (),
+            _bccr(
+                change_counter=Counter(),
+                advanceable_lsn=None,
+                raw_change_rows=0,
+                counted_inserts=0,
+                counted_updates=0,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # across different tables
+            (
+                ("0/AA", _build_raw_change(columns=_default_columns() | {"job_id": None})),
+                (
+                    "0/BB",
+                    _build_raw_change(
+                        action="U",
+                        columns=_default_columns() | {"job_id": None},
+                        table="notification_history",
+                    ),
+                ),
+                ("0/CC", _build_raw_change(action="U", table="notification_history")),
+                ("0/DD", _build_raw_change(action="C", table=None, schema=None)),
+                ("0/E0", _build_raw_change(action="B", table=None, schema=None)),
+                ("0/E1", _build_raw_change(action="D")),
+                ("0/FA", _build_raw_change(action="C", table=None, schema=None)),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 1,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): -1,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "00000000-0000-0000-0000-000000000000",
+                        ): -1,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "00000000-0000-0000-0000-000000000000",
+                        ): 2,
+                    }
+                ),
+                advanceable_lsn="0/FA",
+                raw_change_rows=7,
+                counted_inserts=1,
+                counted_updates=2,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=1,
+            ),
+        ),
+        (
+            # ignore updates with unchanged identity columns
+            (
+                ("0/01", _build_raw_change(action="B", table=None, schema=None)),
+                ("0/AA", _build_raw_change()),
+                ("0/AE", _build_raw_change(action="C", table=None, schema=None)),
+                ("0/AF", _build_raw_change(action="B", table=None, schema=None)),
+                (
+                    "0/BB",
+                    _build_raw_change(action="U", identity=_default_identity() | {"notification_status": "delivered"}),
+                ),
+                (
+                    "0/BF",
+                    _build_raw_change(
+                        action="U",
+                        columns=_default_columns() | {"job_id": None},  # key shouldn't even appear in counter
+                        identity=_default_identity() | {"notification_status": "delivered"},
+                    ),
+                ),
+                ("0/DD", _build_raw_change(action="C", table=None, schema=None)),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 1,
+                    }
+                ),
+                advanceable_lsn="0/DD",
+                raw_change_rows=7,
+                counted_inserts=1,
+                counted_updates=0,
+                ignored_inserts=0,
+                ignored_updates=2,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # daylight savings time
+            (
+                ("9/110", _build_raw_change(columns=_default_columns() | {"created_at": "2025-07-07T00:12:34Z"})),
+                (
+                    "9/120",
+                    _build_raw_change(action="U", columns=_default_columns() | {"created_at": "2025-07-07T01:12:34Z"}),
+                ),
+                (
+                    "9/121",
+                    _build_raw_change(action="U", columns=_default_columns() | {"created_at": "2025-07-06T23:45:12Z"}),
+                ),
+                (
+                    "9/220",
+                    _build_raw_change(
+                        action="U",
+                        identity=_default_identity() | {"notification_status": "permanent-failure"},
+                        columns=_default_columns() | {"created_at": "2025-07-06T22:45:12Z"},
+                    ),
+                ),
+                ("9/222", _build_raw_change(action="C", table=None, schema=None)),
+                (
+                    "9/323",
+                    _build_raw_change(
+                        action="U",
+                        table="notification_history",
+                        columns=_default_columns() | {"created_at": "2025-07-07T01:45:12Z"},
+                    ),
+                ),
+                ("9/333", _build_raw_change(action="I", schema="foo")),  # ignored due to schema
+                (
+                    "9/334",
+                    _build_raw_change(
+                        action="I", columns=_default_columns() | {"key_type": "foo"}
+                    ),  # ignored due to key_type
+                ),
+                ("9/622", _build_raw_change(action="C", table=None, schema=None)),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2025, 7, 7),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 4,
+                        FullDimensions(
+                            date(2025, 7, 7),
+                            "email",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): -3,
+                        FullDimensions(
+                            date(2025, 7, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 1,
+                        FullDimensions(
+                            date(2025, 7, 6),
+                            "email",
+                            "normal",
+                            "permanent-failure",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): -1,
+                    }
+                ),
+                advanceable_lsn="9/622",
+                raw_change_rows=9,
+                counted_inserts=1,
+                counted_updates=4,
+                ignored_inserts=2,
+                ignored_updates=0,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # most changes ignored for various reasons
+            (
+                ("0/A0", _build_raw_change(columns=_default_columns() | {"notification_type": "sms"})),
+                ("0/A1", _build_raw_change(columns=_default_columns() | {"key_type": "test"})),
+                ("0/B0", _build_raw_change(action="D", table="foo", schema="bar")),
+                ("0/B1", _build_raw_change(action="U", columns=_default_columns() | {"notification_type": "letter"})),
+                ("0/B2", _build_raw_change(action="U", columns=_default_columns() | {"key_type": "test"})),
+                ("0/DD", _build_raw_change(action="C", table=None, schema=None)),
+                ("0/DE", _build_raw_change(action="B", table=None, schema=None)),
+                (
+                    "0/E0",
+                    _build_raw_change(
+                        action="I",
+                        table="notification_history",
+                        columns=_default_columns() | {"notification_status": "created"},
+                    ),
+                ),
+                ("0/E5", _build_raw_change(action="C", table=None, schema=None)),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "letter",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 1,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "letter",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): -1,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "sms",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 1,
+                    }
+                ),
+                advanceable_lsn="0/E5",
+                raw_change_rows=9,
+                counted_inserts=1,
+                counted_updates=1,
+                ignored_inserts=2,
+                ignored_updates=1,
+                ignored_deletes=1,
+            ),
+        ),
+        (
+            # missing final commit - doesn't use lsn of transactional message
+            (
+                ("0/01", _build_raw_change(action="B", table=None, schema=None)),
+                ("0/AA", _build_raw_change()),
+                ("0/BB", _build_raw_change(action="M", transactional=True, table=None, schema=None)),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 1,
+                    }
+                ),
+                advanceable_lsn=None,
+                raw_change_rows=3,
+                counted_inserts=1,
+                counted_updates=0,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=0,
+            ),
+        ),
+        (
+            # uses lsn of trailing non-transactional message
+            (
+                ("0/03", _build_raw_change(action="M", transactional=False, table=None, schema=None)),
+                ("0/05", _build_raw_change(action="B", table=None, schema=None)),
+                (
+                    "0/AA",
+                    _build_raw_change(
+                        action="U", table="notification_history", columns=_default_columns() | {"job_id": None}
+                    ),
+                ),
+                ("0/AB", _build_raw_change()),
+                ("0/AE", _build_raw_change(action="D")),
+                ("0/AF", _build_raw_change(action="C", table=None, schema=None)),
+                ("1/BB", _build_raw_change(action="M", transactional=False, table=None, schema=None)),
+            ),
+            _bccr(
+                change_counter=Counter(
+                    {
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "550e8400-e29b-41d4-a716-446655440007",
+                        ): 1,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "delivered",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "00000000-0000-0000-0000-000000000000",
+                        ): 1,
+                        FullDimensions(
+                            date(2026, 8, 6),
+                            "email",
+                            "normal",
+                            "pending",
+                            "550e8400-e29b-41d4-a716-446655440000",
+                            "550e8400-e29b-41d4-a716-446655440001",
+                            "00000000-0000-0000-0000-000000000000",
+                        ): -1,
+                    }
+                ),
+                advanceable_lsn="1/BB",
+                raw_change_rows=7,
+                counted_inserts=1,
+                counted_updates=1,
+                ignored_inserts=0,
+                ignored_updates=0,
+                ignored_deletes=1,
+            ),
+        ),
+    ),
+)
+def test_build_change_counter(raw_change_rows, expected_result):
+    assert _build_change_counter(raw_change_rows) == expected_result
 
-    with Flask(__name__).app_context(), pytest.raises(RuntimeError, match="unlock failed"):
-        dao_process_notifications_replication_slot_changes()
 
-    assert "Failed to release advisory lock" in caplog.messages
-
-
-def test_get_replication_changes_parses_rows_and_skips_empty_payloads(caplog):
+def test_build_change_counter_skips_logs_empty_payloads(caplog):
     raw_change_rows = [
         ("0/AA", _build_raw_change()),
         ("0/BB", _build_raw_change(action="U")),
         ("0/CC", None),
+        ("0/DD", _build_raw_change(action="C", table=None, schema=None)),
     ]
 
-    result, last_lsn = _get_replication_changes(raw_change_rows, table_names=["public.notifications"])
+    result = _build_change_counter(raw_change_rows)
 
-    assert result == [
-        {
-            "table": "notifications",
-            "type": "insert",
-            "current_row_data": _default_columns(),
-            "previous_row_data": {},
-            "lsn": "0/AA",
-        },
-        {
-            "table": "notifications",
-            "type": "update",
-            "current_row_data": _default_columns(),
-            "previous_row_data": {"status": "pending"},
-            "lsn": "0/BB",
-        },
-    ]
-    assert last_lsn == "0/CC"  # if we don't advance past a trailing empty payload, we would just get it again
+    assert result.change_counter == {
+        (
+            date(2026, 8, 6),
+            "email",
+            "normal",
+            "delivered",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440001",
+            "550e8400-e29b-41d4-a716-446655440007",
+        ): 2,
+        (
+            date(2026, 8, 6),
+            "email",
+            "normal",
+            "pending",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440001",
+            "550e8400-e29b-41d4-a716-446655440007",
+        ): -1,
+    }
+    assert result.advanceable_lsn == "0/DD"
     assert "Encountered None replication payload" in caplog.messages
 
 
-def test_get_replication_changes_preserves_sql_lsn():
-    raw_change_rows = [("0/AB", _build_raw_change())]
-
-    result, last_lsn = _get_replication_changes(raw_change_rows, table_names=["public.notifications"])
-
-    assert result[0]["lsn"] == "0/AB"
-    assert last_lsn == "0/AB"
-
-
-def test_get_replication_changes_accepts_iterator():
-    raw_change_rows = [
-        ("0/AB", _build_raw_change()),
-        ("0/BB", _build_raw_change(action="C", table=None, schema=None)),
-    ]
-
-    result, last_lsn = _get_replication_changes(iter(raw_change_rows), table_names=["public.notifications"])
-
-    assert len(result) == 1
-    assert last_lsn == "0/BB"
-
-
-def test_get_raw_replication_change_rows_uses_format_version_2(mocker):
-    execute_result = mocker.Mock()
-    execute_result.mappings.return_value = []
-    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
-
-    _get_raw_replication_change_rows(slot_name="slot", upto_nchanges=20, table_names=["public.notifications"])
-
-    mock_execute.assert_called_once()
-    assert mock_execute.call_args.args[1]["format_version"] == "2"
-
-
-def test_get_replication_changes_with_multiple_tables():
+def test_build_change_counter_skips_logs_empty_lsns(caplog):
     raw_change_rows = [
         ("0/AA", _build_raw_change()),
-        ("0/BB", _build_raw_change(action="U", table="notification_history")),
+        ("0/BB", _build_raw_change(action="U")),
+        (None, _build_raw_change(action="B", table=None, schema=None)),
+        ("0/DD", _build_raw_change(action="C", table=None, schema=None)),
     ]
 
-    result, last_lsn = _get_replication_changes(
-        raw_change_rows, table_names=["public.notifications", "public.notification_history"]
+    result = _build_change_counter(raw_change_rows)
+
+    assert result.change_counter == {
+        (
+            date(2026, 8, 6),
+            "email",
+            "normal",
+            "delivered",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440001",
+            "550e8400-e29b-41d4-a716-446655440007",
+        ): 2,
+        (
+            date(2026, 8, 6),
+            "email",
+            "normal",
+            "pending",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440001",
+            "550e8400-e29b-41d4-a716-446655440007",
+        ): -1,
+    }
+    assert result.advanceable_lsn == "0/DD"
+    assert "Encountered None replication lsn" in caplog.messages
+
+
+def test_peek_call_uses_expected_arguments(mocker):
+    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
+    mock_execute = mocker.patch(
+        "app.dao.notifications_wal_changes_dao.db.session.execute",
+        # no point in progressing past this point
+        side_effect=RuntimeError("That's enough"),
     )
 
-    assert len(result) == 2
-    assert result[0]["table"] == "notifications"
-    assert result[1]["table"] == "notification_history"
-    assert last_lsn == "0/BB"
+    with pytest.raises(RuntimeError, match="That's enough"):
+        dao_process_notifications_replication_slot_changes(
+            slot_name="slotty",
+            upto_nchanges=201,
+            insert_table_names={TableName("public", "foo"), TableName("public", "bar")},
+            update_table_names={TableName("public", "foo"), TableName("special", "foo")},
+        )
 
+    peek_execute_call = mock_execute.mock_calls[0]
+    assert "pg_logical_slot_peek_changes" in str(peek_execute_call.args[0])  # ensure we've got the right call
 
-def test_get_replication_changes_filters_tables_not_in_list():
-    raw_change_rows = [
-        ("0/AA", _build_raw_change()),
-        ("0/BB", _build_raw_change(action="U", table="notification_history")),
+    assert peek_execute_call.args[1] == AnySupersetOf(
+        {
+            "slot_name": "slotty",
+            "upto_nchanges": 201,
+            "include_lsn": "false",
+            "format_version": "2",
+            "include_types": "false",
+            "include_typmod": "false",
+        }
+    )
+
+    assert sorted(s.strip() for s in peek_execute_call.args[1]["table_names"].split(",")) == [
+        "public.bar",
+        "public.foo",
+        "special.foo",
     ]
 
-    # Only subscribe to notifications table
-    result, last_lsn = _get_replication_changes(raw_change_rows, table_names=["public.notifications"])
 
-    # notification_history change should be filtered out
-    assert len(result) == 1
-    assert result[0]["table"] == "notifications"
-    assert last_lsn == "0/BB"  # LSN still advances
-
-
-def test_get_raw_replication_change_rows_uses_default_table_names_constant(mocker):
-    from app.dao.notifications_wal_changes_dao import REPLICATION_SLOT_TABLE_NAMES
-
-    execute_result = mocker.Mock()
-    execute_result.mappings.return_value = []
-    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
-
-    # Call without table_names parameter to use the default
-    _get_raw_replication_change_rows(slot_name="slot", upto_nchanges=20)
-
-    # Verify that both default tables are included in the parameters
-    call_args = mock_execute.call_args.args[1]
-    expected_table_names = ", ".join(REPLICATION_SLOT_TABLE_NAMES)
-    assert call_args["table_names"] == expected_table_names
-
-
-def test_get_raw_replication_change_rows_sql_query_with_single_table(mocker):
-    execute_result = mocker.Mock()
-    execute_result.mappings.return_value = []
-    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
-
-    _get_raw_replication_change_rows(slot_name="slot", upto_nchanges=20, table_names=["public.notifications"])
-
-    # Verify parameters
-    call_params = mock_execute.call_args.args[1]
-    assert call_params == {
-        "slot_name": "slot",
-        "upto_nchanges": 20,
-        "include_lsn": "false",
-        "format_version": "2",
-        "include_types": "false",
-        "include_typmod": "false",
-        "table_names": "public.notifications",
-    }
-
-
-def test_get_raw_replication_change_rows_sql_query_with_multiple_tables(mocker):
-    execute_result = mocker.Mock()
-    execute_result.mappings.return_value = []
-    mock_execute = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.execute", return_value=execute_result)
-
-    _get_raw_replication_change_rows(
-        slot_name="slot",
-        upto_nchanges=20,
-        table_names=["public.notifications", "public.notification_history"],
-    )
-
-    # Verify parameters
-    call_params = mock_execute.call_args.args[1]
-    assert call_params == {
-        "slot_name": "slot",
-        "upto_nchanges": 20,
-        "include_lsn": "false",
-        "format_version": "2",
-        "include_types": "false",
-        "include_typmod": "false",
-        "table_names": "public.notifications, public.notification_history",
-    }
-
-
-def test_parse_wal2json_payload_filters_by_table_name(mocker):
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
-        return_value=datetime(2026, 8, 6, tzinfo=UTC),
-    )
-
-    # Payload for notification_history table
-    payload = _build_raw_change(
-        action="I",
-        table="notification_history",
-        columns={
-            "service_id": "550e8400-e29b-41d4-a716-446655440000",
-            "template_id": "550e8400-e29b-41d4-a716-446655440001",
-            "notification_type": "email",
-            "key_type": "normal",
-            "notification_status": "delivered",
-            "created_at": "2026-08-06T10:00:00Z",
-        },
-    )
-
-    # Should be included when in table_names
-    result = dao._parse_wal2json_payload(
-        json.loads(payload),
-        table_names=["public.notifications", "public.notification_history"],
-    )
-    assert len(result) == 1
-    assert result[0]["table"] == "notification_history"
-
-    # Should be filtered out when not in table_names
-    result = dao._parse_wal2json_payload(
-        json.loads(payload),
-        table_names=["public.notifications"],
-    )
-    assert len(result) == 0
-
-
-def test_parse_wal2json_payload_with_default_table_names(mocker):
-    from app.dao.notifications_wal_changes_dao import REPLICATION_SLOT_TABLE_NAMES
-
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
-        return_value=datetime(2026, 8, 6, tzinfo=UTC),
-    )
-
-    # Test with notification_history which is in the default list
-    payload = _build_raw_change(
-        action="I",
-        table="notification_history",
-        columns={
-            "service_id": "550e8400-e29b-41d4-a716-446655440000",
-            "template_id": "550e8400-e29b-41d4-a716-446655440001",
-            "notification_type": "email",
-            "key_type": "normal",
-            "notification_status": "delivered",
-            "created_at": "2026-08-06T10:00:00Z",
-        },
-    )
-
-    # Using default REPLICATION_SLOT_TABLE_NAMES should include notification_history
-    result = dao._parse_wal2json_payload(json.loads(payload))
-    assert len(result) == 1
-    assert result[0]["table"] == "notification_history"
-
-    # Verify it's actually using the default
-    assert "public.notification_history" in REPLICATION_SLOT_TABLE_NAMES
-
-
-def test_raises_if_changes_but_no_lsn_returned_by_get_replication_changes(mocker):
+def test_raises_if_changes_but_no_lsn_returned_by_build_change_counter(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
     mock_upsert = mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count")
@@ -373,26 +776,12 @@ def test_raises_if_changes_but_no_lsn_returned_by_get_replication_changes(mocker
     mock_rollback = mocker.patch("app.dao.notifications_wal_changes_dao.db.session.rollback")
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._get_raw_replication_change_rows",
-        return_value=(
-            (
-                None,
-                _build_raw_change(
-                    columns={
-                        "service_id": "550e8400-e29b-41d4-a716-446655440000",
-                        "template_id": "550e8400-e29b-41d4-a716-446655440001",
-                        "notification_type": "email",
-                        "key_type": "normal",
-                        "notification_status": "delivered",
-                        "created_at": "2026-08-06T10:00:00Z",
-                    }
-                ),
-            ),
-        ),
+        return_value=((None, _build_raw_change()),),
     )
 
     with pytest.raises(
-        RuntimeError,
-        match=r"No last_lsn found .* replication slot notify_wal2json_slot will not be advanced",
+        ValueError,
+        match=r"No advanceable_lsn found .* replication slot notify_wal2json_slot will not be advanced",
     ):
         dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
@@ -409,220 +798,56 @@ def test_does_not_raise_when_no_changes_or_lsn_returned(mocker):
 
     result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
-    assert result == {
-        "lock_acquired": True,
-        "changes_count": 0,
-        "change_count_buckets": 0,
-        "ignored_changes": 0,
-        "processed_changes": 0,
-        "last_lsn": None,
-    }
-
-
-def test_parse_uuid_value():
-    value = UUID("550e8400-e29b-41d4-a716-446655440000")
-
-    assert dao._parse_uuid_value({"service_id": str(value)}, "service_id") == value
-    assert dao._parse_uuid_value({"service_id": "not-a-uuid"}, "service_id") is None
-    assert dao._parse_uuid_value({}, "service_id") is None
-
-
-def test_get_str_value():
-    assert dao._get_str_value({"value": "text"}, "value") == "text"
-    assert dao._get_str_value({"value": 42}, "value") == "42"
-    assert dao._get_str_value({"value": None}, "value") is None
-    assert dao._get_str_value(None, "value") is None
-
-
-def test_parse_datetime_value():
-    assert dao._parse_datetime_value({"created_at": "2026-08-06T10:00:00Z"}, "created_at") == datetime(
-        2026, 8, 6, 10, 0, 0, tzinfo=UTC
+    assert result == ProcessNotificationsReplicationSlotChangesResult(
+        change_count_buckets=0,
+        advanced_to_lsn=None,
+        raw_change_rows=0,
+        counted_inserts=0,
+        counted_updates=0,
+        ignored_inserts=0,
+        ignored_updates=0,
+        ignored_deletes=0,
+        applied_upserts=0,
     )
-    assert dao._parse_datetime_value({"created_at": "invalid"}, "created_at") is None
-    assert dao._parse_datetime_value({}, "created_at") is None
-
-
-def test_build_dimensions_returns_all_dimensions_and_converts_date(mocker):
-    service_id = UUID("550e8400-e29b-41d4-a716-446655440000")
-    template_id = UUID("550e8400-e29b-41d4-a716-446655440001")
-    job_id = UUID("550e8400-e29b-41d4-a716-446655440002")
-    created_at = datetime(2026, 8, 6, 10, 0, 0, tzinfo=UTC)
-    mock_convert = mocker.patch("app.dao.notifications_wal_changes_dao.convert_utc_to_bst", return_value=created_at)
-    change = _build_change(
-        current_row_data={
-            "service_id": str(service_id),
-            "template_id": str(template_id),
-            "job_id": str(job_id),
-            "notification_type": "sms",
-            "key_type": "normal",
-            "notification_status": "delivered",
-            "created_at": "2026-08-06T10:00:00Z",
-        }
-    )
-
-    result = dao._build_dimensions(change, use_previous_row=False)
-
-    assert result == (date(2026, 8, 6), service_id, template_id, job_id, "sms", "normal", "delivered")
-    mock_convert.assert_called_once_with(created_at)
-
-
-def test_build_dimensions_uses_fallback_row_when_primary_is_missing(mocker):
-    service_id = UUID("550e8400-e29b-41d4-a716-446655440000")
-    template_id = UUID("550e8400-e29b-41d4-a716-446655440001")
-    job_id = UUID("550e8400-e29b-41d4-a716-446655440002")
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
-        return_value=datetime(2026, 8, 7, tzinfo=UTC),
-    )
-    change = _build_change(
-        previous_row_data={
-            "service_id": str(service_id),
-            "template_id": str(template_id),
-            "job_id": str(job_id),
-            "notification_type": "email",
-            "key_type": "normal",
-            "notification_status": "failed",
-            "created_at": "2026-08-07T00:00:00Z",
-        }
-    )
-
-    result = dao._build_dimensions(change, use_previous_row=False)
-
-    assert result == (date(2026, 8, 7), service_id, template_id, job_id, "email", "normal", "failed")
-
-
-def test_build_dimensions_requires_status_in_previous_row_when_requested(mocker):
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
-        return_value=datetime(2026, 8, 7, tzinfo=UTC),
-    )
-    change = _build_change(
-        current_row_data={"notification_status": "delivered"},
-        previous_row_data={
-            "service_id": "550e8400-e29b-41d4-a716-446655440000",
-            "template_id": "550e8400-e29b-41d4-a716-446655440001",
-            "job_id": "550e8400-e29b-41d4-a716-446655440002",
-            "notification_type": "email",
-            "key_type": "normal",
-            "created_at": "2026-08-07T00:00:00Z",
-        },
-    )
-
-    result = dao._build_dimensions(change, use_previous_row=True, require_status_from_primary_row=True)
-
-    assert result is None
-
-
-def test_build_dimensions_returns_none_when_required_fields_are_missing():
-    change = _build_change(current_row_data={"key_type": "normal"})
-
-    assert dao._build_dimensions(change, use_previous_row=False) is None
-
-
-def test_build_dimensions_uses_zero_uuid_when_job_id_is_missing(mocker):
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
-        return_value=datetime(2026, 8, 7, tzinfo=UTC),
-    )
-    change = _build_change(
-        current_row_data={
-            "service_id": "550e8400-e29b-41d4-a716-446655440000",
-            "template_id": "550e8400-e29b-41d4-a716-446655440001",
-            "notification_type": "email",
-            "key_type": "normal",
-            "notification_status": "delivered",
-            "created_at": "2026-08-07T00:00:00Z",
-        }
-    )
-
-    result = dao._build_dimensions(change, use_previous_row=False)
-
-    assert result is not None
-    assert result.job_id == dao.NO_JOB_ID
-
-
-def test_build_counter_from_changes_counts_inserts_and_status_transitions(mocker):
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
-        return_value=datetime(2026, 8, 6, tzinfo=UTC),
-    )
-    base = {
-        "service_id": "550e8400-e29b-41d4-a716-446655440000",
-        "template_id": "550e8400-e29b-41d4-a716-446655440001",
-        "job_id": "550e8400-e29b-41d4-a716-446655440002",
-        "notification_type": "sms",
-        "key_type": "normal",
-        "created_at": "2026-08-06T10:00:00Z",
-    }
-    changes = [
-        _build_change(current_row_data={**base, "notification_status": "created"}, lsn="0/01"),
-        _build_change(
-            change_type="update",
-            current_row_data={**base, "notification_status": "pending"},
-            previous_row_data={**base, "notification_status": "created"},
-            lsn="0/02",
-        ),
-        _build_change(table="other", current_row_data={**base, "notification_status": "created"}, lsn="0/03"),
-        _build_change(
-            change_type="update",
-            table="notification_history",
-            current_row_data={**base, "notification_status": "delivered"},
-            previous_row_data={**base, "notification_status": "pending"},
-            lsn="0/04",
-        ),
-        _build_change(
-            table="notification_history", current_row_data={**base, "notification_status": "created"}, lsn="0/05"
-        ),
-    ]
-
-    counter, processed_changes, ignored_changes = dao._build_counter_from_changes(changes)
-
-    created_dimensions = dao._build_dimensions(changes[0], use_previous_row=False)
-    pending_dimensions = dao._build_dimensions(changes[1], use_previous_row=False)
-    delivered_dimensions = dao._build_dimensions(changes[3], use_previous_row=False)
-    assert counter[created_dimensions] == 0
-    assert counter[pending_dimensions] == 0
-    assert counter[delivered_dimensions] == 1
-    assert processed_changes == 3
-    assert ignored_changes == 2
-
-
-def test_build_counter_does_not_subtract_new_status_when_previous_status_is_missing(mocker):
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst",
-        return_value=datetime(2026, 8, 6, tzinfo=UTC),
-    )
-    base = {
-        "service_id": "550e8400-e29b-41d4-a716-446655440000",
-        "template_id": "550e8400-e29b-41d4-a716-446655440001",
-        "job_id": "550e8400-e29b-41d4-a716-446655440002",
-        "notification_type": "sms",
-        "key_type": "normal",
-        "created_at": "2026-08-06T10:00:00Z",
-    }
-    change = _build_change(
-        change_type="update",
-        current_row_data={**base, "notification_status": "delivered"},
-        previous_row_data=base,
-    )
-
-    counter, processed_changes, ignored_changes = dao._build_counter_from_changes([change])
-
-    delivered_dimensions = dao._build_dimensions(change, use_previous_row=False)
-    assert counter[delivered_dimensions] == 1
-    assert processed_changes == 1
-    assert ignored_changes == 0
 
 
 def test_upsert_notification_status_live_count_batches_non_zero_changes(mocker):
-    service_id = UUID("550e8400-e29b-41d4-a716-446655440000")
-    template_id = UUID("550e8400-e29b-41d4-a716-446655440001")
-    job_id = UUID("550e8400-e29b-41d4-a716-446655440002")
-    dimensions = (date(2026, 8, 6), service_id, template_id, job_id, "sms", "normal", "delivered")
-    failed_dimensions = (date(2026, 8, 6), service_id, template_id, job_id, "sms", "normal", "failed")
     mock_upsert = mocker.patch("app.dao.notifications_wal_changes_dao.upsert_notification_status_live_counts")
 
-    dao._upsert_notification_status_live_count({dimensions: 2, failed_dimensions: -1, (*dimensions[:-1], "created"): 0})
+    service_id = "550e8400-e29b-41d4-a716-446655440000"
+    template_id = "550e8400-e29b-41d4-a716-446655440001"
+    job_id = "550e8400-e29b-41d4-a716-446655440002"
+    dao._upsert_notification_status_live_count(
+        {
+            FullDimensions(
+                date(2026, 8, 6),
+                "sms",
+                "normal",
+                "delivered",
+                service_id,
+                template_id,
+                job_id,
+            ): 2,
+            FullDimensions(
+                date(2026, 8, 6),
+                "sms",
+                "normal",
+                "failed",
+                service_id,
+                template_id,
+                job_id,
+            ): -1,
+            FullDimensions(
+                date(2026, 8, 6),
+                "sms",
+                "normal",
+                "created",
+                service_id,
+                template_id,
+                job_id,
+            ): 0,
+        }
+    )
 
     mock_upsert.assert_called_once_with(
         [
@@ -680,21 +905,31 @@ def test_advances_replication_slot_to_batch_last_lsn_after_upserting_counts(mock
             ("0/FF", _build_raw_change(action="C", table=None, schema=None)),
         ),
     )
-    counter = {"dimensions": 1}
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao._build_counter_from_changes",
-        return_value=(counter, 2, 0),
-    )
     manager.attach_mock(
         mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count"), "upsert"
     )
     manager.attach_mock(mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot"), "advance")
 
     with Flask(__name__).app_context():
-        dao_process_notifications_replication_slot_changes(slot_name="slot", advisory_lock_id=77)
+        dao_process_notifications_replication_slot_changes(slot_name="slotty", advisory_lock_id=77)
 
     # The slot must only advance once the counts have been written
-    assert manager.mock_calls == [mocker.call.upsert(counter), mocker.call.advance("0/FF", slot_name="slot")]
+    assert manager.mock_calls == [
+        mocker.call.upsert(
+            {
+                (
+                    date(2026, 8, 6),
+                    "email",
+                    "normal",
+                    "delivered",
+                    "550e8400-e29b-41d4-a716-446655440000",
+                    "550e8400-e29b-41d4-a716-446655440001",
+                    "550e8400-e29b-41d4-a716-446655440007",
+                ): 2,
+            }
+        ),
+        mocker.call.advance("0/FF", slot_name="slotty"),
+    ]
 
 
 def test_does_not_advance_replication_slot_when_upsert_fails(mocker, caplog):
@@ -733,18 +968,16 @@ def test_does_not_advance_replication_slot_when_upsert_fails(mocker, caplog):
     mock_advance.assert_not_called()
     mock_unlock.assert_called_once_with(77)
     mock_rollback.assert_called_once_with()
-    assert "Failed to process replication slot changes" in caplog.messages
 
 
 def test_advances_replication_slot_when_no_changes_but_with_lsn(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
-    mocker.patch("app.dao.notifications_wal_changes_dao._get_replication_changes", return_value=([], "0/01"))
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._get_raw_replication_change_rows",
         return_value=(
             ("0/01", _build_raw_change(action="B", table=None, schema=None)),
-            ("0/01", _build_raw_change(action="C", table=None, schema=None)),
+            ("0/09", _build_raw_change(action="C", table=None, schema=None)),
         ),
     )
     mock_advance = mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
@@ -752,7 +985,7 @@ def test_advances_replication_slot_when_no_changes_but_with_lsn(mocker):
     with Flask(__name__).app_context():
         dao_process_notifications_replication_slot_changes(advisory_lock_id=77, slot_name="slotty")
 
-    assert mock_advance.mock_calls == [mocker.call("0/01", slot_name="slotty")]
+    assert mock_advance.mock_calls == [mocker.call("0/09", slot_name="slotty")]
 
 
 def test_does_not_advance_replication_slot_when_no_changes_no_lsn(mocker):
@@ -789,53 +1022,38 @@ def test_returns_summary_of_processed_changes(mocker):
         "app.dao.notifications_wal_changes_dao._get_raw_replication_change_rows",
         return_value=(
             ("0/01", _build_raw_change()),
-            ("0/02", _build_raw_change()),
+            ("0/02", _build_raw_change(action="U")),
+            (
+                "0/07",
+                _build_raw_change(
+                    table="notification_history",
+                ),
+            ),
             ("0/FF", _build_raw_change(action="C", table=None, schema=None)),
         ),
     )
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao._build_counter_from_changes",
-        return_value=({"a": 1, "b": -1}, 1, 1),
-    )
-    mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count")
+    mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count", return_value=123)
     mocker.patch("app.dao.notifications_wal_changes_dao._advance_replication_slot")
 
     with Flask(__name__).app_context():
         result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
-    assert result == {
-        "lock_acquired": True,
-        "changes_count": 2,
-        "processed_changes": 1,
-        "ignored_changes": 1,
-        "change_count_buckets": 2,
-        "last_lsn": "0/FF",
-    }
-
-
-def test_logs_processing_timestamps(mocker, caplog):
-    start_time = datetime(2025, 1, 1, 12, 0, 0)
-    end_time = datetime(2025, 1, 1, 12, 0, 1)
-    mocker.patch("app.dao.notifications_wal_changes_dao.datetime").now.side_effect = [start_time, end_time]
-    mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=False)
-    caplog.set_level("INFO")
-
-    with Flask(__name__).app_context():
-        dao_process_notifications_replication_slot_changes()
-
-    record = next(record for record in caplog.records if "processed in" in record.message)
-
-    assert record.start_time == start_time.isoformat()
-    assert record.end_time == end_time.isoformat()
-    assert record.duration_seconds == (end_time - start_time).total_seconds()
+    assert result == ProcessNotificationsReplicationSlotChangesResult(
+        change_count_buckets=2,
+        advanced_to_lsn="0/FF",
+        raw_change_rows=4,
+        counted_inserts=1,
+        counted_updates=1,
+        ignored_inserts=1,
+        ignored_updates=0,
+        ignored_deletes=0,
+        applied_upserts=123,
+    )
 
 
 def test_ignores_inserts_on_notification_history_table(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
-    mocker.patch(
-        "app.dao.notifications_wal_changes_dao.convert_utc_to_bst", return_value=datetime(2026, 8, 6, tzinfo=UTC)
-    )
     mocker.patch(
         "app.dao.notifications_wal_changes_dao._get_raw_replication_change_rows",
         return_value=[
@@ -855,6 +1073,7 @@ def test_ignores_inserts_on_notification_history_table(mocker):
                     table="notification_history",
                 ),
             ),
+            ("0/E5", _build_raw_change(action="C", table=None, schema=None)),
         ],
     )
     upsert = mocker.patch("app.dao.notifications_wal_changes_dao._upsert_notification_status_live_count")
@@ -863,7 +1082,17 @@ def test_ignores_inserts_on_notification_history_table(mocker):
     with Flask(__name__).app_context():
         result = dao_process_notifications_replication_slot_changes(advisory_lock_id=77)
 
+    assert result == ProcessNotificationsReplicationSlotChangesResult(
+        change_count_buckets=0,
+        advanced_to_lsn="0/E5",
+        raw_change_rows=3,
+        counted_inserts=0,
+        counted_updates=0,
+        ignored_inserts=2,
+        ignored_updates=0,
+        ignored_deletes=0,
+        applied_upserts=0,
+    )
+
     assert not upsert.mock_calls
-    advance.assert_called_once_with("0/02", slot_name=dao.REPLICATION_SLOT_NAME)
-    assert result["processed_changes"] == 0
-    assert result["ignored_changes"] == 2
+    assert advance.mock_calls == [mocker.call("0/E5", slot_name=dao.REPLICATION_SLOT_NAME)]

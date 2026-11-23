@@ -10,9 +10,9 @@ from app.models import FactNotificationStatusLive
 
 class NotificationStatusLiveDimensions(TypedDict):
     bst_date: date
-    service_id: UUID
-    template_id: UUID
-    job_id: UUID
+    service_id: UUID | str
+    template_id: UUID | str
+    job_id: UUID | str
     key_type: str
     notification_type: str
     notification_status: str

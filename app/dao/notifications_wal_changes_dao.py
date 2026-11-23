@@ -2,10 +2,10 @@
 import json
 import struct
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Collection, Container, Iterable, Sequence, Set
 from datetime import date, datetime
-from typing import NamedTuple, Required, TypedDict
-from uuid import UUID
+from time import perf_counter
+from typing import NamedTuple, Self, TypedDict
 
 from flask import current_app
 from notifications_utils.json import StrictJsonType
@@ -18,9 +18,17 @@ from app.dao.fact_notification_status_live_dao import (
     upsert_notification_status_live_counts,
 )
 
+
+class TableName(NamedTuple):
+    schema: str
+    table: str
+
+    def __str__(self):
+        return f"{self.schema}.{self.table}"
+
+
 REPLICATION_SLOT_NAME: str = "notify_wal2json_slot"
 REPLICATION_SLOT_UPTO_NCHANGES: int = 10_000
-REPLICATION_SLOT_TABLE_NAMES: list[str] = ["public.notifications", "public.notification_history"]
 
 # We want to ignore "insert" changes on certain tables.
 # Because "delete" changes don't include enough information to be able to identify the
@@ -30,49 +38,84 @@ REPLICATION_SLOT_TABLE_NAMES: list[str] = ["public.notifications", "public.notif
 # also ignoring their inserts into notification_history and just *trust* that it all
 # works like magic - nothing gets inserted to notification_history that didn't come
 # from notifications, no rows get changed as they are moved, etc.
-IGNORE_INSERTS_ON_TABLES: list[str] = ["public.notification_history"]
+REPLICATION_SLOT_INSERT_TABLE_NAMES: Set[TableName] = frozenset((TableName("public", "notifications"),))
+REPLICATION_SLOT_UPDATE_TABLE_NAMES: Set[TableName] = frozenset(
+    (TableName("public", "notifications"), TableName("public", "notification_history"))
+)
+REPLICATION_SLOT_KEY_TYPES: Set[str] = frozenset(
+    (
+        "normal",
+        "team",
+    )
+)
 
 # Use the first eight bytes of the slot name as a deterministic signed 64-bit advisory lock ID.
 # This is inline with the way we build lock IDs for advisory locks for database migrations.
 REPLICATION_ADVISORY_LOCK_ID = struct.unpack(">q", struct.pack("8s", REPLICATION_SLOT_NAME.encode()))[0]
 
-# Notifications without a job (e.g. sent via the API) are bucketed under a zero UUID, as job_id is part of the
-# primary key of ft_notification_status_live (same convention as ft_notification_status).
-NO_JOB_ID = UUID("00000000-0000-0000-0000-000000000000")
 
-
-RowData = dict[str, StrictJsonType]
-
-
-class ReplicationSlotChangesResult(TypedDict, total=False):
-    lock_acquired: Required[bool]
-    slot_name: str
-    upto_nchanges: int
-    changes_count: int
-    processed_changes: int
-    ignored_changes: int
-    change_count_buckets: int
-    last_lsn: str | None
-
-
-class ParsedRow(TypedDict):
-    table: str
-    type: str
-    current_row_data: RowData
-    previous_row_data: RowData
-    lsn: str | None
+class _NameValueDict(TypedDict):
+    name: str
+    value: StrictJsonType
 
 
 # This must remain a hashable tuple for use as a Counter key.
 # NotificationStatusLiveDimensions is a TypedDict, so use a tuple as the Counter key.
 class FullDimensions(NamedTuple):
     bst_date: date
-    service_id: UUID
-    template_id: UUID
-    job_id: UUID
     notification_type: str
     key_type: str
     notification_status: str
+
+    # avoid parsing UUIDs
+    service_id: str
+    template_id: str
+
+    # Notifications without a job (e.g. sent via the API) are bucketed under a zero UUID, as job_id is part of the
+    # primary key of ft_notification_status_live (same convention as ft_notification_status).
+    job_id: str = "00000000-0000-0000-0000-000000000000"
+
+    @classmethod
+    def _from_columns(cls, columns: Sequence[_NameValueDict]) -> Self:
+        d = {
+            elem["name"]: elem["value"]
+            for elem in columns
+            if elem["value"] is not None  # can't have nulls as these all become part of a primary key
+            and elem["name"] in cls._fields_and_created_at_set  # type: ignore[attr-defined]
+        }
+        # special handling only for created_at -> bst_date
+        d["bst_date"] = convert_utc_to_bst(datetime.fromisoformat(d.pop("created_at").replace("Z", "+00:00"))).date()
+        return cls(**d)
+
+    def _replace_from_columns(self, columns: Sequence[_NameValueDict]) -> Self:
+        return self._replace(
+            **{
+                elem["name"]: elem["value"]
+                for elem in columns
+                if elem["name"] in self._fields_set  # type: ignore[attr-defined]
+            }
+        )
+
+
+# no typing for these because NamedTuple doesn't understand ClassVar
+FullDimensions._fields_set = frozenset(FullDimensions._fields)  # type: ignore[attr-defined]
+FullDimensions._fields_and_created_at_set = frozenset(FullDimensions._fields + ("created_at",))  # type: ignore[attr-defined]
+
+
+class ProcessNotificationsReplicationSlotChangesResult(NamedTuple):
+    change_count_buckets: int
+    advanced_to_lsn: str | None
+    raw_change_rows: int
+    counted_inserts: int
+    counted_updates: int
+    ignored_inserts: int
+    ignored_updates: int
+    ignored_deletes: int
+    applied_upserts: int
+
+
+class LockNotAcquired(RuntimeError):
+    pass
 
 
 def dao_process_notifications_replication_slot_changes(
@@ -80,111 +123,102 @@ def dao_process_notifications_replication_slot_changes(
     slot_name: str = REPLICATION_SLOT_NAME,
     upto_nchanges: int = REPLICATION_SLOT_UPTO_NCHANGES,
     advisory_lock_id: int = REPLICATION_ADVISORY_LOCK_ID,
-) -> ReplicationSlotChangesResult:
-    start_time = datetime.now()
+    insert_table_names: Set[TableName] = REPLICATION_SLOT_INSERT_TABLE_NAMES,
+    update_table_names: Set[TableName] = REPLICATION_SLOT_UPDATE_TABLE_NAMES,
+    key_types: Container[str] = REPLICATION_SLOT_KEY_TYPES,
+) -> ProcessNotificationsReplicationSlotChangesResult:
+    start_time = perf_counter()
     lock_acquired = False
+    extra: dict[str, StrictJsonType]
 
     try:
         lock_acquired = _try_advisory_lock(advisory_lock_id)
 
         if not lock_acquired:
-            return {"lock_acquired": lock_acquired, "slot_name": slot_name}
+            raise LockNotAcquired(f"Couldn't claim advisory lock {advisory_lock_id!r}")
 
         # lock acquired, proceed to fetch and process replication slot changes.
         # The batch-level SQL LSN is authoritative when deciding where to advance the replication slot,
         # because we may receive trailing WAL rows for other tables in the same logical slot.
-        changes, batch_last_lsn = _get_replication_changes(
+        change_counter_result = _build_change_counter(
             _get_raw_replication_change_rows(
                 slot_name=slot_name,
                 upto_nchanges=upto_nchanges,
-                table_names=REPLICATION_SLOT_TABLE_NAMES,
+                table_names=insert_table_names | update_table_names,
             ),
-            table_names=REPLICATION_SLOT_TABLE_NAMES,
+            insert_table_names=insert_table_names,
+            update_table_names=update_table_names,
+            key_types=key_types,
         )
 
-        # Build counter up
-        counter, processed_changes, ignored_changes = _build_counter_from_changes(changes)
-
-        if counter:
+        applied_upserts = 0
+        if change_counter_result.change_counter:
             # if we have changes but no last SQL LSN, something went wrong and we should raise an error
             # instead of proceeding to upsert the database and then be unable to advance the slot to
             # register these changes as applied.
-            if not batch_last_lsn:
-                raise RuntimeError(
-                    f"No last_lsn found after processing replication slot changes, \
+            if not change_counter_result.advanceable_lsn:
+                raise ValueError(
+                    f"No advanceable_lsn found after processing replication slot changes, \
                     replication slot {slot_name} will not be advanced. This should not happen under normal \
                     circumstances."
                 )
 
             # Process the fetched replication slot changes to update service statistics.
-            _upsert_notification_status_live_count(counter)
+            applied_upserts = _upsert_notification_status_live_count(change_counter_result.change_counter)
 
-        if batch_last_lsn:
+        if change_counter_result.advanceable_lsn:
             # Advance the replication slot to the last processed SQL LSN
             # to avoid reprocessing the same changes in future runs.
-            current_app.logger.info(
-                "Advancing replication slot %s to last_lsn=%s",
-                slot_name,
-                batch_last_lsn,
-                extra={"slot_name": slot_name, "last_lsn": batch_last_lsn},
+            extra = {
+                "slot_name": slot_name,
+                "advanceable_lsn": change_counter_result.advanceable_lsn,
+            }
+            current_app.logger.debug(
+                "Advancing replication slot %(slot_name)r to advanceable_lsn=%(advanceable_lsn)s",
+                extra,
+                extra=extra,
             )
-            _advance_replication_slot(batch_last_lsn, slot_name=slot_name)
+            _advance_replication_slot(change_counter_result.advanceable_lsn, slot_name=slot_name)
 
-        # Determine the number of distinct change count buckets based on the counter.
-        fetched_changes = len(changes)
-        change_count_buckets = len(counter)
-
-        # Log the result of the replication slot processing for monitoring and debugging purposes.
+        extra = {
+            "slot_name": slot_name,
+            "advanced_to_lsn": change_counter_result.advanceable_lsn,
+            "change_count_buckets": len(change_counter_result.change_counter),
+            "raw_change_rows": change_counter_result.raw_change_rows,
+            "counted_inserts": change_counter_result.counted_inserts,
+            "counted_updates": change_counter_result.counted_updates,
+            "ignored_inserts": change_counter_result.ignored_inserts,
+            "ignored_updates": change_counter_result.ignored_updates,
+            "ignored_deletes": change_counter_result.ignored_deletes,
+            "applied_upserts": applied_upserts,
+            "duration": perf_counter() - start_time,
+        }
         current_app.logger.info(
-            "%s replication slot changes processed: %s processed, %s ignored, %s change count buckets, last_lsn=%s",
-            fetched_changes,
-            processed_changes,
-            ignored_changes,
-            change_count_buckets,
-            batch_last_lsn,
-            extra={
-                "changes_count": fetched_changes,
-                "processed_changes": processed_changes,
-                "ignored_changes": ignored_changes,
-                "change_count_buckets": change_count_buckets,
-                "last_lsn": batch_last_lsn,
-            },
+            "%s total replication changes processed",
+            change_counter_result.counted_inserts + change_counter_result.counted_updates,
+            extra=extra,
         )
 
         # Return a summary of the replication slot processing results
-        return {
-            "lock_acquired": lock_acquired,
-            "changes_count": fetched_changes,
-            "processed_changes": processed_changes,
-            "ignored_changes": ignored_changes,
-            "change_count_buckets": change_count_buckets,
-            "last_lsn": batch_last_lsn,
-        }
+        return ProcessNotificationsReplicationSlotChangesResult(
+            change_count_buckets=len(change_counter_result.change_counter),
+            advanced_to_lsn=change_counter_result.advanceable_lsn,
+            raw_change_rows=change_counter_result.raw_change_rows,
+            counted_inserts=change_counter_result.counted_inserts,
+            counted_updates=change_counter_result.counted_updates,
+            ignored_inserts=change_counter_result.ignored_inserts,
+            ignored_updates=change_counter_result.ignored_updates,
+            ignored_deletes=change_counter_result.ignored_deletes,
+            applied_upserts=applied_upserts,
+        )
     except Exception:
         # Ensure a failed statement does not poison the session for cleanup queries.
         db.session.rollback()
-        current_app.logger.exception("Failed to process replication slot changes")
         raise
 
     finally:
         if lock_acquired:
-            try:
-                _advisory_unlock(advisory_lock_id)
-            except Exception:
-                current_app.logger.exception("Failed to release advisory lock")
-                raise
-
-        # Log the total time taken to process the replication slot changes for monitoring and debugging purposes.
-        end_time = datetime.now()
-        current_app.logger.info(
-            "Replication slot changes processed in %s seconds.",
-            (end_time - start_time).total_seconds(),
-            extra={
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
-                "duration_seconds": (end_time - start_time).total_seconds(),
-            },
-        )
+            _advisory_unlock(advisory_lock_id)
 
 
 def _try_advisory_lock(lock_id: int) -> bool:
@@ -200,7 +234,7 @@ def _get_raw_replication_change_rows(
     *,
     slot_name: str,
     upto_nchanges: int,
-    table_names: list[str] = REPLICATION_SLOT_TABLE_NAMES,
+    table_names: Collection[TableName] = REPLICATION_SLOT_UPDATE_TABLE_NAMES | REPLICATION_SLOT_UPDATE_TABLE_NAMES,
 ) -> Iterable[tuple[str | None, str | None]]:
     return db.session.execute(
         text(
@@ -230,59 +264,115 @@ def _get_raw_replication_change_rows(
             "format_version": "2",
             "include_types": "false",
             "include_typmod": "false",
-            "table_names": ", ".join(table_names),
+            "table_names": ", ".join(str(tn) for tn in table_names),
         },
     ).tuples()
 
 
-def _get_replication_changes(
+class _BuildChangeCounterResult(NamedTuple):
+    change_counter: Counter[FullDimensions]
+    advanceable_lsn: str | None
+    raw_change_rows: int
+    counted_inserts: int
+    counted_updates: int
+    ignored_inserts: int
+    ignored_updates: int
+    ignored_deletes: int
+
+
+# ruff: noqa: C901  # C901 is bunk
+def _build_change_counter(
     raw_change_rows: Iterable[tuple[str | None, str | None]],
     *,
-    table_names: list[str] = REPLICATION_SLOT_TABLE_NAMES,
-) -> tuple[list[ParsedRow], str | None]:
+    insert_table_names: Container[TableName] = REPLICATION_SLOT_INSERT_TABLE_NAMES,
+    update_table_names: Container[TableName] = REPLICATION_SLOT_UPDATE_TABLE_NAMES,
+    key_types: Container[str] = REPLICATION_SLOT_KEY_TYPES,
+) -> _BuildChangeCounterResult:
     logged_none_payload, logged_none_lsn = False, False
-    parsed_rows: list[ParsedRow] = []
-    last_sql_lsn: str | None = None
+    change_counter: Counter[FullDimensions] = Counter()
+    advanceable_lsn: str | None = None
+    counted_inserts, counted_updates, ignored_inserts, ignored_updates, ignored_deletes = 0, 0, 0, 0, 0
 
-    for lsn, payload in raw_change_rows:
-        if lsn is not None:
-            last_sql_lsn = lsn
-        elif not logged_none_lsn:
+    i = 0
+    # ruff: noqa: B007  # we use `i` after the loop
+    for i, (lsn, raw_payload) in enumerate(raw_change_rows, 1):
+        if lsn is None and not logged_none_lsn:
             # if we never see this message, can we remove this check?
             current_app.logger.warning("Encountered None replication lsn")
             # avoid potentially spamming the logs
             logged_none_lsn = True
 
-        if payload is None:
+        if raw_payload is None:
             if not logged_none_payload:
                 # if we never see this message, can we remove this check?
                 current_app.logger.warning("Encountered None replication payload")
                 # avoid potentially spamming the logs
                 logged_none_payload = True
         else:
-            parsed_rows.extend(_parse_wal2json_payload(json.loads(payload), table_names=table_names, default_lsn=lsn))
+            payload = json.loads(raw_payload)
 
-    return parsed_rows, last_sql_lsn
+            match payload["action"]:
+                case "I":  # insert
+                    if TableName(payload["schema"], payload["table"]) in insert_table_names:
+                        dimensions = FullDimensions._from_columns(payload["columns"])
+                        if dimensions.key_type in key_types:
+                            change_counter[dimensions] += 1
+                            counted_inserts += 1
+                        else:
+                            ignored_inserts += 1
+                    else:
+                        ignored_inserts += 1
+                case "U":  # update
+                    if TableName(payload["schema"], payload["table"]) in update_table_names:
+                        dimensions_new = FullDimensions._from_columns(payload["columns"])
+                        dimensions_old = dimensions_new._replace_from_columns(payload["identity"])
+                        if dimensions_old.key_type in key_types and dimensions_new != dimensions_old:
+                            change_counter[dimensions_old] -= 1
+                            change_counter[dimensions_new] += 1
+                            counted_updates += 1
+                        else:
+                            ignored_updates += 1
+                    else:
+                        ignored_updates += 1
+                case "D":  # delete
+                    ignored_deletes += 1
+
+            # we only want to advance to LSNs corresponding to commits *or* non-transactional messages. advancing
+            # to LSNs inside transactions could lead to trouble. if the final change we encounter isn't one we
+            # want to advance to, something is wrong and we'll return a None advanceable_lsn to reflect this.
+            if payload["action"] == "C" or (payload["action"] == "M" and not payload["transactional"]):
+                advanceable_lsn = lsn
+            else:
+                advanceable_lsn = None
+
+    return _BuildChangeCounterResult(
+        change_counter=change_counter,
+        advanceable_lsn=advanceable_lsn,
+        raw_change_rows=i,
+        counted_inserts=counted_inserts,
+        counted_updates=counted_updates,
+        ignored_inserts=ignored_inserts,
+        ignored_updates=ignored_updates,
+        ignored_deletes=ignored_deletes,
+    )
 
 
-def _upsert_notification_status_live_count(counter) -> None:
+def _upsert_notification_status_live_count(counter: Counter[FullDimensions]) -> int:
     count_changes: list[NotificationStatusLiveDimensions] = []
 
     for dimensions_key, change_count in counter.items():
         if change_count == 0:
             continue
 
-        bst_date, service_id, template_id, job_id, notification_type, key_type, notification_status = dimensions_key
-
         count_changes.append(
             {
-                "bst_date": bst_date,
-                "service_id": service_id,
-                "template_id": template_id,
-                "job_id": job_id,
-                "notification_type": notification_type,
-                "key_type": key_type,
-                "notification_status": notification_status,
+                "bst_date": dimensions_key.bst_date,
+                "service_id": dimensions_key.service_id,
+                "template_id": dimensions_key.template_id,
+                "job_id": dimensions_key.job_id,
+                "notification_type": dimensions_key.notification_type,
+                "key_type": dimensions_key.key_type,
+                "notification_status": dimensions_key.notification_status,
                 "notification_count": change_count,
             }
         )
@@ -290,222 +380,11 @@ def _upsert_notification_status_live_count(counter) -> None:
     if count_changes:
         upsert_notification_status_live_counts(count_changes)
 
+    return len(count_changes)
+
 
 def _advance_replication_slot(lsn: str, *, slot_name: str) -> None:
     db.session.execute(
         text("SELECT pg_replication_slot_advance(:slot_name, :lsn)"),
         {"slot_name": slot_name, "lsn": lsn},
     )
-
-
-## Helper functions
-
-
-def _parse_wal2json_payload(
-    payload: dict[str, StrictJsonType],
-    *,
-    table_names: list[str] = REPLICATION_SLOT_TABLE_NAMES,
-    default_lsn: str | None = None,
-) -> list[ParsedRow]:
-    # wal2json format-version 2 emits one change object per slot row.
-    action = payload.get("action")
-    change_type = _normalise_change_type(action)
-    if change_type in {"begin", "commit", "delete", "message", "unknown"}:
-        return []
-
-    schema = payload.get("schema")
-    table = payload.get("table")
-    if not table or not isinstance(table, str):
-        return []
-
-    qualified_table_name = f"{schema}.{table}" if schema else table
-    if table_names and qualified_table_name not in table_names:
-        return []
-
-    return [
-        {
-            "table": table,
-            "type": change_type,
-            "current_row_data": _extract_row_data(payload),
-            "previous_row_data": _extract_previous_row_data(payload),
-            "lsn": default_lsn,
-        }
-    ]
-
-
-def _normalise_change_type(action: StrictJsonType) -> str:
-    if action is None:
-        return "unknown"
-
-    normalised = str(action).upper()
-    mapping = {
-        "I": "insert",
-        "U": "update",
-        "D": "delete",
-        "B": "begin",
-        "C": "commit",
-        "M": "message",
-    }
-    return mapping.get(normalised, str(action).lower())
-
-
-def _extract_row_data(change: dict[str, StrictJsonType]) -> RowData:
-    return _extract_name_value_rows(change.get("columns", []))
-
-
-def _extract_previous_row_data(change: dict[str, StrictJsonType]) -> RowData:
-    if change.get("action") == "U":
-        return _extract_name_value_rows(change.get("identity", []))
-
-    return {}
-
-
-def _extract_name_value_rows(rows: StrictJsonType) -> RowData:
-    row_data: RowData = {}
-    if not isinstance(rows, list):
-        return row_data
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        name = row.get("name")
-        if name is None:
-            continue
-        row_data[str(name)] = row.get("value")
-    return row_data
-
-
-def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullDimensions], int, int]:
-    counter: Counter[FullDimensions] = Counter()
-    processed_changes = 0
-    ignored_changes = 0
-    allowed_table_names = [name.split(".")[-1] for name in REPLICATION_SLOT_TABLE_NAMES]
-    ignore_inserts_table_names = [name.split(".")[-1] for name in IGNORE_INSERTS_ON_TABLES]
-
-    for change in changes:
-        table_name = change["table"]
-        change_type = change["type"]
-
-        if table_name not in allowed_table_names or (
-            change_type == "insert" and table_name in ignore_inserts_table_names
-        ):
-            ignored_changes += 1
-            continue
-
-        if change_type == "insert":
-            dimensions = _build_dimensions(change, use_previous_row=False)
-            if not dimensions:
-                ignored_changes += 1
-                continue
-
-            counter[dimensions] += 1
-            processed_changes += 1
-            continue
-
-        if change_type == "update":
-            updated = False
-            new_dimensions = _build_dimensions(change, use_previous_row=False)
-            if new_dimensions:
-                counter[new_dimensions] += 1
-                updated = True
-
-            old_dimensions = _build_dimensions(change, use_previous_row=True, require_status_from_primary_row=True)
-            if old_dimensions:
-                counter[old_dimensions] -= 1
-                updated = True
-
-            if not updated:
-                ignored_changes += 1
-                continue
-
-            processed_changes += 1
-            continue
-
-        ignored_changes += 1
-
-    return counter, processed_changes, ignored_changes
-
-
-def _build_dimensions(
-    change: ParsedRow,
-    *,
-    use_previous_row: bool,
-    require_status_from_primary_row: bool = False,
-) -> FullDimensions | None:
-    if use_previous_row:
-        row_data = change["previous_row_data"]
-        fallback_data = change["current_row_data"]
-    else:
-        row_data = change["current_row_data"]
-        fallback_data = change["previous_row_data"]
-
-    service_id = _parse_uuid_value(row_data, "service_id") or _parse_uuid_value(fallback_data, "service_id")
-    template_id = _parse_uuid_value(row_data, "template_id") or _parse_uuid_value(fallback_data, "template_id")
-    job_id = _parse_uuid_value(row_data, "job_id") or _parse_uuid_value(fallback_data, "job_id") or NO_JOB_ID
-    notification_type = _get_str_value(row_data, "notification_type") or _get_str_value(
-        fallback_data, "notification_type"
-    )
-    key_type = _get_str_value(row_data, "key_type") or _get_str_value(fallback_data, "key_type")
-    primary_status = _get_str_value(row_data, "notification_status")
-    notification_status = primary_status or _get_str_value(fallback_data, "notification_status")
-    created_at = _parse_datetime_value(row_data, "created_at") or _parse_datetime_value(fallback_data, "created_at")
-
-    # WAL update payloads may omit unchanged columns, but the old dimensions must use the previous
-    # row's status. Falling back to the current status here would subtract the new bucket instead
-    # of the old bucket and leave the service statistics counts incorrect.
-    if require_status_from_primary_row and not primary_status:
-        return None
-
-    if (
-        not service_id
-        or not template_id
-        or not job_id
-        or not notification_type
-        or not key_type
-        or not notification_status
-        or not created_at
-    ):
-        return None
-
-    return FullDimensions(
-        bst_date=convert_utc_to_bst(created_at).date(),
-        service_id=service_id,
-        template_id=template_id,
-        job_id=job_id,
-        notification_type=notification_type,
-        key_type=key_type,
-        notification_status=notification_status,
-    )
-
-
-def _parse_uuid_value(row_data: RowData, key: str) -> UUID | None:
-    raw_value = _get_str_value(row_data, key)
-    if not raw_value:
-        return None
-
-    try:
-        return UUID(raw_value)
-    except ValueError:
-        return None
-
-
-def _get_str_value(row_data: RowData | None, key: str) -> str | None:
-    if not row_data:
-        return None
-
-    raw_value = row_data.get(key)
-    if raw_value is None:
-        return None
-
-    return raw_value if isinstance(raw_value, str) else str(raw_value)
-
-
-def _parse_datetime_value(row_data: RowData, key: str) -> datetime | None:
-    raw_value = _get_str_value(row_data, key)
-    if not raw_value:
-        return None
-
-    normalized = raw_value.replace("Z", "+00:00")
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError:
-        return None

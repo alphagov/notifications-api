@@ -12,6 +12,7 @@ from opentelemetry.instrumentation import auto_instrumentation
 from app import create_app
 from app.dao.notifications_wal_changes_dao import (
     REPLICATION_SLOT_UPTO_NCHANGES,
+    LockNotAcquired,
     dao_process_notifications_replication_slot_changes,
 )
 from app.notify_api_flask_app import NotifyApiFlaskApp
@@ -32,17 +33,17 @@ def db_streamer_loop(app) -> None:
     while (pending := signal.sigpending()).isdisjoint(terminating_signals):
         try:
             with app.app_context():
-                result = dao_process_notifications_replication_slot_changes(
-                    upto_nchanges=REPLICATION_SLOT_UPTO_NCHANGES,
-                )
-
-                if not result["lock_acquired"]:
+                try:
+                    result = dao_process_notifications_replication_slot_changes(
+                        upto_nchanges=REPLICATION_SLOT_UPTO_NCHANGES,
+                    )
+                except LockNotAcquired:
                     # back off, we'd prefer whatever else has the lock to be able to immediately
                     # re-acquire it and perform another iteration if it wants to
                     sleep(1)
                     continue
 
-                if result["changes_count"] < REPLICATION_SLOT_UPTO_NCHANGES:
+                if result.raw_change_rows < REPLICATION_SLOT_UPTO_NCHANGES:
                     # we exhausted the changes, loosen the loop
                     sleep(1)
         except Exception as e:
