@@ -21,10 +21,15 @@ REPLICATION_SLOT_NAME: str = "notify_wal2json_slot"
 REPLICATION_SLOT_UPTO_NCHANGES: int = 10_000
 REPLICATION_SLOT_TABLE_NAMES: list[str] = ["public.notifications", "public.notification_history"]
 
-# We want to ignore delete changes on certain tables.
-# Deletes on notifications history happen frequently when we remove old records, however,
-# we do not want these to affect the live counts.
-IGNORE_DELETES_ON_TABLES: list[str] = ["public.notification_history"]
+# We want to ignore "insert" changes on certain tables.
+# Because "delete" changes don't include enough information to be able to identify the
+# correct aggregation bucket, we can't use them to "properly" track the movement of
+# notifications to the notification_history table as they hit their retention period
+# and get archived. so instead, we'll have to ignore the whole archiving process by
+# also ignoring their inserts into notification_history and just *trust* that it all
+# works like magic - nothing gets inserted to notification_history that didn't come
+# from notifications, no rows get changed as they are moved, etc.
+IGNORE_INSERTS_ON_TABLES: list[str] = ["public.notification_history"]
 
 # Use the first eight bytes of the slot name as a deterministic signed 64-bit advisory lock ID.
 # This is inline with the way we build lock IDs for advisory locks for database migrations.
@@ -305,7 +310,7 @@ def _parse_wal2json_payload(
     # wal2json format-version 2 emits one change object per slot row.
     action = payload.get("action")
     change_type = _normalise_change_type(action)
-    if change_type in {"begin", "commit", "message", "unknown"}:
+    if change_type in {"begin", "commit", "delete", "message", "unknown"}:
         return []
 
     schema = payload.get("schema")
@@ -349,7 +354,7 @@ def _extract_row_data(change: dict[str, JsonValue]) -> RowData:
 
 
 def _extract_previous_row_data(change: dict[str, JsonValue]) -> RowData:
-    if change.get("action") in {"U", "D"}:
+    if change.get("action") == "U":
         return _extract_name_value_rows(change.get("identity", []))
 
     return {}
@@ -369,22 +374,19 @@ def _extract_name_value_rows(rows: JsonValue) -> RowData:
     return row_data
 
 
-# ruff: noqa: C901
-# Ignoring C901 (function is too complex) because this function is inherently complex due to the
-# nature of processing replication slot changes and building counters from them.
 def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullDimensions], int, int]:
     counter: Counter[FullDimensions] = Counter()
     processed_changes = 0
     ignored_changes = 0
     allowed_table_names = [name.split(".")[-1] for name in REPLICATION_SLOT_TABLE_NAMES]
-    ignore_deletes_table_names = [name.split(".")[-1] for name in IGNORE_DELETES_ON_TABLES]
+    ignore_inserts_table_names = [name.split(".")[-1] for name in IGNORE_INSERTS_ON_TABLES]
 
     for change in changes:
         table_name = change["table"]
         change_type = change["type"]
 
         if table_name not in allowed_table_names or (
-            change_type == "delete" and table_name in ignore_deletes_table_names
+            change_type == "insert" and table_name in ignore_inserts_table_names
         ):
             ignored_changes += 1
             continue
@@ -417,13 +419,6 @@ def _build_counter_from_changes(changes: list[ParsedRow]) -> tuple[Counter[FullD
 
             processed_changes += 1
             continue
-
-        if change_type == "delete":
-            old_dimensions = _build_dimensions(change, use_previous_row=True, require_status_from_primary_row=True)
-            if old_dimensions:
-                counter[old_dimensions] -= 1
-                processed_changes += 1
-                continue
 
         ignored_changes += 1
 

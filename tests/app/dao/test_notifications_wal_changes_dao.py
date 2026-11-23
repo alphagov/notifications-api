@@ -558,21 +558,32 @@ def test_build_counter_from_changes_counts_inserts_and_status_transitions(mocker
         _build_change(current_row_data={**base, "notification_status": "created"}, lsn="0/01"),
         _build_change(
             change_type="update",
-            current_row_data={**base, "notification_status": "delivered"},
+            current_row_data={**base, "notification_status": "pending"},
             previous_row_data={**base, "notification_status": "created"},
             lsn="0/02",
         ),
         _build_change(table="other", current_row_data={**base, "notification_status": "created"}, lsn="0/03"),
-        _build_change(change_type="delete", current_row_data={**base, "notification_status": "created"}, lsn="0/04"),
+        _build_change(
+            change_type="update",
+            table="notification_history",
+            current_row_data={**base, "notification_status": "delivered"},
+            previous_row_data={**base, "notification_status": "pending"},
+            lsn="0/04",
+        ),
+        _build_change(
+            table="notification_history", current_row_data={**base, "notification_status": "created"}, lsn="0/05"
+        ),
     ]
 
     counter, processed_changes, ignored_changes = dao._build_counter_from_changes(changes)
 
     created_dimensions = dao._build_dimensions(changes[0], use_previous_row=False)
-    delivered_dimensions = dao._build_dimensions(changes[1], use_previous_row=False)
+    pending_dimensions = dao._build_dimensions(changes[1], use_previous_row=False)
+    delivered_dimensions = dao._build_dimensions(changes[3], use_previous_row=False)
     assert counter[created_dimensions] == 0
+    assert counter[pending_dimensions] == 0
     assert counter[delivered_dimensions] == 1
-    assert processed_changes == 2
+    assert processed_changes == 3
     assert ignored_changes == 2
 
 
@@ -819,7 +830,7 @@ def test_logs_processing_timestamps(mocker, caplog):
     assert record.duration_seconds == (end_time - start_time).total_seconds()
 
 
-def test_ignores_deletes_on_notification_history_table(mocker):
+def test_ignores_inserts_on_notification_history_table(mocker):
     mocker.patch("app.dao.notifications_wal_changes_dao._try_advisory_lock", return_value=True)
     mocker.patch("app.dao.notifications_wal_changes_dao._advisory_unlock")
     mocker.patch(
@@ -831,7 +842,7 @@ def test_ignores_deletes_on_notification_history_table(mocker):
             (
                 "0/01",
                 _build_raw_change(
-                    action="D",
+                    action="I",
                     identity={"status": "delivered"},
                     table="notification_history",
                 ),
@@ -839,7 +850,7 @@ def test_ignores_deletes_on_notification_history_table(mocker):
             (
                 "0/02",
                 _build_raw_change(
-                    action="D",
+                    action="I",
                     identity={"status": "sent"},
                     table="notification_history",
                 ),
