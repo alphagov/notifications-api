@@ -8,6 +8,7 @@ from typing import NamedTuple, Required, TypedDict
 from uuid import UUID
 
 from flask import current_app
+from notifications_utils.json import StrictJsonType
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import text  # type: ignore[reportMissingImports]
 
@@ -40,8 +41,7 @@ REPLICATION_ADVISORY_LOCK_ID = struct.unpack(">q", struct.pack("8s", REPLICATION
 NO_JOB_ID = UUID("00000000-0000-0000-0000-000000000000")
 
 
-JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
-RowData = dict[str, JsonValue]
+RowData = dict[str, StrictJsonType]
 
 
 class ReplicationSlotChangesResult(TypedDict, total=False):
@@ -302,7 +302,7 @@ def _advance_replication_slot(lsn: str, *, slot_name: str) -> None:
 
 
 def _parse_wal2json_payload(
-    payload: dict[str, JsonValue],
+    payload: dict[str, StrictJsonType],
     *,
     table_names: list[str] = REPLICATION_SLOT_TABLE_NAMES,
     default_lsn: str | None = None,
@@ -333,7 +333,7 @@ def _parse_wal2json_payload(
     ]
 
 
-def _normalise_change_type(action: JsonValue) -> str:
+def _normalise_change_type(action: StrictJsonType) -> str:
     if action is None:
         return "unknown"
 
@@ -349,18 +349,18 @@ def _normalise_change_type(action: JsonValue) -> str:
     return mapping.get(normalised, str(action).lower())
 
 
-def _extract_row_data(change: dict[str, JsonValue]) -> RowData:
+def _extract_row_data(change: dict[str, StrictJsonType]) -> RowData:
     return _extract_name_value_rows(change.get("columns", []))
 
 
-def _extract_previous_row_data(change: dict[str, JsonValue]) -> RowData:
+def _extract_previous_row_data(change: dict[str, StrictJsonType]) -> RowData:
     if change.get("action") == "U":
         return _extract_name_value_rows(change.get("identity", []))
 
     return {}
 
 
-def _extract_name_value_rows(rows: JsonValue) -> RowData:
+def _extract_name_value_rows(rows: StrictJsonType) -> RowData:
     row_data: RowData = {}
     if not isinstance(rows, list):
         return row_data
