@@ -324,9 +324,7 @@ def process_mailbox_notification(
         raise BadRequestError(message="Cannot send mailbox messages with a test or team api key", status_code=403)
 
     notification_id = uuid.uuid4()
-
-    # Ignore the recipient that was provided, and use our test recipient
-    recipient = "TEST-CITIZEN-001"
+    recipient =  form["mailbox_id"]
 
     response = create_response_for_post_notification(
         notification_id=notification_id,

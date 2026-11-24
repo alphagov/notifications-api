@@ -205,6 +205,9 @@ def persist_notification(
         notification.international = postage in INTERNATIONAL_POSTAGE_TYPES
         notification.normalised_to = "".join(notification.to.split()).lower()
 
+    elif notification_type == MAILBOX_TYPE:
+        notification.normalised_to = strip_and_remove_obscure_whitespace(notification.to)
+
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification=notification, _autocommit=_autocommit)

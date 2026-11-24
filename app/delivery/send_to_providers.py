@@ -235,7 +235,7 @@ def send_mailbox_message_to_provider(notification):
             reference = provider.send_mailbox_message(
                 subject=mailbox_message.subject,
                 body=mailbox_message.content_with_placeholders_filled_in,
-                department_person_id="TEST-CITIZEN-001",
+                department_person_id=notification.normalised_to,
             )
             notification.reference = reference
             update_notification_to_sending(notification, provider)
