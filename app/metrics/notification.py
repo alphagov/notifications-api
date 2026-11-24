@@ -1,9 +1,10 @@
 import json
+from collections import deque
 from collections.abc import Sequence
 from datetime import timedelta
 
-from notifications_utils.semconv import set_error_type
-from opentelemetry.metrics import get_meter
+from notifications_utils.semconv import oneshot_gauge_next_observations_consumer, set_error_type
+from opentelemetry.metrics import Observation, get_meter
 from opentelemetry.util.types import AttributeValue
 
 _meter = get_meter(__name__)
@@ -97,8 +98,10 @@ UNDELIVERED_NOTIFICATION_AGE_HISTOGRAM_BUCKETS = [
 # this should really be a "gauge histogram", but such metrics aren't yet ratified in the otel standard
 # let alone supported in the python sdk. so for now it's just a regular gauge which we manually manage
 # the `le` label values for.
-_undelivered_notification_age = _meter.create_gauge(
+_undelivered_notification_age_next_observations_deque: deque[Observation] = deque()
+_undelivered_notification_age = _meter.create_observable_gauge(
     "notification.undelivered.age",
+    callbacks=(oneshot_gauge_next_observations_consumer(_undelivered_notification_age_next_observations_deque),),
     unit="{notification}",
     description=(
         "Number of notifications sent less than or equal to `le` seconds ago for which we're still awaiting a "
@@ -210,10 +213,12 @@ def record_undelivered_notification_ages(
     }
 
     for le_timedelta, count in counts:
-        _undelivered_notification_age.set(
-            count,
-            {
-                **attrs,
-                "le": le_timedelta.total_seconds(),
-            },
+        _undelivered_notification_age_next_observations_deque.append(
+            Observation(
+                count,
+                {
+                    **attrs,
+                    "le": le_timedelta.total_seconds(),
+                },
+            )
         )

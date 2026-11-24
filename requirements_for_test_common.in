@@ -1,4 +1,4 @@
-# This file was automatically copied from notifications-utils@135.0.2
+# This file was automatically copied from notifications-utils@135.1.0
 
 beautifulsoup4
 pytest
@@ -9,4 +9,4 @@ pytest-testmon
 requests-mock
 freezegun
 
-ruff==0.15.2  # Also update `.pre-commit-config.yaml` if this changes
+ruff==0.17.4  # Also update `.pre-commit-config.yaml` if this changes

@@ -1,4 +1,4 @@
-# This file was automatically copied from notifications-utils@135.0.2
+# This file was automatically copied from notifications-utils@135.1.0
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -9,7 +9,7 @@ repos:
   - id: check-yaml
   - id: debug-statements
 - repo: https://github.com/charliermarsh/ruff-pre-commit
-  rev: 'v0.15.2'
+  rev: 'v0.17.4'
   hooks:
     - id: ruff
       args: [--fix, --exit-non-zero-on-fix]
