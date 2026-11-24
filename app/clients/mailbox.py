@@ -30,7 +30,7 @@ class MailboxClient:
         self.base_url = current_app.config.get("MAILBOX_BASE_URL")
         self.requests_session = requests.Session()
 
-    def send_mailbox_message(self, subject, body, department_person_id="TEST-CITIZEN-001"):
+    def send_mailbox_message(self, subject, body, department_person_id):
         try:
             response = self.requests_session.post(
                 f"{self.base_url}/messages",
