@@ -6,9 +6,9 @@ alembic==1.20.1 \
     # via
     #   -r requirements.txt
     #   flask-migrate
-amqp==5.4.1 \
-    --hash=sha256:79a9c0ab70e71745667f127ff80666894a734c26236b6f33149c964b096f0b20 \
-    --hash=sha256:ac2b816a14a380ed10c5ebbf85a334fd68111fa476496867a5ccd2fd09926d5e
+amqp==5.4.2 \
+    --hash=sha256:9362660c4a31150cf18e78cae2ce8aa1e929fc6c6739e69f6dd5dbea9c3edc82 \
+    --hash=sha256:e6e756b15c89c86818b48a4947a424706238afbf67d457428d3269bc4590db9e
     # via
     #   -r requirements.txt
     #   kombu
@@ -207,9 +207,9 @@ beautifulsoup4==4.15.0 \
     --hash=sha256:288e3ca7d54b06f2ac191970bc275c1939cb46d450b255bf6718b04aa37ab4f7 \
     --hash=sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9
     # via -r requirements_for_test_common.in
-billiard==4.3.1 \
-    --hash=sha256:2c7075283191d9c0add66cf8fca8e06ba599e75fe7319b67186759f8877dfdaf \
-    --hash=sha256:c88559b306ee5dc93f8d5f843d07da15d795d67af26720d14ee9d09f09eb0b22
+billiard==4.3.2 \
+    --hash=sha256:37735a7b4117aafa73532b3b493db4c02fb85c0e69d5f3447f113fd30ff27872 \
+    --hash=sha256:9eb83c99b1cf7acb1fed86c1dfd477157000a1a2c0108005c1e5837b55d2acba
     # via
     #   -r requirements.txt
     #   celery
@@ -240,9 +240,9 @@ cachetools==7.2.4 \
     # via
     #   -r requirements.txt
     #   notifications-utils
-celery==5.6.3 \
-    --hash=sha256:0808f42f80909c4d5833202360ffafb2a4f83f4d8e23e1285d926610e9a7afa6 \
-    --hash=sha256:177006bd2054b882e9f01be59abd8529e88879ef50d7918a7050c5a9f4e12912
+celery==5.7.0 \
+    --hash=sha256:18310a9c919f9029e4735367484d93e6a25cdfd30afdc474622cc263d9b35f6e \
+    --hash=sha256:6a5dfcf6662287204f009a02002b9e66c83d4105e47ebabdc7079108772fc6f0
     # via -r requirements.txt
 certifi==2026.10.23 \
     --hash=sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd \
@@ -1090,7 +1090,9 @@ jsonschema-specifications==2025.9.1 \
     # via
     #   -r requirements.txt
     #   jsonschema
-kombu @ git+https://github.com/celery/kombu.git@860e40a6c904c4d8551577d9f4e8c00f03b6e06c
+kombu==5.7.0 \
+    --hash=sha256:31e62fdfd2381caa3422f8e02b84a491d9a2180ddda74507b57f4cb1e1c2c2c9 \
+    --hash=sha256:dede73bff4c89175be382c4203d2f167cf7017c384396ec75c36a1b5678f1587
     # via
     #   -r requirements.txt
     #   celery
@@ -1735,7 +1737,6 @@ packaging==26.3 \
     # via
     #   -r requirements.txt
     #   gunicorn
-    #   kombu
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-flask
     #   opentelemetry-instrumentation-sqlalchemy
@@ -2471,7 +2472,6 @@ tzdata==2026.5 \
     # via
     #   -r requirements.txt
     #   arrow
-    #   kombu
 tzlocal==5.4.5 \
     --hash=sha256:ba976898bad27945178c9ca25c222c19e322b30c10342b9f40b46714f70d2d5f \
     --hash=sha256:ecab534f6d65d9deb4c4ea52c121ab6dd5958e9b878e71dcb102578269752454
