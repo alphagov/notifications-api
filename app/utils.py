@@ -1,6 +1,8 @@
 import base64
+from collections import UserList
 from collections.abc import Callable, Generator, Iterable
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from functools import wraps
 from inspect import signature
@@ -317,3 +319,17 @@ def try_download_template_email_file_from_s3(service_id, template_email_file_id)
         )
 
         raise e
+
+
+@dataclass
+class SentFileData:
+    id: str
+    placeholder: str
+    filename: str | None
+
+
+class SentFileDataList(UserList):
+    def append(self, item: SentFileData):
+        if not isinstance(item, SentFileData):
+            raise TypeError("SentFileDataList can only append SentFileData objects")
+        return super().append(item)
