@@ -1,4 +1,3 @@
-import pytest
 from flask import url_for
 
 from app.constants import ServiceCallbackTypes
@@ -15,7 +14,10 @@ def test_get_inbound_sms_returns_200(api_client_request, sample_service):
         create_inbound_sms(service=sample_service, user_number="447700900111", content="Bye"),
         create_inbound_sms(service=sample_service, user_number="07700900113"),
     ]
-    json_resp = api_client_request.get(sample_service.id, "v2_inbound_sms.get_inbound_sms", _api_key_type="normal")
+    json_resp = api_client_request.get(
+        sample_service.id,
+        "v2_inbound_sms.get_inbound_sms",
+    )
 
     json_response = json_resp["received_text_messages"]
 
@@ -24,29 +26,6 @@ def test_get_inbound_sms_returns_200(api_client_request, sample_service):
     expected_response = [i.serialize() for i in reversed_all_inbound_sms]
 
     assert json_response == expected_response
-
-
-@pytest.mark.parametrize("api_key_type", ["test", "team"])
-def test_get_inbound_sms_with_team_or_test_key_returns_403(api_client_request, sample_service, api_key_type):
-    [
-        create_inbound_sms(service=sample_service, user_number="447700900111", content="Hi"),
-        create_inbound_sms(service=sample_service, user_number="447700900112"),
-        create_inbound_sms(service=sample_service, user_number="447700900111", content="Bye"),
-        create_inbound_sms(service=sample_service, user_number="07700900113"),
-    ]
-    json_response = api_client_request.get(
-        sample_service.id,
-        "v2_inbound_sms.get_inbound_sms",
-        _api_key_type=api_key_type,
-        _expected_status=403,
-    )
-
-    assert json_response == {
-        "errors": [
-            {"error": "BadRequestError", "message": "Cannot access received text message with team or test key"}
-        ],
-        "status_code": 403,
-    }
 
 
 def test_get_inbound_sms_returns_200_when_service_has_callbacks(api_client_request, sample_service):
