@@ -11,7 +11,12 @@ from app.v2.inbound_sms.inbound_sms_schemas import get_inbound_sms_request
 
 @v2_inbound_sms_blueprint.route("", methods=["GET"])
 def get_inbound_sms():
-    if api_user.key_type != KEY_TYPE_NORMAL:
+    # TODO: remove the check for authenticated_service.id when we have updated functional tests to use
+    # a live key when hitting this endpoint
+    if api_user.key_type != KEY_TYPE_NORMAL and authenticated_service.id not in (
+        "07d45b34-240b-462c-8bf3-e8e3502d5f5b",  # Staging Functional Tests
+        "6c1d81bb-dae2-4ee9-80b0-89a4aae9f649",  # Production Functional Tests - Providers
+    ):
         raise BadRequestError(message="Cannot access received text message with team or test key", status_code=403)
 
     data = validate(request.args.to_dict(), get_inbound_sms_request)
